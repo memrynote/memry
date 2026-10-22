@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 271,
+    "exportedCaseCount": 274,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 281,
+    "caseCount": 284,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -980,39 +980,60 @@
       "sha256": "bbe6d8e4f1afc6b9e7c75074a35abfa54da76c080ce035a8da5b819687ec456c"
     },
     {
-      "name": "memry-portal fence targeting a note",
-      "markdown": "```memry-portal\n{\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\"\n}\n```",
+      "name": "memry-portal fence targeting a whole note",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\"\n}\n```",
       "canonical": null,
       "pending": null,
-      "sha256": "20482bc0d909fb083aa3e95575236b32b47b35033c40083dc59b91aa90a50a4e"
+      "sha256": "e032c0d9f534d1f1e09c403404e1912915be1e64e4d91224604302fb8f9ff150"
     },
     {
-      "name": "memry-portal fence targeting a block with hidden children",
-      "markdown": "```memry-portal\n{\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"block\": \"chl-7f2a\",\n  \"hidden\": [\n    \"b9x1\"\n  ]\n}\n```",
+      "name": "memry-portal fence with a collapsed root",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ]\n}\n```",
       "canonical": null,
       "pending": null,
-      "sha256": "7d15458a7c74aca481965937a333e119d49db59d3855d69bfd8bae05b7e5759e"
+      "sha256": "7a68013187ad752411eefbeca056010d2379af0f614749a08b22709473ba78f4"
+    },
+    {
+      "name": "memry-portal fence with several roots",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\",\n    \"p8m2qa\"\n  ]\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "fd659b3525b13df1cca51158b3810fffb6ab89a91db8d00b6277734da8c75ae0"
+    },
+    {
+      "name": "memry-portal fence with show-mode open",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ],\n  \"open\": {\n    \"k3x9a2\": {\n      \"show\": [\n        \"n4c8x1\"\n      ]\n    }\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4bd82f59b2267d8f6d2bdefcce9ac7ae6a6e106d1146e6ca1e34a91a7d236143"
+    },
+    {
+      "name": "memry-portal fence with hide-mode and nested open",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ],\n  \"open\": {\n    \"k3x9a2\": {\n      \"hide\": [\n        \"b9x1\"\n      ]\n    },\n    \"n4c8x1\": {\n      \"hide\": []\n    }\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a247dbedd42ad6f42f6ab83208b54f34b9c868e2ff35e3c778a29b833fad05ee"
     },
     {
       "name": "memry-portal search fence",
-      "markdown": "```memry-portal\n{\n  \"search\": {\n    \"text\": \"exam\",\n    \"tag\": \"bio\",\n    \"limit\": 50\n  }\n}\n```",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"search\": {\n    \"text\": \"exam\",\n    \"tag\": \"bio\",\n    \"limit\": 50\n  }\n}\n```",
       "canonical": null,
       "pending": null,
-      "sha256": "71b2868c887523673204712d422d85a12abd0ea4aa908bc3117c2818a04e1ecd"
+      "sha256": "ca2fa088c84bf445fd437757d3269dc3a725522149c6fc0183c2bc3454c5e3bb"
     },
     {
       "name": "memry-portal fence keeps keys a build does not know",
-      "markdown": "```memry-portal\n{\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"layout\": {\n    \"future\": true\n  }\n}\n```",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ],\n  \"layout\": {\n    \"future\": true\n  }\n}\n```",
       "canonical": null,
       "pending": null,
-      "sha256": "abc71b42d9cd8b0e4ffea9f2c1acba5ea98a4fe328b64b428fa36ae36431a6b3"
+      "sha256": "24914e1149528634b4231930c7d2d8b82da1ca9565990482305ee720bb332b7e"
     },
     {
       "name": "memry-portal fence between paragraphs",
-      "markdown": "Before\n\n```memry-portal\n{\"note\":\"n1\"}\n```\n\nAfter",
+      "markdown": "Before\n\n```memry-portal\n{\"v\":1,\"note\":\"n1\"}\n```\n\nAfter",
       "canonical": null,
       "pending": null,
-      "sha256": "ff4ed3644e46779286f2f6fe39b5f8da1931220f8581d3564fac509df79f5a14"
+      "sha256": "b27e46cbb14eae7625fdf7c65dfbf3ea558945c1e0ed9e3e3ed1532f2c80afe3"
     },
     {
       "name": "a block whose text ends with an anchor",

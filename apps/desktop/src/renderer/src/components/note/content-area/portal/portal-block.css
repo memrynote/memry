@@ -24,3 +24,50 @@
   width: revert-layer;
   height: revert-layer;
 }
+
+/* Folding inside a portal rewrites the portal's definition
+   (portal-inline-plugin.ts), so the bullet fold's view-only chevron would be a
+   second, different control on the same row. */
+.memry-portal-block .portal-window .memry-bullet-toggle:not([data-portal-fold]) {
+  display: none;
+}
+
+.memry-portal-block .portal-window .bn-block:has(> .memry-bullet-toggle[data-portal-fold]) {
+  position: relative;
+}
+
+/* "N hidden" under a block: a child row, one nesting step in (BlockNote's
+   nested group margin), quiet until pointed at. */
+.memry-portal-block .portal-hidden-row {
+  padding-inline-start: 24px;
+}
+
+.memry-portal-block .portal-hidden-row-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.memry-portal-block .portal-hidden-row-button svg {
+  /* `!important`: @blocknote/shadcn/style.css is imported after this file. */
+  inline-size: 14px !important;
+  block-size: 14px !important;
+  flex-shrink: 0;
+}
+
+.memry-portal-block .portal-hidden-row-button:hover {
+  background: var(--surface-active);
+  color: var(--foreground);
+}
+
+.memry-portal-block .portal-hidden-row-button:focus-visible {
+  outline: 2px solid var(--tint-ring);
+  outline-offset: 1px;
+}

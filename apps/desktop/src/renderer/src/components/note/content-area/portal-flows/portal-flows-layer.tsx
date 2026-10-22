@@ -8,7 +8,7 @@
  * @module note/content-area/portal-flows/portal-flows-layer
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState, type ReactElement } from 'react'
 import { SideMenuExtension } from '@blocknote/core/extensions'
 import { SuggestionMenuController, useBlockNoteEditor, useExtensionState } from '@blocknote/react'
 import { toast } from 'sonner'
@@ -17,14 +17,17 @@ import { useT } from '@memry/i18n/renderer'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import type { EditorSchema } from '../editor-schema'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { getPortalUsage, stampPortalAnchor, type PortalHost } from './portal-api'
 import { guardBlockText } from './portal-delete-guard'
 import { blockDefinition, insertPortalBlock, portalFenceMarkdown } from './portal-insert'
-import { PortalPicker, PortalPickerContext } from './portal-picker'
+import { hideInPortalShortcut, registerHideInPortal } from './portal-hide-in-portal'
+import { PortalPicker } from './portal-picker'
 import { PORTAL_PICKER_TRIGGER } from './portal-slash-items'
 import { registerPortalFlowsApi } from './portal-flows-api'
 import { PortalSearchQueryPopover } from './portal-search-query-popover'
 import { searchDefinition, type PortalSearchTarget } from './portal-search-query'
+import { PortalRemoveFromContext } from './portal-remove-context'
 import { PortalWhereUsedPopover } from './portal-where-used-popover'
 import { useRegisterPortalSlots } from './portal-slot-components'
 import { usePortalBlockDrop } from './use-portal-block-drop'
@@ -44,10 +47,6 @@ export interface PortalFlowsLayerProps {
   editable: boolean
   /** Notes whose portals this editor is nested in, outermost first. */
   ancestry: readonly string[]
-  /** Opens a note by id (the host in the where-used popover). */
-  onOpenNote?: (noteId: string) => void
-  /** Inside a portal window: hide blocks from the portal instead of deleting them. */
-  removeFromPortal?: (blockIds: readonly string[]) => void
 }
 
 /** `Lectures/Cell Biology.md` -> `Cell Biology`. */
@@ -60,11 +59,11 @@ export function PortalFlowsLayer({
   noteId,
   notePath,
   editable,
-  ancestry,
-  onOpenNote,
-  removeFromPortal
+  ancestry
 }: PortalFlowsLayerProps): ReactElement | null {
   const { t } = useT('notes')
+  const { openSidebarItem } = useSidebarNavigation()
+  const removeFromPortal = useContext(PortalRemoveFromContext)
   const editor = useBlockNoteEditor() as unknown as Editor
   const hoveredBlockId = useExtensionState(SideMenuExtension, {
     editor,
@@ -72,12 +71,6 @@ export function PortalFlowsLayer({
   })
 
   const picker = usePortalPicker(editor, noteId, ancestry)
-  const pickerContext = useMemo(
-    () => ({
-      pickWithChildren: (item: Parameters<typeof picker.pick>[0]) => void picker.pick(item, true)
-    }),
-    [picker]
-  )
 
   const { requestBlockRemoval, dialog } = usePortalDeleteGuard({
     editor,
@@ -113,6 +106,29 @@ export function PortalFlowsLayer({
 
   usePortalBlockDrop({ editor, noteId, editable, ancestry, hoveredBlockId })
   useRegisterPortalSlots()
+
+  // Inside a portal window the block menu and Cmd+Shift+H hide a block from
+  // the portal (the portal rewrites its fence); the portal refuses the only root.
+  useEffect(() => {
+    if (!removeFromPortal) return
+    const unregister = registerHideInPortal(editor, {
+      canHide: () => true,
+      hide: (blockId) => removeFromPortal([blockId])
+    })
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key.toLowerCase() !== hideInPortalShortcut.key) return
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.altKey) return
+      event.preventDefault()
+      event.stopPropagation()
+      removeFromPortal([editor.getTextCursorPosition().block.id])
+    }
+    const dom = editor.domElement
+    dom?.addEventListener('keydown', onKeyDown)
+    return () => {
+      unregister()
+      dom?.removeEventListener('keydown', onKeyDown)
+    }
+  }, [editor, removeFromPortal])
 
   const copyPortalToBlock = useCallback(
     async (blockId: string): Promise<void> => {
@@ -163,14 +179,12 @@ export function PortalFlowsLayer({
   return (
     <>
       {editable ? (
-        <PortalPickerContext value={pickerContext}>
-          <SuggestionMenuController
-            triggerCharacter={PORTAL_PICKER_TRIGGER}
-            getItems={picker.getItems}
-            suggestionMenuComponent={PortalPicker}
-            onItemClick={(item) => void picker.pick(item)}
-          />
-        </PortalPickerContext>
+        <SuggestionMenuController
+          triggerCharacter={PORTAL_PICKER_TRIGGER}
+          getItems={picker.getItems}
+          suggestionMenuComponent={PortalPicker}
+          onItemClick={(item) => void picker.pick(item)}
+        />
       ) : null}
       <PortalSearchQueryPopover
         anchorEl={searchAnchor}
@@ -180,9 +194,17 @@ export function PortalFlowsLayer({
       <PortalWhereUsedPopover
         anchorEl={whereUsed?.chip ?? null}
         hosts={whereUsed?.hosts ?? []}
-        onOpenHost={(host) => {
+        onOpenHost={(host, { beside }) => {
           setWhereUsed(null)
-          onOpenNote?.(host.noteId)
+          openSidebarItem(
+            {
+              type: 'note',
+              path: `/notes/${host.noteId}`,
+              entityId: host.noteId,
+              title: host.title
+            },
+            { toTheSide: beside }
+          )
         }}
         onClose={() => setWhereUsed(null)}
       />

@@ -1,35 +1,34 @@
 /**
- * A portal onto a note or one block of it: the rail and header around a live
- * window, or the state card when the source cannot be shown.
+ * A portal onto a note or some blocks of it: a live window behind a rail, with
+ * a toolbar that floats in while the caret is inside, or one line saying why
+ * the source cannot be shown.
  *
  * @module note/content-area/portal/portal-note-view
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { PortalDefinition } from '@memry/shared/portal-block'
 import { useNote } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useSyncOptional } from '@/contexts/sync-context'
-import { Eye, ExternalLink, Link, Lock } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { PortalRemoveFromContext } from '../portal-flows/portal-remove-context'
 import { useAttachmentNoteId } from '../note-file-url-context'
+import { commitPortalPlan, createPortalActions } from './portal-actions'
+import { PortalFrame } from './portal-chrome'
 import { usePortalAncestry } from './portal-context'
-import {
-  PortalActionButton,
-  PortalActions,
-  PortalChip,
-  PortalGlyph,
-  PortalHeaderRow,
-  PortalRail
-} from './portal-chrome'
-import { portalFenceText, type PortalEditorLike } from './portal-definition'
+import { portalContentsMarkdown, portalLinkText } from './portal-copy'
+import type { PortalEditorLike } from './portal-definition'
+import type { PortalInlineHandlers } from './portal-inline-plugin'
+import type { PortalPlan } from './portal-plans'
 import {
   getPortalActionHandlers,
   usePortalHiddenBlocksSlot,
-  type PortalHandle
+  type PortalHandle,
+  type PortalHiddenScope
 } from './portal-slots'
 import {
   isPortalBlocked,
@@ -38,8 +37,10 @@ import {
   type PortalWindowTarget
 } from './portal-state'
 import { PortalStateCard } from './portal-state-card'
+import { PortalToolbar } from './portal-toolbar'
 import { PortalWindow } from './portal-window'
 import type { PortalWindowResolution } from './use-portal-window-plugin'
+import { usePortalInlineMarks, usePortalWindowState } from './use-portal-window-view'
 
 const log = createLogger('PortalNoteView')
 
@@ -48,7 +49,23 @@ export interface PortalNoteViewProps {
   editor: PortalEditorLike
   definition: PortalDefinition
   target: PortalWindowTarget
-  raw: Record<string, unknown>
+  /** The portal itself is the selection in its note (not a caret inside it). */
+  selected: boolean
+}
+
+interface HiddenRequest {
+  scope: PortalHiddenScope
+  anchorEl: HTMLElement
+}
+
+/** Whether `blockId` is the one root a blocks portal has left: it cannot be hidden. */
+function isOnlyRoot(
+  target: PortalWindowTarget,
+  state: ReturnType<typeof usePortalWindowState>,
+  blockId: string
+): boolean {
+  if (target.kind !== 'blocks' || target.blocks.length !== 1) return false
+  return state?.visible.find((b) => b.blockId === blockId)?.anchor === target.blocks[0]
 }
 
 export function PortalNoteView({
@@ -56,7 +73,7 @@ export function PortalNoteView({
   editor,
   definition,
   target,
-  raw
+  selected
 }: PortalNoteViewProps): React.JSX.Element {
   const { t } = useT('common')
   const hostNoteId = useAttachmentNoteId()
@@ -66,10 +83,19 @@ export function PortalNoteView({
   const sync = useSyncOptional()
   const { openSidebarItem } = useSidebarNavigation()
   const HiddenBlocksSlot = usePortalHiddenBlocksSlot()
+  const windowState = usePortalWindowState(blockId)
+  const windowStateRef = useRef(windowState)
+  useEffect(() => {
+    windowStateRef.current = windowState
+  })
   const [resolution, setResolution] = useState<PortalWindowResolution>({
     rootFound: null,
     rootText: null
   })
+
+  const [focusWithin, setFocusWithin] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [hiddenRequest, setHiddenRequest] = useState<HiddenRequest | null>(null)
 
   const syncing = sync
     ? sync.state.status === 'syncing' || sync.state.initialSyncProgress !== null
@@ -87,33 +113,97 @@ export function PortalNoteView({
     () => ({ blockId, editor, definition, sourceNoteId: target.note, hostNoteId }),
     [blockId, editor, definition, target.note, hostNoteId]
   )
+  const handleRef = useRef(handle)
+  useEffect(() => {
+    handleRef.current = handle
+  })
+  const actions = useMemo(() => createPortalActions(() => handleRef.current), [])
+
+  const reportFailure = useCallback(
+    (done: boolean) => {
+      if (!done) toast.error(t('portalBlock.actionFailed'))
+    },
+    [t]
+  )
+  // Enter or Backspace in the window changed what the portal lists.
+  const applyPlan = useCallback(
+    (plan: PortalPlan) => commitPortalPlan(handleRef.current, plan).then(reportFailure),
+    [reportFailure]
+  )
+
+  const inlineHandlers = useRef<PortalInlineHandlers | null>(null)
+  useEffect(() => {
+    inlineHandlers.current = {
+      hiddenLabel: (count) => t('portalBlock.hiddenCount', { count }),
+      foldLabel: (expanded) =>
+        expanded ? t('portalBlock.collapseChildren') : t('portalBlock.expandChildren'),
+      editable: editor.isEditable && !locked,
+      openHidden: (id, anchorEl) =>
+        setHiddenRequest({ scope: { kind: 'children', blockId: id }, anchorEl }),
+      toggleFold: (id, expanded) =>
+        void (expanded ? actions.collapse(id) : actions.expandAll(id)).then(reportFailure)
+    }
+  })
+  usePortalInlineMarks(blockId, inlineHandlers)
 
   const openSource = useCallback(
-    (event?: React.MouseEvent) => {
+    (options?: { inNewTab?: boolean; toTheSide?: boolean }) => {
       if (!note) return
       openSidebarItem(
-        { type: 'note', path: note.path, entityId: note.id, title: note.title, emoji: note.emoji },
-        event && (event.metaKey || event.ctrlKey) ? { inNewTab: true } : undefined
+        {
+          type: 'note',
+          path: `/notes/${note.id}`,
+          entityId: note.id,
+          title: note.title,
+          emoji: note.emoji
+        },
+        options
       )
     },
     [note, openSidebarItem]
   )
 
-  const copyPortal = useCallback(() => {
-    navigator.clipboard
-      .writeText(portalFenceText(definition, raw))
-      .then(() => toast.success(t('portalBlock.copied')))
-      .catch((err: unknown) => {
-        log.error('Failed to copy the portal', err)
-        toast.error(t('portalBlock.copyFailed'))
-      })
-  }, [definition, raw, t])
+  const writeClipboard = useCallback(
+    (text: string, done: string) => {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => toast.success(done))
+        .catch((err: unknown) => {
+          log.error('Failed to copy from the portal', err)
+          toast.error(t('portalBlock.copyFailed'))
+        })
+    },
+    [t]
+  )
 
-  const title = note?.title
-  const breadcrumb =
-    title && target.kind === 'block' && resolution.rootText
-      ? t('portalBlock.breadcrumb', { note: title, block: resolution.rootText })
-      : title
+  // Hiding a block from inside the window (the block menu, the delete guard's
+  // "Hide here instead") takes it out of this portal only.
+  const removeFromPortal = useCallback(
+    (ids: readonly string[]) => {
+      void (async () => {
+        for (const id of ids) {
+          if (isOnlyRoot(target, windowStateRef.current, id)) {
+            toast.message(t('portalBlock.keepsOneBlock'))
+            continue
+          }
+          reportFailure(await actions.hide(id))
+        }
+      })()
+    },
+    [actions, reportFailure, target, t]
+  )
+
+  // A press with Shift on the portal's content opens the source beside this
+  // note instead of editing in place.
+  const openBesideOnShiftPress = (event: React.MouseEvent): void => {
+    if (!event.shiftKey || event.button !== 0 || !note) return
+    if (!(event.target instanceof Element) || !event.target.closest('[data-portal-window]')) return
+    event.preventDefault()
+    event.stopPropagation()
+    openSource({ toTheSide: true })
+  }
+
+  const title = note?.title ?? ''
 
   if (isPortalBlocked(status)) {
     const card = status as Parameters<typeof PortalStateCard>[0]['status']
@@ -135,8 +225,7 @@ export function PortalNoteView({
       <>
         <PortalStateCard
           status={card}
-          sourceTitle={title}
-          breadcrumb={breadcrumb}
+          sourceTitle={note?.title}
           onAction={hasAction ? action : undefined}
         />
         {/* A block that is gone may come back (a sync lands). The window stays
@@ -146,12 +235,12 @@ export function PortalNoteView({
             <PortalWindow
               portalBlockId={blockId}
               target={target}
-              hidden={definition.hidden}
               ancestry={ancestry}
               sourcePath={note.path}
               sourceContent={note.content}
               editable={false}
               onResolve={setResolution}
+              onPlan={applyPlan}
             />
           </div>
         ) : null}
@@ -159,73 +248,72 @@ export function PortalNoteView({
     )
   }
 
-  const hiddenCount = definition.hidden.length
-  const hiddenChip =
-    hiddenCount > 0 ? (
-      <button
-        type="button"
-        className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        aria-label={t('portalBlock.hiddenBlocks')}
-      >
-        <PortalChip>{t('portalBlock.hiddenCount', { count: hiddenCount })}</PortalChip>
-      </button>
+  const active = focusWithin || menuOpen || hiddenRequest !== null
+  const hiddenSiblingCount =
+    target.kind === 'blocks' ? (windowState?.hiddenSiblings.length ?? 0) : 0
+  const toolbar =
+    active || locked ? (
+      <PortalToolbar
+        title={title}
+        ancestors={target.kind === 'blocks' ? (windowState?.ancestors ?? []) : []}
+        hiddenSiblingCount={hiddenSiblingCount}
+        locked={locked}
+        compact={!active}
+        editable={editor.isEditable && !locked}
+        onIncludeParent={(ancestor) =>
+          void actions.includeParent(ancestor.blockId).then(reportFailure)
+        }
+        onOpenHidden={(anchorEl) => setHiddenRequest({ scope: { kind: 'siblings' }, anchorEl })}
+        onOpenSource={() => openSource()}
+        onOpenBeside={() => openSource({ toTheSide: true })}
+        onCopyContents={() =>
+          writeClipboard(
+            portalContentsMarkdown(windowState?.visible ?? []),
+            t('portalBlock.copiedContents')
+          )
+        }
+        onCopyLink={() =>
+          writeClipboard(portalLinkText(title, target), t('portalBlock.copiedLink'))
+        }
+        onRemove={() => editor.removeBlocks([blockId])}
+        onMenuOpenChange={setMenuOpen}
+      />
     ) : null
-  const editTrigger = (
-    <PortalActionButton label={t('portalBlock.editVisibleBlocks')} disabled={!editor.isEditable}>
-      <Eye className="size-3.5" aria-hidden="true" />
-    </PortalActionButton>
-  )
 
   return (
-    <PortalRail tone="tint" data-portal-kind={target.kind}>
-      <PortalHeaderRow>
-        <PortalGlyph className="text-tint" />
-        <button
-          type="button"
-          onClick={openSource}
-          disabled={!note}
-          className="min-w-0 truncate text-start text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:underline disabled:cursor-default disabled:hover:text-muted-foreground"
-        >
-          {breadcrumb ?? '\u00a0'}
-        </button>
-        <div className="grow" />
-        {locked ? (
-          <PortalChip>
-            <Lock className="size-3" aria-hidden="true" />
-            {t('portalBlock.states.locked.title')}
-          </PortalChip>
-        ) : null}
-        {hiddenChip && HiddenBlocksSlot ? (
-          <HiddenBlocksSlot portal={handle}>{hiddenChip}</HiddenBlocksSlot>
-        ) : (
-          hiddenChip
-        )}
-        <PortalActions>
-          <PortalActionButton label={t('portalBlock.openSource')} onClick={openSource}>
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-          </PortalActionButton>
-          {HiddenBlocksSlot ? (
-            <HiddenBlocksSlot portal={handle}>{editTrigger}</HiddenBlocksSlot>
-          ) : (
-            editTrigger
-          )}
-          <PortalActionButton label={t('portalBlock.copyPortal')} onClick={copyPortal}>
-            <Link className="size-3.5" aria-hidden="true" />
-          </PortalActionButton>
-        </PortalActions>
-      </PortalHeaderRow>
+    <PortalFrame
+      focused={active}
+      selected={selected}
+      toolbar={toolbar}
+      data-portal-kind={target.kind}
+      onFocus={() => setFocusWithin(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false)
+      }}
+      onMouseDownCapture={openBesideOnShiftPress}
+    >
       {note ? (
-        <PortalWindow
-          portalBlockId={blockId}
-          target={target}
-          hidden={definition.hidden}
-          ancestry={ancestry}
-          sourcePath={note.path}
-          sourceContent={note.content}
-          editable={!locked && editor.isEditable}
-          onResolve={setResolution}
+        <PortalRemoveFromContext value={removeFromPortal}>
+          <PortalWindow
+            portalBlockId={blockId}
+            target={target}
+            ancestry={ancestry}
+            sourcePath={note.path}
+            sourceContent={note.content}
+            editable={!locked && editor.isEditable}
+            onResolve={setResolution}
+            onPlan={applyPlan}
+          />
+        </PortalRemoveFromContext>
+      ) : null}
+      {HiddenBlocksSlot ? (
+        <HiddenBlocksSlot
+          portal={handle}
+          scope={hiddenRequest?.scope ?? null}
+          anchorEl={hiddenRequest?.anchorEl ?? null}
+          onClose={() => setHiddenRequest(null)}
         />
       ) : null}
-    </PortalRail>
+    </PortalFrame>
   )
 }

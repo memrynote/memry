@@ -90,6 +90,7 @@ import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -1200,12 +1201,18 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, t]
   )
 
+  const noteDeleteGuard = useNoteDeleteGuard()
   const deleteTasksChoice = useNoteTasksChoice(dialog.is('delete'), noteId ? [noteId] : [])
   const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
 
   // Delete the current note, then close its tab
   const handleDeleteConfirm = useCallback(async () => {
     if (!noteId || isDeleting) return
+    // Other notes that show or link this one get a say before it goes.
+    const proceed = await noteDeleteGuard.confirmNoteDelete([
+      { id: noteId, title: note?.title ?? '' }
+    ])
+    if (!proceed) return
     setIsDeleting(true)
     try {
       const result = await deleteNote.mutateAsync(noteId)
@@ -1221,7 +1228,18 @@ export function NotePage({ noteId }: NotePageProps) {
     } finally {
       setIsDeleting(false)
     }
-  }, [noteId, isDeleting, deleteNote, carriedTaskIdsToDelete, closeTab, activeTab?.id, t, dialog])
+  }, [
+    noteId,
+    note?.title,
+    isDeleting,
+    deleteNote,
+    noteDeleteGuard,
+    carriedTaskIdsToDelete,
+    closeTab,
+    activeTab?.id,
+    t,
+    dialog
+  ])
 
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
@@ -2268,6 +2286,7 @@ export function NotePage({ noteId }: NotePageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {noteDeleteGuard.dialog}
     </NoteLayout>
   )
 }

@@ -1,27 +1,18 @@
 /**
- * The `((` picker: notes and blocks in one list. BlockNote owns opening, the
- * query, arrow keys and Enter (`SuggestionMenuController`); this renders the
- * rows and adds Tab, which inserts the portal and opens its block list so
- * blocks can be hidden at once.
+ * The `((` picker: blocks, then notes, then "Create note". BlockNote owns
+ * opening, the query, arrow keys, Enter and Esc (`SuggestionMenuController`);
+ * this renders the rows and adds Cmd+Enter, which picks the create row.
  *
  * @module note/content-area/portal-flows/portal-picker
  */
 
-import { createContext, useContext, useEffect, useEffectEvent, useRef, type ReactNode } from 'react'
-import { SuggestionMenu } from '@blocknote/core/extensions'
+import { useEffect, useEffectEvent, useRef, type ReactNode } from 'react'
 import { useBlockNoteEditor, type SuggestionMenuProps } from '@blocknote/react'
 import { useT } from '@memry/i18n/renderer'
-import { FileText, Layers } from '@/lib/icons'
+import { FileText, Layers, Plus } from '@/lib/icons'
 import { NoteMenuIcon } from '../note-menu-icon'
 import { cn } from '@/lib/utils'
 import type { PortalPickerItem } from './portal-picker-model'
-
-export interface PortalPickerContextValue {
-  /** Insert with the block list opened (Tab). */
-  pickWithChildren: (item: PortalPickerItem) => void
-}
-
-export const PortalPickerContext = createContext<PortalPickerContextValue | null>(null)
 
 // The `@` menu's row, so the two read as one control (mention-menu.tsx).
 const ROW_CLASS =
@@ -42,6 +33,25 @@ function Kbd({ children }: { children: ReactNode }): ReactNode {
   return <span className="font-mono text-[11px] leading-4 text-text-secondary">{children}</span>
 }
 
+/** `text` with the first case-insensitive match of `query` in bold. */
+function Highlighted({ text, query }: { text: string; query: string }): ReactNode {
+  const at = query === '' ? -1 : text.toLowerCase().indexOf(query.toLowerCase())
+  if (at < 0) return text
+  return (
+    <>
+      {text.slice(0, at)}
+      <strong className="font-semibold text-foreground">{text.slice(at, at + query.length)}</strong>
+      {text.slice(at + query.length)}
+    </>
+  )
+}
+
+const SECTION_OF: Record<PortalPickerItem['kind'], 'blocks' | 'notes' | 'create'> = {
+  block: 'blocks',
+  note: 'notes',
+  create: 'create'
+}
+
 export function PortalPicker({
   items,
   loadingState,
@@ -50,7 +60,6 @@ export function PortalPicker({
 }: SuggestionMenuProps<PortalPickerItem>): ReactNode {
   const { t } = useT('notes')
   const editor = useBlockNoteEditor()
-  const context = useContext(PortalPickerContext)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -59,18 +68,15 @@ export function PortalPicker({
       ?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedIndex])
 
-  // Capture on the editor element, ahead of BlockNote's handler, which would
-  // otherwise let Tab move focus out of the document.
+  // Capture on the editor element, ahead of BlockNote's Enter handling, which
+  // would insert the highlighted row instead of creating a note.
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (event.key !== 'Tab' || event.isComposing || !context) return
-    const item = selectedIndex === undefined ? undefined : items[selectedIndex]
-    if (!item) return
+    if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || event.isComposing) return
+    const create = items.find((item) => item.kind === 'create')
+    if (!create) return
     event.preventDefault()
     event.stopPropagation()
-    const extension = editor.getExtension(SuggestionMenu)
-    extension?.closeMenu()
-    extension?.clearQuery()
-    context.pickWithChildren(item)
+    onItemClick?.(create)
   })
   useEffect(() => {
     const root = editor.domElement
@@ -96,15 +102,22 @@ export function PortalPicker({
   }
 
   const rows: ReactNode[] = []
-  let section: PortalPickerItem['kind'] | null = null
+  let section: string | null = null
   items.forEach((item, index) => {
-    if (item.kind !== section) {
-      section = item.kind
-      rows.push(
-        <SectionLabel key={`section-${item.kind}`}>
-          {item.kind === 'note' ? t('portalFlows.picker.notes') : t('portalFlows.picker.blocks')}
-        </SectionLabel>
-      )
+    const itemSection = SECTION_OF[item.kind]
+    if (itemSection !== section) {
+      section = itemSection
+      if (itemSection === 'create') {
+        rows.push(<div key="create-separator" role="separator" className="my-1 border-t" />)
+      } else {
+        rows.push(
+          <SectionLabel key={`section-${itemSection}`}>
+            {itemSection === 'notes'
+              ? t('portalFlows.picker.notes')
+              : t('portalFlows.picker.blocks')}
+          </SectionLabel>
+        )
+      }
     }
     const isSelected = index === selectedIndex
     rows.push(
@@ -121,15 +134,39 @@ export function PortalPicker({
       >
         {item.kind === 'note' ? (
           <NoteMenuIcon icon={item.emoji} className="size-3.5" />
+        ) : item.kind === 'create' ? (
+          <Plus className="size-3.5 shrink-0" aria-hidden />
         ) : (
           <Layers className="size-3.5 shrink-0" aria-hidden />
         )}
-        <span className="min-w-0 flex-1 truncate">{item.title}</span>
-        {item.kind === 'block' ? (
-          <span className="max-w-[40%] shrink-0 truncate text-xs text-text-tertiary">
-            {item.noteTitle}
-          </span>
-        ) : null}
+        {item.kind === 'create' ? (
+          <>
+            <span className="min-w-0 flex-1 truncate">
+              {t('portalFlows.picker.create', { query: item.title })}
+            </span>
+            <span className="flex shrink-0 items-center gap-0.5">
+              <Kbd>⌘</Kbd>
+              <Kbd>↵</Kbd>
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="min-w-0 flex-1 truncate">
+              {item.kind === 'block' ? (
+                <Highlighted text={item.title} query={item.query} />
+              ) : (
+                item.title
+              )}
+            </span>
+            <span className="max-w-[40%] shrink-0 truncate text-xs text-text-tertiary">
+              {item.kind === 'block'
+                ? item.parentText
+                  ? `${item.noteTitle} › ${item.parentText}`
+                  : item.noteTitle
+                : item.folder}
+            </span>
+          </>
+        )}
       </button>
     )
   })
@@ -158,9 +195,9 @@ export function PortalPicker({
           </span>
         </span>
         <span className="flex items-center gap-1.5">
-          <Kbd>{t('portalFlows.picker.keyTab')}</Kbd>
+          <Kbd>{t('portalFlows.picker.keyEsc')}</Kbd>
           <span className="text-xs leading-4 text-text-secondary">
-            {t('portalFlows.picker.hintChildren')}
+            {t('portalFlows.picker.hintClose')}
           </span>
         </span>
       </div>

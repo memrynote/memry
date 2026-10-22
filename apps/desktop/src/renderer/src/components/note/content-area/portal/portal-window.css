@@ -21,6 +21,12 @@
   margin-inline-start: 0;
 }
 
+/* The nested editor paints the note surface (white) over the frame behind it,
+   which hides the selected portal's tint. The window shows the frame instead. */
+.portal-window :is(.bn-container, .bn-root, .bn-editor) {
+  background-color: transparent !important;
+}
+
 /* The window sits inside the portal's padding, so the nested editor drops its
    own gutters. */
 .portal-window .bn-editor {

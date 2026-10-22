@@ -14,9 +14,10 @@ import {
 
 const whole = (note: string): PortalWindowTarget => ({ kind: 'note', note })
 const block = (note: string, anchor: string): PortalWindowTarget => ({
-  kind: 'block',
+  kind: 'blocks',
   note,
-  block: anchor
+  blocks: [anchor],
+  open: {}
 })
 
 function input(overrides: Partial<PortalStatusInput> = {}): PortalStatusInput {

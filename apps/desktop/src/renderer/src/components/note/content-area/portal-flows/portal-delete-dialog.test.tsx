@@ -27,8 +27,7 @@ const host = (noteId: string) => ({
   noteId,
   title: noteId,
   path: `${noteId}.md`,
-  count: 1,
-  hiddenCount: 0
+  count: 1
 })
 
 const request = (canRemoveHere: boolean): PortalDeleteRequest => ({

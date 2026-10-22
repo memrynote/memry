@@ -13,6 +13,8 @@ type Container = Y.XmlElement
 
 export interface DocBlock {
   id: string
+  /** The nearest enclosing block's id, or null at the top level. */
+  parentId: string | null
   /** The block's own text, anchor included. Empty for a block without inline text. */
   text: string
   /** The element holding the inline runs, or null for a block without any. */
@@ -55,7 +57,7 @@ function hasInlineText(content: Y.XmlElement): boolean {
 /** Every block of the note in document order, nested ones after their parent. */
 export function listDocBlocks(doc: Y.Doc): DocBlock[] {
   const blocks: DocBlock[] = []
-  const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
+  const visit = (node: Y.XmlFragment | Y.XmlElement, parentId: string | null): void => {
     for (const child of node.toArray()) {
       if (!isElement(child)) continue
       if (child.nodeName === 'blockContainer') {
@@ -68,15 +70,17 @@ export function listDocBlocks(doc: Y.Doc): DocBlock[] {
             content.getAttribute('language') === PORTAL_BLOCK_LANGUAGE
           blocks.push({
             id,
+            parentId,
             text: readable && !isFenceOfOurs ? textOf(content) : '',
             content: readable ? content : null
           })
         }
       }
-      visit(child)
+      const own = child.nodeName === 'blockContainer' ? child.getAttribute('id') : null
+      visit(child, typeof own === 'string' && own !== '' ? own : parentId)
     }
   }
-  visit(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+  visit(doc.getXmlFragment(CRDT_FRAGMENT_NAME), null)
   return blocks
 }
 

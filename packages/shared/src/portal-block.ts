@@ -1,27 +1,35 @@
 /**
- * The portal block's definition: a live window onto another note, one block of
- * another note, or the blocks a search finds. Edits made through the window go
- * to the source; the host note stores only this reference.
+ * The portal block's definition: a live window onto part of another note, or
+ * the blocks a search finds. Edits made through the window go to the source;
+ * the host note stores only this reference.
  *
  * On disk the block is an ordinary fenced code block tagged `memry-portal`
- * whose body is this definition as JSON:
+ * whose body is this definition as JSON (format v1):
  *
  * ```memry-portal
- * { "note": "<noteId>", "block": "chl-7f2a", "hidden": ["b9x1"] }
+ * {
+ *   "v": 1,
+ *   "note": "<noteId>",
+ *   "blocks": ["k3x9a2", "p8m2qa"],
+ *   "open": { "k3x9a2": { "show": ["n4c8x1"] } }
+ * }
  * ```
+ *
+ * `blocks` are the root anchors (empty or absent: the whole note). `open`
+ * says which blocks show their children: a block absent from `open` is
+ * collapsed, `{"hide": [...]}` shows every child except those, `{"show": [...]}`
+ * shows only those. A block is visible iff it is a root, or its parent is
+ * visible and open and lets it through (see `portal-resolve.ts`).
  *
  * A fence rather than a new block type, for the same reason as `memry-view`
  * (see `view-block.ts`): in the editor it is BlockNote's own `codeBlock` with
  * `language: "memry-portal"`, so every process and every older build already
- * has the node. An older Memry shows the JSON as a code block and writes the
- * same bytes back, and y-prosemirror never meets a node name it would delete.
- * Only the desktop renderer draws the live window, and iOS draws a read-only
- * slice resolved by the Rust core.
+ * has the node. Only the desktop renderer draws the live window, and iOS
+ * draws a read-only slice resolved by the Rust core.
  *
- * A block target is addressed by an anchor: the literal text ` ^anchor` at the
- * end of the source block (Obsidian's block-id syntax). It is ordinary text,
- * so it survives any markdown round trip, and existing `^id` text in a vault
- * keeps meaning exactly what it did.
+ * A block is addressed by an anchor: the literal text ` ^anchor` at the end of
+ * the source block (Obsidian's block-id syntax). It is ordinary text, so it
+ * survives any markdown round trip.
  *
  * Tolerant in both directions, like `memry-view`: a key this build does not
  * know is kept in `raw` and written back untouched, and a definition this
@@ -38,28 +46,26 @@ export const PORTAL_SEARCH_DEFAULT_LIMIT = 50
 /** Portals inside portals open this many levels, then show a link instead. */
 export const PORTAL_MAX_DEPTH = 3
 
+export type PortalOpen = { mode: 'hide'; ids: string[] } | { mode: 'show'; ids: string[] }
+
 export type PortalTarget =
   | { kind: 'note'; note: string }
-  /** `block` is an anchor, without the leading caret. */
-  | { kind: 'block'; note: string; block: string }
+  /** `blocks` are root anchors, without the leading caret, in portal order. */
+  | { kind: 'blocks'; note: string; blocks: string[]; open: Record<string, PortalOpen> }
   | { kind: 'search'; text?: string; tag?: string; limit: number }
 
 export interface PortalDefinition {
+  v: 1
   target: PortalTarget
-  /** Anchors of descendant blocks this portal does not show. Never the root. */
-  hidden: string[]
+  /** Every key the JSON carried, known or not, for a lossless rewrite. */
+  raw: Record<string, unknown>
 }
 
 export type PortalStatus =
   'ok' | 'missing-note' | 'missing-block' | 'locked' | 'cycle' | 'too-deep' | 'not-synced'
 
 export type ParsedPortal =
-  | {
-      ok: true
-      definition: PortalDefinition
-      /** Every key the JSON carried, known or not, for a lossless rewrite. */
-      raw: Record<string, unknown>
-    }
+  | { ok: true; definition: PortalDefinition }
   | {
       ok: false
       /** `empty`: no definition yet. `json`: not JSON. `shape`: JSON, but no usable target. */
@@ -122,11 +128,23 @@ function readNonEmptyString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value : undefined
 }
 
-function readHidden(value: unknown): string[] {
+function readAnchors(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   const seen = new Set<string>()
   for (const entry of value) if (isAnchor(entry)) seen.add(entry)
   return [...seen]
+}
+
+function readOpen(value: unknown): Record<string, PortalOpen> {
+  const open: Record<string, PortalOpen> = {}
+  if (!isRecord(value)) return open
+  for (const [anchor, entry] of Object.entries(value)) {
+    if (!isAnchor(anchor) || !isRecord(entry)) continue
+    if (Array.isArray(entry.show)) open[anchor] = { mode: 'show', ids: readAnchors(entry.show) }
+    else if (Array.isArray(entry.hide))
+      open[anchor] = { mode: 'hide', ids: readAnchors(entry.hide) }
+  }
+  return open
 }
 
 function readLimit(value: unknown): number {
@@ -149,8 +167,9 @@ export function readPortalTarget(json: Record<string, unknown>): PortalTarget | 
   }
   const note = readNonEmptyString(json.note)
   if (note === undefined) return null
-  if (json.block === undefined) return { kind: 'note', note }
-  return isAnchor(json.block) ? { kind: 'block', note, block: json.block } : null
+  const blocks = readAnchors(json.blocks)
+  if (blocks.length === 0) return { kind: 'note', note }
+  return { kind: 'blocks', note, blocks, open: readOpen(json.open) }
 }
 
 /**
@@ -172,13 +191,23 @@ export function parsePortalDefinition(text: string): ParsedPortal {
   const target = readPortalTarget(json)
   if (!target) return { ok: false, reason: 'shape', raw: json }
 
-  return { ok: true, definition: { target, hidden: readHidden(json.hidden) }, raw: json }
+  return { ok: true, definition: { v: 1, target, raw: json } }
 }
+
+const MANAGED_KEYS = new Set(['v', 'note', 'blocks', 'open', 'search'])
 
 /** The JSON keys a target writes, in on-disk order. */
 function targetKeys(target: PortalTarget): Record<string, unknown> {
   if (target.kind === 'note') return { note: target.note }
-  if (target.kind === 'block') return { note: target.note, block: target.block }
+  if (target.kind === 'blocks') {
+    const keys: Record<string, unknown> = { note: target.note, blocks: target.blocks }
+    const open: Record<string, unknown> = {}
+    for (const [anchor, entry] of Object.entries(target.open)) {
+      open[anchor] = { [entry.mode]: entry.ids }
+    }
+    if (Object.keys(open).length > 0) keys.open = open
+    return keys
+  }
   const search: Record<string, unknown> = {}
   if (target.text !== undefined) search.text = target.text
   if (target.tag !== undefined) search.tag = target.tag
@@ -187,21 +216,142 @@ function targetKeys(target: PortalTarget): Record<string, unknown> {
 }
 
 /**
- * The block's text for a definition. Two-space JSON, target first, then
- * `hidden` when there is any. Keys from `raw` that this build does not manage
- * are kept after those, so a newer build's additions survive an edit.
+ * The block's text for a definition. Two-space JSON, keys `v`, `note`,
+ * `blocks`, `open`. Keys from `raw` that this build does not manage are kept
+ * after those, so a newer build's additions survive an edit.
  */
-export function serializePortalDefinition(
-  definition: PortalDefinition,
-  raw?: Record<string, unknown>
-): string {
-  const ordered: Record<string, unknown> = targetKeys(definition.target)
-  if (definition.hidden.length > 0) ordered.hidden = definition.hidden
-  const managed = new Set(['note', 'block', 'search', 'hidden'])
-  for (const [key, value] of Object.entries(raw ?? {})) {
-    if (!managed.has(key) && value !== undefined) ordered[key] = value
+export function serializePortalDefinition(definition: PortalDefinition): string {
+  const ordered: Record<string, unknown> = { v: 1, ...targetKeys(definition.target) }
+  for (const [key, value] of Object.entries(definition.raw)) {
+    if (!MANAGED_KEYS.has(key) && value !== undefined) ordered[key] = value
   }
   return JSON.stringify(ordered, null, 2)
+}
+
+// ---------------------------------------------------------------------------
+// Edits. Pure: each returns a new definition. A definition that is not a
+// `blocks` target (a note or a search) has no roots or folds, so it comes back
+// unchanged.
+// ---------------------------------------------------------------------------
+
+type BlocksTarget = Extract<PortalTarget, { kind: 'blocks' }>
+
+function withBlocks(
+  def: PortalDefinition,
+  edit: (target: BlocksTarget) => BlocksTarget | null
+): PortalDefinition {
+  if (def.target.kind !== 'blocks') return def
+  const next = edit({
+    ...def.target,
+    blocks: [...def.target.blocks],
+    open: { ...def.target.open }
+  })
+  return next ? { ...def, target: next } : def
+}
+
+/** Add a root after `afterAnchor`, or at the end. A root already listed stays put. */
+export function addRoot(
+  def: PortalDefinition,
+  anchor: string,
+  afterAnchor?: string
+): PortalDefinition {
+  return withBlocks(def, (t) => {
+    if (t.blocks.includes(anchor)) return t
+    const at = afterAnchor === undefined ? -1 : t.blocks.indexOf(afterAnchor)
+    t.blocks.splice(at < 0 ? t.blocks.length : at + 1, 0, anchor)
+    return t
+  })
+}
+
+/** Drop a root. Null when it is the only root: a portal never shows nothing. */
+export function removeRoot(def: PortalDefinition, anchor: string): PortalDefinition | null {
+  if (def.target.kind !== 'blocks') return def
+  if (!def.target.blocks.includes(anchor)) return def
+  if (def.target.blocks.length === 1) return null
+  return withBlocks(def, (t) => ({ ...t, blocks: t.blocks.filter((a) => a !== anchor) }))
+}
+
+/**
+ * Make the parent the single root and keep what the user saw: the previous
+ * roots become the parent's only shown children.
+ */
+export function includeParent(def: PortalDefinition, parentAnchor: string): PortalDefinition {
+  return withBlocks(def, (t) => {
+    if (t.blocks.includes(parentAnchor)) return t
+    t.open[parentAnchor] = { mode: 'show', ids: t.blocks }
+    return { ...t, blocks: [parentAnchor] }
+  })
+}
+
+/** Show every child of the block. */
+export function expandAll(def: PortalDefinition, blockAnchor: string): PortalDefinition {
+  return withBlocks(def, (t) => {
+    t.open[blockAnchor] = { mode: 'hide', ids: [] }
+    return t
+  })
+}
+
+/** Fold the block's children away. */
+export function collapse(def: PortalDefinition, blockAnchor: string): PortalDefinition {
+  return withBlocks(def, (t) => {
+    delete t.open[blockAnchor]
+    return t
+  })
+}
+
+export function showChild(
+  def: PortalDefinition,
+  parentAnchor: string,
+  childAnchor: string
+): PortalDefinition {
+  return withBlocks(def, (t) => {
+    const entry = t.open[parentAnchor]
+    if (!entry) t.open[parentAnchor] = { mode: 'show', ids: [childAnchor] }
+    else if (entry.mode === 'show') {
+      if (!entry.ids.includes(childAnchor)) {
+        t.open[parentAnchor] = { mode: 'show', ids: [...entry.ids, childAnchor] }
+      }
+    } else {
+      t.open[parentAnchor] = { mode: 'hide', ids: entry.ids.filter((a) => a !== childAnchor) }
+    }
+    return t
+  })
+}
+
+export function hideChild(
+  def: PortalDefinition,
+  parentAnchor: string,
+  childAnchor: string
+): PortalDefinition {
+  return withBlocks(def, (t) => {
+    const entry = t.open[parentAnchor]
+    if (!entry) return t
+    if (entry.mode === 'show') {
+      t.open[parentAnchor] = { mode: 'show', ids: entry.ids.filter((a) => a !== childAnchor) }
+    } else if (!entry.ids.includes(childAnchor)) {
+      t.open[parentAnchor] = { mode: 'hide', ids: [...entry.ids, childAnchor] }
+    }
+    return t
+  })
+}
+
+/** A child made through the portal must stay visible: collapsed and show-mode parents list it. */
+export function noteCreatedChild(
+  def: PortalDefinition,
+  parentAnchor: string,
+  childAnchor: string
+): PortalDefinition {
+  const entry = def.target.kind === 'blocks' ? def.target.open[parentAnchor] : undefined
+  return entry?.mode === 'hide' ? def : showChild(def, parentAnchor, childAnchor)
+}
+
+/** A sibling made after a root through the portal becomes a root so it stays visible. */
+export function noteCreatedRootSibling(
+  def: PortalDefinition,
+  afterAnchor: string,
+  newAnchor: string
+): PortalDefinition {
+  return addRoot(def, newAnchor, afterAnchor)
 }
 
 /** The note a target reads from, or null for a search. */

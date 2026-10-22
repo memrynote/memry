@@ -9,6 +9,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { toast } from 'sonner'
+import type { PortalDefinition } from '@memry/shared/portal-block'
 import { useT } from '@memry/i18n/renderer'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
@@ -16,7 +17,6 @@ import { notesService } from '@/services/notes-service'
 import type { EditorSchema } from '../editor-schema'
 import { updatePortalDefinition, type PortalEditorLike } from '../portal/portal-definition'
 import { searchPortalBlocks, stampPortalAnchor } from './portal-api'
-import { requestChooseChildren } from './portal-choose-children'
 import { blockDefinition, insertPortalBlock, noteDefinition } from './portal-insert'
 import { PORTAL_PICKER_TRIGGER } from './portal-slash-items'
 import {
@@ -70,6 +70,7 @@ async function loadBlocks(query: string): Promise<PortalPickerBlock[]> {
   return results.map((hit) => ({
     noteId: hit.noteId,
     noteTitle: hit.title,
+    parentText: hit.parentText,
     blockId: hit.blockId,
     anchor: hit.anchor,
     text: hit.text
@@ -104,16 +105,29 @@ export function usePortalPicker(
         notes,
         blocks,
         hostNoteId,
-        ancestry: ancestryRef.current
+        ancestry: ancestryRef.current,
+        query
       })
     },
     [hostNoteId]
   )
 
   const pick = useCallback(
-    async (item: PortalPickerItem, chooseChildren = false): Promise<void> => {
-      let definition = noteDefinition(item.noteId)
-      if (item.kind === 'block') {
+    async (item: PortalPickerItem): Promise<void> => {
+      let definition: PortalDefinition
+      if (item.kind === 'create') {
+        try {
+          const created = await notesService.create({ title: item.title, content: '' })
+          if (!created.success || !created.note) throw new Error(created.error)
+          definition = noteDefinition(created.note.id)
+        } catch (err) {
+          log.error('Failed to create a note for a portal', err)
+          toast.error(extractErrorMessage(err, t('portalFlows.picker.createFailed')))
+          return
+        }
+      } else if (item.kind === 'note') {
+        definition = noteDefinition(item.noteId)
+      } else {
         try {
           // A block is addressed by its anchor, which exists only once stamped.
           const anchor =
@@ -138,14 +152,13 @@ export function usePortalPicker(
         const changed = updatePortalDefinition(
           editor as unknown as PortalEditorLike,
           replacing.portalBlockId,
-          { target: definition.target, hidden: definition.hidden }
+          { target: definition.target }
         )
         editor.removeBlocks([replacing.tempBlockId])
         if (!changed) toast.error(t('portalFlows.picker.retargetFailed'))
         return
       }
-      const blockId = insertPortalBlock(editor, definition)
-      if (chooseChildren) requestChooseChildren(blockId)
+      insertPortalBlock(editor, definition)
     },
     [editor, t]
   )

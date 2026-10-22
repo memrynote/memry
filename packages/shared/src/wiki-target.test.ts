@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  extractBlockLinks,
   extractWikiLinks,
   splitWikiTarget,
   isBlockReference,
@@ -382,5 +383,26 @@ describe('wikiPathStem / noteLinkStem', () => {
   it('drops only the markdown extension from a note path', () => {
     expect(noteLinkStem('Folder/Note.md')).toBe('Folder/Note')
     expect(noteLinkStem('Docs/spec.pdf')).toBe('Docs/spec.pdf')
+  })
+})
+
+describe('extractBlockLinks', () => {
+  it('keeps the note half and the anchor of each [[Note#^anchor]] link', () => {
+    expect(
+      extractBlockLinks(
+        'See [[Cell Biology#^chl-7f2a]] and [[Cell Biology#^chl-7f2a|again]], [[Labs/Lab 4#^abcd]].'
+      )
+    ).toEqual([
+      { note: 'Cell Biology', anchor: 'chl-7f2a' },
+      { note: 'Labs/Lab 4', anchor: 'abcd' }
+    ])
+  })
+
+  it('ignores heading links, plain links, self links and code', () => {
+    expect(
+      extractBlockLinks(
+        '[[Note#Heading]] [[Note]] [[#^self1]] `[[Note#^code1]]`\n```\n[[N#^fenced]]\n```'
+      )
+    ).toEqual([])
   })
 })

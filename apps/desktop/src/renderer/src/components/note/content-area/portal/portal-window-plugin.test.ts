@@ -1,14 +1,12 @@
 /**
  * The portal window on a real BlockNote editor bound to a real Y.Doc: what is
- * hidden, what the window reports, and what a local edit may not delete.
+ * shown (the v1 visibility rule), what the window reports, and what a local
+ * edit may not delete or move out.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BlockNoteEditor, type PartialBlock } from '@blocknote/core'
-import * as Y from 'yjs'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { TextSelection } from '@tiptap/pm/state'
-import type { EditorView } from '@tiptap/pm/view'
+import type { PortalOpen } from '@memry/shared/portal-block'
 
 // pdf.js touches `DOMMatrix` at import time and jsdom has none.
 vi.mock('react-pdf', () => ({
@@ -20,51 +18,23 @@ vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: vi.fn().mockResolvedValue({ domain: '', title: '', favicon: '' })
 }))
 
-import { editorSchema } from '../editor-schema'
-import { withCollaborationIfLive } from '../collaboration-options'
-import { registerEditorPlugin } from '../register-editor-plugin'
+import { para, unmountTestEditors } from './portal-test-editor'
+import { mountPortalWindow } from './portal-window-test-editor'
 import {
   PORTAL_ANCESTOR_CLASS,
-  PORTAL_ANCHOR_CLASS,
   PORTAL_HIDDEN_CLASS,
-  createPortalWindowPlugin,
+  getPortalWindowState,
   portalWindowKey,
   setPortalWindowSpec,
   type PortalWindowSpec
 } from './portal-window-plugin'
 
-const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement; doc: Y.Doc }> = []
+afterEach(unmountTestEditors)
 
-afterEach(() => {
-  for (const { editor, el, doc } of mounted.splice(0)) {
-    editor.unmount()
-    el.remove()
-    doc.destroy()
-  }
-})
-
-const para = (text: string, children?: PartialBlock[]): PartialBlock =>
-  ({ type: 'paragraph', content: text, children }) as PartialBlock
-
-function mountWindow(blocks: PartialBlock[], spec: PortalWindowSpec) {
-  const doc = new Y.Doc()
-  const editor = BlockNoteEditor.create(
-    withCollaborationIfLive(doc.getXmlFragment(CRDT_FRAGMENT_NAME), { schema: editorSchema })
-  ) as unknown as BlockNoteEditor
-  const el = document.createElement('div')
-  document.body.appendChild(el)
-  editor.mount(el)
-  mounted.push({ editor, el, doc })
-  editor.replaceBlocks(editor.document, blocks)
-
-  const resolved: Array<{ rootFound: boolean | null; rootText: string | null }> = []
-  registerEditorPlugin(
-    editor,
-    createPortalWindowPlugin(spec, (r) => resolved.push(r))
-  )
-  const view = (editor as unknown as { _tiptapEditor: { view: EditorView } })._tiptapEditor.view
-  return { editor, view, el, resolved }
-}
+const blocksTarget = (
+  blocks: string[],
+  open: Record<string, PortalOpen> = {}
+): PortalWindowSpec => ({ kind: 'blocks', note: 'src', blocks, open })
 
 /** Text of every block the window does not show, outermost first. */
 function hiddenTexts(el: HTMLElement): string[] {
@@ -73,107 +43,157 @@ function hiddenTexts(el: HTMLElement): string[] {
   )
 }
 
+const mount = (blocks: Parameters<typeof mountPortalWindow>[0], spec: PortalWindowSpec) => {
+  const mounted = mountPortalWindow(blocks, spec)
+  return { ...mounted, el: mounted.view.dom as HTMLElement }
+}
+
 describe('portal window plugin', () => {
-  it('hides everything outside the anchored block and its subtree', () => {
-    const { el, resolved } = mountWindow(
+  it('shows a collapsed root alone and hides its children and the rest of the note', () => {
+    const { el, view, resolved } = mount(
       [
         para('before'),
         para('Chloroplast ^chl7', [para('converts light'), para('stroma')]),
         para('after')
       ],
-      { anchor: 'chl7', hidden: [] }
+      blocksTarget(['chl7'])
     )
 
-    expect(hiddenTexts(el)).toEqual(['before', 'after'])
+    expect(hiddenTexts(el)).toEqual(['before', 'converts light', 'stroma', 'after'])
+    expect(getPortalWindowState(view)?.visible.map((b) => b.text)).toEqual(['Chloroplast'])
     expect(resolved.at(-1)).toEqual({ rootFound: true, rootText: 'Chloroplast' })
   })
 
-  it('drops a hidden child with its descendants, and never the root', () => {
-    const { el } = mountWindow(
+  it('shows children by the open entry: hide-mode drops the listed, show-mode keeps only the listed', () => {
+    const doc = [
+      para('Root ^root1', [
+        para('one ^one11'),
+        para('two ^two22', [para('under two')]),
+        para('three ^thr33')
+      ])
+    ]
+    const hide = mount(doc, blocksTarget(['root1'], { root1: { mode: 'hide', ids: ['two22'] } }))
+    expect(getPortalWindowState(hide.view)?.visible.map((b) => b.text)).toEqual([
+      'Root',
+      'one',
+      'three'
+    ])
+    expect(hiddenTexts(hide.el)).toEqual(['two ^two22under two'])
+
+    const show = mount(doc, blocksTarget(['root1'], { root1: { mode: 'show', ids: ['two22'] } }))
+    expect(getPortalWindowState(show.view)?.visible.map((b) => b.text)).toEqual(['Root', 'two'])
+  })
+
+  it('reports hidden siblings and hidden children, and the path to the first root', () => {
+    const { view } = mount(
       [
-        para('Root ^root1', [
-          para('kept'),
-          para('drop me ^drop1', [para('nested under dropped')]),
-          para('also kept')
+        para('Grandparent ^gra11', [
+          para('Parent ^par22', [
+            para('Root ^root1', [para('kid a ^kida1'), para('kid b ^kidb2')]),
+            para('Sibling ^sib33')
+          ])
         ])
       ],
-      { anchor: 'root1', hidden: ['drop1', 'root1'] }
+      blocksTarget(['root1'], { root1: { mode: 'show', ids: ['kida1'] } })
     )
+    const state = getPortalWindowState(view)!
 
-    expect(hiddenTexts(el)).toEqual(['drop me ^drop1nested under dropped'])
-    expect(el.textContent).toContain('Root')
+    expect(state.visible.map((b) => b.text)).toEqual(['Root', 'kid a'])
+    expect(state.hiddenSiblings.map((b) => b.text)).toEqual(['Sibling'])
+    const rootId = state.visible[0].blockId
+    expect(state.hiddenChildren[rootId].map((b) => b.text)).toEqual(['kid b'])
+    expect(state.ancestors.map((b) => b.text)).toEqual(['Grandparent', 'Parent'])
+    expect(state.visible[0]).toMatchObject({ anchor: 'root1', depth: 2 })
   })
 
   it('keeps the ancestors of a nested root as passages, without their own text', () => {
-    const { el } = mountWindow(
+    const { el } = mount(
       [para('Parent', [para('Target ^tgt11', [para('child')])]), para('Elsewhere')],
-      { anchor: 'tgt11', hidden: [] }
+      blocksTarget(['tgt11'])
     )
 
-    const ancestor = el.querySelector(`.${PORTAL_ANCESTOR_CLASS}`)
-    expect(ancestor).not.toBeNull()
-    expect(hiddenTexts(el)).toEqual(['Parent', 'Elsewhere'])
+    expect(el.querySelector(`.${PORTAL_ANCESTOR_CLASS}`)).not.toBeNull()
+    expect(hiddenTexts(el)).toEqual(['Parent', 'child', 'Elsewhere'])
     expect(el.querySelector(`.${PORTAL_ANCESTOR_CLASS} .bn-block-group`)?.textContent).toContain(
       'Target'
     )
   })
 
-  it('shows a whole note except its hidden anchors', () => {
-    const { el, resolved } = mountWindow([para('one'), para('two ^two22'), para('three')], {
-      anchor: null,
-      hidden: ['two22']
-    })
+  it('shows several roots in document order', () => {
+    const { view } = mount(
+      [para('a ^aaa11'), para('skipped'), para('b ^bbb22')],
+      blocksTarget(['bbb22', 'aaa11'])
+    )
 
-    expect(hiddenTexts(el)).toEqual(['two ^two22'])
-    expect(resolved.at(-1)).toEqual({ rootFound: null, rootText: null })
+    expect(getPortalWindowState(view)?.visible.map((b) => b.text)).toEqual(['a', 'b'])
   })
 
-  it('mutes the anchor text of blocks it shows', () => {
-    const { el } = mountWindow([para('Chloroplast ^chl7')], { anchor: 'chl7', hidden: [] })
+  it('shows a whole note and reports no root', () => {
+    const { el, resolved } = mount([para('one'), para('two ^two22')], {
+      kind: 'note',
+      note: 'src'
+    })
 
-    expect(el.querySelector(`.${PORTAL_ANCHOR_CLASS}`)?.textContent).toBe('^chl7')
+    expect(hiddenTexts(el)).toEqual([])
+    expect(resolved.at(-1)).toEqual({ rootFound: null, rootText: 'one' })
   })
 
   it('reports a missing anchor and shows nothing', () => {
-    const { el, resolved } = mountWindow([para('a'), para('b')], { anchor: 'gone1', hidden: [] })
+    const { el, resolved } = mount([para('a'), para('b')], blocksTarget(['gone1']))
 
     expect(resolved.at(-1)).toEqual({ rootFound: false, rootText: null })
     expect(hiddenTexts(el)).toEqual(['a', 'b'])
   })
 
-  it('follows a new spec', () => {
-    const { el, view } = mountWindow([para('one'), para('two ^two22')], {
-      anchor: null,
-      hidden: []
-    })
-    expect(hiddenTexts(el)).toEqual([])
-
-    setPortalWindowSpec(view, { anchor: null, hidden: ['two22'] })
-
+  it('follows a new target', () => {
+    const { el, view } = mount([para('one ^one11'), para('two ^two22')], blocksTarget(['one11']))
     expect(hiddenTexts(el)).toEqual(['two ^two22'])
+
+    setPortalWindowSpec(view, blocksTarget(['one11', 'two22']))
+
+    expect(hiddenTexts(el)).toEqual([])
   })
 
   it('refuses a local edit that deletes a hidden block whole, and allows visible edits', () => {
-    const { editor, view } = mountWindow([para('keep'), para('secret ^sec11'), para('also keep')], {
-      anchor: null,
-      hidden: ['sec11']
-    })
-    const state = portalWindowKey.getState(view.state)!
-    const span = state.protectedSpans[0]
+    const { editor, view } = mount(
+      [para('keep ^kee11'), para('secret'), para('also keep ^kee22')],
+      blocksTarget(['kee11', 'kee22'])
+    )
+    const span = portalWindowKey.getState(view.state)!.protectedSpans[0]
 
     view.dispatch(view.state.tr.delete(span.from, span.to))
-    expect(editor.document.map((b) => b.id).length).toBe(3)
+    expect(editor.document).toHaveLength(3)
 
-    const first = editor.document[0]
-    editor.updateBlock(first, { content: 'edited' })
+    editor.updateBlock(editor.document[0], { content: 'edited ^kee11' })
     expect(JSON.stringify(editor.document[0].content)).toContain('edited')
   })
 
-  it('narrows Select All to the blocks the window shows', () => {
-    const { view } = mountWindow([para('outside'), para('Root ^root1', [para('inside')])], {
-      anchor: 'root1',
-      hidden: []
+  it('refuses a join with hidden content and a lift out of the window', () => {
+    const { editor, view } = mount(
+      [para('hidden before'), para('Root ^root1', [para('kid ^kid11')])],
+      blocksTarget(['root1'], { root1: { mode: 'hide', ids: [] } })
+    )
+    const before = editor.document.map((b) => b.id)
+
+    // Join "Root" into the hidden block above it.
+    let rootStart = -1
+    view.state.doc.descendants((node, pos) => {
+      if (node.isTextblock && node.textContent.startsWith('Root')) rootStart = pos
     })
+    view.dispatch(view.state.tr.delete(rootStart - 2, rootStart + 1))
+    expect(editor.document.map((b) => b.id)).toEqual(before)
+
+    // Lift the child out of the root: it would land among the hidden siblings.
+    editor.setTextCursorPosition(editor.document[1].children[0], 'start')
+    editor.unnestBlock()
+    expect(editor.document[1].children).toHaveLength(1)
+  })
+
+  it('narrows Select All to the blocks the window shows', () => {
+    const { view } = mount(
+      [para('outside'), para('Root ^root1', [para('inside')])],
+      blocksTarget(['root1'], { root1: { mode: 'hide', ids: [] } })
+    )
 
     view.dom.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'a', metaKey: true, bubbles: true, cancelable: true })

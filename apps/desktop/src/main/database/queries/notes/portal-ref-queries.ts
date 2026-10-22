@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { noteCache, portalRefs, type PortalRefRow } from '@memry/db-schema/schema/notes-cache'
 import type { IndexDb } from '../../types'
 
@@ -19,29 +19,31 @@ export interface PortalUsageRow {
   title: string
   path: string
   count: number
-  hiddenCount: number
 }
 
 /**
  * Notes that show `sourceNoteId` through a portal, one row per host. With
  * `anchor`, only portals to that block count. A host whose note row is gone
- * (rows are not cascaded) is left out.
+ * (rows are not cascaded) is left out, and so is the source itself: a portal
+ * in the note it shows is not "another note" using it.
  */
 export function getPortalUsage(
   db: IndexDb,
   sourceNoteId: string,
   anchor?: string
 ): PortalUsageRow[] {
-  const where = anchor
-    ? and(eq(portalRefs.sourceNoteId, sourceNoteId), eq(portalRefs.anchor, anchor))
-    : eq(portalRefs.sourceNoteId, sourceNoteId)
+  const where = and(
+    eq(portalRefs.sourceNoteId, sourceNoteId),
+    ne(portalRefs.hostNoteId, sourceNoteId),
+    anchor ? eq(portalRefs.anchor, anchor) : undefined
+  )
   return db
     .select({
       hostNoteId: portalRefs.hostNoteId,
       title: noteCache.title,
       path: noteCache.path,
-      count: sql<number>`count(*)`,
-      hiddenCount: sql<number>`coalesce(sum(${portalRefs.hiddenCount}), 0)`
+      // A fence has one row per root, so count fences, not rows.
+      count: sql<number>`count(distinct ${portalRefs.ordinal})`
     })
     .from(portalRefs)
     .innerJoin(noteCache, eq(noteCache.id, portalRefs.hostNoteId))
@@ -49,7 +51,7 @@ export function getPortalUsage(
     .groupBy(portalRefs.hostNoteId)
     .orderBy(noteCache.title)
     .all()
-    .map((row) => ({ ...row, count: Number(row.count), hiddenCount: Number(row.hiddenCount) }))
+    .map((row) => ({ ...row, count: Number(row.count) }))
 }
 
 /** Host notes of any portal to the given sources, for the incoming-reference lists. */

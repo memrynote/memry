@@ -11,7 +11,8 @@
  *
  * The definition stays in the document as the node's content. It is shown, and
  * editable as JSON, while the caret is in the block or the definition cannot
- * be read; otherwise the portal's own controls rewrite it.
+ * be read; otherwise the portal's own controls (toolbar, fold chevrons, hidden
+ * counts) rewrite it.
  *
  * @module note/content-area/portal/portal-block
  */
@@ -25,11 +26,12 @@ import React, {
   useSyncExternalStore
 } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
+import { NodeSelection } from '@tiptap/pm/state'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { PORTAL_BLOCK_LANGUAGE, type ParsedPortal } from '@memry/shared/portal-block'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
-import { usePortalKeysPlugin } from './portal-keys-plugin'
+import { usePortalKeysPlugin, type PortalKeysEditor } from './portal-keys-plugin'
 import { PortalNoteView } from './portal-note-view'
 import { PortalSearchView } from './portal-search-view'
 import { usePortalDefinition, type PortalEditorLike } from './portal-definition'
@@ -41,10 +43,28 @@ interface PortalBlockNode {
   content?: unknown
 }
 
-interface PortalBlockEditor extends PortalEditorLike {
+interface PortalBlockEditor extends PortalEditorLike, PortalKeysEditor {
   focus: () => void
   getTextCursorPosition: () => { block: { id: string } }
   onSelectionChange: (callback: () => void) => () => void
+  _tiptapEditor?: { state: { selection: unknown } }
+}
+
+/**
+ * The portal is selected as one block (Backspace at the start of its first
+ * root selects it, so the next Backspace removes it whole). BlockNote then
+ * also reports the caret as inside the block, so this is read first.
+ */
+function useSelectedAsBlock(editor: PortalBlockEditor, blockId: string): boolean {
+  const read = useCallback((): boolean => {
+    const selection = editor._tiptapEditor?.state.selection
+    return selection instanceof NodeSelection && selection.node.attrs.id === blockId
+  }, [editor, blockId])
+  const subscribe = useCallback(
+    (onChange: () => void) => editor.onSelectionChange(onChange),
+    [editor]
+  )
+  return useSyncExternalStore(subscribe, read)
 }
 
 function useCaretInBlock(editor: PortalBlockEditor, blockId: string): boolean {
@@ -112,7 +132,8 @@ export function PortalBlockRenderer({
 }): React.JSX.Element {
   const { t } = useT('common')
   const parsed = usePortalDefinition(block.content)
-  const caretInside = useCaretInBlock(editor, block.id)
+  const selected = useSelectedAsBlock(editor, block.id)
+  const caretInside = useCaretInBlock(editor, block.id) && !selected
   const frameRef = useRef<HTMLDivElement>(null)
   useClaimPresses(frameRef)
   usePortalKeysPlugin(editor)
@@ -136,10 +157,10 @@ export function PortalBlockRenderer({
         editor={editor}
         definition={parsed.definition}
         target={target}
-        raw={parsed.raw}
+        selected={selected}
       />
     )
-  }, [parsed, target, block.id, editor])
+  }, [parsed, target, block.id, editor, selected])
 
   // A block whose language was changed out from under a live portal (undo, a
   // synced edit) is a plain code block again until the node view is rebuilt.

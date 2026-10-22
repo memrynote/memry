@@ -1,100 +1,134 @@
 /**
- * The list behind a portal's "N hidden" chip: every block the window could
- * show, each with an eye to show or hide it. Presentational: the slot that
- * hosts it (`portal-slot-components`) reads the window's blocks and writes the
+ * The list behind a portal's "N hidden" count (artboard 3): the blocks the
+ * portal leaves out, each with the path it sits under. Enter brings the active
+ * one in; "Show all" (Alt+Shift+A) brings every one. Presentational: the slot
+ * that hosts it (`portal-slot-components`) reads the window and writes the
  * result to the portal's definition.
  *
  * @module note/content-area/portal-flows/portal-hidden-blocks-popover
  */
 
-import type { ReactElement } from 'react'
-import { Eye, EyeOff } from '@/lib/icons'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
+import { Search } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
+/** A search box shows once the list is longer than this. */
+const SEARCH_THRESHOLD = 5
+
 export interface PortalBlockRow {
-  /** Stable key for the row: the block's id in the source note. */
+  /** The block's id in the source note. */
   key: string
+  /** Where it sits: `Lecture 1 › DNA`. */
+  path: string
   text: string
-  /** Nesting under the root block, 0 for the root. */
-  depth: number
-  isRoot: boolean
-  hidden: boolean
-  /** The eye does nothing: the root, or a block hidden through its parent. */
-  disabled: boolean
 }
 
 interface PortalHiddenBlocksPanelProps {
   rows: readonly PortalBlockRow[]
-  /** Flip one block. Never called for a disabled row. */
-  onToggle: (row: PortalBlockRow) => void
+  /** Bring one block in. */
+  onPick: (row: PortalBlockRow) => void
   onShowAll: () => void
 }
 
 export function PortalHiddenBlocksPanel({
   rows,
-  onToggle,
+  onPick,
   onShowAll
 }: PortalHiddenBlocksPanelProps): ReactElement {
   const { t } = useT('notes')
-  const hiddenCount = rows.filter((row) => row.hidden).length
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+
+  // Without a search box nothing in the panel takes focus, so the keys
+  // (arrows, Enter, Alt+Shift+A) would go to the note behind it.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const searchable = rows.length > SEARCH_THRESHOLD
+  useEffect(() => {
+    if (!searchable) panelRef.current?.focus()
+  }, [searchable])
+
+  const needle = query.trim().toLowerCase()
+  const shown = needle
+    ? rows.filter((row) => `${row.path} ${row.text}`.toLowerCase().includes(needle))
+    : rows
+  const activeRow = shown[Math.min(active, shown.length - 1)]
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.altKey && event.shiftKey && event.code === 'KeyA') {
+      event.preventDefault()
+      onShowAll()
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      setActive((current) => (current + step + shown.length) % Math.max(shown.length, 1))
+    } else if (event.key === 'Enter' && activeRow) {
+      event.preventDefault()
+      onPick(activeRow)
+    }
+  }
 
   return (
-    <div className="flex flex-col" data-testid="portal-hidden-blocks">
-      <div className="flex items-center gap-2 px-2 py-1.5">
-        <div className="flex-1 text-[13px] font-semibold leading-4 text-foreground">
-          {t('portalFlows.hiddenBlocks.title')}
-        </div>
-        <button
-          type="button"
-          className="text-xs font-medium leading-4 text-tint outline-none hover:underline focus-visible:underline disabled:opacity-40 disabled:no-underline"
-          disabled={hiddenCount === 0}
-          onClick={onShowAll}
-        >
-          {t('portalFlows.hiddenBlocks.showAll')}
-        </button>
-      </div>
-      <ul className="flex max-h-[320px] flex-col overflow-y-auto">
-        {rows.map((row) => (
+    <div
+      ref={panelRef}
+      tabIndex={-1}
+      className="flex flex-col outline-none"
+      data-testid="portal-hidden-blocks"
+      onKeyDown={onKeyDown}
+    >
+      {searchable ? (
+        <label className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <Search className="size-3.5 shrink-0 text-text-tertiary" aria-hidden />
+          <input
+            autoFocus
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setActive(0)
+            }}
+            placeholder={t('portalFlows.hiddenBlocks.search')}
+            aria-label={t('portalFlows.hiddenBlocks.search')}
+            className="min-w-0 flex-1 bg-transparent text-[13px] leading-4 text-foreground outline-none placeholder:text-text-tertiary"
+          />
+        </label>
+      ) : null}
+      <ul
+        role="listbox"
+        aria-label={t('portalFlows.hiddenBlocks.title')}
+        className="flex max-h-[320px] flex-col overflow-y-auto p-1"
+      >
+        {shown.map((row) => (
           <li
             key={row.key}
-            className="flex min-h-7 items-center gap-1.5 rounded-[5px] pe-1.5"
-            style={{ paddingInlineStart: `${2 + row.depth * 14}px` }}
+            role="option"
+            aria-selected={row === activeRow}
+            className={cn(
+              'flex cursor-default flex-col rounded-[5px] px-2 py-1 text-start',
+              row === activeRow && 'bg-surface-active'
+            )}
+            onMouseMove={() => setActive(shown.indexOf(row))}
+            onClick={() => onPick(row)}
           >
-            <button
-              type="button"
-              className="flex size-6 shrink-0 items-center justify-center rounded-[5px] text-text-secondary outline-none hover:bg-surface-active focus-visible:bg-surface-active disabled:pointer-events-none disabled:opacity-40"
-              disabled={row.disabled}
-              aria-pressed={!row.hidden}
-              aria-label={
-                row.hidden
-                  ? t('portalFlows.hiddenBlocks.show', { text: row.text })
-                  : t('portalFlows.hiddenBlocks.hide', { text: row.text })
-              }
-              onClick={() => onToggle(row)}
-            >
-              {row.hidden ? (
-                <EyeOff className="size-3.5" aria-hidden />
-              ) : (
-                <Eye className="size-3.5" aria-hidden />
-              )}
-            </button>
-            <span
-              className={cn(
-                'min-w-0 flex-1 truncate text-[13px] leading-4',
-                row.hidden ? 'text-text-tertiary' : 'text-foreground'
-              )}
-            >
-              {row.text}
-            </span>
-            {row.isRoot ? (
-              <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium leading-4 text-text-secondary">
-                {t('portalFlows.hiddenBlocks.root')}
-              </span>
-            ) : null}
+            <span className="truncate text-[11px] leading-4 text-text-tertiary">{row.path}</span>
+            <span className="truncate text-[13px] leading-4 text-foreground">{row.text}</span>
           </li>
         ))}
       </ul>
+      <div className="flex items-center justify-between border-t border-border px-3 py-2">
+        <button
+          type="button"
+          onClick={onShowAll}
+          className="rounded-sm text-xs leading-4 text-text-secondary outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          {t('portalFlows.hiddenBlocks.showAll')}
+        </button>
+        <KbdGroup aria-hidden>
+          <Kbd>{'\u2325'}</Kbd>
+          <Kbd>{'\u21E7'}</Kbd>
+          <Kbd>{'A'}</Kbd>
+        </KbdGroup>
+      </div>
     </div>
   )
 }

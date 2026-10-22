@@ -20,19 +20,21 @@ describe('findPortalCycle', () => {
 })
 
 describe('portalFenceMarkdown', () => {
-  it('writes a fence a reader parses back to the same definition', () => {
-    const definition = blockDefinition('n1', 'chl-7f2a', ['kid1'])
+  it('writes a collapsed one-root fence a reader parses back to the same definition', () => {
+    const definition = blockDefinition('n1', 'chl-7f2a')
     const markdown = portalFenceMarkdown(definition)
     expect(markdown.startsWith('```memry-portal\n')).toBe(true)
     expect(markdown.endsWith('\n```')).toBe(true)
+    expect(markdown).toContain('"blocks": [\n    "chl-7f2a"\n  ]')
+    expect(markdown).not.toContain('"open"')
     const body = markdown.split('\n').slice(1, -1).join('\n')
     const parsed = parsePortalDefinition(body)
-    expect(parsed.ok && parsed.definition).toEqual(definition)
+    expect(parsed.ok && parsed.definition.target).toEqual(definition.target)
   })
 
   it('stores a whole note by id alone', () => {
     expect(portalFenceMarkdown(noteDefinition('n1'))).toBe(
-      '```memry-portal\n{\n  "note": "n1"\n}\n```'
+      '```memry-portal\n{\n  "v": 1,\n  "note": "n1"\n}\n```'
     )
   })
 })

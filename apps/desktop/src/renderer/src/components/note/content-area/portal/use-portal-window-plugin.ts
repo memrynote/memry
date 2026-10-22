@@ -8,6 +8,10 @@
  * editor (a note that binds to its Y.Doc after first paint), so a mutation
  * observer re-attaches to whichever editor is current.
  *
+ * Three plugins go on together: the window itself, the anchor hider, and the
+ * boundary keys (ahead of the editor's own key handlers, so Enter and Backspace
+ * at the window's edges reach them first).
+ *
  * Until a plugin is on, the caller keeps the editor out of sight: an editor
  * with no window would show the whole source note.
  *
@@ -19,6 +23,8 @@ import type { Plugin } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { createLogger } from '@/lib/logger'
 import { registerEditorPlugin } from '../register-editor-plugin'
+import { createPortalBoundaryPlugin } from './portal-boundary-plugin'
+import type { PortalPlan } from './portal-plans'
 import {
   createPortalWindowPlugin,
   setPortalWindowSpec,
@@ -47,18 +53,23 @@ export function usePortalWindowPlugin(options: {
   sourceNoteId: string
   spec: PortalWindowSpec
   onResolve: (resolution: PortalWindowResolution) => void
+  /** A gesture in the window changed the portal: stamp what it lists, then write the fence. */
+  onPlan: (plan: PortalPlan) => void | Promise<unknown>
   /** Called with whether a plugin is currently attached. */
   onAttached: (attached: boolean) => void
 }): void {
-  const { container, enabled, portalBlockId, sourceNoteId, spec, onResolve, onAttached } = options
+  const { container, enabled, portalBlockId, sourceNoteId, spec, onResolve, onPlan, onAttached } =
+    options
   const specRef = useRef(spec)
   const onResolveRef = useRef(onResolve)
+  const onPlanRef = useRef(onPlan)
   const onAttachedRef = useRef(onAttached)
   const viewRef = useRef<EditorView | null>(null)
 
   useEffect(() => {
     specRef.current = spec
     onResolveRef.current = onResolve
+    onPlanRef.current = onPlan
     onAttachedRef.current = onAttached
   })
 
@@ -85,8 +96,16 @@ export function usePortalWindowPlugin(options: {
       const plugin = createPortalWindowPlugin(specRef.current, (resolution) =>
         onResolveRef.current(resolution)
       )
-      const unregisterPlugin = registerEditorPlugin({ _tiptapEditor: tiptap }, plugin)
-      if (!unregisterPlugin) {
+      const editor = { _tiptapEditor: tiptap }
+      const unregisterPlugin = registerEditorPlugin(editor, plugin)
+      const unregisterBoundary = registerEditorPlugin(
+        editor,
+        createPortalBoundaryPlugin({ onPlan: (next) => onPlanRef.current(next) }),
+        (boundary, plugins) => [boundary, ...plugins]
+      )
+      if (!unregisterPlugin || !unregisterBoundary) {
+        unregisterBoundary?.()
+        unregisterPlugin?.()
         log.error('Could not attach the portal window to the nested editor', { portalBlockId })
         return
       }
@@ -98,6 +117,7 @@ export function usePortalWindowPlugin(options: {
         tiptap,
         detach: () => {
           unregisterWindow()
+          unregisterBoundary()
           unregisterPlugin()
         }
       }
@@ -114,8 +134,8 @@ export function usePortalWindowPlugin(options: {
     }
   }, [container, enabled, portalBlockId, sourceNoteId])
 
-  // A new spec is a new object every render; its two fields are its identity.
-  const specKey = `${spec.anchor ?? ''}\n${spec.hidden.join('\n')}`
+  // A new spec is a new object every render; its content is its identity.
+  const specKey = JSON.stringify(spec)
   useEffect(() => {
     const view = viewRef.current
     if (view && !view.isDestroyed) setPortalWindowSpec(view, specRef.current)

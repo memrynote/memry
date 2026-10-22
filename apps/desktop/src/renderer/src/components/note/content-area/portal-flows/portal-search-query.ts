@@ -54,5 +54,5 @@ export function targetFromDraft(draft: PortalSearchDraft): PortalSearchTarget | 
 }
 
 export function searchDefinition(target: PortalSearchTarget): PortalDefinition {
-  return { target, hidden: [] }
+  return { v: 1, target, raw: {} }
 }

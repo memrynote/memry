@@ -19,7 +19,9 @@ import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { PortalAncestryContext } from './portal-context'
+import type { PortalPlan } from './portal-plans'
 import { descendPortalAncestry, type PortalAncestry, type PortalWindowTarget } from './portal-state'
+import { usePortalLinkOpen } from './use-portal-link-open'
 import { usePortalWindowPlugin, type PortalWindowResolution } from './use-portal-window-plugin'
 import './portal-window.css'
 
@@ -67,7 +69,6 @@ export interface PortalWindowProps {
   /** The portal block in the host editor, for the window registry. */
   portalBlockId: string
   target: PortalWindowTarget
-  hidden: string[]
   /** The portals this one sits inside, host included. */
   ancestry: PortalAncestry
   sourcePath: string
@@ -75,21 +76,24 @@ export interface PortalWindowProps {
   /** False for a locked source. */
   editable: boolean
   onResolve: (resolution: PortalWindowResolution) => void
+  /** Enter or Backspace in the window changed what the portal lists. */
+  onPlan: (plan: PortalPlan) => void | Promise<unknown>
 }
 
 export function PortalWindow({
   portalBlockId,
   target,
-  hidden,
   ancestry,
   sourcePath,
   sourceContent,
   editable,
-  onResolve
+  onResolve,
+  onPlan
 }: PortalWindowProps): React.JSX.Element {
   const { t } = useT('common')
   const frameRef = useRef<HTMLDivElement>(null)
   const near = useMountedNearViewport(frameRef)
+  const openLink = usePortalLinkOpen()
   const [attached, setAttached] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -98,8 +102,9 @@ export function PortalWindow({
     enabled: near,
     portalBlockId,
     sourceNoteId: target.note,
-    spec: { anchor: target.kind === 'block' ? target.block : null, hidden },
+    spec: target,
     onResolve,
+    onPlan,
     onAttached: setAttached
   })
 
@@ -148,6 +153,7 @@ export function PortalWindow({
                 initialContent={sourceContent}
                 contentType="markdown"
                 runSideEffects={false}
+                onInternalLinkClick={openLink}
               />
             </Suspense>
           </EditorErrorBoundary>

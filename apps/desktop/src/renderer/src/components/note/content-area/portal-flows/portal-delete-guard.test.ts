@@ -2,12 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { collectAnchors, findBlockHosts, guardBlockText, mergeHosts } from './portal-delete-guard'
 
 const run = (text: string) => [{ type: 'text', text, styles: {} }]
-const host = (noteId: string, count = 1, hiddenCount = 0) => ({
+const host = (noteId: string, count = 1) => ({
   noteId,
   title: noteId,
   path: `${noteId}.md`,
-  count,
-  hiddenCount
+  count
 })
 
 describe('collectAnchors', () => {
@@ -37,8 +36,8 @@ describe('collectAnchors', () => {
 
 describe('mergeHosts', () => {
   it('adds counts per host note and skips the source', () => {
-    expect(mergeHosts('src', [[host('lab', 1, 1), host('src')], [host('lab', 2, 0)]])).toEqual([
-      host('lab', 3, 1)
+    expect(mergeHosts('src', [[host('lab', 1), host('src')], [host('lab', 2)]])).toEqual([
+      host('lab', 3)
     ])
   })
 })

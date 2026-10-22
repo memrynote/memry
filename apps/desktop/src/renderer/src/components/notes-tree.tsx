@@ -821,6 +821,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         journalFolder={actions.journalFolder}
       />
 
+      {actions.deleteGuardDialog}
+
       <MoveToFolderDialog
         open={actions.selectionMoveRequest !== null}
         onOpenChange={(open) => !open && actions.closeSelectionMoveDialog()}

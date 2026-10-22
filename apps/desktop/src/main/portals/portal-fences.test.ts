@@ -29,38 +29,49 @@ describe('scanPortalFences', () => {
 })
 
 describe('derivePortalRefs', () => {
-  it('derives one row per readable fence and keeps ordinals stable around a broken one', () => {
+  it('derives a row per fence, and one per root anchor, keeping ordinals stable around a broken fence', () => {
     const md = [
-      fence('{"note":"n1"}'),
+      fence('{"v":1,"note":"n1"}'),
       fence('{not json'),
-      fence('{"note":"n2","block":"abc123","hidden":["x1y2z3","q9w8e7"]}'),
-      fence('{"search":{"text":"exam","limit":10}}')
+      fence(
+        '{"v":1,"note":"n2","blocks":["abc123","def456"],"open":{"abc123":{"show":["x1y2z3"]}}}'
+      ),
+      fence('{"v":1,"search":{"text":"exam","limit":10}}')
     ].join('\n\n')
     expect(derivePortalRefs('host', md)).toEqual([
+      { hostNoteId: 'host', ordinal: 0, root: 0, sourceNoteId: 'n1', anchor: null, kind: 'note' },
       {
         hostNoteId: 'host',
-        ordinal: 0,
-        sourceNoteId: 'n1',
-        anchor: null,
-        hiddenCount: 0,
-        kind: 'note'
+        ordinal: 2,
+        root: 0,
+        sourceNoteId: 'n2',
+        anchor: 'abc123',
+        kind: 'blocks'
       },
       {
         hostNoteId: 'host',
         ordinal: 2,
+        root: 1,
         sourceNoteId: 'n2',
-        anchor: 'abc123',
-        hiddenCount: 2,
-        kind: 'block'
+        anchor: 'def456',
+        kind: 'blocks'
       },
       {
         hostNoteId: 'host',
         ordinal: 3,
+        root: 0,
         sourceNoteId: null,
         anchor: null,
-        hiddenCount: 0,
         kind: 'search'
       }
     ])
+  })
+
+  it('does not index anchors that are only open or hidden entries', () => {
+    const rows = derivePortalRefs(
+      'host',
+      fence('{"note":"n2","blocks":["abc123"],"open":{"abc123":{"hide":["zzzz11"]}}}')
+    )
+    expect(rows.map((row) => row.anchor)).toEqual(['abc123'])
   })
 })

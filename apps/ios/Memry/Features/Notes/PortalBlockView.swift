@@ -7,7 +7,8 @@ import SwiftUI
 // **The core resolves, the shell draws.** `Notes.portalSlice` turns the fence
 // and the source note into blocks or a status; this view only titles the
 // window, guards cycles and depth through the view tree, and pulls the source
-// body so a window onto a note another device edits does not go stale.
+// body so a window onto a note another device edits does not go stale. A portal
+// that shows nothing says why in one quiet row (`PortalStateRow`).
 //
 // **Read-only, and never a writer.** Nothing here sets a block, and
 // `NoteBlockView` keeps a portal out of the text editor, so the fence's bytes
@@ -30,12 +31,7 @@ struct PortalBlockView: View {
     private enum Phase {
         case loading
         case ready(blocks: [Block], tables: [String: TableContent], attachments: [String: BlockAttachment])
-        case refused(PortalAncestry.Refusal)
-        case missingNote
-        case missingBlock
-        case invalid
-        case search(text: String?, tag: String?)
-        case failed
+        case state(PortalState)
     }
 
     var body: some View {
@@ -43,7 +39,7 @@ struct PortalBlockView: View {
         if let reader = browse?.reader {
             PortalFrame(
                 title: title,
-                hiddenCount: fence.hiddenCount,
+                state: stateOf(phase),
                 openSource: sourceRoute(fence).flatMap { route in openNote.map { open in { open(route) } } }
             ) { content(fence) }
             .task(id: "\(text)|\(syncPasses)|\(hostNote ?? "")") {
@@ -56,8 +52,8 @@ struct PortalBlockView: View {
 
     private func sourceRoute(_ fence: PortalFence) -> NoteRoute? {
         switch fence.target {
-        case let .note(id), let .block(id, _):
-            if case .missingNote = phase { return nil }
+        case let .note(id), let .blocks(id, _):
+            if case .state(.missingNote) = phase { return nil }
             return NoteRoute(id: id)
         case .search, nil:
             return nil
@@ -83,39 +79,27 @@ struct PortalBlockView: View {
                 // The host's comments are pinned to the host's text.
                 .environment(\.reviewMarks, [])
             }
-        case let .refused(refusal):
-            switch refusal {
-            case .cycle: PortalNotice(title: PortalCopy.cycleTitle, message: PortalCopy.cycleBody)
-            case .tooDeep: PortalNotice(title: PortalCopy.tooDeepTitle, message: PortalCopy.tooDeepBody)
-            }
-        case .missingNote:
-            PortalNotice(title: PortalCopy.sourceDeletedTitle, message: PortalCopy.sourceDeletedBody)
-        case .missingBlock:
-            PortalNotice(title: PortalCopy.missingBlockTitle, message: PortalCopy.missingBlockBody)
-        case .invalid:
-            PortalNotice(title: PortalCopy.invalidTitle, message: PortalCopy.invalidBody)
-        case let .search(text, tag):
-            PortalNotice(
-                title: PortalCopy.searchTitle,
-                message: "\(PortalCopy.searchQuery(text: text, tag: tag)). \(PortalCopy.searchHint)"
-            )
-        case .failed:
-            PortalNotice(message: PortalCopy.failedBody)
+        case .state:
+            EmptyView()
         }
+    }
+
+    private func stateOf(_ phase: Phase) -> PortalState? {
+        if case let .state(state) = phase { state } else { nil }
     }
 
     private func load(_ fence: PortalFence, reader: any NotesReading, filler: (any VaultFilling)?) async {
         guard let target = fence.target else {
-            phase = .invalid
+            phase = .state(.invalid)
             return
         }
         if case let .search(text, tag) = target {
-            phase = .search(text: text, tag: tag)
+            phase = .state(.search(text: text, tag: tag))
             return
         }
         let sourceId = target.noteId
         if let refusal = ancestry.withHost(hostNote).refusal(for: target) {
-            phase = .refused(refusal)
+            phase = .state(refusal == .cycle ? .cycle : .tooDeep)
             title = (try? await reader.read(id: sourceId))?.summary.title
             return
         }
@@ -138,13 +122,13 @@ struct PortalBlockView: View {
                     tables: tables(in: slice.blocks, of: sourceId, reader: reader),
                     attachments: attachments(in: slice.blocks, of: sourceId, reader: reader)
                 )
-            case .missingNote: phase = .missingNote
-            case .missingBlock: phase = .missingBlock
-            case .invalid: phase = .invalid
+            case .missingNote: phase = .state(.missingNote)
+            case .missingBlock: phase = .state(.missingBlock)
+            case .invalid: phase = .state(.invalid)
             }
         } catch {
             Log.storage.error("a portal could not be read")
-            phase = .failed
+            phase = .state(.failed)
         }
     }
 
@@ -172,7 +156,7 @@ struct PortalBlockView: View {
 extension PortalTarget {
     var noteId: String {
         switch self {
-        case let .note(id), let .block(id, _): id
+        case let .note(id), let .blocks(id, _): id
         case .search: ""
         }
     }

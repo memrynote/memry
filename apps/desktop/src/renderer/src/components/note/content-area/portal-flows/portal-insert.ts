@@ -32,15 +32,12 @@ export function findPortalCycle(
 }
 
 export function noteDefinition(noteId: string): PortalDefinition {
-  return { target: { kind: 'note', note: noteId }, hidden: [] }
+  return { v: 1, target: { kind: 'note', note: noteId }, raw: {} }
 }
 
-export function blockDefinition(
-  noteId: string,
-  anchor: string,
-  hidden: readonly string[] = []
-): PortalDefinition {
-  return { target: { kind: 'block', note: noteId, block: anchor }, hidden: [...hidden] }
+/** A block portal is inserted collapsed: one root, no `open` entries. */
+export function blockDefinition(noteId: string, anchor: string): PortalDefinition {
+  return { v: 1, target: { kind: 'blocks', note: noteId, blocks: [anchor], open: {} }, raw: {} }
 }
 
 /** The fence as it sits in a markdown file, for the clipboard. */

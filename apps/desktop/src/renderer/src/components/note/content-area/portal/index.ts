@@ -12,16 +12,8 @@ export {
   portalFenceText,
   updatePortalDefinition,
   usePortalDefinition,
-  type PortalDefinitionPatch,
   type PortalEditorLike
 } from './portal-definition'
-export {
-  listPortalWindowBlocks,
-  readPortalWindowBlocks,
-  togglePortalBlockHidden,
-  type PortalWindowBlock,
-  type TogglePortalHiddenInput
-} from './portal-hidden-blocks'
 export {
   getPortalActionHandlers,
   registerPortalActionHandlers,
@@ -46,4 +38,9 @@ export {
 } from './portal-state'
 export { PortalStateCard, type PortalCardStatus } from './portal-state-card'
 export { getPortalWindow, usePortalWindow, type PortalWindowEntry } from './portal-window-registry'
-export type { PortalWindowSpec } from './portal-window-plugin'
+export {
+  getPortalWindowState,
+  type PortalWindowBlock,
+  type PortalWindowSpec,
+  type PortalWindowState
+} from './portal-window-plugin'

@@ -90,6 +90,7 @@ import { createEmbeddingProjector } from '../projections/projectors/embedding-pr
 import { createVoiceEmbeddingProjector } from '../projections/projectors/voice-embedding-projector'
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { createNoteProjectLinksProjector } from '../projections/projectors/note-project-links-projector'
+import { createBlockLinkRefsProjector } from '../projections/projectors/block-link-refs-projector'
 import { createPortalRefsProjector } from '../projections/projectors/portal-refs-projector'
 import { createFileTextProjector } from '../projections/projectors/file-text-projector'
 import { fileTextNoteChanged, startFileTextExtraction, stopFileTextExtraction } from '../file-text'
@@ -803,6 +804,7 @@ async function openVault(vaultPath: string): Promise<void> {
     createInboxStatsProjector(),
     createNoteProjectLinksProjector(),
     createPortalRefsProjector(),
+    createBlockLinkRefsProjector(),
     createFileTextProjector(fileTextNoteChanged)
   ])
 

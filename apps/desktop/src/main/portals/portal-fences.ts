@@ -36,21 +36,29 @@ export function scanPortalFences(markdown: string): string[] {
 }
 
 /**
- * The `portal_refs` rows for a note body. A fence this build cannot read keeps
- * its ordinal but gets no row, so ordinals stay stable across edits elsewhere.
+ * The `portal_refs` rows for a note body: one per root anchor of a blocks
+ * portal, one for a note or search portal. A fence this build cannot read
+ * keeps its ordinal but gets no row, so ordinals stay stable across edits
+ * elsewhere.
  */
 export function derivePortalRefs(hostNoteId: string, markdown: string): PortalRefRow[] {
   const rows: PortalRefRow[] = []
   scanPortalFences(markdown).forEach((body, ordinal) => {
     const parsed = parsePortalDefinition(body)
     if (!parsed.ok) return
-    const { target, hidden } = parsed.definition
+    const { target } = parsed.definition
+    if (target.kind === 'blocks') {
+      target.blocks.forEach((anchor, root) => {
+        rows.push({ hostNoteId, ordinal, root, sourceNoteId: target.note, anchor, kind: 'blocks' })
+      })
+      return
+    }
     rows.push({
       hostNoteId,
       ordinal,
-      sourceNoteId: target.kind === 'search' ? null : target.note,
-      anchor: target.kind === 'block' ? target.block : null,
-      hiddenCount: hidden.length,
+      root: 0,
+      sourceNoteId: target.kind === 'note' ? target.note : null,
+      anchor: null,
       kind: target.kind
     })
   })

@@ -25,8 +25,8 @@ describe('portal references', () => {
     hostNoteId: host,
     ordinal,
     sourceNoteId: source,
+    root: 0,
     anchor: null,
-    hiddenCount: 0,
     kind: source ? ('note' as const) : ('search' as const)
   })
 

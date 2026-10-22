@@ -51,7 +51,11 @@ import { isMac } from '@/lib/shortcut-catalog'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { copyBlocksFromMenu } from './block-clipboard'
-import { GuardedRemoveBlockItem, PortalToBlockItem } from './portal-flows/portal-side-menu-items'
+import {
+  GuardedRemoveBlockItem,
+  HideInPortalItem,
+  PortalToBlockItem
+} from './portal-flows/portal-side-menu-items'
 import { getEditorSelectionFromState, getProseMirrorState } from './review-formatting-toolbar'
 import type { TemplateAnchor } from './insert-template'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
@@ -511,6 +515,7 @@ function MemryDragHandleMenu({
       <InsertTemplateItem onRequestInsertTemplate={onRequestInsertTemplate} />
       <MoveToItem onRequestMove={onRequestMove} />
       <PortalToBlockItem />
+      <HideInPortalItem />
       <GuardedRemoveBlockItem>
         <span className="flex items-center gap-2">
           <Trash2 size={16} aria-hidden />

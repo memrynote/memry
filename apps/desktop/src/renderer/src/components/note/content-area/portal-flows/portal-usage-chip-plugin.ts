@@ -50,7 +50,7 @@ export function scanAnchoredBlocks(doc: ProseMirrorNode): { anchor: string; endP
 function renderChip(anchor: string, count: number, options: PortalUsageChipOptions): HTMLElement {
   const chip = document.createElement('button')
   chip.type = 'button'
-  chip.className = `${PORTAL_USAGE_CHIP_CLASS} ms-1.5 inline-flex cursor-pointer select-none items-center rounded-full bg-tint-light px-1.5 py-0.5 align-middle text-[11px] font-semibold leading-[14px] text-tint`
+  chip.className = `${PORTAL_USAGE_CHIP_CLASS} ms-1.5 inline-flex min-w-[18px] cursor-pointer select-none items-center justify-center rounded-[5px] bg-surface px-1.5 align-middle text-[11px] font-medium leading-[18px] text-text-secondary transition-colors hover:bg-surface-active hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/60`
   // Inside a contenteditable: the attribute stops the browser editing the
   // button, and tabIndex keeps it out of the tab order so Tab still indents.
   chip.contentEditable = 'false'

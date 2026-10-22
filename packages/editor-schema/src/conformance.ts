@@ -680,27 +680,43 @@ const viewBlockCases: RoundtripCase[] = [
  */
 const portalCases: RoundtripCase[] = [
   {
-    name: 'memry-portal fence targeting a note',
-    markdown: '```memry-portal\n{\n  "note": "9f1c2d3e-0000-4000-8000-000000000001"\n}\n```'
+    name: 'memry-portal fence targeting a whole note',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001"\n}\n```'
   },
   {
-    name: 'memry-portal fence targeting a block with hidden children',
+    name: 'memry-portal fence with a collapsed root',
     markdown:
-      '```memry-portal\n{\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "block": "chl-7f2a",\n  "hidden": [\n    "b9x1"\n  ]\n}\n```'
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ]\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with several roots',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2",\n    "p8m2qa"\n  ]\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with show-mode open',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "open": {\n    "k3x9a2": {\n      "show": [\n        "n4c8x1"\n      ]\n    }\n  }\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with hide-mode and nested open',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "open": {\n    "k3x9a2": {\n      "hide": [\n        "b9x1"\n      ]\n    },\n    "n4c8x1": {\n      "hide": []\n    }\n  }\n}\n```'
   },
   {
     name: 'memry-portal search fence',
     markdown:
-      '```memry-portal\n{\n  "search": {\n    "text": "exam",\n    "tag": "bio",\n    "limit": 50\n  }\n}\n```'
+      '```memry-portal\n{\n  "v": 1,\n  "search": {\n    "text": "exam",\n    "tag": "bio",\n    "limit": 50\n  }\n}\n```'
   },
   {
     name: 'memry-portal fence keeps keys a build does not know',
     markdown:
-      '```memry-portal\n{\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "layout": {\n    "future": true\n  }\n}\n```'
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "layout": {\n    "future": true\n  }\n}\n```'
   },
   {
     name: 'memry-portal fence between paragraphs',
-    markdown: 'Before\n\n```memry-portal\n{"note":"n1"}\n```\n\nAfter'
+    markdown: 'Before\n\n```memry-portal\n{"v":1,"note":"n1"}\n```\n\nAfter'
   },
   {
     name: 'a block whose text ends with an anchor',

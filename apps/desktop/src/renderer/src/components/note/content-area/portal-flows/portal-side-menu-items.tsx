@@ -1,5 +1,5 @@
 /**
- * The block side menu's portal entries: "Portal to this block" and the delete
+ * The block side menu's portal entries: "Copy as portal", "Hide in this portal" (portal windows only) and the delete
  * that asks first when another note shows the block.
  *
  * @module note/content-area/portal-flows/portal-side-menu-items
@@ -17,9 +17,10 @@ import {
   useExtensionState
 } from '@blocknote/react'
 import { SideMenuExtension } from '@blocknote/core/extensions'
-import { Layers } from '@/lib/icons'
+import { EyeOff, Layers } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { getPortalFlowsApi } from './portal-flows-api'
+import { getHideInPortal } from './portal-hide-in-portal'
 
 interface MenuBlock {
   id: string
@@ -55,7 +56,27 @@ export function PortalToBlockItem(): ReactElement | null {
       icon={<Layers size={16} />}
       onClick={() => void api.copyPortalToBlock(block.id)}
     >
-      {t('portalFlows.menu.portalToBlock')}
+      {t('portalFlows.menu.copyAsPortal')}
+    </Components.Generic.Menu.Item>
+  )
+}
+
+export function HideInPortalItem(): ReactElement | null {
+  const { t } = useT('notes')
+  const Components = useComponentsContext()!
+  const editor = useBlockNoteEditor<any, any, any>()
+  const block = useSideMenuBlock()
+  const handler = getHideInPortal(editor)
+
+  if (!block || !handler || !handler.canHide(block.id)) return null
+
+  return (
+    <Components.Generic.Menu.Item
+      className="bn-menu-item"
+      icon={<EyeOff size={16} />}
+      onClick={() => handler.hide(block.id)}
+    >
+      {t('portalFlows.menu.hideInPortal')}
     </Components.Generic.Menu.Item>
   )
 }

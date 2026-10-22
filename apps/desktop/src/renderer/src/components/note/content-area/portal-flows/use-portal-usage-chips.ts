@@ -72,6 +72,8 @@ export function usePortalUsageChips(
       const settled = await Promise.allSettled(
         anchors.map(async (anchor) => {
           const hosts = await getPortalUsage(sourceNoteId, anchor)
+          // Other notes only (main leaves the source's own portals out): each
+          // portal and each linking note is one use.
           const total = hosts.reduce((sum, host) => sum + host.count, 0)
           if (total > 0) counts.set(anchor, total)
         })
@@ -95,7 +97,9 @@ export function usePortalUsageChips(
     let offUsage: (() => void) | undefined
     try {
       offUsage = onPortalUsageChanged((noteIds) => {
-        if (noteIds.includes(sourceNoteId)) schedule(true, USAGE_DEBOUNCE_MS)
+        // '*' is a change in `[[Note#^anchor]]` links, which name their target by text.
+        if (noteIds.includes(sourceNoteId) || noteIds.includes('*'))
+          schedule(true, USAGE_DEBOUNCE_MS)
       })
     } catch (err) {
       log.error('Cannot subscribe to portal usage changes', err)

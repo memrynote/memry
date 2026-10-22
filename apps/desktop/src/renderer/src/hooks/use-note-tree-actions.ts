@@ -30,6 +30,7 @@ import {
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
 import { deleteNoteTasks } from '@/components/note/delete-note-tasks'
 import { getI18n } from 'react-i18next'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import { journalService } from '@/services/journal-service'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
@@ -210,6 +211,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const [foldersToDelete, setFoldersToDelete] = useState<string[]>([])
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const noteDeleteGuard = useNoteDeleteGuard()
 
   // Inline rename state for notes
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
@@ -628,6 +630,16 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     async (taskIds: string[] = []) => {
       if ((notesToDelete.length === 0 && foldersToDelete.length === 0) || isDeleting) return
 
+      // Other notes that show or link what goes (folders take their notes
+      // with them) get a say first.
+      const inFolders = [...deps.noteMap.values()].filter((note) =>
+        foldersToDelete.some((folder) => note.path.startsWith(`${folder}/`))
+      )
+      const proceed = await noteDeleteGuard.confirmNoteDelete(
+        [...notesToDelete, ...inFolders].map((note) => ({ id: note.id, title: note.title }))
+      )
+      if (!proceed) return
+
       setIsDeleting(true)
       try {
         // The tasks go only if every note they came from did: a note that
@@ -670,7 +682,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsDeleting(false)
       }
     },
-    [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree]
+    [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree, noteDeleteGuard]
   )
 
   // ---- External / Finder ----
@@ -1188,6 +1200,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     handleDeleteFolderClick,
     handleBulkDelete,
     handleDeleteConfirm,
+    deleteGuardDialog: noteDeleteGuard.dialog,
 
     // External
     handleOpenExternal,

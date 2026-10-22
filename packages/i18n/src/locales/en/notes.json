@@ -499,7 +499,6 @@
         "open": "Open"
       },
       "close": "Close menu",
-      "new": "New",
       "matchesAlias": "matches",
       "noMatch": "No blocks match “{query}”",
       "fallback": {
@@ -2175,8 +2174,10 @@
       "loading": "Searching…",
       "empty": "No notes or blocks match",
       "hintInsert": "Insert portal",
-      "hintChildren": "Choose blocks to show",
-      "keyTab": "Tab",
+      "hintClose": "Close",
+      "keyEsc": "Esc",
+      "create": "Create note “{query}”",
+      "createFailed": "Could not create that note",
       "stampFailed": "Could not prepare that block for a portal",
       "retargetFailed": "Could not point the portal at that block"
     },
@@ -2188,25 +2189,26 @@
       "failed": "Could not copy a portal to this block"
     },
     "menu": {
-      "portalToBlock": "Portal to this block"
+      "copyAsPortal": "Copy as portal",
+      "hideInPortal": "Hide in this portal"
     },
     "usage": {
-      "chipAria": "{count, plural, one {Shown in # note through a portal} other {Shown in # notes through portals}}"
+      "chipAria": "{count, plural, one {Used in # other place} other {Used in # other places}}"
     },
     "whereUsed": {
-      "title": "{count, plural, one {Shown in # place} other {Shown in # places}}",
-      "rowWhole": "{count, plural, one {Whole block} other {Whole block, # portals}}",
-      "rowHidden": "Partly shown, {hidden} hidden",
-      "footer": "Edits here appear in all of them.",
+      "aria": "Where this block is used",
+      "title": "{count, plural, one {Used in # place} other {Used in # places}}",
+      "portals": "Portals",
+      "links": "Links",
+      "footer": "Edits here appear in all portals.",
+      "hint": "Enter opens, Shift+Enter opens beside",
       "loadFailed": "Could not load where this block is shown"
     },
     "hiddenBlocks": {
-      "title": "Blocks in this portal",
+      "title": "Hidden blocks",
       "showAll": "Show all",
-      "show": "Show “{text}”",
-      "hide": "Hide “{text}”",
-      "root": "Root",
-      "toggleFailed": "Could not change which blocks this portal shows"
+      "search": "Search hidden blocks",
+      "showFailed": "Could not show this block"
     },
     "searchQuery": {
       "titleNew": "Search portal",
@@ -2227,10 +2229,11 @@
       },
       "description": {
         "block": "“{title}” also appears in {count, plural, one {# other note} other {# other notes}}.",
-        "note": "“{title}” is shown in {count, plural, one {# other note} other {# other notes}}."
+        "note": "“{title}” is shown or linked in {count, plural, one {# other note} other {# other notes}}."
       },
+      "manyNotes": "{count} notes",
       "source": "{title} (source)",
-      "removeHere": "Remove from this portal only",
+      "removeHere": "Hide here instead",
       "cancel": "Cancel",
       "everywhere": "Delete everywhere",
       "undoToast": "{count, plural, one {The deleted block was shown in # other note.} other {The deleted block was shown in # other notes.}}",

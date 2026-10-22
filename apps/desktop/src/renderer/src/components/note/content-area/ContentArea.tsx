@@ -114,6 +114,7 @@ import { Plugin } from 'prosemirror-state'
 import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
@@ -842,6 +843,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // live by note created/renamed/deleted events (#1716).
   useWikiLinkBroken(editor, useObjectIdentityLookup())
   useEffect(() => registerEditorPlugin(editor, createWikiLinkCardPlugin()), [editor])
+  // The trailing ` ^anchor` of a portal-addressable block is markdown, not prose.
+  useEffect(() => registerEditorPlugin(editor, createAnchorVisibilityPlugin()), [editor])
 
   const footnoteHover = useFootnotes(editor)
 
@@ -3240,7 +3243,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               notePath={notePath}
               editable={editable}
               ancestry={portalAncestry}
-              onOpenNote={onInternalLinkClick}
             />
             <LinkAddressToolbarController />
             <SlashMenuFallbackContext value={slashMenuFallbacks}>

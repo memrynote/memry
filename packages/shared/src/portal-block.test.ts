@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest'
 import {
   PORTAL_SEARCH_DEFAULT_LIMIT,
   PORTAL_SEARCH_MAX_LIMIT,
+  addRoot,
   anchorSuffix,
+  collapse,
+  expandAll,
+  hideChild,
+  includeParent,
+  noteCreatedChild,
+  noteCreatedRootSibling,
+  removeRoot,
+  showChild,
+  type PortalDefinition,
+  type PortalTarget,
   extractAnchor,
   isAnchor,
   makeAnchor,
@@ -44,31 +55,73 @@ describe('portal anchors', () => {
   })
 })
 
+const def = (target: PortalTarget, raw: Record<string, unknown> = {}): PortalDefinition => ({
+  v: 1,
+  target,
+  raw
+})
+const blocksDef = (
+  blocks: string[],
+  open: Extract<PortalTarget, { kind: 'blocks' }>['open'] = {}
+): PortalDefinition => def({ kind: 'blocks', note: 'n1', blocks, open })
+const targetOf = (d: PortalDefinition | null): PortalTarget => {
+  if (!d) throw new Error('expected a definition')
+  return d.target
+}
+
 describe('parsePortalDefinition', () => {
-  it('reads a whole-note portal', () => {
-    const parsed = parsePortalDefinition('{"note":"n1"}')
-    expect(parsed).toMatchObject({
-      ok: true,
-      definition: { target: { kind: 'note', note: 'n1' }, hidden: [] }
+  it('reads a whole-note portal, with or without v', () => {
+    for (const text of ['{"note":"n1"}', '{"v":1,"note":"n1"}']) {
+      expect(parsePortalDefinition(text)).toMatchObject({
+        ok: true,
+        definition: { v: 1, target: { kind: 'note', note: 'n1' } }
+      })
+    }
+  })
+
+  it('treats empty or unreadable blocks as a whole-note portal', () => {
+    expect(parsePortalDefinition('{"note":"n1","blocks":[]}')).toMatchObject({
+      definition: { target: { kind: 'note' } }
+    })
+    expect(parsePortalDefinition('{"note":"n1","blocks":["NO"]}')).toMatchObject({
+      definition: { target: { kind: 'note' } }
     })
   })
 
-  it('reads a block portal with hidden anchors and drops invalid ones', () => {
+  it('reads roots and open entries, dropping invalid anchors and duplicates', () => {
     const parsed = parsePortalDefinition(
-      '{"note":"n1","block":"chl-7f2a","hidden":["b9x1","b9x1","NO","x"]}'
+      JSON.stringify({
+        v: 1,
+        note: 'n1',
+        blocks: ['k3x9a2', 'p8m2qa', 'k3x9a2', 'x'],
+        open: {
+          k3x9a2: { show: ['n4c8x1', 'BAD', 'n4c8x1'] },
+          p8m2qa: { hide: [] },
+          zzzz99: 'nope',
+          bad: { show: [] }
+        }
+      })
     )
     expect(parsed).toMatchObject({
       ok: true,
-      definition: { target: { kind: 'block', note: 'n1', block: 'chl-7f2a' }, hidden: ['b9x1'] }
+      definition: {
+        target: {
+          kind: 'blocks',
+          note: 'n1',
+          blocks: ['k3x9a2', 'p8m2qa'],
+          open: {
+            k3x9a2: { mode: 'show', ids: ['n4c8x1'] },
+            p8m2qa: { mode: 'hide', ids: [] }
+          }
+        }
+      }
     })
   })
 
   it('reads a search portal and clamps the limit', () => {
     expect(parsePortalDefinition('{"search":{"text":"exam"}}')).toMatchObject({
       ok: true,
-      definition: {
-        target: { kind: 'search', text: 'exam', limit: PORTAL_SEARCH_DEFAULT_LIMIT }
-      }
+      definition: { target: { kind: 'search', text: 'exam', limit: PORTAL_SEARCH_DEFAULT_LIMIT } }
     })
     expect(parsePortalDefinition('{"search":{"tag":"bio","limit":99999}}')).toMatchObject({
       ok: true,
@@ -81,15 +134,15 @@ describe('parsePortalDefinition', () => {
     expect(parsePortalDefinition('{nope')).toEqual({ ok: false, reason: 'json' })
     expect(parsePortalDefinition('[]')).toEqual({ ok: false, reason: 'shape' })
     expect(parsePortalDefinition('{"search":{}}')).toMatchObject({ ok: false, reason: 'shape' })
-    expect(parsePortalDefinition('{"note":"n1","block":"NOPE"}')).toMatchObject({
+    expect(parsePortalDefinition('{"blocks":["k3x9a2"]}')).toMatchObject({
       ok: false,
       reason: 'shape',
-      raw: { note: 'n1' }
+      raw: { blocks: ['k3x9a2'] }
     })
   })
 
   it('names the source note, except for a search', () => {
-    const note = parsePortalDefinition('{"note":"n1","block":"chl-7f2a"}')
+    const note = parsePortalDefinition('{"note":"n1","blocks":["k3x9a2"]}')
     const search = parsePortalDefinition('{"search":{"text":"x"}}')
     if (!note.ok || !search.ok) throw new Error('fixture must parse')
     expect(portalSourceNote(note.definition.target)).toBe('n1')
@@ -98,33 +151,148 @@ describe('parsePortalDefinition', () => {
 })
 
 describe('serializePortalDefinition', () => {
-  it('writes the target first, then hidden, in two-space JSON', () => {
-    const text = serializePortalDefinition({
-      target: { kind: 'block', note: 'n1', block: 'chl-7f2a' },
-      hidden: ['b9x1']
-    })
-    expect(text).toBe(
-      '{\n  "note": "n1",\n  "block": "chl-7f2a",\n  "hidden": [\n    "b9x1"\n  ]\n}'
+  it('writes v, note, blocks, open in two-space JSON', () => {
+    const text = serializePortalDefinition(
+      blocksDef(['k3x9a2'], { k3x9a2: { mode: 'show', ids: ['n4c8x1'] } })
     )
+    expect(text).toBe(
+      JSON.stringify(
+        { v: 1, note: 'n1', blocks: ['k3x9a2'], open: { k3x9a2: { show: ['n4c8x1'] } } },
+        null,
+        2
+      )
+    )
+    expect(Object.keys(JSON.parse(text))).toEqual(['v', 'note', 'blocks', 'open'])
+  })
+
+  it('omits blocks for a note and open when nothing is open', () => {
+    expect(JSON.parse(serializePortalDefinition(def({ kind: 'note', note: 'n1' })))).toEqual({
+      v: 1,
+      note: 'n1'
+    })
+    expect(JSON.parse(serializePortalDefinition(blocksDef(['k3x9a2'])))).toEqual({
+      v: 1,
+      note: 'n1',
+      blocks: ['k3x9a2']
+    })
   })
 
   it('keeps keys a newer build wrote through an edit', () => {
     const parsed = parsePortalDefinition('{"note":"n1","future":{"a":1}}')
     if (!parsed.ok) throw new Error('fixture must parse')
-    const text = serializePortalDefinition(
-      { target: { kind: 'note', note: 'n2' }, hidden: [] },
-      parsed.raw
-    )
-    expect(JSON.parse(text)).toEqual({ note: 'n2', future: { a: 1 } })
+    const edited = { ...parsed.definition, target: { kind: 'note', note: 'n2' } as PortalTarget }
+    expect(JSON.parse(serializePortalDefinition(edited))).toEqual({
+      v: 1,
+      note: 'n2',
+      future: { a: 1 }
+    })
   })
 
   it('is a fixed point: parse then serialize then parse is stable', () => {
-    const source = '{"search":{"text":"exam","tag":"bio","limit":20},"hidden":["b9x1"]}'
+    const source =
+      '{"v":1,"note":"n1","blocks":["k3x9a2"],"open":{"k3x9a2":{"hide":["n4c8x1"]}},"x":1}'
     const first = parsePortalDefinition(source)
     if (!first.ok) throw new Error('fixture must parse')
-    const text = serializePortalDefinition(first.definition, first.raw)
+    const text = serializePortalDefinition(first.definition)
     const second = parsePortalDefinition(text)
-    expect(second).toMatchObject({ ok: true, definition: first.definition })
-    expect(serializePortalDefinition(first.definition, first.raw)).toBe(text)
+    if (!second.ok) throw new Error('must reparse')
+    expect(second.definition.target).toEqual(first.definition.target)
+    expect(serializePortalDefinition(second.definition)).toBe(text)
+  })
+
+  it('serializes a search portal', () => {
+    const text = serializePortalDefinition(
+      def({ kind: 'search', text: 'exam', tag: 'bio', limit: 20 })
+    )
+    expect(JSON.parse(text)).toEqual({ v: 1, search: { text: 'exam', tag: 'bio', limit: 20 } })
+  })
+})
+
+describe('portal edits', () => {
+  it('addRoot appends, inserts after an anchor, and ignores a repeat', () => {
+    const d = blocksDef(['aaaa11', 'bbbb22'])
+    expect(targetOf(addRoot(d, 'cccc33'))).toMatchObject({ blocks: ['aaaa11', 'bbbb22', 'cccc33'] })
+    expect(targetOf(addRoot(d, 'cccc33', 'aaaa11'))).toMatchObject({
+      blocks: ['aaaa11', 'cccc33', 'bbbb22']
+    })
+    expect(addRoot(d, 'aaaa11')).toEqual(d)
+    expect(targetOf(d)).toMatchObject({ blocks: ['aaaa11', 'bbbb22'] })
+  })
+
+  it('removeRoot refuses the only root and removes otherwise', () => {
+    expect(removeRoot(blocksDef(['aaaa11']), 'aaaa11')).toBeNull()
+    expect(targetOf(removeRoot(blocksDef(['aaaa11', 'bbbb22']), 'aaaa11'))).toMatchObject({
+      blocks: ['bbbb22']
+    })
+  })
+
+  it('includeParent replaces the roots with the parent and shows the previous roots', () => {
+    const d = blocksDef(['child1', 'child2'], { child1: { mode: 'hide', ids: [] } })
+    expect(targetOf(includeParent(d, 'parent'))).toEqual({
+      kind: 'blocks',
+      note: 'n1',
+      blocks: ['parent'],
+      open: {
+        child1: { mode: 'hide', ids: [] },
+        parent: { mode: 'show', ids: ['child1', 'child2'] }
+      }
+    })
+  })
+
+  it('expandAll and collapse toggle the open entry', () => {
+    const open = expandAll(blocksDef(['aaaa11']), 'aaaa11')
+    expect(targetOf(open)).toMatchObject({ open: { aaaa11: { mode: 'hide', ids: [] } } })
+    expect(targetOf(collapse(open, 'aaaa11'))).toMatchObject({ open: {} })
+  })
+
+  it('showChild opens a collapsed parent in show-mode, appends, or un-hides', () => {
+    const d = blocksDef(['aaaa11'])
+    const shown = showChild(d, 'aaaa11', 'ch0001')
+    expect(targetOf(shown)).toMatchObject({ open: { aaaa11: { mode: 'show', ids: ['ch0001'] } } })
+    expect(targetOf(showChild(shown, 'aaaa11', 'ch0002'))).toMatchObject({
+      open: { aaaa11: { mode: 'show', ids: ['ch0001', 'ch0002'] } }
+    })
+    expect(showChild(shown, 'aaaa11', 'ch0001')).toEqual(shown)
+    const hidden = blocksDef(['aaaa11'], { aaaa11: { mode: 'hide', ids: ['ch0001', 'ch0002'] } })
+    expect(targetOf(showChild(hidden, 'aaaa11', 'ch0001'))).toMatchObject({
+      open: { aaaa11: { mode: 'hide', ids: ['ch0002'] } }
+    })
+  })
+
+  it('hideChild removes from show-mode, adds to hide-mode, no-ops when collapsed', () => {
+    const show = blocksDef(['aaaa11'], { aaaa11: { mode: 'show', ids: ['ch0001', 'ch0002'] } })
+    expect(targetOf(hideChild(show, 'aaaa11', 'ch0001'))).toMatchObject({
+      open: { aaaa11: { mode: 'show', ids: ['ch0002'] } }
+    })
+    const hide = expandAll(blocksDef(['aaaa11']), 'aaaa11')
+    expect(targetOf(hideChild(hide, 'aaaa11', 'ch0001'))).toMatchObject({
+      open: { aaaa11: { mode: 'hide', ids: ['ch0001'] } }
+    })
+    expect(hideChild(blocksDef(['aaaa11']), 'aaaa11', 'ch0001')).toEqual(blocksDef(['aaaa11']))
+  })
+
+  it('noteCreatedChild: collapsed -> show, show -> append, hide -> unchanged', () => {
+    expect(targetOf(noteCreatedChild(blocksDef(['aaaa11']), 'aaaa11', 'new001'))).toMatchObject({
+      open: { aaaa11: { mode: 'show', ids: ['new001'] } }
+    })
+    const show = blocksDef(['aaaa11'], { aaaa11: { mode: 'show', ids: ['ch0001'] } })
+    expect(targetOf(noteCreatedChild(show, 'aaaa11', 'new001'))).toMatchObject({
+      open: { aaaa11: { mode: 'show', ids: ['ch0001', 'new001'] } }
+    })
+    const hide = expandAll(blocksDef(['aaaa11']), 'aaaa11')
+    expect(noteCreatedChild(hide, 'aaaa11', 'new001')).toEqual(hide)
+  })
+
+  it('noteCreatedRootSibling inserts the new root right after its sibling', () => {
+    expect(
+      targetOf(noteCreatedRootSibling(blocksDef(['aaaa11', 'bbbb22']), 'aaaa11', 'new001'))
+    ).toMatchObject({ blocks: ['aaaa11', 'new001', 'bbbb22'] })
+  })
+
+  it('leaves note and search definitions alone', () => {
+    const note = def({ kind: 'note', note: 'n1' })
+    expect(addRoot(note, 'aaaa11')).toBe(note)
+    expect(expandAll(note, 'aaaa11')).toBe(note)
+    expect(removeRoot(note, 'aaaa11')).toBe(note)
   })
 })

@@ -1,6 +1,7 @@
 /**
  * Auto-closing brackets for the note editor: `(` writes `()` and `[[` writes
- * `[[]]`, each with the caret inside.
+ * `[[]]`, each with the caret inside. A second `(` right after the first
+ * steps aside, so the portal picker's `((` trigger still opens.
  *
  * `[[` goes through `appendTransaction` instead of `handleTextInput`, because
  * BlockNote's suggestion menu already claims the second `[` in its own
@@ -89,6 +90,15 @@ export function createAutoCloseBracketsPlugin(): Plugin {
 
         const context = caretContext(view.state)
         if (!context) return false
+
+        // `((` opens the portal picker, and BlockNote claims it in its own
+        // `handleTextInput` — which runs after this one. Without stepping aside
+        // the second `(` would write another pair and leave `(())`. The `)` this
+        // plugin wrote for the first `(` goes, and BlockNote takes the keystroke.
+        if (text === '(' && context.before.endsWith('(') && context.after.startsWith(')')) {
+          dispatchTyped(view, view.state.tr.delete(from, from + 1))
+          return false
+        }
 
         if (text === '(' && MAY_PRECEDE_PAIR.test(context.after.slice(0, 1))) {
           const tr = view.state.tr.insertText('()', from)

@@ -15,7 +15,7 @@ import type { ProjectionEvent, ProjectionProjector } from '../types'
 const logger = createLogger('Projections:PortalRefs')
 
 const rowKey = (row: PortalRefRow): string =>
-  JSON.stringify([row.ordinal, row.sourceNoteId, row.anchor, row.hiddenCount, row.kind])
+  JSON.stringify([row.ordinal, row.root, row.sourceNoteId, row.anchor, row.kind])
 
 function sameRows(before: PortalRefRow[], after: PortalRefRow[]): boolean {
   if (before.length !== after.length) return false

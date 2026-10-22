@@ -74,6 +74,14 @@ export {
 } from './portal-ref-queries'
 
 export {
+  setBlockLinkRefs,
+  getBlockLinkRefsForSource,
+  getLinkUsage,
+  type BlockLinkRefRow,
+  type LinkUsageRow
+} from './block-link-ref-queries'
+
+export {
   resolveLinkTarget,
   resolveLinkTargets,
   type ResolvedLinkTarget

@@ -6,12 +6,15 @@ import Foundation
 // the screen can guard cycles, title the header and pull the right body.
 // Nothing here writes: the fence text is never rebuilt from these values.
 
-/// What a portal points at.
+/// What a portal points at (`packages/shared/src/portal-block.ts`).
 enum PortalTarget: Equatable, Sendable {
+    /// Every block of a note.
     case note(id: String)
-    case block(id: String, anchor: String)
+    /// The subtrees under these root anchors, in portal order. Which children
+    /// show is the core's `open` rule; the shell never reads it.
+    case blocks(id: String, roots: [String])
     /// A query over the vault's blocks. Desktop answers it; this build shows
-    /// the query and an Open-in-desktop hint.
+    /// the query and says so.
     case search(text: String?, tag: String?)
 }
 
@@ -22,32 +25,36 @@ struct PortalFence: Equatable, Sendable {
     static let language = "memry-portal"
 
     let target: PortalTarget?
-    /// Anchors the definition hides. Entries that are not anchors are dropped
-    /// on read (§12.6.3), so they are not counted.
-    let hiddenCount: Int
 
+    /// Mirrors `readPortalTarget`: `search` wins when present, then `note`
+    /// with `blocks` (empty or absent: the whole note). An absent `v` reads
+    /// as 1; `open` and unknown keys are the core's and the writer's.
     init(text: String) {
         guard let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
             target = nil
-            hiddenCount = 0
             return
         }
-        if let note = json["note"] as? String, !note.isEmpty {
-            if let anchor = json["block"] as? String, Self.isAnchor(anchor) {
-                target = .block(id: note, anchor: anchor)
-            } else {
-                target = .note(id: note)
-            }
-        } else if let search = json["search"] as? [String: Any] {
-            let text = (search["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            let tag = (search["tag"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        if let search = json["search"] as? [String: Any] {
+            let text = Self.nonEmpty(search["text"])
+            let tag = Self.nonEmpty(search["tag"])
             target = text == nil && tag == nil ? nil : .search(text: text, tag: tag)
+        } else if let note = Self.nonEmpty(json["note"]) {
+            var seen = Set<String>()
+            let roots = ((json["blocks"] as? [Any]) ?? []).compactMap { $0 as? String }
+                .filter { Self.isAnchor($0) && seen.insert($0).inserted }
+            target = roots.isEmpty ? .note(id: note) : .blocks(id: note, roots: roots)
         } else {
             target = nil
         }
-        hiddenCount = (json["hidden"] as? [Any])?.compactMap { $0 as? String }.filter(Self.isAnchor).count ?? 0
+    }
+
+    private static func nonEmpty(_ value: Any?) -> String? {
+        guard let string = value as? String,
+              !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        return string
     }
 
     /// `[a-z0-9][a-z0-9-]{3,31}`, the anchor grammar of §12.6.3.
@@ -64,7 +71,8 @@ struct PortalFence: Equatable, Sendable {
 struct PortalAncestry: Equatable, Sendable {
     enum Frame: Equatable, Sendable {
         case host(note: String)
-        case window(note: String, block: String?)
+        /// `blocks` is `nil` for a whole-note window.
+        case window(note: String, blocks: [String]?)
 
         var note: String {
             switch self {
@@ -92,26 +100,30 @@ struct PortalAncestry: Equatable, Sendable {
     /// The ancestry inside the window `target` opens.
     func descending(into target: PortalTarget) -> PortalAncestry {
         switch target {
-        case let .note(id): PortalAncestry(frames: frames + [.window(note: id, block: nil)])
-        case let .block(id, anchor): PortalAncestry(frames: frames + [.window(note: id, block: anchor)])
+        case let .note(id): PortalAncestry(frames: frames + [.window(note: id, blocks: nil)])
+        case let .blocks(id, roots): PortalAncestry(frames: frames + [.window(note: id, blocks: roots)])
         case .search: self
         }
     }
 
     enum Refusal: Equatable, Sendable { case cycle, tooDeep }
 
-    /// A whole-note target loops against any frame on that note. A block
-    /// target loops only against a window on that same block: a block of the
-    /// host note is fine until the portal sits inside it, when the window it
-    /// opens is the frame that catches it one level down.
+    /// A whole-note target loops against any frame on that note. A blocks
+    /// target loops only against a window on that note that shares a root: a
+    /// block of the host note is fine until the portal sits inside it, when
+    /// the window it opens is the frame that catches it one level down.
     func refusal(for target: PortalTarget) -> Refusal? {
         switch target {
         case .search:
             return nil
         case let .note(id):
             if frames.contains(where: { $0.note == id }) { return .cycle }
-        case let .block(id, anchor):
-            if frames.contains(where: { $0 == .window(note: id, block: anchor) }) { return .cycle }
+        case let .blocks(id, roots):
+            let loops = frames.contains { frame in
+                guard case let .window(note, open) = frame, note == id, let open else { return false }
+                return roots.contains(where: open.contains)
+            }
+            if loops { return .cycle }
         }
         return windowDepth >= Self.maxDepth ? .tooDeep : nil
     }

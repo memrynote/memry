@@ -1,5 +1,5 @@
 //! The `portal-resolve` conformance class: a portal definition plus the source
-//! note's flat blocks in, the blocks it shows out (chapter 12 §12.6.3).
+//! note's flat blocks in, the blocks it shows and hides out (chapter 12 §12.6.3).
 //!
 //! The vector's blocks are the subset the resolver reads (`id`, `kind`,
 //! `depth`, `inline[].text`); they are lifted into the core's own `Block`, and
@@ -10,7 +10,7 @@ mod support;
 use std::collections::HashMap;
 
 use memry_core::crdt::blocks::{Block, InlineRun};
-use memry_core::portal::{PortalStatus, resolve_portal};
+use memry_core::portal::{PortalStatus, resolve_portal, resolve_portal_detailed};
 use serde_json::Value as Json;
 use support::{str_field, vector_file};
 
@@ -34,6 +34,22 @@ fn block(raw: &Json) -> Block {
     }
 }
 
+fn ids(blocks: &[Block]) -> Vec<&str> {
+    blocks
+        .iter()
+        .map(|b| b.id.as_deref().expect("id"))
+        .collect()
+}
+
+fn expected_ids(value: &Json) -> Vec<&str> {
+    value
+        .as_array()
+        .expect("id list")
+        .iter()
+        .map(|id| id.as_str().expect("id"))
+        .collect()
+}
+
 #[test]
 fn portal_resolve_vectors() {
     let file = vector_file("portal-resolve");
@@ -47,26 +63,44 @@ fn portal_resolve_vectors() {
             .iter()
             .map(block)
             .collect();
-        let slice = resolve_portal(str_field(case, "definition"), blocks);
+        let slice = resolve_portal_detailed(str_field(case, "definition"), blocks);
 
         let expected = match str_field(case, "expectedStatus") {
             "ok" => PortalStatus::Ok,
             "missing-block" => PortalStatus::MissingBlock,
+            "invalid" => PortalStatus::Invalid,
             other => panic!("{name}: unknown expectedStatus {other}"),
         };
         assert_eq!(slice.status, expected, "{name}: status");
-        let ids: Vec<&str> = slice
-            .blocks
-            .iter()
-            .map(|b| b.id.as_deref().expect("id"))
-            .collect();
-        let want: Vec<&str> = case["expectedIds"]
-            .as_array()
-            .expect("expectedIds")
-            .iter()
-            .map(|id| id.as_str().expect("id"))
-            .collect();
-        assert_eq!(ids, want, "{name}: ids");
+        assert_eq!(
+            ids(&slice.blocks),
+            expected_ids(&case["expectedIds"]),
+            "{name}: ids"
+        );
+        assert_eq!(
+            ids(&slice.hidden_siblings),
+            expected_ids(&case["expectedHiddenSiblings"]),
+            "{name}: hidden siblings"
+        );
+        let want_children = case["expectedHiddenChildren"]
+            .as_object()
+            .expect("expectedHiddenChildren");
+        assert_eq!(
+            slice.hidden_children.len(),
+            want_children.len(),
+            "{name}: hidden children keys"
+        );
+        for (anchor, want) in want_children {
+            let got = slice
+                .hidden_children
+                .get(anchor)
+                .unwrap_or_else(|| panic!("{name}: no hidden children for {anchor}"));
+            assert_eq!(
+                ids(got),
+                expected_ids(want),
+                "{name}: hidden children of {anchor}"
+            );
+        }
     }
 }
 

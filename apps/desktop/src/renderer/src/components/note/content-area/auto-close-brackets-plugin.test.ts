@@ -87,6 +87,13 @@ describe('( pairing', () => {
     expect(caret(v)).toBe(1)
   })
 
+  it('lets a second ( through unpaired, so the (( portal trigger can open', () => {
+    const v = mount('', 0)
+    type(v, '((')
+    expect(text(v)).toBe('((')
+    expect(caret(v)).toBe(2)
+  })
+
   it('types over the closer it wrote', () => {
     const v = mount('', 0)
     type(v, '(a)')

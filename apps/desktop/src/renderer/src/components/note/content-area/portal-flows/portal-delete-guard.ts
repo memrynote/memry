@@ -57,16 +57,7 @@ export function mergeHosts(
   for (const host of lists.flat()) {
     if (host.noteId === sourceNoteId) continue
     const seen = byNote.get(host.noteId)
-    byNote.set(
-      host.noteId,
-      seen
-        ? {
-            ...seen,
-            count: seen.count + host.count,
-            hiddenCount: seen.hiddenCount + host.hiddenCount
-          }
-        : host
-    )
+    byNote.set(host.noteId, seen ? { ...seen, count: seen.count + host.count } : host)
   }
   return [...byNote.values()]
 }

@@ -44,9 +44,10 @@ describe('insertPortalBlock', () => {
     expect(portal.props).toMatchObject({ language: 'memry-portal' })
     const parsed = parsePortalDefinition(textOf(portal))
     expect(parsed.ok && parsed.definition.target).toEqual({
-      kind: 'block',
+      kind: 'blocks',
       note: 'note-1',
-      block: 'chl-7f2a'
+      blocks: ['chl-7f2a'],
+      open: {}
     })
 
     const cursor = editor.getTextCursorPosition().block

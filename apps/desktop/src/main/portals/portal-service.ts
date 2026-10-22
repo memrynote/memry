@@ -10,6 +10,7 @@ import type {
 import { extractAnchor, makeAnchor, stripAnchor } from '@memry/shared/portal-block'
 import {
   findNotesByTag,
+  getLinkUsage,
   getNoteCacheById,
   getPortalUsage as queryPortalUsage
 } from '@main/database/queries/notes'
@@ -32,14 +33,22 @@ const TAG_ONLY_BLOCKS_PER_NOTE = 5
 const ANCHOR_ATTEMPTS = 20
 
 export function getPortalUsage(input: PortalGetUsageInput): PortalGetUsageResult {
-  const hosts = queryPortalUsage(getIndexDatabase(), input.noteId, input.anchor).map((row) => ({
+  const db = getIndexDatabase()
+  const portals = queryPortalUsage(db, input.noteId, input.anchor).map((row) => ({
     noteId: row.hostNoteId,
     title: row.title,
     path: row.path,
     count: row.count,
-    hiddenCount: row.hiddenCount
+    kind: 'portal' as const
   }))
-  return { hosts }
+  const links = getLinkUsage(db, input.noteId, input.anchor).map((row) => ({
+    noteId: row.sourceNoteId,
+    title: row.title,
+    path: row.path,
+    count: 1,
+    kind: 'link' as const
+  }))
+  return { hosts: [...portals, ...links] }
 }
 
 /**
@@ -137,7 +146,9 @@ export async function searchPortalBlocks(input: PortalSearchInput): Promise<Port
     try {
       const matches = await withDoc(noteId, (doc) => {
         const found: PortalSearchResultItem[] = []
-        for (const block of listDocBlocks(doc)) {
+        const docBlocks = listDocBlocks(doc)
+        const textById = new Map(docBlocks.map((b) => [b.id, stripAnchor(b.text).trim()]))
+        for (const block of docBlocks) {
           const text = stripAnchor(block.text).trim()
           if (text === '') continue
           if (terms.length > 0 && !terms.every((term) => text.toLowerCase().includes(term)))
@@ -148,7 +159,8 @@ export async function searchPortalBlocks(input: PortalSearchInput): Promise<Port
             path: note.path,
             blockId: block.id,
             anchor: extractAnchor(block.text),
-            text
+            text,
+            parentText: (block.parentId && textById.get(block.parentId)) || null
           })
           if (terms.length === 0 && found.length === TAG_ONLY_BLOCKS_PER_NOTE) break
         }

@@ -1,7 +1,7 @@
 /**
- * The frame every portal wears: a left rail and a faint tint (artboard 2) that
- * say "this text lives somewhere else", a header naming the source, and
- * actions that appear on hover.
+ * The frames and primitives portals wear: the rail (artboard 4) that says
+ * "this text lives somewhere else", and the floating toolbar's pieces
+ * (artboard 5).
  *
  * @module note/content-area/portal/portal-chrome
  */
@@ -17,6 +17,7 @@ const RAIL_TONE: Record<PortalRailTone, string> = {
   neutral: 'border-border bg-muted py-3'
 }
 
+/** The boxed frame the search portal still wears. */
 export function PortalRail({
   tone,
   className,
@@ -32,6 +33,48 @@ export function PortalRail({
       )}
       {...rest}
     >
+      {children}
+    </div>
+  )
+}
+
+/**
+ * The frame of a note or blocks portal (artboard 4): the text reads like the
+ * rest of the note, and only a 2px rail in the gutter says it lives elsewhere.
+ * The rail darkens while the caret is inside; a selected portal takes a tint.
+ * The toolbar floats over the frame's top corner and takes no layout.
+ */
+export function PortalFrame({
+  focused,
+  selected,
+  toolbar,
+  className,
+  children,
+  ...rest
+}: {
+  focused: boolean
+  selected: boolean
+  toolbar?: ReactNode
+} & ComponentPropsWithoutRef<'div'>): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'group/portal relative w-full rounded-sm',
+        selected && 'bg-tint-light',
+        className
+      )}
+      data-portal-focused={focused || undefined}
+      data-portal-selected={selected || undefined}
+      {...rest}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-y-0 -start-5 w-0.5 rounded-full transition-colors motion-reduce:transition-none',
+          focused || selected ? 'bg-text-secondary' : 'bg-border'
+        )}
+      />
+      {toolbar}
       {children}
     </div>
   )
@@ -110,5 +153,46 @@ export function PortalChip({
     >
       {children}
     </span>
+  )
+}
+
+/** The floating toolbar's shell: top-end of the frame, over the content, no layout. */
+export function PortalToolbarShell({
+  className,
+  children,
+  ...rest
+}: ComponentPropsWithoutRef<'div'>): React.JSX.Element {
+  return (
+    <div
+      role="toolbar"
+      contentEditable={false}
+      className={cn(
+        'absolute -top-7 end-0 z-10 flex h-6 max-w-full items-center gap-0.5 rounded-md bg-popover px-1 text-[11px] leading-4 text-text-secondary shadow-[var(--shadow-card-hover)] ring-1 ring-border/60',
+        className
+      )}
+      {...rest}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** A quiet toolbar button: crumb, count or menu trigger. */
+export function PortalToolbarButton({
+  className,
+  children,
+  ...rest
+}: ComponentPropsWithoutRef<'button'>): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'inline-flex h-5 min-w-0 shrink-0 items-center gap-1 rounded-[4px] px-1.5 text-[11px] font-medium leading-4 text-text-secondary hover:bg-surface-active hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-surface-active',
+        className
+      )}
+      {...rest}
+    >
+      {children}
+    </button>
   )
 }

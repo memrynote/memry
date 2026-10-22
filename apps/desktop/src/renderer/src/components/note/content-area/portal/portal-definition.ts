@@ -46,34 +46,29 @@ export interface PortalEditorLike {
   removeBlocks: (ids: string[]) => unknown
 }
 
-export interface PortalDefinitionPatch {
-  target?: PortalTarget
-  hidden?: string[]
-}
-
 /**
- * Rewrite the portal block `blockId`. `patch` may be a function of the
- * definition as it is now, so two quick edits (hide A, hide B) do not
- * overwrite each other with a stale list. Returns false, writing nothing,
- * when the editor is read-only, the block is gone, or its definition does not
- * parse.
+ * Rewrite the portal block `blockId` with the definition `next` computes from
+ * the one in the document right now, so two quick edits (hide A, hide B) do not
+ * overwrite each other with a stale one. `next` may return null to refuse the
+ * edit, or be `{ target }` to retarget the portal. Returns false, writing nothing, when the editor is read-only, the block
+ * is gone, its definition does not parse, or `next` refuses.
  */
 export function updatePortalDefinition(
   editor: PortalEditorLike,
   blockId: string,
-  patch: PortalDefinitionPatch | ((current: PortalDefinition) => PortalDefinitionPatch)
+  next: ((current: PortalDefinition) => PortalDefinition | null) | { target: PortalTarget }
 ): boolean {
   if (!editor.isEditable) return false
   const block = editor.getBlock(blockId)
   if (!block) return false
   const parsed = parsePortalDefinition(portalBlockText(block.content))
   if (!parsed.ok) return false
-  const change = typeof patch === 'function' ? patch(parsed.definition) : patch
-  const next: PortalDefinition = {
-    target: change.target ?? parsed.definition.target,
-    hidden: change.hidden ?? parsed.definition.hidden
-  }
-  editor.updateBlock(blockId, { content: serializePortalDefinition(next, parsed.raw) })
+  const definition =
+    typeof next === 'function'
+      ? next(parsed.definition)
+      : { ...parsed.definition, target: next.target }
+  if (!definition) return false
+  editor.updateBlock(blockId, { content: serializePortalDefinition(definition) })
   return true
 }
 
@@ -91,9 +86,6 @@ export function portalBlockInput(definition: PortalDefinition): {
 }
 
 /** The portal as a fenced block, for the clipboard. */
-export function portalFenceText(
-  definition: PortalDefinition,
-  raw?: Record<string, unknown>
-): string {
-  return `\`\`\`${PORTAL_BLOCK_LANGUAGE}\n${serializePortalDefinition(definition, raw)}\n\`\`\`\n`
+export function portalFenceText(definition: PortalDefinition): string {
+  return `\`\`\`${PORTAL_BLOCK_LANGUAGE}\n${serializePortalDefinition(definition)}\n\`\`\`\n`
 }

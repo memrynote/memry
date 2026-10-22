@@ -13,6 +13,8 @@ interface Vectors {
     blocks: Array<{ id: string; depth: number; inline: Array<{ text: string }> }>
     expectedStatus: string
     expectedIds: string[]
+    expectedHiddenSiblings: string[]
+    expectedHiddenChildren: Record<string, string[]>
   }>
 }
 
@@ -26,8 +28,14 @@ describe('portal-resolve vectors', () => {
   it.each(vectors.cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const parsed = parsePortalDefinition(c.definition)
     if (!parsed.ok) throw new Error('definition must parse')
-    const result = resolvePortal(parsed.definition, c.blocks)
+    const result = resolvePortal(c.blocks, parsed.definition.target)
     expect(result.status).toBe(c.expectedStatus)
     expect(result.blocks.map((b) => b.id)).toEqual(c.expectedIds)
+    expect(result.hidden.siblings.map((b) => b.id)).toEqual(c.expectedHiddenSiblings)
+    expect(
+      Object.fromEntries(
+        Object.entries(result.hidden.children).map(([a, bs]) => [a, bs.map((b) => b.id)])
+      )
+    ).toEqual(c.expectedHiddenChildren)
   })
 })

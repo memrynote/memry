@@ -36,7 +36,7 @@ describe('portal-refs projector', () => {
     await projector.project(
       upsert(
         'host',
-        fence('{"note":"src","block":"abc123"}') +
+        fence('{"v":1,"note":"src","blocks":["abc123"]}') +
           '\n\n' +
           fence('{"search":{"tag":"bio","limit":5}}')
       )
@@ -46,17 +46,17 @@ describe('portal-refs projector', () => {
       {
         hostNoteId: 'host',
         ordinal: 0,
+        root: 0,
         sourceNoteId: 'src',
         anchor: 'abc123',
-        hiddenCount: 0,
-        kind: 'block'
+        kind: 'blocks'
       },
       {
         hostNoteId: 'host',
         ordinal: 1,
+        root: 0,
         sourceNoteId: null,
         anchor: null,
-        hiddenCount: 0,
         kind: 'search'
       }
     ])

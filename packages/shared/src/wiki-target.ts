@@ -258,3 +258,26 @@ function wikiLinkTargets(text: string): string[] {
   }
   return targets
 }
+
+export interface BlockLinkTarget {
+  /** The note half exactly as written: a title, alias, or path form. */
+  note: string
+  /** The block anchor, without the `^`. */
+  anchor: string
+}
+
+/**
+ * The `[[Note#^anchor]]` links in a note body, one per (note half, anchor).
+ * `extractWikiLinks` keeps only the note half, so the block is lost there; the
+ * usage count of a block needs it.
+ */
+export function extractBlockLinks(content: string): BlockLinkTarget[] {
+  const seen = new Map<string, BlockLinkTarget>()
+  for (const target of wikiLinkTargets(blankMarkdownCode(content))) {
+    const { note, heading } = splitWikiTarget(target)
+    if (!note || heading === null || !isBlockReference(heading)) continue
+    const anchor = heading.slice(1).trim()
+    if (anchor) seen.set(`${note}\u0000${anchor}`, { note, anchor })
+  }
+  return [...seen.values()]
+}

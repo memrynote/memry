@@ -364,13 +364,14 @@ struct NoteBlockView: View {
             && ViewBlockFence(text: plainText) != .code || value("language") == PortalFence.language)
     }
 
-    /// The block's runs as one attributed string, marks applied.
+    /// The block's runs as one attributed string, marks applied. A trailing
+    /// portal anchor is not drawn.
     private var inline: AttributedString {
         var out = AttributedString()
         // Checkboxes are numbered within the cell that owns them, which is
         // what the core addresses (N605). `nil` outside a table cell.
         var ordinal = checkboxBase
-        for run in block.inline {
+        for run in PortalAnchor.stripped(block.inline) {
             let isCheckbox = run.marks.contains("inlineCheckbox")
             out.append(
                 NoteInline.attributed(

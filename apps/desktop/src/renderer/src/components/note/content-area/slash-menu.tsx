@@ -300,11 +300,6 @@ export function SlashMenu({
         <span className="min-w-0 flex-1 truncate text-[13px] font-normal leading-4 text-foreground">
           <Title item={item} />
         </span>
-        {item.id === 'portal' ? (
-          <span className="shrink-0 rounded-full bg-tint-light px-1.5 py-0.5 text-[10px] font-medium leading-none text-tint-ink">
-            {t('editor.slashMenu.new')}
-          </span>
-        ) : null}
         {item.matchedAlias ? (
           <span className="flex shrink-0 items-center gap-1 text-[11px] leading-[14px] text-text-secondary">
             {t('editor.slashMenu.matchesAlias')}

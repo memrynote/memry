@@ -1,5 +1,5 @@
 /**
- * The portal picker's rows: notes and blocks in one list. Pure, so the merge,
+ * The portal picker's rows: blocks, then notes, then "Create note". Pure, so the merge,
  * the caps and the cycle filter are testable without an editor.
  *
  * @module note/content-area/portal-flows/portal-picker-model
@@ -21,6 +21,8 @@ export interface PortalPickerNote {
 export interface PortalPickerBlock {
   noteId: string
   noteTitle: string
+  /** The enclosing block's text, shown as `Note › Parent`. */
+  parentText?: string | null
   blockId: string
   /** Set when the source block already carries ` ^anchor`. */
   anchor: string | null
@@ -41,10 +43,15 @@ export type PortalPickerItem =
       key: string
       noteId: string
       noteTitle: string
+      parentText: string | null
       blockId: string
       anchor: string | null
       title: string
+      /** The typed query, for bolding its match in the row. */
+      query: string
     }
+  /** Always last, only for a non-empty query: creates a note titled `title`. */
+  | { kind: 'create'; key: 'create'; title: string }
 
 /** `Lectures/Biology/Cell Biology.md` -> `Lectures / Biology`. */
 export function folderLabel(path: string): string {
@@ -58,6 +65,7 @@ export function buildPortalPickerList(input: {
   blocks: readonly PortalPickerBlock[]
   hostNoteId: string | undefined
   ancestry: readonly string[]
+  query?: string
 }): PortalPickerItem[] {
   // A note cannot show itself, so the host and its portal ancestors are not
   // offered whole. One of the host's own blocks is fine: a loop only forms if
@@ -67,11 +75,11 @@ export function buildPortalPickerList(input: {
   const blockAllowed = (noteId: string): boolean =>
     findPortalCycle(input.hostNoteId, input.ancestry, noteId) !== 'ancestor'
 
-  const items: PortalPickerItem[] = []
+  const noteItems: PortalPickerItem[] = []
   for (const note of input.notes) {
-    if (items.length >= PICKER_NOTE_LIMIT) break
+    if (noteItems.length >= PICKER_NOTE_LIMIT) break
     if (!noteAllowed(note.noteId)) continue
-    items.push({
+    noteItems.push({
       kind: 'note',
       key: `note:${note.noteId}`,
       noteId: note.noteId,
@@ -81,21 +89,27 @@ export function buildPortalPickerList(input: {
     })
   }
 
+  const blockItems: PortalPickerItem[] = []
   let blockCount = 0
   for (const block of input.blocks) {
     if (blockCount >= PICKER_BLOCK_LIMIT) break
     if (!blockAllowed(block.noteId)) continue
     blockCount += 1
-    items.push({
+    blockItems.push({
       kind: 'block',
       key: `block:${block.noteId}:${block.blockId}`,
       noteId: block.noteId,
       noteTitle: block.noteTitle,
+      parentText: block.parentText ?? null,
       blockId: block.blockId,
       anchor: block.anchor,
-      title: stripAnchor(block.text)
+      title: stripAnchor(block.text),
+      query: input.query?.trim() ?? ''
     })
   }
 
+  const items = [...blockItems, ...noteItems]
+  const query = input.query?.trim() ?? ''
+  if (query !== '') items.push({ kind: 'create', key: 'create', title: query })
   return items
 }

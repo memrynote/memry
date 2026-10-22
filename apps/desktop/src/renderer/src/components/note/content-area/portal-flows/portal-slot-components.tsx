@@ -1,19 +1,20 @@
 /**
- * The popovers the portal block's header opens: the hidden-blocks list and the
- * search portal's query editor. The block renders its own trigger buttons and
- * wraps each in the component registered for its slot (`portal/portal-slots`);
- * these wrap the trigger in a popover. Registered once per window, reference
+ * The popovers the portal block opens: the hidden-blocks list (from the
+ * toolbar's count or an inline "N hidden" row) and the search portal's query
+ * editor. The block renders the triggers and mounts the component registered
+ * for the slot (`portal/portal-slots`); these hold the popover. Registered once per window, reference
  * counted, because every editor with the flows mounted asks for them.
  *
  * @module note/content-area/portal-flows/portal-slot-components
  */
 
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement, type RefObject } from 'react'
 import { toast } from 'sonner'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useNote } from '@/hooks/use-notes-query'
 import { useT } from '@memry/i18n/renderer'
+import { createPortalActions } from '../portal/portal-actions'
 import { updatePortalDefinition } from '../portal/portal-definition'
-import { readPortalWindowBlocks, togglePortalBlockHidden } from '../portal/portal-hidden-blocks'
 import {
   registerPortalActionHandlers,
   registerPortalHiddenBlocksSlot,
@@ -22,92 +23,73 @@ import {
   type PortalHiddenBlocksSlotProps,
   type PortalSearchQuerySlotProps
 } from '../portal/portal-slots'
-import { portalWindowKey } from '../portal/portal-window-plugin'
-import { usePortalWindow } from '../portal/portal-window-registry'
+import type { PortalWindowBlock } from '../portal/portal-window-plugin'
+import { usePortalWindowState } from '../portal/use-portal-window-view'
 import { getPortalFlowsApi } from './portal-flows-api'
 import { PortalHiddenBlocksPanel, type PortalBlockRow } from './portal-hidden-blocks-popover'
 import { PortalSearchQueryForm } from './portal-search-query-popover'
 import type { PortalSearchTarget } from './portal-search-query'
-import { consumeChooseChildren } from './portal-choose-children'
 
-/** The rows for a portal's window: its root first, then the blocks under it. */
-function windowRows(portal: PortalHandle, rootText: string | null): PortalBlockRow[] {
-  const spec = {
-    anchor: portal.definition.target.kind === 'block' ? portal.definition.target.block : null,
-    hidden: portal.definition.hidden
-  }
-  const blocks = readPortalWindowBlocks(portal.blockId, spec) ?? []
-  const underRoot = spec.anchor === null ? 0 : 1
-  const rows: PortalBlockRow[] = []
-  if (spec.anchor !== null && rootText !== null) {
-    rows.push({
-      key: 'root',
-      text: rootText,
-      depth: 0,
-      isRoot: true,
-      hidden: false,
-      disabled: true
-    })
-  }
-  for (const block of blocks) {
-    rows.push({
-      key: block.id,
-      text: block.text,
-      depth: block.depth + underRoot,
-      isRoot: false,
-      hidden: block.hidden || block.hiddenByAncestor,
-      disabled: block.hiddenByAncestor && !block.hidden
-    })
-  }
-  return rows
-}
+const PATH_SEPARATOR = ' \u203A '
 
-function HiddenBlocksSlot({ portal, children }: PortalHiddenBlocksSlotProps): ReactElement {
+function HiddenBlocksSlot({
+  portal,
+  scope,
+  anchorEl,
+  onClose
+}: PortalHiddenBlocksSlotProps): ReactElement {
   const { t } = useT('notes')
-  const [open, setOpen] = useState(false)
-  // Re-renders when the window mounts or its view changes.
-  const entry = usePortalWindow(portal.blockId)
+  const state = usePortalWindowState(portal.blockId)
+  const { note } = useNote(portal.sourceNoteId)
+  const title = note?.title ?? ''
 
-  // A block portal picked with Tab opens its list as soon as its chrome exists.
+  const hidden: readonly PortalWindowBlock[] = useMemo(() => {
+    if (!state || !scope) return []
+    return scope.kind === 'siblings'
+      ? state.hiddenSiblings
+      : (state.hiddenChildren[scope.blockId] ?? [])
+  }, [state, scope])
+
+  const rows = useMemo<PortalBlockRow[]>(() => {
+    if (!state || !scope) return []
+    const parent =
+      scope.kind === 'children'
+        ? state.visible.find((block) => block.blockId === scope.blockId)
+        : undefined
+    const trail = scope.kind === 'siblings' ? state.ancestors : parent ? [parent] : []
+    const path = [title, ...trail.map((block) => block.text)].filter(Boolean).join(PATH_SEPARATOR)
+    return hidden.map((block) => ({ key: block.blockId, path, text: block.text }))
+  }, [state, scope, hidden, title])
+
+  // The count drops as blocks come in; the popover goes with the last one.
+  const empty = scope !== null && state !== undefined && rows.length === 0
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- a one-shot hand-off from the picker, not state derived from props
-    if (consumeChooseChildren(portal.blockId)) setOpen(true)
-  }, [portal.blockId])
+    if (empty) onClose()
+  }, [empty, onClose])
 
-  const view = entry?.view
-  const rootText = view ? (portalWindowKey.getState(view.state)?.rootText ?? null) : null
-  const rows = open ? windowRows(portal, rootText) : []
-  const sourceNoteId = portal.sourceNoteId
-
-  const toggle = (row: PortalBlockRow): void => {
-    const block = readPortalWindowBlocks(portal.blockId, {
-      anchor: portal.definition.target.kind === 'block' ? portal.definition.target.block : null,
-      hidden: portal.definition.hidden
-    })?.find((each) => each.id === row.key)
-    if (!block || !sourceNoteId) return
-    void togglePortalBlockHidden({
-      editor: portal.editor,
-      portalBlockId: portal.blockId,
-      sourceNoteId,
-      block
-    }).then((done) => {
-      if (!done) toast.error(t('portalFlows.hiddenBlocks.toggleFailed'))
-    })
+  const actions = useMemo(() => createPortalActions(() => portal), [portal])
+  const report = (done: boolean): void => {
+    if (!done) toast.error(t('portalFlows.hiddenBlocks.showFailed'))
+  }
+  const pick = (row: PortalBlockRow): void => void actions.show(row.key).then(report)
+  const showAll = (): void => {
+    if (!scope) return
+    const done =
+      scope.kind === 'siblings' ? actions.showAllSiblings() : actions.expandAll(scope.blockId)
+    void done.then(report)
+    onClose()
   }
 
+  const anchorRef = { current: anchorEl } as RefObject<HTMLElement>
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
+    <Popover open={scope !== null && anchorEl !== null} onOpenChange={(open) => !open && onClose()}>
+      <PopoverAnchor virtualRef={anchorRef} />
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-[340px] rounded-md p-1 shadow-[var(--shadow-card-hover)]"
+        className="w-[340px] rounded-lg p-0 shadow-[var(--shadow-dropdown)]"
       >
-        <PortalHiddenBlocksPanel
-          rows={rows}
-          onToggle={toggle}
-          onShowAll={() => updatePortalDefinition(portal.editor, portal.blockId, { hidden: [] })}
-        />
+        <PortalHiddenBlocksPanel rows={rows} onPick={pick} onShowAll={showAll} />
       </PopoverContent>
     </Popover>
   )

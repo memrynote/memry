@@ -18,7 +18,7 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 
-const host = { noteId: 'lab', title: 'Lab 4', path: 'Lab 4.md', count: 1, hiddenCount: 0 }
+const host = { noteId: 'lab', title: 'Lab 4', path: 'Lab 4.md', count: 1 }
 
 const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement }> = []
 

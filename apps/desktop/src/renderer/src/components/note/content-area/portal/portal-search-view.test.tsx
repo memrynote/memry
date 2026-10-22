@@ -26,7 +26,7 @@ vi.mock('@/services/notes-service', () => ({
 import { PortalSearchView, searchQueryLabel } from './portal-search-view'
 
 const target = { kind: 'search' as const, text: 'exam', tag: 'bio', limit: 50 }
-const definition = { target, hidden: [] }
+const definition = { v: 1 as const, target, raw: {} }
 const editor = {
   isEditable: true,
   getBlock: () => undefined,
@@ -41,7 +41,8 @@ function item(blockId: string, text: string) {
     path: 'Cell Biology.md',
     blockId,
     anchor: null,
-    text
+    text,
+    parentText: null
   }
 }
 

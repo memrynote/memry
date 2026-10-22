@@ -2,19 +2,30 @@
 //! (`parsePortalDefinition`): unknown keys are ignored, anything unreadable is
 //! `None`.
 
+use std::collections::HashMap;
+
 use serde_json::{Map, Value};
 
 use super::anchor::is_anchor;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PortalOpen {
+    /// Every child except these anchors.
+    Hide(Vec<String>),
+    /// Only these anchors.
+    Show(Vec<String>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PortalTarget {
-    Note {
+    /// The whole note: no `blocks`, nothing folded.
+    Note { note: String },
+    /// Root anchors (without the leading caret) in portal order, and which
+    /// blocks show their children. A block absent from `open` is collapsed.
+    Blocks {
         note: String,
-    },
-    /// `anchor` is without the leading caret.
-    Block {
-        note: String,
-        anchor: String,
+        blocks: Vec<String>,
+        open: HashMap<String, PortalOpen>,
     },
     /// Computed by the caller; the contents are not read here.
     Search,
@@ -23,8 +34,6 @@ pub enum PortalTarget {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortalDefinition {
     pub target: PortalTarget,
-    /// Anchors of descendants this portal does not show, deduplicated.
-    pub hidden: Vec<String>,
 }
 
 fn non_empty(value: Option<&Value>) -> Option<String> {
@@ -34,6 +43,49 @@ fn non_empty(value: Option<&Value>) -> Option<String> {
     }
 }
 
+fn read_anchors(value: Option<&Value>) -> Vec<String> {
+    let Some(Value::Array(entries)) = value else {
+        return Vec::new();
+    };
+    let mut anchors: Vec<String> = Vec::new();
+    for entry in entries {
+        if let Value::String(anchor) = entry
+            && is_anchor(anchor)
+            && !anchors.contains(anchor)
+        {
+            anchors.push(anchor.clone());
+        }
+    }
+    anchors
+}
+
+fn read_open(value: Option<&Value>) -> HashMap<String, PortalOpen> {
+    let mut open = HashMap::new();
+    let Some(Value::Object(entries)) = value else {
+        return open;
+    };
+    for (anchor, entry) in entries {
+        let Value::Object(entry) = entry else {
+            continue;
+        };
+        if !is_anchor(anchor) {
+            continue;
+        }
+        if entry.get("show").is_some_and(Value::is_array) {
+            open.insert(
+                anchor.clone(),
+                PortalOpen::Show(read_anchors(entry.get("show"))),
+            );
+        } else if entry.get("hide").is_some_and(Value::is_array) {
+            open.insert(
+                anchor.clone(),
+                PortalOpen::Hide(read_anchors(entry.get("hide"))),
+            );
+        }
+    }
+    open
+}
+
 fn read_target(json: &Map<String, Value>) -> Option<PortalTarget> {
     if let Some(Value::Object(search)) = json.get("search") {
         let usable =
@@ -41,40 +93,23 @@ fn read_target(json: &Map<String, Value>) -> Option<PortalTarget> {
         return usable.then_some(PortalTarget::Search);
     }
     let note = non_empty(json.get("note"))?;
-    match json.get("block") {
-        None => Some(PortalTarget::Note { note }),
-        Some(Value::String(anchor)) if is_anchor(anchor) => Some(PortalTarget::Block {
-            note,
-            anchor: anchor.clone(),
-        }),
-        Some(_) => None,
+    let blocks = read_anchors(json.get("blocks"));
+    if blocks.is_empty() {
+        return Some(PortalTarget::Note { note });
     }
-}
-
-fn read_hidden(value: Option<&Value>) -> Vec<String> {
-    let Some(Value::Array(entries)) = value else {
-        return Vec::new();
-    };
-    let mut hidden: Vec<String> = Vec::new();
-    for entry in entries {
-        if let Value::String(anchor) = entry
-            && is_anchor(anchor)
-            && !hidden.contains(anchor)
-        {
-            hidden.push(anchor.clone());
-        }
-    }
-    hidden
+    Some(PortalTarget::Blocks {
+        note,
+        blocks,
+        open: read_open(json.get("open")),
+    })
 }
 
 pub fn parse_portal_definition(text: &str) -> Option<PortalDefinition> {
     let Ok(Value::Object(json)) = serde_json::from_str::<Value>(text) else {
         return None;
     };
-    let target = read_target(&json)?;
     Some(PortalDefinition {
-        target,
-        hidden: read_hidden(json.get("hidden")),
+        target: read_target(&json)?,
     })
 }
 
@@ -83,21 +118,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reads_note_and_block_targets_and_ignores_unknown_keys() {
-        let note = parse_portal_definition(r#"{"note":"n1","future":[1]}"#).unwrap();
+    fn reads_note_and_blocks_targets_and_ignores_unknown_keys() {
+        let note = parse_portal_definition(r#"{"v":1,"note":"n1","future":[1]}"#).unwrap();
         assert_eq!(note.target, PortalTarget::Note { note: "n1".into() });
-        let block = parse_portal_definition(
-            r#"{"note":"n1","block":"chl-7f2a","hidden":["b9x1","b9x1","no"]}"#,
+        let empty = parse_portal_definition(r#"{"note":"n1","blocks":["no"]}"#).unwrap();
+        assert_eq!(empty.target, PortalTarget::Note { note: "n1".into() });
+
+        let blocks = parse_portal_definition(
+            r#"{"v":1,"note":"n1","blocks":["k3x9a2","p8m2qa","k3x9a2","x"],
+               "open":{"k3x9a2":{"show":["n4c8x1","BAD"]},"p8m2qa":{"hide":[]},
+                       "zzzz99":"no","bad":{"show":[]}}}"#,
         )
         .unwrap();
-        assert_eq!(
-            block.target,
-            PortalTarget::Block {
-                note: "n1".into(),
-                anchor: "chl-7f2a".into()
-            }
-        );
-        assert_eq!(block.hidden, vec!["b9x1".to_string()]);
+        let PortalTarget::Blocks { blocks, open, .. } = blocks.target else {
+            panic!("blocks target");
+        };
+        assert_eq!(blocks, vec!["k3x9a2".to_string(), "p8m2qa".to_string()]);
+        assert_eq!(open.len(), 2);
+        assert_eq!(open["k3x9a2"], PortalOpen::Show(vec!["n4c8x1".into()]));
+        assert_eq!(open["p8m2qa"], PortalOpen::Hide(Vec::new()));
     }
 
     #[test]
@@ -108,8 +147,7 @@ mod tests {
             "[]",
             "{}",
             r#"{"note":"  "}"#,
-            r#"{"note":"n1","block":"x"}"#,
-            r#"{"note":"n1","block":null}"#,
+            r#"{"blocks":["k3x9a2"]}"#,
             r#"{"search":{"limit":5}}"#,
         ] {
             assert_eq!(parse_portal_definition(text), None, "{text}");

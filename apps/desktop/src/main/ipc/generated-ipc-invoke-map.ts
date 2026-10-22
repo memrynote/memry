@@ -303,8 +303,8 @@ export interface MainIpcInvokeHandlers {
   "onboarding:detect-agents": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/onboarding-api").OnboardingAgentStatus[]>>
   "onboarding:detect-sources": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/onboarding-api").OnboardingSources>>
   "onboarding:is-memry-vault": (...args: [string]) => Awaited<Promise<boolean>>
-  "portals:get-usage": (...args: [{ noteId: string; anchor?: string | undefined; }]) => Awaited<Promise<{ hosts: { noteId: string; title: string; path: string; count: number; hiddenCount: number; }[]; }>>
-  "portals:search": (...args: [{ limit: number; text?: string | undefined; tag?: string | undefined; }]) => Awaited<Promise<{ results: { noteId: string; title: string; path: string; blockId: string; anchor: string | null; text: string; }[]; truncated: boolean; }>>
+  "portals:get-usage": (...args: [{ noteId: string; anchor?: string | undefined; }]) => Awaited<Promise<{ hosts: { noteId: string; title: string; path: string; count: number; kind?: "link" | "portal" | undefined; }[]; }>>
+  "portals:search": (...args: [{ limit: number; text?: string | undefined; tag?: string | undefined; }]) => Awaited<Promise<{ results: { noteId: string; title: string; path: string; blockId: string; anchor: string | null; text: string; parentText: string | null; }[]; truncated: boolean; }>>
   "portals:stamp-anchor": (...args: [{ noteId: string; blockId: string; }]) => Awaited<Promise<{ success: true; anchor: string; } | { success: false; reason: "missing-note" | "missing-block" | "locked"; }>>
   "properties:get": (...args: [{ entityId: string; }]) => Awaited<Promise<import("../database/queries/notes/property-queries").PropertyValue[]>>
   "properties:merge": (...args: [{ entityId: string; values: Record<string, unknown>; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/properties-api").SetPropertiesResponse>>

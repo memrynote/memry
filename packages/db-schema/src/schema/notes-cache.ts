@@ -183,8 +183,10 @@ export const propertyRefs = sqliteTable(
 )
 
 /**
- * One row per `memry-portal` fence in a note body, derived from the body by the
- * portal-refs projector and rebuildable from the vault, never synced.
+ * Rows per `memry-portal` fence in a note body, derived from the body by the
+ * portal-refs projector and rebuildable from the vault, never synced. A fence
+ * has one row per root anchor (`root` is its position in `blocks`), or a single
+ * row with `root` 0 and a NULL `anchor` when it shows a whole note or is a search.
  *
  * `source_note_id` and `anchor` are NULL for a search portal, and `anchor` is
  * NULL for a whole-note portal. There is deliberately no foreign key: a row
@@ -200,14 +202,34 @@ export const portalRefs = sqliteTable(
     ordinal: integer('ordinal').notNull(),
     sourceNoteId: text('source_note_id'),
     anchor: text('anchor'),
-    hiddenCount: integer('hidden_count').notNull().default(0),
-    kind: text('kind').$type<'note' | 'block' | 'search'>().notNull()
+    root: integer('root').notNull().default(0),
+    kind: text('kind').$type<'note' | 'blocks' | 'search'>().notNull()
   },
   (table) => [
-    primaryKey({ columns: [table.hostNoteId, table.ordinal] }),
+    primaryKey({ columns: [table.hostNoteId, table.ordinal, table.root] }),
     index('idx_portal_refs_source').on(table.sourceNoteId, table.anchor)
   ]
 )
+
+/**
+ * `[[Note#^anchor]]` links per source note, for a block's usage count.
+ * `note_links` keeps only the note half. `target_key` is the name key of the
+ * note half as written (title, alias or path form), resolved at read time.
+ */
+export const blockLinkRefs = sqliteTable(
+  'block_link_refs',
+  {
+    sourceNoteId: text('source_note_id').notNull(),
+    targetKey: text('target_key').notNull(),
+    anchor: text('anchor').notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.sourceNoteId, table.targetKey, table.anchor] }),
+    index('idx_block_link_refs_target').on(table.targetKey, table.anchor)
+  ]
+)
+
+export type BlockLinkRefRow = typeof blockLinkRefs.$inferSelect
 
 export type PortalRefRow = typeof portalRefs.$inferSelect
 export type NewPortalRefRow = typeof portalRefs.$inferInsert

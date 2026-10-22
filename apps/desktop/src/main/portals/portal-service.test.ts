@@ -85,25 +85,33 @@ describe('portal service', () => {
         {
           hostNoteId: 'hostA',
           ordinal: 0,
+          root: 0,
           sourceNoteId: 'src',
           anchor: null,
-          hiddenCount: 0,
           kind: 'note'
         },
         {
           hostNoteId: 'hostA',
           ordinal: 1,
+          root: 0,
           sourceNoteId: 'src',
           anchor: 'abc123',
-          hiddenCount: 2,
-          kind: 'block'
+          kind: 'blocks'
+        },
+        {
+          hostNoteId: 'hostA',
+          ordinal: 1,
+          root: 1,
+          sourceNoteId: 'src',
+          anchor: 'def456',
+          kind: 'blocks'
         },
         {
           hostNoteId: 'hostA',
           ordinal: 2,
+          root: 0,
           sourceNoteId: null,
           anchor: null,
-          hiddenCount: 0,
           kind: 'search'
         }
       ])
@@ -111,17 +119,29 @@ describe('portal service', () => {
         {
           hostNoteId: 'hostB',
           ordinal: 0,
+          root: 0,
           sourceNoteId: 'src',
           anchor: 'abc123',
-          hiddenCount: 1,
-          kind: 'block'
+          kind: 'blocks'
         }
       ])
 
       // `src` has no note row at all, as after a delete.
       expect(getPortalUsage({ noteId: 'src' }).hosts).toEqual([
-        { noteId: 'hostA', title: 'Alpha', path: 'notes/hostA.md', count: 2, hiddenCount: 2 },
-        { noteId: 'hostB', title: 'Beta', path: 'notes/hostB.md', count: 1, hiddenCount: 1 }
+        {
+          noteId: 'hostA',
+          title: 'Alpha',
+          path: 'notes/hostA.md',
+          count: 2,
+          kind: 'portal'
+        },
+        {
+          noteId: 'hostB',
+          title: 'Beta',
+          path: 'notes/hostB.md',
+          count: 1,
+          kind: 'portal'
+        }
       ])
       expect(getPortalUsage({ noteId: 'src', anchor: 'abc123' }).hosts.map((h) => h.count)).toEqual(
         [1, 1]
@@ -209,7 +229,8 @@ describe('portal service', () => {
           path: 'notes/n1.md',
           blockId: 'a',
           anchor: 'exam01',
-          text: 'Exam on Friday'
+          text: 'Exam on Friday',
+          parentText: null
         },
         {
           noteId: 'n1',
@@ -217,7 +238,8 @@ describe('portal service', () => {
           path: 'notes/n1.md',
           blockId: 'c',
           anchor: null,
-          text: 'Study for the EXAM'
+          text: 'Study for the EXAM',
+          parentText: null
         }
       ])
       expect(searchAll.mock.calls[0][2]).toMatchObject({ text: 'exam', types: ['note'], tags: [] })

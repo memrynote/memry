@@ -1,10 +1,10 @@
 /**
  * Where the insert flows plug their UI into the portal block's chrome.
  *
- * The block's header owns the "edit visible blocks" and hidden-count controls,
+ * The toolbar's hidden count and the inline "N hidden" rows own the triggers,
  * but the popover behind them belongs to the flows. They register a component
- * here; the header wraps its trigger in it. With none registered, the trigger
- * renders as a plain button.
+ * here; the portal renders it while a request is open. With none registered,
+ * the triggers do nothing.
  *
  * @module note/content-area/portal/portal-slots
  */
@@ -25,14 +25,24 @@ export interface PortalHandle {
   hostNoteId: string | undefined
 }
 
+/** Which hidden blocks the popover lists: the roots' neighbours, or one block's children. */
+export type PortalHiddenScope = { kind: 'siblings' } | { kind: 'children'; blockId: string }
+
 export interface PortalHiddenBlocksSlotProps {
   portal: PortalHandle
-  /** The header's trigger button; the slot decides what opening it shows. */
-  children: ReactElement
+  /** What to list; null while the popover is closed. */
+  scope: PortalHiddenScope | null
+  /** The count or row the popover hangs from. */
+  anchorEl: HTMLElement | null
+  onClose: () => void
 }
 
 /** The search portal's "edit query" trigger; `portal.definition.target` is the search. */
-export type PortalSearchQuerySlotProps = PortalHiddenBlocksSlotProps
+export interface PortalSearchQuerySlotProps {
+  portal: PortalHandle
+  /** The trigger button; the slot decides what opening it shows. */
+  children: ReactElement
+}
 
 /** A slot: `register` installs its component, the hook reads it and re-renders on change. */
 function createSlot<P>(): [

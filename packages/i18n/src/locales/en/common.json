@@ -1,48 +1,12 @@
 {
   "portalBlock": {
-    "breadcrumb": "{note} › {block}",
-    "openSource": "Open source",
-    "editVisibleBlocks": "Choose visible blocks",
-    "copyPortal": "Copy portal",
-    "copied": "Portal copied",
     "copyFailed": "Could not copy the portal",
     "hiddenCount": "{count} hidden",
-    "hiddenBlocks": "Hidden blocks",
     "windowFailed": "This portal could not be opened. Open the source note instead.",
     "definition": "Portal definition",
     "noTarget": "This portal has no target yet. Add a note to the definition, or remove the block.",
     "invalidJson": "This portal’s definition is not valid JSON. Fix it below, or remove the block.",
     "invalidShape": "This portal’s definition has no note or search. Fix it below, or remove the block.",
-    "states": {
-      "missingNote": {
-        "title": "Source note was deleted",
-        "body": "The reference is kept. If the note is restored, this comes back.",
-        "action": "Remove portal"
-      },
-      "notSynced": {
-        "title": "Waiting for {source} to sync",
-        "body": "Edits are blocked until it arrives, so nothing is lost.",
-        "action": "Retry now"
-      },
-      "cycle": {
-        "title": "This portal contains itself",
-        "body": "{source} leads back to this portal. Shown once, then stopped.",
-        "action": "Open source"
-      },
-      "locked": {
-        "title": "Locked"
-      },
-      "missingBlock": {
-        "title": "This block no longer exists",
-        "body": "The note is still there. The block was deleted or its ID changed.",
-        "action": "Pick another block"
-      },
-      "tooDeep": {
-        "title": "Portal limit reached",
-        "body": "Portals nest up to {max} levels. Deeper ones open as links.",
-        "action": "Open source"
-      }
-    },
     "search": {
       "editQuery": "Edit query",
       "count": "{count, plural, one {# block} other {# blocks}}",
@@ -51,6 +15,46 @@
       "failed": "The search could not run.",
       "retry": "Try again",
       "truncated": "Showing the first {count} matches."
+    },
+    "copiedContents": "Contents copied",
+    "copiedLink": "Link copied",
+    "actionFailed": "Could not change this portal",
+    "keepsOneBlock": "A portal keeps at least one block. Remove the portal instead.",
+    "expandChildren": "Show children",
+    "collapseChildren": "Hide children",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Include “{block}”",
+      "locked": "{note} is locked · read only",
+      "more": "More",
+      "openBeside": "Open {note} beside",
+      "click": "Click",
+      "copyContents": "Copy contents",
+      "copyLink": "Copy link",
+      "remove": "Remove portal",
+      "removeHint": "{note} keeps every block"
+    },
+    "states": {
+      "missingNote": {
+        "text": "The source note was deleted. The reference is kept.",
+        "action": "Remove"
+      },
+      "missingBlock": {
+        "text": "The block was deleted in {source}.",
+        "action": "Pick another"
+      },
+      "notSynced": {
+        "text": "Waiting for the source note to sync.",
+        "action": "Retry"
+      },
+      "cycle": {
+        "text": "This portal leads back to itself.",
+        "action": "Open source"
+      },
+      "tooDeep": {
+        "text": "Portals nest {max} deep. This one opens as a link.",
+        "action": "Open source"
+      }
     }
   },
   "capture": {

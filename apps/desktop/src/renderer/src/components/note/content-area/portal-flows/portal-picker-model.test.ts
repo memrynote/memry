@@ -25,7 +25,7 @@ const block = (
 })
 
 describe('buildPortalPickerList', () => {
-  it('lists notes before blocks and strips a trailing anchor from block text', () => {
+  it('lists blocks before notes and strips a trailing anchor from block text', () => {
     const items = buildPortalPickerList({
       notes: [note('n1', 'Cell Biology')],
       blocks: [block('n2', 'b1', 'Chloroplast ^chl-7f2a', 'chl-7f2a')],
@@ -33,10 +33,10 @@ describe('buildPortalPickerList', () => {
       ancestry: []
     })
     expect(items.map((i) => [i.kind, i.title])).toEqual([
-      ['note', 'Cell Biology'],
-      ['block', 'Chloroplast']
+      ['block', 'Chloroplast'],
+      ['note', 'Cell Biology']
     ])
-    expect(items[0]).toMatchObject({ folder: 'Lectures / Biology' })
+    expect(items[1]).toMatchObject({ folder: 'Lectures / Biology' })
   })
 
   it('caps notes and blocks separately', () => {
@@ -57,7 +57,7 @@ describe('buildPortalPickerList', () => {
       hostNoteId: 'host',
       ancestry: ['anc']
     })
-    expect(items.map((i) => i.noteId)).toEqual(['ok'])
+    expect(items.map((i) => ('noteId' in i ? i.noteId : ''))).toEqual(['ok'])
   })
 
   it('still offers a block of the host note, but not a block of a portal ancestor', () => {
@@ -67,7 +67,18 @@ describe('buildPortalPickerList', () => {
       hostNoteId: 'host',
       ancestry: ['anc']
     })
-    expect(items.map((i) => i.noteId)).toEqual(['host', 'other'])
+    expect(items.map((i) => ('noteId' in i ? i.noteId : ''))).toEqual(['host', 'other'])
+  })
+})
+
+describe('create row', () => {
+  it('closes the list with the trimmed query, and is absent for an empty one', () => {
+    const base = { notes: [note('n1')], blocks: [], hostNoteId: 'host', ancestry: [] }
+    const items = buildPortalPickerList({ ...base, query: '  Plan  ' })
+    expect(items.at(-1)).toEqual({ kind: 'create', key: 'create', title: 'Plan' })
+    expect(buildPortalPickerList({ ...base, query: ' ' }).some((i) => i.kind === 'create')).toBe(
+      false
+    )
   })
 })
 

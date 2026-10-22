@@ -19,10 +19,10 @@ export const PortalHostSchema = z.object({
   noteId: z.string(),
   title: z.string(),
   path: z.string(),
-  /** Portals in this host that point at the source (or block). */
+  /** Portals (or links, see `kind`) in this host that point at the source (or block). */
   count: z.number().int().positive(),
-  /** Blocks those portals hide. */
-  hiddenCount: z.number().int().nonnegative()
+  /** A portal to the source, or a `[[Note#^anchor]]` wiki link to it. Absent reads as a portal. */
+  kind: z.enum(['portal', 'link']).optional()
 })
 export type PortalHost = z.infer<typeof PortalHostSchema>
 
@@ -66,7 +66,9 @@ export const PortalSearchResultItemSchema = z.object({
   blockId: z.string(),
   /** The block's anchor when it already has one. */
   anchor: z.string().nullable(),
-  text: z.string()
+  text: z.string(),
+  /** The enclosing block's text, for the `Note › Parent` path in the picker. */
+  parentText: z.string().nullable()
 })
 export const PortalSearchResultSchema = z.object({
   results: z.array(PortalSearchResultItemSchema),
