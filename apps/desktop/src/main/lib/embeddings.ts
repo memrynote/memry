@@ -19,7 +19,9 @@ import type {
   EmbeddingMainToWorkerMessage,
   EmbeddingProgressMessage,
   EmbeddingProgressPhase,
-  EmbeddingWorkerToMainMessage
+  EmbeddingWorkerToMainMessage,
+  ImageEmbedder,
+  ImageEmbedOptions
 } from './embedding-model-protocol'
 import {
   EMBEDDING_DIMENSION,
@@ -496,11 +498,12 @@ class EmbeddingModelBridge {
    * Embed an image file with the vision encoder. The encoder downloads and
    * loads on the first call only; a text-only vault never reaches this.
    */
-  embedImage(image: Uint8Array): Promise<Float32Array | null> {
+  embedImage(image: Uint8Array, options: ImageEmbedOptions = {}): Promise<Float32Array | null> {
     return this.embedWithEncoder('vision', (requestId) => ({
       type: 'embed-image',
       requestId,
-      image
+      image,
+      ...options
     }))
   }
 
@@ -1180,9 +1183,9 @@ export function unloadModel(): void {
  *
  * @returns Float32Array embedding, or null on error
  */
-export async function generateImageEmbedding(image: Uint8Array): Promise<Float32Array | null> {
+export const generateImageEmbedding: ImageEmbedder = async (image, options) => {
   if (image.byteLength === 0) return null
-  return bridge.embedImage(image)
+  return bridge.embedImage(image, options)
 }
 
 /** Abort an in-flight image encoder download. No-op unless one is loading. */

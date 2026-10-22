@@ -68,7 +68,13 @@ text vectors, and a match lists the image (or the note that embeds it) with the 
   embeds. SVG files and files over 30 MB are skipped.
 - **Text and picture both count.** An image that also has text keeps its text vector (made from the
   OCR text), so a search for words in a screenshot still works, and gets a second vector from the
-  picture, so a search for what it shows works too. A match on either lists it.
+  picture, so a search for what it shows works too. A match on either lists it. The picture's own
+  vector is made from the picture and its text together, so layout, charts and handwriting count
+  alongside the words.
+- **PDF pages.** The first 8 pages of each PDF get a vector each, made from the rendered page and the
+  text read from it. Later pages are found by their text only. A page costs about 4 to 5 seconds of
+  background CPU. On a small test set (14 rendered paper pages, 28 queries) this put the right page
+  first for 93% of queries, against 79% for text alone and 82% for the picture alone.
 - **One-time download.** The first time an image needs embedding, memrynote downloads the image
   model (about 109 MB). Notes without images never trigger it, and a vault without images never
   downloads or loads it. The model unloads again after an idle period.
@@ -76,7 +82,7 @@ text vectors, and a match lists the image (or the note that embeds it) with the 
   switch under **Enable AI Features**. Off means no download, no image embedding, and images are found
   by keywords and OCR text only. Turning it off keeps existing image vectors on disk and ignores them.
   Turning it back on takes effect at the next vault open, which also embeds images added meanwhile.
-- **Existing vaults.** The first open after updating embeds your existing images in the background,
+- **Existing vaults.** The first open after updating embeds your existing images and PDF pages in the background,
   one at a time, after the vault is open. A quit part-way continues where it stopped. Renaming or
   moving an image re-embeds it under its new identity, and deleting it, or removing it from a note,
   drops its vector.

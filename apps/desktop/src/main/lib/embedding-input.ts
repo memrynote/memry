@@ -125,6 +125,28 @@ export const EMBEDDING_INPUT_VERSION = 5
  * Bump when the bytes fed to the vision encoder or its settings change (for
  * example `EMBEDDING_IMAGE_SOFT_TOKENS`), so stored image vectors are rebuilt.
  * Stale vectors keep serving until the background re-embed
- * (image_embedding_state) replaces them.
+ * (image_embedding_state) replaces them. v2 = images with text and PDF pages are
+ * embedded with that text and at `EMBEDDING_PAGE_SOFT_TOKENS` (#3129).
  */
-export const IMAGE_EMBEDDING_INPUT_VERSION = 1
+export const IMAGE_EMBEDDING_INPUT_VERSION = 2
+
+/**
+ * Characters of a page's or image's own text that join its pixels in one
+ * interleaved vector. The 8K-token window is shared: the page costs
+ * `EMBEDDING_PAGE_SOFT_TOKENS` soft tokens and 2500 characters of OCR
+ * text about 1K, so a page with its text stays near 1.3K tokens, well inside
+ * the window and about the size of a text-only window.
+ */
+export const MAX_INTERLEAVED_TEXT_LENGTH = 2500
+
+/**
+ * The model input for a page or image together with the text read from it:
+ * the document prefix, the text, then the image placeholder the processor
+ * expands to the image's soft tokens. Null when there is too little text to
+ * add signal, in which case the image is embedded alone.
+ */
+export function buildInterleavedInput(text: string | null | undefined): string | null {
+  const body = text?.trim() ?? ''
+  if (body.length < MIN_EMBEDDING_TEXT_LENGTH) return null
+  return `title: none | text: ${body.slice(0, MAX_INTERLEAVED_TEXT_LENGTH)} <|image|>`
+}

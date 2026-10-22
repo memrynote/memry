@@ -12,6 +12,7 @@ import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
 import type {
   EmbeddingEncoderModality,
   EmbeddingMainToWorkerMessage,
+  ImageEmbedOptions,
   EmbeddingProgressPhase,
   EmbeddingWorkerToMainMessage
 } from './embedding-model-protocol'
@@ -41,7 +42,7 @@ interface ModelProgress {
 interface Embedder {
   embed(text: string): Promise<Float32Array>
   /** Absent on the text-only model, which has no vision session. */
-  embedImage?(image: Uint8Array): Promise<Float32Array>
+  embedImage?(image: Uint8Array, options?: ImageEmbedOptions): Promise<Float32Array>
   /** Absent unless the audio encoder was requested. */
   embedAudio?(audio: Float32Array): Promise<Float32Array>
   dispose(): Promise<void>
@@ -221,16 +222,22 @@ async function loadEmbeddingPipeline(
         : {}),
       ...(processor && withVision
         ? {
-            embedImage: (image: Uint8Array): Promise<Float32Array> =>
+            embedImage: (image: Uint8Array, options?: ImageEmbedOptions): Promise<Float32Array> =>
               track(
                 (async () => {
                   const raw = await RawImage.fromBlob(new Blob([image as BlobPart]))
+                  // Callers embed one image at a time, so setting the budget here
+                  // cannot race another image's preprocessing.
+                  ;(
+                    processor as unknown as { image_processor: { max_soft_tokens: number } }
+                  ).image_processor.max_soft_tokens =
+                    options?.softTokens ?? EMBEDDING_IMAGE_SOFT_TOKENS
                   const inputs = await (
                     processor as unknown as (
-                      text: null,
+                      text: string | null,
                       image: unknown
                     ) => Promise<Record<string, unknown>>
-                  )(null, raw)
+                  )(options?.text ?? null, raw)
                   const output = (await model(inputs)) as ModelOutput
                   return truncateEmbedding(output.sentence_embedding.data)
                 })()
@@ -345,7 +352,12 @@ async function handleEmbedImage(
   try {
     const embedder = await loadEmbeddingPipeline({ vision: true })
     if (!embedder.embedImage) throw new Error('Image encoder is not loaded')
-    const embedding = Array.from(await embedder.embedImage(message.image))
+    const embedding = Array.from(
+      await embedder.embedImage(message.image, {
+        text: message.text,
+        softTokens: message.softTokens
+      })
+    )
 
     parentPort.postMessage({
       type: 'embed-result',

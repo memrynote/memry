@@ -1,17 +1,32 @@
 import { sql } from 'drizzle-orm'
 import { getExtension, getFileType } from '@memry/shared/file-types'
 import type Database from 'better-sqlite3'
+import { MAX_EMBEDDED_PDF_PAGES } from '../../lib/embeddings-constants'
 import type { IndexDb } from '../types'
 
-/** An image whose bytes the vision encoder can read, and where its vector is keyed. */
+/**
+ * An image, or one page of a PDF, that the vision encoder can read, and where
+ * its vector is keyed.
+ */
 export interface ImageSource {
   noteId: string
-  /** Empty for a filed image's own file, else a file name in the note's attachments folder. */
+  /**
+   * Empty for a filed image's own file, else a file name in the note's
+   * attachments folder; a PDF page adds `#<page>` (`#3`, `scan.pdf#3`).
+   */
   source: string
-  /** Size and mtime of the bytes, from the text extraction job that read the same file. */
+  /**
+   * Size and mtime of the bytes, from the text extraction job that read the same
+   * file, and the length of the text read from it: the vector joins that text,
+   * so a new read (another OCR language) is a new input.
+   */
   signature: string
   /** Vault-relative path of the file. */
   path: string
+  /** 1-based page of the PDF at `path`; null for an image file. */
+  page: number | null
+  /** Text read from the image or page, joined to its pixels; empty when none was read. */
+  text: string
   /** False while the file's OCR job is still `pending`: its bytes are about to be handed over. */
   settled: boolean
 }
@@ -42,6 +57,7 @@ interface JobRow {
   source: string
   signature: string
   status: string
+  pageCount: number | null
   notePath: string
   noteFileType: string | null
 }
@@ -56,7 +72,7 @@ interface JobRow {
  */
 export function listImageSources(db: IndexDb, noteIds?: readonly string[]): ImageSource[] {
   const rows = db.all<JobRow>(sql`
-    SELECT j.note_id AS noteId, j.source AS source, j.signature AS signature, j.status AS status,
+    SELECT j.note_id AS noteId, j.source AS source, j.signature AS signature, j.status AS status, j.page_count AS pageCount,
       nc.path AS notePath, nc.file_type AS noteFileType
     FROM file_text_jobs j
     JOIN note_cache nc ON nc.id = j.note_id
@@ -69,29 +85,63 @@ export function listImageSources(db: IndexDb, noteIds?: readonly string[]): Imag
         : sql``
     }
   `)
+  const texts = readSourceTexts(db, noteIds)
   const sources: ImageSource[] = []
   for (const row of rows) {
     const settled = row.status !== 'pending'
-    if (row.source === '') {
-      if (row.noteFileType !== 'image' || !isEmbeddableImageName(row.notePath)) continue
-      sources.push({
-        noteId: row.noteId,
-        source: '',
-        signature: row.signature,
-        path: row.notePath,
-        settled
-      })
-    } else if (isEmbeddableImageName(row.source)) {
+    const filePath = row.source === '' ? row.notePath : `attachments/${row.noteId}/${row.source}`
+    const fileType = row.source === '' ? row.noteFileType : attachmentType(row.source)
+    const pageText = (page: number): string =>
+      texts.get(`${row.noteId}/${row.source}/${page}`) ?? ''
+    if (fileType === 'image' && isEmbeddableImageName(filePath)) {
+      const text = pageText(1)
       sources.push({
         noteId: row.noteId,
         source: row.source,
-        signature: row.signature,
-        path: `attachments/${row.noteId}/${row.source}`,
+        signature: `${row.signature}|${text.length}`,
+        path: filePath,
+        page: null,
+        text,
         settled
       })
+    } else if (fileType === 'pdf') {
+      const pages = Math.min(row.pageCount ?? 0, MAX_EMBEDDED_PDF_PAGES)
+      for (let page = 1; page <= pages; page++) {
+        const text = pageText(page)
+        sources.push({
+          noteId: row.noteId,
+          source: `${row.source}#${page}`,
+          signature: `${row.signature}|${text.length}`,
+          path: filePath,
+          page,
+          text,
+          settled
+        })
+      }
     }
   }
   return sources
+}
+
+function attachmentType(fileName: string): string | null {
+  return getFileType(getExtension(fileName).toLowerCase())
+}
+
+/** Extracted text of images and of the first pages of PDFs, by `noteId/source/part`. */
+function readSourceTexts(db: IndexDb, noteIds?: readonly string[]): Map<string, string> {
+  const rows = db.all<{ noteId: string; source: string; part: number; text: string }>(sql`
+    SELECT note_id AS noteId, source, part, text FROM extracted_text
+    WHERE part <= ${MAX_EMBEDDED_PDF_PAGES} AND text != ''
+    ${
+      noteIds
+        ? sql`AND note_id IN (${sql.join(
+            noteIds.map((id) => sql`${id}`),
+            sql`, `
+          )})`
+        : sql``
+    }
+  `)
+  return new Map(rows.map((row) => [`${row.noteId}/${row.source}/${row.part}`, row.text]))
 }
 
 export function listImageEmbeddingState(db: IndexDb, noteId?: string): ImageEmbeddingStateRow[] {

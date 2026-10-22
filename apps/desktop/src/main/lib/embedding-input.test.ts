@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   buildEmbeddingChunks,
   buildEmbeddingInput,
+  buildInterleavedInput,
+  MAX_INTERLEAVED_TEXT_LENGTH,
   MAX_EMBEDDING_CHUNKS,
   buildQueryEmbeddingInput,
   MAX_EMBEDDING_INPUT_LENGTH
@@ -81,5 +83,24 @@ describe('buildEmbeddingChunks', () => {
   it('cuts a note at the window cap', () => {
     const windows = buildEmbeddingChunks({ title: 'T', content: 'x'.repeat(500_000) })
     expect(windows).toHaveLength(MAX_EMBEDDING_CHUNKS)
+  })
+})
+
+describe('buildInterleavedInput', () => {
+  it('puts the text before the image placeholder under the document prefix', () => {
+    expect(buildInterleavedInput('  Invoice total 42 EUR  ')).toBe(
+      'title: none | text: Invoice total 42 EUR <|image|>'
+    )
+  })
+
+  it('cuts long text so the page keeps its share of the window', () => {
+    const input = buildInterleavedInput('x'.repeat(10_000)) ?? ''
+    expect(input).toBe(`title: none | text: ${'x'.repeat(MAX_INTERLEAVED_TEXT_LENGTH)} <|image|>`)
+  })
+
+  it('is null when there is too little text, so the image is embedded alone', () => {
+    expect(buildInterleavedInput('  hi ')).toBeNull()
+    expect(buildInterleavedInput('')).toBeNull()
+    expect(buildInterleavedInput(null)).toBeNull()
   })
 })
