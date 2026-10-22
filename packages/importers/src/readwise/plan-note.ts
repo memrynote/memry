@@ -71,12 +71,20 @@ export function bookUrl(book: ReadwiseBook): string {
   return book.readwise_url || `https://readwise.io/bookreview/${book.user_book_id}`
 }
 
-function folderFor(category: string, root: string, layout: FolderLayout): string {
+/** The root, or `sub` under it for the `by-category` layout (D3). */
+export function folderUnder(root: string, layout: FolderLayout, sub: string): string {
   let base = root
   while (base.endsWith('/')) base = base.slice(0, -1)
   if (layout === 'flat') return base
-  const sub = isKnownCategory(category) ? CATEGORY_FOLDERS[category] : OTHER_FOLDER
   return base ? `${base}/${sub}` : sub
+}
+
+function folderFor(category: string, root: string, layout: FolderLayout): string {
+  return folderUnder(
+    root,
+    layout,
+    isKnownCategory(category) ? CATEGORY_FOLDERS[category] : OTHER_FOLDER
+  )
 }
 
 /**
