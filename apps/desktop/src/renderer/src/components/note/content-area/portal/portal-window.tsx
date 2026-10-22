@@ -68,6 +68,8 @@ const keepInsideWindow = (event: SyntheticEvent): void => event.stopPropagation(
 export interface PortalWindowProps {
   /** The portal block in the host editor, for the window registry. */
   portalBlockId: string
+  /** This draw of the portal block (`PortalInstanceContext`). */
+  instanceId: string
   target: PortalWindowTarget
   /** The portals this one sits inside, host included. */
   ancestry: PortalAncestry
@@ -82,6 +84,7 @@ export interface PortalWindowProps {
 
 export function PortalWindow({
   portalBlockId,
+  instanceId,
   target,
   ancestry,
   sourcePath,
@@ -101,6 +104,7 @@ export function PortalWindow({
     container: frameRef,
     enabled: near,
     portalBlockId,
+    instanceId,
     sourceNoteId: target.note,
     spec: target,
     onResolve,

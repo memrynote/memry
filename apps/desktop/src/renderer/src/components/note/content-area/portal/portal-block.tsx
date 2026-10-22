@@ -20,6 +20,7 @@
 import React, {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -31,6 +32,7 @@ import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { PORTAL_BLOCK_LANGUAGE, type ParsedPortal } from '@memry/shared/portal-block'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
+import { PortalInstanceContext } from './portal-context'
 import { usePortalKeysPlugin, type PortalKeysEditor } from './portal-keys-plugin'
 import { PortalNoteView } from './portal-note-view'
 import { PortalSearchView } from './portal-search-view'
@@ -137,6 +139,8 @@ export function PortalBlockRenderer({
   const frameRef = useRef<HTMLDivElement>(null)
   useClaimPresses(frameRef)
   usePortalKeysPlugin(editor)
+  // One id per mounted draw of this block: the same block can be drawn by several editors.
+  const instanceId = useId()
 
   const target = parsed.ok ? parsed.definition.target : null
   const body = useMemo(() => {
@@ -176,24 +180,26 @@ export function PortalBlockRenderer({
   const showSource = caretInside || problem !== null
 
   return (
-    <div className="memry-portal-block my-1 w-full" data-memry-portal="">
-      <div ref={frameRef} contentEditable={false}>
-        {body}
-        {problem ? (
-          <p className="pb-1 text-xs text-destructive" role="alert">
-            {problem}
-          </p>
-        ) : null}
-      </div>
-      <div className={cn('memry-portal-block-source mt-1.5', !showSource && 'hidden')}>
-        <div contentEditable={false} className="pb-1 text-[11px] text-muted-foreground">
-          {t('portalBlock.definition')}
+    <PortalInstanceContext.Provider value={instanceId}>
+      <div className="memry-portal-block my-1 w-full" data-memry-portal="">
+        <div ref={frameRef} contentEditable={false}>
+          {body}
+          {problem ? (
+            <p className="pb-1 text-xs text-destructive" role="alert">
+              {problem}
+            </p>
+          ) : null}
         </div>
-        <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-[0.8125rem]">
-          <code ref={contentRef} />
-        </pre>
+        <div className={cn('memry-portal-block-source mt-1.5', !showSource && 'hidden')}>
+          <div contentEditable={false} className="pb-1 text-[11px] text-muted-foreground">
+            {t('portalBlock.definition')}
+          </div>
+          <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-[0.8125rem]">
+            <code ref={contentRef} />
+          </pre>
+        </div>
       </div>
-    </div>
+    </PortalInstanceContext.Provider>
   )
 }
 

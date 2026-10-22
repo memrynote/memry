@@ -27,6 +27,7 @@ function handle(fence: string) {
   }
   const portal: PortalHandle = {
     blockId: 'p',
+    instanceId: 'i1',
     editor,
     definition: parsed.definition,
     sourceNoteId: 'src',

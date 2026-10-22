@@ -8,9 +8,11 @@
  * editor (a note that binds to its Y.Doc after first paint), so a mutation
  * observer re-attaches to whichever editor is current.
  *
- * Three plugins go on together: the window itself, the anchor hider, and the
- * boundary keys (ahead of the editor's own key handlers, so Enter and Backspace
- * at the window's edges reach them first).
+ * Five plugins go on together: the window itself, the drop guard, the side
+ * menu hit-test, the undo hand-off, and the boundary keys (the last two ahead of the editor's own key
+ * handlers, so Enter, Backspace and Cmd+Z reach them first). The side menus of
+ * this editor and of the ones around it are told to let the innermost editor
+ * win the hit-test, so the block handle appears inside the window.
  *
  * Until a plugin is on, the caller keeps the editor out of sight: an editor
  * with no window would show the whole source note.
@@ -24,7 +26,10 @@ import type { EditorView } from '@tiptap/pm/view'
 import { createLogger } from '@/lib/logger'
 import { registerEditorPlugin } from '../register-editor-plugin'
 import { createPortalBoundaryPlugin } from './portal-boundary-plugin'
+import { createPortalDropGuardPlugin } from './portal-drop-guard-plugin'
 import type { PortalPlan } from './portal-plans'
+import { createInnermostSideMenuPlugin } from './portal-window-side-menu'
+import { createPortalUndoRoutePlugin } from './portal-undo-route'
 import {
   createPortalWindowPlugin,
   setPortalWindowSpec,
@@ -50,6 +55,8 @@ export function usePortalWindowPlugin(options: {
   /** Attach only once the nested editor is mounted. */
   enabled: boolean
   portalBlockId: string
+  /** This draw of the portal block; with the block id it keys the registry entry. */
+  instanceId: string
   sourceNoteId: string
   spec: PortalWindowSpec
   onResolve: (resolution: PortalWindowResolution) => void
@@ -58,8 +65,17 @@ export function usePortalWindowPlugin(options: {
   /** Called with whether a plugin is currently attached. */
   onAttached: (attached: boolean) => void
 }): void {
-  const { container, enabled, portalBlockId, sourceNoteId, spec, onResolve, onPlan, onAttached } =
-    options
+  const {
+    container,
+    enabled,
+    portalBlockId,
+    instanceId,
+    sourceNoteId,
+    spec,
+    onResolve,
+    onPlan,
+    onAttached
+  } = options
   const specRef = useRef(spec)
   const onResolveRef = useRef(onResolve)
   const onPlanRef = useRef(onPlan)
@@ -103,20 +119,45 @@ export function usePortalWindowPlugin(options: {
         createPortalBoundaryPlugin({ onPlan: (next) => onPlanRef.current(next) }),
         (boundary, plugins) => [boundary, ...plugins]
       )
-      if (!unregisterPlugin || !unregisterBoundary) {
+      const unregisterDropGuard = registerEditorPlugin(editor, createPortalDropGuardPlugin())
+      const unregisterUndoRoute = registerEditorPlugin(
+        editor,
+        createPortalUndoRoutePlugin(),
+        (route, plugins) => [route, ...plugins]
+      )
+      const unregisterHitTest = registerEditorPlugin(editor, createInnermostSideMenuPlugin())
+      if (
+        !unregisterPlugin ||
+        !unregisterBoundary ||
+        !unregisterDropGuard ||
+        !unregisterUndoRoute ||
+        !unregisterHitTest
+      ) {
+        unregisterHitTest?.()
+        unregisterUndoRoute?.()
+        unregisterDropGuard?.()
         unregisterBoundary?.()
         unregisterPlugin?.()
-        log.error('Could not attach the portal window to the nested editor', { portalBlockId })
+        log.error('Could not attach the portal window to the nested editor', {
+          portalBlockId,
+          instanceId
+        })
         return
       }
-      const unregisterWindow = registerPortalWindow(portalBlockId, {
-        view: tiptap.view,
-        sourceNoteId
-      })
+      const unregisterWindow = registerPortalWindow(
+        { blockId: portalBlockId, instanceId },
+        {
+          view: tiptap.view,
+          sourceNoteId
+        }
+      )
       attached = {
         tiptap,
         detach: () => {
           unregisterWindow()
+          unregisterHitTest()
+          unregisterUndoRoute()
+          unregisterDropGuard()
           unregisterBoundary()
           unregisterPlugin()
         }
@@ -132,7 +173,7 @@ export function usePortalWindowPlugin(options: {
       observer.disconnect()
       detach()
     }
-  }, [container, enabled, portalBlockId, sourceNoteId])
+  }, [container, enabled, portalBlockId, instanceId, sourceNoteId])
 
   // A new spec is a new object every render; its content is its identity.
   const specKey = JSON.stringify(spec)

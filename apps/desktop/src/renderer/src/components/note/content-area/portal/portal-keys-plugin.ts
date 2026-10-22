@@ -22,10 +22,10 @@
 import { useEffect } from 'react'
 import type { BlockNoteEditor } from '@blocknote/core'
 import { NodeSelection, Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state'
-import type { EditorState } from '@tiptap/pm/state'
+import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
+import { PORTAL_BLOCK_LANGUAGE, parsePortalDefinition } from '@memry/shared/portal-block'
 import {
   PORTAL_EXIT_EVENT,
   PORTAL_SELECT_EVENT,
@@ -116,6 +116,50 @@ function leaveWindow(
   view.focus()
 }
 
+/** The portal container around the caret, when the selection is a caret inside its definition. */
+function portalAroundCaret(state: EditorState): { pos: number; node: PMNode } | null {
+  const { selection } = state
+  if (!(selection instanceof TextSelection)) return null
+  const { $from, $to } = selection
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const node = $from.node(depth)
+    if (isPortalContainer(node)) {
+      return $to.pos <= $from.end(depth) ? { pos: $from.before(depth), node } : null
+    }
+  }
+  return null
+}
+
+/**
+ * A selection that moves into a portal's definition without the user pointing
+ * at it (an arrow, Meta+Arrow, Home/End, a programmatic move) selects the
+ * portal as one block instead. A press on the visible definition is the
+ * opt-in, as is a definition that cannot be read: it is shown, and the user
+ * has to be able to fix it.
+ */
+function guardDefinition(
+  transactions: readonly Transaction[],
+  oldState: EditorState,
+  newState: EditorState
+): Transaction | null {
+  if (transactions.some((tr) => tr.docChanged || tr.getMeta('pointer'))) return null
+  if (!transactions.some((tr) => tr.selectionSet)) return null
+  const inside = portalAroundCaret(newState)
+  if (!inside) return null
+  if (portalAroundCaret(oldState)?.node.attrs.id === inside.node.attrs.id) return null
+  if (!parsePortalDefinition(inside.node.textContent).ok) return null
+  return newState.tr.setSelection(NodeSelection.create(newState.doc, inside.pos))
+}
+
+/** An empty paragraph (holding `text`) after the selected portal, with the caret at its end. */
+function paragraphAfter(state: EditorState, selection: NodeSelection, text: string): Transaction {
+  const { blockContainer, paragraph } = state.schema.nodes
+  const line = paragraph.create(null, text ? state.schema.text(text) : undefined)
+  const node = blockContainer.create({ id: crypto.randomUUID() }, line)
+  const tr = state.tr.insert(selection.to, node)
+  return tr.setSelection(TextSelection.create(tr.doc, selection.to + 2 + text.length))
+}
+
 export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
   return new Plugin({
     key: portalKeysPluginKey,
@@ -147,6 +191,8 @@ export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
     // the hidden JSON where the selection was. The next Backspace would then
     // edit the definition. A portal that was selected stays selected.
     appendTransaction(transactions, oldState, newState) {
+      const guarded = guardDefinition(transactions, oldState, newState)
+      if (guarded) return guarded
       const before = oldState.selection
       if (!(before instanceof NodeSelection) || !isPortalContainer(before.node)) return null
       if (!transactions.some((tr) => tr.docChanged)) return null
@@ -173,6 +219,19 @@ export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
           }
           if (event.shiftKey) editor.unnestBlock()
           else editor.nestBlock()
+          return true
+        }
+        // Enter or a printable key on a selected portal starts the line after
+        // it. Replacing the block, or editing its fence, would lose the portal.
+        // Read from keydown: a node selection receives no text input event.
+        const starts = event.key === 'Enter' ? !event.shiftKey : event.key.length === 1
+        if (starts) {
+          const { selection } = state
+          if (!(selection instanceof NodeSelection) || !isPortalContainer(selection.node)) {
+            return false
+          }
+          const text = event.key === 'Enter' ? '' : event.key
+          view.dispatch(paragraphAfter(state, selection, text).scrollIntoView())
           return true
         }
         if (event.shiftKey) return false

@@ -10,10 +10,16 @@
  * - An anchor belongs to one block. When a local edit leaves it on another
  *   block, it goes back to the block that held it before:
  *   split mid-text      first half keeps it, the second half's copy is removed
+ *   split at the start  the empty first half gives it to the second (the original text)
  *   join with a block   the merged text goes before it, the anchor stays last
  *   paste               a pasted block carrying an anchor the note already has
  *                       loses it (first in document order keeps it otherwise)
  *   Remote changes (sync) are never rewritten.
+ * - Typing cannot land after the anchor: the caret is moved to the visible end
+ *   synchronously (keydown, beforeinput, compositionstart, paste, selectionchange)
+ *   and text input / Backspace that arrive with the caret still past it are
+ *   redirected to the visible end. Text that did land after a known anchor in
+ *   a local transaction (`x ^dna1QQ`) is moved back before it.
  *
  * Wire-up: `createAnchorVisibilityExtension()` returns a tiptap extension for
  * the editors that build their own extension list; the portal window attaches
@@ -24,9 +30,10 @@
 
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state'
-import type { Transaction } from '@tiptap/pm/state'
+import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import type { EditorView } from '@tiptap/pm/view'
 import { ySyncPluginKey } from 'y-prosemirror'
 import { extractAnchor } from '@memry/shared/portal-block'
 
@@ -183,6 +190,9 @@ function anchorFixes(before: AnchorScan, after: AnchorScan): Edit[] {
       continue
     }
     if (owner.anchor === anchor) continue
+    // Split at the very start: the owner is the empty first half and the text
+    // (with its anchor) moved to the second. The anchor stays with the text.
+    if (owner.node.textContent.trim() === '' && group.length === 1) continue
     // The owner lost the anchor: to a split-off block, or into the text of a join.
     for (const block of group) strip(block)
     const text = owner.node.textContent
@@ -203,6 +213,57 @@ function anchorFixes(before: AnchorScan, after: AnchorScan): Edit[] {
   return edits
 }
 
+interface Heal {
+  block: AnchorBlock
+  anchor: string
+  /** Text offsets in the block: where ` ^anchor` starts and where the extra text starts and ends. */
+  anchorStart: number
+  extraStart: number
+  extraEnd: number
+}
+
+/**
+ * A block that was `<visible> ^A` and is now `<visible> ^A<extra>`: typing landed
+ * after its hidden anchor. Only the anchor the block carried before counts, so
+ * text that merely contains something anchor-like is left alone.
+ */
+function findHeal(before: AnchorScan, after: AnchorScan): Heal | null {
+  const oldById = new Map(before.blocks.map((b) => [b.id, b]))
+  for (const block of after.blocks) {
+    const old = oldById.get(block.id)
+    if (!old?.anchor || block.anchor === old.anchor) continue
+    const tail = `^${old.anchor}`
+    if (!old.node.textContent.endsWith(tail)) continue
+    const text = block.node.textContent
+    const at = text.lastIndexOf(tail)
+    if (at < 0 || at + tail.length >= text.length) continue
+    if (at > 0 && !/\s/.test(text[at - 1])) continue
+    return {
+      block,
+      anchor: old.anchor,
+      anchorStart: at > 0 ? at - 1 : at,
+      extraStart: at + tail.length,
+      extraEnd: text.length
+    }
+  }
+  return null
+}
+
+/** One transaction that moves the extra text before the anchor and keeps the caret after it. */
+function healTransaction(state: EditorState, heal: Heal): Transaction {
+  const { block } = heal
+  const extraFrom = posAtTextOffset(block, heal.extraStart)
+  const extraTo = posAtTextOffset(block, heal.extraEnd)
+  const insertAt = posAtTextOffset(block, heal.anchorStart)
+  const extra = state.doc.slice(extraFrom, extraTo).content
+  const caretInExtra = state.selection.empty && state.selection.head >= extraFrom
+  const tr = state.tr.delete(extraFrom, extraTo).insert(insertAt, extra)
+  if (caretInExtra && state.selection.head <= extraTo) {
+    tr.setSelection(TextSelection.create(tr.doc, insertAt + extra.size))
+  }
+  return tr
+}
+
 function isLocalDocChange(tr: Transaction): boolean {
   return tr.docChanged && !tr.getMeta(ySyncPluginKey)?.isChangeOrigin
 }
@@ -215,6 +276,28 @@ function snapCaret(selection: Selection): number | null {
   return end !== null && selection.head > end ? end : null
 }
 
+/**
+ * Moves a caret that is in, or (per the DOM) after, a hidden anchor to the
+ * visible end right now. The DOM selection is read directly because it can be
+ * ahead of the editor state when keys arrive faster than selectionchange is
+ * processed.
+ */
+function snapToVisibleEnd(view: EditorView): void {
+  const state = view.state
+  let target = snapCaret(state.selection)
+  if (target === null && view.hasFocus()) {
+    const dom = view.dom.ownerDocument.getSelection()
+    if (dom?.isCollapsed && dom.anchorNode && view.dom.contains(dom.anchorNode)) {
+      const head = view.posAtDOM(dom.anchorNode, dom.anchorOffset)
+      const block = blockAtCaret(state.doc.resolve(head))
+      const end = block ? visibleEnd(block) : null
+      if (end !== null && head > end) target = end
+    }
+  }
+  if (target === null) return
+  view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, target)))
+}
+
 export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
   return new Plugin<AnchorScan>({
     key: anchorVisibilityKey,
@@ -225,18 +308,78 @@ export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
     props: {
       decorations: (state) => anchorVisibilityKey.getState(state)?.decorations ?? null,
       handleKeyDown(view, event) {
-        if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return false
-        if (event.key !== 'ArrowRight' && event.key !== 'Delete') return false
+        snapToVisibleEnd(view)
         const { selection } = view.state
         const block = selection.empty ? blockAtCaret(selection.$head) : null
-        if (!block || selection.head !== visibleEnd(block)) return false
+        const end = block ? visibleEnd(block) : null
+        if (!block || end === null) return false
+        const lineEnd =
+          !event.shiftKey &&
+          !event.altKey &&
+          ((event.key === 'End' && !event.metaKey) ||
+            (event.key === 'ArrowRight' && event.metaKey && !event.ctrlKey))
+        if (lineEnd && selection.head !== end && view.endOfTextblock('down')) {
+          view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)))
+          return true
+        }
+        if (selection.head < end) return false
+        const plain = !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
+        if (!plain) return false
+        if (event.key === 'Backspace') {
+          // Native Backspace after a hidden span would eat the anchor.
+          const $end = view.state.doc.resolve(end)
+          const prev = $end.nodeBefore
+          if (!prev || $end.parentOffset === 0) return false
+          let size = prev.nodeSize
+          if (prev.isText) {
+            const text = prev.text ?? ''
+            const low = text.charCodeAt(text.length - 1)
+            size = low >= 0xdc00 && low <= 0xdfff && text.length > 1 ? 2 : 1
+          }
+          view.dispatch(view.state.tr.delete(end - size, end).scrollIntoView())
+          return true
+        }
+        if (event.key !== 'ArrowRight' && event.key !== 'Delete') return false
         // Past the visible text is past the block: cross it, never into the anchor.
         if (event.key === 'Delete') return true
-        const end = block.pos + block.node.nodeSize
-        const next = Selection.findFrom(view.state.doc.resolve(end), 1, true)
+        const blockEnd = block.pos + block.node.nodeSize
+        const next = Selection.findFrom(view.state.doc.resolve(blockEnd), 1, true)
         if (next) view.dispatch(view.state.tr.setSelection(next).scrollIntoView())
         return next !== null
+      },
+      handleTextInput(view, from, to, text) {
+        const block = blockAtCaret(view.state.doc.resolve(from))
+        const end = block ? visibleEnd(block) : null
+        if (end === null || to < end || from > to) return false
+        const { doc } = view.state
+        if (doc.resolve(to).parent !== doc.resolve(from).parent) return false
+        // Typing at or after the hidden anchor, or over a range that reaches into it: the visible end.
+        if (from < end && to === end) return false
+        const start = Math.min(from, end)
+        const tr = view.state.tr.insertText(text, start, end)
+        view.dispatch(tr.setSelection(TextSelection.create(tr.doc, start + text.length)))
+        return true
+      },
+      handlePaste(view) {
+        snapToVisibleEnd(view)
+        return false
+      },
+      handleDOMEvents: {
+        beforeinput: (view) => {
+          snapToVisibleEnd(view)
+          return false
+        },
+        compositionstart: (view) => {
+          snapToVisibleEnd(view)
+          return false
+        }
       }
+    },
+    view(view) {
+      const doc = view.dom.ownerDocument
+      const onSelectionChange = (): void => snapToVisibleEnd(view)
+      doc.addEventListener('selectionchange', onSelectionChange)
+      return { destroy: () => doc.removeEventListener('selectionchange', onSelectionChange) }
     },
     appendTransaction(trs, oldState, newState) {
       const before = anchorVisibilityKey.getState(oldState)
@@ -244,6 +387,8 @@ export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
       if (!before || !after) return null
       let tr: Transaction | null = null
       if (trs.some(isLocalDocChange)) {
+        const heal = findHeal(before, after)
+        if (heal) return healTransaction(newState, heal)
         const edits = anchorFixes(before, after).sort((a, b) => b.from - a.from)
         if (edits.length > 0) {
           tr = newState.tr

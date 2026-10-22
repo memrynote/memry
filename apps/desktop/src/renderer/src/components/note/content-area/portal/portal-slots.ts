@@ -17,6 +17,8 @@ import type { PortalEditorLike } from './portal-definition'
 export interface PortalHandle {
   /** The portal block's id in the editor holding it. */
   blockId: string
+  /** This draw of the block (see `PortalInstanceContext`); keys its window. */
+  instanceId: string
   editor: PortalEditorLike
   definition: PortalDefinition
   /** The note the portal reads from; null for a search portal. */

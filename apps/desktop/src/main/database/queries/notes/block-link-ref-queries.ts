@@ -42,9 +42,9 @@ export interface LinkUsageRow {
 }
 
 /**
- * Other notes that link to `noteId`. With `anchor`, only `[[Note#^anchor]]`
- * links to that block, matched through the note's title, aliases and path
- * forms. Without it, every wiki link to the note. A source whose note row is
+ * Other notes that link to `noteId`. With `anchor`, only links to that block
+ * (`[[Note#^anchor]]`, `[[memry://note/<id>#^anchor]]`, markdown links),
+ * matched through the note's id, title, aliases and path forms. Without it, every wiki link to the note. A source whose note row is
  * gone is left out.
  */
 export function getLinkUsage(db: IndexDb, noteId: string, anchor?: string): LinkUsageRow[] {
@@ -75,8 +75,9 @@ export function getLinkUsage(db: IndexDb, noteId: string, anchor?: string): Link
       .where(eq(noteNames.noteId, noteId))
       .all()
       .map((row) => row.key),
-    ...pathLinkKeys(note.path)
-  ]
+    ...pathLinkKeys(note.path),
+    nameKey(`memry://note/${noteId}`)
+  ].filter((key) => key !== null)
   return db
     .selectDistinct(select)
     .from(blockLinkRefs)

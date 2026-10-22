@@ -47,6 +47,17 @@ describe('block-link-refs projector', () => {
     expect(broadcastToAllWindows).toHaveBeenCalledTimes(1)
   })
 
+  it('indexes id-form wiki links and markdown block links under the note id', async () => {
+    const projector = createBlockLinkRefsProjector()
+    await projector.project(
+      upsert('host', '[[memry://note/n1#^blk1]] and [t](memry://note/n1?label=X#^blk2)')
+    )
+    const rows = getBlockLinkRefsForSource(indexDb.db, 'host')
+      .map((row) => `${row.targetKey}#${row.anchor}`)
+      .sort()
+    expect(rows).toEqual(['memry://note/n1#blk1', 'memry://note/n1#blk2'])
+  })
+
   it('keeps rows when the body was not read, and drops them with the note', async () => {
     const projector = createBlockLinkRefsProjector()
     await projector.project(upsert('host', '[[Cell Biology#^chl-7f2a]]'))

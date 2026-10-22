@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { type Block } from '@blocknote/core'
 import {
   splitMarkdownPreservingBlanks,
@@ -701,7 +702,15 @@ export async function serializeBlocksPreservingBlanks(
     const md = await serializeBlocks(editor, contentGroup)
     segments.push({ type: 'content', text: md.trim() })
   }
-  if (emptyCount > 0) {
+  // The host editor keeps an empty paragraph after a trailing portal so the
+  // caret has somewhere to go (portal-trailing-paragraph-plugin). It is not
+  // content: a file ending in the fence stays byte-identical on every save.
+  const lastBlock = blocks.findLast((block) => !isEmptyParagraph(block))
+  const endsInPortal =
+    lastBlock !== undefined &&
+    (lastBlock.type as string) === 'codeBlock' &&
+    (lastBlock.props as { language?: string }).language === PORTAL_BLOCK_LANGUAGE
+  if (emptyCount > 0 && !endsInPortal) {
     segments.push({ type: 'gap', extraLines: emptyCount })
   }
 

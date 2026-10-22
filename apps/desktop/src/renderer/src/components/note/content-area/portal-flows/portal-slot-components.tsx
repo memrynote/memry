@@ -39,7 +39,7 @@ function HiddenBlocksSlot({
   onClose
 }: PortalHiddenBlocksSlotProps): ReactElement {
   const { t } = useT('notes')
-  const state = usePortalWindowState(portal.blockId)
+  const state = usePortalWindowState(portal)
   const { note } = useNote(portal.sourceNoteId)
   const title = note?.title ?? ''
 

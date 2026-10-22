@@ -115,6 +115,7 @@ import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
+import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
@@ -845,6 +846,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => registerEditorPlugin(editor, createWikiLinkCardPlugin()), [editor])
   // The trailing ` ^anchor` of a portal-addressable block is markdown, not prose.
   useEffect(() => registerEditorPlugin(editor, createAnchorVisibilityPlugin()), [editor])
+  useEffect(() => registerEditorPlugin(editor, createPortalTrailingParagraphPlugin()), [editor])
 
   const footnoteHover = useFootnotes(editor)
 

@@ -61,6 +61,51 @@ describe('isPortalCycle', () => {
   })
 })
 
+describe('indirect cycles', () => {
+  /** Walk the ancestry a nested editor sees: host note, then each window opened. */
+  function walk(host: string, targets: PortalWindowTarget[]): PortalAncestry {
+    let ancestry = withHostFrame(ROOT_PORTAL_ANCESTRY, host)
+    for (const target of targets) {
+      ancestry = withHostFrame(descendPortalAncestry(ancestry, target), target.note)
+    }
+    return ancestry
+  }
+
+  it('A shows B (note) shows A (note): the inner portal is a cycle', () => {
+    const ancestry = walk('a', [whole('b')])
+    expect(resolvePortalStatus(input({ target: whole('a'), ancestry }))).toBe('cycle')
+  })
+
+  it('A shows B (note) shows A[x]: opens one window, then the loop closes', () => {
+    const inB = walk('a', [whole('b')])
+    expect(isPortalCycle(block('a', 'x1x1'), inB)).toBe(false)
+    const inA = walk('a', [whole('b'), block('a', 'x1x1')])
+    expect(isPortalCycle(whole('b'), inA)).toBe(true)
+  })
+
+  it('A[x] shows B[y] shows A[x]: the loop is caught one window down', () => {
+    const inB = walk('a', [block('b', 'y2y2')])
+    expect(isPortalCycle(block('a', 'x1x1'), inB)).toBe(false)
+    const inA = walk('a', [block('b', 'y2y2'), block('a', 'x1x1')])
+    expect(resolvePortalStatus(input({ target: block('b', 'y2y2'), ancestry: inA }))).toBe('cycle')
+  })
+
+  it('a chain of different notes stops at the depth limit', () => {
+    const chain = Array.from({ length: PORTAL_MAX_DEPTH }, (_, i) => whole(`n${i}`))
+    const ancestry = walk('host', chain)
+    expect(resolvePortalStatus(input({ target: whole('fresh'), ancestry }))).toBe('too-deep')
+    expect(
+      resolvePortalStatus(input({ target: whole('fresh'), ancestry: walk('host', chain.slice(1)) }))
+    ).toBe('ok')
+  })
+
+  it('a block ring across three notes closes before the depth limit is exceeded', () => {
+    const ring = [block('b', 'y2y2'), block('c', 'z3z3'), block('a', 'x1x1')]
+    const ancestry = walk('a', ring)
+    expect(resolvePortalStatus(input({ target: block('b', 'y2y2'), ancestry }))).toBe('cycle')
+  })
+})
+
 describe('resolvePortalStatus', () => {
   it('is ok for a live, unlocked source', () => {
     expect(resolvePortalStatus(input())).toBe('ok')

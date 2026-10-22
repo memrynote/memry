@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { PortalDefinition } from '@memry/shared/portal-block'
-import { useNote } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useSyncOptional } from '@/contexts/sync-context'
 import { createLogger } from '@/lib/logger'
@@ -19,7 +18,7 @@ import { PortalRemoveFromContext } from '../portal-flows/portal-remove-context'
 import { useAttachmentNoteId } from '../note-file-url-context'
 import { commitPortalPlan, createPortalActions } from './portal-actions'
 import { PortalFrame } from './portal-chrome'
-import { usePortalAncestry } from './portal-context'
+import { usePortalAncestry, usePortalInstanceId } from './portal-context'
 import { portalContentsMarkdown, portalLinkText } from './portal-copy'
 import type { PortalEditorLike } from './portal-definition'
 import type { PortalInlineHandlers } from './portal-inline-plugin'
@@ -38,6 +37,7 @@ import {
 } from './portal-state'
 import { PortalStateCard } from './portal-state-card'
 import { PortalToolbar } from './portal-toolbar'
+import { usePortalSourceNote } from './use-portal-source-note'
 import { PortalWindow } from './portal-window'
 import type { PortalWindowResolution } from './use-portal-window-plugin'
 import { usePortalInlineMarks, usePortalWindowState } from './use-portal-window-view'
@@ -78,12 +78,13 @@ export function PortalNoteView({
   const { t } = useT('common')
   const hostNoteId = useAttachmentNoteId()
   const ancestry = withHostFrame(usePortalAncestry(), hostNoteId)
-  const { note, isLoading } = useNote(target.note)
+  const { note, isLoading } = usePortalSourceNote(target.note)
   const locked = useIsNoteLocked(target.note, note?.path ?? null)
   const sync = useSyncOptional()
   const { openSidebarItem } = useSidebarNavigation()
   const HiddenBlocksSlot = usePortalHiddenBlocksSlot()
-  const windowState = usePortalWindowState(blockId)
+  const instanceId = usePortalInstanceId()
+  const windowState = usePortalWindowState({ blockId, instanceId })
   const windowStateRef = useRef(windowState)
   useEffect(() => {
     windowStateRef.current = windowState
@@ -110,8 +111,8 @@ export function PortalNoteView({
   })
 
   const handle = useMemo<PortalHandle>(
-    () => ({ blockId, editor, definition, sourceNoteId: target.note, hostNoteId }),
-    [blockId, editor, definition, target.note, hostNoteId]
+    () => ({ blockId, instanceId, editor, definition, sourceNoteId: target.note, hostNoteId }),
+    [blockId, instanceId, editor, definition, target.note, hostNoteId]
   )
   const handleRef = useRef(handle)
   useEffect(() => {
@@ -144,7 +145,7 @@ export function PortalNoteView({
         void (expanded ? actions.collapse(id) : actions.expandAll(id)).then(reportFailure)
     }
   })
-  usePortalInlineMarks(blockId, inlineHandlers)
+  usePortalInlineMarks({ blockId, instanceId }, inlineHandlers)
 
   const openSource = useCallback(
     (options?: { inNewTab?: boolean; toTheSide?: boolean }) => {
@@ -228,12 +229,15 @@ export function PortalNoteView({
           sourceTitle={note?.title}
           onAction={hasAction ? action : undefined}
         />
-        {/* A block that is gone may come back (a sync lands). The window stays
-            mounted, unseen, so it can say so. */}
+        {/* A block that is gone may come back (a sync lands, an undo). The window
+            stays mounted, unseen, so it can say so. It is clipped rather than
+            display:none: a window mounts only once it intersects the viewport,
+            which a display:none box never does. */}
         {card === 'missing-block' && note ? (
-          <div hidden>
+          <div className="sr-only" aria-hidden="true" inert>
             <PortalWindow
               portalBlockId={blockId}
+              instanceId={instanceId}
               target={target}
               ancestry={ancestry}
               sourcePath={note.path}
@@ -296,6 +300,7 @@ export function PortalNoteView({
         <PortalRemoveFromContext value={removeFromPortal}>
           <PortalWindow
             portalBlockId={blockId}
+            instanceId={instanceId}
             target={target}
             ancestry={ancestry}
             sourcePath={note.path}

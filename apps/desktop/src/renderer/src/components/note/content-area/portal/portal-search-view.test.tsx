@@ -23,6 +23,7 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+import { PortalInstanceContext } from './portal-context'
 import { PortalSearchView, searchQueryLabel } from './portal-search-view'
 
 const target = { kind: 'search' as const, text: 'exam', tag: 'bio', limit: 50 }
@@ -50,7 +51,9 @@ function renderView() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <PortalSearchView blockId="p" editor={editor} definition={definition} target={target} />
+      <PortalInstanceContext.Provider value="i1">
+        <PortalSearchView blockId="p" editor={editor} definition={definition} target={target} />
+      </PortalInstanceContext.Provider>
     </QueryClientProvider>
   )
 }

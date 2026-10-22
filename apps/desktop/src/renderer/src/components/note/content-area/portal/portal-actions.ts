@@ -23,6 +23,7 @@ import {
 import type { PortalHandle } from './portal-slots'
 import { getPortalWindowState } from './portal-window-plugin'
 import { getPortalWindow } from './portal-window-registry'
+import { routeUndoToHost } from './portal-undo-route'
 
 const log = createLogger('PortalActions')
 
@@ -54,10 +55,14 @@ export async function commitPortalPlan(
     if (next.stamp?.length) return false
   }
   const target = next.definition.target
-  return updatePortalDefinition(portal.editor, portal.blockId, () => ({
+  const written = updatePortalDefinition(portal.editor, portal.blockId, () => ({
     ...portal.definition,
     target
   }))
+  // The caret may be in the window, whose Cmd+Z knows nothing of the host's fence.
+  const window = getPortalWindow(portal)?.view
+  if (written && window) routeUndoToHost(window, portal.editor)
+  return written
 }
 
 export interface PortalActions {
@@ -85,7 +90,7 @@ export function createPortalActions(read: () => PortalHandle): PortalActions {
     ) => PortalPlan | null
   ): Promise<boolean> => {
     const portal = read()
-    const view = getPortalWindow(portal.blockId)?.view
+    const view = getPortalWindow(portal)?.view
     if (!view || view.isDestroyed) return Promise.resolve(false)
     return commitPortalPlan(portal, plan(view, portal))
   }

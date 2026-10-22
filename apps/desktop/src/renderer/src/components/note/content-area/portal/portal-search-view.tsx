@@ -30,6 +30,7 @@ import {
   PortalRail
 } from './portal-chrome'
 import { searchPortalBlocks, type PortalSearchResultItem } from './portal-api'
+import { usePortalInstanceId } from './portal-context'
 import type { PortalEditorLike } from './portal-definition'
 import { usePortalSearchQuerySlot, type PortalHandle } from './portal-slots'
 
@@ -109,6 +110,7 @@ export function PortalSearchView({
 }: PortalSearchViewProps): React.JSX.Element {
   const { t } = useT('common')
   const QuerySlot = usePortalSearchQuerySlot()
+  const instanceId = usePortalInstanceId()
   useSearchPortalRefresh()
 
   const { text, tag, limit } = target
@@ -120,6 +122,7 @@ export function PortalSearchView({
 
   const handle: PortalHandle = {
     blockId,
+    instanceId,
     editor,
     definition,
     sourceNoteId: null,

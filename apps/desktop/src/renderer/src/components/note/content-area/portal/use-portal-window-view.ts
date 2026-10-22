@@ -13,10 +13,10 @@ import {
   type PortalInlineHandlers
 } from './portal-inline-plugin'
 import { getPortalWindowState, type PortalWindowState } from './portal-window-plugin'
-import { usePortalWindow } from './portal-window-registry'
+import { usePortalWindow, type PortalInstance } from './portal-window-registry'
 
-export function usePortalWindowState(portalBlockId: string): PortalWindowState | undefined {
-  const view = usePortalWindow(portalBlockId)?.view
+export function usePortalWindowState(instance: PortalInstance): PortalWindowState | undefined {
+  const view = usePortalWindow(instance)?.view
   const subscribe = useCallback(
     (onChange: () => void) => (view ? onPortalWindowUpdate(view, onChange) : () => {}),
     [view]
@@ -26,12 +26,12 @@ export function usePortalWindowState(portalBlockId: string): PortalWindowState |
   )
 }
 
-/** Put the fold chevrons and hidden-count rows on the window of `portalBlockId`. */
+/** Put the fold chevrons and hidden-count rows on the window of one portal instance. */
 export function usePortalInlineMarks(
-  portalBlockId: string,
+  instance: PortalInstance,
   handlers: RefObject<PortalInlineHandlers | null>
 ): void {
-  const view = usePortalWindow(portalBlockId)?.view
+  const view = usePortalWindow(instance)?.view
   useEffect(() => {
     if (!view || view.isDestroyed) return
     const tiptap = (view.dom as HTMLElement & { editor?: unknown }).editor

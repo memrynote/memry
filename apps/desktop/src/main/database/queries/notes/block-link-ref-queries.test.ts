@@ -56,6 +56,14 @@ describe('block usage from other notes', () => {
     expect(getLinkUsage(dbResult.db, 'src', 'nothing')).toEqual([])
   })
 
+  it('counts a memry://note/<id> link by id, even when the title has since changed', () => {
+    setBlockLinkRefs(dbResult.db, 'a', [{ note: 'memry://note/src', anchor: 'chl-7f2a' }])
+    setBlockLinkRefs(dbResult.db, 'b', [{ note: 'memry://note/other', anchor: 'chl-7f2a' }])
+    expect(getLinkUsage(dbResult.db, 'src', 'chl-7f2a').map((row) => row.sourceNoteId)).toEqual([
+      'a'
+    ])
+  })
+
   it('never counts the note itself', () => {
     setBlockLinkRefs(dbResult.db, 'src', [{ note: 'Cell Biology', anchor: 'chl-7f2a' }])
     setPortalRefs(dbResult.db, 'src', [portal('src', 0, 'src', 'chl-7f2a')])

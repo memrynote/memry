@@ -36,8 +36,8 @@ export function scanPortalFences(markdown: string): string[] {
 }
 
 /**
- * The `portal_refs` rows for a note body: one per root anchor of a blocks
- * portal, one for a note or search portal. A fence this build cannot read
+ * The `portal_refs` rows for a note body: one per root anchor and per shown
+ * child of a blocks portal, one for a note or search portal. A fence this build cannot read
  * keeps its ordinal but gets no row, so ordinals stay stable across edits
  * elsewhere.
  */
@@ -48,7 +48,13 @@ export function derivePortalRefs(hostNoteId: string, markdown: string): PortalRe
     if (!parsed.ok) return
     const { target } = parsed.definition
     if (target.kind === 'blocks') {
-      target.blocks.forEach((anchor, root) => {
+      // A block a portal lists as shown is on screen in that host as much as a root is,
+      // so deleting it must find the host. Hide lists are exclusions and add nothing.
+      const shown = Object.values(target.open).flatMap((entry) =>
+        entry.mode === 'show' ? entry.ids : []
+      )
+      const anchors = [...new Set([...target.blocks, ...shown])]
+      anchors.forEach((anchor, root) => {
         rows.push({ hostNoteId, ordinal, root, sourceNoteId: target.note, anchor, kind: 'blocks' })
       })
       return

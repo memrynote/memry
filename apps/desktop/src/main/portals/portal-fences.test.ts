@@ -29,7 +29,7 @@ describe('scanPortalFences', () => {
 })
 
 describe('derivePortalRefs', () => {
-  it('derives a row per fence, and one per root anchor, keeping ordinals stable around a broken fence', () => {
+  it('derives a row per fence, and one per root anchor and shown child, keeping ordinals stable around a broken fence', () => {
     const md = [
       fence('{"v":1,"note":"n1"}'),
       fence('{not json'),
@@ -58,6 +58,14 @@ describe('derivePortalRefs', () => {
       },
       {
         hostNoteId: 'host',
+        ordinal: 2,
+        root: 2,
+        sourceNoteId: 'n2',
+        anchor: 'x1y2z3',
+        kind: 'blocks'
+      },
+      {
+        hostNoteId: 'host',
         ordinal: 3,
         root: 0,
         sourceNoteId: null,
@@ -67,11 +75,23 @@ describe('derivePortalRefs', () => {
     ])
   })
 
-  it('does not index anchors that are only open or hidden entries', () => {
+  it('does not index a hide list: its entries are exclusions, not blocks on screen', () => {
     const rows = derivePortalRefs(
       'host',
       fence('{"note":"n2","blocks":["abc123"],"open":{"abc123":{"hide":["zzzz11"]}}}')
     )
     expect(rows.map((row) => row.anchor)).toEqual(['abc123'])
+  })
+
+  it('indexes a shown child next to the roots, so deleting it finds the host', () => {
+    const rows = derivePortalRefs(
+      'host',
+      fence('{"note":"n2","blocks":["abc123"],"open":{"abc123":{"show":["child1","abc123"]}}}')
+    )
+    expect(rows.map((row) => [row.root, row.anchor])).toEqual([
+      [0, 'abc123'],
+      [1, 'child1']
+    ])
+    expect(new Set(rows.map((row) => row.ordinal)).size).toBe(1)
   })
 })

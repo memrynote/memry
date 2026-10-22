@@ -1,0 +1,48 @@
+/**
+ * A window never takes a drop into the blocks it hides.
+ *
+ * Hidden blocks are `display: none`, so a pointer cannot aim at them, but the
+ * drop cursor can still resolve to a position inside a hidden block's children
+ * (the gap between two visible blocks that a hidden one sits between). A local
+ * transaction that inserts content strictly inside a hidden span is refused,
+ * which makes ProseMirror drop nothing; the drop at either edge of the span
+ * (the nearest visible gap) is untouched.
+ *
+ * @module note/content-area/portal/portal-drop-guard-plugin
+ */
+
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform'
+import { ySyncPluginKey } from 'y-prosemirror'
+import { portalWindowKey } from './portal-window-plugin'
+
+interface Span {
+  from: number
+  to: number
+}
+
+/** True when a step puts content strictly inside one of `spans`. */
+function insertsInside(tr: { steps: readonly unknown[] }, hidden: readonly Span[]): boolean {
+  let spans = hidden
+  for (const step of tr.steps as Array<ReplaceStep | ReplaceAroundStep>) {
+    const inserted =
+      step instanceof ReplaceStep
+        ? step.slice.size > 0
+        : step instanceof ReplaceAroundStep && step.slice.size > 0
+    if (inserted && spans.some((h) => step.from > h.from && step.from < h.to)) return true
+    const map = step.getMap()
+    spans = spans.map((h) => ({ from: map.map(h.from, 1), to: map.map(h.to, -1) }))
+  }
+  return false
+}
+
+export function createPortalDropGuardPlugin(): Plugin {
+  return new Plugin({
+    key: new PluginKey('portalDropGuard'),
+    filterTransaction(tr, state) {
+      if (!tr.docChanged || tr.getMeta(ySyncPluginKey)?.isChangeOrigin) return true
+      const window = portalWindowKey.getState(state)
+      return !window || !insertsInside(tr, window.hiddenSpans)
+    }
+  })
+}
