@@ -129,6 +129,18 @@ When dragging a tab, the workspace highlights drop zones:
 
 Drop in a zone to create or move into a pane.
 
+### Dragging From the Sidebar
+
+Drag a note, file (a PDF, say) or canvas from the sidebar onto a pane. The same drop zones appear:
+
+- Left / right / top / bottom edge — opens the item in a new pane on that side.
+- Center — opens the item as a tab in that pane.
+
+When the pane shows a note, the center belongs to the editor instead, so only the edges split:
+
+- Drop a note on the text — it is inserted as a `[[wikilink]]` at the drop point.
+- Drop a file or PDF on the text — it is embedded in the note.
+
 ### Resizing Panes
 
 - Drag the divider between panes
