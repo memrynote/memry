@@ -135,6 +135,35 @@ describe('0035_spatial_canvas migration', () => {
     sqlite.close()
   })
 
+  it('adds readwise_links on an install that already applied 0077 and keeps its rows (#1411)', () => {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0078')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0078_readwise_links')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: copy })
+    expect(tableNames(sqlite)).not.toContain('readwise_links')
+    sqlite.prepare("INSERT INTO home_pages (id, name) VALUES ('hp1', 'Home')").run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(tableNames(sqlite)).toContain('readwise_links')
+    expect(sqlite.prepare("SELECT name FROM home_pages WHERE id = 'hp1'").get()).toEqual({
+      name: 'Home'
+    })
+    sqlite.close()
+  })
+
   it('raw SQL statements are idempotent when executed twice', () => {
     const dbPath = path.join(tempDir, 'data.db')
     runMigrations(dbPath)
