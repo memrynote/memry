@@ -547,6 +547,13 @@
       "when": 1791581372087,
       "tag": "0077_sticky_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "6",
+      "when": 1791581373087,
+      "tag": "0078_readwise_links",
+      "breakpoints": true
     }
   ]
 }
