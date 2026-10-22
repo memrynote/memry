@@ -2197,11 +2197,8 @@
     },
     "whereUsed": {
       "aria": "Where this block is used",
-      "title": "{count, plural, one {Used in # place} other {Used in # places}}",
       "portals": "Portals",
       "links": "Links",
-      "footer": "Edits here appear in all portals.",
-      "hint": "Enter opens, Shift+Enter opens beside",
       "loadFailed": "Could not load where this block is shown"
     },
     "hiddenBlocks": {

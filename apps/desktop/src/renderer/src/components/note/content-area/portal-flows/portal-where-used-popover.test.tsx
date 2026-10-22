@@ -41,18 +41,21 @@ function setup(hosts: PortalHost[]) {
 }
 
 describe('PortalWhereUsedPopover', () => {
-  it('lists portals and links as separate counted sections with their paths', () => {
+  it('labels the sections only when both kinds are present, and shows each note folder', () => {
     setup([portal, link])
     const portals = screen.getByRole('region', { name: 'portals' })
     const links = screen.getByRole('region', { name: 'links' })
-    expect(within(portals).getByText('1')).toBeTruthy()
-    expect(within(portals).getByText('Labs/Lab 4.md')).toBeTruthy()
-    expect(within(links).getByText('Exam prep.md')).toBeTruthy()
+    expect(within(portals).getByText('Lab 4')).toBeTruthy()
+    expect(within(portals).getByText('Labs')).toBeTruthy()
+    expect(within(links).getByText('Exam prep')).toBeTruthy()
   })
 
-  it('omits an empty section', () => {
+  it('drops the section label, the title and the footer when only one kind is present', () => {
     setup([link])
     expect(screen.queryByRole('region', { name: 'portals' })).toBeNull()
+    expect(screen.queryByRole('heading')).toBeNull()
+    expect(screen.getByText('Exam prep')).toBeTruthy()
+    expect(screen.queryByText(/appear in all portals/i)).toBeNull()
   })
 
   it('opens on Enter, opens beside on Shift+Enter and Shift+click', async () => {
