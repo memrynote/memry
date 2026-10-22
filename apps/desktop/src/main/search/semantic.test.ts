@@ -31,10 +31,12 @@ describe('semanticNoteHits', () => {
   })
 
   it('embeds the query with the search prefix and drops hits under the query floor', async () => {
-    mocks.all.mockReturnValue([
-      { note_id: 'near', distance: 0.2 },
-      { note_id: 'far', distance: 0.4 }
-    ])
+    mocks.all
+      .mockReturnValueOnce([
+        { id: 'near', distance: 0.2 },
+        { id: 'far', distance: 0.4 }
+      ])
+      .mockReturnValueOnce([])
     const hits = await semanticNoteHits('cat')
     expect(mocks.generateEmbedding).toHaveBeenCalledWith('task: search result | query: cat')
     expect(hits).toEqual([{ id: 'near', cosine: 0.8 }])

@@ -69,6 +69,14 @@ import { createEmbeddingProjector } from './embedding-projector'
 import { EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
 import { createProjectionRuntime } from '../runtime'
 
+/** Stands in for better-sqlite3: transactions run inline and unmocked reads find nothing. */
+function mockRawDb(db: { prepare: (statement: string) => object }): void {
+  getRawIndexDatabase.mockReturnValue({
+    prepare: (statement: string) => ({ get: () => undefined, ...db.prepare(statement) }),
+    transaction: (fn: () => void) => fn
+  })
+}
+
 describe('embedding projector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -107,7 +115,7 @@ describe('embedding projector', () => {
       key === 'ai.embeddingInputVersion' ? String(EMBEDDING_INPUT_VERSION) : 'true'
     )
 
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [{ id: 'note-1' }])
     })
@@ -126,7 +134,7 @@ describe('embedding projector', () => {
   it('defers embedding while indexing and backfills the deferred notes on reconcile', async () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [
         { id: 'note-1', path: 'notes/one.md', title: 'One' },
@@ -182,7 +190,7 @@ describe('embedding projector', () => {
     // note-1 already has a (stale) vector, so it is only in the work list because
     // it was deferred — the missing-vector filter alone would not re-catch it.
     const prepare = vi.fn(() => ({ run, all: () => [{ note_id: 'note-1' }] }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
     })
@@ -226,7 +234,7 @@ describe('embedding projector', () => {
   it('handles note events by storing, deleting, or skipping embeddings', async () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
 
     const projector = createEmbeddingProjector(() => '/vault')
 
@@ -265,7 +273,7 @@ describe('embedding projector', () => {
 
   it('embeds a filed PDF from its extracted text and drops the vector once the text is gone', async () => {
     const run = vi.fn()
-    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    mockRawDb({ prepare: vi.fn(() => ({ run })) })
     getNoteCacheById.mockReturnValue({ id: 'pdf-1', title: 'Logbook', fileType: 'pdf' })
     readExtractedOpening.mockReturnValue('The heron left the marsh at dawn')
 
@@ -287,7 +295,7 @@ describe('embedding projector', () => {
 
   it('embeds a markdown note with the text read from its attachments after its body', async () => {
     const run = vi.fn()
-    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    mockRawDb({ prepare: vi.fn(() => ({ run })) })
     getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/trip.md',
@@ -309,7 +317,7 @@ describe('embedding projector', () => {
 
   it('defers a filed PDF while the vault is indexing, then embeds it from its text in a rebuild', async () => {
     const run = vi.fn()
-    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    mockRawDb({ prepare: vi.fn(() => ({ run })) })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [
         { id: 'pdf-1', path: 'files/logbook.pdf', title: 'Logbook', fileType: 'pdf' }
@@ -338,7 +346,7 @@ describe('embedding projector', () => {
 
   it('deletes stale embeddings when AI is disabled, content is short, or generation fails', async () => {
     const run = vi.fn()
-    getRawIndexDatabase.mockReturnValue({ prepare: vi.fn(() => ({ run })) })
+    mockRawDb({ prepare: vi.fn(() => ({ run })) })
 
     const projector = createEmbeddingProjector(() => '/vault')
 
@@ -372,7 +380,7 @@ describe('embedding projector', () => {
     getAllWindows.mockReturnValue([
       { isDestroyed: () => false, webContents: { isDestroyed: () => false, send } }
     ])
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [
         { id: 'note-1', path: 'notes/one.md', fileType: 'markdown' },
@@ -402,7 +410,7 @@ describe('embedding projector', () => {
   it('stops the backfill when the reconcile signal aborts and keeps the unreached notes deferred', async () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [
         { id: 'note-1', path: 'notes/one.md', title: 'One' },
@@ -474,7 +482,7 @@ describe('embedding projector', () => {
           ? [...state].map(([note_id]) => ({ note_id }))
           : [...vectors].map((note_id) => ({ note_id }))
     }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [
         { id: 'note-1', path: 'notes/one.md', title: 'One', fileType: 'markdown' },
@@ -517,7 +525,7 @@ describe('embedding projector', () => {
   it('skips the backfill when the signal aborts while the model is loading', async () => {
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
     })
@@ -547,7 +555,7 @@ describe('embedding projector', () => {
     const noteCount = 200
     const run = vi.fn()
     const prepare = vi.fn(() => ({ run, all: () => [] as Array<{ note_id: string }> }))
-    getRawIndexDatabase.mockReturnValue({ prepare })
+    mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() =>
         Array.from({ length: noteCount }, (_, index) => ({

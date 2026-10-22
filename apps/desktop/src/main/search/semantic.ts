@@ -52,16 +52,32 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
   try {
     const vector = await generateEmbedding(buildQueryEmbeddingInput(query))
     if (!vector) return []
-    const rows = getRawIndexDatabase()
-      .prepare(
-        `SELECT note_id, distance FROM vec_notes
-         WHERE embedding MATCH ? AND k = ?
-         ORDER BY distance`
-      )
-      .all(vector, NEIGHBOURS) as Array<{ note_id: string; distance: number }>
-    return rows
-      .map((row) => ({ id: row.note_id, cosine: 1 - row.distance }))
+    const rawDb = getRawIndexDatabase()
+    const nearest = (table: 'vec_notes' | 'vec_note_chunks', idColumn: string) =>
+      rawDb
+        .prepare(
+          `SELECT ${idColumn} AS id, distance FROM ${table}
+           WHERE embedding MATCH ? AND k = ?
+           ORDER BY distance`
+        )
+        .all(vector, NEIGHBOURS) as Array<{ id: string; distance: number }>
+
+    // A note is as near as its nearest window: the head vector or a later chunk
+    // (`{note_id}#{n}`).
+    const best = new Map<string, number>()
+    const consider = (noteId: string, distance: number): void => {
+      const cosine = 1 - distance
+      if (cosine > (best.get(noteId) ?? -Infinity)) best.set(noteId, cosine)
+    }
+    for (const row of nearest('vec_notes', 'note_id')) consider(row.id, row.distance)
+    for (const row of nearest('vec_note_chunks', 'chunk_id')) {
+      consider(row.id.slice(0, row.id.lastIndexOf('#')), row.distance)
+    }
+    return [...best]
+      .map(([id, cosine]) => ({ id, cosine }))
       .filter((hit) => hit.cosine >= EMBEDDING_QUERY_SIMILARITY_FLOOR)
+      .sort((a, b) => b.cosine - a.cosine)
+      .slice(0, NEIGHBOURS)
   } catch (error) {
     logger.warn('Semantic search failed, falling back to FTS', error)
     return []

@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import type Database from 'better-sqlite3'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
 import { getSetting } from '@main/database/queries/settings'
@@ -11,9 +12,9 @@ import {
   isModelLoaded
 } from '../../lib/embeddings'
 import {
-  buildEmbeddingInput,
+  buildEmbeddingChunks,
   EMBEDDING_INPUT_VERSION,
-  MAX_EMBEDDING_INPUT_LENGTH
+  MAX_EMBEDDABLE_CONTENT_LENGTH
 } from '../../lib/embedding-input'
 import { createLogger } from '../../lib/logger'
 import { readVaultFile } from '../../lib/paths'
@@ -23,7 +24,6 @@ import type { ProjectionEvent, ProjectionProjector } from '../types'
 const logger = createLogger('Projections:Embeddings')
 
 const AI_SETTINGS_KEY = 'ai.enabled'
-const MIN_CONTENT_LENGTH = 10
 
 function emitProgress(current: number, total: number, phase: string): void {
   broadcastToAllWindows(SettingsChannels.events.EMBEDDING_PROGRESS, {
@@ -43,20 +43,50 @@ function isAIEnabled(): boolean {
   }
 }
 
-function storeNoteEmbedding(noteId: string, embedding: Float32Array): void {
+/** Drop the rows a note owns in vec_note_chunks, as recorded by its state row. */
+function deleteNoteChunks(rawDb: Database.Database, noteId: string): void {
+  const state = rawDb
+    .prepare('SELECT chunk_count FROM note_embedding_state WHERE note_id = ?')
+    .get(noteId) as { chunk_count: number } | undefined
+  const remove = rawDb.prepare('DELETE FROM vec_note_chunks WHERE chunk_id = ?')
+  for (let index = 1; index <= (state?.chunk_count ?? 0); index++) {
+    remove.run(`${noteId}#${index}`)
+  }
+}
+
+/**
+ * Write a note's vectors: the head window to vec_notes (what similarity and
+ * filing read) and every later window to vec_note_chunks, in one transaction so
+ * a crash never leaves a state row that disagrees with the chunk rows.
+ */
+function storeNoteEmbeddings(noteId: string, embeddings: Float32Array[]): void {
   const rawDb = getRawIndexDatabase()
-  rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
-  rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, embedding)
-  rawDb
-    .prepare('INSERT OR REPLACE INTO note_embedding_state (note_id, input_version) VALUES (?, ?)')
-    .run(noteId, EMBEDDING_INPUT_VERSION)
+  const [head, ...later] = embeddings
+  rawDb.transaction(() => {
+    deleteNoteChunks(rawDb, noteId)
+    rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+    rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, head)
+    later.forEach((embedding, index) => {
+      rawDb
+        .prepare('INSERT INTO vec_note_chunks (chunk_id, embedding) VALUES (?, ?)')
+        .run(`${noteId}#${index + 1}`, embedding)
+    })
+    rawDb
+      .prepare(
+        'INSERT OR REPLACE INTO note_embedding_state (note_id, input_version, chunk_count) VALUES (?, ?, ?)'
+      )
+      .run(noteId, EMBEDDING_INPUT_VERSION, later.length)
+  })()
 }
 
 function deleteNoteEmbedding(noteId: string): void {
   try {
     const rawDb = getRawIndexDatabase()
-    rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
-    rawDb.prepare('DELETE FROM note_embedding_state WHERE note_id = ?').run(noteId)
+    rawDb.transaction(() => {
+      deleteNoteChunks(rawDb, noteId)
+      rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+      rawDb.prepare('DELETE FROM note_embedding_state WHERE note_id = ?').run(noteId)
+    })()
   } catch {
     // ignore missing vec table during shutdown/setup
   }
@@ -80,9 +110,9 @@ const EMBEDDABLE_NOTES = sql`
     OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
 `
 
-/** The opening of a file's extracted text: all the embedding input ever reads. */
+/** A file's extracted text, up to the most the embedding input ever reads. */
 function readFileTextOpening(noteId: string): string {
-  return readExtractedOpening(getIndexDatabase(), noteId, MAX_EMBEDDING_INPUT_LENGTH)
+  return readExtractedOpening(getIndexDatabase(), noteId, MAX_EMBEDDABLE_CONTENT_LENGTH)
 }
 
 /**
@@ -90,7 +120,7 @@ function readFileTextOpening(noteId: string): string {
  * attachments, so a note that is mostly a pasted screenshot still has a vector.
  */
 function withAttachmentText(noteId: string, content: string): string {
-  const room = MAX_EMBEDDING_INPUT_LENGTH - content.length
+  const room = MAX_EMBEDDABLE_CONTENT_LENGTH - content.length
   if (room <= 0) return content
   const extracted = readExtractedOpening(getIndexDatabase(), noteId, room)
   return extracted ? `${content}\n\n${extracted}` : content
@@ -105,8 +135,8 @@ async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): P
   return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
 
-async function updateEmbedding(noteId: string, content: string): Promise<boolean> {
-  if (!isAIEnabled() || content.length < MIN_CONTENT_LENGTH) {
+async function updateEmbedding(noteId: string, windows: string[]): Promise<boolean> {
+  if (!isAIEnabled() || windows.length === 0) {
     deleteNoteEmbedding(noteId)
     return false
   }
@@ -118,12 +148,17 @@ async function updateEmbedding(noteId: string, content: string): Promise<boolean
     }
   }
 
-  const embedding = await generateLocalEmbedding(content)
-  if (!embedding) {
-    return false
+  // One window at a time: peak memory is one inference, however long the note.
+  const embeddings: Float32Array[] = []
+  for (const window of windows) {
+    const embedding = await generateLocalEmbedding(window)
+    if (!embedding) {
+      return false
+    }
+    embeddings.push(embedding)
   }
 
-  storeNoteEmbedding(noteId, embedding)
+  storeNoteEmbeddings(noteId, embeddings)
   return true
 }
 
@@ -158,8 +193,8 @@ export function createEmbeddingProjector(
       const note = notes[i]
       try {
         const content = await readEmbeddableContent(vaultPath, note)
-        const input = buildEmbeddingInput({ title: note.title, content })
-        if (!(await updateEmbedding(note.id, input))) {
+        const windows = buildEmbeddingChunks({ title: note.title, content })
+        if (!(await updateEmbedding(note.id, windows))) {
           skipped++
         } else {
           computed++
@@ -204,6 +239,7 @@ export function createEmbeddingProjector(
 
     if (notes.length === 0) {
       rawDb.prepare('DELETE FROM vec_notes').run()
+      rawDb.prepare('DELETE FROM vec_note_chunks').run()
       rawDb.prepare('DELETE FROM note_embedding_state').run()
       emitProgress(0, 0, 'complete')
       return { success: true, computed: 0, skipped: 0 }
@@ -223,6 +259,7 @@ export function createEmbeddingProjector(
     }
 
     rawDb.prepare('DELETE FROM vec_notes').run()
+    rawDb.prepare('DELETE FROM vec_note_chunks').run()
     rawDb.prepare('DELETE FROM note_embedding_state').run()
     emitProgress(0, notes.length, 'embedding')
 
@@ -247,7 +284,7 @@ export function createEmbeddingProjector(
       pendingEmbedding.add(noteId)
       return
     }
-    await updateEmbedding(noteId, buildEmbeddingInput({ title, content }))
+    await updateEmbedding(noteId, buildEmbeddingChunks({ title, content }))
   }
 
   return {
@@ -287,7 +324,7 @@ export function createEmbeddingProjector(
         } else if (vaultPath) {
           try {
             const content = await readEmbeddableContent(vaultPath, note)
-            await updateEmbedding(note.id, buildEmbeddingInput({ title: note.title, content }))
+            await updateEmbedding(note.id, buildEmbeddingChunks({ title: note.title, content }))
           } catch (error) {
             logger.warn('Failed to embed attachment text', { noteId: note.id, error })
           }
@@ -325,7 +362,7 @@ export function createEmbeddingProjector(
 
       await updateEmbedding(
         note.noteId,
-        buildEmbeddingInput({
+        buildEmbeddingChunks({
           title: note.title,
           content: withAttachmentText(note.noteId, note.parsedContent)
         })
@@ -371,6 +408,14 @@ export function createEmbeddingProjector(
           `
         )
         .run()
+      // Chunk rows go first: their ids are read from the state rows deleted next.
+      const orphaned = rawDb
+        .prepare(
+          `SELECT note_id FROM note_embedding_state
+           WHERE chunk_count > 0 AND note_id NOT IN (SELECT note_id FROM vec_notes)`
+        )
+        .all() as Array<{ note_id: string }>
+      for (const { note_id } of orphaned) deleteNoteChunks(rawDb, note_id)
       rawDb
         .prepare(
           'DELETE FROM note_embedding_state WHERE note_id NOT IN (SELECT note_id FROM vec_notes)'
