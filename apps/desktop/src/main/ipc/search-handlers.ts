@@ -11,6 +11,7 @@ import { createValidatedHandler, createHandler, setIpcHandlerChannel } from './v
 import { getDatabase, getIndexDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { searchQueries } from '../search/store'
+import { semanticNoteHits } from '../search/semantic'
 import { rebuildAllIndexes } from '@main/database/fts-rebuild'
 import { searchReasons } from '@memry/db-schema/schema/search-reasons'
 import { eq, desc, sql, and } from 'drizzle-orm'
@@ -69,7 +70,12 @@ export function registerSearchHandlers(): void {
         try {
           const indexDb = getIndexDatabase()
           const dataDb = getDatabase()
-          const result = searchQueries.searchAll(indexDb, dataDb, input)
+          const result = searchQueries.searchAll(
+            indexDb,
+            dataDb,
+            input,
+            await semanticNoteHits(input.text)
+          )
           trackMainEvent('search_performed', {
             surface: 'search',
             action: 'queried',
@@ -106,7 +112,12 @@ export function registerSearchHandlers(): void {
         try {
           const indexDb = getIndexDatabase()
           const dataDb = getDatabase()
-          const result = searchQueries.quickSearch(indexDb, dataDb, input)
+          const result = searchQueries.quickSearch(
+            indexDb,
+            dataDb,
+            input,
+            await semanticNoteHits(input.text)
+          )
           const totalCount = result.results?.length ?? 0
           trackMainEvent('search_performed', {
             surface: 'search',

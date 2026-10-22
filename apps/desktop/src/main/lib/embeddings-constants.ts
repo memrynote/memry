@@ -32,6 +32,16 @@ export const EMBEDDING_MODEL_DTYPE = 'q4'
 export const EMBEDDING_SIMILARITY_FLOOR = 0.6
 
 /**
+ * Lowest query-to-document cosine a semantic search hit may have. Measured on
+ * Turkish and English notes (q4, 256d, `task: search result` query against
+ * `title: | text:` documents): a query and a note it is about land at 0.66-0.79
+ * (median 0.75), while a query and an unrelated note reach 0.68 at most (median
+ * 0.57). Note-to-note cosines are higher across the board, so
+ * {@link EMBEDDING_SIMILARITY_FLOOR} would let nearly every note through.
+ */
+export const EMBEDDING_QUERY_SIMILARITY_FLOOR = 0.65
+
+/**
  * Map a raw cosine similarity onto 0..1 so that "unrelated" sits near the bottom
  * instead of at 0.7. Median unrelated (0.71) -> 0.28, strongest unrelated pair
  * seen (0.79) -> 0.47, a cross-language duplicate (0.95) -> 0.87.

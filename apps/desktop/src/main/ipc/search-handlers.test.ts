@@ -6,15 +6,17 @@ import type * as Diagnostics from '../telemetry/diagnostics'
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 
-const { searchQueriesMock, trackMainEventMock, trackMainWarningMock } = vi.hoisted(() => ({
-  searchQueriesMock: {
-    searchAll: vi.fn(),
-    quickSearch: vi.fn(),
-    getSearchStats: vi.fn()
-  },
-  trackMainEventMock: vi.fn(),
-  trackMainWarningMock: vi.fn()
-}))
+const { searchQueriesMock, trackMainEventMock, trackMainWarningMock, semanticNoteHitsMock } =
+  vi.hoisted(() => ({
+    semanticNoteHitsMock: vi.fn(async () => [] as unknown[]),
+    searchQueriesMock: {
+      searchAll: vi.fn(),
+      quickSearch: vi.fn(),
+      getSearchStats: vi.fn()
+    },
+    trackMainEventMock: vi.fn(),
+    trackMainWarningMock: vi.fn()
+  }))
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -175,6 +177,10 @@ vi.mock('@main/database/queries/search', () => ({
   getSearchStats: vi.fn()
 }))
 
+vi.mock('../search/semantic', () => ({
+  semanticNoteHits: semanticNoteHitsMock
+}))
+
 vi.mock('../search/store', () => ({
   searchQueries: searchQueriesMock
 }))
@@ -228,6 +234,20 @@ describe('search-handlers: reasons', () => {
           dimensions: { result_bucket: 'six_plus' }
         })
       )
+    })
+
+    it('passes the semantic hits for the typed text to both search paths', async () => {
+      const hits = [{ id: 'note-1', cosine: 0.8 }]
+      semanticNoteHitsMock.mockResolvedValue(hits)
+      searchQueriesMock.searchAll.mockReturnValue({ groups: [], totalCount: 0, queryTimeMs: 1 })
+      searchQueriesMock.quickSearch.mockReturnValue({ results: [], queryTimeMs: 1 })
+
+      await invokeHandler(SearchChannels.invoke.QUERY, { text: 'cat' })
+      await invokeHandler(SearchChannels.invoke.QUICK, { text: 'cat' })
+
+      expect(semanticNoteHitsMock).toHaveBeenCalledWith('cat')
+      expect(searchQueriesMock.searchAll.mock.calls[0][3]).toBe(hits)
+      expect(searchQueriesMock.quickSearch.mock.calls[0][3]).toBe(hits)
     })
 
     it('keeps quick search type in source and result bucket as the single dimension', async () => {
