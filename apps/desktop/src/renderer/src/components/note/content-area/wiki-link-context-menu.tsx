@@ -5,8 +5,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import type { WikiLinkDisplayProps } from '@memry/shared/wiki-link-props'
+import { WikiLinkDisplayPanel } from './wiki-link-display-panel'
 import { useT } from '@memry/i18n/renderer'
 
 export type WikiLinkMenuAction =
@@ -20,6 +25,11 @@ export interface WikiLinkMenuTarget {
   pos: number
   target: string
   alias: string
+  /**
+   * The link's display settings (#2845), or null when it is not alone in its
+   * paragraph and so has none to offer.
+   */
+  display: WikiLinkDisplayProps | null
 }
 
 const NAVIGATION: WikiLinkMenuAction[] = ['open', 'openInNewTab', 'openToTheSide']
@@ -33,14 +43,21 @@ const EDITING: WikiLinkMenuAction[] = ['edit', 'copy', 'unlink']
 export function WikiLinkContextMenu({
   x,
   y,
+  target,
   editable,
+  display,
   onAction,
+  onDisplayChange,
   onClose
 }: {
   x: number
   y: number
+  /** The note the link names. */
+  target: string
   editable: boolean
+  display: WikiLinkDisplayProps | null
   onAction: (action: WikiLinkMenuAction) => void
+  onDisplayChange: (patch: Partial<WikiLinkDisplayProps>) => void
   onClose: () => void
 }) {
   const { t } = useT('notes')
@@ -99,6 +116,23 @@ export function WikiLinkContextMenu({
       >
         {NAVIGATION.map(item)}
         <DropdownMenuSeparator />
+        {display && editable && (
+          <>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger data-action="display">
+                {t('wikiLinkMenu.displayRow')}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="p-0">
+                <WikiLinkDisplayPanel
+                  target={target}
+                  display={display}
+                  onChange={onDisplayChange}
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {editing.map(item)}
       </DropdownMenuContent>
     </DropdownMenu>

@@ -4056,6 +4056,203 @@ del.bn-inline-content {
   font-weight: 500;
 }
 
+/* A wiki link alone in its paragraph can draw as a row (small) or a card
+   (medium), or keep the chip and show a preview after it (#2845). The chip's
+   elements are always in the DOM for a configured link; they show only where
+   the card plugin set data-wiki-link-sole on the chip, so a link inside running
+   text stays a chip. Logical properties throughout, so the row
+   mirrors in RTL. */
+.wiki-link-card-icon,
+.wiki-link-card-cover,
+.wiki-link-card-preview {
+  display: none;
+}
+
+/* The chip with a preview after it, flowing on in the same paragraph. The hover
+   underline moves from the whole chip to its title, so it stays off the preview. */
+.wiki-link[data-wiki-link-sole='none']:hover {
+  text-decoration: none;
+}
+
+.wiki-link[data-wiki-link-sole='none']:hover .wiki-link-card-title {
+  text-decoration: underline;
+}
+
+.wiki-link[data-wiki-link-sole='none'] .wiki-link-card-preview {
+  display: inline;
+  margin-inline-start: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  vertical-align: baseline;
+}
+
+.bn-inline-content:has(
+  > .wiki-link[data-wiki-link-sole='small'],
+  > .wiki-link[data-wiki-link-sole='medium']
+) {
+  /* BlockNote's block is a flex row that sizes its text to its content; a row or
+     card spans the column. */
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* The trailing break ProseMirror adds after a final atom would add an empty
+   line under a block-level card. */
+.bn-inline-content:has(
+    > .wiki-link[data-wiki-link-sole='small'],
+    > .wiki-link[data-wiki-link-sole='medium']
+  )
+  > .ProseMirror-trailingBreak {
+  display: none;
+}
+
+.wiki-link[data-wiki-link-sole='small'],
+.wiki-link[data-wiki-link-sole='medium'] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  border: 1px solid var(--border);
+  color: var(--text-primary) !important;
+  padding: 0;
+  text-decoration: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wiki-link[data-wiki-link-sole='small'],
+  .wiki-link[data-wiki-link-sole='medium'] {
+    transition: background-color 0.15s ease;
+  }
+}
+
+.wiki-link[data-wiki-link-sole='small']:hover,
+.wiki-link[data-wiki-link-sole='medium']:hover {
+  background: var(--surface-active);
+  text-decoration: none;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-icon,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.wiki-link-card-icon svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-text,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+  text-align: start;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-title,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-title {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-preview,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-preview:empty,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-preview:empty {
+  display: none;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-cover,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-cover {
+  display: block;
+  flex: none;
+  overflow: hidden;
+  background-position: center;
+  background-size: cover;
+}
+
+.wiki-link-card-cover:empty:not([style*='background-image']) {
+  display: none !important;
+}
+
+.wiki-link-card-cover img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.wiki-link[data-wiki-link-sole='small'] {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-icon {
+  inline-size: 16px;
+  block-size: 16px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-cover {
+  inline-size: 64px;
+  block-size: 44px;
+  border-radius: 6px;
+}
+
+.wiki-link[data-wiki-link-sole='medium'] {
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-icon {
+  inline-size: 48px;
+  block-size: 48px;
+  padding: 12px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* The tile backs the default document icon only. A note's own emoji stands alone. */
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-icon[data-emoji] {
+  padding: 0;
+  background: none;
+  font-size: 32px;
+}
+
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-cover {
+  inline-size: 96px;
+  block-size: 64px;
+  border-radius: 8px;
+}
+
 /* Inline image — a picture inside a line of text, which in practice means
    inside a table cell (#1640). Capped by the line so one large screenshot
    cannot blow a row's height out; the cell stays scannable and the image is

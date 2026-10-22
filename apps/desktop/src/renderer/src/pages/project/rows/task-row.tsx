@@ -15,6 +15,8 @@ interface TaskRowProps {
   onStatusChange: (taskId: string, statusId: string) => void
   onToggleComplete: (taskId: string) => void
   onPriorityChange: (taskId: string, priority: Priority) => void
+  /** False where a column of its own already says when the task is due. */
+  showDue?: boolean
 }
 
 const DUE_TONE: Record<string, string> = {
@@ -29,7 +31,8 @@ export const TaskRow = ({
   onOpen,
   onStatusChange,
   onToggleComplete,
-  onPriorityChange
+  onPriorityChange,
+  showDue = true
 }: TaskRowProps): React.JSX.Element => {
   const { t } = useT('tasks')
   const status = project.statuses.find((candidate) => candidate.id === task.statusId)
@@ -60,7 +63,7 @@ export const TaskRow = ({
           <TaskTagsBadge tags={task.tags} maxVisible={2} size="sm" className="shrink-0" />
           {isDone ? (
             <span className="text-success">{status?.name}</span>
-          ) : due ? (
+          ) : showDue && due ? (
             <span className={cn(DUE_TONE[due.status] ?? 'text-muted-foreground')}>{due.label}</span>
           ) : null}
         </>

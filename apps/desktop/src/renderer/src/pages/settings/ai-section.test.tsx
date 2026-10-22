@@ -119,6 +119,17 @@ describe('AISettings', () => {
     vi.useRealTimers()
   })
 
+  it('turns image search off without touching the AI switch', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true, imageEmbeddings: true })
+    render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('Search images by content')).toBeInTheDocument())
+
+    await userEvent.click(screen.getAllByRole('switch')[1])
+
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ imageEmbeddings: false })
+    expect(toast.success).toHaveBeenCalledWith('Image search disabled')
+  })
+
   it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
     render(<AISettings />)
@@ -252,6 +263,27 @@ describe('AISettings', () => {
     await waitFor(() => expect(languageSelect).toHaveTextContent('German'))
   })
 
+  it('turns voice memo sound search off and on, defaulting to on', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+
+    render(<AISettings />)
+
+    const toggle = await screen.findByRole('switch', { name: 'Search voice memos by sound' })
+    expect(toggle).toBeChecked()
+
+    await userEvent.click(toggle)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ audioSearch: false })
+    await waitFor(() => expect(toggle).not.toBeChecked())
+
+    await userEvent.click(toggle)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenLastCalledWith({
+      audioSearch: true
+    })
+  })
+
   it('keeps the spoken language and shows an error when saving fails', async () => {
     api.settings.setVoiceTranscriptionSettings = vi
       .fn()
@@ -345,7 +377,7 @@ describe('AISettings', () => {
     render(<AISettings />)
     await waitFor(() => expect(screen.getByText('previous embedding error')).toBeInTheDocument())
 
-    await userEvent.click(screen.getByRole('switch'))
+    await userEvent.click(screen.getAllByRole('switch')[0])
     expect(toast.error).toHaveBeenCalledWith('toggle failed')
 
     await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))

@@ -241,6 +241,10 @@ struct NotePageEnvironment: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.noteTitleExists, model.titleExists)
+            .environment(
+                \.noteLinkSource,
+                NoteLinkSource(reader: model.reader, filler: model.filler, reachability: model.reachability)
+            )
             .environment(\.taskCards, model.taskCards)
             .environment(\.noteTasks, taskBridge)
             .environment(

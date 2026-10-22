@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   AppleNotesFoldersSchema,
   AppleNotesImportChannels,
+  AppleNotesCheckUnlockSchema,
   ImportChannels,
   ImportStartSchema,
   ImportCancelSchema,
@@ -14,6 +15,7 @@ import { registerBuiltinImporters } from '../import/register-builtins'
 import { listImporterMeta } from '../import/registry'
 import { runImport, previewImport, cancelImport } from '../import/runner'
 import { scanAppleNotesFolders } from '../import/apple-notes/note-store'
+import { checkNotesUnlock } from '../import/apple-notes/locked-notes'
 import {
   registerOneNoteImportHandlers,
   unregisterOneNoteImportHandlers
@@ -101,6 +103,13 @@ export function registerImportHandlers(): void {
     'errors:importer.appleNotesFoldersFailed'
   )
 
+  registerCommand(
+    AppleNotesImportChannels.invoke.CHECK_UNLOCK,
+    AppleNotesCheckUnlockSchema,
+    (input) => checkNotesUnlock(input.sourcePath, input.password),
+    'errors:importer.appleNotesPasswordFailed'
+  )
+
   registerOneNoteImportHandlers()
 }
 
@@ -111,5 +120,6 @@ export function unregisterImportHandlers(): void {
   ipcMain.removeHandler(ImportChannels.invoke.PREVIEW)
   ipcMain.removeHandler(ImportChannels.invoke.LIST)
   ipcMain.removeHandler(AppleNotesImportChannels.invoke.FOLDERS)
+  ipcMain.removeHandler(AppleNotesImportChannels.invoke.CHECK_UNLOCK)
   unregisterOneNoteImportHandlers()
 }

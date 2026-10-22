@@ -13,8 +13,6 @@ import { ready } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
 import { openNoteByHandle } from './utils/note-sync-helpers'
 
-const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
-
 async function openFreshNote(page: Page, title: string) {
   const note = await page.evaluate(async (noteTitle) => {
     const result = await window.api.notes.create({ title: noteTitle, content: '' })
@@ -51,26 +49,9 @@ test.describe('Slash menu', () => {
 
     await expect(menu(page)).toBeVisible()
     await expect(menu(page).getByRole('option', { name: 'Heading 6' })).toBeAttached()
-    await expect(menu(page).getByRole('option', { name: 'Toggle Heading 1' })).toBeAttached()
+    await expect(menu(page).getByRole('option', { name: /^Toggle Heading/ })).toHaveCount(0)
     await expect(menu(page).getByRole('option', { name: 'Video' })).toBeAttached()
     await expect(menu(page).getByText('Insert', { exact: true }).last()).toBeVisible()
-  })
-
-  test('Cmd/Ctrl+Enter on Heading 2 inserts a toggle heading', async ({ page }) => {
-    await openFreshNote(page, `Slash Secondary ${Date.now()}`)
-
-    await page.keyboard.type('/heading 2')
-    await expect(menu(page).getByRole('option', { name: 'Heading 2' }).first()).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
-    await expect(menu(page).getByText('As toggle')).toBeVisible()
-    await page.keyboard.press(`${MOD}+Enter`)
-
-    await expect(menu(page)).toBeHidden()
-    await expect
-      .poll(() => firstBlock(page))
-      .toMatchObject({ type: 'heading', props: { level: 2, isToggleable: true } })
   })
 
   test('a used row comes back under Recent', async ({ page }) => {

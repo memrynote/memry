@@ -152,3 +152,30 @@ describe('golden vault round-trip fixtures, main pipeline', () => {
     expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
   })
 })
+
+describe('link-card marker tolerance, main pipeline (#2845)', () => {
+  const INVALID = [
+    '<!-- link-card:{"size":"huge"} -->',
+    '<!-- link-card:{"cover":"yes"} -->',
+    '<!-- link-card:{} -->',
+    '<!-- link-card:{oops} -->'
+  ]
+
+  it.each(INVALID)('%s is not a marker, so the note keeps its bytes', async (line) => {
+    const markdown = `${line}\n[[Dune]]`
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+
+  it.each([
+    ['a paragraph of running text', '<!-- link-card:{"size":"small"} -->\nsee [[Dune]] now'],
+    ['a heading', '<!-- link-card:{"cover":true} -->\n\n## [[Dune]]']
+  ])('a valid marker before %s is ignored without losing a byte', async (_name, markdown) => {
+    const once = await roundTrip(markdown)
+    expect(once).toBe(markdown)
+    expect(await roundTrip(once)).toBe(once)
+  })
+
+  it('a note with no marker is unchanged by the promotion path', async () => {
+    expect(await roundTrip('[[Dune]]\n\nsee [[Arrakis]]')).toBe('[[Dune]]\n\nsee [[Arrakis]]')
+  })
+})

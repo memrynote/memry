@@ -146,6 +146,7 @@ struct NoteBlockView: View {
     /// comment), and a cell's inline images and checkboxes.
     private func editableField(_ editing: NoteEditingBridge) -> EditableBlockView? {
         guard block.id != nil, Self.editableKinds.contains(block.kind), !isAnsweredView,
+              NoteLinkDisplay.card(in: block) == nil,
               !block.inline.contains(where: { $0.marks.contains("inlineImage") || $0.marks.contains("inlineCheckbox") }),
               !reviewMarks.contains(where: { plainText.contains($0.visibleText) })
         else { return nil }
@@ -316,6 +317,11 @@ struct NoteBlockView: View {
                 resolve: attachment,
                 remove: removeAttachment
             )
+        case "paragraph" where NoteLinkDisplay.card(in: block) != nil:
+            // A link alone on its line, drawn as its settings ask (#2845).
+            if let card = NoteLinkDisplay.card(in: block) {
+                NoteLinkCardView(card: card, chip: inline, open: openTarget)
+            }
         default:
             // An editable paragraph never reaches here (`editableField`).
             if !inlineImages.isEmpty {

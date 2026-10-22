@@ -908,6 +908,7 @@
     "tabs": {
       "label": "Project views",
       "overview": "Overview",
+      "all": "All",
       "tasks": "Tasks",
       "notes": "Notes",
       "files": "Files",
@@ -962,6 +963,25 @@
       "fileError": "Could not link {name}",
       "fileErrorGeneric": "Could not import the files",
       "label": "Add to {name}"
+    },
+    "all": {
+      "showDone": "Show done",
+      "empty": "Nothing open in this project.",
+      "expand": "Show tasks in {title}",
+      "collapse": "Hide tasks in {title}",
+      "taskSummary": "{open}/{total} open",
+      "daysLeft": "{count}d",
+      "overdue": "{count}d overdue",
+      "columns": {
+        "title": "Title",
+        "daysLeft": "Days left"
+      },
+      "status": {
+        "active": "Active",
+        "done": "Done",
+        "upcoming": "Upcoming",
+        "past": "Past"
+      }
     }
   },
   "project": {

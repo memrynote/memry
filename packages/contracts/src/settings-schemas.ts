@@ -451,7 +451,10 @@ export const VoiceTranscriptionSettingsSchema = z.object({
   memoNameMode: z.enum(['transcript', 'timestamp', 'none']),
   // Added in #3172, optional. Unset keeps pre-#3172 behavior: local Whisper
   // transcribes English, OpenAI auto-detects (no language sent).
-  language: z.enum(VOICE_TRANSCRIPTION_LANGUAGES).optional()
+  language: z.enum(VOICE_TRANSCRIPTION_LANGUAGES).optional(),
+  // Embed voice memos that have no usable transcript from their audio, which
+  // downloads the ~189MB audio encoder on first use. Optional: unset means on.
+  audioSearch: z.boolean().optional()
 })
 
 export type VoiceTranscriptionSettings = z.infer<typeof VoiceTranscriptionSettingsSchema>

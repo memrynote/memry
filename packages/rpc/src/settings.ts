@@ -46,6 +46,8 @@ export interface JournalSettings {
 
 export interface AISettings {
   enabled: boolean
+  /** Embed images with the vision encoder so text queries find them. Default on. */
+  imageEmbeddings: boolean
 }
 
 export interface AIModelStatus {

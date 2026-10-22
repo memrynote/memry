@@ -42,6 +42,8 @@
     "./portal-block": "./src/portal-block.ts",
     "./portal-resolve": "./src/portal-resolve.ts",
     "./versioned": "./src/versioned.ts",
+    "./wiki-link-props": "./src/wiki-link-props.ts",
+    "./markdown-preview-text": "./src/markdown-preview-text.ts",
     "./writing-tools": "./src/writing-tools/yjs.ts",
     "./writing-tools/markdown": "./src/writing-tools/markdown.ts"
   },

@@ -228,7 +228,9 @@ export type ImportPreviewResponse = ImportPreviewSuccess | ImportErrorResult
 export const AppleNotesImportChannels = {
   invoke: {
     /** Account → folder → subfolder tree with note counts (no note bodies read). */
-    FOLDERS: 'import:apple-notes:folders'
+    FOLDERS: 'import:apple-notes:folders',
+    /** Checks a Notes password against the locked notes' keys (no bodies decrypted). */
+    CHECK_UNLOCK: 'import:apple-notes:check-unlock'
   }
 } as const
 
@@ -237,6 +239,20 @@ export const AppleNotesFoldersSchema = z.object({
   sourcePath: z.string().min(1)
 })
 export type AppleNotesFoldersInput = z.infer<typeof AppleNotesFoldersSchema>
+
+export const AppleNotesCheckUnlockSchema = z.object({
+  sourcePath: z.string().min(1),
+  /** Used for this one check and discarded; never stored or logged. */
+  password: z.string().min(1)
+})
+export type AppleNotesCheckUnlockInput = z.infer<typeof AppleNotesCheckUnlockSchema>
+
+export interface AppleNotesCheckUnlockResult {
+  /** Locked notes the password unlocks. */
+  unlocked: number
+  /** Locked notes in the library. */
+  total: number
+}
 
 export interface AppleNotesFolderNode {
   /** ICFolder identifier — the stable key the import selection travels as. */
@@ -261,6 +277,8 @@ export interface AppleNotesFoldersResult {
   accounts: AppleNotesAccountNode[]
   /** Notes that sit outside any folder; selectable as their own row. */
   unfiledNoteCount: number
+  /** Password-protected notes; the dialog offers a password field when above zero. */
+  lockedNoteCount: number
 }
 
 /**
@@ -273,6 +291,8 @@ export interface AppleNotesImportOptionsInput {
   folderIds?: string[]
   /** Also import notes that sit outside any folder (default: with everything). */
   includeUnfiledNotes?: boolean
+  /** Notes password for locked notes; absent keeps them skipped. Held in memory only. */
+  notesPassword?: string
 }
 
 // ============================================================================

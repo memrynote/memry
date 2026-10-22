@@ -1,7 +1,8 @@
 import { sql } from 'drizzle-orm'
+import type Database from 'better-sqlite3'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
-import { getSetting, setSetting } from '@main/database/queries/settings'
+import { getSetting } from '@main/database/queries/settings'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { readExtractedOpening } from '@main/database/queries/extracted-text'
 import { parseNote } from '../../vault/frontmatter'
@@ -11,9 +12,10 @@ import {
   isModelLoaded
 } from '../../lib/embeddings'
 import {
+  buildEmbeddingChunks,
   buildEmbeddingInput,
   EMBEDDING_INPUT_VERSION,
-  MAX_EMBEDDING_INPUT_LENGTH
+  MAX_EMBEDDABLE_CONTENT_LENGTH
 } from '../../lib/embedding-input'
 import { createLogger } from '../../lib/logger'
 import { readVaultFile } from '../../lib/paths'
@@ -23,8 +25,6 @@ import type { ProjectionEvent, ProjectionProjector } from '../types'
 const logger = createLogger('Projections:Embeddings')
 
 const AI_SETTINGS_KEY = 'ai.enabled'
-const EMBEDDING_VERSION_KEY = 'ai.embeddingInputVersion'
-const MIN_CONTENT_LENGTH = 10
 
 function emitProgress(current: number, total: number, phase: string): void {
   broadcastToAllWindows(SettingsChannels.events.EMBEDDING_PROGRESS, {
@@ -44,16 +44,60 @@ function isAIEnabled(): boolean {
   }
 }
 
-function storeNoteEmbedding(noteId: string, embedding: Float32Array): void {
+/** Drop the rows a note owns in vec_note_chunks, as recorded by its state row. */
+function deleteNoteChunks(rawDb: Database.Database, noteId: string): void {
+  const state = rawDb
+    .prepare('SELECT chunk_count FROM note_embedding_state WHERE note_id = ?')
+    .get(noteId) as { chunk_count: number } | undefined
+  const remove = rawDb.prepare('DELETE FROM vec_note_chunks WHERE chunk_id = ?')
+  for (let index = 1; index <= (state?.chunk_count ?? 0); index++) {
+    remove.run(`${noteId}#${index}`)
+  }
+}
+
+/**
+ * Write a note's vectors: the head window to vec_notes and every later window
+ * to vec_note_chunks (both read by search), and the `similarity` vector to
+ * vec_note_similar (read by related notes, tags, grouping and filing), in one
+ * transaction so a crash never leaves a state row that disagrees with them.
+ */
+function storeNoteEmbeddings(
+  noteId: string,
+  embeddings: Float32Array[],
+  similar: Float32Array
+): void {
   const rawDb = getRawIndexDatabase()
-  rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
-  rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, embedding)
+  const [head, ...later] = embeddings
+  rawDb.transaction(() => {
+    deleteNoteChunks(rawDb, noteId)
+    rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+    rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, head)
+    rawDb.prepare('DELETE FROM vec_note_similar WHERE note_id = ?').run(noteId)
+    rawDb
+      .prepare('INSERT INTO vec_note_similar (note_id, embedding) VALUES (?, ?)')
+      .run(noteId, similar)
+    later.forEach((embedding, index) => {
+      rawDb
+        .prepare('INSERT INTO vec_note_chunks (chunk_id, embedding) VALUES (?, ?)')
+        .run(`${noteId}#${index + 1}`, embedding)
+    })
+    rawDb
+      .prepare(
+        'INSERT OR REPLACE INTO note_embedding_state (note_id, input_version, chunk_count) VALUES (?, ?, ?)'
+      )
+      .run(noteId, EMBEDDING_INPUT_VERSION, later.length)
+  })()
 }
 
 function deleteNoteEmbedding(noteId: string): void {
   try {
     const rawDb = getRawIndexDatabase()
-    rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+    rawDb.transaction(() => {
+      deleteNoteChunks(rawDb, noteId)
+      rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+      rawDb.prepare('DELETE FROM vec_note_similar WHERE note_id = ?').run(noteId)
+      rawDb.prepare('DELETE FROM note_embedding_state WHERE note_id = ?').run(noteId)
+    })()
   } catch {
     // ignore missing vec table during shutdown/setup
   }
@@ -77,9 +121,9 @@ const EMBEDDABLE_NOTES = sql`
     OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
 `
 
-/** The opening of a file's extracted text: all the embedding input ever reads. */
+/** A file's extracted text, up to the most the embedding input ever reads. */
 function readFileTextOpening(noteId: string): string {
-  return readExtractedOpening(getIndexDatabase(), noteId, MAX_EMBEDDING_INPUT_LENGTH)
+  return readExtractedOpening(getIndexDatabase(), noteId, MAX_EMBEDDABLE_CONTENT_LENGTH)
 }
 
 /**
@@ -87,7 +131,7 @@ function readFileTextOpening(noteId: string): string {
  * attachments, so a note that is mostly a pasted screenshot still has a vector.
  */
 function withAttachmentText(noteId: string, content: string): string {
-  const room = MAX_EMBEDDING_INPUT_LENGTH - content.length
+  const room = MAX_EMBEDDABLE_CONTENT_LENGTH - content.length
   if (room <= 0) return content
   const extracted = readExtractedOpening(getIndexDatabase(), noteId, room)
   return extracted ? `${content}\n\n${extracted}` : content
@@ -102,8 +146,14 @@ async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): P
   return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
 
-async function updateEmbedding(noteId: string, content: string): Promise<boolean> {
-  if (!isAIEnabled() || content.length < MIN_CONTENT_LENGTH) {
+interface NoteText {
+  title?: string | null
+  content: string
+}
+
+async function updateEmbedding(noteId: string, text: NoteText): Promise<boolean> {
+  const windows = buildEmbeddingChunks(text)
+  if (!isAIEnabled() || windows.length === 0) {
     deleteNoteEmbedding(noteId)
     return false
   }
@@ -115,12 +165,21 @@ async function updateEmbedding(noteId: string, content: string): Promise<boolean
     }
   }
 
-  const embedding = await generateLocalEmbedding(content)
-  if (!embedding) {
+  // One window at a time: peak memory is one inference, however long the note.
+  const embeddings: Float32Array[] = []
+  for (const window of windows) {
+    const embedding = await generateLocalEmbedding(window)
+    if (!embedding) {
+      return false
+    }
+    embeddings.push(embedding)
+  }
+  const similar = await generateLocalEmbedding(buildEmbeddingInput(text, 'similarity'))
+  if (!similar) {
     return false
   }
 
-  storeNoteEmbedding(noteId, embedding)
+  storeNoteEmbeddings(noteId, embeddings, similar)
   return true
 }
 
@@ -155,8 +214,7 @@ export function createEmbeddingProjector(
       const note = notes[i]
       try {
         const content = await readEmbeddableContent(vaultPath, note)
-        const input = buildEmbeddingInput({ title: note.title, content })
-        if (!(await updateEmbedding(note.id, input))) {
+        if (!(await updateEmbedding(note.id, { title: note.title, content }))) {
           skipped++
         } else {
           computed++
@@ -201,6 +259,9 @@ export function createEmbeddingProjector(
 
     if (notes.length === 0) {
       rawDb.prepare('DELETE FROM vec_notes').run()
+      rawDb.prepare('DELETE FROM vec_note_chunks').run()
+      rawDb.prepare('DELETE FROM vec_note_similar').run()
+      rawDb.prepare('DELETE FROM note_embedding_state').run()
       emitProgress(0, 0, 'complete')
       return { success: true, computed: 0, skipped: 0 }
     }
@@ -219,6 +280,9 @@ export function createEmbeddingProjector(
     }
 
     rawDb.prepare('DELETE FROM vec_notes').run()
+    rawDb.prepare('DELETE FROM vec_note_chunks').run()
+    rawDb.prepare('DELETE FROM vec_note_similar').run()
+    rawDb.prepare('DELETE FROM note_embedding_state').run()
     emitProgress(0, notes.length, 'embedding')
 
     const { computed, skipped } = await embedNotes(vaultPath, notes, signal)
@@ -242,7 +306,7 @@ export function createEmbeddingProjector(
       pendingEmbedding.add(noteId)
       return
     }
-    await updateEmbedding(noteId, buildEmbeddingInput({ title, content }))
+    await updateEmbedding(noteId, { title, content })
   }
 
   return {
@@ -282,7 +346,7 @@ export function createEmbeddingProjector(
         } else if (vaultPath) {
           try {
             const content = await readEmbeddableContent(vaultPath, note)
-            await updateEmbedding(note.id, buildEmbeddingInput({ title: note.title, content }))
+            await updateEmbedding(note.id, { title: note.title, content })
           } catch (error) {
             logger.warn('Failed to embed attachment text', { noteId: note.id, error })
           }
@@ -318,13 +382,10 @@ export function createEmbeddingProjector(
         return
       }
 
-      await updateEmbedding(
-        note.noteId,
-        buildEmbeddingInput({
-          title: note.title,
-          content: withAttachmentText(note.noteId, note.parsedContent)
-        })
-      )
+      await updateEmbedding(note.noteId, {
+        title: note.title,
+        content: withAttachmentText(note.noteId, note.parsedContent)
+      })
     },
 
     rebuild: runRebuild,
@@ -343,26 +404,6 @@ export function createEmbeddingProjector(
     async reconcile(signal?: AbortSignal): Promise<void> {
       if (signal?.aborted) {
         return
-      }
-
-      // When the embedding input formula changed, drop every stored vector so
-      // old and new shapes never mix (Codex #11), and record the new version at
-      // once. The backfill below then embeds every note that has no vector, so
-      // a re-embed cut short by quit resumes on the next open instead of
-      // wiping its progress and starting over each launch.
-      try {
-        const db = getDatabase()
-        const stored = getSetting(db, EMBEDDING_VERSION_KEY)
-        if (isAIEnabled() && stored !== String(EMBEDDING_INPUT_VERSION)) {
-          logger.info('Embedding input version changed — rebuilding embeddings', {
-            from: stored,
-            to: EMBEDDING_INPUT_VERSION
-          })
-          getRawIndexDatabase().prepare('DELETE FROM vec_notes').run()
-          setSetting(db, EMBEDDING_VERSION_KEY, String(EMBEDDING_INPUT_VERSION))
-        }
-      } catch (error) {
-        logger.warn('Embedding version check failed', { error })
       }
 
       if (signal?.aborted) {
@@ -386,6 +427,24 @@ export function createEmbeddingProjector(
           `
         )
         .run()
+      rawDb
+        .prepare(
+          'DELETE FROM vec_note_similar WHERE note_id NOT IN (SELECT note_id FROM vec_notes)'
+        )
+        .run()
+      // Chunk rows go first: their ids are read from the state rows deleted next.
+      const orphaned = rawDb
+        .prepare(
+          `SELECT note_id FROM note_embedding_state
+           WHERE chunk_count > 0 AND note_id NOT IN (SELECT note_id FROM vec_notes)`
+        )
+        .all() as Array<{ note_id: string }>
+      for (const { note_id } of orphaned) deleteNoteChunks(rawDb, note_id)
+      rawDb
+        .prepare(
+          'DELETE FROM note_embedding_state WHERE note_id NOT IN (SELECT note_id FROM vec_notes)'
+        )
+        .run()
 
       const embeddableNotes = indexDb.all<EmbeddableNote>(EMBEDDABLE_NOTES)
 
@@ -407,9 +466,26 @@ export function createEmbeddingProjector(
           (row) => row.note_id
         )
       )
-      const workList = embeddableNotes.filter(
-        (note) => !embeddedIds.has(note.id) || pendingEmbedding.has(note.id)
+      // A vector written under an older EMBEDDING_INPUT_VERSION (or before the
+      // state table existed) keeps answering searches and similarity until its
+      // note comes up here; nothing is deleted up front, so an input change
+      // never leaves the table empty and a quit mid-pass resumes where it left.
+      const currentIds = new Set(
+        (
+          rawDb
+            .prepare('SELECT note_id FROM note_embedding_state WHERE input_version = ?')
+            .all(EMBEDDING_INPUT_VERSION) as Array<{ note_id: string }>
+        ).map((row) => row.note_id)
       )
+      const owed = embeddableNotes.filter(
+        (note) =>
+          !embeddedIds.has(note.id) || !currentIds.has(note.id) || pendingEmbedding.has(note.id)
+      )
+      // Notes with no vector at all first: they are invisible to semantic search.
+      const workList = [
+        ...owed.filter((note) => !embeddedIds.has(note.id)),
+        ...owed.filter((note) => embeddedIds.has(note.id))
+      ]
 
       if (workList.length === 0) {
         pendingEmbedding.clear()

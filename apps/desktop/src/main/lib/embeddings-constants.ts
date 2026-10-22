@@ -32,6 +32,42 @@ export const EMBEDDING_MODEL_DTYPE = 'q4'
 export const EMBEDDING_SIMILARITY_FLOOR = 0.6
 
 /**
+ * Lowest query-to-document cosine a semantic search hit may have. Measured on
+ * Turkish and English notes (q4, 256d, `task: search result` query against
+ * `title: | text:` documents): a query and a note it is about land at 0.66-0.79
+ * (median 0.75), while a query and an unrelated note reach 0.68 at most (median
+ * 0.57). Note-to-note cosines are higher across the board, so
+ * {@link EMBEDDING_SIMILARITY_FLOOR} would let nearly every note through.
+ */
+export const EMBEDDING_QUERY_SIMILARITY_FLOOR = 0.65
+
+/**
+ * Lowest text-query-to-image cosine a semantic search hit may have. Text-to-image
+ * cosines sit lower than text-to-text ones and overlap more. Measured (q4, 256d,
+ * 140 soft tokens, `task: search result | query:` prefix) on a cat photo, a dog
+ * photo, a landscape and four app screenshots against 16 queries: a query and an
+ * image it is about land at 0.67-0.79 (`cat` on the cat 0.75, `kedi` 0.69, `dog`
+ * on the dog 0.79, `köpek` 0.77, `receipt` on a receipt 0.75), while a query and
+ * an unrelated image reach 0.66 at most (median 0.62). Through the running app
+ * the cat photo scores 0.688 for `kedi` and 0.684 for `dog`: related animals sit
+ * as close as the Turkish query, so no floor keeps `kedi` and drops `dog`. 0.68
+ * keeps `kedi` (the cross-language case this feature promises) and every
+ * unrelated pair measured stays under it.
+ */
+export const EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR = 0.68
+
+/**
+ * Lowest query-to-voice-memo cosine for a memo embedded from its audio. Typed
+ * queries against audio vectors (q4, 256d, 20 recordings and sounds, 67
+ * candidates): a query and the recording it describes land at 0.70-0.77 (median
+ * 0.73), an unrelated recording at 0.57 (median) to 0.74 (max), 95th percentile
+ * 0.67. Audio sits above the text floor's 0.65 because the 0.65 to
+ * 0.68 band is mostly unrelated clips; memos embedded from a transcript use
+ * {@link EMBEDDING_QUERY_SIMILARITY_FLOOR}.
+ */
+export const EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR = 0.68
+
+/**
  * Map a raw cosine similarity onto 0..1 so that "unrelated" sits near the bottom
  * instead of at 0.7. Median unrelated (0.71) -> 0.28, strongest unrelated pair
  * seen (0.79) -> 0.47, a cross-language duplicate (0.95) -> 0.87.
@@ -61,3 +97,61 @@ export const embeddingModelCacheDir = (userDataPath: string): string =>
  */
 export const embeddingModelWeightsPath = (userDataPath: string): string =>
   path.join(embeddingModelCacheDir(userDataPath), 'onnx', 'model_q4.onnx_data')
+
+/**
+ * The vision encoder weights, fetched on first image use only (~109MB). Text-only
+ * users never have this file.
+ */
+export const embeddingVisionWeightsPath = (userDataPath: string): string =>
+  path.join(embeddingModelCacheDir(userDataPath), 'onnx', 'vision_encoder_q4.onnx_data')
+
+/**
+ * Soft tokens the vision encoder spends per image (allowed 70..1120, model
+ * default 280). Spike on a cat and a dog photo (q4, 256d, CPU, M-series):
+ * 70 tokens ~0.7s, 140 ~1.9s, 280 ~4s, 560 ~13s, 1120 ~35s per image, and the
+ * query/image cosine FELL as the budget grew (cat photo vs `cat`: 0.766, 0.750,
+ * 0.735, 0.720, 0.703). 140 keeps near-top scores and enough detail for
+ * screenshots at about half the cost of the model default.
+ */
+export const EMBEDDING_IMAGE_SOFT_TOKENS = 140
+
+/**
+ * The audio encoder weights, fetched on first voice-memo use only (~189MB). Users
+ * with no voice memo to embed never have this file.
+ */
+export const embeddingAudioWeightsPath = (userDataPath: string): string =>
+  path.join(embeddingModelCacheDir(userDataPath), 'onnx', 'audio_encoder_q4.onnx_data')
+
+/** Sample rate the audio encoder expects (mono). */
+export const EMBEDDING_AUDIO_SAMPLE_RATE = 16_000
+
+/**
+ * Longest clip one audio embedding covers. The encoder emits 25 tokens per
+ * second up to ~327s; 300s keeps every window inside it. Longer recordings are
+ * split into consecutive windows, one vector each.
+ */
+export const EMBEDDING_AUDIO_WINDOW_SECONDS = 300
+
+/** Windows embedded per recording; the rest of a very long recording is not indexed. */
+export const EMBEDDING_AUDIO_MAX_WINDOWS = 12
+
+/**
+ * Soft tokens for a page of a document: a PDF page, or an image that has text
+ * read from it (a screenshot, a scan). Measured on 14 rendered paper pages (q4,
+ * 256d, CPU): image-only at 140 tokens found the right page first for 57% of
+ * queries, at 280 for 82%. Documents carry fine detail, so they get the model
+ * default; photos stay at {@link EMBEDDING_IMAGE_SOFT_TOKENS}.
+ */
+export const EMBEDDING_PAGE_SOFT_TOKENS = 280
+
+/**
+ * Pages of one PDF that get a vector, each page its own vector with that page's
+ * text (one page per vector keeps a hit on one page and each window small).
+ * A page costs about 4.5s of CPU, so a PDF is capped at its first 8 pages
+ * (about 36s); the whole text of a longer PDF stays searchable through its
+ * text vectors.
+ */
+export const MAX_EMBEDDED_PDF_PAGES = 8
+
+/** Long edge of a PDF page handed to the vision encoder; it resizes to its token budget anyway. */
+export const EMBEDDING_PAGE_RENDER_EDGE = 1400

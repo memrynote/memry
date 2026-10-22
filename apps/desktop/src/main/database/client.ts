@@ -113,6 +113,7 @@ export function initIndexDatabase(dbPath: string): IndexDb {
   sqliteVec.load(sqliteIndexDb)
 
   ensureVecNotesTable(sqliteIndexDb)
+  ensureVecImagesTable(sqliteIndexDb)
 
   indexDb = drizzle(sqliteIndexDb, { schema: indexSchema })
   return indexDb
@@ -140,11 +141,59 @@ export function ensureVecNotesTable(db: Database.Database): void {
       to: EMBEDDING_DIMENSION
     })
     db.exec('DROP TABLE vec_notes')
+    db.exec('DROP TABLE IF EXISTS vec_note_chunks')
+    db.exec('DROP TABLE IF EXISTS vec_note_similar')
   }
 
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_notes USING vec0(
       note_id TEXT PRIMARY KEY,
+      embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
+    )
+  `)
+  // Windows after a note's first (see embedding-input.ts). Additive: an older
+  // build never reads it, and a missing table is created empty here.
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_note_chunks USING vec0(
+      chunk_id TEXT PRIMARY KEY,
+      embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
+    )
+  `)
+  // One `similarity`-task vector per note, for note-to-note features (see
+  // EmbeddingTask). Additive and derived: rows arrive with the versioned
+  // re-embed, and until a note has one the features skip it.
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_note_similar USING vec0(
+      note_id TEXT PRIMARY KEY,
+      embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
+    )
+  `)
+}
+
+/**
+ * Create the vec0 table for image embeddings, beside `vec_notes` in the same
+ * space. `image_key` is `note_id || '/' || source` (see image_embedding_state).
+ * Additive: installs from before images were embedded just gain an empty table
+ * that the image projector's reconcile fills. A table of another width is
+ * dropped with its state rows, so the same reconcile refills it.
+ */
+export function ensureVecImagesTable(db: Database.Database): void {
+  const existing = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'vec_images'")
+    .get() as { sql: string | null } | undefined
+  const width = existing?.sql?.match(/float\[(\d+)\]/)?.[1]
+  if (existing && width !== String(EMBEDDING_DIMENSION)) {
+    logger.info('Recreating vec_images for a new embedding dimension', {
+      from: width ?? 'unknown',
+      to: EMBEDDING_DIMENSION
+    })
+    db.exec('DROP TABLE vec_images')
+    db.exec('DELETE FROM image_embedding_state')
+  }
+
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_images USING vec0(
+      image_key TEXT PRIMARY KEY,
       embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
     )
   `)

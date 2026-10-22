@@ -1384,6 +1384,12 @@
       "disabled": "AI features disabled",
       "error": "Failed to update setting"
     },
+    "imageSearch": {
+      "label": "Search images by content",
+      "description": "Find photos by what they show. Downloads a 109 MB image model the first time an image is indexed.",
+      "enabled": "Image search enabled",
+      "disabled": "Image search disabled"
+    },
     "unknownError": "Unknown error",
     "groups": {
       "voice": "Voice Transcription",
@@ -1406,6 +1412,9 @@
         "none": "Do not rename"
       },
       "namingError": "Failed to update voice memo naming",
+      "audioSearch": "Search voice memos by sound",
+      "audioSearchDescription": "Find voice memos that have no transcript, such as music or sounds, by what they sound like. Downloads a 189 MB audio model the first time one needs indexing.",
+      "audioSearchError": "Failed to update voice memo search",
       "language": "Spoken language",
       "languageDescription": "Language you speak in voice memos",
       "languageDefault": "Default",
@@ -1587,7 +1596,18 @@
         "deselectAll": "Clear selection",
         "foldersSelected": "{count, plural, one {# folder selected} other {# folders selected}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# locked note} other {# locked notes}}",
+          "hint": "Enter your Notes password to import them. It is used only for this import and is never saved. Attachments inside locked notes are not imported.",
+          "label": "Notes password",
+          "placeholder": "Notes password",
+          "check": "Check",
+          "wrong": "That password does not unlock any locked note.",
+          "unlockedAll": "{count, plural, one {Unlocks the locked note.} other {Unlocks all # locked notes.}}",
+          "unlockedSome": "Unlocks {unlocked} of {total} locked notes. The rest use a different password and will be skipped.",
+          "checkError": "Could not check the password."
+        }
       },
       "chooseFolder": "Select Apple Notes folder…",
       "chooseDirectory": "Choose folder…",
@@ -1616,7 +1636,10 @@
     "messages": {
       "readFileFailed": "Failed to read file",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; Memry cannot read them without your Notes password."
+        "lockedNote": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; Memry cannot read them without your Notes password.",
+        "lockedWrongPassword": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; {count, plural, one {it uses} other {they use}} a different password than the one you entered.",
+        "lockedUnreadable": "{count, plural, one {# locked note} other {# locked notes}} could not be decrypted and {count, plural, one {was} other {were}} not imported.",
+        "lockedAttachment": "{count, plural, one {# attachment in a locked note was} other {# attachments in locked notes were}} not imported; the note text was."
       },
       "csv": {
         "noHeaders": "CSV file has no headers",

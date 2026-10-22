@@ -33,6 +33,7 @@ import {
 } from '../../lib/search-utils'
 import { fuzzySearchTitles } from '../../lib/fuzzysort-search'
 import { mergeNameHits, searchNoteNames } from './search-note-names'
+import { fuseSemanticHits, type SemanticHit } from './search-semantic-merge'
 import { createLogger } from '../../lib/logger'
 
 const logger = createLogger('Search')
@@ -522,7 +523,18 @@ function loadFuzzyCandidates(
 // Orchestrator
 // ============================================================================
 
-export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery): SearchResponse {
+export type { SemanticHit }
+
+/**
+ * `semanticHits` come from the async query embedding (`search/semantic.ts`) and
+ * are fused into the note and journal groups; empty means FTS only.
+ */
+export function searchAll(
+  indexDb: IndexDb,
+  dataDb: DataDb,
+  query: SearchQuery,
+  semanticHits: SemanticHit[] = []
+): SearchResponse {
   const startTime = performance.now()
   const truncated = truncateQuery(query.text)
   const hasOperators = /\b(AND|OR|NOT)\b/.test(truncated) || /"[^"]+"/.test(truncated)
@@ -626,14 +638,40 @@ export function searchAll(indexDb: IndexDb, dataDb: DataDb, query: SearchQuery):
     totalCount += results.length - before.length
   }
 
+  let fusedGroups = groups
+  if (semanticHits.length > 0) {
+    try {
+      const fused = fuseSemanticHits({
+        indexDb,
+        dataDb,
+        groups,
+        hits: semanticHits,
+        activeTypes,
+        limit: query.limit,
+        fileTypeFilter: noteFileTypeFilter(query.noteFileTypes),
+        filter: (items, type) =>
+          applyPostFilters(
+            items,
+            query,
+            query.tags.length > 0 ? getItemTagIds(indexDb, dataDb, type, query.tags) : null
+          )
+      })
+      fusedGroups = fused.groups
+      totalCount += fused.added
+    } catch (error) {
+      logger.warn('Semantic merge failed, returning FTS results', error)
+    }
+  }
+
   const queryTimeMs = Math.round(performance.now() - startTime)
-  return { groups, totalCount, queryTimeMs }
+  return { groups: fusedGroups, totalCount, queryTimeMs }
 }
 
 export function quickSearch(
   indexDb: IndexDb,
   dataDb: DataDb,
-  input: QuickSearchInput
+  input: QuickSearchInput,
+  semanticHits: SemanticHit[] = []
 ): QuickSearchResponse {
   const startTime = performance.now()
   const query: SearchQuery = {
@@ -648,7 +686,7 @@ export function quickSearch(
     noteFileTypes: input.noteFileTypes
   }
 
-  const response = searchAll(indexDb, dataDb, query)
+  const response = searchAll(indexDb, dataDb, query, semanticHits)
 
   const allResults = response.groups
     .flatMap((g) => g.results)

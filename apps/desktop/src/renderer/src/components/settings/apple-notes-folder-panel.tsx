@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
 import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
+import { AppleNotesPasswordField } from '@/components/settings/apple-notes-password-field'
 
 export interface AppleNotesPanelState {
   /** False while the tree loads or when the user cleared every folder. */
@@ -56,6 +57,7 @@ export function AppleNotesFolderPanel({
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [includeUnfiled, setIncludeUnfiled] = useState(true)
+  const [notesPassword, setNotesPassword] = useState<string | null>(null)
 
   // The dialog keys this panel by source path, so one mount scans one source:
   // the loading/error state starts correct and is only written on resolution.
@@ -101,6 +103,9 @@ export function AppleNotesFolderPanel({
         onStateChange({ ready: !isLoading, options: {} })
         return
       }
+      const folderOptions: AppleNotesImportOptionsInput = allSelected
+        ? {}
+        : { folderIds: [...selected], includeUnfiledNotes: includeUnfiled }
       onStateChange({
         ready: selected.size > 0 || includeUnfiled,
         // Everything ticked → send no options, so the run takes the same
@@ -108,15 +113,13 @@ export function AppleNotesFolderPanel({
         // "all" list would instead drop what it cannot name: a folder whose
         // ZIDENTIFIER is null is addressed by primary key in the tree, which
         // no note's folder identifier ever matches.
-        options: allSelected
-          ? {}
-          : { folderIds: [...selected], includeUnfiledNotes: includeUnfiled }
+        options: notesPassword ? { ...folderOptions, notesPassword } : folderOptions
       })
     })
     return () => {
       cancelled = true
     }
-  }, [tree, isLoading, selected, includeUnfiled, allSelected, onStateChange])
+  }, [tree, isLoading, selected, includeUnfiled, allSelected, notesPassword, onStateChange])
 
   const toggleFolder = useCallback((node: AppleNotesFolderNode, checked: boolean) => {
     const ids = folderIdsOf(node)
@@ -236,6 +239,15 @@ export function AppleNotesFolderPanel({
             0
           )}
       </div>
+
+      {tree.lockedNoteCount > 0 && (
+        <AppleNotesPasswordField
+          sourcePath={sourcePath}
+          lockedNoteCount={tree.lockedNoteCount}
+          disabled={disabled}
+          onPasswordChange={setNotesPassword}
+        />
+      )}
     </div>
   )
 }

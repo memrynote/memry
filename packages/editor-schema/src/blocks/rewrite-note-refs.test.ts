@@ -206,4 +206,20 @@ describe('rewriteNoteRefsForMove', () => {
   it('returns null for an empty body', () => {
     expect(rewriteNoteRefsForMove('', 'notes/Foo.md', 'notes/archive/Foo.md')).toBeNull()
   })
+
+  // #2845: the link-card line carries no ref, so a move must not touch it.
+  it('leaves a link-card line and its link alone while re-pointing a ref', () => {
+    const body =
+      '<!-- link-card:{"size":"medium","preview":true} -->\n[[Dune]]\n\n![photo](../attachments/n1/photo.png)\n'
+
+    expect(rewriteNoteRefsForMove(body, 'notes/Foo.md', 'notes/archive/Foo.md')).toBe(
+      '<!-- link-card:{"size":"medium","preview":true} -->\n[[Dune]]\n\n![photo](../../attachments/n1/photo.png)\n'
+    )
+  })
+
+  it('returns null for a note whose only markup is a link card', () => {
+    const body = '<!-- link-card:{"cover":true} -->\n[[Dune]]\n'
+
+    expect(rewriteNoteRefsForMove(body, 'notes/Foo.md', 'notes/archive/Foo.md')).toBeNull()
+  })
 })

@@ -1,4 +1,4 @@
-import type { TabAction, TabSystemState } from '../types'
+import type { Tab, TabAction, TabScrollPanes, TabSystemState } from '../types'
 import { createInitialState } from '../helpers'
 import { mergeScrollPanes } from '../scroll-panes'
 import { mergeSettingsPatch } from '@/lib/settings-patch'
@@ -32,6 +32,22 @@ function mergeViewState(
   return next
 }
 
+/**
+ * Keep only the pane entries measured against what the tab shows NOW.
+ *
+ * A pane tears down AFTER a same-tab navigation (wikilink, back, forward) has
+ * already swapped the tab's content, and its final save lands on the incoming
+ * entity's tab. All entities share one slot per pane, so that late save would
+ * overwrite the entry the swap just restored for the incoming page with the
+ * outgoing page's offset, and the page the user returns to would start at the
+ * top. The outgoing offset already travels in the history entry the swap pushed.
+ */
+function ownedBy(tab: Tab, panes: TabScrollPanes): TabScrollPanes {
+  return Object.fromEntries(
+    Object.entries(panes).filter(([, entry]) => entry.entityId === tab.entityId)
+  )
+}
+
 export function sessionReducer(state: TabSystemState, action: SessionAction): TabSystemState {
   switch (action.type) {
     case 'SAVE_TAB_STATE': {
@@ -54,7 +70,7 @@ export function sessionReducer(state: TabSystemState, action: SessionAction): Ta
                     // A patch, not a replacement: panes are independent writers
                     // on the same tab, exactly like `viewState`'s keys.
                     ...(scrollPanes !== undefined && {
-                      scrollPanes: mergeScrollPanes(t.scrollPanes, scrollPanes)
+                      scrollPanes: mergeScrollPanes(t.scrollPanes, ownedBy(t, scrollPanes))
                     }),
                     ...(viewState !== undefined && {
                       viewState: mergeViewState(t.viewState, viewState)

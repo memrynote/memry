@@ -267,7 +267,7 @@ describe('inbox suggestions', () => {
 
     expect(await updateNoteEmbedding('note-1')).toBe(true)
     expect(mockGenerateEmbedding).toHaveBeenCalledWith(
-      'task: sentence similarity | query: note-1\n\nlong enough note content'
+      'title: note-1 | text: long enough note content'
     )
     expect(statement.run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
 
@@ -336,7 +336,7 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-similar')
 
     expect(mockGenerateEmbedding).toHaveBeenCalledWith(
-      'task: sentence similarity | query: Research memo\n\nlong enough content for matching'
+      'task: sentence similarity | query: Research memo\nlong enough content for matching'
     )
     expect(suggestions).toEqual(
       expect.arrayContaining([

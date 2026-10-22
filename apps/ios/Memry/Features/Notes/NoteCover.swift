@@ -141,6 +141,8 @@ struct NoteCoverBand: View {
     var focus: Int?
     /// Extra height above the band's own, drawn under the navigation bar.
     var topBleed: CGFloat = 0
+    /// Replaces the band's height: a link card's thumbnail.
+    var height: CGFloat?
 
     @State private var picture: NoteCoverPicture = .pending
 
@@ -170,7 +172,7 @@ struct NoteCoverBand: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: ownHeight + topBleed)
+        .frame(height: height ?? (ownHeight + topBleed))
         .clipped()
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)

@@ -27,18 +27,72 @@ The first index build can take a few minutes for large vaults — progress is sh
 
 ## The Model
 
-memrynote uses Google's **EmbeddingGemma 2** (text only, 256 dimensions). It understands 100+
+memrynote uses Google's **EmbeddingGemma 2** (256 dimensions). Its text half embeds notes; its image half, used only for [image search](#image-search), is a separate download. It understands 100+
 languages, so notes in Turkish, German, Japanese and others are matched by meaning, including across
-languages: an English query can find a Turkish note on the same topic. Notes are embedded up to their
-first ~4000 characters, title first.
+languages: an English query can find a Turkish note on the same topic. A note is embedded in
+windows of ~4000 characters, title first, up to 16 windows (~64,000 characters), so text late in a
+long note is found too. Search shows each note once, matched by its closest window.
 
-When you update from a version that used the older English-only model, memrynote discards the old
-vectors and re-embeds every note in the background once. Similar notes and suggestions fill back in as
-that pass runs. If you quit before it finishes, the next launch continues with the notes it has not
-reached yet instead of starting over.
+When you update from a version that stored vectors in an older format, memrynote re-embeds every
+note once in the background. Nothing is deleted first: the old vectors keep answering search
+meanwhile, and each note's vector is replaced as the pass reaches it (notes with no vector at all go
+first). Each note keeps two kinds of vector: one tuned for search, and one tuned for comparing it with
+other notes. Similar notes, suggested tags, canvas groups and inbox filing read the second kind, so
+until the pass reaches a note it is left out of those lists. If you quit before it finishes, the next launch continues with the notes it
+has not reached yet instead of starting over.
+
+## How Search Uses It
+
+Typing in the search box runs two searches and merges them. The keyword search is unchanged. In
+parallel, your query is embedded on this device and compared with the stored note vectors; the
+notes nearest in meaning are merged with the keyword results by rank (Reciprocal Rank Fusion). A
+note found by both rises. A note found only by meaning is listed after the keyword matches in the same
+group and has no highlighted snippet. Typing `cat` can surface a note about kittens, in Turkish or
+English, with no shared word.
+
+Only a note's vector needs to exist, so a note that is not embedded yet is found by keywords only.
+Meaning-only matches need a similarity of about 0.65 or more, so unrelated notes are not listed. The
+first search after launch starts the model and answers by keywords alone, because loading takes
+seconds; later searches include meaning. Queries with `AND`, `OR`, `NOT` or quoted phrases, queries
+under three characters, and searches with embeddings off are keyword-only.
 
 Intel Macs are not supported by the local model runtime; on those machines semantic features stay off
 and search is keyword-only.
+
+## Image Search
+
+A photo with no text in it has nothing for keyword search or OCR to read. Image search embeds the
+picture itself, so `cat` or `kedi` finds a cat photo, filed in your vault or embedded in a note. The
+same search box and the same ranking apply: the picture's vector sits in the same space as note
+text vectors, and a match lists the image (or the note that embeds it) with the other results.
+
+- **Which images.** PNG, JPEG, WebP and GIF files you filed as notes of their own, and the ones a note
+  embeds. SVG files and files over 30 MB are skipped.
+- **Text and picture both count.** An image that also has text keeps its text vector (made from the
+  OCR text), so a search for words in a screenshot still works, and gets a second vector from the
+  picture, so a search for what it shows works too. A match on either lists it. The picture's own
+  vector is made from the picture and its text together, so layout, charts and handwriting count
+  alongside the words.
+- **PDF pages.** The first 8 pages of each PDF get a vector each, made from the rendered page and the
+  text read from it. Later pages are found by their text only. A page costs about 4 to 5 seconds of
+  background CPU. On a small test set (14 rendered paper pages, 28 queries) this put the right page
+  first for 93% of queries, against 79% for text alone and 82% for the picture alone.
+- **One-time download.** The first time an image needs embedding, memrynote downloads the image
+  model (about 109 MB). Notes without images never trigger it, and a vault without images never
+  downloads or loads it. The model unloads again after an idle period.
+- **Turn it off.** [Settings → AI](/user-guide/settings#ai) has a **Search images by content**
+  switch under **Enable AI Features**. Off means no download, no image embedding, and images are found
+  by keywords and OCR text only. Turning it off keeps existing image vectors on disk and ignores them.
+  Turning it back on takes effect at the next vault open, which also embeds images added meanwhile.
+- **Existing vaults.** The first open after updating embeds your existing images and PDF pages in the background,
+  one at a time, after the vault is open. A quit part-way continues where it stopped. Renaming or
+  moving an image re-embeds it under its new identity, and deleting it, or removing it from a note,
+  drops its vector.
+- **Limits.** Matching a picture to a word is looser than matching text to text, so image hits need
+  a higher similarity (about 0.68) and a related animal can match, such as `dog` finding a cat photo.
+  An image that fails to embed is tried again the next time its note changes or the vault opens.
+
+Vectors stay in the local index database and are rebuilt from your vault; none of it syncs.
 
 ## Model Management
 
@@ -120,6 +174,35 @@ Review the groups before anything happens: untick a group to discard it, or rena
 then puts each accepted group's cards into a named frame, laid out as a grid. If other drawings are on
 the board, the frames go to their right so nothing is covered. One undo takes the whole change back.
 Task, event, file, and project cards are not grouped.
+
+## Voice Memo Search
+
+Voice memos in the Inbox join the same search box. A memo is indexed one of two ways, and a match
+shows up in the **Inbox** group with the other results:
+
+- **It has a transcript.** The transcript (and the memo's title) is embedded with the text model, so
+  `dentist` finds a memo where you said "book the tooth doctor". Nothing extra is downloaded.
+- **It has no usable transcript.** Transcription failed or was never turned on, or the recording is
+  music, silence or other sound. memrynote embeds the audio itself, so `applause` can find a clapping
+  recording. Memos are read as 16 kHz mono WAV (what Memry records); a recording longer than five
+  minutes is split into windows and the best window counts, up to one hour.
+
+A memo whose transcript arrives later switches from its audio vector to its transcript vector on the
+next vault open or when the transcription finishes.
+
+- **One-time download.** The first memo that needs its audio embedded downloads the audio model
+  (about 189 MB). Users with no such memo never download or load it, and it unloads after an idle period.
+- **Turn it off.** [Settings → AI](/user-guide/settings#ai) has a **Search voice memos by sound** switch
+  under voice transcription. Off means no download and no audio embedding; memos are found by their
+  transcript only. Existing audio vectors stay and keep answering searches. Turning it back on takes
+  effect at the next vault open.
+- **Existing vaults.** The first open after updating indexes your existing memos in the background,
+  one at a time, and a quit part-way continues where it stopped. Nothing is reset and no vault file changes.
+- **Why transcript first.** On Turkish and English recordings, a transcript vector found a spoken or
+  typed description of a memo at least as often as the audio vector, and combining the two did no
+  better. Audio is the only signal for a recording with no words, so that is where it is used.
+- **Limits.** Matching sound to a word is looser than text to text, so audio hits need a similarity
+  of about 0.68. Queries are typed text; speaking a query is not supported.
 
 ## Model Size
 

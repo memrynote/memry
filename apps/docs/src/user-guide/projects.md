@@ -88,13 +88,34 @@ The capture bar is the top of the page — there is no title header above it. On
 
 ### Tabs
 
-Five views, switched in place — none of them opens another tab:
+Up to six views, switched in place — none of them opens another tab. A project opens on **All**:
 
 The **⋯** menu — which edits or archives the project — sits at the end of the tab row. **Archive** is greyed out on the Inbox, which is permanent and cannot be archived.
 
 - **Overview** — the first five of each category, with a **View all** that jumps to that category's tab
+- **All** — notes, tasks, and events in one list, described below
 - **Tasks** — the full task list, with the list, quick-add, and subtasks you already know
 - **Notes** · **Files** · **Events** — everything of that kind linked to the project
+
+A category with nothing in it has no tab until something lands there. **Overview** and **All** are always present, and so is the tab you are standing on.
+
+The Tasks tab's status headings (To do, In progress, Done) use the same type and sentence case as the Overview's section headings.
+
+### The All tab
+
+**All** answers "what is open in this project?" without hopping between tabs. It lists:
+
+- each linked **note**, with the tasks written in it or linked to it nested underneath. Click the chevron to fold them. A task linked to several notes appears once, under the first one
+- **tasks** that belong to no note
+- **events** linked to the project
+
+Rows are the same rows the Overview uses, so you can change a task's status or priority in place. A **Days left** column on the right counts whole days to a due date. It turns tinted at three days or fewer and red once the date has passed. Finished tasks and past events show nothing there.
+
+A note has no due date of its own. Its dates come from its open tasks: the earliest start or due date to the latest due date. A note with no tasks shows no dates.
+
+Click **Title** or **Days left** to sort the list flat. Click again to reverse, and a third time to go back to the grouped order. Items without a due date stay at the end. Your sort stays with the tab, and survives a restart.
+
+**All** shows open items only. Open the project's **⋯** menu and turn on **Show done** to include finished tasks and past events. The setting stays with the tab.
 
 The Notes, Files, and Events tabs group their rows into time sections, exactly the way the Inbox does — same headings, same row type and spacing. Notes and files fall under **Today**, **Yesterday**, or **Older** by when they were last changed. Events look forward instead, under **Today**, **Tomorrow**, **Upcoming**, and **Past**, soonest first. Empty sections are not shown, and any section header collapses on click.
 

@@ -1,6 +1,14 @@
+import type { AllSort } from './all-rows'
 import type { ProjectTabKey } from './use-project-hub'
 
-export const PROJECT_TAB_KEYS: ProjectTabKey[] = ['overview', 'tasks', 'notes', 'files', 'events']
+export const PROJECT_TAB_KEYS: ProjectTabKey[] = [
+  'overview',
+  'all',
+  'tasks',
+  'notes',
+  'files',
+  'events'
+]
 
 /**
  * The details rail is built and wired, but we are not showing it to users yet.
@@ -18,7 +26,11 @@ export const PROJECT_VIEW_STATE_KEYS = {
   /** Which sub-tab is showing. */
   projectTab: 'projectTab',
   /** Whether the details rail is expanded. */
-  railOpen: 'railOpen'
+  railOpen: 'railOpen',
+  /** The All tab's column sort. Absent means the default order, by due date. */
+  allSort: 'allSort',
+  /** Whether the All tab also lists finished items. */
+  allShowDone: 'allShowDone'
 } as const
 
 /**
@@ -30,6 +42,7 @@ export const PROJECT_VIEW_STATE_KEYS = {
  */
 export const PROJECT_SCROLL_KEYS = {
   overview: 'project-overview',
+  all: 'project-all',
   notes: 'project-notes',
   files: 'project-files',
   events: 'project-events',
@@ -47,11 +60,25 @@ export const parseProjectTab = (raw: unknown): ProjectTabKey | undefined =>
     ? (raw as ProjectTabKey)
     : undefined
 
+const ALL_SORT_KEYS: AllSort['key'][] = ['title', 'due']
+
+export const parseAllSort = (raw: unknown): AllSort | null | undefined => {
+  if (raw === null) return null
+  if (typeof raw !== 'object' || raw === undefined) return undefined
+  const { key, dir } = raw as Record<string, unknown>
+  return (ALL_SORT_KEYS as unknown[]).includes(key) && (dir === 'asc' || dir === 'desc')
+    ? { key: key as AllSort['key'], dir }
+    : undefined
+}
+
+export const parseShowDone = (raw: unknown): boolean | undefined =>
+  typeof raw === 'boolean' ? raw : undefined
+
 export const parseRailOpen = (raw: unknown): boolean | undefined =>
   typeof raw === 'boolean' ? raw : undefined
 
 /** Defaults, shared by the hook and by the whole-record readers below. */
-export const DEFAULT_PROJECT_TAB: ProjectTabKey = 'overview'
+export const DEFAULT_PROJECT_TAB: ProjectTabKey = 'all'
 export const DEFAULT_RAIL_OPEN = true
 
 export function readProjectTab(viewState: Record<string, unknown> | undefined): ProjectTabKey {

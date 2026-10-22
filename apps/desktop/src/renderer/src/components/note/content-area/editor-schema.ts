@@ -1,5 +1,5 @@
 import { defaultBlockSpecs } from '@blocknote/core'
-import { createMemrySchema, WikiLink } from '@memry/editor-schema'
+import { createMemrySchema } from '@memry/editor-schema'
 import { withImageWidthInAlt } from '@memry/editor-schema/blocks'
 import { withImageCornerHandles } from './image-corner-handles'
 import { withImageCropView } from './image-crop-view'
@@ -19,6 +19,7 @@ import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
 import { createToggleListItemBlock } from './toggle-list-item-block'
 import { HashTag } from './hash-tag'
+import { WikiLinkWithCard } from './wiki-link-card'
 import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
 import { InlineImage } from './inline-image'
@@ -82,8 +83,9 @@ export const editorSchema = createMemrySchema({
   },
   inline: {
     // The editor flavour of wikiLink: same node as main's, plus the `parse`
-    // rule that turns pasted `[[X]]` text into a link.
-    wikiLink: WikiLink,
+    // rule that turns pasted `[[X]]` text into a link, and the row or card a
+    // link alone on its line can draw as (#2845). Presentation only.
+    wikiLink: WikiLinkWithCard,
     linkMention: LinkMention,
     hashTag: HashTag,
     dateMention: DateMention,
