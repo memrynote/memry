@@ -242,20 +242,13 @@ export const LOCKED_NOTES_FROM_WHERE =
   'FROM zicnotedata AS nd JOIN ziccloudsyncingobject AS zcso ON zcso.z_pk = nd.znote ' +
   'WHERE zcso.z_ent = ? AND zcso.ztitle1 IS NOT NULL AND zcso.zispasswordprotected = 1'
 
-function countLockedNotes(
-  db: Database.Database,
-  keys: PrimaryKeys
-): { locked: number; devicePasscode: number } {
-  // A note locked with the Mac login password (rather than a Notes password) has
-  // no PBKDF2 iteration count: its key material is not in this database.
-  const devicePasscode = hasColumn(db, 'ziccloudsyncingobject', 'zcryptoiterationcount')
-    ? 'COALESCE(SUM(zcso.zcryptoiterationcount = 0), 0)'
-    : '0'
-  return db
-    .prepare(
-      `SELECT COUNT(*) AS locked, ${devicePasscode} AS devicePasscode ${LOCKED_NOTES_FROM_WHERE}`
-    )
-    .get(keys.ICNote) as { locked: number; devicePasscode: number }
+function countLockedNotes(db: Database.Database, keys: PrimaryKeys): number {
+  const row = db
+    .prepare(`SELECT COUNT(*) AS count ${LOCKED_NOTES_FROM_WHERE}`)
+    .get(keys.ICNote) as {
+    count: number
+  }
+  return row.count
 }
 
 /** Note count per ICFolder pk; `null` key = notes that sit outside any folder. */
@@ -340,12 +333,10 @@ export async function scanAppleNotesFolders(sourcePath: string): Promise<AppleNo
       })
     )
 
-    const locked = countLockedNotes(store.db, keys)
     return {
       accounts: accountNodes,
       unfiledNoteCount: counts.get(null) ?? 0,
-      lockedNoteCount: locked.locked,
-      devicePasscodeNoteCount: locked.devicePasscode
+      lockedNoteCount: countLockedNotes(store.db, keys)
     }
   } finally {
     await store.close()

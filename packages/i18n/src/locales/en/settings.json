@@ -1595,8 +1595,6 @@
           "placeholder": "Notes password",
           "check": "Check",
           "wrong": "That password does not unlock any locked note.",
-          "devicePasscodeAll": "{count, plural, one {This locked note uses} other {These # locked notes use}} your Mac login password (Touch ID) instead of a Notes password. Memry cannot read {count, plural, one {it} other {them}}. In Notes, remove the lock and lock {count, plural, one {it} other {them}} again with a custom password, then import.",
-          "devicePasscodeSome": "{count, plural, one {# locked note uses} other {# locked notes use}} your Mac login password instead of a Notes password and will be skipped.",
           "unlockedAll": "{count, plural, one {Unlocks the locked note.} other {Unlocks all # locked notes.}}",
           "unlockedSome": "Unlocks {unlocked} of {total} locked notes. The rest use a different password and will be skipped.",
           "checkError": "Could not check the password."
@@ -1630,7 +1628,6 @@
       "readFileFailed": "Failed to read file",
       "appleNotes": {
         "lockedNote": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; Memry cannot read them without your Notes password.",
-        "lockedDevicePasscode": "{count, plural, one {# locked note uses} other {# locked notes use}} your Mac login password instead of a Notes password, so Memry cannot read {count, plural, one {it} other {them}}. In Notes, remove the lock and lock {count, plural, one {it} other {them}} again with a custom password to import.",
         "lockedWrongPassword": "{count, plural, one {# locked note was} other {# locked notes were}} not imported; {count, plural, one {it uses} other {they use}} a different password than the one you entered.",
         "lockedUnreadable": "{count, plural, one {# locked note} other {# locked notes}} could not be decrypted and {count, plural, one {was} other {were}} not imported.",
         "lockedAttachment": "{count, plural, one {# attachment in a locked note was} other {# attachments in locked notes were}} not imported; the note text was."

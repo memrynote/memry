@@ -17,8 +17,6 @@ export const IMPORT_MESSAGE_CODES = {
 
   /** Skip reason: Apple Notes locked (password-protected) notes. Takes `{count}`. */
   appleNotesLockedNote: 'appleNotes.lockedNote',
-  /** Skip reason: note is locked with the Mac/device password, whose key is not in the database. Takes `{count}`. */
-  appleNotesLockedDevicePasscode: 'appleNotes.lockedDevicePasscode',
   /** Skip reason: the entered Notes password does not unlock this locked note. Takes `{count}`. */
   appleNotesLockedWrongPassword: 'appleNotes.lockedWrongPassword',
   /** Skip reason: a locked note unlocked but its body is damaged or its crypto data is missing. Takes `{count}`. */

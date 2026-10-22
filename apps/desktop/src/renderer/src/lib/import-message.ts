@@ -24,7 +24,6 @@ const IMPORT_MESSAGE_KEYS: Record<ImportMessageCode, string> = {
   readFileFailed: 'import.messages.readFileFailed',
 
   'appleNotes.lockedNote': 'import.messages.appleNotes.lockedNote',
-  'appleNotes.lockedDevicePasscode': 'import.messages.appleNotes.lockedDevicePasscode',
   'appleNotes.lockedWrongPassword': 'import.messages.appleNotes.lockedWrongPassword',
   'appleNotes.lockedUnreadable': 'import.messages.appleNotes.lockedUnreadable',
   'appleNotes.lockedAttachment': 'import.messages.appleNotes.lockedAttachment',

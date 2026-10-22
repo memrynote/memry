@@ -250,10 +250,8 @@ export type AppleNotesCheckUnlockInput = z.infer<typeof AppleNotesCheckUnlockSch
 export interface AppleNotesCheckUnlockResult {
   /** Locked notes the password unlocks. */
   unlocked: number
-  /** Locked notes a Notes password could unlock (excludes `devicePasscode`). */
+  /** Locked notes in the library. */
   total: number
-  /** Locked notes that use the Mac login password; no Notes password can unlock them. */
-  devicePasscode: number
 }
 
 export interface AppleNotesFolderNode {
@@ -281,8 +279,6 @@ export interface AppleNotesFoldersResult {
   unfiledNoteCount: number
   /** Password-protected notes; the dialog offers a password field when above zero. */
   lockedNoteCount: number
-  /** Of those, notes locked with the Mac login password, which Memry cannot read. */
-  devicePasscodeNoteCount: number
 }
 
 /**
