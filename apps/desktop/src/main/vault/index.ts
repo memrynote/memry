@@ -84,6 +84,7 @@ import {
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { createSearchProjector } from '../projections/projectors/search-projector'
+import { openPdfDocument } from '../file-text/pdf-host'
 import { createImageEmbeddingProjector } from '../projections/projectors/image-embedding-projector'
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
 import { createVoiceEmbeddingProjector } from '../projections/projectors/voice-embedding-projector'
@@ -796,7 +797,7 @@ async function openVault(vaultPath: string): Promise<void> {
       () => vaultPath,
       () => currentStatus.isIndexing
     ),
-    createImageEmbeddingProjector(() => vaultPath),
+    createImageEmbeddingProjector(() => vaultPath, openPdfDocument),
     createVoiceEmbeddingProjector(() => vaultPath),
     createInboxStatsProjector(),
     createNoteProjectLinksProjector(),

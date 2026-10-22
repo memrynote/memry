@@ -21,7 +21,7 @@ describe('embedImage', () => {
 
   it('embeds by default, so the encoder downloads on first image use', async () => {
     await expect(embedImage(image)).resolves.toBeInstanceOf(Float32Array)
-    expect(generateImageEmbedding).toHaveBeenCalledWith(image)
+    expect(generateImageEmbedding).toHaveBeenCalledWith(image, undefined)
   })
 
   it('never reaches the worker when the user turned image embeddings off', async () => {

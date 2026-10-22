@@ -11,6 +11,7 @@
 import { getSetting } from '@main/database/queries/settings'
 import { getDatabase } from '../database'
 import { generateImageEmbedding } from './embeddings'
+import type { ImageEmbedOptions } from './embedding-model-protocol'
 
 const AI_ENABLED_KEY = 'ai.enabled'
 
@@ -30,7 +31,10 @@ export function isImageEmbeddingEnabled(): boolean {
 }
 
 /** Embed an image file, or null when AI or image embeddings are off or on failure. */
-export async function embedImage(image: Uint8Array): Promise<Float32Array | null> {
+export async function embedImage(
+  image: Uint8Array,
+  options?: ImageEmbedOptions
+): Promise<Float32Array | null> {
   if (!isImageEmbeddingEnabled()) return null
-  return generateImageEmbedding(image)
+  return generateImageEmbedding(image, options)
 }

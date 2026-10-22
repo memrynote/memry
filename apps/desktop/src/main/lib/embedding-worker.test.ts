@@ -152,6 +152,36 @@ describe('embedding worker', () => {
       sentence_embedding: { data: new Float32Array(768).fill(fill) }
     })
 
+    it('embeds an image with its text at the requested soft-token budget', async () => {
+      const port = start()
+      const withVision = Object.assign(vi.fn().mockResolvedValue(output(2)), { dispose: vi.fn() })
+      mockModelLoad.mockResolvedValue(withVision)
+      const processor = Object.assign(vi.fn().mockResolvedValue({ pixel_values: 'px' }), {
+        image_processor: { max_soft_tokens: 280 }
+      })
+      mockProcessorLoad.mockResolvedValue(processor)
+      mockFromBlob.mockResolvedValue('raw-image')
+      await import('./embedding-worker')
+
+      port.emit('message', {
+        data: {
+          type: 'embed-image',
+          requestId: 'i1',
+          image: new Uint8Array([1]),
+          text: 'title: none | text: Invoice <|image|>',
+          softTokens: 280
+        }
+      })
+      await vi.waitFor(() =>
+        expect(port.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'embed-result', requestId: 'i1' })
+        )
+      )
+
+      expect(processor).toHaveBeenCalledWith('title: none | text: Invoice <|image|>', 'raw-image')
+      expect(processor.image_processor.max_soft_tokens).toBe(280)
+    })
+
     it('never loads the processor or the encoder for text-only use', async () => {
       const port = start()
       const model = Object.assign(vi.fn().mockResolvedValue(output(1)), { dispose: vi.fn() })

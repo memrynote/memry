@@ -134,3 +134,24 @@ export const EMBEDDING_AUDIO_WINDOW_SECONDS = 300
 
 /** Windows embedded per recording; the rest of a very long recording is not indexed. */
 export const EMBEDDING_AUDIO_MAX_WINDOWS = 12
+
+/**
+ * Soft tokens for a page of a document: a PDF page, or an image that has text
+ * read from it (a screenshot, a scan). Measured on 14 rendered paper pages (q4,
+ * 256d, CPU): image-only at 140 tokens found the right page first for 57% of
+ * queries, at 280 for 82%. Documents carry fine detail, so they get the model
+ * default; photos stay at {@link EMBEDDING_IMAGE_SOFT_TOKENS}.
+ */
+export const EMBEDDING_PAGE_SOFT_TOKENS = 280
+
+/**
+ * Pages of one PDF that get a vector, each page its own vector with that page's
+ * text (one page per vector keeps a hit on one page and each window small).
+ * A page costs about 4.5s of CPU, so a PDF is capped at its first 8 pages
+ * (about 36s); the whole text of a longer PDF stays searchable through its
+ * text vectors.
+ */
+export const MAX_EMBEDDED_PDF_PAGES = 8
+
+/** Long edge of a PDF page handed to the vision encoder; it resizes to its token budget anyway. */
+export const EMBEDDING_PAGE_RENDER_EDGE = 1400

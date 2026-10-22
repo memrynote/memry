@@ -7,10 +7,16 @@ import {
   storeImageEmbedding,
   type ImageSource
 } from '@main/database/queries/image-embeddings'
-import { IMAGE_EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
+import { stat } from 'fs/promises'
+import { buildInterleavedInput, IMAGE_EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
+import {
+  EMBEDDING_PAGE_RENDER_EDGE,
+  EMBEDDING_PAGE_SOFT_TOKENS
+} from '../../lib/embeddings-constants'
+import type { PdfDocument } from '../../file-text/pdf-host'
 import { embedImage, isImageEmbeddingEnabled } from '../../lib/image-embedding'
 import { createLogger } from '../../lib/logger'
-import { openVaultFile } from '../../lib/paths'
+import { openVaultFile, resolveVaultFile } from '../../lib/paths'
 import type { ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:ImageEmbeddings')
@@ -32,10 +38,14 @@ async function readImageBytes(vaultPath: string, relativePath: string): Promise<
 }
 
 /**
- * Image vectors beside the text vectors: each image's bytes through the vision
- * encoder into `vec_images`, keyed like the text extraction job that found the
- * file (a filed image's own file, or an image a note embeds). Searchable by
- * text because both encoders share one space.
+ * Image vectors beside the text vectors, in `vec_images`, keyed like the text
+ * extraction job that found the file (a filed file, or one a note embeds).
+ * Searchable by text because both encoders share one space. An image with no
+ * text read from it is embedded alone. An image with text (a screenshot, a
+ * scan) and every page of a PDF (its first MAX_EMBEDDED_PDF_PAGES) is embedded
+ * interleaved: the page image at 280 soft tokens plus that page's text in one
+ * vector, which beat OCR text alone and the image alone in the measurement
+ * recorded in docs (#3129).
  *
  * An image is embedded once its text extraction job has settled, after the
  * `note.text-extracted` event that job publishes, and again when its bytes
@@ -45,17 +55,53 @@ async function readImageBytes(vaultPath: string, relativePath: string): Promise<
  * encoder unless an image is owed a vector and image embeddings are on.
  */
 export function createImageEmbeddingProjector(
-  getVaultPath: () => string | null
+  getVaultPath: () => string | null,
+  openPdf: (absolutePath: string, size: number) => Promise<PdfDocument>
 ): ProjectionProjector {
+  /** The PDF a pass is on; consecutive pages of one file share it. */
+  let openDocument: { path: string; pdf: PdfDocument } | null = null
+
+  const closeDocument = async (): Promise<void> => {
+    const current = openDocument
+    openDocument = null
+    await current?.pdf.close().catch(() => {})
+  }
+
+  const renderPdfPage = async (
+    vaultPath: string,
+    relativePath: string,
+    page: number
+  ): Promise<Uint8Array | null> => {
+    if (openDocument?.path !== relativePath) {
+      await closeDocument()
+      const resolved = await resolveVaultFile(vaultPath, relativePath)
+      if (resolved.kind !== 'inside') return null
+      const { size } = await stat(resolved.path)
+      openDocument = { path: relativePath, pdf: await openPdf(resolved.path, size) }
+    }
+    if (page > openDocument.pdf.pageCount) return null
+    return (await openDocument.pdf.renderPage(page, EMBEDDING_PAGE_RENDER_EDGE)).png
+  }
+
   const embedOne = async (vaultPath: string, image: ImageSource): Promise<boolean> => {
     try {
-      const bytes = await readImageBytes(vaultPath, image.path)
+      const bytes =
+        image.page === null
+          ? await readImageBytes(vaultPath, image.path)
+          : await renderPdfPage(vaultPath, image.path, image.page)
       if (!bytes) return false
-      const embedding = await embedImage(bytes)
+      const text = buildInterleavedInput(image.text)
+      // Pages and images with text are documents and get the page budget.
+      const isDocument = text !== null || image.page !== null
+      const embedding = await embedImage(
+        bytes,
+        isDocument ? { text: text ?? undefined, softTokens: EMBEDDING_PAGE_SOFT_TOKENS } : undefined
+      )
       if (!embedding) return false
       storeImageEmbedding(getRawIndexDatabase(), image, embedding, IMAGE_EMBEDDING_INPUT_VERSION)
       return true
     } catch (error) {
+      await closeDocument()
       logger.warn('Failed to embed image', { noteId: image.noteId, error })
       return false
     }
@@ -95,15 +141,19 @@ export function createImageEmbeddingProjector(
     const workList = [...owed.filter(isNew), ...owed.filter((image) => !isNew(image))]
 
     let failures = 0
-    for (const image of workList) {
-      if (signal?.aborted) return
-      failures = (await embedOne(vaultPath, image)) ? 0 : failures + 1
-      if (failures >= MAX_CONSECUTIVE_FAILURES) {
-        logger.warn('Image embedding paused after repeated failures', {
-          remaining: workList.length
-        })
-        return
+    try {
+      for (const image of workList) {
+        if (signal?.aborted) return
+        failures = (await embedOne(vaultPath, image)) ? 0 : failures + 1
+        if (failures >= MAX_CONSECUTIVE_FAILURES) {
+          logger.warn('Image embedding paused after repeated failures', {
+            remaining: workList.length
+          })
+          return
+        }
       }
+    } finally {
+      await closeDocument()
     }
   }
 

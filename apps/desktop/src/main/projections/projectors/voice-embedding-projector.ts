@@ -56,7 +56,7 @@ export function planVoiceEmbedding(item: VoiceItem): VoiceEmbeddingPlan {
   if (item.transcriptionStatus === 'complete' && words >= MIN_TRANSCRIPT_WORDS) {
     return {
       source: 'transcript',
-      text: buildEmbeddingInput({ title: item.title, content: item.transcription })
+      text: buildEmbeddingInput({ title: item.title, content: item.transcription }, 'document')
     }
   }
   return { source: 'audio' }

@@ -48,6 +48,8 @@ describe('image embeddings storage', () => {
     source,
     signature,
     path: `attachments/n1/${source}`,
+    page: null,
+    text: '',
     settled: true
   })
 
