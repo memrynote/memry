@@ -357,6 +357,14 @@ describe('attachment operations', () => {
       ).toBe(true)
     })
 
+    it('refuses an exact filename that is not a plain file name', async () => {
+      const result = await saveAttachment('note123', Buffer.from('data'), '../escape.png', {
+        exactFilename: true
+      })
+
+      expect(result.success).toBe(false)
+    })
+
     it('T393: creates note attachments folder', async () => {
       const data = Buffer.from('data')
 

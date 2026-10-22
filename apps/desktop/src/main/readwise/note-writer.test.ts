@@ -413,8 +413,119 @@ describe('upsertReadwiseNote', () => {
 
     expect((await notes.getNoteById(noteId))!.properties.author).toBe('Someone Else')
     for (const [input] of vi.mocked(domain.updateNoteCommand).mock.calls) {
-      expect(Object.keys(input).sort()).toEqual(['content', 'id'])
+      expect(Object.keys(input).sort()).toEqual(['content', 'id', 'ignoreInlineTags'])
     }
+  })
+
+  it('feeds the new body to the note CRDT on a write, and nothing on a no-op', async () => {
+    const { feedExternalEditToCrdt } = await import('../sync/crdt-external-feed')
+    const feed = vi.mocked(feedExternalEditToCrdt)
+    const source = book(1, { highlights: [highlight(1)] })
+    const noteId = await created(source)
+    feed.mockClear()
+
+    expect((await sync(book(1, { highlights: threeHighlights() }))).status).toBe('updated')
+    expect(feed).toHaveBeenCalledTimes(1)
+    expect(feed).toHaveBeenCalledWith(noteId, await body(noteId))
+
+    feed.mockClear()
+    await sync(book(1, { highlights: threeHighlights() }))
+    expect(feed).not.toHaveBeenCalled()
+  })
+
+  it('skips a note that took a network update moments ago', async () => {
+    const noteId = await created(book(1, { highlights: [highlight(1)] }))
+    const { recordNetworkUpdate } = await import('../sync/crdt-writeback')
+    recordNetworkUpdate(noteId)
+
+    expect(await sync(book(1, { highlights: threeHighlights() }))).toEqual({
+      status: 'skipped',
+      reason: 'busy',
+      noteId
+    })
+    expect(writes()).toBe(0)
+  })
+
+  it('reports an unchanged book as unchanged even while its note is open', async () => {
+    const source = book(1, { highlights: threeHighlights() })
+    await created(source)
+    vi.spyOn(crdtProvider.getCrdtProvider(), 'getDoc').mockReturnValue(new Y.Doc())
+
+    expect((await sync(source)).status).toBe('unchanged')
+    expect(state.getRetryList(db())).toEqual([])
+  })
+
+  it('does not write over text the user typed while images were downloading', async () => {
+    const noteId = await created(book(1, { category: 'books', highlights: [highlight(1)] }))
+    const slowFetch = async (url: string) => {
+      await userEdits(noteId, (content) => `${content}\n\nTyped during the download.`)
+      return fetchImage(url)
+    }
+    const next = book(1, {
+      category: 'books',
+      cover_image_url: COVER_URL,
+      highlights: [highlight(1)]
+    })
+    const outcome = await writer.upsertReadwiseNote(
+      next,
+      planNote(next, PLAN_OPTIONS) as NotePlan,
+      {
+        planOptions: PLAN_OPTIONS,
+        fetch: slowFetch
+      }
+    )
+
+    expect(outcome).toEqual({ status: 'skipped', reason: 'busy', noteId })
+    expect(await body(noteId)).toContain('Typed during the download.')
+    expect(state.getRetryList(db()).map((entry) => entry.readwiseBookId)).toEqual([1])
+  })
+
+  it("keeps highlight tags out of the frontmatter tags, and a removed one never strips the user's", async () => {
+    const noteId = await created(book(1, { highlights: [highlight(1)] }))
+    await domain.updateNoteCommand({ id: noteId, headerTags: { add: ['focus'] } })
+
+    await sync(book(1, { highlights: [highlight(1, { tags: [{ name: 'other' }] })] }))
+    expect((await notes.getNoteById(noteId))!.headerTags).toEqual(['focus'])
+    await sync(book(1, { highlights: [highlight(1)] }))
+    expect((await notes.getNoteById(noteId))!.headerTags).toEqual(['focus'])
+  })
+
+  it('appends once to a note with a duplicated start marker, and then settles', async () => {
+    const noteId = await created(book(1, { highlights: threeHighlights() }))
+    await userEdits(noteId, (content) => `<!-- readwise:start -->\n\n${content}`)
+    const next = book(1, {
+      highlights: [...threeHighlights(), highlight(4, { created_at: '2026-10-23T08:00:00Z' })]
+    })
+
+    expect((await sync(next)).status).toBe('appended')
+    expect((await sync(next)).status).toBe('unchanged')
+    expect((await body(noteId)).match(/readwise\.io\/open\/4\)/g)).toHaveLength(1)
+  })
+
+  it('creates one note when two runs write the same new book at once', async () => {
+    const source = book(1, { highlights: threeHighlights() })
+    const outcomes = await Promise.all([sync(source), sync(source)])
+
+    expect(outcomes.map((outcome) => outcome.status).sort()).toEqual(['created', 'unchanged'])
+    expect(fs.readdirSync(path.join(vault.path, 'Readwise', 'Books'))).toHaveLength(1)
+  })
+
+  it('does not mark a note deleted while the vault is still indexing', async () => {
+    const noteId = await created(book(1, { highlights: [highlight(1)] }))
+    const vaultIndex = await import('../vault/index')
+    vi.mocked(vaultIndex.getStatus).mockReturnValue({
+      isOpen: true,
+      path: vault.path,
+      isIndexing: true,
+      indexProgress: 10,
+      error: null
+    })
+    vi.spyOn(notes, 'getNoteById').mockResolvedValue(null)
+
+    const outcome = await sync(book(1, { highlights: threeHighlights() }))
+
+    expect(outcome.status).toBe('failed')
+    expect(links.getLinkByBookId(db(), 1)).toMatchObject({ noteId, state: 'linked' })
   })
 
   describe('images (D14)', () => {

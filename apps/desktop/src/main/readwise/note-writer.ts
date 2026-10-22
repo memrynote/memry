@@ -19,6 +19,7 @@ import { createImportedNote } from '../import/_shared/imported-note'
 import { updateNoteCommand } from '../notes/domain'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { getStatus } from '../vault'
 import { getNoteById, type Note } from '../vault/notes'
 import type { RemoteFetch } from '../vault/remote-attachment'
 import { resolveImages } from './images'
@@ -56,7 +57,26 @@ export type UpsertOutcome =
  * Failures never throw: the book goes on the retry list and the outcome says
  * why, so one locked folder cannot stop a run.
  */
+/** One write at a time per book: two overlapping runs would both create the note, or overwrite each other's append. */
+const inflight = new Map<number, Promise<unknown>>()
+
 export async function upsertReadwiseNote(
+  book: ReadwiseBook,
+  plan: NotePlan,
+  options: UpsertOptions
+): Promise<UpsertOutcome> {
+  const previous = inflight.get(book.user_book_id) ?? Promise.resolve()
+  const run = previous.then(() => upsertOne(book, plan, options))
+  const settled = run.catch(() => undefined)
+  inflight.set(book.user_book_id, settled)
+  try {
+    return await run
+  } finally {
+    if (inflight.get(book.user_book_id) === settled) inflight.delete(book.user_book_id)
+  }
+}
+
+async function upsertOne(
   book: ReadwiseBook,
   plan: NotePlan,
   options: UpsertOptions
@@ -72,7 +92,11 @@ export async function upsertReadwiseNote(
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     log.warn('A Readwise book could not be written', { bookId: book.user_book_id, error })
-    addRetry(getDatabase(), book.user_book_id, reason)
+    try {
+      addRetry(getDatabase(), book.user_book_id, reason)
+    } catch (retryError) {
+      log.error('A failed Readwise book could not be put on the retry list', { retryError })
+    }
     return { status: 'failed', reason }
   }
 }
@@ -90,6 +114,9 @@ async function upsert(
   if (link) {
     note = await getNoteById(link.noteId)
     if (!note) {
+      // A missing row also means "not indexed yet". `note-deleted` is sticky
+      // (D9), so never mark it while the vault is still indexing.
+      if (getStatus().isIndexing) throw new Error('The vault is still indexing')
       markLinkState(db, { readwiseBookId: book.user_book_id }, 'note-deleted')
       return { status: 'skipped', reason: 'note-deleted' }
     }
@@ -100,11 +127,6 @@ async function upsert(
 
   const fetch = options.fetch ?? ((url: string) => net.fetch(url))
   if (!note) return createNote(book, plan, options, fetch)
-
-  const userStarted = options.userInitiated || options.reset
-  if (!userStarted && (getCrdtProvider().getDoc(note.id) || wasRecentNetworkUpdate(note.id))) {
-    return { status: 'skipped', reason: 'busy', noteId: note.id }
-  }
 
   const section = readSection(note.content)
   if (options.reset) return resetSection(book, plan, note, options, fetch)
@@ -135,6 +157,31 @@ async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note | null>
     if (note) return note
   }
   return null
+}
+
+/**
+ * The one place a section write reaches `updateNoteCommand`. Images were
+ * downloaded since the note was read, so it reads the note again: a body that
+ * changed meanwhile, or a note that is open or took a network update, is not
+ * written over (D6). A command the user started skips the open check only.
+ * `ignoreInlineTags`: a highlight's `#tag` must not reach the note's
+ * frontmatter `tags` (D4), and a removed one must not strip a user's tag.
+ */
+async function commit(
+  note: Note,
+  content: string,
+  options: UpsertOptions,
+  status: 'updated' | 'appended'
+): Promise<UpsertOutcome> {
+  const busy: UpsertOutcome = { status: 'skipped', reason: 'busy', noteId: note.id }
+  const latest = await getNoteById(note.id)
+  if (!latest || latest.content !== note.content) return busy
+  const userStarted = options.userInitiated || options.reset
+  if (!userStarted && (getCrdtProvider().getDoc(note.id) || wasRecentNetworkUpdate(note.id))) {
+    return busy
+  }
+  await updateNoteCommand({ id: note.id, content, ignoreInlineTags: true })
+  return { status, noteId: note.id }
 }
 
 function replan(
@@ -177,6 +224,7 @@ async function createNote(
     await updateNoteCommand({
       id: created.id,
       content: replaceSection(created.content, withImages.section),
+      ignoreInlineTags: true,
       ...(cover === undefined ? {} : { frontmatter: { cover } })
     })
   }
@@ -196,11 +244,10 @@ async function rewriteSection(
   const next = replan(book, plan, options, images)
   const content = note.content.slice(0, range.start) + next.section + note.content.slice(range.end)
   if (content === note.content) return { status: 'unchanged', noteId: note.id }
-  await updateNoteCommand({ id: note.id, content })
-  return { status: 'updated', noteId: note.id }
+  return commit(note, content, options, 'updated')
 }
 
-const STRAY_MARKERS = /<!-- readwise:(?:start|end[^>]*?) -->/g
+const STRAY_MARKERS = /<!--\s*readwise:(?:start|end)[^>]*-->/g
 
 /**
  * Re-import (D16): the section is rendered from the full book and replaces the
@@ -225,15 +272,13 @@ async function resetSection(
       note.content.slice(section.range.end)
     : `${note.content.replace(STRAY_MARKERS, '').trimEnd()}\n\n${next.section}`
   if (content === note.content) return { status: 'unchanged', noteId: note.id }
-  await updateNoteCommand({ id: note.id, content })
-  return { status: 'updated', noteId: note.id }
+  return commit(note, content, options, 'updated')
 }
 
 function replaceSection(body: string, section: string): string {
   const read = readSection(body)
-  return read.found
-    ? body.slice(0, read.range.start) + section + body.slice(read.range.end)
-    : section
+  if (!read.found) throw new Error('The new note has no readable Readwise section')
+  return body.slice(0, read.range.start) + section + body.slice(read.range.end)
 }
 
 const LIST_ITEM = /^\s*(?:[-*+]|\d{1,9}[.)])\s/
@@ -309,6 +354,5 @@ async function appendToNote(
   } else {
     content = `${body.trimEnd()}\n\n${append.markdown}`
   }
-  await updateNoteCommand({ id: note.id, content })
-  return { status: 'appended', noteId: note.id }
+  return commit(note, content, options, 'appended')
 }

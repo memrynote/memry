@@ -428,6 +428,10 @@ export async function saveAttachment(
     return { success: false, error: VAULT_LOCKED_NOTE_MESSAGE }
   }
 
+  if (options?.exactFilename && !/^[\w-][\w.-]*$/.test(originalFilename)) {
+    return { success: false, error: 'An exact attachment filename must be a plain file name' }
+  }
+
   // Validate file type
   const ext = getFileExtension(originalFilename)
   const extraAllowed = options?.extraAllowedExtensions ?? []
