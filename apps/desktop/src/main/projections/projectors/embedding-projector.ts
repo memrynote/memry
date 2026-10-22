@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase, getRawIndexDatabase } from '../../database'
-import { getSetting, setSetting } from '@main/database/queries/settings'
+import { getSetting } from '@main/database/queries/settings'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { readExtractedOpening } from '@main/database/queries/extracted-text'
 import { parseNote } from '../../vault/frontmatter'
@@ -23,7 +23,6 @@ import type { ProjectionEvent, ProjectionProjector } from '../types'
 const logger = createLogger('Projections:Embeddings')
 
 const AI_SETTINGS_KEY = 'ai.enabled'
-const EMBEDDING_VERSION_KEY = 'ai.embeddingInputVersion'
 const MIN_CONTENT_LENGTH = 10
 
 function emitProgress(current: number, total: number, phase: string): void {
@@ -48,12 +47,16 @@ function storeNoteEmbedding(noteId: string, embedding: Float32Array): void {
   const rawDb = getRawIndexDatabase()
   rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
   rawDb.prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)').run(noteId, embedding)
+  rawDb
+    .prepare('INSERT OR REPLACE INTO note_embedding_state (note_id, input_version) VALUES (?, ?)')
+    .run(noteId, EMBEDDING_INPUT_VERSION)
 }
 
 function deleteNoteEmbedding(noteId: string): void {
   try {
     const rawDb = getRawIndexDatabase()
     rawDb.prepare('DELETE FROM vec_notes WHERE note_id = ?').run(noteId)
+    rawDb.prepare('DELETE FROM note_embedding_state WHERE note_id = ?').run(noteId)
   } catch {
     // ignore missing vec table during shutdown/setup
   }
@@ -201,6 +204,7 @@ export function createEmbeddingProjector(
 
     if (notes.length === 0) {
       rawDb.prepare('DELETE FROM vec_notes').run()
+      rawDb.prepare('DELETE FROM note_embedding_state').run()
       emitProgress(0, 0, 'complete')
       return { success: true, computed: 0, skipped: 0 }
     }
@@ -219,6 +223,7 @@ export function createEmbeddingProjector(
     }
 
     rawDb.prepare('DELETE FROM vec_notes').run()
+    rawDb.prepare('DELETE FROM note_embedding_state').run()
     emitProgress(0, notes.length, 'embedding')
 
     const { computed, skipped } = await embedNotes(vaultPath, notes, signal)
@@ -345,26 +350,6 @@ export function createEmbeddingProjector(
         return
       }
 
-      // When the embedding input formula changed, drop every stored vector so
-      // old and new shapes never mix (Codex #11), and record the new version at
-      // once. The backfill below then embeds every note that has no vector, so
-      // a re-embed cut short by quit resumes on the next open instead of
-      // wiping its progress and starting over each launch.
-      try {
-        const db = getDatabase()
-        const stored = getSetting(db, EMBEDDING_VERSION_KEY)
-        if (isAIEnabled() && stored !== String(EMBEDDING_INPUT_VERSION)) {
-          logger.info('Embedding input version changed — rebuilding embeddings', {
-            from: stored,
-            to: EMBEDDING_INPUT_VERSION
-          })
-          getRawIndexDatabase().prepare('DELETE FROM vec_notes').run()
-          setSetting(db, EMBEDDING_VERSION_KEY, String(EMBEDDING_INPUT_VERSION))
-        }
-      } catch (error) {
-        logger.warn('Embedding version check failed', { error })
-      }
-
       if (signal?.aborted) {
         return
       }
@@ -384,6 +369,11 @@ export function createEmbeddingProjector(
               OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
           )
           `
+        )
+        .run()
+      rawDb
+        .prepare(
+          'DELETE FROM note_embedding_state WHERE note_id NOT IN (SELECT note_id FROM vec_notes)'
         )
         .run()
 
@@ -407,9 +397,26 @@ export function createEmbeddingProjector(
           (row) => row.note_id
         )
       )
-      const workList = embeddableNotes.filter(
-        (note) => !embeddedIds.has(note.id) || pendingEmbedding.has(note.id)
+      // A vector written under an older EMBEDDING_INPUT_VERSION (or before the
+      // state table existed) keeps answering searches and similarity until its
+      // note comes up here; nothing is deleted up front, so an input change
+      // never leaves the table empty and a quit mid-pass resumes where it left.
+      const currentIds = new Set(
+        (
+          rawDb
+            .prepare('SELECT note_id FROM note_embedding_state WHERE input_version = ?')
+            .all(EMBEDDING_INPUT_VERSION) as Array<{ note_id: string }>
+        ).map((row) => row.note_id)
       )
+      const owed = embeddableNotes.filter(
+        (note) =>
+          !embeddedIds.has(note.id) || !currentIds.has(note.id) || pendingEmbedding.has(note.id)
+      )
+      // Notes with no vector at all first: they are invisible to semantic search.
+      const workList = [
+        ...owed.filter((note) => !embeddedIds.has(note.id)),
+        ...owed.filter((note) => embeddedIds.has(note.id))
+      ]
 
       if (workList.length === 0) {
         pendingEmbedding.clear()

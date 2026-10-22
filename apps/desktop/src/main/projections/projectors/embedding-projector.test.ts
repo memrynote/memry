@@ -66,7 +66,7 @@ vi.mock('electron', () => ({
 }))
 
 import { createEmbeddingProjector } from './embedding-projector'
-import { EMBEDDING_INPUT_VERSION, EMBEDDING_TASK_PREFIX } from '../../lib/embedding-input'
+import { EMBEDDING_INPUT_VERSION } from '../../lib/embedding-input'
 import { createProjectionRuntime } from '../runtime'
 
 describe('embedding projector', () => {
@@ -117,7 +117,8 @@ describe('embedding projector', () => {
     await projector.reconcile()
 
     expect(prepare).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM vec_notes'))
-    expect(run).toHaveBeenCalledTimes(1)
+    // vec_notes prune + note_embedding_state prune
+    expect(run).toHaveBeenCalledTimes(2)
     // note-1 already embedded → no re-embed
     expect(generateEmbedding).not.toHaveBeenCalled()
   })
@@ -242,9 +243,7 @@ describe('embedding projector', () => {
       }
     } as never)
 
-    expect(generateEmbedding).toHaveBeenCalledWith(
-      `${EMBEDDING_TASK_PREFIX}long enough markdown body`
-    )
+    expect(generateEmbedding).toHaveBeenCalledWith('title: none | text: long enough markdown body')
     expect(prepare).toHaveBeenCalledWith('DELETE FROM vec_notes WHERE note_id = ?')
     expect(prepare).toHaveBeenCalledWith('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)')
     expect(run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
@@ -274,7 +273,7 @@ describe('embedding projector', () => {
     await projector.project({ type: 'note.text-extracted', noteId: 'pdf-1' })
 
     expect(generateEmbedding).toHaveBeenCalledWith(
-      `${EMBEDDING_TASK_PREFIX}Logbook\n\nThe heron left the marsh at dawn`
+      'title: Logbook | text: The heron left the marsh at dawn'
     )
     expect(run).toHaveBeenCalledWith('pdf-1', new Float32Array([0.1, 0.2]))
 
@@ -303,7 +302,7 @@ describe('embedding projector', () => {
     await projector.project({ type: 'note.text-extracted', noteId: 'note-1' })
 
     expect(generateEmbedding).toHaveBeenCalledWith(
-      `${EMBEDDING_TASK_PREFIX}Trip\n\nPacking list for the coast\n\nFerry ticket 7:40 to the estuary`
+      'title: Trip | text: Packing list for the coast\n\nFerry ticket 7:40 to the estuary'
     )
     expect(run).toHaveBeenCalledWith('note-1', new Float32Array([0.1, 0.2]))
   })
@@ -332,7 +331,7 @@ describe('embedding projector', () => {
     indexing = false
     await expect(projector.rebuild()).resolves.toEqual({ success: true, computed: 1, skipped: 0 })
     expect(generateEmbedding).toHaveBeenCalledWith(
-      `${EMBEDDING_TASK_PREFIX}Logbook\n\nThe heron left the marsh at dawn`
+      'title: Logbook | text: The heron left the marsh at dawn'
     )
     expect(readFile).not.toHaveBeenCalled()
   })
@@ -457,17 +456,23 @@ describe('embedding projector', () => {
     expect(generateEmbedding).not.toHaveBeenCalled()
   })
 
-  it('resumes an interrupted input-version re-embed on the next reconcile instead of starting over', async () => {
-    // A small stand-in for vec_notes that answers the statements the projector runs.
+  it('re-embeds stale vectors in the background without ever emptying vec_notes, and resumes after a quit', async () => {
+    // A small stand-in for vec_notes and note_embedding_state.
     const vectors = new Set<string>()
+    const state = new Map<string, number>()
     const prepare = vi.fn((statement: string) => ({
-      run: (noteId?: string) => {
+      run: (noteId?: string, version?: number) => {
         if (statement === 'DELETE FROM vec_notes') vectors.clear()
         else if (statement.startsWith('DELETE FROM vec_notes WHERE note_id'))
           vectors.delete(noteId!)
         else if (statement.startsWith('INSERT INTO vec_notes')) vectors.add(noteId!)
+        else if (statement.startsWith('INSERT OR REPLACE INTO note_embedding_state'))
+          state.set(noteId!, version!)
       },
-      all: () => [...vectors].map((note_id) => ({ note_id }))
+      all: () =>
+        statement.includes('note_embedding_state')
+          ? [...state].map(([note_id]) => ({ note_id }))
+          : [...vectors].map((note_id) => ({ note_id }))
     }))
     getRawIndexDatabase.mockReturnValue({ prepare })
     getIndexDatabase.mockReturnValue({
@@ -477,13 +482,9 @@ describe('embedding projector', () => {
         { id: 'note-3', path: 'notes/three.md', title: 'Three', fileType: 'markdown' }
       ])
     })
-    // Vectors written under the previous input formula.
+    // Vectors written under the previous input formula: no state rows.
     vectors.add('note-1').add('note-2').add('note-3')
-    const settings = new Map([['ai.embeddingInputVersion', 'stale']])
-    getSetting.mockImplementation((_db: unknown, key: string) => settings.get(key) ?? 'true')
-    setSetting.mockImplementation((_db: unknown, key: string, value: string) => {
-      settings.set(key, value)
-    })
+    getSetting.mockImplementation(() => 'true')
     readFile.mockResolvedValue('raw markdown')
     parseNote.mockReturnValue({ content: 'parsed markdown long enough' })
 
@@ -493,20 +494,24 @@ describe('embedding projector', () => {
       controller.abort()
       return new Float32Array([0.1, 0.2])
     })
-    const projector = createEmbeddingProjector(() => '/vault')
-    await projector.reconcile(controller.signal)
+    await createEmbeddingProjector(() => '/vault').reconcile(controller.signal)
 
-    // No old-formula vector survives next to the new one.
-    expect([...vectors]).toEqual(['note-1'])
+    // Old vectors keep serving search and similarity meanwhile.
+    expect([...vectors].sort()).toEqual(['note-1', 'note-2', 'note-3'])
+    expect([...state.keys()]).toEqual(['note-1'])
 
-    // The next launch embeds only the notes the first pass never reached.
+    // The next launch re-embeds only the notes the first pass never reached.
     generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
     await createEmbeddingProjector(() => '/vault').reconcile()
 
     expect(generateEmbedding).toHaveBeenCalledTimes(3)
     expect(readFile.mock.calls.filter(([path]) => path === '/vault/notes/one.md')).toHaveLength(1)
     expect([...vectors].sort()).toEqual(['note-1', 'note-2', 'note-3'])
-    expect(settings.get('ai.embeddingInputVersion')).toBe(String(EMBEDDING_INPUT_VERSION))
+    expect([...state.values()]).toEqual([
+      EMBEDDING_INPUT_VERSION,
+      EMBEDDING_INPUT_VERSION,
+      EMBEDDING_INPUT_VERSION
+    ])
   })
 
   it('skips the backfill when the signal aborts while the model is loading', async () => {
