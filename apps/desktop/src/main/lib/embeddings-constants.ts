@@ -61,7 +61,7 @@ export const EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR = 0.68
  * queries against audio vectors (q4, 256d, 20 recordings and sounds, 67
  * candidates): a query and the recording it describes land at 0.70-0.77 (median
  * 0.73), an unrelated recording at 0.57 (median) to 0.74 (max), 95th percentile
- * 0.67. Audio sits slightly below the text floor's 0.65 because the 0.65 to
+ * 0.67. Audio sits above the text floor's 0.65 because the 0.65 to
  * 0.68 band is mostly unrelated clips; memos embedded from a transcript use
  * {@link EMBEDDING_QUERY_SIMILARITY_FLOOR}.
  */
