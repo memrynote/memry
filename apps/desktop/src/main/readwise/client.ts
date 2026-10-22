@@ -95,6 +95,11 @@ export interface ReadwiseRequestOptions {
   /** Path under readwise.io, such as `/api/v2/export/`. The token never goes to another host. */
   path: string
   query?: Record<string, string | undefined>
+  /**
+   * Awaited before every attempt, a retry after `429` included. A client with a
+   * request budget of its own (Reader, #1419) waits for it here.
+   */
+  throttle?: (signal?: AbortSignal) => Promise<void>
 }
 
 function parseRetryAfterSeconds(header: string | null): number {
@@ -103,7 +108,7 @@ function parseRetryAfterSeconds(header: string | null): number {
   return Math.min(Math.ceil(seconds), MAX_RETRY_AFTER_SECONDS)
 }
 
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const abort = (): void => {
       clearTimeout(timer)
@@ -142,11 +147,12 @@ function buildUrl(path: string, query: ReadwiseRequestOptions['query']): string 
  * rethrows the signal's reason when `signal` aborts.
  */
 export async function readwiseGet(options: ReadwiseRequestOptions): Promise<Response> {
-  const { token, signal, path, query } = options
+  const { token, signal, path, query, throttle } = options
   const url = buildUrl(path, query)
 
   for (let attempt = 0; ; attempt++) {
     signal?.throwIfAborted()
+    await throttle?.(signal)
 
     let response: Response
     try {
@@ -190,25 +196,42 @@ export async function verifyToken(token: string, signal?: AbortSignal): Promise<
   await readwiseGet({ token, signal, path: '/api/v2/auth/' })
 }
 
-async function* exportPagesFor(
-  token: string,
-  query: Record<string, string | undefined>,
-  signal: AbortSignal | undefined
-): AsyncGenerator<ReadwiseBook[]> {
+interface CursorPage {
+  nextPageCursor?: string | null
+}
+
+export interface PagesOptions<Page extends CursorPage> {
+  token: string
+  path: string
+  query: Record<string, string | undefined>
+  schema: z.ZodType<Page>
+  signal?: AbortSignal
+  throttle?: ReadwiseRequestOptions['throttle']
+}
+
+/**
+ * Every page of a cursor-paginated endpoint (`nextPageCursor`), shared by the
+ * v2 export and the Reader v3 list.
+ */
+export async function* readwisePages<Page extends CursorPage>(
+  options: PagesOptions<Page>
+): AsyncGenerator<Page> {
+  const { token, path, query, schema, signal, throttle } = options
   let cursor: string | undefined
   const seen = new Set<string>()
   do {
     const response = await readwiseGet({
       token,
       signal,
-      path: '/api/v2/export/',
+      throttle,
+      path,
       query: { ...query, pageCursor: cursor }
     })
-    const parsed = ExportPageSchema.safeParse(await response.json().catch(() => null))
+    const parsed = schema.safeParse(await response.json().catch(() => null))
     if (!parsed.success) {
-      throw new ReadwiseError('server', 'Readwise sent an export page in an unknown shape')
+      throw new ReadwiseError('server', 'Readwise sent a page in an unknown shape')
     }
-    yield parsed.data.results
+    yield parsed.data
     cursor = parsed.data.nextPageCursor ?? undefined
     if (cursor !== undefined) {
       if (seen.has(cursor)) {
@@ -217,6 +240,22 @@ async function* exportPagesFor(
       seen.add(cursor)
     }
   } while (cursor !== undefined)
+}
+
+async function* exportPagesFor(
+  token: string,
+  query: Record<string, string | undefined>,
+  signal: AbortSignal | undefined
+): AsyncGenerator<ReadwiseBook[]> {
+  for await (const page of readwisePages({
+    token,
+    signal,
+    path: '/api/v2/export/',
+    query,
+    schema: ExportPageSchema
+  })) {
+    yield page.results
+  }
 }
 
 export interface ExportPagesOptions {

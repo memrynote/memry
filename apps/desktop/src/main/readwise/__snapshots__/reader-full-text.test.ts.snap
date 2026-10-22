@@ -1,0 +1,26 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`readerFullText > converts an HTML-heavy article and leaves no remote image 1`] = `
+"# Why notes compound
+
+First **paragraph** with a [link](https://example.com/a) and *emphasis*.
+
+> A quote worth keeping.
+
+## Steps
+
+1. Capture
+2. Connect \`links\`
+
+- One
+- Two
+  - Nested
+
+\`\`\`
+const x = 1
+\`\`\`
+
+| A | B |
+| --- | --- |
+| 1 | 2 |"
+`;
