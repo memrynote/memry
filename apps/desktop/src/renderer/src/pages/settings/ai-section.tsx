@@ -453,6 +453,22 @@ export function AISettings({
     [t]
   )
 
+  const handleToggleAudioSearch = useCallback(
+    async (audioSearch: boolean) => {
+      try {
+        const result = await window.api.settings.setVoiceTranscriptionSettings({ audioSearch })
+        if (result.success) {
+          setVoiceSettings((prev) => ({ ...prev, audioSearch }))
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.voice.audioSearchError')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.voice.audioSearchError')))
+      }
+    },
+    [t]
+  )
+
   const handleDownloadVoiceModel = useCallback(async () => {
     setIsDownloadingVoiceModel(true)
     try {
@@ -745,6 +761,18 @@ export function AISettings({
                     ))}
                   </SelectContent>
                 </Select>
+              </SettingRow>
+
+              <SettingRow
+                label={t('ai.voice.audioSearch')}
+                description={t('ai.voice.audioSearchDescription')}
+              >
+                <Switch
+                  checked={voiceSettings.audioSearch !== false}
+                  onCheckedChange={(...args) => void handleToggleAudioSearch(...args)}
+                  className={ACCENT_SWITCH}
+                  aria-label={t('ai.voice.audioSearch')}
+                />
               </SettingRow>
 
               {voiceSettings.provider === 'openai' && (

@@ -256,6 +256,93 @@ describe('embedding worker', () => {
     })
   })
 
+  describe('audio encoder', () => {
+    const start = (): MockParentPort => {
+      const port = new MockParentPort()
+      Object.defineProperty(process, 'parentPort', {
+        configurable: true,
+        writable: true,
+        value: port
+      })
+      return port
+    }
+    const output = (fill: number) => ({
+      sentence_embedding: { data: new Float32Array(768).fill(fill) }
+    })
+    const clip = new Float32Array(16_000)
+
+    it('keeps the audio section only once a recording is embedded, then reuses the model', async () => {
+      const port = start()
+      const textOnly = Object.assign(vi.fn().mockResolvedValue(output(1)), { dispose: vi.fn() })
+      const withAudio = Object.assign(vi.fn().mockResolvedValue(output(2)), { dispose: vi.fn() })
+      mockModelLoad.mockResolvedValueOnce(textOnly).mockResolvedValueOnce(withAudio)
+      const processor = vi.fn().mockResolvedValue({ input_features: 'features' })
+      mockProcessorLoad.mockResolvedValue(processor)
+      await import('./embedding-worker')
+
+      port.emit('message', { data: { type: 'load-model', requestId: 'l1' } })
+      await vi.waitFor(() =>
+        expect(port.postMessage).toHaveBeenCalledWith({
+          type: 'load-model-result',
+          requestId: 'l1'
+        })
+      )
+      expect(mockModelLoad.mock.calls[0][1].config).toMatchObject({ audio_config: null })
+
+      port.emit('message', { data: { type: 'embed-audio', requestId: 'a1', audio: clip } })
+      await vi.waitFor(() =>
+        expect(port.postMessage).toHaveBeenCalledWith({
+          type: 'embed-result',
+          requestId: 'a1',
+          embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION).fill(1 / 16))
+        })
+      )
+
+      const config = mockModelLoad.mock.calls[1][1].config
+      expect(config.audio_config).not.toBeNull()
+      expect(config.vision_config).toBeNull()
+      expect(processor).toHaveBeenCalledWith(null, null, clip)
+      expect(withAudio).toHaveBeenCalledWith({ input_features: 'features' })
+      expect(textOnly.dispose).toHaveBeenCalledTimes(1)
+      expect(port.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'progress', phase: 'ready', modality: 'audio' })
+      )
+
+      port.emit('message', { data: { type: 'embed-audio', requestId: 'a2', audio: clip } })
+      await vi.waitFor(() =>
+        expect(port.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'embed-result', requestId: 'a2' })
+        )
+      )
+      expect(mockModelLoad).toHaveBeenCalledTimes(2)
+    })
+
+    it('keeps the text model working when the encoder download fails', async () => {
+      const port = start()
+      const textOnly = Object.assign(vi.fn().mockResolvedValue(output(1)), { dispose: vi.fn() })
+      mockModelLoad.mockResolvedValueOnce(textOnly).mockRejectedValueOnce(new Error('network down'))
+      mockProcessorLoad.mockResolvedValue(vi.fn())
+      await import('./embedding-worker')
+
+      port.emit('message', { data: { type: 'load-model', requestId: 'l1' } })
+      await vi.waitFor(() =>
+        expect(port.postMessage).toHaveBeenCalledWith({
+          type: 'load-model-result',
+          requestId: 'l1'
+        })
+      )
+      port.emit('message', { data: { type: 'embed-audio', requestId: 'a1', audio: clip } })
+      await vi.waitFor(() =>
+        expect(port.postMessage).toHaveBeenCalledWith({
+          type: 'error',
+          requestId: 'a1',
+          error: 'network down'
+        })
+      )
+      expect(textOnly.dispose).not.toHaveBeenCalled()
+    })
+  })
+
   describe('shutdown', () => {
     const loadWorker = async (
       port: MockParentPort,

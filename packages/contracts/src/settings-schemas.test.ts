@@ -449,6 +449,17 @@ describe('VoiceTranscriptionSettingsSchema', () => {
     }
   })
 
+  it('reads audioSearch as optional, so settings saved before it still parse', () => {
+    const base = { provider: 'local', memoNameMode: 'transcript' } as const
+    expect(VoiceTranscriptionSettingsSchema.parse(base).audioSearch).toBeUndefined()
+    expect(
+      VoiceTranscriptionSettingsSchema.parse({ ...base, audioSearch: false }).audioSearch
+    ).toBe(false)
+    expect(VoiceTranscriptionSettingsSchema.safeParse({ ...base, audioSearch: 'no' }).success).toBe(
+      false
+    )
+  })
+
   it('rejects unsupported provider', () => {
     const result = VoiceTranscriptionSettingsSchema.safeParse({ provider: 'whisper-cloud' })
     expect(result.success).toBe(false)

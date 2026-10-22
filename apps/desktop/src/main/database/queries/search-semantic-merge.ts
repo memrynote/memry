@@ -1,15 +1,19 @@
 import { sql, type SQL } from 'drizzle-orm'
 import type {
   ContentType,
+  InboxResultMetadata,
   JournalResultMetadata,
   NoteResultMetadata,
   SearchResultGroup,
   SearchResultItem
 } from '@memry/contracts/search-api'
 import { EMBEDDING_QUERY_SIMILARITY_FLOOR } from '../../lib/embeddings-constants'
-import type { IndexDb } from '../types'
+import type { DataDb, IndexDb } from '../types'
 
-/** A note whose stored vector is near the typed query. */
+/**
+ * A note, journal entry or voice memo whose stored vector is near the typed
+ * query. Note and inbox ids never collide, so one list carries both.
+ */
 export interface SemanticHit {
   id: string
   /** Raw query-to-document cosine, at or above the query floor. */
@@ -35,6 +39,59 @@ interface NoteRow {
   wordCount: number | null
   createdAt: string
   modifiedAt: string
+}
+
+interface InboxRow {
+  id: string
+  title: string
+  type: string
+  sourceUrl: string | null
+  sourceTitle: string | null
+  filedAt: string | null
+  modifiedAt: string
+}
+
+/** Voice memos the vectors found: the only inbox items that have vectors. */
+function loadInboxItems(dataDb: DataDb, hits: SemanticHit[]): SearchResultItem[] {
+  const byId = new Map(hits.map((hit) => [hit.id, hit]))
+  const rows = dataDb.all<InboxRow>(sql`
+    SELECT id, title, type, source_url as sourceUrl, source_title as sourceTitle,
+      filed_at as filedAt, modified_at as modifiedAt
+    FROM inbox_items
+    WHERE id IN (${sql.join(
+      hits.map((hit) => sql`${hit.id}`),
+      sql`, `
+    )})
+  `)
+  return rows
+    .map((row): SearchResultItem => {
+      const cosine = byId.get(row.id)!.cosine
+      const metadata: InboxResultMetadata = {
+        type: 'inbox',
+        itemType: row.type as InboxResultMetadata['itemType'],
+        sourceUrl: row.sourceUrl,
+        sourceTitle: row.sourceTitle,
+        filedAt: row.filedAt
+      }
+      return {
+        id: row.id,
+        type: 'inbox',
+        title: row.title,
+        snippet: '',
+        score: cosine,
+        normalizedScore: closeness(cosine) * SEMANTIC_ONLY_MAX_SCORE,
+        matchType: 'fuzzy',
+        modifiedAt: row.modifiedAt,
+        metadata
+      }
+    })
+    .sort((a, b) => b.score - a.score)
+}
+
+function closeness(cosine: number): number {
+  const scaled =
+    (cosine - EMBEDDING_QUERY_SIMILARITY_FLOOR) / (1 - EMBEDDING_QUERY_SIMILARITY_FLOOR)
+  return Math.min(1, Math.max(0, scaled))
 }
 
 function loadSemanticItems(
@@ -69,15 +126,13 @@ function loadSemanticItems(
           wordCount: row.wordCount,
           createdAt: row.createdAt
         }
-    const closeness =
-      (cosine - EMBEDDING_QUERY_SIMILARITY_FLOOR) / (1 - EMBEDDING_QUERY_SIMILARITY_FLOOR)
     const item: SearchResultItem = {
       id: row.id,
       type,
       title: row.title,
       snippet: '',
       score: cosine,
-      normalizedScore: Math.min(1, Math.max(0, closeness)) * SEMANTIC_ONLY_MAX_SCORE,
+      normalizedScore: closeness(cosine) * SEMANTIC_ONLY_MAX_SCORE,
       matchType: 'fuzzy',
       modifiedAt: row.modifiedAt,
       metadata
@@ -89,13 +144,14 @@ function loadSemanticItems(
 }
 
 /**
- * Fuse semantic hits into the note and journal groups by Reciprocal Rank
- * Fusion. A note found by both legs keeps its FTS item (snippet, score) and
- * rises; a note only the vectors found is appended with an empty snippet. Other
- * groups are untouched. Returns the new groups and the change in result count.
+ * Fuse semantic hits into the note, journal and inbox groups by Reciprocal Rank
+ * Fusion. An item found by both legs keeps its FTS item (snippet, score) and
+ * rises; an item only the vectors found is appended with an empty snippet. The
+ * task group is untouched. Returns the new groups and the change in result count.
  */
 export function fuseSemanticHits(args: {
   indexDb: IndexDb
+  dataDb: DataDb
   groups: SearchResultGroup[]
   hits: SemanticHit[]
   activeTypes: ContentType[]
@@ -108,10 +164,12 @@ export function fuseSemanticHits(args: {
   if (hits.length === 0) return { groups: args.groups, added: 0 }
 
   const semantic = loadSemanticItems(indexDb, hits, args.fileTypeFilter)
+  const inbox = loadInboxItems(args.dataDb, hits)
+  if (inbox.length > 0) semantic.set('inbox', inbox)
   const groups = [...args.groups]
   let added = 0
 
-  for (const type of ['note', 'journal'] as const) {
+  for (const type of ['note', 'journal', 'inbox'] as const) {
     if (!activeTypes.includes(type)) continue
     const semanticItems = args.filter(semantic.get(type) ?? [], type)
     if (semanticItems.length === 0) continue

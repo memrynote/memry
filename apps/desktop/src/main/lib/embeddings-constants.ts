@@ -57,6 +57,17 @@ export const EMBEDDING_QUERY_SIMILARITY_FLOOR = 0.65
 export const EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR = 0.68
 
 /**
+ * Lowest query-to-voice-memo cosine for a memo embedded from its audio. Typed
+ * queries against audio vectors (q4, 256d, 20 recordings and sounds, 67
+ * candidates): a query and the recording it describes land at 0.70-0.77 (median
+ * 0.73), an unrelated recording at 0.57 (median) to 0.74 (max), 95th percentile
+ * 0.67. Audio sits slightly below the text floor's 0.65 because the 0.65 to
+ * 0.68 band is mostly unrelated clips; memos embedded from a transcript use
+ * {@link EMBEDDING_QUERY_SIMILARITY_FLOOR}.
+ */
+export const EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR = 0.68
+
+/**
  * Map a raw cosine similarity onto 0..1 so that "unrelated" sits near the bottom
  * instead of at 0.7. Median unrelated (0.71) -> 0.28, strongest unrelated pair
  * seen (0.79) -> 0.47, a cross-language duplicate (0.95) -> 0.87.
@@ -103,3 +114,23 @@ export const embeddingVisionWeightsPath = (userDataPath: string): string =>
  * screenshots at about half the cost of the model default.
  */
 export const EMBEDDING_IMAGE_SOFT_TOKENS = 140
+
+/**
+ * The audio encoder weights, fetched on first voice-memo use only (~189MB). Users
+ * with no voice memo to embed never have this file.
+ */
+export const embeddingAudioWeightsPath = (userDataPath: string): string =>
+  path.join(embeddingModelCacheDir(userDataPath), 'onnx', 'audio_encoder_q4.onnx_data')
+
+/** Sample rate the audio encoder expects (mono). */
+export const EMBEDDING_AUDIO_SAMPLE_RATE = 16_000
+
+/**
+ * Longest clip one audio embedding covers. The encoder emits 25 tokens per
+ * second up to ~327s; 300s keeps every window inside it. Longer recordings are
+ * split into consecutive windows, one vector each.
+ */
+export const EMBEDDING_AUDIO_WINDOW_SECONDS = 300
+
+/** Windows embedded per recording; the rest of a very long recording is not indexed. */
+export const EMBEDDING_AUDIO_MAX_WINDOWS = 12

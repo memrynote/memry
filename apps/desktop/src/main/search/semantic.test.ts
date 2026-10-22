@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({
   generateEmbedding: vi.fn(),
   notes: vi.fn(),
   chunks: vi.fn(),
-  images: vi.fn()
+  images: vi.fn(),
+  voice: vi.fn()
 }))
 
 vi.mock('../database', () => ({
@@ -22,6 +23,7 @@ vi.mock('../database', () => ({
     })
   }))
 }))
+vi.mock('../database/voice-vectors', () => ({ nearestVoiceItems: mocks.voice }))
 vi.mock('@main/database/queries/settings', () => ({ getSetting: mocks.getSetting }))
 vi.mock('../lib/embeddings', () => ({
   isModelLoaded: mocks.isModelLoaded,
@@ -41,6 +43,7 @@ describe('semanticNoteHits', () => {
     mocks.notes.mockReturnValue([])
     mocks.chunks.mockReturnValue([])
     mocks.images.mockReturnValue([])
+    mocks.voice.mockReturnValue([])
   })
 
   it('embeds the query with the search prefix and drops hits under the query floor', async () => {
@@ -87,6 +90,18 @@ describe('semanticNoteHits', () => {
     )
     mocks.images.mockReturnValue([{ image_key: 'photo/', distance: 0.1 }])
     expect(await semanticNoteHits('cat')).toEqual([])
+  })
+
+  it('adds voice memos, holding audio-embedded ones to the stricter floor', async () => {
+    mocks.notes.mockReturnValue([{ id: 'note', distance: 0.3 }])
+    mocks.voice.mockReturnValue([
+      { id: 'spoken', cosine: 0.66, source: 'transcript' },
+      { id: 'clip', cosine: 0.75, source: 'audio' },
+      { id: 'noise', cosine: 0.66, source: 'audio' }
+    ])
+    const hits = await semanticNoteHits('applause')
+    expect(hits.map((hit) => hit.id)).toEqual(['clip', 'note', 'spoken'])
+    expect(hits[0].cosine).toBeCloseTo(0.72)
   })
 
   it('answers empty without embedding for short, operator or AI-off queries', async () => {

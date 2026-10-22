@@ -263,6 +263,27 @@ describe('AISettings', () => {
     await waitFor(() => expect(languageSelect).toHaveTextContent('German'))
   })
 
+  it('turns voice memo sound search off and on, defaulting to on', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+
+    render(<AISettings />)
+
+    const toggle = await screen.findByRole('switch', { name: 'Search voice memos by sound' })
+    expect(toggle).toBeChecked()
+
+    await userEvent.click(toggle)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ audioSearch: false })
+    await waitFor(() => expect(toggle).not.toBeChecked())
+
+    await userEvent.click(toggle)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenLastCalledWith({
+      audioSearch: true
+    })
+  })
+
   it('keeps the spoken language and shows an error when saving fails', async () => {
     api.settings.setVoiceTranscriptionSettings = vi
       .fn()

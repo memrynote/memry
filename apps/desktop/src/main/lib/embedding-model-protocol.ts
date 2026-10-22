@@ -1,3 +1,6 @@
+/** Encoders that load on demand, on top of the text model. */
+export type EmbeddingEncoderModality = 'vision' | 'audio'
+
 export type EmbeddingProgressPhase = 'downloading' | 'loading' | 'ready' | 'error'
 
 export interface EmbeddingProgressMessage {
@@ -5,8 +8,8 @@ export interface EmbeddingProgressMessage {
   phase: EmbeddingProgressPhase
   progress: number
   status: string
-  /** Set while the on-demand image encoder loads; absent for the text model. */
-  modality?: 'vision'
+  /** Set while an on-demand encoder loads; absent for the text model. */
+  modality?: EmbeddingEncoderModality
 }
 
 export type EmbeddingMainToWorkerMessage =
@@ -24,6 +27,12 @@ export type EmbeddingMainToWorkerMessage =
       requestId: string
       /** Encoded image file bytes (jpeg, png, webp, ...). */
       image: Uint8Array
+    }
+  | {
+      type: 'embed-audio'
+      requestId: string
+      /** Mono 16 kHz samples, at most EMBEDDING_AUDIO_WINDOW_SECONDS long. */
+      audio: Float32Array
     }
   | {
       type: 'shutdown'
