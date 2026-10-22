@@ -23,7 +23,12 @@ const useSidebarRowDrag = (): boolean => {
     const start = (event: DragEvent): void => {
       if (hasTabPayload(event)) setDragging(true)
     }
-    const stop = (): void => setDragging(false)
+    // Deferred: a real (user-driven) drop flushes React updates between the
+    // window's capture listener and React's own root listener, so ending the
+    // drag synchronously here unmounts the zones before their onDrop runs.
+    const stop = (): void => {
+      setTimeout(() => setDragging(false), 0)
+    }
 
     window.addEventListener('dragenter', start, true)
     // `dragend` never fires when the dragged row unmounts mid-drag. The

@@ -1,4 +1,5 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { flushSync } from 'react-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MEMRY_TAB_DRAG_MIME } from '@/lib/drag-mime'
@@ -30,7 +31,7 @@ const startDrag = (): void => {
 describe('NativeSplitDropZones', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('stays out of the way until a sidebar row is dragged in', () => {
+  it('stays out of the way until a sidebar row is dragged in', async () => {
     render(<NativeSplitDropZones groupId="g1" editorOwnsCenter={false} />)
     expect(screen.queryByTestId('native-drop-zones')).toBeNull()
 
@@ -45,7 +46,7 @@ describe('NativeSplitDropZones', () => {
     act(() => {
       fireEvent.dragEnd(window)
     })
-    expect(screen.queryByTestId('native-drop-zones')).toBeNull()
+    await waitFor(() => expect(screen.queryByTestId('native-drop-zones')).toBeNull())
   })
 
   it.each([
@@ -65,6 +66,19 @@ describe('NativeSplitDropZones', () => {
       cloneActiveTab: false,
       position
     })
+    expect(mocks.openTab).toHaveBeenCalledWith(tab, { groupId: 'new-group' })
+  })
+
+  it('keeps the zone mounted for its own drop handler when the window sees the drop first', () => {
+    const { container } = render(<NativeSplitDropZones groupId="g1" editorOwnsCenter={false} />)
+    startDrag()
+    const zone = container.querySelector('[data-zone="right"]')!
+    // A user-driven drop flushes React between the window capture listener and
+    // React's root listener; flushSync inside the listener reproduces that.
+    window.addEventListener('drop', () => flushSync(() => undefined), { capture: true, once: true })
+
+    fireEvent.drop(zone, { dataTransfer: transfer() })
+
     expect(mocks.openTab).toHaveBeenCalledWith(tab, { groupId: 'new-group' })
   })
 
