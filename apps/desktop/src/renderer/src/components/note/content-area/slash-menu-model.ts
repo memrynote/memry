@@ -50,17 +50,7 @@ const CATALOG: ReadonlyArray<readonly [SlashMenuGroupId, readonly string[]]> = [
       'five_columns'
     ]
   ],
-  [
-    'headings',
-    [
-      'heading_4',
-      'heading_5',
-      'heading_6',
-      'toggle_heading',
-      'toggle_heading_2',
-      'toggle_heading_3'
-    ]
-  ],
+  ['headings', ['heading_4', 'heading_5', 'heading_6']],
   [
     'insert',
     [

@@ -382,16 +382,15 @@ table.
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
 
 - **Recent** — the last three commands you used sit at the top of the menu, above every other command. They are remembered on this device only.
-- **Groups** — the rest of the menu is always the same order: **Blocks**, **More headings** (Heading 4–6 and toggle headings), **Insert**, **Media** and **AI**. Every command is listed; none of them is hidden behind search.
+- **Groups** — the rest of the menu is always the same order: **Blocks**, **More headings** (Heading 4–6), **Insert**, **Media** and **AI**. Every command is listed; none of them is hidden behind search.
 - **Best match** — while you type, the command <kbd>Enter</kbd> will pick is lifted to the top. A command found through another name says so, for example `/tod` shows **Task** with _matches todo_.
 - **Shortcut hints** — the right edge of a row shows the markdown that makes the same block without the menu (`##`, `-`, `[]`, `>`, `[[`, `@`…).
 - **Action bar** — the bottom of the menu describes the selected command. Some commands have a second action on <kbd>⌘</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> on Windows and Linux):
 
-| Command     | <kbd>⌘</kbd>+<kbd>Enter</kbd> inserts |
-| ----------- | ------------------------------------- |
-| Heading 1–3 | The same level as a toggle heading    |
-| Check list  | A linked task                         |
-| Date        | A reminder                            |
+| Command    | <kbd>⌘</kbd>+<kbd>Enter</kbd> inserts |
+| ---------- | ------------------------------------- |
+| Check list | A linked task                         |
+| Date       | A reminder                            |
 
 When nothing matches, the menu offers to **Link to** a note with what you typed — it opens the `[[` search with your text already in it — or, with AI on, to **Ask AI**. Keep typing and the menu closes on its own, as before.
 
@@ -600,7 +599,7 @@ of the same or a higher level. Folding a Heading 1 hides the Heading 2s inside i
 folding a Heading 2 stops at the next Heading 2 or Heading 1.
 
 Like bullet folding, this is a view only. The note is unchanged and reopens fully
-expanded. Toggle headings keep their own saved toggle and get no extra chevron.
+expanded.
 
 ## Title
 

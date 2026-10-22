@@ -138,14 +138,14 @@ describe('withSecondaryActions', () => {
     const items = all()
     const result = withSecondaryActions(items, [
       { from: 'check_list', to: 'task', label: 'As linked task' },
-      { from: 'heading', to: 'toggle_heading', label: 'As toggle' }
+      { from: 'heading', to: 'missing_row', label: 'As missing' }
     ])
     const checkList = result.find((i) => i.id === 'check_list')
     const task = items.find((i) => i.id === 'task')
 
     expect(checkList?.secondary?.label).toBe('As linked task')
     expect(checkList?.secondary?.onItemClick).toBe(task?.onItemClick)
-    // No toggle_heading row in the list, so Heading 1 gets no shortcut.
+    // No missing_row row in the list, so Heading 1 gets no shortcut.
     expect(result.find((i) => i.id === 'heading')?.secondary).toBeUndefined()
   })
 })

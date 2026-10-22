@@ -203,7 +203,7 @@ A callout can have a block color too (block menu, **Color**):
 
 ## Toggles
 
-**Insert:** slash menu, **Toggle list** (or Toggle heading 1 to 3 for a section). Click the arrow to open it. A toggle can hold anything, including other toggles.
+**Insert:** slash menu, **Toggle list**. Click the arrow to open it. Headings fold their own section from the chevron in the margin. A toggle can hold anything, including other toggles.
 
 <details data-memry-toggle>
 <summary>A collapsed toggle</summary>

@@ -3223,66 +3223,71 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   // cell empty (#1640). Same row, same label — inside a cell it
                   // picks a file and inserts the inline node instead.
                   const inCell = isSelectionInTableCell(editor)
-                  const defaults = getDefaultReactSlashMenuItems(editor).map((item) => {
-                    // Same reasoning for `/check`: `checkListItem` is a BLOCK,
-                    // so inside a cell BlockNote puts the checklist after the
-                    // whole table. Inside a cell the item inserts the inline
-                    // node at the caret instead — same row, same label.
-                    //
-                    // Outside a cell the row makes a PLAIN checkbox: picking
-                    // "Check List" from a menu is asking for a checkbox, and
-                    // the task is one ⌘Enter away (`As linked task`). Typing
-                    // `[] ` is still the quick way to a task.
-                    if ((item as { key?: string }).key === 'check_list') {
-                      return inCell
-                        ? {
-                            ...item,
-                            onItemClick: () =>
-                              editor.insertInlineContent([createInlineCheckboxContent(false)])
-                          }
-                        : {
-                            ...item,
-                            onItemClick: () =>
-                              insertOrUpdateBlockForSlashMenu(editor, {
-                                type: 'checkListItem',
-                                props: { plain: true }
-                              } as any)
-                          }
-                    }
-                    // Every attachment command opens the same picker (#2161).
-                    // BlockNote's own items insert an empty block and pop the
-                    // file panel, which can only upload — so a file already in
-                    // the vault had to be found through a separate "existing
-                    // attachment" command the user had to know existed. The
-                    // picker offers upload and the vault's own files together,
-                    // narrowed to the kind that was asked for.
-                    const key = (item as { key?: string }).key
-                    if (key === 'table') {
-                      return { ...item, onItemClick: openTableSizePicker }
-                    }
-                    if (key === 'image') {
-                      // `img` and `picture` already ship as image aliases;
-                      // `photo` did not, and is what people actually type.
-                      const withPhoto = {
-                        ...item,
-                        aliases: [...(item.aliases ?? []), 'photo']
+                  const defaults = getDefaultReactSlashMenuItems(editor)
+                    // Plain headings already fold their section (bullet-collapse-plugin),
+                    // so the toggle variants are not offered. Existing toggle headings
+                    // in notes keep working.
+                    .filter((item) => !(item as { key?: string }).key?.startsWith('toggle_heading'))
+                    .map((item) => {
+                      // Same reasoning for `/check`: `checkListItem` is a BLOCK,
+                      // so inside a cell BlockNote puts the checklist after the
+                      // whole table. Inside a cell the item inserts the inline
+                      // node at the caret instead — same row, same label.
+                      //
+                      // Outside a cell the row makes a PLAIN checkbox: picking
+                      // "Check List" from a menu is asking for a checkbox, and
+                      // the task is one ⌘Enter away (`As linked task`). Typing
+                      // `[] ` is still the quick way to a task.
+                      if ((item as { key?: string }).key === 'check_list') {
+                        return inCell
+                          ? {
+                              ...item,
+                              onItemClick: () =>
+                                editor.insertInlineContent([createInlineCheckboxContent(false)])
+                            }
+                          : {
+                              ...item,
+                              onItemClick: () =>
+                                insertOrUpdateBlockForSlashMenu(editor, {
+                                  type: 'checkListItem',
+                                  props: { plain: true }
+                                } as any)
+                            }
                       }
-                      return inCell
-                        ? { ...withPhoto, onItemClick: pickImageForCell }
-                        : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
-                    }
-                    if (key === 'video' || key === 'audio') {
-                      return { ...item, onItemClick: () => openAttachmentPicker('media') }
-                    }
-                    if (key === 'file') {
-                      return {
-                        ...item,
-                        aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
-                        onItemClick: () => openAttachmentPicker('file')
+                      // Every attachment command opens the same picker (#2161).
+                      // BlockNote's own items insert an empty block and pop the
+                      // file panel, which can only upload — so a file already in
+                      // the vault had to be found through a separate "existing
+                      // attachment" command the user had to know existed. The
+                      // picker offers upload and the vault's own files together,
+                      // narrowed to the kind that was asked for.
+                      const key = (item as { key?: string }).key
+                      if (key === 'table') {
+                        return { ...item, onItemClick: openTableSizePicker }
                       }
-                    }
-                    return item
-                  })
+                      if (key === 'image') {
+                        // `img` and `picture` already ship as image aliases;
+                        // `photo` did not, and is what people actually type.
+                        const withPhoto = {
+                          ...item,
+                          aliases: [...(item.aliases ?? []), 'photo']
+                        }
+                        return inCell
+                          ? { ...withPhoto, onItemClick: pickImageForCell }
+                          : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
+                      }
+                      if (key === 'video' || key === 'audio') {
+                        return { ...item, onItemClick: () => openAttachmentPicker('media') }
+                      }
+                      if (key === 'file') {
+                        return {
+                          ...item,
+                          aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
+                          onItemClick: () => openAttachmentPicker('file')
+                        }
+                      }
+                      return item
+                    })
                   // `/pdf` and `/media` are the same item as `/file` — same
                   // picker, same insert — relabelled and pre-narrowed, because
                   // "attach a PDF" or "add a picture or a video" is what people
@@ -3521,21 +3526,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   ]
                   return buildSlashMenuItems({
                     items: withSecondaryActions(items, [
-                      {
-                        from: 'heading',
-                        to: 'toggle_heading',
-                        label: t('editor.slashMenu.secondary.asToggleHeading')
-                      },
-                      {
-                        from: 'heading_2',
-                        to: 'toggle_heading_2',
-                        label: t('editor.slashMenu.secondary.asToggleHeading')
-                      },
-                      {
-                        from: 'heading_3',
-                        to: 'toggle_heading_3',
-                        label: t('editor.slashMenu.secondary.asToggleHeading')
-                      },
                       {
                         from: 'check_list',
                         to: 'task',
