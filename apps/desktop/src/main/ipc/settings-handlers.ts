@@ -69,6 +69,7 @@ import {
   isModelLoading,
   resetEmbeddingModelFailure
 } from '../lib/embeddings'
+import { IMAGE_EMBEDDING_SETTING_KEY } from '../lib/image-embedding'
 import { rebuildProjections } from '../projections'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
 import { getCurrentVaultPath, getDefaultVaultPath, getVaults, setDefaultVaultPath } from '../store'
@@ -230,6 +231,7 @@ export interface JournalSettings {
 
 export interface AISettings {
   enabled: boolean
+  imageEmbeddings: boolean
 }
 
 export interface AIModelStatus {
@@ -243,7 +245,8 @@ export interface AIModelStatus {
 
 /** Default AI settings values */
 const DEFAULT_AI_SETTINGS: AISettings = {
-  enabled: true
+  enabled: true,
+  imageEmbeddings: true
 }
 
 export interface VoiceTranscriptionOpenAIKeyStatus {
@@ -887,7 +890,8 @@ export function registerSettingsHandlers(): void {
     const enabledStr = getSetting(db, SETTINGS_KEYS.AI_ENABLED)
 
     return {
-      enabled: enabledStr !== 'false' // Default to true
+      enabled: enabledStr !== 'false', // Default to true
+      imageEmbeddings: getSetting(db, IMAGE_EMBEDDING_SETTING_KEY) !== 'false'
     }
   })
 
@@ -907,6 +911,10 @@ export function registerSettingsHandlers(): void {
         if (settings.enabled) {
           resetEmbeddingModelFailure()
         }
+      }
+
+      if (settings.imageEmbeddings !== undefined) {
+        setSetting(db, IMAGE_EMBEDDING_SETTING_KEY, settings.imageEmbeddings ? 'true' : 'false')
       }
 
       // Emit settings changed event

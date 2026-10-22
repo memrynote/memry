@@ -276,6 +276,10 @@ vi.mock('../projections/projectors/embedding-projector', () => ({
   }
 }))
 
+vi.mock('../projections/projectors/image-embedding-projector', () => ({
+  createImageEmbeddingProjector: () => ({ kind: 'image-embedding' })
+}))
+
 vi.mock('../projections/projectors/inbox-stats-projector', () => ({
   createInboxStatsProjector: () => ({ kind: 'inbox-stats' })
 }))

@@ -119,6 +119,17 @@ describe('AISettings', () => {
     vi.useRealTimers()
   })
 
+  it('turns image search off without touching the AI switch', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true, imageEmbeddings: true })
+    render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('Search images by content')).toBeInTheDocument())
+
+    await userEvent.click(screen.getAllByRole('switch')[1])
+
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ imageEmbeddings: false })
+    expect(toast.success).toHaveBeenCalledWith('Image search disabled')
+  })
+
   it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
     render(<AISettings />)
@@ -345,7 +356,7 @@ describe('AISettings', () => {
     render(<AISettings />)
     await waitFor(() => expect(screen.getByText('previous embedding error')).toBeInTheDocument())
 
-    await userEvent.click(screen.getByRole('switch'))
+    await userEvent.click(screen.getAllByRole('switch')[0])
     expect(toast.error).toHaveBeenCalledWith('toggle failed')
 
     await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))

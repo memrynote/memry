@@ -27,7 +27,7 @@ The first index build can take a few minutes for large vaults — progress is sh
 
 ## The Model
 
-memrynote uses Google's **EmbeddingGemma 2** (text only, 256 dimensions). It understands 100+
+memrynote uses Google's **EmbeddingGemma 2** (256 dimensions). Its text half embeds notes; its image half, used only for [image search](#image-search), is a separate download. It understands 100+
 languages, so notes in Turkish, German, Japanese and others are matched by meaning, including across
 languages: an English query can find a Turkish note on the same topic. A note is embedded in
 windows of ~4000 characters, title first, up to 16 windows (~64,000 characters), so text late in a
@@ -56,6 +56,35 @@ under three characters, and searches with embeddings off are keyword-only.
 
 Intel Macs are not supported by the local model runtime; on those machines semantic features stay off
 and search is keyword-only.
+
+## Image Search
+
+A photo with no text in it has nothing for keyword search or OCR to read. Image search embeds the
+picture itself, so `cat` or `kedi` finds a cat photo, filed in your vault or embedded in a note. The
+same search box and the same ranking apply: the picture's vector sits in the same space as note
+text vectors, and a match lists the image (or the note that embeds it) with the other results.
+
+- **Which images.** PNG, JPEG, WebP and GIF files you filed as notes of their own, and the ones a note
+  embeds. SVG files and files over 30 MB are skipped.
+- **Text and picture both count.** An image that also has text keeps its text vector (made from the
+  OCR text), so a search for words in a screenshot still works, and gets a second vector from the
+  picture, so a search for what it shows works too. A match on either lists it.
+- **One-time download.** The first time an image needs embedding, memrynote downloads the image
+  model (about 109 MB). Notes without images never trigger it, and a vault without images never
+  downloads or loads it. The model unloads again after an idle period.
+- **Turn it off.** [Settings → AI](/user-guide/settings#ai) has a **Search images by content**
+  switch under **Enable AI Features**. Off means no download, no image embedding, and images are found
+  by keywords and OCR text only. Turning it off keeps existing image vectors on disk and ignores them.
+  Turning it back on takes effect at the next vault open, which also embeds images added meanwhile.
+- **Existing vaults.** The first open after updating embeds your existing images in the background,
+  one at a time, after the vault is open. A quit part-way continues where it stopped. Renaming or
+  moving an image re-embeds it under its new identity, and deleting it, or removing it from a note,
+  drops its vector.
+- **Limits.** Matching a picture to a word is looser than matching text to text, so image hits need
+  a higher similarity (about 0.68) and a related animal can match, such as `dog` finding a cat photo.
+  An image that fails to embed is tried again the next time its note changes or the vault opens.
+
+Vectors stay in the local index database and are rebuilt from your vault; none of it syncs.
 
 ## Model Management
 

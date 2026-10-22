@@ -1384,6 +1384,12 @@
       "disabled": "AI features disabled",
       "error": "Failed to update setting"
     },
+    "imageSearch": {
+      "label": "Search images by content",
+      "description": "Find photos by what they show. Downloads a 109 MB image model the first time an image is indexed.",
+      "enabled": "Image search enabled",
+      "disabled": "Image search disabled"
+    },
     "unknownError": "Unknown error",
     "groups": {
       "voice": "Voice Transcription",

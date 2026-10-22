@@ -120,3 +120,11 @@ export function buildQueryEmbeddingInput(query: string): string {
  * until the background re-embed (note_embedding_state) replaces them.
  */
 export const EMBEDDING_INPUT_VERSION = 5
+
+/**
+ * Bump when the bytes fed to the vision encoder or its settings change (for
+ * example `EMBEDDING_IMAGE_SOFT_TOKENS`), so stored image vectors are rebuilt.
+ * Stale vectors keep serving until the background re-embed
+ * (image_embedding_state) replaces them.
+ */
+export const IMAGE_EMBEDDING_INPUT_VERSION = 1

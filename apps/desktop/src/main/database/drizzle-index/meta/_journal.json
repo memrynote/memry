@@ -225,6 +225,13 @@
       "when": 1792700000000,
       "tag": "0031_note_embedding_chunks",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1792800000000,
+      "tag": "0032_image_embedding_state",
+      "breakpoints": true
     }
   ]
 }

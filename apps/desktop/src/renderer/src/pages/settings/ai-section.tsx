@@ -181,7 +181,10 @@ export function AISettings({
   focusRequestId = 0
 }: AISettingsProps = {}) {
   const { t, i18n } = useT('settings')
-  const [settings, setSettings] = useState<{ enabled: boolean }>({ enabled: false })
+  const [settings, setSettings] = useState<{ enabled: boolean; imageEmbeddings: boolean }>({
+    enabled: false,
+    imageEmbeddings: true
+  })
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
   const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>(
     VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
@@ -330,6 +333,25 @@ export function AISettings({
         if (result.success) {
           setSettings((prev) => ({ ...prev, enabled }))
           toast.success(enabled ? t('ai.enable.enabled') : t('ai.enable.disabled'))
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.enable.error')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.enable.error')))
+      }
+    },
+    [t]
+  )
+
+  const handleToggleImageEmbeddings = useCallback(
+    async (imageEmbeddings: boolean) => {
+      try {
+        const result = await window.api.settings.setAISettings({ imageEmbeddings })
+        if (result.success) {
+          setSettings((prev) => ({ ...prev, imageEmbeddings }))
+          toast.success(
+            imageEmbeddings ? t('ai.imageSearch.enabled') : t('ai.imageSearch.disabled')
+          )
         } else {
           toast.error(extractErrorMessage(result.error, t('ai.enable.error')))
         }
@@ -494,6 +516,18 @@ export function AISettings({
             className={ACCENT_SWITCH}
           />
         </SettingRow>
+        {settings.enabled && (
+          <SettingRow
+            label={t('ai.imageSearch.label')}
+            description={t('ai.imageSearch.description')}
+          >
+            <Switch
+              checked={settings.imageEmbeddings}
+              onCheckedChange={(...args) => void handleToggleImageEmbeddings(...args)}
+              className={ACCENT_SWITCH}
+            />
+          </SettingRow>
+        )}
       </SettingsGroup>
 
       {settings.enabled && (
