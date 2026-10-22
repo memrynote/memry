@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildEmbeddingChunks,
   buildEmbeddingInput,
+  MAX_EMBEDDING_CHUNKS,
   buildQueryEmbeddingInput,
   MAX_EMBEDDING_INPUT_LENGTH
 } from './embedding-input'
@@ -46,5 +48,38 @@ describe('buildQueryEmbeddingInput', () => {
 
   it('returns nothing for an empty query', () => {
     expect(buildQueryEmbeddingInput('   ')).toBe('')
+  })
+})
+
+describe('buildEmbeddingChunks', () => {
+  it('matches buildEmbeddingInput for a note that fits one window', () => {
+    const parts = { title: 'Risotto', content: 'rice and stock' }
+    expect(buildEmbeddingChunks(parts)).toEqual([buildEmbeddingInput(parts)])
+  })
+
+  it('returns nothing for text too short to embed', () => {
+    expect(buildEmbeddingChunks({ title: 'Hi' })).toEqual([])
+  })
+
+  it('splits a long note into windows that each fit and carry the title, losing no text', () => {
+    const paragraphs = Array.from(
+      { length: 12 },
+      (_, i) => `Paragraph ${i}. ${'word '.repeat(150)}`
+    )
+    const windows = buildEmbeddingChunks({ title: 'Long', content: paragraphs.join('\n\n') })
+    expect(windows.length).toBeGreaterThan(1)
+    for (const window of windows) {
+      expect(window.length).toBeLessThanOrEqual(MAX_EMBEDDING_INPUT_LENGTH)
+      expect(window.startsWith('title: Long | text: ')).toBe(true)
+    }
+    const body = windows.map((w) => w.slice('title: Long | text: '.length)).join(' ')
+    expect(body).toContain('Paragraph 11.')
+    // Breaks fall on paragraph boundaries here, so no paragraph is split.
+    expect(windows[0].endsWith('word')).toBe(true)
+  })
+
+  it('cuts a note at the window cap', () => {
+    const windows = buildEmbeddingChunks({ title: 'T', content: 'x'.repeat(500_000) })
+    expect(windows).toHaveLength(MAX_EMBEDDING_CHUNKS)
   })
 })

@@ -140,11 +140,20 @@ export function ensureVecNotesTable(db: Database.Database): void {
       to: EMBEDDING_DIMENSION
     })
     db.exec('DROP TABLE vec_notes')
+    db.exec('DROP TABLE IF EXISTS vec_note_chunks')
   }
 
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_notes USING vec0(
       note_id TEXT PRIMARY KEY,
+      embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
+    )
+  `)
+  // Windows after a note's first (see embedding-input.ts). Additive: an older
+  // build never reads it, and a missing table is created empty here.
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_note_chunks USING vec0(
+      chunk_id TEXT PRIMARY KEY,
       embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
     )
   `)
