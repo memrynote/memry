@@ -186,7 +186,7 @@ next vault open or when the transcription finishes.
   (about 189 MB). Users with no such memo never download or load it, and it unloads after an idle period.
 - **Turn it off.** [Settings → AI](/user-guide/settings#ai) has a **Search voice memos by sound** switch
   under voice transcription. Off means no download and no audio embedding; memos are found by their
-  transcript only. Existing audio vectors stay on disk and are ignored. Turning it back on takes
+  transcript only. Existing audio vectors stay and keep answering searches. Turning it back on takes
   effect at the next vault open.
 - **Existing vaults.** The first open after updating indexes your existing memos in the background,
   one at a time, and a quit part-way continues where it stopped. Nothing is reset and no vault file changes.
