@@ -18,8 +18,9 @@ pub enum PortalOpen {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PortalTarget {
-    /// The whole note: no `blocks`, nothing folded.
-    Note { note: String },
+    /// The whole note, nothing folded, minus the blocks (and their
+    /// descendants) whose anchors are in `hide`.
+    Note { note: String, hide: Vec<String> },
     /// Root anchors (without the leading caret) in portal order, and which
     /// blocks show their children. A block absent from `open` is collapsed.
     Blocks {
@@ -95,7 +96,10 @@ fn read_target(json: &Map<String, Value>) -> Option<PortalTarget> {
     let note = non_empty(json.get("note"))?;
     let blocks = read_anchors(json.get("blocks"));
     if blocks.is_empty() {
-        return Some(PortalTarget::Note { note });
+        return Some(PortalTarget::Note {
+            note,
+            hide: read_anchors(json.get("hide")),
+        });
     }
     Some(PortalTarget::Blocks {
         note,
@@ -120,9 +124,33 @@ mod tests {
     #[test]
     fn reads_note_and_blocks_targets_and_ignores_unknown_keys() {
         let note = parse_portal_definition(r#"{"v":1,"note":"n1","future":[1]}"#).unwrap();
-        assert_eq!(note.target, PortalTarget::Note { note: "n1".into() });
+        assert_eq!(
+            note.target,
+            PortalTarget::Note {
+                note: "n1".into(),
+                hide: Vec::new()
+            }
+        );
         let empty = parse_portal_definition(r#"{"note":"n1","blocks":["no"]}"#).unwrap();
-        assert_eq!(empty.target, PortalTarget::Note { note: "n1".into() });
+        assert_eq!(
+            empty.target,
+            PortalTarget::Note {
+                note: "n1".into(),
+                hide: Vec::new()
+            }
+        );
+
+        let hidden = parse_portal_definition(
+            r#"{"v":1,"note":"n1","hide":["k3x9a2","NO",7,"k3x9a2","p8m2qa"]}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            hidden.target,
+            PortalTarget::Note {
+                note: "n1".into(),
+                hide: vec!["k3x9a2".into(), "p8m2qa".into()]
+            }
+        );
 
         let blocks = parse_portal_definition(
             r#"{"v":1,"note":"n1","blocks":["k3x9a2","p8m2qa","k3x9a2","x"],

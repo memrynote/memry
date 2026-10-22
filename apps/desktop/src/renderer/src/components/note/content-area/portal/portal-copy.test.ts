@@ -26,6 +26,6 @@ describe('portalLinkText', () => {
     expect(
       portalLinkText('Lecture 1', { kind: 'blocks', note: 'n', blocks: ['abcd', 'efgh'], open: {} })
     ).toBe('[[Lecture 1#^abcd]]')
-    expect(portalLinkText('Lecture 1', { kind: 'note', note: 'n' })).toBe('[[Lecture 1]]')
+    expect(portalLinkText('Lecture 1', { kind: 'note', note: 'n', hide: [] })).toBe('[[Lecture 1]]')
   })
 })

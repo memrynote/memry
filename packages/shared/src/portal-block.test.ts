@@ -8,6 +8,9 @@ import {
   expandAll,
   hideChild,
   includeParent,
+  hideBlock,
+  unhideBlock,
+  unhideAll,
   noteCreatedChild,
   noteCreatedRootSibling,
   removeRoot,
@@ -74,7 +77,7 @@ describe('parsePortalDefinition', () => {
     for (const text of ['{"note":"n1"}', '{"v":1,"note":"n1"}']) {
       expect(parsePortalDefinition(text)).toMatchObject({
         ok: true,
-        definition: { v: 1, target: { kind: 'note', note: 'n1' } }
+        definition: { v: 1, target: { kind: 'note', note: 'n1', hide: [] } }
       })
     }
   })
@@ -166,7 +169,9 @@ describe('serializePortalDefinition', () => {
   })
 
   it('omits blocks for a note and open when nothing is open', () => {
-    expect(JSON.parse(serializePortalDefinition(def({ kind: 'note', note: 'n1' })))).toEqual({
+    expect(
+      JSON.parse(serializePortalDefinition(def({ kind: 'note', note: 'n1', hide: [] })))
+    ).toEqual({
       v: 1,
       note: 'n1'
     })
@@ -180,7 +185,10 @@ describe('serializePortalDefinition', () => {
   it('keeps keys a newer build wrote through an edit', () => {
     const parsed = parsePortalDefinition('{"note":"n1","future":{"a":1}}')
     if (!parsed.ok) throw new Error('fixture must parse')
-    const edited = { ...parsed.definition, target: { kind: 'note', note: 'n2' } as PortalTarget }
+    const edited = {
+      ...parsed.definition,
+      target: { kind: 'note', note: 'n2', hide: [] } as PortalTarget
+    }
     expect(JSON.parse(serializePortalDefinition(edited))).toEqual({
       v: 1,
       note: 'n2',
@@ -290,9 +298,57 @@ describe('portal edits', () => {
   })
 
   it('leaves note and search definitions alone', () => {
-    const note = def({ kind: 'note', note: 'n1' })
+    const note = def({ kind: 'note', note: 'n1', hide: [] })
     expect(addRoot(note, 'aaaa11')).toBe(note)
     expect(expandAll(note, 'aaaa11')).toBe(note)
     expect(removeRoot(note, 'aaaa11')).toBe(note)
+  })
+})
+
+describe('whole-note deny list', () => {
+  const noteDef = (hide: string[] = []): PortalDefinition => def({ kind: 'note', note: 'n1', hide })
+
+  it('reads hide, dropping non-anchors and duplicates', () => {
+    const parsed = parsePortalDefinition(
+      '{"v":1,"note":"n1","hide":["k3x9a2","NO",7,"k3x9a2","p8m2qa"]}'
+    )
+    expect(parsed).toMatchObject({
+      ok: true,
+      definition: { target: { kind: 'note', hide: ['k3x9a2', 'p8m2qa'] } }
+    })
+  })
+
+  it('writes v, note, hide and omits an empty hide', () => {
+    const text = serializePortalDefinition(noteDef(['k3x9a2']))
+    expect(Object.keys(JSON.parse(text))).toEqual(['v', 'note', 'hide'])
+    expect(text).toBe('{\n  "v": 1,\n  "note": "n1",\n  "hide": [\n    "k3x9a2"\n  ]\n}')
+    expect(JSON.parse(serializePortalDefinition(noteDef()))).toEqual({ v: 1, note: 'n1' })
+  })
+
+  it('keeps unknown keys through a hide edit', () => {
+    const parsed = parsePortalDefinition('{"note":"n1","future":1}')
+    if (!parsed.ok) throw new Error('fixture must parse')
+    const edited = hideBlock(parsed.definition, 'k3x9a2')
+    expect(JSON.parse(serializePortalDefinition(edited))).toEqual({
+      v: 1,
+      note: 'n1',
+      hide: ['k3x9a2'],
+      future: 1
+    })
+  })
+
+  it('hideBlock appends once, unhideBlock removes, unhideAll clears', () => {
+    const hidden = hideBlock(hideBlock(noteDef(), 'k3x9a2'), 'p8m2qa')
+    expect(targetOf(hidden)).toMatchObject({ hide: ['k3x9a2', 'p8m2qa'] })
+    expect(hideBlock(hidden, 'k3x9a2')).toBe(hidden)
+    expect(targetOf(unhideBlock(hidden, 'k3x9a2'))).toMatchObject({ hide: ['p8m2qa'] })
+    expect(targetOf(unhideAll(hidden))).toMatchObject({ hide: [] })
+  })
+
+  it('leaves blocks and search targets alone', () => {
+    const blocks = blocksDef(['k3x9a2'])
+    expect(hideBlock(blocks, 'p8m2qa')).toBe(blocks)
+    expect(unhideBlock(blocks, 'p8m2qa')).toBe(blocks)
+    expect(unhideAll(blocks)).toBe(blocks)
   })
 })

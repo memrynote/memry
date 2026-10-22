@@ -52,7 +52,7 @@ struct PortalBlockView: View {
 
     private func sourceRoute(_ fence: PortalFence) -> NoteRoute? {
         switch fence.target {
-        case let .note(id), let .blocks(id, _):
+        case let .note(id, _), let .blocks(id, _):
             if case .state(.missingNote) = phase { return nil }
             return NoteRoute(id: id)
         case .search, nil:
@@ -156,7 +156,7 @@ struct PortalBlockView: View {
 extension PortalTarget {
     var noteId: String {
         switch self {
-        case let .note(id), let .blocks(id, _): id
+        case let .note(id, _), let .blocks(id, _): id
         case .search: ""
         }
     }

@@ -83,6 +83,13 @@ describe('derivePortalRefs', () => {
     expect(rows.map((row) => row.anchor)).toEqual(['abc123'])
   })
 
+  it('indexes a whole-note portal as one note row, hidden anchors adding none', () => {
+    const rows = derivePortalRefs('host', fence('{"v":1,"note":"n2","hide":["abc123","def456"]}'))
+    expect(rows).toEqual([
+      { hostNoteId: 'host', ordinal: 0, root: 0, sourceNoteId: 'n2', anchor: null, kind: 'note' }
+    ])
+  })
+
   it('indexes a shown child next to the roots, so deleting it finds the host', () => {
     const rows = derivePortalRefs(
       'host',

@@ -19,6 +19,8 @@ export interface PortalUsageRow {
   title: string
   path: string
   count: number
+  /** Position of the first matching fence among the host's portal fences. */
+  ordinal: number
 }
 
 /**
@@ -43,7 +45,8 @@ export function getPortalUsage(
       title: noteCache.title,
       path: noteCache.path,
       // A fence has one row per root, so count fences, not rows.
-      count: sql<number>`count(distinct ${portalRefs.ordinal})`
+      count: sql<number>`count(distinct ${portalRefs.ordinal})`,
+      ordinal: sql<number>`min(${portalRefs.ordinal})`
     })
     .from(portalRefs)
     .innerJoin(noteCache, eq(noteCache.id, portalRefs.hostNoteId))
@@ -51,7 +54,7 @@ export function getPortalUsage(
     .groupBy(portalRefs.hostNoteId)
     .orderBy(noteCache.title)
     .all()
-    .map((row) => ({ ...row, count: Number(row.count) }))
+    .map((row) => ({ ...row, count: Number(row.count), ordinal: Number(row.ordinal) }))
 }
 
 /** Host notes of any portal to the given sources, for the incoming-reference lists. */

@@ -2199,6 +2199,7 @@
       "aria": "Where this block is used",
       "portals": "Portals",
       "links": "Links",
+      "openBeside": "Open beside",
       "loadFailed": "Could not load where this block is shown"
     },
     "hiddenBlocks": {

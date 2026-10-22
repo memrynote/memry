@@ -49,7 +49,8 @@ export const PORTAL_MAX_DEPTH = 3
 export type PortalOpen = { mode: 'hide'; ids: string[] } | { mode: 'show'; ids: string[] }
 
 export type PortalTarget =
-  | { kind: 'note'; note: string }
+  /** `hide` are the anchors of blocks (and their descendants) the portal leaves out. */
+  | { kind: 'note'; note: string; hide: string[] }
   /** `blocks` are root anchors, without the leading caret, in portal order. */
   | { kind: 'blocks'; note: string; blocks: string[]; open: Record<string, PortalOpen> }
   | { kind: 'search'; text?: string; tag?: string; limit: number }
@@ -168,7 +169,7 @@ export function readPortalTarget(json: Record<string, unknown>): PortalTarget | 
   const note = readNonEmptyString(json.note)
   if (note === undefined) return null
   const blocks = readAnchors(json.blocks)
-  if (blocks.length === 0) return { kind: 'note', note }
+  if (blocks.length === 0) return { kind: 'note', note, hide: readAnchors(json.hide) }
   return { kind: 'blocks', note, blocks, open: readOpen(json.open) }
 }
 
@@ -196,9 +197,15 @@ export function parsePortalDefinition(text: string): ParsedPortal {
 
 const MANAGED_KEYS = new Set(['v', 'note', 'blocks', 'open', 'search'])
 
+function isManagedKey(key: string, target: PortalTarget): boolean {
+  return MANAGED_KEYS.has(key) || (key === 'hide' && target.kind === 'note')
+}
+
 /** The JSON keys a target writes, in on-disk order. */
 function targetKeys(target: PortalTarget): Record<string, unknown> {
-  if (target.kind === 'note') return { note: target.note }
+  if (target.kind === 'note') {
+    return target.hide.length > 0 ? { note: target.note, hide: target.hide } : { note: target.note }
+  }
   if (target.kind === 'blocks') {
     const keys: Record<string, unknown> = { note: target.note, blocks: target.blocks }
     const open: Record<string, unknown> = {}
@@ -217,13 +224,13 @@ function targetKeys(target: PortalTarget): Record<string, unknown> {
 
 /**
  * The block's text for a definition. Two-space JSON, keys `v`, `note`,
- * `blocks`, `open`. Keys from `raw` that this build does not manage are kept
+ * `blocks`, `open` (a whole-note portal: `v`, `note`, `hide`). Keys from `raw` that this build does not manage are kept
  * after those, so a newer build's additions survive an edit.
  */
 export function serializePortalDefinition(definition: PortalDefinition): string {
   const ordered: Record<string, unknown> = { v: 1, ...targetKeys(definition.target) }
   for (const [key, value] of Object.entries(definition.raw)) {
-    if (!MANAGED_KEYS.has(key) && value !== undefined) ordered[key] = value
+    if (!isManagedKey(key, definition.target) && value !== undefined) ordered[key] = value
   }
   return JSON.stringify(ordered, null, 2)
 }
@@ -352,6 +359,35 @@ export function noteCreatedRootSibling(
   newAnchor: string
 ): PortalDefinition {
   return addRoot(def, newAnchor, afterAnchor)
+}
+
+// ---------------------------------------------------------------------------
+// Whole-note portals: a deny list. Each returns the definition unchanged when
+// the target is not a note.
+// ---------------------------------------------------------------------------
+
+function withHide(def: PortalDefinition, edit: (hide: string[]) => string[]): PortalDefinition {
+  const { target } = def
+  if (target.kind !== 'note') return def
+  const hide = edit(target.hide)
+  return hide.length === target.hide.length && hide.every((a, i) => a === target.hide[i])
+    ? def
+    : { ...def, target: { ...target, hide } }
+}
+
+/** Leave the block (and everything under it) out of a whole-note portal. */
+export function hideBlock(def: PortalDefinition, anchor: string): PortalDefinition {
+  return withHide(def, (hide) => (hide.includes(anchor) ? hide : [...hide, anchor]))
+}
+
+/** Bring a hidden block back. */
+export function unhideBlock(def: PortalDefinition, anchor: string): PortalDefinition {
+  return withHide(def, (hide) => hide.filter((a) => a !== anchor))
+}
+
+/** Bring every hidden block back. */
+export function unhideAll(def: PortalDefinition): PortalDefinition {
+  return withHide(def, () => [])
 }
 
 /** The note a target reads from, or null for a search. */

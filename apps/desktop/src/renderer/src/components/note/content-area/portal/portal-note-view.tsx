@@ -22,7 +22,7 @@ import { usePortalAncestry, usePortalInstanceId } from './portal-context'
 import { portalContentsMarkdown, portalLinkText } from './portal-copy'
 import type { PortalEditorLike } from './portal-definition'
 import type { PortalInlineHandlers } from './portal-inline-plugin'
-import type { PortalPlan } from './portal-plans'
+import { hidingLeavesNothing, type PortalPlan } from './portal-plans'
 import {
   getPortalActionHandlers,
   usePortalHiddenBlocksSlot,
@@ -58,12 +58,16 @@ interface HiddenRequest {
   anchorEl: HTMLElement
 }
 
-/** Whether `blockId` is the one root a blocks portal has left: it cannot be hidden. */
+/**
+ * Whether hiding `blockId` would leave the portal with nothing: the one root a
+ * blocks portal has left, or the last visible subtree of a note portal.
+ */
 function isOnlyRoot(
   target: PortalWindowTarget,
   state: ReturnType<typeof usePortalWindowState>,
   blockId: string
 ): boolean {
+  if (target.kind === 'note') return hidingLeavesNothing(state?.visible ?? [], blockId)
   if (target.kind !== 'blocks' || target.blocks.length !== 1) return false
   return state?.visible.find((b) => b.blockId === blockId)?.anchor === target.blocks[0]
 }
@@ -253,8 +257,7 @@ export function PortalNoteView({
   }
 
   const active = focusWithin || menuOpen || hiddenRequest !== null
-  const hiddenSiblingCount =
-    target.kind === 'blocks' ? (windowState?.hiddenSiblings.length ?? 0) : 0
+  const hiddenSiblingCount = windowState?.hiddenSiblings.length ?? 0
   const toolbar =
     active || locked ? (
       <PortalToolbar

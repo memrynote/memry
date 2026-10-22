@@ -24,11 +24,14 @@ import {
   addRoot,
   expandAll,
   extractAnchor,
+  hideBlock,
   hideChild,
   includeParent,
   noteCreatedChild,
   removeRoot,
   showChild,
+  unhideAll,
+  unhideBlock,
   type PortalDefinition
 } from '@memry/shared/portal-block'
 import { getPortalWindowState, type PortalWindowBlock } from './portal-window-plugin'
@@ -233,6 +236,21 @@ export function planBackspaceAtStart(view: EditorView, def: PortalDefinition): P
   return next ? planner(def, () => next) : null
 }
 
+/**
+ * Whether hiding `blockId` (and its visible descendants) would leave a note
+ * portal with nothing to show: a portal never shows nothing.
+ */
+export function hidingLeavesNothing(
+  visible: readonly PortalWindowBlock[],
+  blockId: string
+): boolean {
+  const at = visible.findIndex((b) => b.blockId === blockId)
+  if (at < 0) return false
+  let end = at + 1
+  while (end < visible.length && visible[end].depth > visible[at].depth) end += 1
+  return visible.length - (end - at) === 0
+}
+
 function visibleBlock(view: EditorView, blockId: string): PortalWindowBlock | undefined {
   return getPortalWindowState(view)?.visible.find((b) => b.blockId === blockId)
 }
@@ -246,13 +264,21 @@ function visibleParent(view: EditorView, block: PortalWindowBlock): PortalWindow
   return getPortalWindowState(view)?.visible.find((b) => b.blockId === String(parent.attrs.id))
 }
 
-/** Hide a visible block here: drop a root, or hide a child of its parent. */
+/**
+ * Hide a visible block here: drop a root, or hide a child of its parent. In a
+ * whole-note portal the block joins the deny list; null when that would leave
+ * no visible block.
+ */
 export function planHide(
   view: EditorView,
   def: PortalDefinition,
   blockId: string
 ): PortalPlan | null {
   const block = visibleBlock(view, blockId)
+  if (block && def.target.kind === 'note') {
+    if (hidingLeavesNothing(getPortalWindowState(view)?.visible ?? [], blockId)) return null
+    return planner(def, (anchorOf) => hideBlock(def, anchorOf(block)))
+  }
   if (!block || !isBlocksTarget(def)) return null
   if (block.anchor && roots(def).includes(block.anchor)) {
     const next = removeRoot(def, block.anchor)
@@ -269,13 +295,20 @@ export function planHide(
   return planner(def, (anchorOf) => hideChild(def, parent.anchor!, anchorOf(block)))
 }
 
-/** Show a hidden block: a hidden sibling becomes a root, a hidden child is listed or unhidden. */
+/**
+ * Show a hidden block: a hidden sibling becomes a root, a hidden child is
+ * listed or unhidden. In a whole-note portal the block leaves the deny list.
+ */
 export function planShow(
   view: EditorView,
   def: PortalDefinition,
   blockId: string
 ): PortalPlan | null {
   const window = getPortalWindowState(view)
+  if (window && def.target.kind === 'note') {
+    const anchor = window.hiddenSiblings.find((b) => b.blockId === blockId)?.anchor
+    return anchor ? planner(def, () => unhideBlock(def, anchor)) : null
+  }
   if (!window || !isBlocksTarget(def)) return null
   const sibling = window.hiddenSiblings.find((b) => b.blockId === blockId)
   if (sibling) return planner(def, (anchorOf) => addRoot(def, anchorOf(sibling)))
@@ -318,9 +351,15 @@ export function planIncludeParent(
   return planner(def, (anchorOf) => path.reduce((next, a) => includeParent(next, anchorOf(a)), def))
 }
 
-/** "Show all" for neighbours: every hidden sibling of the roots becomes a root. */
+/**
+ * "Show all" for neighbours: every hidden sibling of the roots becomes a root.
+ * In a whole-note portal it clears the deny list.
+ */
 export function planShowAllSiblings(view: EditorView, def: PortalDefinition): PortalPlan | null {
   const window = getPortalWindowState(view)
+  if (window && def.target.kind === 'note') {
+    return window.hiddenSiblings.length > 0 ? planner(def, () => unhideAll(def)) : null
+  }
   if (!window || !isBlocksTarget(def) || window.hiddenSiblings.length === 0) return null
   return planner(def, (anchorOf) =>
     window.hiddenSiblings.reduce((next, b) => addRoot(next, anchorOf(b)), def)

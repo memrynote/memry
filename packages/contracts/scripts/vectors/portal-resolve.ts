@@ -12,7 +12,8 @@
  *   { id: string, kind: string, depth: number, inline: [{ text: string }] }
  * Block text is the concatenation of `inline[].text`. `expectedIds` lists the
  * `id` of every shown block, in order; `expectedHiddenSiblings` the ids of the
- * hidden same-parent siblings of the roots, in order; `expectedHiddenChildren`
+ * hidden same-parent siblings of the roots, in order (a note target with `hide`: the
+ * outermost hidden blocks, in document order); `expectedHiddenChildren`
  * maps the anchor of a shown block to the ids of its hidden children.
  *
  * Chapter: docs/protocol/12-note-body-format.md §12.6.3.
@@ -165,6 +166,54 @@ const CASES: Array<{
     pins: 'block text is the runs joined, so a marked run before the anchor still matches',
     definition: '{"v":1,"note":"n1","blocks":["run01"]}',
     blocks: [blk('r0', 0, 'Bold part', ' tail ^run', '01'), blk('r1', 1, 'child')]
+  },
+  {
+    name: 'note-hide-subtree',
+    pins: 'a note target with hide leaves the named block and everything under it out',
+    definition: '{"v":1,"note":"n1","hide":["par1"]}',
+    blocks: TREE
+  },
+  {
+    name: 'note-hide-leaf',
+    pins: 'hiding a leaf keeps its siblings and the shallower block after it',
+    definition: '{"v":1,"note":"n1","hide":["gc01"]}',
+    blocks: TREE
+  },
+  {
+    name: 'note-hide-nested-inside-hidden',
+    pins: 'an entry naming a descendant of a hidden block adds nothing: only the outermost hidden block is listed',
+    definition: '{"v":1,"note":"n1","hide":["gc01","ch01"]}',
+    blocks: TREE
+  },
+  {
+    name: 'note-hide-several',
+    pins: 'several entries each hide their own subtree, in document order',
+    definition: '{"v":1,"note":"n1","hide":["sib1","ch01"]}',
+    blocks: TREE
+  },
+  {
+    name: 'note-hide-unknown-anchor',
+    pins: 'a hide entry that names no block changes nothing',
+    definition: '{"v":1,"note":"n1","hide":["nope1"]}',
+    blocks: TREE
+  },
+  {
+    name: 'note-hide-non-anchor-dropped',
+    pins: 'hide entries that are not anchors are dropped on read; the valid one still hides',
+    definition: '{"v":1,"note":"n1","hide":["NO",7,"par1"]}',
+    blocks: TREE
+  },
+  {
+    name: 'note-hide-duplicate-anchors-first-wins',
+    pins: 'when two blocks end with the hidden anchor the first in document order is the one hidden',
+    definition: '{"v":1,"note":"n1","hide":["dup1"]}',
+    blocks: [blk('d0', 0, 'First ^dup1'), blk('d1', 1, 'Under first'), blk('d2', 0, 'Second ^dup1')]
+  },
+  {
+    name: 'note-hide-everything',
+    pins: 'hiding every root leaves nothing to show and still resolves ok',
+    definition: '{"v":1,"note":"n1","hide":["a0001","b0001"]}',
+    blocks: [blk('h0', 0, 'One ^a0001'), blk('h1', 1, 'Under'), blk('h2', 0, 'Two ^b0001')]
   },
   {
     name: 'search-is-invalid',

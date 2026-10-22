@@ -17,7 +17,7 @@
  * visible, its parent is in `open`, and (hide-mode) the block is not listed or
  * (show-mode) the block is listed. A block's parent is the nearest earlier
  * block that is shallower. Visible blocks keep the source's document order. A
- * note target shows every block. Roots whose anchor matches no block are
+ * note target shows every block except its deny list (see `resolveNote`). Roots whose anchor matches no block are
  * ignored; `missing-block` means none of them matched. When two blocks carry
  * the same anchor the first in document order owns it.
  */
@@ -52,15 +52,42 @@ function empty<B extends ResolverBlock>(
   return { status, blocks: [], hidden: { siblings: [], children: {} } }
 }
 
+/**
+ * A note target: every block except those the deny list names and their
+ * descendants (up to the next block at the same depth or shallower, the same
+ * slice a block's subtree is everywhere). `hidden.siblings` holds the outermost
+ * hidden blocks.
+ */
+function resolveNote<B extends ResolverBlock>(
+  blocks: readonly B[],
+  hide: readonly string[],
+  indexOfAnchor: ReadonlyMap<string, number>
+): PortalResolution<B> {
+  const hiddenRoots = new Set<number>()
+  for (const anchor of hide) {
+    const at = indexOfAnchor.get(anchor)
+    if (at !== undefined) hiddenRoots.add(at)
+  }
+  const result = empty<B>('ok')
+  let skipBelow: number | null = null
+  blocks.forEach((block, i) => {
+    if (skipBelow !== null && block.depth > skipBelow) return
+    skipBelow = null
+    if (hiddenRoots.has(i)) {
+      skipBelow = block.depth
+      result.hidden.siblings.push(block)
+    } else {
+      result.blocks.push(block)
+    }
+  })
+  return result
+}
+
 export function resolvePortal<B extends ResolverBlock>(
   blocks: readonly B[],
   target: PortalTarget
 ): PortalResolution<B> {
   if (target.kind === 'search') return empty('invalid')
-  if (target.kind === 'note') {
-    return { status: 'ok', blocks: [...blocks], hidden: { siblings: [], children: {} } }
-  }
-
   // The anchor each block owns; a repeat of an earlier anchor owns nothing.
   const anchors: Array<string | null> = []
   const indexOfAnchor = new Map<string, number>()
@@ -74,13 +101,6 @@ export function resolvePortal<B extends ResolverBlock>(
     }
   })
 
-  const rootIndexes = new Set<number>()
-  for (const anchor of target.blocks) {
-    const at = indexOfAnchor.get(anchor)
-    if (at !== undefined) rootIndexes.add(at)
-  }
-  if (rootIndexes.size === 0) return empty('missing-block')
-
   // Parent of each block: the nearest earlier block that is shallower, else -1.
   const parents: number[] = []
   const stack: number[] = []
@@ -89,6 +109,15 @@ export function resolvePortal<B extends ResolverBlock>(
     parents.push(stack.length > 0 ? stack[stack.length - 1] : -1)
     stack.push(i)
   })
+
+  if (target.kind === 'note') return resolveNote(blocks, target.hide, indexOfAnchor)
+
+  const rootIndexes = new Set<number>()
+  for (const anchor of target.blocks) {
+    const at = indexOfAnchor.get(anchor)
+    if (at !== undefined) rootIndexes.add(at)
+  }
+  if (rootIndexes.size === 0) return empty('missing-block')
 
   const visible: boolean[] = []
   blocks.forEach((_block, i) => {

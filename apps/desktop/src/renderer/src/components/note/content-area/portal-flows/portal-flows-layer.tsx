@@ -80,14 +80,16 @@ export function PortalFlowsLayer({
   })
 
   // Where-used popover, hung from a usage chip.
-  const [whereUsed, setWhereUsed] = useState<{ chip: HTMLElement; hosts: PortalHost[] } | null>(
-    null
-  )
+  const [whereUsed, setWhereUsed] = useState<{
+    chip: HTMLElement
+    anchor: string
+    hosts: PortalHost[]
+  } | null>(null)
   const openWhereUsed = useCallback(
     (anchor: string, chip: HTMLElement) => {
       if (!noteId) return
       getPortalUsage(noteId, anchor)
-        .then((hosts) => setWhereUsed({ chip, hosts }))
+        .then((hosts) => setWhereUsed({ chip, anchor, hosts }))
         .catch((err: unknown) => {
           log.error('Failed to load where a block is used', err)
           toast.error(extractErrorMessage(err, t('portalFlows.whereUsed.loadFailed')))
@@ -201,7 +203,14 @@ export function PortalFlowsLayer({
               type: 'note',
               path: `/notes/${host.noteId}`,
               entityId: host.noteId,
-              title: host.title
+              title: host.title,
+              // The note opens scrolled to the portal or link that refers here.
+              viewState: {
+                blockRef:
+                  host.kind === 'link' || host.ordinal === undefined
+                    ? { kind: 'link', anchor: whereUsed?.anchor ?? '' }
+                    : { kind: 'portal', ordinal: host.ordinal }
+              }
             },
             { toTheSide: beside }
           )

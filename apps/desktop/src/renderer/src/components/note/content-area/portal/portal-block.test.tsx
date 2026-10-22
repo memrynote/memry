@@ -180,7 +180,7 @@ describe('PortalBlockRenderer', () => {
     expect(mocks.actions.includeParent).toHaveBeenCalledWith('p2')
   })
 
-  it('shows no hidden count for a whole-note portal', () => {
+  it('shows the hidden count of a whole-note portal', () => {
     mocks.windowState = {
       rootFound: null,
       rootText: null,
@@ -192,7 +192,7 @@ describe('PortalBlockRenderer', () => {
     renderPortal('{"note":"src"}')
     focusWindow()
 
-    expect(screen.queryByText('1 hidden')).toBeNull()
+    expect(screen.getByText('1 hidden')).toBeTruthy()
   })
 
   it('opens the source beside on a Shift press in the content', () => {
@@ -238,7 +238,7 @@ describe('PortalBlockRenderer', () => {
   it('stops at the nesting limit', () => {
     let ancestry = ROOT_PORTAL_ANCESTRY
     for (let i = 0; i < PORTAL_MAX_DEPTH; i += 1) {
-      ancestry = descendPortalAncestry(ancestry, { kind: 'note', note: `other-${i}` })
+      ancestry = descendPortalAncestry(ancestry, { kind: 'note', note: `other-${i}`, hide: [] })
     }
     renderPortal('{"note":"src"}', { ancestry })
 

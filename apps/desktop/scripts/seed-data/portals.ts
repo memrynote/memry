@@ -83,7 +83,7 @@ ${portalFence(blocks(PORTAL_NOTE_IDS.lecture1, ['dna1'], { dna1: { mode: 'hide',
 
 - Terms to know
 
-${portalFence({ kind: 'note', note: PORTAL_NOTE_IDS.glossary })}
+${portalFence({ kind: 'note', note: PORTAL_NOTE_IDS.glossary, hide: [] })}
 
 - Everything I wrote about DNA
 

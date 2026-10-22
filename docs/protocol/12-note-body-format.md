@@ -718,17 +718,19 @@ is `memry-portal`, with its definition (format v1) as JSON
 ```
 ````
 
-| Key      | Value                                                                                                                                                                                     |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `v`      | `1`. A reader MUST accept an absent `v` as 1; a writer always emits it                                                                                                                    |
-| `note`   | the source note's id, not its path, so the portal survives a rename or move                                                                                                               |
-| `blocks` | the **root** anchors (below), without the caret, in portal order, all in the source note. Entries that are not anchors, and repeats, are dropped on read. Absent or empty: the whole note |
-| `open`   | which blocks show their children: a map from a block's anchor to `{ "hide": [anchors] }` or `{ "show": [anchors] }`. An entry that is neither is dropped on read                          |
-| `search` | instead of `note`: `{ "text"?, "tag"?, "limit"? }`, at least one of `text` and `tag`; `limit` defaults to 50, at most 200. Carries no `blocks` or `open`                                  |
+| Key      | Value                                                                                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v`      | `1`. A reader MUST accept an absent `v` as 1; a writer always emits it                                                                                                                             |
+| `note`   | the source note's id, not its path, so the portal survives a rename or move                                                                                                                        |
+| `blocks` | the **root** anchors (below), without the caret, in portal order, all in the source note. Entries that are not anchors, and repeats, are dropped on read. Absent or empty: the whole note          |
+| `hide`   | whole-note portals only (no `blocks`): the anchors of blocks the portal leaves out, with everything under them. Entries that are not anchors, and repeats, are dropped on read. Omitted when empty |
+| `open`   | which blocks show their children: a map from a block's anchor to `{ "hide": [anchors] }` or `{ "show": [anchors] }`. An entry that is neither is dropped on read                                   |
+| `search` | instead of `note`: `{ "text"?, "tag"?, "limit"? }`, at least one of `text` and `tag`; `limit` defaults to 50, at most 200. Carries no `blocks` or `open`                                           |
 
 Writers emit two-space JSON with the keys in the order `v`, `note`, `blocks`,
 `open`, then any key they do not manage; `open` is omitted when empty and `blocks`
-when the portal shows the whole note (`packages/shared/src/portal-block.ts:197-232`). The search form is
+when the portal shows the whole note. A whole-note portal writes `v`, `note`, `hide`
+instead, `hide` omitted when empty (`packages/shared/src/portal-block.ts:197-232`). The search form is
 `{ "v": 1, "search": { ... } }` (`packages/shared/src/portal-block.ts:197-216`).
 
 **Open modes.** A block that is absent from `open` is **collapsed**: its children
@@ -744,7 +746,7 @@ caret MUST follow whitespace or start the text, so `x^abcd` is not an anchor
 paragraph does (§12.6, `portalCases` in `packages/editor-schema/src/conformance.ts`),
 and `^id` text that already exists in a vault keeps the meaning it had. A writer
 stamps an anchor only on a block that must be referenced: one that becomes a root,
-one listed in `hide` or `show`, or one created through a portal in show-mode.
+one listed in a `hide` or `show` list, or one created through a portal in show-mode.
 
 **No schema change.** As for the view block (§12.6.1), the §12.9 registry is
 unchanged, there is no write-version floor, and no client can meet a node name
@@ -763,7 +765,11 @@ if and only if it is a root, or its parent is visible, its parent's anchor is a
 key of `open`, and either that entry is `hide` and the block's anchor is not
 listed, or it is `show` and the block's anchor is listed. A block with no anchor
 can therefore be visible only as a root or under a `hide` entry
-(`packages/shared/src/portal-resolve.ts:91-106`). A note target (no `blocks`) shows every block (`packages/shared/src/portal-resolve.ts:58-60`).
+(`packages/shared/src/portal-resolve.ts:91-106`). A note target (no `blocks`) shows every block except those its `hide` list
+removes: a block whose anchor is in `hide` (the first block in document order to own
+that anchor) and all its descendants, the blocks after it up to the next block at its
+depth or shallower. A `hide` entry that names no block changes nothing. A note target
+has no `open` and no folding (`packages/shared/src/portal-resolve.ts`, `resolveNote`).
 
 **Resolution.** A client computes the result as follows (`packages/shared/src/portal-resolve.ts:53-123`):
 
@@ -781,9 +787,11 @@ can therefore be visible only as a root or under a `hide` entry
 (`packages/shared/src/portal-resolve.ts:107-120`):
 
 - `hidden.siblings`: the blocks that share a parent with some root and are not
-  visible, in document order;
+  visible, in document order. For a note target with `hide`: the outermost hidden
+  blocks in document order (a block hidden only through a hidden ancestor is not
+  listed);
 - `hidden.children`: for each visible block with an anchor, keyed by that anchor,
-  its children that are not visible.
+  its children that are not visible. Empty for a note target.
 
 A client draws "N hidden" rows from these. A visible block without an anchor has
 no key; a client stamps one before it can expand that block.
@@ -796,7 +804,8 @@ resolution over `Notes.blocks`, and the iOS app draws the resulting slice
 read-only with an action that opens the source note. Both are held to
 `packages/contracts/test-vectors/portal-resolve.json`, whose cases pin collapsed
 roots, several roots, show-mode, hide-mode, nested `open`, anchors split across
-inline runs, duplicate anchors, unknown keys, and a missing block.
+inline runs, duplicate anchors, unknown keys, a missing block, and a note target's
+`hide` list (nested, unknown and duplicate anchors).
 
 ## 12.7 Inline grammar
 

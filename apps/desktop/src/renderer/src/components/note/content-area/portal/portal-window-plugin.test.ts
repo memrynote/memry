@@ -131,11 +131,30 @@ describe('portal window plugin', () => {
   it('shows a whole note and reports no root', () => {
     const { el, resolved } = mount([para('one'), para('two ^two22')], {
       kind: 'note',
-      note: 'src'
+      note: 'src',
+      hide: []
     })
 
     expect(hiddenTexts(el)).toEqual([])
     expect(resolved.at(-1)).toEqual({ rootFound: null, rootText: 'one' })
+  })
+
+  it('hides a denied block with its subtree and lists the outermost as hidden', () => {
+    const { el, view } = mount(
+      [
+        para('one ^one111', [para('child')]),
+        para('two ^two222', [para('kid ^kid111')]),
+        para('end')
+      ],
+      { kind: 'note', note: 'src', hide: ['two222', 'kid111', 'nope11'] }
+    )
+    const state = getPortalWindowState(view)!
+
+    expect(hiddenTexts(el)).toHaveLength(1)
+    expect(hiddenTexts(el)[0]).toContain('kid')
+    expect(state.visible.map((b) => b.text)).toEqual(['one', 'child', 'end'])
+    expect(state.hiddenSiblings.map((b) => b.text)).toEqual(['two'])
+    expect(state.hiddenChildren).toEqual({})
   })
 
   it('reports a missing anchor and shows nothing', () => {

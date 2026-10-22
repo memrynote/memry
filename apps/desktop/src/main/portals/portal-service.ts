@@ -39,7 +39,8 @@ export function getPortalUsage(input: PortalGetUsageInput): PortalGetUsageResult
     title: row.title,
     path: row.path,
     count: row.count,
-    kind: 'portal' as const
+    kind: 'portal' as const,
+    ordinal: row.ordinal
   }))
   const links = getLinkUsage(db, input.noteId, input.anchor).map((row) => ({
     noteId: row.sourceNoteId,

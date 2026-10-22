@@ -30,10 +30,7 @@ pub fn resolve_portal_detailed(definition_json: &str, blocks: Vec<Block>) -> Por
     };
     match definition.target {
         PortalTarget::Search => resolution(PortalStatus::Invalid),
-        PortalTarget::Note { .. } => PortalResolution {
-            blocks,
-            ..resolution(PortalStatus::Ok)
-        },
+        PortalTarget::Note { hide, .. } => resolve_note(&hide, blocks),
         PortalTarget::Blocks {
             blocks: roots,
             open,
@@ -42,14 +39,11 @@ pub fn resolve_portal_detailed(definition_json: &str, blocks: Vec<Block>) -> Por
     }
 }
 
-fn resolve_blocks(
-    roots: &[String],
-    open: &HashMap<String, PortalOpen>,
-    blocks: Vec<Block>,
-) -> PortalResolution {
-    // The anchor each block owns; a repeat of an earlier anchor owns nothing.
+/// The anchor each block owns, and the block each anchor belongs to; a repeat
+/// of an earlier anchor owns nothing.
+fn owned_anchors(blocks: &[Block]) -> (Vec<Option<String>>, HashMap<String, usize>) {
     let mut index_of_anchor: HashMap<String, usize> = HashMap::new();
-    let anchors: Vec<Option<String>> = blocks
+    let anchors = blocks
         .iter()
         .enumerate()
         .map(|(i, block)| {
@@ -61,6 +55,43 @@ fn resolve_blocks(
             Some(anchor)
         })
         .collect();
+    (anchors, index_of_anchor)
+}
+
+/// A note target: every block except those `hide` names and their
+/// descendants (the blocks after one, up to the next at its depth or
+/// shallower). `hidden_siblings` holds the outermost hidden blocks.
+fn resolve_note(hide: &[String], blocks: Vec<Block>) -> PortalResolution {
+    let (_, index_of_anchor) = owned_anchors(&blocks);
+    let hidden_roots: Vec<usize> = hide
+        .iter()
+        .filter_map(|anchor| index_of_anchor.get(anchor).copied())
+        .collect();
+    let mut result = resolution(PortalStatus::Ok);
+    let mut skip_below: Option<u32> = None;
+    for (i, block) in blocks.into_iter().enumerate() {
+        if let Some(depth) = skip_below {
+            if block.depth > depth {
+                continue;
+            }
+            skip_below = None;
+        }
+        if hidden_roots.contains(&i) {
+            skip_below = Some(block.depth);
+            result.hidden_siblings.push(block);
+        } else {
+            result.blocks.push(block);
+        }
+    }
+    result
+}
+
+fn resolve_blocks(
+    roots: &[String],
+    open: &HashMap<String, PortalOpen>,
+    blocks: Vec<Block>,
+) -> PortalResolution {
+    let (anchors, index_of_anchor) = owned_anchors(&blocks);
 
     let root_indexes: Vec<usize> = roots
         .iter()

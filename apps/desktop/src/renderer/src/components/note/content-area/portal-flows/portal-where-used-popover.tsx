@@ -2,15 +2,16 @@
  * Where a block is used: the popover behind the usage chip. One row per note,
  * an icon saying portal or link, the note's folder in muted text. The rows
  * split into "Portals" and "Links" sections only when both kinds are present.
- * Enter opens the note, Shift+Enter (or Shift+click) opens it beside the
- * current one, and the arrow keys move between rows.
+ * Enter opens the note, Shift+Enter (or Shift+click, or the split button that
+ * shows on hover and focus) opens it beside the current one, and the arrow keys
+ * move between rows.
  *
  * @module note/content-area/portal-flows/portal-where-used-popover
  */
 
 import { useEffect, useRef, type KeyboardEvent, type ReactElement, type RefObject } from 'react'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
-import { Layers, Link } from '@/lib/icons'
+import { Columns2, Layers, Link } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type { PortalHost } from './portal-api'
 
@@ -43,10 +44,12 @@ function Row({
   host: PortalHost
   onOpen: PortalWhereUsedPopoverProps['onOpenHost']
 }): ReactElement {
+  const { t } = useT('notes')
   const Icon = isLink(host) ? Link : Layers
   const folder = folderOf(host.path)
+  const openBeside = t('portalFlows.whereUsed.openBeside')
   return (
-    <li>
+    <li className="group relative">
       <button
         type="button"
         data-where-used-row=""
@@ -63,10 +66,21 @@ function Row({
           {host.title}
         </span>
         {folder ? (
-          <span className="max-w-[40%] shrink-0 truncate text-xs leading-4 text-text-tertiary">
+          <span className="max-w-[40%] shrink-0 truncate text-xs leading-4 text-text-tertiary transition-opacity group-focus-within:opacity-0 group-hover:opacity-0">
             {folder}
           </span>
         ) : null}
+      </button>
+      {/* The shortcut is Shift+Enter or Shift+click; the button is for whoever does not know it. */}
+      <button
+        type="button"
+        data-where-used-beside=""
+        aria-label={openBeside}
+        title={openBeside}
+        className="absolute end-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-secondary opacity-0 outline-none transition-opacity hover:bg-surface hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-foreground/60 group-focus-within:opacity-100 group-hover:opacity-100"
+        onClick={() => onOpen(host, { beside: true })}
+      >
+        <Columns2 className="size-4" aria-hidden="true" />
       </button>
     </li>
   )

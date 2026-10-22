@@ -8,8 +8,10 @@ import Foundation
 
 /// What a portal points at (`packages/shared/src/portal-block.ts`).
 enum PortalTarget: Equatable, Sendable {
-    /// Every block of a note.
-    case note(id: String)
+    /// Every block of a note except the subtrees under the `hide` anchors. The
+    /// core applies the list; the shell carries it so a target compares equal
+    /// only to the same fence.
+    case note(id: String, hide: [String] = [])
     /// The subtrees under these root anchors, in portal order. Which children
     /// show is the core's `open` rule; the shell never reads it.
     case blocks(id: String, roots: [String])
@@ -27,8 +29,8 @@ struct PortalFence: Equatable, Sendable {
     let target: PortalTarget?
 
     /// Mirrors `readPortalTarget`: `search` wins when present, then `note`
-    /// with `blocks` (empty or absent: the whole note). An absent `v` reads
-    /// as 1; `open` and unknown keys are the core's and the writer's.
+    /// with `blocks` (empty or absent: the whole note, plus its `hide` list). An
+    /// absent `v` reads as 1; `open` and unknown keys are the core's and the writer's.
     init(text: String) {
         guard let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -41,13 +43,18 @@ struct PortalFence: Equatable, Sendable {
             let tag = Self.nonEmpty(search["tag"])
             target = text == nil && tag == nil ? nil : .search(text: text, tag: tag)
         } else if let note = Self.nonEmpty(json["note"]) {
-            var seen = Set<String>()
-            let roots = ((json["blocks"] as? [Any]) ?? []).compactMap { $0 as? String }
-                .filter { Self.isAnchor($0) && seen.insert($0).inserted }
-            target = roots.isEmpty ? .note(id: note) : .blocks(id: note, roots: roots)
+            let roots = Self.anchors(json["blocks"])
+            target = roots.isEmpty ? .note(id: note, hide: Self.anchors(json["hide"])) : .blocks(id: note, roots: roots)
         } else {
             target = nil
         }
+    }
+
+    /// The anchors in a JSON array, in order, repeats and non-anchors dropped.
+    private static func anchors(_ value: Any?) -> [String] {
+        var seen = Set<String>()
+        return ((value as? [Any]) ?? []).compactMap { $0 as? String }
+            .filter { isAnchor($0) && seen.insert($0).inserted }
     }
 
     private static func nonEmpty(_ value: Any?) -> String? {
@@ -100,7 +107,7 @@ struct PortalAncestry: Equatable, Sendable {
     /// The ancestry inside the window `target` opens.
     func descending(into target: PortalTarget) -> PortalAncestry {
         switch target {
-        case let .note(id): PortalAncestry(frames: frames + [.window(note: id, blocks: nil)])
+        case let .note(id, _): PortalAncestry(frames: frames + [.window(note: id, blocks: nil)])
         case let .blocks(id, roots): PortalAncestry(frames: frames + [.window(note: id, blocks: roots)])
         case .search: self
         }
@@ -116,7 +123,7 @@ struct PortalAncestry: Equatable, Sendable {
         switch target {
         case .search:
             return nil
-        case let .note(id):
+        case let .note(id, _):
             if frames.contains(where: { $0.note == id }) { return .cycle }
         case let .blocks(id, roots):
             let loops = frames.contains { frame in

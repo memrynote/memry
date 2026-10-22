@@ -23,7 +23,7 @@ const doc: B[] = [
 
 describe('resolvePortal', () => {
   it('shows every block of a note target with nothing hidden', () => {
-    const r = resolvePortal(doc, { kind: 'note', note: 'n1' })
+    const r = resolvePortal(doc, { kind: 'note', note: 'n1', hide: [] })
     expect(r.status).toBe('ok')
     expect(ids(r.blocks)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
     expect(r.hidden).toEqual({ siblings: [], children: {} })
@@ -137,5 +137,46 @@ describe('resolvePortal', () => {
   it('joins inline runs to find an anchor', () => {
     const block: B = { id: 'r', depth: 0, inline: [{ text: 'Bold ^ru' }, { text: 'n01' }] }
     expect(ids(resolvePortal([block], blocksTarget(['run01'])).blocks)).toEqual(['r'])
+  })
+})
+
+describe('resolvePortal: note deny list', () => {
+  const note = (hide: string[]): PortalTarget => ({ kind: 'note', note: 'n1', hide })
+
+  it('hides a block with its whole subtree', () => {
+    const r = resolvePortal(doc, note(['par1']))
+    expect(ids(r.blocks)).toEqual(['a', 'f', 'g'])
+    expect(ids(r.hidden.siblings)).toEqual(['b'])
+    expect(r.hidden.children).toEqual({})
+  })
+
+  it('hides a leaf and keeps its siblings', () => {
+    const r = resolvePortal(doc, note(['ch01']))
+    expect(ids(r.blocks)).toEqual(['a', 'b', 'e', 'f', 'g'])
+    expect(ids(r.hidden.siblings)).toEqual(['c'])
+  })
+
+  it('lists only the outermost hidden block when a descendant is named too', () => {
+    const r = resolvePortal(doc, note(['ch01', 'par1']))
+    expect(ids(r.blocks)).toEqual(['a', 'f', 'g'])
+    expect(ids(r.hidden.siblings)).toEqual(['b'])
+  })
+
+  it('ignores an anchor that names no block', () => {
+    const r = resolvePortal(doc, note(['nope1']))
+    expect(ids(r.blocks)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+    expect(r.hidden.siblings).toEqual([])
+  })
+
+  it('lets the first block with a duplicated anchor own it', () => {
+    const dup = [b('x', 0, 'One ^dup1'), b('y', 0, 'Two ^dup1')]
+    const r = resolvePortal(dup, note(['dup1']))
+    expect(ids(r.blocks)).toEqual(['y'])
+    expect(ids(r.hidden.siblings)).toEqual(['x'])
+  })
+
+  it('keeps a following shallower block after a hidden subtree', () => {
+    const r = resolvePortal(doc, note(['ch02']))
+    expect(ids(r.blocks)).toEqual(['a', 'b', 'c', 'd', 'f', 'g'])
   })
 })

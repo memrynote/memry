@@ -36,6 +36,25 @@ struct PortalFenceTests {
         #expect(PortalFence(text: #"{"note":"n1","block":"chl-7f2a","hidden":["b9x1"]}"#).target == .note(id: "n1"))
     }
 
+    @Test func noteTargetReadsItsHideList() {
+        #expect(PortalFence(text: #"{"v":1,"note":"n1","hide":["par1","ch01"]}"#).target
+            == .note(id: "n1", hide: ["par1", "ch01"]))
+        #expect(PortalFence(text: #"{"note":"n1","hide":["par1","Bad",7,"par1"]}"#).target
+            == .note(id: "n1", hide: ["par1"]))
+        #expect(PortalFence(text: #"{"note":"n1","blocks":["Bad"],"hide":["par1"]}"#).target
+            == .note(id: "n1", hide: ["par1"]))
+    }
+
+    @Test func hideDoesNotApplyToABlocksTarget() {
+        #expect(PortalFence(text: #"{"note":"n1","blocks":["par1"],"hide":["ch01"]}"#).target
+            == .blocks(id: "n1", roots: ["par1"]))
+    }
+
+    @Test func hideDoesNotChangeCycleRefusal() {
+        let target = PortalTarget.note(id: "host", hide: ["abcd"])
+        #expect(PortalAncestry().withHost("host").refusal(for: target) == .cycle)
+    }
+
     @Test func searchTargetNeedsTextOrTag() {
         #expect(PortalFence(text: #"{"v":1,"search":{"text":"exam","tag":"bio","limit":50}}"#).target
             == .search(text: "exam", tag: "bio"))

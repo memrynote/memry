@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 274,
+    "exportedCaseCount": 275,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 284,
+    "caseCount": 285,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1013,6 +1013,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "a247dbedd42ad6f42f6ab83208b54f34b9c868e2ff35e3c778a29b833fad05ee"
+    },
+    {
+      "name": "memry-portal fence on a whole note with a hide list",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"hide\": [\n    \"k3x9a2\",\n    \"p8m2qa\"\n  ]\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "979ddd6965d7a07e80d5ec92b8e218b738c0e61ec263c242ef2ba325c179a946"
     },
     {
       "name": "memry-portal search fence",

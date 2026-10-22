@@ -22,7 +22,9 @@ export const PortalHostSchema = z.object({
   /** Portals (or links, see `kind`) in this host that point at the source (or block). */
   count: z.number().int().positive(),
   /** A portal to the source, or a `[[Note#^anchor]]` wiki link to it. Absent reads as a portal. */
-  kind: z.enum(['portal', 'link']).optional()
+  kind: z.enum(['portal', 'link']).optional(),
+  /** For a portal: the position of its first matching fence among the host's portal fences, to scroll to. */
+  ordinal: z.number().int().nonnegative().optional()
 })
 export type PortalHost = z.infer<typeof PortalHostSchema>
 

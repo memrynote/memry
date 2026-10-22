@@ -705,6 +705,11 @@ const portalCases: RoundtripCase[] = [
       '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "open": {\n    "k3x9a2": {\n      "hide": [\n        "b9x1"\n      ]\n    },\n    "n4c8x1": {\n      "hide": []\n    }\n  }\n}\n```'
   },
   {
+    name: 'memry-portal fence on a whole note with a hide list',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "hide": [\n    "k3x9a2",\n    "p8m2qa"\n  ]\n}\n```'
+  },
+  {
     name: 'memry-portal search fence',
     markdown:
       '```memry-portal\n{\n  "v": 1,\n  "search": {\n    "text": "exam",\n    "tag": "bio",\n    "limit": 50\n  }\n}\n```'

@@ -32,7 +32,7 @@ export function findPortalCycle(
 }
 
 export function noteDefinition(noteId: string): PortalDefinition {
-  return { v: 1, target: { kind: 'note', note: noteId }, raw: {} }
+  return { v: 1, target: { kind: 'note', note: noteId, hide: [] }, raw: {} }
 }
 
 /** A block portal is inserted collapsed: one root, no `open` entries. */

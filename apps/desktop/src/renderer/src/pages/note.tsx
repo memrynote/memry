@@ -87,6 +87,8 @@ import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/ser
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
+import { useBlockRefScroll } from '@/hooks/use-block-ref-scroll'
+import type { BlockRef } from '@/lib/block-ref'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
@@ -802,6 +804,15 @@ export function NotePage({ noteId }: NotePageProps) {
     },
     [headings]
   )
+
+  // A portal or link in this note that refers to one of another note's blocks:
+  // the where-used popover opens the note here and the note scrolls to it.
+  const blockRef = (activeTab?.viewState as { blockRef?: BlockRef } | undefined)?.blockRef
+  const clearBlockRef = useCallback(() => {
+    if (!activeTab?.id) return
+    saveTabState(activeTab.id, { viewState: { blockRef: undefined } })
+  }, [activeTab?.id, saveTabState])
+  useBlockRefScroll(blockRef, editorContainerRef, clearBlockRef)
 
   const clearHeadingAnchor = useCallback(() => {
     if (!activeTab?.id) return

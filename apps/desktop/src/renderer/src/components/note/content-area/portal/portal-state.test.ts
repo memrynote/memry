@@ -12,7 +12,7 @@ import {
   type PortalWindowTarget
 } from './portal-state'
 
-const whole = (note: string): PortalWindowTarget => ({ kind: 'note', note })
+const whole = (note: string): PortalWindowTarget => ({ kind: 'note', note, hide: [] })
 const block = (note: string, anchor: string): PortalWindowTarget => ({
   kind: 'blocks',
   note,

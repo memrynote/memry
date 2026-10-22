@@ -58,6 +58,15 @@ describe('PortalWhereUsedPopover', () => {
     expect(screen.queryByText(/appear in all portals/i)).toBeNull()
   })
 
+  it('has a split button per row that opens the note beside, for those who miss the shortcut', async () => {
+    const user = userEvent.setup()
+    const { onOpenHost } = setup([portal, link])
+    const buttons = screen.getAllByRole('button', { name: 'openBeside' })
+    expect(buttons).toHaveLength(2)
+    await user.click(buttons[1])
+    expect(onOpenHost).toHaveBeenLastCalledWith(link, { beside: true })
+  })
+
   it('opens on Enter, opens beside on Shift+Enter and Shift+click', async () => {
     const user = userEvent.setup()
     const { onOpenHost } = setup([portal, link])

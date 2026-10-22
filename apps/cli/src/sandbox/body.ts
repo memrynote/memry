@@ -180,7 +180,8 @@ export function createBody(
           ])
         )
       }),
-    portalNote: (key) => portalFence({ kind: 'note', note: need(ctx.notes, key, 'note').id }),
+    portalNote: (key) =>
+      portalFence({ kind: 'note', note: need(ctx.notes, key, 'note').id, hide: [] }),
     portalSearch: (text, limit = 20) => portalFence({ kind: 'search', text, limit }),
     uri: {
       note: (key) => `memry://note/${need(ctx.notes, key, 'note').id}`,

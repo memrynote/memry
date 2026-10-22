@@ -133,19 +133,25 @@ describe('portal service', () => {
           title: 'Alpha',
           path: 'notes/hostA.md',
           count: 2,
-          kind: 'portal'
+          kind: 'portal',
+          ordinal: 0
         },
         {
           noteId: 'hostB',
           title: 'Beta',
           path: 'notes/hostB.md',
           count: 1,
-          kind: 'portal'
+          kind: 'portal',
+          ordinal: 0
         }
       ])
       expect(getPortalUsage({ noteId: 'src', anchor: 'abc123' }).hosts.map((h) => h.count)).toEqual(
         [1, 1]
       )
+      // The ordinal is the first fence that names the block, which the note scrolls to.
+      expect(
+        getPortalUsage({ noteId: 'src', anchor: 'def456' }).hosts.map((h) => h.ordinal)
+      ).toEqual([1])
       expect(getPortalUsage({ noteId: 'src', anchor: 'zzzz' }).hosts).toEqual([])
     })
   })

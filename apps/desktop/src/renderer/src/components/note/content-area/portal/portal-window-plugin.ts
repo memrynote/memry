@@ -64,9 +64,12 @@ export interface PortalWindowState {
   rootText: string | null
   /** Visible blocks, in document order. */
   visible: PortalWindowBlock[]
-  /** Non-visible same-parent siblings of the roots. */
+  /**
+   * Non-visible same-parent siblings of the roots; for a note portal, its
+   * outermost hidden blocks.
+   */
   hiddenSiblings: PortalWindowBlock[]
-  /** Non-visible children of each visible block, by that block's id. */
+  /** Non-visible children of each visible block, by that block's id. Empty for a note portal. */
   hiddenChildren: Record<string, PortalWindowBlock[]>
   /** Path from the top of the note to the first root, outermost first. */
   ancestors: PortalWindowBlock[]
@@ -219,7 +222,8 @@ export function computePortalWindow(
   const hiddenChildren: Record<string, PortalWindowBlock[]> = {}
   flat.forEach((block) => {
     const parent = block.parent >= 0 ? flat[block.parent] : null
-    if (shown.has(block) || !parent || !shown.has(parent)) return
+    // A note portal has no folds: what it hides is listed as siblings only.
+    if (spec.kind === 'note' || shown.has(block) || !parent || !shown.has(parent)) return
     ;(hiddenChildren[String(parent.node.attrs.id)] ??= []).push(byBlock.get(block)!)
   })
 
