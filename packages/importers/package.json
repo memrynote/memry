@@ -17,6 +17,8 @@
     "./noteplan": "./src/noteplan/index.ts",
     "./onenote": "./src/onenote/index.ts",
     "./raindrop": "./src/raindrop/index.ts",
+    "./readwise": "./src/readwise/index.ts",
+    "./readwise/fixtures": "./src/readwise/fixtures.ts",
     "./roam": "./src/roam/index.ts",
     "./ticktick": "./src/ticktick/index.ts",
     "./todoist": "./src/todoist/index.ts"
