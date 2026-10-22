@@ -275,7 +275,7 @@ export interface MainIpcInvokeHandlers {
   "notes:list-vault-attachments": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").VaultAttachmentEntry[]>>
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:open-external": (...args: [string]) => Awaited<Promise<void>>
-  "notes:preview-by-title": (...args: [string]) => Awaited<Promise<{ id: string; title: string; emoji: string | null; snippet: string | null; tags: { name: string; color: string; }[]; createdAt: string; matchedName: string | null; } | null>>
+  "notes:preview-by-title": (...args: [string]) => Awaited<Promise<{ id: string; title: string; emoji: string | null; snippet: string | null; tags: { name: string; color: string; }[]; createdAt: string; matchedName: string | null; path: string; cover: string | null; description: string | null; bodyText: string | null; } | null>>
   "notes:remove-property-option": (...args: [{ propertyName: string; optionValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:rename": (...args: [{ id: string; newTitle: string; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:rename-folder": (...args: [{ oldPath: string; newPath: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>

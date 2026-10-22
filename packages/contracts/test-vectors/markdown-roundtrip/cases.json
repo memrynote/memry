@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 261,
+    "exportedCaseCount": 265,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 271,
+    "caseCount": 275,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -754,6 +754,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "99bdb67dc08915f17d6859696920638eae81cc9d97d0ced788bd3cc466ea2a68"
+    },
+    {
+      "name": "link card with every setting",
+      "markdown": "<!-- link-card:{\"size\":\"medium\",\"cover\":true,\"preview\":true} -->\n[[Dune]]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1d433bfabf0e4308dd54272e2aadfefdeed4a24981b7e91f2f838fd69bd2d4d3"
+    },
+    {
+      "name": "link card with one setting",
+      "markdown": "<!-- link-card:{\"size\":\"small\"} -->\n[[Dune]]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2c04ea8d2d08063b7dd8be8ce2edf1956f1e924f27364418ac0d17a60b412af6"
+    },
+    {
+      "name": "link card keeps the alias and the bold mark",
+      "markdown": "<!-- link-card:{\"cover\":true} -->\n**[[Dune|the sequel]]**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "6227ef32d76a02e14f7f238d8b984d603d26f5d37953f96b849a3dc0cd3c610b"
+    },
+    {
+      "name": "link card between paragraphs, after an alignment marker",
+      "markdown": "Above\n\n<!-- align:center -->\n<!-- link-card:{\"preview\":true} -->\n[[Dune]]\n\nBelow with [[Arrakis]]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dff7278a9f8acaba07c492536c5acddc2b277dfbcc8c67c2cf975342a0a7b7e1"
     },
     {
       "name": "task line with bold and a wiki link",

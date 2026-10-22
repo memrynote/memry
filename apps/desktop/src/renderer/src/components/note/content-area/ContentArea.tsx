@@ -177,6 +177,8 @@ import {
   type WikiLinkMenuTarget
 } from './wiki-link-context-menu'
 import { wikiLinkToText } from './wiki-link'
+import { setWikiLinkDisplayAt, wikiLinkDisplayAt } from './wiki-link-display'
+import { createWikiLinkCardPlugin } from './wiki-link-card-plugin'
 import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
 import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
@@ -835,6 +837,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
   // live by note created/renamed/deleted events (#1716).
   useWikiLinkBroken(editor, useObjectIdentityLookup())
+  useEffect(() => registerEditorPlugin(editor, createWikiLinkCardPlugin()), [editor])
 
   const footnoteHover = useFootnotes(editor)
 
@@ -2580,7 +2583,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (chip) {
         e.preventDefault()
         const alias = typeof chip.node.attrs.alias === 'string' ? chip.node.attrs.alias : ''
-        setWikiLinkMenu({ x: e.clientX, y: e.clientY, pos: chip.pos, target: chip.target, alias })
+        setWikiLinkMenu({
+          x: e.clientX,
+          y: e.clientY,
+          pos: chip.pos,
+          target: chip.target,
+          alias,
+          display: wikiLinkDisplayAt(view!.state.doc, chip.pos)
+        })
         return
       }
 
@@ -3027,8 +3037,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <WikiLinkContextMenu
               x={wikiLinkMenu.x}
               y={wikiLinkMenu.y}
+              target={wikiLinkMenu.target}
               editable={editable}
-              onClose={() => setWikiLinkMenu(null)}
+              display={wikiLinkMenu.display}
+              onClose={() => {
+                setWikiLinkMenu(null)
+                // The panel stays open across changes, so the editor takes focus back
+                // only when the menu closes. Focusing it per change would pull focus
+                // out of the panel and Radix would close it.
+                getLiveProseMirrorView(editor as unknown as LiveViewEditor)?.focus()
+              }}
+              onDisplayChange={(patch) => {
+                const menu = wikiLinkMenu
+                const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+                if (view) setWikiLinkDisplayAt(view, menu.pos, menu.target, patch)
+              }}
               onAction={(action) => {
                 const menu = wikiLinkMenu
                 setWikiLinkMenu(null)

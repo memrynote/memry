@@ -100,4 +100,24 @@ describe('rewriteWikiLinksToNote', () => {
     )
     expect(move('[[Plan]] only')).toBeNull()
   })
+
+  // #2845: a link's display settings live on the line above it, not in the link.
+  it('retargets a link card and leaves its link-card line byte for byte', () => {
+    const marker = '<!-- link-card:{"size":"medium","cover":true,"preview":true} -->'
+
+    expect(
+      rename(`${marker}\n[[Old Title]]\n\nNext [[Old Title]]`, 'Old Title', 'New Title', noOther)
+    ).toBe(`${marker}\n[[New Title]]\n\nNext [[New Title]]`)
+  })
+
+  it('keeps the alias of a link card, which names the link, not the note', () => {
+    expect(
+      rename(
+        '<!-- link-card:{"size":"small"} -->\n[[Old Title|the sequel]]',
+        'Old Title',
+        'New Title',
+        noOther
+      )
+    ).toBe('<!-- link-card:{"size":"small"} -->\n[[New Title|the sequel]]')
+  })
 })

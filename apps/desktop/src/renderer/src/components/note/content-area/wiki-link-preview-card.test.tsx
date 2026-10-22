@@ -13,7 +13,11 @@ const preview = {
   emoji: null,
   snippet: null,
   tags: [],
-  createdAt: '2026-05-10T00:00:00.000Z'
+  createdAt: '2026-05-10T00:00:00.000Z',
+  path: 'Artificial Intelligence.md',
+  cover: null,
+  description: null,
+  bodyText: null
 }
 
 function renderCard(matchedName: string | null) {

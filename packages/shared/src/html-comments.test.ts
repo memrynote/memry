@@ -89,6 +89,21 @@ describe('maskHtmlComments (AF-015)', () => {
     expect(masked(markers)).toBe(markers)
   })
 
+  it('leaves a valid link-card line before a sole link alone (#2845)', () => {
+    const card = '<!-- align:center -->\n<!-- link-card:{"size":"small"} -->\n**[[Dune]]**'
+    expect(masked(card)).toBe(card)
+  })
+
+  it('masks a link-card line that is invalid or sits before anything but a sole link', () => {
+    for (const markdown of [
+      '<!-- link-card:{"size":"huge"} -->\n[[Dune]]',
+      '<!-- link-card:{"size":"small"} -->\nsee [[Dune]] now',
+      '<!-- link-card:{"size":"small"} -->\n\n[[Dune]]'
+    ]) {
+      expect(masked(markdown)).not.toContain('<!--')
+    }
+  })
+
   it('masks a comment that only looks like a marker when it is not on its own line', () => {
     expect(masked('Text <!-- align:center -->')).not.toContain('<!--')
   })

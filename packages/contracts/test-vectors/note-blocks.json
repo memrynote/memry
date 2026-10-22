@@ -1547,7 +1547,7 @@
     {
       "name": "inline: wikiLink",
       "pins": "a wiki link points at a TITLE, and its alias is a separate prop",
-      "updateHex": "0113f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047365652087f2da95eb0603030877696b694c696e6b2800f2da95eb06080674617267657401770c44756e65204d6573736961682800f2da95eb060805616c69617301770a7468652073657175656c2800f2da95eb060804626f6c6401792800f2da95eb0608066974616c696301792800f2da95eb060809756e6465726c696e6501792800f2da95eb060806737472696b6501792800f2da95eb060804636f646501792800f2da95eb06080974657874436f6c6f7201770764656661756c742800f2da95eb06080f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017711696e6c696e652d77696b696c696e6b2d3000",
+      "updateHex": "0116f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb0603047365652087f2da95eb0603030877696b694c696e6b2800f2da95eb06080674617267657401770c44756e65204d6573736961682800f2da95eb060805616c69617301770a7468652073657175656c2800f2da95eb060804626f6c6401792800f2da95eb0608066974616c696301792800f2da95eb060809756e6465726c696e6501792800f2da95eb060806737472696b6501792800f2da95eb060804636f646501792800f2da95eb06080974657874436f6c6f7201770764656661756c742800f2da95eb06080f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06080473697a650177046e6f6e652800f2da95eb060805636f76657201792800f2da95eb0608077072657669657701792800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017711696e6c696e652d77696b696c696e6b2d3000",
       "expectedBlocks": [
         {
           "id": "inline-wikilink-0",
@@ -1588,14 +1588,17 @@
                 "wikiLink.strike": "false",
                 "wikiLink.code": "false",
                 "wikiLink.textColor": "default",
-                "wikiLink.backgroundColor": "default"
+                "wikiLink.backgroundColor": "default",
+                "wikiLink.size": "none",
+                "wikiLink.cover": "false",
+                "wikiLink.preview": "false"
               },
               "target": "Dune Messiah"
             }
           ]
         }
       ],
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-wikilink-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see \"\n3 element wikiLink alias=\"the sequel\" backgroundColor=\"default\" bold=false code=false italic=false strike=false target=\"Dune Messiah\" textColor=\"default\" underline=false"
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"inline-wikilink-0\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see \"\n3 element wikiLink alias=\"the sequel\" backgroundColor=\"default\" bold=false code=false cover=false italic=false preview=false size=\"none\" strike=false target=\"Dune Messiah\" textColor=\"default\" underline=false"
     },
     {
       "name": "inline: hashTag",

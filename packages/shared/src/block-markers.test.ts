@@ -230,3 +230,146 @@ describe('parseSidecarMarkerLine', () => {
     expect(marked.props).toEqual({ textAlignment: 'center', textColor: 'red' })
   })
 })
+
+describe('link-card marker', () => {
+  const link = (props: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) => ({
+    type: 'wikiLink',
+    props: { target: 'Dune', alias: '', ...props },
+    ...extra
+  })
+  const paragraph = (content: unknown): MarkedBlock => ({ type: 'paragraph', props: {}, content })
+  const text = (value: string, styles: Record<string, unknown> = {}) => ({
+    type: 'text',
+    text: value,
+    styles
+  })
+
+  describe('write', () => {
+    it('writes nothing when every display prop is the default', () => {
+      expect(sidecarMarkerLines(paragraph([link()]))).toEqual([])
+      expect(
+        sidecarMarkerLines(paragraph([link({ size: 'none', cover: false, preview: false })]))
+      ).toEqual([])
+    })
+
+    it('writes size, cover, preview in that order and omits defaults', () => {
+      const all = paragraph([link({ preview: true, cover: true, size: 'medium' })])
+      expect(sidecarMarkerLines(all)).toEqual([
+        '<!-- link-card:{"size":"medium","cover":true,"preview":true} -->'
+      ])
+      expect(sidecarMarkerLines(paragraph([link({ size: 'small' })]))).toEqual([
+        '<!-- link-card:{"size":"small"} -->'
+      ])
+      expect(sidecarMarkerLines(paragraph([link({ preview: true })]))).toEqual([
+        '<!-- link-card:{"preview":true} -->'
+      ])
+    })
+
+    it('writes nothing for an out-of-enum size or non-boolean flags', () => {
+      expect(sidecarMarkerLines(paragraph([link({ size: 'huge', cover: 'yes' })]))).toEqual([])
+    })
+
+    it('writes nothing for a link inside running text', () => {
+      const running = paragraph([text('see '), link({ size: 'small' })])
+      expect(sidecarMarkerLines(running)).toEqual([])
+    })
+
+    it('writes nothing for a non-paragraph block holding one link', () => {
+      const heading: MarkedBlock = { type: 'heading', props: {}, content: [link({ cover: true })] }
+      expect(sidecarMarkerLines(heading)).toEqual([])
+    })
+
+    it('puts the marker after every other marker', () => {
+      const centred: MarkedBlock = {
+        type: 'paragraph',
+        props: { textAlignment: 'center' },
+        content: [link({ cover: true })]
+      }
+      expect(sidecarMarkerLines(centred)).toEqual([
+        '<!-- align:center -->',
+        '<!-- link-card:{"cover":true} -->'
+      ])
+    })
+  })
+
+  describe('a link followed by the space the [[ picker inserts', () => {
+    it('is still a sole link, so its settings reach the file', () => {
+      const justInserted: MarkedBlock = {
+        type: 'paragraph',
+        props: {},
+        content: [link({ size: 'medium' }), text(' ')]
+      }
+      expect(sidecarMarkerLines(justInserted)).toEqual(['<!-- link-card:{"size":"medium"} -->'])
+    })
+
+    it('is not a sole link once real text sits beside it', () => {
+      const withText: MarkedBlock = {
+        type: 'paragraph',
+        props: {},
+        content: [link({ size: 'medium' }), text(' later')]
+      }
+      expect(sidecarMarkerLines(withText)).toEqual([])
+    })
+  })
+
+  describe('read', () => {
+    it('sets the three props on a sole wikiLink node', () => {
+      const marked = paragraph([link({ bold: true, alias: 'the sequel' })])
+      parseSidecarMarkerLine('<!-- link-card:{"size":"medium","cover":true} -->')!(marked)
+      expect(marked.content).toEqual([
+        link({ bold: true, alias: 'the sequel', size: 'medium', cover: true, preview: false })
+      ])
+    })
+
+    it('promotes a sole `[[…]]` text run, keeping alias and marks', () => {
+      const marked = paragraph([text('[[Dune|the sequel]]', { bold: true })])
+      parseSidecarMarkerLine('<!-- link-card:{"preview":true} -->')!(marked)
+      expect(marked.content).toEqual([
+        link({
+          alias: 'the sequel',
+          bold: true,
+          size: 'none',
+          cover: false,
+          preview: true
+        })
+      ])
+    })
+
+    it('leaves a paragraph with running text, a heading, or no link alone', () => {
+      const line = '<!-- link-card:{"size":"small"} -->'
+      const running = paragraph([text('see [[Dune]] now')])
+      const mixed = paragraph([text('see '), link()])
+      const heading: MarkedBlock = { type: 'heading', props: {}, content: [text('[[Dune]]')] }
+      const plain = paragraph([text('just text')])
+      for (const block of [running, mixed, heading, plain]) {
+        const before = JSON.stringify(block)
+        parseSidecarMarkerLine(line)!(block)
+        expect(JSON.stringify(block)).toBe(before)
+      }
+    })
+
+    it('is not a marker when invalid, so the line stays ordinary text', () => {
+      for (const line of [
+        '<!-- link-card:{"size":"huge"} -->',
+        '<!-- link-card:{"cover":"yes"} -->',
+        '<!-- link-card:{"preview":1} -->',
+        '<!-- link-card:{} -->',
+        '<!-- link-card:{"unknown":true} -->',
+        '<!-- link-card:["small"] -->',
+        '<!-- link-card:{nope} -->',
+        'x <!-- link-card:{"cover":true} -->'
+      ]) {
+        expect(parseSidecarMarkerLine(line)).toBeNull()
+      }
+    })
+  })
+
+  it('round-trips write then read', () => {
+    const source = paragraph([link({ size: 'small', preview: true })])
+    const [line] = sidecarMarkerLines(source)
+    const reread = paragraph([text('[[Dune]]')])
+    parseSidecarMarkerLine(line)!(reread)
+    expect(reread.content).toEqual([link({ size: 'small', cover: false, preview: true })])
+    expect(sidecarMarkerLines(reread)).toEqual([line])
+  })
+})

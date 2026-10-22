@@ -541,6 +541,26 @@ const blockMarkerCases: RoundtripCase[] = [
   {
     name: 'table with aligned cells',
     markdown: `<!-- table-align:{"0:1":"center","1:1":"right"} -->\n${tableOf(['Name', 'Status'], ['Ship', 'Done'])}`
+  },
+  // The link-card marker (#2845): display settings of a wiki link that is the
+  // whole of its paragraph. The seed leaves the link as text and the marker has
+  // to promote it, or the settings are gone on the first open.
+  {
+    name: 'link card with every setting',
+    markdown: '<!-- link-card:{"size":"medium","cover":true,"preview":true} -->\n[[Dune]]'
+  },
+  {
+    name: 'link card with one setting',
+    markdown: '<!-- link-card:{"size":"small"} -->\n[[Dune]]'
+  },
+  {
+    name: 'link card keeps the alias and the bold mark',
+    markdown: '<!-- link-card:{"cover":true} -->\n**[[Dune|the sequel]]**'
+  },
+  {
+    name: 'link card between paragraphs, after an alignment marker',
+    markdown:
+      'Above\n\n<!-- align:center -->\n<!-- link-card:{"preview":true} -->\n[[Dune]]\n\nBelow with [[Arrakis]]'
   }
 ]
 

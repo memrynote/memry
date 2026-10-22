@@ -1640,7 +1640,11 @@ describe('a wiki link carries its marks to disk', () => {
           strike: false,
           code: false,
           textColor: 'default',
-          backgroundColor: 'default'
+          backgroundColor: 'default',
+          // #2845: the link-card display props, also absent from the old node.
+          size: 'none',
+          cover: false,
+          preview: false
         }
       }
     ])

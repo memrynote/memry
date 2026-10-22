@@ -15,6 +15,12 @@
     "edit": "Edit Link",
     "copy": "Copy Link",
     "unlink": "Remove Link",
+    "displayRow": "Display…",
+    "sizeNone": "None",
+    "sizeSmall": "Small",
+    "sizeMedium": "Medium",
+    "showCover": "Show cover",
+    "showPreview": "Show preview",
     "copyFailed": "Could not copy the link"
   },
   "page": {

@@ -77,6 +77,7 @@ import { registerCommand } from './lib/register-command'
 import { DeleteAttachmentSchema, UploadAttachmentSchema } from './notes-schemas'
 import type { Note } from '../vault/notes'
 import { cleanCachedSnippet } from '../vault/frontmatter'
+import { readNoteBodyPreview } from '../vault/note-body-preview'
 import {
   getNoteById,
   getNoteByPath,
@@ -128,6 +129,7 @@ import {
   resolveLinkTarget,
   resolveLinkTargets,
   getNoteTags,
+  getNoteProperties,
   getAllTagDefinitions
 } from '../notes/store'
 import { getIndexDatabase, getDatabase } from '../database'
@@ -310,7 +312,7 @@ export function registerNotesHandlers(): void {
   // notes:preview-by-title - Get hover preview data for a WikiLink target
   ipcMain.handle(
     NotesChannels.invoke.PREVIEW_BY_TITLE,
-    createStringHandler((title) => {
+    createStringHandler(async (title) => {
       const indexDb = getIndexDatabase()
       const resolved = resolveLinkTarget(indexDb, title)
       const result = resolved?.note
@@ -320,6 +322,17 @@ export function registerNotesHandlers(): void {
       const dataDb = getDatabase()
       const definitions = getAllTagDefinitions(dataDb)
       const colorMap = new Map(definitions.map((d) => [d.name, d.color]))
+      // The user's own `description` property, shown by a link card in place of
+      // the first lines of the body (#2845). Anything but text reads as none.
+      const description = getNoteProperties(indexDb, result.id).find(
+        (property) => property.name === 'description'
+      )?.value
+      const descriptionText =
+        typeof description === 'string' && description.trim() ? description : null
+      // The card draws the opening of the note as the editor shows it, so it reads
+      // the file; the cached `snippet` is raw markdown on one line. Only a card
+      // with no description needs it.
+      const bodyText = descriptionText ? null : await readNoteBodyPreview(result.id)
 
       return {
         id: result.id,
@@ -328,7 +341,11 @@ export function registerNotesHandlers(): void {
         snippet: result.snippet ? cleanCachedSnippet(result.snippet) : null,
         tags: tags.map((t) => ({ name: t, color: colorMap.get(t) ?? 'stone' })),
         createdAt: result.createdAt,
-        matchedName: resolved.matchedBy === 'alias' ? title.trim() : null
+        matchedName: resolved.matchedBy === 'alias' ? title.trim() : null,
+        path: result.path,
+        cover: result.cover ?? null,
+        description: descriptionText,
+        bodyText
       }
     })
   )

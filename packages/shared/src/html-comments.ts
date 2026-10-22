@@ -4,6 +4,7 @@ import {
   TABLE_ALIGN_LINE_REGEX,
   TABLE_LAYOUT_LINE_REGEX
 } from './block-markers.ts'
+import { parseLinkCardMarker } from './link-card-marker.ts'
 import { replaceMarkdownComments } from './markdown-code.ts'
 
 /**
@@ -110,12 +111,26 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
  * note in CommonMark, so only the opener becomes a node and the text after it
  * stays visible (BBF-101).
  */
+/**
+ * A `link-card` line is a marker only when it names a valid setting and sits
+ * directly before a paragraph that is one `[[link]]` (#2845), possibly after
+ * other marker lines. Anything else stays an ordinary comment, so a marker that
+ * would be ignored keeps its bytes as an `htmlComment` node. `maskHtmlComments`
+ * sees one comment at a time, so these lines are set aside before it runs.
+ */
+const LINK_CARD_CANDIDATE =
+  /^(<!-- link-card:\{.*\} -->)(?=\n(?:<!-- [^\n]* -->\n)*(?:\*\*|~~|\*|_)*\[\[[^\]|\n]+(?:\|[^\]\n]+)?\]\](?:\*\*|~~|\*|_)*(?:\n|$))/gm
+const LINK_CARD_KEEP = 'MEMRYLINKCARD'
+
 export function maskHtmlComments(markdown: string): string {
+  const kept = markdown.replace(LINK_CARD_CANDIDATE, (line) =>
+    parseLinkCardMarker(line) ? line.replace('<!--', LINK_CARD_KEEP) : line
+  )
   return replaceMarkdownComments(
-    markdown,
+    kept,
     (source, wholeLine) =>
       isMemryMarker(source, wholeLine) ? source : encodeHtmlCommentToken(source),
     '<!--',
     encodeHtmlCommentToken('<!--')
-  )
+  ).replaceAll(LINK_CARD_KEEP, '<!--')
 }
