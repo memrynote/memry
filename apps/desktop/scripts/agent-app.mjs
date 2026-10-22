@@ -16,7 +16,7 @@
  *   node scripts/agent-app.mjs stop
  *
  * Optional env for start: MEMRY_AGENT_VAULT_TEMPLATE=<vault dir> opens a copy of that
- * vault instead (tutorial recordings use this), MEMRY_AGENT_FIRST_RUN=1 opens no vault
+ * vault instead (without the portal examples the default vault carries) (tutorial recordings use this), MEMRY_AGENT_FIRST_RUN=1 opens no vault
  * so the first-run setup shows (new vaults default to the sandbox, not ~/Documents),
  * and MEMRY_AGENT_SCALE=2 renders at 2x.
  */
@@ -29,6 +29,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseKeychainDump } from './purge-e2e-keychain.mjs'
+import { PORTAL_EXAMPLES_EXPRESSION } from './agent-vault-portals.mjs'
 
 const DESKTOP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const MAIN_ENTRY = path.join(DESKTOP_DIR, 'out/main/index.js')
@@ -164,6 +165,11 @@ async function start() {
 
   try {
     await waitForReady()
+    // The default sandbox vault also carries a small study vault that shows portals. A portal
+    // names its source by note id and the app assigns ids, so the notes are created through the
+    // app. E2E tests open the fixture directly and never see them.
+    if (!firstRun && !process.env.MEMRY_AGENT_VAULT_TEMPLATE)
+      await evaluate(PORTAL_EXAMPLES_EXPRESSION)
     // First run: keep the setup's default notes folder inside the sandbox.
     if (firstRun)
       await evaluate(
