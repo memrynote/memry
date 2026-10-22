@@ -61,3 +61,20 @@ export const embeddingModelCacheDir = (userDataPath: string): string =>
  */
 export const embeddingModelWeightsPath = (userDataPath: string): string =>
   path.join(embeddingModelCacheDir(userDataPath), 'onnx', 'model_q4.onnx_data')
+
+/**
+ * The vision encoder weights, fetched on first image use only (~109MB). Text-only
+ * users never have this file.
+ */
+export const embeddingVisionWeightsPath = (userDataPath: string): string =>
+  path.join(embeddingModelCacheDir(userDataPath), 'onnx', 'vision_encoder_q4.onnx_data')
+
+/**
+ * Soft tokens the vision encoder spends per image (allowed 70..1120, model
+ * default 280). Spike on a cat and a dog photo (q4, 256d, CPU, M-series):
+ * 70 tokens ~0.7s, 140 ~1.9s, 280 ~4s, 560 ~13s, 1120 ~35s per image, and the
+ * query/image cosine FELL as the budget grew (cat photo vs `cat`: 0.766, 0.750,
+ * 0.735, 0.720, 0.703). 140 keeps near-top scores and enough detail for
+ * screenshots at about half the cost of the model default.
+ */
+export const EMBEDDING_IMAGE_SOFT_TOKENS = 140
