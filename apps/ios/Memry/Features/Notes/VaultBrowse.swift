@@ -111,6 +111,9 @@ protocol NotesReading: Sendable {
     /// Desktop's sidebar bookmarks that resolve to something this vault
     /// holds, in the user's order. Read only: the phone does not write them.
     func bookmarks() async throws -> [BookmarkEntry]
+    /// The blocks a `memry-portal` definition shows from its source note, and
+    /// why it shows none when it cannot. The core resolves; the shell draws.
+    func portalSlice(id: String, definitionJson: String) async throws -> PortalSlice
 }
 
 extension NotesReading {
@@ -120,6 +123,11 @@ extension NotesReading {
 
     /// Test doubles hold no journal.
     func journalsTagged(_ tag: String) async throws -> [NoteSummary] { [] }
+
+    /// Readers that are not the vault's own hold no portal sources.
+    func portalSlice(id: String, definitionJson: String) async throws -> PortalSlice {
+        PortalSlice(status: .missingNote, blocks: [])
+    }
 }
 
 /// The production reader: the core's own `Notes`, over the shell's one serial
@@ -159,6 +167,13 @@ struct CoreNotesReader: NotesReading {
     func blocks(id: String) async throws -> [Block]? {
         let vault = vault
         return try await executor.run { try vault.notes().blocks(id: id) }
+    }
+
+    /// Same queue and document as ``blocks(id:)``, so a portal and the source
+    /// note cannot disagree about what has arrived.
+    func portalSlice(id: String, definitionJson: String) async throws -> PortalSlice {
+        let vault = vault
+        return try await executor.run { try vault.notes().portalSlice(id: id, definitionJson: definitionJson) }
     }
 
     /// Same queue, same document, same reasons.

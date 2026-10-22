@@ -36,6 +36,7 @@ import {
 } from './vault-activity-handlers'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
+import { registerPortalsHandlers, unregisterPortalsHandlers } from './portals-handlers'
 import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
 import { registerCrdtIpcHandlers } from './crdt-handlers'
@@ -171,6 +172,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register graph handlers
   registerGraphHandlers()
+  registerPortalsHandlers()
 
   // Register AI inline editing handlers
   registerAIInlineHandlers()
@@ -250,6 +252,7 @@ export function unregisterAllHandlers(): void {
   unregisterVaultActivityHandlers()
   unregisterSearchHandlers()
   unregisterGraphHandlers()
+  unregisterPortalsHandlers()
   unregisterAIInlineHandlers()
   unregisterAccountHandlers()
   unregisterUpdaterHandlers()
@@ -312,6 +315,7 @@ export {
 } from './vault-activity-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
+export { registerPortalsHandlers, unregisterPortalsHandlers } from './portals-handlers'
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'

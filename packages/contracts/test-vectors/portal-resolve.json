@@ -1,0 +1,1065 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "portal-resolve",
+    "caseCount": 16,
+    "chapter": "docs/protocol/12-note-body-format.md §12.6.3"
+  },
+  "cases": [
+    {
+      "name": "whole-note",
+      "pins": "a note target with nothing hidden shows every block",
+      "definition": "{\"note\":\"n1\"}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b0",
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5",
+        "b6"
+      ]
+    },
+    {
+      "name": "whole-note-hidden-subtree",
+      "pins": "a note target drops a hidden block and its descendants",
+      "definition": "{\"note\":\"n1\",\"hidden\":[\"ch01\"]}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b0",
+        "b1",
+        "b5",
+        "b6"
+      ]
+    },
+    {
+      "name": "whole-note-hidden-top-level",
+      "pins": "a note target may hide a top-level block: no root exemption outside a block target",
+      "definition": "{\"note\":\"n1\",\"hidden\":[\"par1\"]}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b0",
+        "b6"
+      ]
+    },
+    {
+      "name": "block-with-children",
+      "pins": "a block target shows the block and every deeper block up to the next sibling",
+      "definition": "{\"note\":\"n1\",\"block\":\"par1\"}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5"
+      ]
+    },
+    {
+      "name": "block-leaf",
+      "pins": "a block with no deeper block after it is shown alone",
+      "definition": "{\"note\":\"n1\",\"block\":\"ch02\"}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b5"
+      ]
+    },
+    {
+      "name": "block-nested-depth",
+      "pins": "a nested block is a root too; its window ends at the next block at its depth or less",
+      "definition": "{\"note\":\"n1\",\"block\":\"ch01\"}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b2",
+        "b3",
+        "b4"
+      ]
+    },
+    {
+      "name": "hidden-child",
+      "pins": "a hidden anchor drops that block and its own descendants, not its siblings",
+      "definition": "{\"note\":\"n1\",\"block\":\"par1\",\"hidden\":[\"ch01\"]}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b1",
+        "b5"
+      ]
+    },
+    {
+      "name": "hidden-grandchild",
+      "pins": "hiding a deep block leaves its parent and siblings",
+      "definition": "{\"note\":\"n1\",\"block\":\"par1\",\"hidden\":[\"gc01\"]}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b1",
+        "b2",
+        "b4",
+        "b5"
+      ]
+    },
+    {
+      "name": "hidden-root-ignored",
+      "pins": "the root cannot be hidden: a hidden entry naming it is ignored",
+      "definition": "{\"note\":\"n1\",\"block\":\"par1\",\"hidden\":[\"par1\"]}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5"
+      ]
+    },
+    {
+      "name": "hidden-unknown-ignored",
+      "pins": "a hidden anchor that matches nothing changes nothing",
+      "definition": "{\"note\":\"n1\",\"block\":\"par1\",\"hidden\":[\"zzzz9\"]}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5"
+      ]
+    },
+    {
+      "name": "missing-anchor",
+      "pins": "no block ends with the anchor: missing-block, no blocks",
+      "definition": "{\"note\":\"n1\",\"block\":\"nope1\"}",
+      "blocks": [
+        {
+          "id": "b0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Intro"
+            }
+          ]
+        },
+        {
+          "id": "b1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Parent ^par1"
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child one ^ch01"
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild of one ^gc01"
+            }
+          ]
+        },
+        {
+          "id": "b4",
+          "kind": "paragraph",
+          "depth": 2,
+          "inline": [
+            {
+              "text": "Grandchild plain"
+            }
+          ]
+        },
+        {
+          "id": "b5",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Child two ^ch02"
+            }
+          ]
+        },
+        {
+          "id": "b6",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Sibling after"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "missing-block",
+      "expectedIds": []
+    },
+    {
+      "name": "anchor-mid-line-not-matched",
+      "pins": "an anchor-like token that is not at the end of the text is not an anchor",
+      "definition": "{\"note\":\"n1\",\"block\":\"mid1\"}",
+      "blocks": [
+        {
+          "id": "m0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "see ^mid1 for more"
+            }
+          ]
+        },
+        {
+          "id": "m1",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Other"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "missing-block",
+      "expectedIds": []
+    },
+    {
+      "name": "caret-inside-word-not-matched",
+      "pins": "a caret glued to a word is not an anchor",
+      "definition": "{\"note\":\"n1\",\"block\":\"glue1\"}",
+      "blocks": [
+        {
+          "id": "g0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "x^glue1"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "missing-block",
+      "expectedIds": []
+    },
+    {
+      "name": "duplicate-anchors-first-wins",
+      "pins": "when two blocks end with the same anchor the first in document order is the root",
+      "definition": "{\"note\":\"n1\",\"block\":\"dup1\"}",
+      "blocks": [
+        {
+          "id": "d0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "First ^dup1"
+            }
+          ]
+        },
+        {
+          "id": "d1",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "Under first"
+            }
+          ]
+        },
+        {
+          "id": "d2",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Second ^dup1"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "d0",
+        "d1"
+      ]
+    },
+    {
+      "name": "anchor-across-inline-runs",
+      "pins": "block text is the runs joined, so a marked run before the anchor still matches",
+      "definition": "{\"note\":\"n1\",\"block\":\"run01\"}",
+      "blocks": [
+        {
+          "id": "r0",
+          "kind": "paragraph",
+          "depth": 0,
+          "inline": [
+            {
+              "text": "Bold part"
+            },
+            {
+              "text": " tail ^run"
+            },
+            {
+              "text": "01"
+            }
+          ]
+        },
+        {
+          "id": "r1",
+          "kind": "paragraph",
+          "depth": 1,
+          "inline": [
+            {
+              "text": "child"
+            }
+          ]
+        }
+      ],
+      "expectedStatus": "ok",
+      "expectedIds": [
+        "r0",
+        "r1"
+      ]
+    },
+    {
+      "name": "empty-note-whole",
+      "pins": "a note target over a note with no blocks resolves ok and empty",
+      "definition": "{\"note\":\"n1\"}",
+      "blocks": [],
+      "expectedStatus": "ok",
+      "expectedIds": []
+    }
+  ]
+}

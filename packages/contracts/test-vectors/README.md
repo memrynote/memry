@@ -70,6 +70,7 @@ one-class change reviewable.
 | `block-edit.json`                       |                                 12 | `../scripts/vectors/block-edit.ts`          | `../src/__tests__/block-edit.test.ts` + the Rust writer harness                  |
 | `attachment-manifest.json`              |                                  4 | `../scripts/vectors/attachment-manifest.ts` | `../src/__tests__/attachment-manifest.test.ts` + the Rust harness                |
 | `delete-attestation.json`               |                                 19 | `../scripts/vectors/delete-attestation.ts`  | `../src/__tests__/delete-attestation.test.ts` + the Rust harness                 |
+| `portal-resolve.json`                   |                                 15 | `../scripts/vectors/portal-resolve.ts`      | `../src/__tests__/portal-resolve.test.ts` + the Rust harness                     |
 | `markdown-roundtrip/cases.json`         |                                119 | `../scripts/vectors/markdown-roundtrip.ts`  | `../src/__tests__/markdown-roundtrip.test.ts`                                    |
 | `markdown-roundtrip/fuzz-families.json` |                         5 families | same                                        | same                                                                             |
 | **Total**                               | **425 cases plus 5 fuzz families** |                                             |                                                                                  |

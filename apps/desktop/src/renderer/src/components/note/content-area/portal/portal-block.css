@@ -1,0 +1,26 @@
+/*
+ * The portal block (portal-block.tsx): a `memry-portal` code block drawn as a
+ * live window. It is a code block to the document, not to the reader, so it
+ * takes the note's own surface and ink instead of the code slab.
+ */
+.bn-block-content[data-content-type='codeBlock'][data-language='memry-portal'] {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* The block renders app UI (buttons, icons, a nested editor) inside the host
+   editor, where two unlayered BlockNote rules beat Tailwind's layered
+   utilities: `.bn-default-styles li` resets font-size and padding, and
+   `.bn-shadcn svg:not([class*=size-])` reverts icon sizes. `revert-layer`
+   hands both back to the utilities. The nested editor is excluded: it is a
+   note, and styles itself as one. */
+.bn-default-styles .memry-portal-block :is(p, li, h1, h2, h3, h4, h5, h6):not(.portal-window *) {
+  font-size: revert-layer;
+  margin: revert-layer;
+  padding: revert-layer;
+}
+
+.bn-shadcn .memry-portal-block svg:not([class*='size-']) {
+  width: revert-layer;
+  height: revert-layer;
+}

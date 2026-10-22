@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 261,
+    "exportedCaseCount": 267,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 271,
+    "caseCount": 277,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -950,6 +950,48 @@
       "canonical": null,
       "pending": null,
       "sha256": "bbe6d8e4f1afc6b9e7c75074a35abfa54da76c080ce035a8da5b819687ec456c"
+    },
+    {
+      "name": "memry-portal fence targeting a note",
+      "markdown": "```memry-portal\n{\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\"\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "20482bc0d909fb083aa3e95575236b32b47b35033c40083dc59b91aa90a50a4e"
+    },
+    {
+      "name": "memry-portal fence targeting a block with hidden children",
+      "markdown": "```memry-portal\n{\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"block\": \"chl-7f2a\",\n  \"hidden\": [\n    \"b9x1\"\n  ]\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7d15458a7c74aca481965937a333e119d49db59d3855d69bfd8bae05b7e5759e"
+    },
+    {
+      "name": "memry-portal search fence",
+      "markdown": "```memry-portal\n{\n  \"search\": {\n    \"text\": \"exam\",\n    \"tag\": \"bio\",\n    \"limit\": 50\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "71b2868c887523673204712d422d85a12abd0ea4aa908bc3117c2818a04e1ecd"
+    },
+    {
+      "name": "memry-portal fence keeps keys a build does not know",
+      "markdown": "```memry-portal\n{\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"layout\": {\n    \"future\": true\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "abc71b42d9cd8b0e4ffea9f2c1acba5ea98a4fe328b64b428fa36ae36431a6b3"
+    },
+    {
+      "name": "memry-portal fence between paragraphs",
+      "markdown": "Before\n\n```memry-portal\n{\"note\":\"n1\"}\n```\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ff4ed3644e46779286f2f6fe39b5f8da1931220f8581d3564fac509df79f5a14"
+    },
+    {
+      "name": "a block whose text ends with an anchor",
+      "markdown": "Read this chapter ^chl-7f2a",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b1bde1eabed32c4039cf2a0853641dd418f0ab765c87263b1a5d147c16fca883"
     },
     {
       "name": "asterisk bullets",

@@ -182,6 +182,36 @@ export const propertyRefs = sqliteTable(
   ]
 )
 
+/**
+ * One row per `memry-portal` fence in a note body, derived from the body by the
+ * portal-refs projector and rebuildable from the vault, never synced.
+ *
+ * `source_note_id` and `anchor` are NULL for a search portal, and `anchor` is
+ * NULL for a whole-note portal. There is deliberately no foreign key: a row
+ * must outlive a deleted source note, because the host still shows the portal
+ * and the delete guard asks who still points there. The host's rows are
+ * deleted with the host by the projector.
+ */
+export const portalRefs = sqliteTable(
+  'portal_refs',
+  {
+    hostNoteId: text('host_note_id').notNull(),
+    // Position among the host's `memry-portal` fences, counting unreadable ones.
+    ordinal: integer('ordinal').notNull(),
+    sourceNoteId: text('source_note_id'),
+    anchor: text('anchor'),
+    hiddenCount: integer('hidden_count').notNull().default(0),
+    kind: text('kind').$type<'note' | 'block' | 'search'>().notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.hostNoteId, table.ordinal] }),
+    index('idx_portal_refs_source').on(table.sourceNoteId, table.anchor)
+  ]
+)
+
+export type PortalRefRow = typeof portalRefs.$inferSelect
+export type NewPortalRefRow = typeof portalRefs.$inferInsert
+
 export type PropertyRefRow = typeof propertyRefs.$inferSelect
 export type NewPropertyRefRow = typeof propertyRefs.$inferInsert
 

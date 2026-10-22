@@ -39,6 +39,8 @@
     "./cover-image": "./src/cover-image.ts",
     "./template-placeholders": "./src/template-placeholders.ts",
     "./view-block": "./src/view-block.ts",
+    "./portal-block": "./src/portal-block.ts",
+    "./portal-resolve": "./src/portal-resolve.ts",
     "./versioned": "./src/versioned.ts",
     "./writing-tools": "./src/writing-tools/yjs.ts",
     "./writing-tools/markdown": "./src/writing-tools/markdown.ts"

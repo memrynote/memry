@@ -118,6 +118,9 @@ import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
+import { PortalFlowsLayer } from './portal-flows/portal-flows-layer'
+import { getPortalSlashMenuItems } from './portal-flows/portal-slash-items'
+import { usePortalAncestryNotes } from './portal-flows/use-portal-ancestry'
 import { TaskRemovalDialog } from './task-removal-dialog'
 import {
   markTaskRemovalsHandled,
@@ -441,6 +444,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const portalAncestry = usePortalAncestryNotes()
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
   // Starts the custom callout type sync before the first note parse (#3207).
@@ -3208,6 +3212,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
             <FilePanelController filePanel={VaultFilePanel} />
+            <PortalFlowsLayer
+              noteId={noteId}
+              notePath={notePath}
+              editable={editable}
+              ancestry={portalAncestry}
+              onOpenNote={onInternalLinkClick}
+            />
             <LinkAddressToolbarController />
             <SlashMenuFallbackContext value={slashMenuFallbacks}>
               <SuggestionMenuController<(query: string) => Promise<SlashMenuItem[]>>
@@ -3413,6 +3424,23 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         group: t('editor.viewBlock.group'),
                         subtext: t('editor.viewBlock.subtext')
                       })
+                  // `/portal` and `/search portal`: live windows onto other notes.
+                  const portalItems = inCell
+                    ? []
+                    : getPortalSlashMenuItems(
+                        editor,
+                        {
+                          portal: {
+                            title: t('portalFlows.slash.portal.title'),
+                            subtext: t('portalFlows.slash.portal.subtext')
+                          },
+                          searchPortal: {
+                            title: t('portalFlows.slash.searchPortal.title'),
+                            subtext: t('portalFlows.slash.searchPortal.subtext')
+                          }
+                        },
+                        t('editor.viewBlock.group')
+                      )
                   // `/chart` is the same view block in its chart layout.
                   const chartItem = inCell
                     ? null
@@ -3511,6 +3539,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...portalItems,
                     ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
                     ...dateItems,

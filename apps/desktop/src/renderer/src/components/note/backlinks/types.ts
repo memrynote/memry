@@ -14,7 +14,7 @@ export interface Backlink {
   folder?: string // Parent folder name
   date: Date // When link was created or note updated
   mentions: Mention[] // All mentions of current note
-  via?: LinkVia // Set for relation-property and canvas-arrow entries
+  via?: LinkVia // Set for relation-property, canvas-arrow and portal entries
 }
 
 // A source note can reference the target both via [[wikilink]] and via a
@@ -26,9 +26,11 @@ export function backlinkId(sourceId: string, via: Backlink['via']): string {
   if (!via) return sourceId
   // A canvas entry is one per canvas: the same pair of notes joined on two
   // canvases is two connections.
-  return via.kind === 'canvas'
-    ? `${sourceId}:canvas:${via.canvasId}`
-    : `${sourceId}:property:${via.propertyName}`
+  if (via.kind === 'canvas') return `${sourceId}:canvas:${via.canvasId}`
+  // A portal entry is one per host note: the host's several portals to this
+  // note collapse into a single backlink.
+  if (via.kind === 'portal') return `${sourceId}:portal`
+  return `${sourceId}:property:${via.propertyName}`
 }
 
 export type BacklinkSortOption = 'recent' | 'alphabetical' | 'mentions'

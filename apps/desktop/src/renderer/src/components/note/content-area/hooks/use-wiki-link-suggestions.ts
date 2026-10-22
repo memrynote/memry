@@ -32,6 +32,7 @@ type NoteSuggestion = {
   title: string
   path: string
   aliases: string[]
+  emoji?: string | null
   modified?: Date | string
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
   mimeType?: string | null
@@ -129,6 +130,7 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
               title: note.title,
               path: note.path,
               aliases: note.aliases ?? [],
+              emoji: note.emoji,
               modified: note.modified,
               fileType: note.fileType,
               mimeType: note.mimeType,
@@ -241,6 +243,7 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
             ? { type: 'note' as const }
             : { type: 'noteName' as const, noteTitle: note.title }),
           ...(shared ? { folder: folderOf(note.path) } : {}),
+          ...(note.emoji ? { emoji: note.emoji } : {}),
           lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
           ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
           ...(note.mimeType ? { mimeType: note.mimeType } : {}),

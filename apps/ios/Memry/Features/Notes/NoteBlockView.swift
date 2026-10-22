@@ -228,6 +228,8 @@ struct NoteBlockView: View {
             ViewBlockView(text: text, edit: editing.flatMap { editing in
                 block.id.map { id in { editing.session.editView(blockId: id, text: text) } }
             })
+        case "codeBlock" where value("language") == PortalFence.language:
+            PortalBlockView(text: plainText)
         case "codeBlock":
             CodeRow(language: value("language"), text: plainText)
         case "diagram":
@@ -352,8 +354,8 @@ struct NoteBlockView: View {
     /// so its fence is never rewritten here; one it cannot answer is edited as
     /// the code it shows.
     private var isAnsweredView: Bool {
-        block.kind == "codeBlock" && value("language") == ViewBlockFence.language
-            && ViewBlockFence(text: plainText) != .code
+        block.kind == "codeBlock" && (value("language") == ViewBlockFence.language
+            && ViewBlockFence(text: plainText) != .code || value("language") == PortalFence.language)
     }
 
     /// The block's runs as one attributed string, marks applied.

@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import type { DateMentionValue } from './date-mention-popover'
 import { InlineChoiceMenu } from './inline-choice-menu'
+import { NoteMenuIcon } from './note-menu-icon'
 
 export type MentionSuggestionItem =
   // Carries no value: the time is read when it is picked, not when the menu opens.
@@ -34,7 +35,7 @@ export type MentionSuggestionItem =
   | { kind: 'date'; label: string; value: DateMentionValue }
   | { kind: 'remind'; subtitle: string; value: DateMentionValue }
   | { kind: 'date-hint' }
-  | { kind: 'note'; id: string; title: string; lastEdited?: string }
+  | { kind: 'note'; id: string; title: string; lastEdited?: string; emoji?: string | null }
   | { kind: 'canvas'; id: string; title: string }
   | { kind: 'object'; match: ObjectMatch }
   | { kind: 'create'; title: string }
@@ -336,7 +337,7 @@ export function MentionMenu({
                 aria-selected={isSelected}
                 onClick={() => onItemClick?.(item)}
               >
-                <FileText className="size-3.5 shrink-0" />
+                <NoteMenuIcon icon={item.emoji} className="size-3.5" />
                 <span className="truncate">{item.title}</span>
               </button>
             </Fragment>

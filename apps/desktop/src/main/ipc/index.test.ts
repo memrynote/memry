@@ -55,6 +55,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterSearchHandlers: vi.fn(),
   registerGraphHandlers: vi.fn(),
   unregisterGraphHandlers: vi.fn(),
+  registerPortalsHandlers: vi.fn(),
+  unregisterPortalsHandlers: vi.fn(),
   registerAIInlineHandlers: vi.fn(),
   unregisterAIInlineHandlers: vi.fn(),
   registerAccountHandlers: vi.fn(),
@@ -190,6 +192,10 @@ vi.mock('./search-handlers', () => ({
 vi.mock('./graph-handlers', () => ({
   registerGraphHandlers: hoisted.registerGraphHandlers,
   unregisterGraphHandlers: hoisted.unregisterGraphHandlers
+}))
+vi.mock('./portals-handlers', () => ({
+  registerPortalsHandlers: hoisted.registerPortalsHandlers,
+  unregisterPortalsHandlers: hoisted.unregisterPortalsHandlers
 }))
 vi.mock('./ai-inline-handlers', () => ({
   registerAIInlineHandlers: hoisted.registerAIInlineHandlers,

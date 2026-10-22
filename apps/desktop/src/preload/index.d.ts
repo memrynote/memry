@@ -1046,6 +1046,15 @@ import type {
 
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
 import type {
+  PortalGetUsageInput,
+  PortalGetUsageResult,
+  PortalSearchInput,
+  PortalSearchResult,
+  PortalStampAnchorInput,
+  PortalStampAnchorResult,
+  PortalUsageChangedEvent
+} from '@memry/contracts/portals-api'
+import type {
   ListVaultActivityInput,
   ListVaultActivityResult,
   VaultActivityRetentionDays
@@ -1081,6 +1090,14 @@ export interface SearchClientAPI {
 export interface RecentsClientAPI {
   record(input: RecordRecentlyOpenedInput): Promise<{ recorded: boolean }>
   list(limit?: number): Promise<RecentlyOpenedItem[]>
+}
+
+// Portals API (live windows onto another note or block)
+export interface PortalsClientAPI {
+  getUsage(input: PortalGetUsageInput): Promise<PortalGetUsageResult>
+  stampAnchor(input: PortalStampAnchorInput): Promise<PortalStampAnchorResult>
+  search(input: PortalSearchInput): Promise<PortalSearchResult>
+  onUsageChanged(callback: (event: PortalUsageChangedEvent) => void): () => void
 }
 
 // Vault activity API (device-local log of files added, removed, skipped, failed)
@@ -2027,6 +2044,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   tags: TagsClientAPI
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
+  portals: PortalsClientAPI
   vaultActivity: VaultActivityClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI

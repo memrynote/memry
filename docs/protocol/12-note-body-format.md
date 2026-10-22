@@ -700,6 +700,76 @@ The consequences are the reason for the shape:
   `{{date:YYYY-MM-DD}}` and the other tokens across the whole body, fence
   included, so a filter written against them is fixed when the entry is created.
 
+### 12.6.3 The portal block is a code fence
+
+**Normative.** A portal (a live window onto another note, one block of another
+note, or the blocks a search finds) is **not a block type** either. It is a
+`codeBlock` whose `language` is `memry-portal`, with its definition as JSON
+(`packages/shared/src/portal-block.ts:146-181`):
+
+````
+```memry-portal
+{
+  "note": "<noteId>",
+  "block": "chl-7f2a",
+  "hidden": ["b9x1"]
+}
+```
+````
+
+| Key      | Value                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `note`   | the source note's id, not its path, so the portal survives a rename or move                                                |
+| `block`  | an anchor (below), without the caret. Absent: the whole note                                                               |
+| `hidden` | anchors of blocks the portal does not show (never a block target's root). Entries that are not anchors are dropped on read |
+| `search` | instead of `note`: `{ "text"?, "tag"?, "limit"? }`, at least one of `text` and `tag`; `limit` defaults to 50, at most 200  |
+
+Writers emit two-space JSON, target first, then `hidden`
+(`packages/shared/src/portal-block.ts:200-211`).
+
+**Anchors.** A block is addressable when its text ends with a space, a caret and
+an anchor, ` ^chl-7f2a`. The anchor matches `[a-z0-9][a-z0-9-]{3,31}`, and the
+caret MUST follow whitespace or start the text, so `x^abcd` is not an anchor
+(`packages/shared/src/portal-block.ts:84-86`, `:112-115`). An anchor is ordinary
+text: it round-trips as any paragraph does (§12.6, `portalCases` in
+`packages/editor-schema/src/conformance.ts`), and `^id` text that already exists
+in a vault keeps the meaning it had.
+
+**No schema change.** As for the view block (§12.6.1), the §12.9 registry is
+unchanged, there is no write-version floor, and no client can meet a node name
+it would delete. An older build shows the fence as code and writes the same
+bytes back.
+
+**Readers are tolerant.** A reader MUST keep keys it does not know and write
+them back when it rewrites the definition
+(`packages/shared/src/portal-block.ts:200-211`). A body that is not JSON or has
+no usable target is shown as invalid with its bytes left alone
+(`packages/shared/src/portal-block.ts:167-181`).
+
+**Resolution.** Given a `note` or `block` target and the source note's block list
+in document order (the `extract_blocks` shape, §12.11), a client computes the
+blocks to show as follows (`packages/shared/src/portal-resolve.ts:45-90`):
+
+1. A note target's window is every block of the note.
+2. A block target's root is the **first** block in document order whose text, the
+   concatenation of its inline runs, ends with ` ^anchor`. If none does the
+   status is `missing-block` and no block is shown.
+3. The root's window is the root and each following block deeper than the root,
+   up to the first block at the root's depth or shallower.
+4. A block in the window whose own anchor is in `hidden`, and every block deeper
+   than it inside the window, is dropped. In a block target the root can never be
+   hidden, so an entry naming it is ignored. A note target has no root, so any of
+   its blocks can be hidden. An entry naming no block changes nothing.
+
+`missing-note`, `locked`, `not-synced`, `cycle` (the source is already on the
+chain of notes being drawn) and `too-deep` (more than three portals nested,
+`PORTAL_MAX_DEPTH`, `packages/shared/src/portal-block.ts:39`) are decided by the
+caller before it has a block list, and a search portal is computed by the caller
+too. The Rust core (`crates/memry-core`, the `portal` module) implements steps
+1 to 4 over `Notes.blocks`, and the iOS app draws the resulting slice read-only
+with an action that opens the source note. Both are held to
+`packages/contracts/test-vectors/portal-resolve.json`.
+
 ## 12.7 Inline grammar
 
 **Normative:**

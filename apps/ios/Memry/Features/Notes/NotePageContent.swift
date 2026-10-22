@@ -155,6 +155,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     : nil
             )
             .environment(\.openNote, open)
+            .environment(\.portalHostNote, detail.summary.id)
             .modifier(EditorAttachmentSources(source: $attaching, composer: composer, session: editorModel.session))
             .modifier(MoveBlockPresenter(session: editorModel.session, notes: model.vaultNotes, currentNoteId: detail.summary.id))
             .sheet(item: Binding(

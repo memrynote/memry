@@ -1648,6 +1648,18 @@ routes that one language to a React render and leaves the node, its parse rule a
 the code block. So there is nothing for y-prosemirror to delete on a client that predates it,
 nothing for main to register, and the round trip is the code block's.
 
+The **portal block** (a live window onto another note, one block of it, or a search's results)
+is the same shape: a `codeBlock` whose `language` is `memry-portal`, holding JSON
+(`@memry/shared/portal-block`). `{"note": "<id>"}` shows a whole note, and
+`{"note": "<id>", "block": "<anchor>", "hidden": ["<anchor>"]}` shows one block and its children.
+An anchor is plain text at the end of the source block, ` ^chl-7f2a`, written by an ordinary
+edit when the block is first portaled, so there is no node, no converter change and no write
+floor. `resolvePortal` (`@memry/shared/portal-resolve`) picks the first block whose text ends
+with the anchor, takes it and its deeper followers, and drops hidden descendants; the root
+cannot be hidden. Whether the note exists, is locked, has synced, or would nest the portal
+inside itself is decided before resolving, and the Rust core resolves with the same
+`portal-resolve.json` vectors. Chapter 12 §12.6.3 is the normative text.
+
 `whiteboard` is a pointer, not a drawing: its one prop is `canvasId`, the drawing stays in
 the canvas's own `.excalidraw` file, and the note holds one
 `![whiteboard](memry://canvas/<id>)` line. Main writes that line through the server spec's

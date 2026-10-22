@@ -24,6 +24,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
           canvas: via.canvasTitle || t('canvasLinks.untitledCanvas')
         })
       : null
+  const portalLabel = via?.kind === 'portal' ? t('backlinks.viaPortal') : null
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   // A property-sourced backlink has no text mentions to reveal, so there is
   // nothing to expand — rendering the chevron would offer a toggle that does
@@ -50,8 +51,10 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
       {displayLabel}
     </span>
   )
-  const canvasNote = canvasLabel && (
-    <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">{canvasLabel}</span>
+  const canvasNote = (canvasLabel ?? portalLabel) && (
+    <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">
+      {canvasLabel ?? portalLabel}
+    </span>
   )
 
   return (

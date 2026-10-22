@@ -549,6 +549,8 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    // The portal flows watch the change stream for deleted source blocks.
+    onChange: vi.fn(() => () => {}),
     // Plain text runs only: every checkbox built above is one.
     // `checkbox-task-conversion.test.ts` covers the real serializer.
     blocksToMarkdownLossy: vi.fn(

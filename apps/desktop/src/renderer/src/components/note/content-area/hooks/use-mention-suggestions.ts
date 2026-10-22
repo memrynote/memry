@@ -40,6 +40,7 @@ const MODIFIER_KEYS: Record<string, true> = {
 type NoteSuggestion = {
   id: string
   title: string
+  emoji?: string | null
   modified?: Date | string
 }
 
@@ -112,6 +113,7 @@ export function useMentionSuggestions(
             notes: result.notes.map((note) => ({
               id: note.id,
               title: note.title,
+              emoji: note.emoji,
               modified: note.modified
             })),
             fetchedAt: now
@@ -149,6 +151,7 @@ export function useMentionSuggestions(
         kind: 'note',
         id: note.id,
         title: note.title,
+        emoji: note.emoji,
         lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified
       }))
       const canvasItems: MentionSuggestionItem[] = visibleCanvases.map((canvas) => ({

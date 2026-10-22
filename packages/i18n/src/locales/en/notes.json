@@ -748,7 +748,8 @@
     "expandSection": "Expand backlinks section",
     "showMore": "Show {count} more backlinks",
     "more": "{count} more",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Shown in a portal"
   },
   "unlinkedMentions": {
     "title": "Unlinked mentions",
@@ -2147,5 +2148,85 @@
   },
   "details": {
     "add": "Add details"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Show a note or block live from elsewhere"
+      },
+      "searchPortal": {
+        "title": "Search portal",
+        "subtext": "Live list of blocks matching a query"
+      }
+    },
+    "picker": {
+      "aria": "Choose a note or block to portal",
+      "notes": "Notes",
+      "blocks": "Blocks",
+      "loading": "Searching…",
+      "empty": "No notes or blocks match",
+      "hintInsert": "Insert portal",
+      "hintChildren": "Choose blocks to show",
+      "keyTab": "Tab",
+      "stampFailed": "Could not prepare that block for a portal",
+      "retargetFailed": "Could not point the portal at that block"
+    },
+    "insert": {
+      "cycle": "A portal cannot show a note inside itself."
+    },
+    "copy": {
+      "done": "Portal copied. Paste it into any note.",
+      "failed": "Could not copy a portal to this block"
+    },
+    "menu": {
+      "portalToBlock": "Portal to this block"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Shown in # note through a portal} other {Shown in # notes through portals}}"
+    },
+    "whereUsed": {
+      "title": "{count, plural, one {Shown in # place} other {Shown in # places}}",
+      "rowWhole": "{count, plural, one {Whole block} other {Whole block, # portals}}",
+      "rowHidden": "Partly shown, {hidden} hidden",
+      "footer": "Edits here appear in all of them.",
+      "loadFailed": "Could not load where this block is shown"
+    },
+    "hiddenBlocks": {
+      "title": "Blocks in this portal",
+      "showAll": "Show all",
+      "show": "Show “{text}”",
+      "hide": "Hide “{text}”",
+      "root": "Root",
+      "toggleFailed": "Could not change which blocks this portal shows"
+    },
+    "searchQuery": {
+      "titleNew": "Search portal",
+      "titleEdit": "Edit query",
+      "text": "Contains words",
+      "textPlaceholder": "Words in the block",
+      "tag": "Tag",
+      "tagPlaceholder": "exam",
+      "limit": "Limit",
+      "footer": "Limit {limit} results.",
+      "create": "Create",
+      "apply": "Apply"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Delete this block everywhere?",
+        "note": "Delete this note everywhere?"
+      },
+      "description": {
+        "block": "“{title}” also appears in {count, plural, one {# other note} other {# other notes}}.",
+        "note": "“{title}” is shown in {count, plural, one {# other note} other {# other notes}}."
+      },
+      "source": "{title} (source)",
+      "removeHere": "Remove from this portal only",
+      "cancel": "Cancel",
+      "everywhere": "Delete everywhere",
+      "undoToast": "{count, plural, one {The deleted block was shown in # other note.} other {The deleted block was shown in # other notes.}}",
+      "undo": "Undo"
+    }
   }
 }
