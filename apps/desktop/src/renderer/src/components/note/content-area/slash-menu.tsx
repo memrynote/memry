@@ -1,7 +1,7 @@
 /**
  * The `/` menu. BlockNote still owns opening, filtering input, arrow keys and
  * Enter (through `SuggestionMenuController`); this renders the rows and adds
- * two keys BlockNote does not have: ⌘/Ctrl+Enter for a row's secondary action,
+ * keys BlockNote does not have: Tab to accept the highlighted row, ⌘/Ctrl+Enter for a row's secondary action,
  * and Up/Down/Enter over the fallback rows when nothing matches.
  */
 
@@ -220,6 +220,22 @@ export function SlashMenu({
     if (!root || !(event.target instanceof Node) || !root.contains(event.target)) return
 
     if (items.length > 0) {
+      // Tab accepts the highlighted row (the top match by default) instead of
+      // indenting the block under the menu.
+      if (
+        event.key === 'Tab' &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.ctrlKey
+      ) {
+        const item = items[selectedIndex ?? 0]
+        if (!item) return
+        event.preventDefault()
+        event.stopPropagation()
+        onItemClick?.(item)
+        return
+      }
       if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
       const item = selectedIndex === undefined ? undefined : items[selectedIndex]
       if (!item?.secondary) return
