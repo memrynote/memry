@@ -55,6 +55,7 @@ import {
   openNoteStore,
   type FolderRow
 } from './note-store'
+import { decryptorFor, lockedCryptoSelect, unlockNoteBody } from './locked-notes'
 
 const ROOT = 'Apple Notes'
 const logger = createLogger('AppleNotesImport')
@@ -73,6 +74,11 @@ interface NoteDataRow {
   created: number | null
   modified: number | null
   passwordProtected: number | null
+  cryptoSalt: string | null
+  cryptoIterations: number | null
+  cryptoWrappedKey: string | null
+  cryptoIv: string | null
+  cryptoTag: string | null
 }
 
 interface MediaRow {
@@ -179,6 +185,7 @@ export const appleNotesImporter: Importer = {
     try {
       const keys = loadPrimaryKeys(db)
       const selection = parseSelection(input.options)
+      const decryptor = decryptorFor(input.options)
 
       // ---- Accounts ----
       const accounts = loadAccounts(db, keys)
@@ -199,8 +206,9 @@ export const appleNotesImporter: Importer = {
         .prepare(
           'SELECT nd.znote AS pk, zcso.ztitle1 AS title, zcso.zfolder AS folder, ' +
             'hex(nd.zdata) AS hexdata, zcso.zcreationdate1 AS created, ' +
-            'zcso.zmodificationdate1 AS modified, zcso.zispasswordprotected AS passwordProtected ' +
-            'FROM zicnotedata AS nd ' +
+            'zcso.zmodificationdate1 AS modified, zcso.zispasswordprotected AS passwordProtected' +
+            lockedCryptoSelect(db) +
+            ' FROM zicnotedata AS nd ' +
             'JOIN ziccloudsyncingobject AS zcso ON zcso.z_pk = nd.znote ' +
             'WHERE zcso.z_ent = ? AND zcso.ztitle1 IS NOT NULL'
         )
@@ -238,18 +246,26 @@ export const appleNotesImporter: Importer = {
 
         const title = row.title ?? 'Untitled'
 
-        if (row.passwordProtected) {
-          // Coded so the summary can group every locked note into one
-          // translated line instead of a bare skipped count (level 2 —
-          // decrypting them with the Notes password — is still unbuilt).
-          ctx.reportSkipped(title, {
-            code: IMPORT_MESSAGE_CODES.appleNotesLockedNote,
-            message:
-              'Locked notes were not imported; Memry cannot read them without your Notes password'
-          })
-          done++
-          ctx.reportProgress(done, total)
-          continue
+        // A locked note's body is ciphertext. With the user's Notes password it
+        // decrypts into the same gzipped protobuf an unlocked note stores;
+        // without one (or on the wrong one) it stays out, with a coded reason.
+        let gzBody: Buffer | null = row.hexdata ? Buffer.from(row.hexdata, 'hex') : null
+        const locked = Boolean(row.passwordProtected)
+        if (locked) {
+          const unlocked = gzBody ? unlockNoteBody(decryptor, row, gzBody) : null
+          if (!unlocked?.ok) {
+            ctx.reportSkipped(
+              title,
+              unlocked?.reason ?? {
+                code: IMPORT_MESSAGE_CODES.appleNotesLockedUnreadable,
+                message: 'Locked notes could not be decrypted and were not imported'
+              }
+            )
+            done++
+            ctx.reportProgress(done, total)
+            continue
+          }
+          gzBody = unlocked.data
         }
 
         try {
@@ -271,9 +287,8 @@ export const appleNotesImporter: Importer = {
 
           let body = ''
           let attachmentIds: string[] = []
-          if (row.hexdata) {
-            const gz = Buffer.from(row.hexdata, 'hex')
-            const protobufBytes = zlib.gunzipSync(gz)
+          if (gzBody) {
+            const protobufBytes = zlib.gunzipSync(gzBody)
             const converted = docToMarkdown(decodeNote(protobufBytes))
             body = converted.markdown
             attachmentIds = converted.attachmentIds
@@ -291,6 +306,17 @@ export const appleNotesImporter: Importer = {
           let rewritten = body
           for (const attachmentId of new Set(attachmentIds)) {
             const token = `${ATTACHMENT_TOKEN_PREFIX}${attachmentId}`
+            // Attachment rows and media files of a locked note are encrypted
+            // separately; only the note text is decrypted, so drop the
+            // placeholder and say so instead of leaving a dead image link.
+            if (locked) {
+              rewritten = rewritten.split(`![](${token})`).join('')
+              ctx.reportSkipped(attachmentId, {
+                code: IMPORT_MESSAGE_CODES.appleNotesLockedAttachment,
+                message: 'Attachments in locked notes were not imported'
+              })
+              continue
+            }
             try {
               const att = attachmentStmt.get(attachmentId) as AttachmentRow | undefined
               if (!att) {

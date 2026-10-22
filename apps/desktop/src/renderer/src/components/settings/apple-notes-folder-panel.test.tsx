@@ -25,7 +25,8 @@ const TREE: AppleNotesFoldersResult = {
       ]
     }
   ],
-  unfiledNoteCount: 1
+  unfiledNoteCount: 1,
+  lockedNoteCount: 0
 }
 
 describe('AppleNotesFolderPanel', () => {
@@ -163,6 +164,82 @@ describe('AppleNotesFolderPanel', () => {
       // Empty options → the importer imports everything, as before the picker.
       expect(last.options).toEqual({})
       expect(last.options.folderIds).toBeUndefined()
+    })
+  })
+
+  describe('locked notes', () => {
+    let checkUnlock: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      folders.mockResolvedValue({ ...TREE, lockedNoteCount: 3 })
+      checkUnlock = vi.fn(() => Promise.resolve({ unlocked: 3, total: 3 }))
+      ;(window as unknown as { api: unknown }).api = {
+        import: { appleNotes: { folders, checkUnlock } }
+      }
+    })
+
+    const enterPassword = async (value: string): Promise<void> => {
+      fireEvent.change(await screen.findByLabelText('Notes password'), { target: { value } })
+      fireEvent.click(screen.getByRole('button', { name: 'Check' }))
+    }
+
+    it('offers no password field when nothing is locked', async () => {
+      folders.mockResolvedValue(TREE)
+      renderPanel()
+      await screen.findByText('Work')
+      expect(screen.queryByLabelText('Notes password')).not.toBeInTheDocument()
+    })
+
+    it('hands the password to the import only after it unlocks notes', async () => {
+      const states: AppleNotesPanelState[] = []
+      renderPanel((state) => states.push(state))
+      await screen.findByText('Work')
+      expect(states[states.length - 1].options.notesPassword).toBeUndefined()
+
+      await enterPassword('hunter2')
+
+      await screen.findByText('Unlocks all 3 locked notes.')
+      expect(checkUnlock).toHaveBeenCalledWith({
+        sourcePath: '/Users/k/Library/Group Containers/group.com.apple.notes',
+        password: 'hunter2'
+      })
+      await waitFor(() =>
+        expect(states[states.length - 1].options).toEqual({ notesPassword: 'hunter2' })
+      )
+    })
+
+    it('keeps a wrong password out of the import options and says so', async () => {
+      checkUnlock.mockResolvedValue({ unlocked: 0, total: 3 })
+      const states: AppleNotesPanelState[] = []
+      renderPanel((state) => states.push(state))
+      await screen.findByText('Work')
+
+      await enterPassword('nope')
+
+      await screen.findByText('That password does not unlock any locked note.')
+      expect(states.every((state) => state.options.notesPassword === undefined)).toBe(true)
+    })
+
+    it('warns when the password only unlocks some notes', async () => {
+      checkUnlock.mockResolvedValue({ unlocked: 2, total: 3 })
+      renderPanel()
+      await screen.findByText('Work')
+
+      await enterPassword('older')
+
+      await screen.findByText(/Unlocks 2 of 3 locked notes/)
+    })
+
+    it('drops the password from the options as soon as it is edited', async () => {
+      const states: AppleNotesPanelState[] = []
+      renderPanel((state) => states.push(state))
+      await screen.findByText('Work')
+      await enterPassword('hunter2')
+      await waitFor(() => expect(states[states.length - 1].options.notesPassword).toBe('hunter2'))
+
+      fireEvent.change(screen.getByLabelText('Notes password'), { target: { value: 'hunter' } })
+
+      await waitFor(() => expect(states[states.length - 1].options.notesPassword).toBeUndefined())
     })
   })
 })
