@@ -37,31 +37,51 @@ const MAX_CHUNK_TITLE_LENGTH = 200
 const MIN_EMBEDDING_TEXT_LENGTH = 10
 
 /**
- * EmbeddingGemma 2 retrieval prefixes. A stored note is a document and a typed
- * search is a query, so the two sides use the model's asymmetric pair
- * (`title: {title} | text: {content}` and `task: search result | query: {q}`).
- * Note-to-note features (related notes, filing, tags, grouping) compare two
- * documents, which share one prefix and so stay symmetric.
+ * EmbeddingGemma 2 task prefixes, owned here so no caller writes one. A caller
+ * names the task; this module decides the text.
+ *
+ * - `document`: a stored note read by search. Asymmetric with the query prefix
+ *   below (`title: {title} | text: {content}` against
+ *   `task: search result | query: {q}`).
+ * - `similarity`: a note compared with another note (related notes, tag
+ *   suggestions, grouping, filing). Both sides share the symmetric
+ *   `task: sentence similarity | query: {title}\n{content}` prefix.
+ *
+ * Measured on 48 Turkish and English notes (6 topics, q4, 256d), the document
+ * prefix separates same-topic from other-topic pairs worse than the similarity
+ * prefix (pair AUC 0.793 vs 0.862, best pair F1 0.49 vs 0.62; similarity won
+ * 200 of 200 bootstrap resamples) and leaves related pairs at raw cosine 0.50-0.66
+ * against floors written for 0.75-0.95. The `classification` and `clustering`
+ * prefixes landed between the two on every metric, and `code retrieval` ranked
+ * code notes exactly as `search result` did, so none of those three is used.
  */
+export type EmbeddingTask = 'document' | 'similarity'
+
 const QUERY_PREFIX = 'task: search result | query: '
+const SIMILARITY_PREFIX = 'task: sentence similarity | query: '
 
 /**
- * Build the text fed to the model for a stored note or inbox item. The title
- * leads so it survives truncation; `title: none` marks an untitled note.
+ * Build the text fed to the model for one note or inbox item, for the given
+ * task. The title leads so it survives truncation; an untitled note is marked
+ * `title: none` for `document` and simply starts at its text for `similarity`.
  */
-export function buildEmbeddingInput(parts: {
-  title?: string | null
-  content?: string | null
-}): string {
+export function buildEmbeddingInput(
+  parts: { title?: string | null; content?: string | null },
+  task: EmbeddingTask
+): string {
   const title = parts.title?.trim()
   const content = parts.content?.trim() ?? ''
   if ((title?.length ?? 0) + content.length < MIN_EMBEDDING_TEXT_LENGTH) return ''
-  return `title: ${title || 'none'} | text: ${content}`.slice(0, MAX_EMBEDDING_INPUT_LENGTH)
+  const input =
+    task === 'similarity'
+      ? `${SIMILARITY_PREFIX}${title ? `${title}\n` : ''}${content}`
+      : `title: ${title || 'none'} | text: ${content}`
+  return input.slice(0, MAX_EMBEDDING_INPUT_LENGTH)
 }
 
 /**
  * Split a note into model windows: the head window first (identical to
- * {@link buildEmbeddingInput} for a note that fits one window), then the rest,
+ * {@link buildEmbeddingInput} for the `document` task on a note that fits one window), then the rest,
  * each carrying the same title prefix. Windows break at a paragraph, line,
  * sentence, or word boundary in the second half of the window when one exists.
  * Empty when the note is too short to embed. Windows that are only a sliver
@@ -112,14 +132,16 @@ export function buildQueryEmbeddingInput(query: string): string {
 }
 
 /**
- * Bump when {@link buildEmbeddingInput} changes so stored vectors are rebuilt.
+ * Bump when the text {@link buildEmbeddingInput} or {@link buildEmbeddingChunks}
+ * produce changes, or a vector is added, so stored vectors are rebuilt.
  * v1 = content only (legacy); v2 = title + content; v3 = EmbeddingGemma 2 with
  * the `sentence similarity` task prefix (a different model, so every stored
  * vector is stale); v4 = the document prefix above; v5 = notes past one window
- * also get a vector per later window (`vec_note_chunks`). Stale vectors keep serving
- * until the background re-embed (note_embedding_state) replaces them.
+ * also get a vector per later window (`vec_note_chunks`); v6 = every note also gets
+ * a `similarity` vector (`vec_note_similar`) for note-to-note features. Stale
+ * vectors keep serving search until the background re-embed (note_embedding_state) replaces them.
  */
-export const EMBEDDING_INPUT_VERSION = 5
+export const EMBEDDING_INPUT_VERSION = 6
 
 /**
  * Bump when the bytes fed to the vision encoder or its settings change (for
