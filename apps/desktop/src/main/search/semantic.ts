@@ -7,10 +7,12 @@
  */
 
 import { getDatabase, getRawIndexDatabase } from '../database'
+import { nearestVoiceItems } from '../database/voice-vectors'
 import { getSetting } from '@main/database/queries/settings'
 import { generateEmbedding, initEmbeddingModel, isModelLoaded } from '../lib/embeddings'
 import { buildQueryEmbeddingInput } from '../lib/embedding-input'
 import {
+  EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR,
   EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR,
   EMBEDDING_QUERY_SIMILARITY_FLOOR
 } from '../lib/embeddings-constants'
@@ -40,7 +42,7 @@ function hasOperators(text: string): boolean {
 }
 
 /**
- * Notes whose meaning, or whose images' content, is near `text`, best first. Empty when AI is off, the
+ * Notes, voice memos, and notes whose images' content is near `text`, best first. Empty when AI is off, the
  * query is too short or uses operators, or the model is not loaded yet: a
  * search never waits seconds on a model load, so the first one after launch
  * starts the load and answers from FTS alone.
@@ -97,10 +99,28 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
         logger.warn('Image search failed, answering from note vectors', error)
       }
     }
-    return [...best]
+    const notes = [...best]
       .map(([id, cosine]) => ({ id, cosine }))
       .sort((a, b) => b.cosine - a.cosine)
       .slice(0, NEIGHBOURS)
+    // Memos answer for themselves. An audio-embedded memo has the stricter audio
+    // floor, shifted down by the gap like images so the merge scores every kind
+    // of hit by its distance above its own floor.
+    const audioShift = EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR - EMBEDDING_QUERY_SIMILARITY_FLOOR
+    const voice: SemanticHit[] = []
+    try {
+      for (const hit of nearestVoiceItems(rawDb, vector, NEIGHBOURS)) {
+        if (hit.source === 'transcript') {
+          if (hit.cosine >= EMBEDDING_QUERY_SIMILARITY_FLOOR) voice.push(hit)
+        } else if (hit.cosine >= EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR) {
+          voice.push({ id: hit.id, cosine: hit.cosine - audioShift })
+        }
+      }
+    } catch (error) {
+      // The voice leg must not take the note hits down with it.
+      logger.warn('Voice memo search failed, answering from note vectors', error)
+    }
+    return [...notes, ...voice].sort((a, b) => b.cosine - a.cosine)
   } catch (error) {
     logger.warn('Semantic search failed, falling back to FTS', error)
     return []

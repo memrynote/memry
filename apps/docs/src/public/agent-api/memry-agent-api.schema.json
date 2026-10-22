@@ -22367,6 +22367,9 @@
                 "jw",
                 "su"
               ]
+            },
+            "audioSearch": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false

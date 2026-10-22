@@ -104,4 +104,37 @@ describe('hybrid search', () => {
     )
     expect(ids(response, 'note')).toEqual(['in'])
   })
+
+  describe('voice memos', () => {
+    function seedMemo(id: string, title: string, transcription: string | null): void {
+      dataDb.db.run(sql`
+        INSERT INTO inbox_items (id, type, title, transcription, created_at, modified_at)
+        VALUES (${id}, 'voice', ${title}, ${transcription}, '2026-01-01', '2026-01-01')
+      `)
+    }
+
+    it('finds a memo that has no transcript and shares no keyword with the query', () => {
+      seedMemo('applause', 'Voice memo', null)
+      expect(ids(search('crowd cheering', []), 'inbox')).toEqual([])
+
+      const response = search('crowd cheering', [{ id: 'applause', cosine: 0.74 }])
+      expect(ids(response, 'inbox')).toEqual(['applause'])
+      expect(response.groups.find((g) => g.type === 'inbox')?.results[0]).toMatchObject({
+        title: 'Voice memo',
+        metadata: { type: 'inbox', itemType: 'voice' }
+      })
+      expect(
+        search('crowd cheering', [{ id: 'applause', cosine: 0.74 }], { types: ['note'] }).groups
+      ).toEqual([])
+    })
+
+    it('lifts a memo both legs found above one only FTS found', () => {
+      seedMemo('a', 'cat tax', 'cat cat cat')
+      seedMemo('b', 'cat habits', 'the cat sleeps')
+      const fts = ids(search('cat', []), 'inbox')
+      expect(fts).toHaveLength(2)
+      const last = fts[1]
+      expect(ids(search('cat', [{ id: last, cosine: 0.8 }]), 'inbox')[0]).toBe(last)
+    })
+  })
 })

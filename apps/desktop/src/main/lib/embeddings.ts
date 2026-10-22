@@ -15,6 +15,7 @@ import path from 'path'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { redactText } from '@memry/contracts/redact'
 import type {
+  EmbeddingEncoderModality,
   EmbeddingMainToWorkerMessage,
   EmbeddingProgressMessage,
   EmbeddingProgressPhase,
@@ -24,6 +25,7 @@ import {
   EMBEDDING_DIMENSION,
   embeddingModelCacheDir,
   embeddingModelWeightsPath,
+  embeddingAudioWeightsPath,
   embeddingVisionWeightsPath
 } from './embeddings-constants'
 import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
@@ -56,8 +58,8 @@ export type WorkerRelease =
 /** Whether the model was already on disk when this worker was forked. */
 export type ModelCacheState = 'present' | 'partial' | 'absent' | 'unknown'
 
-/** Where the on-demand image encoder stands in a worker: never asked for, loading, or live. */
-export type VisionState = 'off' | 'loading' | 'ready'
+/** Where an on-demand encoder stands in a worker: never asked for, loading, or live. */
+export type EncoderState = 'off' | 'loading' | 'ready'
 
 /**
  * Everything the main process knows about the worker a `child-process-gone`
@@ -75,9 +77,13 @@ export interface EmbeddingWorkerCrashContext {
   /** Size of the cached weights file, when there is one. */
   modelCacheBytes?: number
   /** Image encoder state in this worker. Text-only users stay `off` with `absent` weights. */
-  vision: VisionState
+  vision: EncoderState
   /** Whether the image encoder weights were on disk when this worker was forked. */
   visionCache: ModelCacheState
+  /** Audio encoder state in this worker. Users with no voice memo to embed stay `off`. */
+  audio: EncoderState
+  /** Whether the audio encoder weights were on disk when this worker was forked. */
+  audioCache: ModelCacheState
   /** `reload` when a model load had already failed this session before this fork. */
   load: 'first' | 'reload'
   /** Embedding-worker crash reports seen this session, including this one. */
@@ -172,8 +178,10 @@ type WorkerGeneration = {
   ready: boolean
   modelCache: ModelCacheState
   modelCacheBytes?: number
-  vision: VisionState
+  vision: EncoderState
   visionCache: ModelCacheState
+  audio: EncoderState
+  audioCache: ModelCacheState
   load: 'first' | 'reload'
   /** Bounded tail of everything this worker wrote to stderr. */
   stderrTail: string
@@ -229,17 +237,20 @@ export function probeModelCache(userDataPath: string): {
 }
 
 /**
- * Whether the on-demand image encoder is on disk. The cache writes each file to
+ * Whether an on-demand encoder is on disk. The cache writes each file to
  * a temp name and renames it, so a killed download never leaves a torn weights
  * file: it is either `present` or `absent`.
  */
-export function probeVisionCache(userDataPath: string): ModelCacheState {
+export function probeEncoderCache(
+  userDataPath: string,
+  modality: EmbeddingEncoderModality
+): ModelCacheState {
+  const weights =
+    modality === 'vision'
+      ? embeddingVisionWeightsPath(userDataPath)
+      : embeddingAudioWeightsPath(userDataPath)
   try {
-    return fs
-      .statSync(embeddingVisionWeightsPath(userDataPath), { throwIfNoEntry: false })
-      ?.isFile()
-      ? 'present'
-      : 'absent'
+    return fs.statSync(weights, { throwIfNoEntry: false })?.isFile() ? 'present' : 'absent'
   } catch {
     return 'unknown'
   }
@@ -273,7 +284,7 @@ function emitProgress(
   phase: EmbeddingProgressPhase,
   progress: number,
   status: string,
-  modality?: 'vision'
+  modality?: EmbeddingEncoderModality
 ): void {
   broadcastToAllWindows(SettingsChannels.events.EMBEDDING_PROGRESS, {
     phase,
@@ -281,6 +292,12 @@ function emitProgress(
     status,
     ...(modality ? { modality } : {})
   })
+}
+
+interface EncoderBreaker {
+  failures: number
+  retryNotBefore: number
+  cancelled: boolean
 }
 
 class EmbeddingModelBridge {
@@ -308,12 +325,14 @@ class EmbeddingModelBridge {
   private embedFailures = 0
   // Epoch ms before which no load may be attempted. 0 = retry allowed now.
   private retryNotBefore = 0
-  // The image encoder has its own breaker, fed only by image failures: a
-  // ~109MB download that keeps failing, or an image that crashes the worker,
-  // must not stop text indexing (which shares the worker but not this state).
-  private visionFailures = 0
-  private visionRetryNotBefore = 0
-  private visionCancelled = false
+  // Each on-demand encoder has its own breaker, fed only by its own failures: a
+  // ~109MB (vision) or ~189MB (audio) download that keeps failing, or a file that
+  // crashes the worker, must not stop text indexing (which shares the worker but
+  // not this state).
+  private encoderBreakers: Record<EmbeddingEncoderModality, EncoderBreaker> = {
+    vision: { failures: 0, retryNotBefore: 0, cancelled: false },
+    audio: { failures: 0, retryNotBefore: 0, cancelled: false }
+  }
   private error: string | null = null
   private shuttingDown = false
   private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
@@ -477,73 +496,94 @@ class EmbeddingModelBridge {
    * Embed an image file with the vision encoder. The encoder downloads and
    * loads on the first call only; a text-only vault never reaches this.
    */
-  async embedImage(image: Uint8Array): Promise<Float32Array | null> {
-    if (this.isBreakerOpen() || Date.now() < this.visionRetryNotBefore) return null
+  embedImage(image: Uint8Array): Promise<Float32Array | null> {
+    return this.embedWithEncoder('vision', (requestId) => ({
+      type: 'embed-image',
+      requestId,
+      image
+    }))
+  }
 
-    this.visionCancelled = false
+  /**
+   * Embed one window of mono 16 kHz audio with the audio encoder. Like the
+   * vision encoder it downloads and loads on the first call only.
+   */
+  embedAudio(audio: Float32Array): Promise<Float32Array | null> {
+    return this.embedWithEncoder('audio', (requestId) => ({
+      type: 'embed-audio',
+      requestId,
+      audio
+    }))
+  }
+
+  private async embedWithEncoder(
+    modality: EmbeddingEncoderModality,
+    message: (requestId: string) => Extract<EmbeddingMainToWorkerMessage, { requestId: string }>
+  ): Promise<Float32Array | null> {
+    const breaker = this.encoderBreakers[modality]
+    if (this.isBreakerOpen() || Date.now() < breaker.retryNotBefore) return null
+
+    breaker.cancelled = false
     try {
       await this.start()
-      if (this.worker && this.worker.vision === 'off') this.worker.vision = 'loading'
-      const response = await this.sendRequest({
-        type: 'embed-image',
-        requestId: this.nextRequestId(),
-        image
-      })
+      if (this.worker && this.worker[modality] === 'off') this.worker[modality] = 'loading'
+      const response = await this.sendRequest(message(this.nextRequestId()))
 
       if (response.type === 'error') {
-        this.recordVisionFailure(response.error)
+        this.recordEncoderFailure(modality, response.error)
         return null
       }
       if (response.type !== 'embed-result') {
-        this.recordVisionFailure(`Unexpected response type: ${response.type}`)
+        this.recordEncoderFailure(modality, `Unexpected response type: ${response.type}`)
         return null
       }
 
       const embedding = new Float32Array(response.embedding)
       if (embedding.length !== EMBEDDING_DIMENSION) {
-        this.recordVisionFailure(`Unexpected dimension: ${embedding.length}`)
+        this.recordEncoderFailure(modality, `Unexpected dimension: ${embedding.length}`)
         return null
       }
 
-      if (this.worker) this.worker.vision = 'ready'
-      this.visionFailures = 0
-      this.visionRetryNotBefore = 0
+      if (this.worker) this.worker[modality] = 'ready'
+      breaker.failures = 0
+      breaker.retryNotBefore = 0
       return embedding
     } catch (error) {
-      // cancelImageModelLoad() kills the worker on purpose; that is not a failure.
-      if (!this.visionCancelled) {
-        this.recordVisionFailure(error instanceof Error ? error.message : String(error))
+      // cancelEncoderLoad() kills the worker on purpose; that is not a failure.
+      if (!breaker.cancelled) {
+        this.recordEncoderFailure(modality, error instanceof Error ? error.message : String(error))
       }
       return null
     }
   }
 
   /**
-   * Abort the image encoder download. The worker is killed (transformers.js has
-   * no abort for a fetch in flight); its cache writes are temp-then-rename, so
+   * Abort an encoder download. The worker is killed (transformers.js has no
+   * abort for a fetch in flight); its cache writes are temp-then-rename, so
    * nothing torn is left behind, and the next text embed forks a fresh worker.
    */
-  cancelImageModelLoad(): void {
-    if (this.worker?.vision !== 'loading') return
-    this.visionCancelled = true
+  cancelEncoderLoad(modality: EmbeddingEncoderModality): void {
+    if (this.worker?.[modality] !== 'loading') return
+    this.encoderBreakers[modality].cancelled = true
     this.reset()
   }
 
-  private recordVisionFailure(message: string): void {
-    this.visionFailures += 1
-    const delay = LOAD_RETRY_BASE_DELAY_MS * 2 ** Math.min(this.visionFailures - 1, 3)
-    this.visionRetryNotBefore = Date.now() + delay
+  private recordEncoderFailure(modality: EmbeddingEncoderModality, message: string): void {
+    const breaker = this.encoderBreakers[modality]
+    breaker.failures += 1
+    const delay = LOAD_RETRY_BASE_DELAY_MS * 2 ** Math.min(breaker.failures - 1, 3)
+    breaker.retryNotBefore = Date.now() + delay
     this.error = message
-    logger.warn('Image embedding failed — backing off before retry', {
-      attempt: this.visionFailures,
+    logger.warn(`${modality} embedding failed — backing off before retry`, {
+      attempt: breaker.failures,
       retryInMs: delay,
       error: message
     })
-    if (shouldEmitThrottled('embeddings:image_embed_failed')) {
+    if (shouldEmitThrottled(`embeddings:${modality}_embed_failed`)) {
       trackMainLog('error', {
         scope: 'Embeddings',
-        action: 'image_embed_failed',
-        errorCode: 'ImageEmbedFailed'
+        action: `${modality}_embed_failed`,
+        errorCode: modality === 'vision' ? 'ImageEmbedFailed' : 'AudioEmbedFailed'
       })
     }
   }
@@ -622,8 +662,10 @@ class EmbeddingModelBridge {
     this.consecutiveFailures = 0
     this.embedFailures = 0
     this.retryNotBefore = 0
-    this.visionFailures = 0
-    this.visionRetryNotBefore = 0
+    for (const breaker of Object.values(this.encoderBreakers)) {
+      breaker.failures = 0
+      breaker.retryNotBefore = 0
+    }
   }
 
   /** True while a load must not be attempted: backing off, or latched for good. */
@@ -670,7 +712,8 @@ class EmbeddingModelBridge {
     const workerPath = path.join(__dirname, 'embedding-worker.js')
     const userDataPath = app.getPath('userData')
     const modelCache = probeModelCache(userDataPath)
-    const visionCache = probeVisionCache(userDataPath)
+    const visionCache = probeEncoderCache(userDataPath, 'vision')
+    const audioCache = probeEncoderCache(userDataPath, 'audio')
     const child = utilityProcess.fork(workerPath, [], {
       serviceName: WORKER_SERVICE_NAME,
       stdio: 'pipe',
@@ -695,6 +738,8 @@ class EmbeddingModelBridge {
       modelCacheBytes: modelCache.bytes,
       vision: 'off',
       visionCache,
+      audio: 'off',
+      audioCache,
       // Read BEFORE this attempt can fail, so it describes the state the fork was
       // made in: `reload` means a load had already failed before this worker.
       load: this.consecutiveFailures > 0 ? 'reload' : 'first',
@@ -883,9 +928,9 @@ class EmbeddingModelBridge {
   private applyProgress(message: EmbeddingProgressMessage): void {
     // Image-encoder progress is about the upgrade, not the text model: a failed
     // download must not mark the working text model as errored.
-    if (message.modality === 'vision') {
-      if (message.phase === 'ready' && this.worker) this.worker.vision = 'ready'
-      emitProgress(message.phase, message.progress, message.status, 'vision')
+    if (message.modality) {
+      if (message.phase === 'ready' && this.worker) this.worker[message.modality] = 'ready'
+      emitProgress(message.phase, message.progress, message.status, message.modality)
       return
     }
 
@@ -1016,6 +1061,8 @@ class EmbeddingModelBridge {
       modelCacheBytes: generation.modelCacheBytes,
       vision: generation.vision,
       visionCache: generation.visionCache,
+      audio: generation.audio,
+      audioCache: generation.audioCache,
       load: generation.load,
       crashCount: this.crashCount,
       stderrTail: formatWorkerStderrTail(generation.stderrTail)
@@ -1140,7 +1187,24 @@ export async function generateImageEmbedding(image: Uint8Array): Promise<Float32
 
 /** Abort an in-flight image encoder download. No-op unless one is loading. */
 export function cancelImageModelLoad(): void {
-  bridge.cancelImageModelLoad()
+  bridge.cancelEncoderLoad('vision')
+}
+
+/**
+ * Embed one window of mono 16 kHz audio into the same space as text. The audio
+ * encoder (~189MB) downloads on the first call, so callers must gate on the
+ * user's setting first (see audio-embedding.ts).
+ *
+ * @returns Float32Array embedding, or null on error
+ */
+export async function generateAudioEmbedding(audio: Float32Array): Promise<Float32Array | null> {
+  if (audio.length === 0) return null
+  return bridge.embedAudio(audio)
+}
+
+/** Abort an in-flight audio encoder download. No-op unless one is loading. */
+export function cancelAudioModelLoad(): void {
+  bridge.cancelEncoderLoad('audio')
 }
 
 export async function stopEmbeddingModel(): Promise<void> {

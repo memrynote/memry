@@ -643,6 +643,7 @@ export function searchAll(
     try {
       const fused = fuseSemanticHits({
         indexDb,
+        dataDb,
         groups,
         hits: semanticHits,
         activeTypes,

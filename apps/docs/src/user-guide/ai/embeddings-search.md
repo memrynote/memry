@@ -167,6 +167,35 @@ then puts each accepted group's cards into a named frame, laid out as a grid. If
 the board, the frames go to their right so nothing is covered. One undo takes the whole change back.
 Task, event, file, and project cards are not grouped.
 
+## Voice Memo Search
+
+Voice memos in the Inbox join the same search box. A memo is indexed one of two ways, and a match
+shows up in the **Inbox** group with the other results:
+
+- **It has a transcript.** The transcript (and the memo's title) is embedded with the text model, so
+  `dentist` finds a memo where you said "book the tooth doctor". Nothing extra is downloaded.
+- **It has no usable transcript.** Transcription failed or was never turned on, or the recording is
+  music, silence or other sound. memrynote embeds the audio itself, so `applause` can find a clapping
+  recording. Memos are read as 16 kHz mono WAV (what Memry records); a recording longer than five
+  minutes is split into windows and the best window counts, up to one hour.
+
+A memo whose transcript arrives later switches from its audio vector to its transcript vector on the
+next vault open or when the transcription finishes.
+
+- **One-time download.** The first memo that needs its audio embedded downloads the audio model
+  (about 189 MB). Users with no such memo never download or load it, and it unloads after an idle period.
+- **Turn it off.** [Settings → AI](/user-guide/settings#ai) has a **Search voice memos by sound** switch
+  under voice transcription. Off means no download and no audio embedding; memos are found by their
+  transcript only. Existing audio vectors stay and keep answering searches. Turning it back on takes
+  effect at the next vault open.
+- **Existing vaults.** The first open after updating indexes your existing memos in the background,
+  one at a time, and a quit part-way continues where it stopped. Nothing is reset and no vault file changes.
+- **Why transcript first.** On Turkish and English recordings, a transcript vector found a spoken or
+  typed description of a memo at least as often as the audio vector, and combining the two did no
+  better. Audio is the only signal for a recording with no words, so that is where it is used.
+- **Limits.** Matching sound to a word is looser than text to text, so audio hits need a similarity
+  of about 0.68. Queries are typed text; speaking a query is not supported.
+
 ## Model Size
 
 Models trade off accuracy vs disk and memory. The default is tuned for desktop hardware. The settings page shows dimensions and the current count of embedded notes.

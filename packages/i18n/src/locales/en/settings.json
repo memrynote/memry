@@ -1412,6 +1412,9 @@
         "none": "Do not rename"
       },
       "namingError": "Failed to update voice memo naming",
+      "audioSearch": "Search voice memos by sound",
+      "audioSearchDescription": "Find voice memos that have no transcript, such as music or sounds, by what they sound like. Downloads a 189 MB audio model the first time one needs indexing.",
+      "audioSearchError": "Failed to update voice memo search",
       "language": "Spoken language",
       "languageDescription": "Language you speak in voice memos",
       "languageDefault": "Default",
