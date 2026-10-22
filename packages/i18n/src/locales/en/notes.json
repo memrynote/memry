@@ -498,6 +498,8 @@
         "insert": "Insert",
         "open": "Open"
       },
+      "close": "Close menu",
+      "new": "New",
       "matchesAlias": "matches",
       "noMatch": "No blocks match “{query}”",
       "fallback": {

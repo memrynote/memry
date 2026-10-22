@@ -752,6 +752,11 @@
    sits, per the alignment note above. `!important` for the same cascade
    reason: @blocknote/shadcn/style.css is JS-imported and lands after this
    file. */
+:root .bn-toggle-button:hover {
+  background: none;
+  color: var(--foreground);
+}
+
 :root .bn-toggle-button > svg {
   width: 14px !important;
   height: 14px !important;
@@ -858,7 +863,6 @@
 }
 
 :root .memry-bullet-toggle:hover {
-  background-color: var(--bn-colors-hovered-background);
   color: var(--foreground);
 }
 
