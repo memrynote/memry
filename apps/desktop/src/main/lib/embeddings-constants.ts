@@ -42,6 +42,21 @@ export const EMBEDDING_SIMILARITY_FLOOR = 0.6
 export const EMBEDDING_QUERY_SIMILARITY_FLOOR = 0.65
 
 /**
+ * Lowest text-query-to-image cosine a semantic search hit may have. Text-to-image
+ * cosines sit lower than text-to-text ones and overlap more. Measured (q4, 256d,
+ * 140 soft tokens, `task: search result | query:` prefix) on a cat photo, a dog
+ * photo, a landscape and four app screenshots against 16 queries: a query and an
+ * image it is about land at 0.67-0.79 (`cat` on the cat 0.75, `kedi` 0.69, `dog`
+ * on the dog 0.79, `köpek` 0.77, `receipt` on a receipt 0.75), while a query and
+ * an unrelated image reach 0.66 at most (median 0.62). Through the running app
+ * the cat photo scores 0.688 for `kedi` and 0.684 for `dog`: related animals sit
+ * as close as the Turkish query, so no floor keeps `kedi` and drops `dog`. 0.68
+ * keeps `kedi` (the cross-language case this feature promises) and every
+ * unrelated pair measured stays under it.
+ */
+export const EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR = 0.68
+
+/**
  * Map a raw cosine similarity onto 0..1 so that "unrelated" sits near the bottom
  * instead of at 0.7. Median unrelated (0.71) -> 0.28, strongest unrelated pair
  * seen (0.79) -> 0.47, a cross-language duplicate (0.95) -> 0.87.

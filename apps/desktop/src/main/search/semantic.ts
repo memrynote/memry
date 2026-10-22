@@ -10,7 +10,12 @@ import { getDatabase, getRawIndexDatabase } from '../database'
 import { getSetting } from '@main/database/queries/settings'
 import { generateEmbedding, initEmbeddingModel, isModelLoaded } from '../lib/embeddings'
 import { buildQueryEmbeddingInput } from '../lib/embedding-input'
-import { EMBEDDING_QUERY_SIMILARITY_FLOOR } from '../lib/embeddings-constants'
+import {
+  EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR,
+  EMBEDDING_QUERY_SIMILARITY_FLOOR
+} from '../lib/embeddings-constants'
+import { isImageEmbeddingEnabled } from '../lib/image-embedding'
+import { nearestImageVectors } from '../database/queries/image-embeddings'
 import { createLogger } from '../lib/logger'
 import type { SemanticHit } from '../database/queries/search-semantic-merge'
 
@@ -35,7 +40,7 @@ function hasOperators(text: string): boolean {
 }
 
 /**
- * Notes whose meaning is near `text`, best first. Empty when AI is off, the
+ * Notes whose meaning, or whose images' content, is near `text`, best first. Empty when AI is off, the
  * query is too short or uses operators, or the model is not loaded yet: a
  * search never waits seconds on a model load, so the first one after launch
  * starts the load and answers from FTS alone.
@@ -65,17 +70,35 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
     // A note is as near as its nearest window: the head vector or a later chunk
     // (`{note_id}#{n}`).
     const best = new Map<string, number>()
-    const consider = (noteId: string, distance: number): void => {
-      const cosine = 1 - distance
+    const consider = (noteId: string, cosine: number): void => {
       if (cosine > (best.get(noteId) ?? -Infinity)) best.set(noteId, cosine)
     }
-    for (const row of nearest('vec_notes', 'note_id')) consider(row.id, row.distance)
+    for (const row of nearest('vec_notes', 'note_id')) consider(row.id, 1 - row.distance)
     for (const row of nearest('vec_note_chunks', 'chunk_id')) {
-      consider(row.id.slice(0, row.id.lastIndexOf('#')), row.distance)
+      consider(row.id.slice(0, row.id.lastIndexOf('#')), 1 - row.distance)
+    }
+    for (const [id, cosine] of best) {
+      if (cosine < EMBEDDING_QUERY_SIMILARITY_FLOOR) best.delete(id)
+    }
+    if (isImageEmbeddingEnabled()) {
+      // An image answers for the note that owns it: the image itself when filed,
+      // else the note that embeds it. Its floor is higher (text-to-image cosines
+      // run lower and overlap more), and the hit is shifted down by the gap so
+      // the merge scores both kinds of hit by the same distance above their floor.
+      const shift = EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR - EMBEDDING_QUERY_SIMILARITY_FLOOR
+      try {
+        for (const hit of nearestImageVectors(rawDb, vector, NEIGHBOURS)) {
+          if (hit.cosine >= EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR) {
+            consider(hit.noteId, hit.cosine - shift)
+          }
+        }
+      } catch (error) {
+        // The image leg must not take the note hits down with it.
+        logger.warn('Image search failed, answering from note vectors', error)
+      }
     }
     return [...best]
       .map(([id, cosine]) => ({ id, cosine }))
-      .filter((hit) => hit.cosine >= EMBEDDING_QUERY_SIMILARITY_FLOOR)
       .sort((a, b) => b.cosine - a.cosine)
       .slice(0, NEIGHBOURS)
   } catch (error) {

@@ -334,7 +334,7 @@ describe('settings-handlers', () => {
     expect(getResult).toBeNull()
 
     const aiResult = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-    expect(aiResult).toEqual({ enabled: true })
+    expect(aiResult).toEqual({ enabled: true, imageEmbeddings: true })
   })
 
   it('gets and sets journal settings', async () => {
@@ -550,7 +550,7 @@ describe('settings-handlers', () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValue('false')
     const aiSettings = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-    expect(aiSettings).toEqual({ enabled: false })
+    expect(aiSettings).toEqual({ enabled: false, imageEmbeddings: false })
 
     const setAi = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
     expect(setAi).toEqual({ success: true })
@@ -559,6 +559,16 @@ describe('settings-handlers', () => {
       key: 'ai',
       value: { enabled: false }
     })
+  })
+
+  it('stores the image search opt-out under its own key', async () => {
+    registerSettingsHandlers()
+    const result = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, {
+      imageEmbeddings: false
+    })
+    expect(result).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'ai.imageEmbeddings', 'false')
+    expect(settingsQueries.setSetting).not.toHaveBeenCalledWith({}, 'ai.enabled', expect.anything())
   })
 
   it('gets and sets voice transcription settings', async () => {
