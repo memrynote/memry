@@ -48,6 +48,7 @@ Read in order, or jump to what you need. Each part says how to insert a block (s
 11. [[11 Templates]]
 12. [[12 Bookmarks and reminders]]
 13. [[13 Locks and version history]]
+14. [[14 Portals]]
 
 Click **Notes 101** in the sidebar to open this folder as a table, with each part's level and a one-line summary.
 

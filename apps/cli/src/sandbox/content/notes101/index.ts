@@ -5,6 +5,7 @@ import type { NoteSpec } from '../../specs.ts'
 import { blockNotes } from './blocks.ts'
 import { linkNotes } from './links.ts'
 import { overviewNote } from './overview.ts'
+import { portalNotes } from './portals.ts'
 import { textNotes } from './text.ts'
 import { toolNotes } from './tools.ts'
 
@@ -13,5 +14,6 @@ export const notes101: NoteSpec[] = [
   ...textNotes,
   ...blockNotes,
   ...linkNotes,
-  ...toolNotes
+  ...toolNotes,
+  ...portalNotes
 ]
