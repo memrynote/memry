@@ -181,6 +181,32 @@ export const SyncedSettingsSchema = z.object({
       spatialCanvas: z.boolean().optional()
     })
     .catchall(z.unknown())
+    .optional(),
+  // Readwise choices follow the user to the device that takes over (#1408 D8),
+  // one field clock per leaf (`readwise.categories.supplementals`, ...). The
+  // token never syncs. Values stay loose strings on purpose: a layout or
+  // cadence only a newer build knows must ride along instead of failing the
+  // whole settings payload, and readers fall back to the default. `catchall`
+  // keeps fields a newer build adds (`syncDeviceId`, ...). A build older than
+  // this strips the group on parse but echoes its clocks, so the merge keeps
+  // the value (§6.9.0 of docs/protocol/06).
+  readwise: z
+    .object({
+      rootFolder: z.string().optional(),
+      folderLayout: z.string().optional(),
+      categories: z
+        .object({
+          books: z.boolean().optional(),
+          articles: z.boolean().optional(),
+          tweets: z.boolean().optional(),
+          podcasts: z.boolean().optional(),
+          supplementals: z.boolean().optional()
+        })
+        .catchall(z.unknown())
+        .optional(),
+      cadence: z.string().optional()
+    })
+    .catchall(z.unknown())
     .optional()
 })
 

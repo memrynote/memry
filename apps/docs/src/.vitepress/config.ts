@@ -62,6 +62,7 @@ function unifiedSidebar() {
       collapsed: false,
       items: [
         { text: 'Importing Notes', link: '/user-guide/import' },
+        { text: 'Readwise', link: '/user-guide/readwise' },
         {
           text: 'Notes',
           collapsed: true,

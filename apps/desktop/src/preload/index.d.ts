@@ -67,7 +67,10 @@ import type {
   ImportPreviewResponse,
   ImporterMeta,
   OneNoteAuthStatusResult,
-  OneNoteNotebooksResult
+  OneNoteNotebooksResult,
+  ReadwiseConnectInput,
+  ReadwiseSetOptionsInput,
+  ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type { OnboardingAgentStatus, OnboardingSources } from '@memry/contracts/onboarding-api'
@@ -2066,6 +2069,13 @@ interface API extends WindowAPI, GeneratedRpcApi {
       connect: () => Promise<OneNoteAuthStatusResult>
       disconnect: () => Promise<{ success: true }>
       notebooks: () => Promise<OneNoteNotebooksResult>
+    }
+    readwise: {
+      status: () => Promise<ReadwiseStatusResult>
+      connect: (input: ReadwiseConnectInput) => Promise<ReadwiseStatusResult>
+      disconnect: () => Promise<{ success: true }>
+      syncNow: () => Promise<{ success: true }>
+      setOptions: (input: ReadwiseSetOptionsInput) => Promise<ReadwiseStatusResult>
     }
   }
   updater: {

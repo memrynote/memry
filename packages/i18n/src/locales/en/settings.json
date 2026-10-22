@@ -1550,7 +1550,8 @@
       "csv": "Import a .csv file — one note per row, columns become properties",
       "raindrop": "Import a Raindrop.io bookmark export (.csv) — bookmarks land in the inbox",
       "apple-notes": "Import from the Apple Notes database (NoteStore.sqlite, macOS)",
-      "onenote": "Import OneNote notebooks (requires a Microsoft account)"
+      "onenote": "Import OneNote notebooks (requires a Microsoft account)",
+      "readwise": "Import your highlights from Readwise (requires an access token)"
     },
     "action": "Import",
     "select": "Select an app to import from…",
@@ -1631,7 +1632,73 @@
         "failed": "{count} failed"
       },
       "error": "Import failed",
-      "previewError": "Preview failed"
+      "previewError": "Preview failed",
+      "readwise": {
+        "intro": "Paste your Readwise access token. Memry checks it with Readwise first, then keeps it in your system keychain on this device. It never syncs.",
+        "tokenLabel": "Access token",
+        "tokenPlaceholder": "Paste your token",
+        "getToken": "Get your token",
+        "connect": "Connect",
+        "connecting": "Connecting…",
+        "connectFailed": "Could not connect to Readwise",
+        "groups": {
+          "location": "Where notes go",
+          "categories": "What to bring in",
+          "sync": "Sync"
+        },
+        "rootFolder": {
+          "label": "Folder",
+          "description": "New books land here. Existing notes stay where they are."
+        },
+        "layout": {
+          "label": "Folder layout",
+          "description": "Applies to new books only.",
+          "options": {
+            "by-category": "By category",
+            "flat": "One folder"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Books",
+            "description": "Kindle, Apple Books and other highlights"
+          },
+          "articles": {
+            "label": "Articles",
+            "description": "Web articles and newsletters"
+          },
+          "tweets": {
+            "label": "Tweets",
+            "description": "Saved tweets and threads"
+          },
+          "podcasts": {
+            "label": "Podcasts",
+            "description": "Podcast episodes and snips"
+          },
+          "supplementals": {
+            "label": "Supplementals",
+            "description": "Books Readwise adds by itself, without your highlights"
+          }
+        },
+        "cadence": {
+          "label": "Frequency",
+          "description": "How often new highlights arrive.",
+          "options": {
+            "manual": "Manual",
+            "hourly": "Hourly",
+            "daily": "Daily"
+          }
+        },
+        "syncNow": {
+          "label": "Sync now",
+          "description": "Check Readwise for new highlights.",
+          "button": "Sync now"
+        },
+        "needsAttention": "Readwise needs your attention. Disconnect and connect again with a fresh token.",
+        "disconnect": "Disconnect",
+        "disconnectHint": "Disconnect removes the token from this device. Your notes stay.",
+        "importNow": "Import now"
+      }
     },
     "messages": {
       "readFileFailed": "Failed to read file",
@@ -1717,9 +1784,16 @@
       "showMore": "{count, plural, one {Show # more} other {Show # more}}",
       "showLess": "Show less",
       "groups": {
+        "reading": "Reading",
         "noteApps": "Note apps",
         "tasks": "Tasks, journal & bookmarks",
         "files": "Files"
+      },
+      "readwise": {
+        "notConnected": "Not connected",
+        "connected": "Connected",
+        "synced": "Synced {time}",
+        "needsAttention": "Needs attention"
       }
     }
   },

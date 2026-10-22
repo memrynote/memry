@@ -22,14 +22,21 @@ const importers: ImporterItem[] = [
   importer('apple-notes', 'Apple Notes', ['sqlite']),
   importer('bear', 'Bear', ['bear2bk', 'zip']),
   { ...importer('onenote', 'OneNote', []), accountBased: true },
-  importer('roam', 'Roam', ['json'])
+  importer('roam', 'Roam', ['json']),
+  { ...importer('readwise', 'Readwise', []), accountBased: true }
 ]
+
+let readwiseStatus: unknown = null
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, vars?: Record<string, unknown>) =>
-      vars?.count !== undefined ? `${key}:${vars.count}` : key
+      vars?.count !== undefined ? `${key}:${vars.count}` : key,
+    i18n: { language: 'en' }
   })
+}))
+vi.mock('@/hooks/use-readwise-status', () => ({
+  useReadwiseStatus: () => ({ status: readwiseStatus, refresh: () => {} })
 }))
 vi.mock('@/hooks/use-importers', () => ({
   useImporters: () => ({ importers, isLoading: false })
@@ -61,6 +68,37 @@ describe('ImportSettings', () => {
     expect(
       within(screen.getByTestId('import-group-files')).getByTestId('import-source-markdown')
     ).toHaveTextContent('.md')
+  })
+
+  it('lists Readwise first, in its own reading group, with its connection state', () => {
+    readwiseStatus = null
+    const { unmount } = render(<ImportSettings />)
+    const reading = screen.getByTestId('import-group-reading')
+    expect(screen.getAllByTestId(/^import-group-/)[0].getAttribute('data-testid')).toBe(
+      'import-group-reading'
+    )
+    expect(within(reading).getByTestId('import-source-readwise')).toHaveTextContent(
+      'import.v2.readwise.notConnected'
+    )
+    unmount()
+
+    readwiseStatus = { connected: true, needsAttention: true, lastSyncAt: null }
+    const second = render(<ImportSettings />)
+    expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(
+      'import.v2.readwise.needsAttention'
+    )
+    second.unmount()
+
+    readwiseStatus = {
+      connected: true,
+      needsAttention: false,
+      lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString()
+    }
+    render(<ImportSettings />)
+    expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(
+      'import.v2.readwise.synced'
+    )
+    readwiseStatus = null
   })
 
   it('filters by name, id, and file extension', () => {
