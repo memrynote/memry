@@ -67,6 +67,11 @@ export function lockedCryptoSelect(db: Database.Database): string {
   }).join('')
 }
 
+/** Locked with the Mac login password: the row carries no PBKDF2 iteration count. */
+export function isDevicePasscodeLocked(row: Pick<LockedCryptoRow, 'cryptoIterations'>): boolean {
+  return row.cryptoIterations === 0
+}
+
 /** Null when any piece is missing — such a note cannot be decrypted by anyone. */
 export function parseLockedCrypto(row: LockedCryptoRow): LockedNoteCrypto | null {
   if (
@@ -102,6 +107,14 @@ export function unlockNoteBody(
   row: LockedCryptoRow,
   encrypted: Buffer
 ): { ok: true; data: Buffer } | { ok: false; reason: ImportMessage } {
+  // Checked before the password: no Notes password unlocks these, so "wrong
+  // password" would send the user to retype something that cannot work.
+  if (isDevicePasscodeLocked(row)) {
+    return skip(
+      IMPORT_MESSAGE_CODES.appleNotesLockedDevicePasscode,
+      'Locked notes use your Mac login password instead of a Notes password, so Memry cannot read them'
+    )
+  }
   if (!decryptor) {
     return skip(
       IMPORT_MESSAGE_CODES.appleNotesLockedNote,
@@ -150,11 +163,16 @@ export async function checkNotesUnlock(
       .all(keys.ICNote) as LockedCryptoRow[]
     const decryptor = createNoteDecryptor(password)
     let unlocked = 0
+    let devicePasscode = 0
     for (const row of rows) {
+      if (isDevicePasscodeLocked(row)) {
+        devicePasscode++
+        continue
+      }
       const crypto = parseLockedCrypto(row)
       if (crypto && decryptor.canUnlock(crypto)) unlocked++
     }
-    return { unlocked, total: rows.length }
+    return { unlocked, total: rows.length - devicePasscode, devicePasscode }
   } finally {
     await store.close()
   }

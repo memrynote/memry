@@ -198,6 +198,8 @@ export function AppleNotesFolderPanel({
   }
 
   const multiAccount = tree.accounts.length > 1
+  // Notes locked with the Mac login password cannot be unlocked by any Notes password.
+  const passwordLockedCount = tree.lockedNoteCount - tree.devicePasscodeNoteCount
 
   return (
     <div className="flex flex-col gap-2">
@@ -240,13 +242,23 @@ export function AppleNotesFolderPanel({
           )}
       </div>
 
-      {tree.lockedNoteCount > 0 && (
+      {passwordLockedCount > 0 && (
         <AppleNotesPasswordField
           sourcePath={sourcePath}
-          lockedNoteCount={tree.lockedNoteCount}
+          lockedNoteCount={passwordLockedCount}
           disabled={disabled}
           onPasswordChange={setNotesPassword}
         />
+      )}
+      {tree.devicePasscodeNoteCount > 0 && (
+        <p className="text-xs/4 text-muted-foreground">
+          {t(
+            passwordLockedCount > 0
+              ? 'import.dialog.appleNotes.password.devicePasscodeSome'
+              : 'import.dialog.appleNotes.password.devicePasscodeAll',
+            { count: tree.devicePasscodeNoteCount }
+          )}
+        </p>
       )}
     </div>
   )

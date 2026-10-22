@@ -26,7 +26,8 @@ const TREE: AppleNotesFoldersResult = {
     }
   ],
   unfiledNoteCount: 1,
-  lockedNoteCount: 0
+  lockedNoteCount: 0,
+  devicePasscodeNoteCount: 0
 }
 
 describe('AppleNotesFolderPanel', () => {
@@ -171,7 +172,7 @@ describe('AppleNotesFolderPanel', () => {
     let checkUnlock: ReturnType<typeof vi.fn>
 
     beforeEach(() => {
-      folders.mockResolvedValue({ ...TREE, lockedNoteCount: 3 })
+      folders.mockResolvedValue({ ...TREE, lockedNoteCount: 3, devicePasscodeNoteCount: 0 })
       checkUnlock = vi.fn(() => Promise.resolve({ unlocked: 3, total: 3 }))
       ;(window as unknown as { api: unknown }).api = {
         import: { appleNotes: { folders, checkUnlock } }
@@ -182,6 +183,23 @@ describe('AppleNotesFolderPanel', () => {
       fireEvent.change(await screen.findByLabelText('Notes password'), { target: { value } })
       fireEvent.click(screen.getByRole('button', { name: 'Check' }))
     }
+
+    it('explains Mac-login-password notes instead of asking for a password nothing can use', async () => {
+      folders.mockResolvedValue({ ...TREE, lockedNoteCount: 2, devicePasscodeNoteCount: 2 })
+      renderPanel()
+      await screen.findByText('Work')
+      expect(screen.queryByLabelText('Notes password')).not.toBeInTheDocument()
+      expect(
+        screen.getByText(/These 2 locked notes use your Mac login password/)
+      ).toBeInTheDocument()
+    })
+
+    it('still asks for a password when only some locked notes use the Mac login password', async () => {
+      folders.mockResolvedValue({ ...TREE, lockedNoteCount: 3, devicePasscodeNoteCount: 1 })
+      renderPanel()
+      expect(await screen.findByLabelText('Notes password')).toBeInTheDocument()
+      expect(screen.getByText(/1 locked note uses your Mac login password/)).toBeInTheDocument()
+    })
 
     it('offers no password field when nothing is locked', async () => {
       folders.mockResolvedValue(TREE)

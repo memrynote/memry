@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
+import crypto from 'crypto'
 import * as os from 'os'
 import * as path from 'path'
 import zlib from 'zlib'
@@ -118,6 +119,10 @@ function buildLockedDb(dbPath: string): void {
       }
     ])
   )
+  // Locked with the Mac login password: no iteration count, key not derivable
+  // from a password (matches real rows from macOS 15+).
+  insertNote.run(34, 3, 'Gym', 20, 1, crypto.randomBytes(16), 0, crypto.randomBytes(16))
+  insertData.run(34, crypto.randomBytes(64), crypto.randomBytes(16), crypto.randomBytes(16))
   db.close()
 }
 
@@ -198,7 +203,8 @@ describe('locked Apple Notes (synthetic NoteStore.sqlite)', () => {
     expect(fs.existsSync(noteFile('Other Password'))).toBe(false)
     expect(codes(summary)).toEqual({
       [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 1,
-      [IMPORT_MESSAGE_CODES.appleNotesLockedAttachment]: 1
+      [IMPORT_MESSAGE_CODES.appleNotesLockedAttachment]: 1,
+      [IMPORT_MESSAGE_CODES.appleNotesLockedDevicePasscode]: 1
     })
   })
 
@@ -212,19 +218,35 @@ describe('locked Apple Notes (synthetic NoteStore.sqlite)', () => {
   it('keeps every locked note out when no password is given', async () => {
     const summary = await run()
     expect(summary.imported).toBe(1)
-    expect(codes(summary)).toEqual({ [IMPORT_MESSAGE_CODES.appleNotesLockedNote]: 3 })
+    expect(codes(summary)).toEqual({
+      [IMPORT_MESSAGE_CODES.appleNotesLockedNote]: 3,
+      [IMPORT_MESSAGE_CODES.appleNotesLockedDevicePasscode]: 1
+    })
   })
 
   it('skips every locked note on a wrong password and never echoes it', async () => {
     const summary = await run({ notesPassword: 'definitely wrong' })
     expect(summary.imported).toBe(1)
-    expect(codes(summary)).toEqual({ [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 3 })
+    expect(codes(summary)).toEqual({
+      [IMPORT_MESSAGE_CODES.appleNotesLockedWrongPassword]: 3,
+      [IMPORT_MESSAGE_CODES.appleNotesLockedDevicePasscode]: 1
+    })
     expect(JSON.stringify(summary)).not.toContain('definitely wrong')
   })
 
   it('reports locked notes in the folder scan and how many a password unlocks', async () => {
-    expect((await scanAppleNotesFolders(dbPath)).lockedNoteCount).toBe(3)
-    expect(await checkNotesUnlock(dbPath, PASSWORD)).toEqual({ unlocked: 2, total: 3 })
-    expect(await checkNotesUnlock(dbPath, 'nope')).toEqual({ unlocked: 0, total: 3 })
+    const scan = await scanAppleNotesFolders(dbPath)
+    expect(scan.lockedNoteCount).toBe(4)
+    expect(scan.devicePasscodeNoteCount).toBe(1)
+    expect(await checkNotesUnlock(dbPath, PASSWORD)).toEqual({
+      unlocked: 2,
+      total: 3,
+      devicePasscode: 1
+    })
+    expect(await checkNotesUnlock(dbPath, 'nope')).toEqual({
+      unlocked: 0,
+      total: 3,
+      devicePasscode: 1
+    })
   })
 })
