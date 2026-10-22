@@ -402,6 +402,8 @@ export type TabAction =
         groupId: string
         newGroupId?: string
         cloneActiveTab?: boolean
+        /** Which side of the source pane the new one takes. Defaults to 'second'. */
+        position?: 'first' | 'second'
       }
     }
   | { type: 'RESIZE_SPLIT'; payload: { path: number[]; ratio: number } }

@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasTree } from './canvas-tree'
 import { CANVAS_TREE_DRAG_MIME } from './canvas-tree-model'
-import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
+import { MEMRY_NOTE_DRAG_MIME, MEMRY_TAB_DRAG_MIME } from '@/lib/drag-mime'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import type { CanvasSummary } from '@/services/canvas-service'
 import type { CanvasFolder } from '@/services/canvas-folder-service'
@@ -404,7 +404,13 @@ describe('canvas tree drag and drop', () => {
 
     // The notes tree resolves a drop from `text/plain` / the note type. Writing
     // neither is what makes a canvas dropped on the notes tree a no-op.
-    expect(transfer.types).toEqual([CANVAS_TREE_DRAG_MIME])
+    // The tab type is what lets a pane open the canvas in a split; the notes
+    // tree does not read it.
+    expect(transfer.types).toEqual([CANVAS_TREE_DRAG_MIME, MEMRY_TAB_DRAG_MIME])
+    expect(JSON.parse(transfer.getData(MEMRY_TAB_DRAG_MIME))).toMatchObject({
+      type: 'canvas',
+      path: '/canvas/c1'
+    })
     expect(transfer.getData('text/plain')).toBe('')
     expect(transfer.getData(MEMRY_NOTE_DRAG_MIME)).toBe('')
 
