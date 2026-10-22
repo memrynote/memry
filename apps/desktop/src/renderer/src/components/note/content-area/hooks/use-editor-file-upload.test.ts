@@ -338,6 +338,34 @@ describe('useEditorFileUpload', () => {
     )
   })
 
+  it('links a dropped sidebar note as a wikilink instead of dropping it', async () => {
+    mocks.getFile.mockResolvedValue(null)
+    const { result, editor } = setup({ dropTarget: { blockId: 'b-7', position: 'before' } })
+    const tab = { type: 'note', title: 'Roadmap', path: '/notes/n-1' }
+
+    await act(async () => {
+      await result.current.handleInternalItemDrop({
+        getData: (mime: string) =>
+          mime === 'application/x-memry-note'
+            ? 'n-1'
+            : mime === 'application/x-memry-tab'
+              ? JSON.stringify(tab)
+              : ''
+      } as unknown as DataTransfer)
+    })
+
+    expect(editor.insertBlocks).toHaveBeenCalledWith(
+      [
+        {
+          type: 'paragraph',
+          content: [{ type: 'wikiLink', props: { target: 'Roadmap', alias: '' } }, ' ']
+        }
+      ],
+      'b-7',
+      'before'
+    )
+  })
+
   it('ignores an internal drop without the item mime and read-only drops', async () => {
     const { result, editor } = setup()
     await result.current.handleInternalItemDrop({ getData: () => '' } as unknown as DataTransfer)

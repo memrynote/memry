@@ -27,6 +27,8 @@ import { IconPicker, getIconByName } from '@/components/icon-picker'
 import { remapExpandedFolderIds, setFoldersExpanded } from '@/components/notes-tree-utils'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
+import { MEMRY_NOTE_DRAG_MIME, setTabDragData } from '@/lib/drag-mime'
+import type { OpenTargetTab } from '@/hooks/use-open-target'
 import { useT } from '@memry/i18n/renderer'
 
 type NodeInfo = {
@@ -125,6 +127,7 @@ type TreeNodeContextType = {
   customIcon?: string
   inheritedIcon?: string
   canvasNoteId?: string
+  dragTab?: OpenTargetTab
   setCustomIcon: (iconName: string | undefined) => void
 }
 
@@ -549,6 +552,8 @@ export type TreeNodeProps = HTMLAttributes<HTMLDivElement> & {
    * canvas creates a referencing card. Folders leave it unset.
    */
   canvasNoteId?: string
+  /** What a click on this row opens. Set on the drag so a pane can open it on drop. */
+  dragTab?: OpenTargetTab
 }
 
 export const TreeNode = ({
@@ -565,6 +570,7 @@ export const TreeNode = ({
   inheritedIcon: initialInheritedIcon,
   hasChildren = false,
   canvasNoteId,
+  dragTab,
   ...props
 }: TreeNodeProps) => {
   const generatedId = useId()
@@ -606,6 +612,7 @@ export const TreeNode = ({
     customIcon,
     inheritedIcon,
     canvasNoteId,
+    dragTab,
     setCustomIcon
   }
 
@@ -663,8 +670,16 @@ export const TreeNodeTrigger = ({
     setNodeIcon,
     getEffectiveIcon
   } = useTree()
-  const { nodeId, level, hasChildren, parentId, customIcon, acceptsDropInside, canvasNoteId } =
-    useTreeNode()
+  const {
+    nodeId,
+    level,
+    hasChildren,
+    parentId,
+    customIcon,
+    acceptsDropInside,
+    canvasNoteId,
+    dragTab
+  } = useTreeNode()
   const isSelected = selectedIds.includes(nodeId)
   const triggerRef = useRef<HTMLDivElement>(null)
 
@@ -769,6 +784,9 @@ export const TreeNodeTrigger = ({
       e.dataTransfer.effectAllowed = canvasNoteId ? 'copyMove' : 'move'
       e.dataTransfer.setData(TREE_NODE_DRAG_MIME, nodeId)
       if (canvasNoteId) {
+        // The same tag VirtualizedNotesTree writes on every note/file row: the
+        // note editor reads it to link a note or embed a file on drop.
+        e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, canvasNoteId)
         // Mirrors VirtualizedNotesTree, which the sidebar swaps to once the
         // vault passes the virtualization threshold. Without this the same
         // drag onto a canvas does nothing on a small vault. 'copyMove' above
@@ -776,9 +794,10 @@ export const TreeNodeTrigger = ({
         // Chromium silently refuses a drop that effectAllowed does not permit.
         e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', canvasNoteId))
       }
+      if (dragTab) setTabDragData(e.dataTransfer, dragTab)
       setDragState({ draggedId: nodeId })
     },
-    [draggable, nodeId, canvasNoteId, setDragState]
+    [draggable, nodeId, canvasNoteId, dragTab, setDragState]
   )
 
   const handleDragEnd = useCallback(() => {

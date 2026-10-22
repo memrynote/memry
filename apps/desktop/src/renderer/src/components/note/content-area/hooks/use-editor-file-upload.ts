@@ -12,7 +12,8 @@ import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { noteRelativeRef } from '@/lib/resolve-note-relative-url'
-import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
+import { MEMRY_NOTE_DRAG_MIME, readTabDragData } from '@/lib/drag-mime'
+import { createWikiLinkInlineContent } from '../wiki-link'
 import { DEFAULT_IMAGE_PREVIEW_WIDTH } from '@memry/editor-schema/blocks'
 
 const log = createLogger('Hook:EditorFileUpload')
@@ -192,6 +193,9 @@ export function useEditorFileUpload({
     async (dataTransfer: DataTransfer): Promise<void> => {
       const itemId = dataTransfer.getData(MEMRY_NOTE_DRAG_MIME)
       if (!itemId) return
+      // Read before the first await: the drag data store is only readable
+      // while the drop event is being dispatched.
+      const draggedTab = readTabDragData(dataTransfer)
 
       const insertTarget = dropTarget
       onDragReset()
@@ -209,6 +213,20 @@ export function useEditorFileUpload({
 
       try {
         const file = await notesService.getFile(itemId)
+        if (!file && draggedTab?.type === 'note') {
+          // A markdown note is not a file to embed: link it, as `[[` would.
+          editor.insertBlocks(
+            [
+              {
+                type: 'paragraph',
+                content: [createWikiLinkInlineContent(draggedTab.title, ''), ' ']
+              }
+            ],
+            referenceBlockId,
+            placement
+          )
+          return
+        }
         if (!file?.absolutePath) {
           log.warn('Cannot embed dropped item: no file path', itemId)
           return
