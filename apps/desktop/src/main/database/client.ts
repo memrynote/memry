@@ -142,6 +142,7 @@ export function ensureVecNotesTable(db: Database.Database): void {
     })
     db.exec('DROP TABLE vec_notes')
     db.exec('DROP TABLE IF EXISTS vec_note_chunks')
+    db.exec('DROP TABLE IF EXISTS vec_note_similar')
   }
 
   db.exec(`
@@ -155,6 +156,15 @@ export function ensureVecNotesTable(db: Database.Database): void {
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS vec_note_chunks USING vec0(
       chunk_id TEXT PRIMARY KEY,
+      embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
+    )
+  `)
+  // One `similarity`-task vector per note, for note-to-note features (see
+  // EmbeddingTask). Additive and derived: rows arrive with the versioned
+  // re-embed, and until a note has one the features skip it.
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS vec_note_similar USING vec0(
+      note_id TEXT PRIMARY KEY,
       embedding float[${EMBEDDING_DIMENSION}] distance_metric=cosine
     )
   `)

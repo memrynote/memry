@@ -125,8 +125,8 @@ describe('embedding projector', () => {
     await projector.reconcile()
 
     expect(prepare).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM vec_notes'))
-    // vec_notes prune + note_embedding_state prune
-    expect(run).toHaveBeenCalledTimes(2)
+    // vec_notes + vec_note_similar + note_embedding_state prune
+    expect(run).toHaveBeenCalledTimes(3)
     // note-1 already embedded → no re-embed
     expect(generateEmbedding).not.toHaveBeenCalled()
   })
@@ -180,7 +180,7 @@ describe('embedding projector', () => {
     indexing = false
     await projector.reconcile()
 
-    expect(generateEmbedding).toHaveBeenCalledTimes(2)
+    expect(generateEmbedding).toHaveBeenCalledTimes(4)
     expect(readFile).toHaveBeenCalledWith('/vault/notes/one.md', 'utf-8')
     expect(readFile).toHaveBeenCalledWith('/vault/notes/two.md', 'utf-8')
   })
@@ -228,7 +228,7 @@ describe('embedding projector', () => {
     // though it still has a stale vector row.
     initEmbeddingModel.mockResolvedValue(true)
     await projector.reconcile()
-    expect(generateEmbedding).toHaveBeenCalledTimes(1)
+    expect(generateEmbedding).toHaveBeenCalledTimes(2)
   })
 
   it('handles note events by storing, deleting, or skipping embeddings', async () => {
@@ -436,7 +436,7 @@ describe('embedding projector', () => {
 
     await projector.reconcile(controller.signal)
 
-    expect(generateEmbedding).toHaveBeenCalledTimes(1)
+    expect(generateEmbedding).toHaveBeenCalledTimes(2)
     expect(readFile).toHaveBeenCalledWith('/vault/notes/one.md', 'utf-8')
     // The notes past the abort were never read, so nothing from this vault can
     // land in whatever index database the next vault installs.
@@ -512,7 +512,7 @@ describe('embedding projector', () => {
     generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
     await createEmbeddingProjector(() => '/vault').reconcile()
 
-    expect(generateEmbedding).toHaveBeenCalledTimes(3)
+    expect(generateEmbedding).toHaveBeenCalledTimes(6)
     expect(readFile.mock.calls.filter(([path]) => path === '/vault/notes/one.md')).toHaveLength(1)
     expect([...vectors].sort()).toEqual(['note-1', 'note-2', 'note-3'])
     expect([...state.values()]).toEqual([

@@ -223,7 +223,7 @@ export async function updateNoteEmbedding(noteId: string): Promise<boolean> {
 
     // Same input shape as the embedding projector, so the vectors compare.
     const embedding = await generateLocalEmbedding(
-      buildEmbeddingInput({ title: note.title, content: note.content })
+      buildEmbeddingInput({ title: note.title, content: note.content }, 'document')
     )
     if (!embedding) {
       log.debug(`Failed to generate embedding for: ${noteId}`)
@@ -290,7 +290,7 @@ export async function reindexAllEmbeddings(): Promise<{
 
       // Generate embedding
       const embedding = await generateLocalEmbedding(
-        buildEmbeddingInput({ title: note.title, content: note.content })
+        buildEmbeddingInput({ title: note.title, content: note.content }, 'document')
       )
       if (!embedding) {
         skipped++
@@ -342,7 +342,7 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
       .prepare(
         `
       SELECT note_id, distance
-      FROM vec_notes
+      FROM vec_note_similar
       WHERE embedding MATCH ?
         AND k = ?
       ORDER BY distance
@@ -710,8 +710,8 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
     const suggestions: FilingSuggestion[] = []
     const seenDestinations = new Set<string>()
 
-    // Build content for similarity search (symmetric with stored embeddings).
-    const content = buildEmbeddingInput({ title: item.title, content: item.content })
+    // Build content for similarity search (same task as the stored vectors).
+    const content = buildEmbeddingInput({ title: item.title, content: item.content }, 'similarity')
 
     // 1. Find similar notes → suggest both folders AND direct note links
     const noteSuggestions: FilingSuggestion[] = []
@@ -959,8 +959,8 @@ export async function getNoteFolderSuggestions(noteId: string): Promise<FolderSu
     // Always exclude current folder
     seenFolders.add(currentFolder)
 
-    // Build content for similarity search (symmetric with stored embeddings).
-    const content = buildEmbeddingInput({ title: note.title, content: note.content })
+    // Build content for similarity search (same task as the stored vectors).
+    const content = buildEmbeddingInput({ title: note.title, content: note.content }, 'similarity')
 
     // 1. Score candidate folders from similar notes + folder name + member
     //    tags, excluding the note's current folder.

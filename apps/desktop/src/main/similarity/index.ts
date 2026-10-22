@@ -1,5 +1,7 @@
 /**
- * Note similarity from the local embeddings already stored in `vec_notes`.
+ * Note similarity from the local embeddings already stored in `vec_note_similar`
+ * (the `similarity` task vector, see EmbeddingTask; a note the versioned
+ * re-embed has not reached yet has none and is skipped).
  *
  * Three read-only answers, all computed on this device from vectors the
  * embedding projector wrote: the notes nearest to a note, the tags those
@@ -84,7 +86,7 @@ function toVector(blob: unknown): Float32Array | null {
 
 function readVector(noteId: string): Float32Array | null {
   const row = getRawIndexDatabase()
-    .prepare('SELECT embedding FROM vec_notes WHERE note_id = ?')
+    .prepare('SELECT embedding FROM vec_note_similar WHERE note_id = ?')
     .get(noteId) as { embedding: unknown } | undefined
   return row ? toVector(row.embedding) : null
 }
@@ -93,7 +95,7 @@ function readVectors(noteIds: readonly string[]): Map<string, Float32Array> {
   const out = new Map<string, Float32Array>()
   if (noteIds.length === 0) return out
   const statement = getRawIndexDatabase().prepare(
-    'SELECT embedding FROM vec_notes WHERE note_id = ?'
+    'SELECT embedding FROM vec_note_similar WHERE note_id = ?'
   )
   // One point lookup per id: vec0 answers primary-key reads directly, and an
   // IN list over a virtual table is not guaranteed to use that path.
@@ -109,7 +111,7 @@ function readVectors(noteIds: readonly string[]): Map<string, Float32Array> {
 function nearest(vector: Float32Array, k: number): Array<{ noteId: string; similarity: number }> {
   const rows = getRawIndexDatabase()
     .prepare(
-      `SELECT note_id, distance FROM vec_notes
+      `SELECT note_id, distance FROM vec_note_similar
        WHERE embedding MATCH ? AND k = ?
        ORDER BY distance`
     )

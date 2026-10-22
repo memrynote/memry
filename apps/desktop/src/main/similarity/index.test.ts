@@ -32,7 +32,7 @@ describe('similarity', () => {
     for (const tag of tags) indexDb.db.insert(noteTags).values({ noteId: id, tag }).run()
     if (vector) {
       indexDb.sqlite
-        .prepare('INSERT INTO vec_notes (note_id, embedding) VALUES (?, ?)')
+        .prepare('INSERT INTO vec_note_similar (note_id, embedding) VALUES (?, ?)')
         .run(id, Float32Array.from(vector))
     }
   }
@@ -42,7 +42,7 @@ describe('similarity', () => {
     indexDb = createTestIndexDb()
     sqliteVec.load(indexDb.sqlite)
     indexDb.sqlite.exec(
-      'CREATE VIRTUAL TABLE vec_notes USING vec0(note_id TEXT PRIMARY KEY, embedding float[3] distance_metric=cosine)'
+      'CREATE VIRTUAL TABLE vec_note_similar USING vec0(note_id TEXT PRIMARY KEY, embedding float[3] distance_metric=cosine)'
     )
     // The shared test helper types every DB with the combined schema.
     vi.mocked(getDatabase).mockReturnValue(dataDb.db as never)
