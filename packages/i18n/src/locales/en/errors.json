@@ -220,6 +220,7 @@
     "previewFailed": "Preview failed",
     "listFailed": "Failed to list importers",
     "appleNotesFoldersFailed": "Could not read your Apple Notes folders",
+    "appleNotesPasswordFailed": "Could not check the Notes password.",
     "onenoteStatusFailed": "Could not read the OneNote connection state",
     "onenoteConnectFailed": "Microsoft sign-in failed",
     "onenoteDisconnectFailed": "Could not disconnect the Microsoft account",

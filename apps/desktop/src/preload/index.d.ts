@@ -55,6 +55,8 @@ import type { GraphViewsSettings, GraphViewsSettingsPatch } from '@memry/contrac
 import type {
   AppleNotesFoldersInput,
   AppleNotesFoldersResult,
+  AppleNotesCheckUnlockInput,
+  AppleNotesCheckUnlockResult,
   ImportStartInput,
   ImportStartResponse,
   ImportCancelInput,
@@ -2057,6 +2059,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
     list: () => Promise<ImporterMeta[]>
     appleNotes: {
       folders: (input: AppleNotesFoldersInput) => Promise<AppleNotesFoldersResult>
+      checkUnlock: (input: AppleNotesCheckUnlockInput) => Promise<AppleNotesCheckUnlockResult>
     }
     onenote: {
       status: () => Promise<OneNoteAuthStatusResult>

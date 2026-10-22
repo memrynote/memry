@@ -262,11 +262,17 @@ Import a Bear `.bear2bk` archive (in Bear: **File → Export Notes → Bear Note
 | Inline images                                   | Saved as attachments                                  |
 | Tables                                          | Markdown tables (first row becomes the header)        |
 | Created / modified (CoreTime)                   | Preserved on the note                                 |
-| Password-protected notes                        | Skipped, and named in the import summary              |
+| Password-protected notes                        | Imported with your Notes password, otherwise skipped  |
 | Nested folders                                  | Full hierarchy preserved (`Work/Clients/Acme`)        |
 | Folder selection                                | Only the folders you tick are imported                |
 
-Memry cannot read locked notes without your Notes password, so it leaves them behind and tells you: the summary at the end of the run counts them on their own line ("3 locked notes were not imported") instead of folding them into the generic skipped total. Every importer's summary groups skipped items by reason this way.
+Locked notes are encrypted, so memrynote can read them only with your Notes password. When the library holds any, the dialog shows a password field under the folder list. Type the password and press **Check**: memrynote tests it against the locked notes' keys before the import starts, and tells you how many it unlocks. The password is used for this one import. It is kept in memory, never written to disk and never saved.
+
+- Without a password, locked notes are left behind and the summary counts them on their own line ("3 locked notes were not imported").
+- Notes locked with an older password than the one you entered stay locked. The dialog warns you ("Unlocks 2 of 3 locked notes"), and the summary lists the rest as using a different password.
+- Only the text of a locked note comes across. Images and files inside it are encrypted separately and are not imported; the summary counts them.
+
+Every importer's summary groups skipped items by reason this way.
 
 Tables come across as markdown tables. Apple Notes has no header row, so the first row becomes the table header. A cell that holds several lines is flattened to one line, and a `|` typed into a cell is escaped so it stays inside its cell. A table whose data never synced to this Mac is counted in the skipped total instead of leaving a marker in the note.
 

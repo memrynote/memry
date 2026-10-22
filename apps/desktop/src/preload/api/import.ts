@@ -4,6 +4,8 @@ import {
   OneNoteImportChannels,
   type AppleNotesFoldersInput,
   type AppleNotesFoldersResult,
+  type AppleNotesCheckUnlockInput,
+  type AppleNotesCheckUnlockResult,
   type ImportStartInput,
   type ImportStartResponse,
   type ImportCancelInput,
@@ -30,7 +32,9 @@ export const importApi = {
   list: (): Promise<ImporterMeta[]> => invoke<ImporterMeta[]>(ImportChannels.invoke.LIST),
   appleNotes: {
     folders: (input: AppleNotesFoldersInput): Promise<AppleNotesFoldersResult> =>
-      invoke<AppleNotesFoldersResult>(AppleNotesImportChannels.invoke.FOLDERS, input)
+      invoke<AppleNotesFoldersResult>(AppleNotesImportChannels.invoke.FOLDERS, input),
+    checkUnlock: (input: AppleNotesCheckUnlockInput): Promise<AppleNotesCheckUnlockResult> =>
+      invoke<AppleNotesCheckUnlockResult>(AppleNotesImportChannels.invoke.CHECK_UNLOCK, input)
   },
   onenote: {
     status: (): Promise<OneNoteAuthStatusResult> =>
