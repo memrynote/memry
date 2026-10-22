@@ -251,7 +251,7 @@
     "driver.js": "^1.6.0",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
-    "electron": "^43.1.1",
+    "electron": "^43.7.0",
     "electron-builder": "^26.15.6",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.7.3",
