@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { net } from 'electron'
 import {
+  hashSectionBody,
   imageHighlightUrl,
   linkedHighlightIds,
   planAppend,
@@ -283,12 +284,16 @@ function replaceSection(body: string, section: string): string {
 
 const LIST_ITEM = /^\s*(?:[-*+]|\d{1,9}[.)])\s/
 
-/** A hash that does not match `body`'s section, so the section stays touched. */
+/**
+ * An end marker `hash` that does not match the section it closes, so the
+ * section stays touched. Derived from the section's own hash, one off.
+ */
 function touchedHash(build: (hash: string) => string): string {
-  for (const hash of ['00000000', 'ffffffff']) {
-    if (!readSection(build(hash)).untouched) return hash
-  }
-  return '00000000'
+  const probe = build(hashSectionBody(build('')))
+  const read = readSection(probe)
+  if (!read.found) return hashSectionBody(probe)
+  const next = (Number.parseInt(hashSectionBody(read.text), 16) + 1) >>> 0
+  return next.toString(16).padStart(8, '0')
 }
 
 /**
