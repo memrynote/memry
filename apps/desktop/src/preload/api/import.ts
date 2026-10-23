@@ -19,6 +19,9 @@ import {
   type OneNoteAuthStatusResult,
   type OneNoteNotebooksResult,
   type ReadwiseConnectInput,
+  type ReadwiseBookCommandInput,
+  type ReadwiseDeletedBook,
+  type ReadwiseRestoreBookInput,
   type ReadwiseSetOptionsInput,
   type ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
@@ -60,7 +63,15 @@ export const importApi = {
     syncNow: (): Promise<{ success: true }> =>
       invoke<{ success: true }>(ReadwiseImportChannels.invoke.SYNC_NOW),
     setOptions: (input: ReadwiseSetOptionsInput): Promise<ReadwiseStatusResult> =>
-      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.SET_OPTIONS, input)
+      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.SET_OPTIONS, input),
+    reimportBook: (input: ReadwiseBookCommandInput): Promise<{ success: true }> =>
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.REIMPORT_BOOK, input),
+    refreshBook: (input: ReadwiseBookCommandInput): Promise<{ success: true }> =>
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.REFRESH_BOOK, input),
+    listDeleted: (): Promise<{ books: ReadwiseDeletedBook[] }> =>
+      invoke<{ books: ReadwiseDeletedBook[] }>(ReadwiseImportChannels.invoke.LIST_DELETED),
+    restoreBook: (input: ReadwiseRestoreBookInput): Promise<{ success: true }> =>
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.RESTORE_BOOK, input)
   }
 }
 

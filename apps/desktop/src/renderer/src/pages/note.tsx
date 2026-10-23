@@ -162,6 +162,8 @@ import {
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { FIND_REQUEST_KEY, readFindRequest } from '@/lib/find-request'
+import { ReadwiseMenuGroup } from '@/components/note/readwise-menu-group'
+import { ReadwiseReimportDialog } from '@/components/note/readwise-reimport-dialog'
 import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
@@ -1499,7 +1501,8 @@ export function NotePage({ noteId }: NotePageProps) {
   const {
     commands: noteCommands,
     labels: noteLabels,
-    moveToFolder
+    moveToFolder,
+    readwise
   } = useNoteCommands({
     note,
     isDeleted,
@@ -1776,6 +1779,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 icon={<Lock className="size-4" />}
               />
             )}
+            {readwise.isLinked && <ReadwiseMenuGroup readwise={readwise} labels={noteLabels} />}
             <Picker.Separator />
             <Picker.Item
               value="note.delete"
@@ -2251,6 +2255,12 @@ export function NotePage({ noteId }: NotePageProps) {
         targetTitle={pendingWikiLinkCreate}
         onClose={() => setPendingWikiLinkCreate(null)}
         onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
+      />
+
+      <ReadwiseReimportDialog
+        {...dialog.bind('readwiseReimport')}
+        title={note.title}
+        onConfirm={() => void readwise.reimport()}
       />
 
       {/* Delete confirmation */}

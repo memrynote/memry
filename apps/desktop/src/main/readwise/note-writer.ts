@@ -39,6 +39,12 @@ export interface UpsertOptions {
    */
   userInitiated?: boolean
   /**
+   * Restore a book whose link is `note-deleted` (D16): ignore the link's
+   * state and its note id, adopt a note that already names the book, or
+   * create the note the way a new book gets one, then link it again.
+   */
+  restore?: boolean
+  /**
    * The book holds only the highlights that changed (D7, step 2). Such a
    * payload can append to a touched section, and nothing else: a new note or
    * an untouched section needs the whole book, so the writer answers
@@ -119,10 +125,18 @@ async function upsert(
 ): Promise<UpsertOutcome> {
   const db = getDatabase()
   const link = getLinkByBookId(db, book.user_book_id)
-  if (link && link.state !== 'linked') return { status: 'skipped', reason: link.state }
+  if (link && link.state !== 'linked' && !options.restore) {
+    return { status: 'skipped', reason: link.state }
+  }
 
   let note: Note | null = null
-  if (link) {
+  if (options.restore) {
+    note = await findNoteByReadwiseUrl(plan.frontmatter.readwise_url)
+    if (note) {
+      upsertLink(db, { readwiseBookId: book.user_book_id, noteId: note.id })
+      return { status: 'unchanged', noteId: note.id }
+    }
+  } else if (link) {
     note = await getNoteById(link.noteId)
     if (!note) {
       // A missing row also means "not indexed yet". `note-deleted` is sticky

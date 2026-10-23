@@ -9,6 +9,7 @@ import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { useNoteFileActions } from '@/hooks/use-note-file-actions'
 import { useNoteMutations, type Note } from '@/hooks/use-notes-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useReadwiseBookCommands, type ReadwiseBookCommands } from './use-readwise-book-commands'
 import { requestNoteNameInput } from '@/components/note/names/note-name-input-request'
 
 /** The note page's modal surfaces: one is open at a time. */
@@ -21,6 +22,7 @@ export type NoteDialog =
   | 'attachments'
   | 'delete'
   | 'reminder'
+  | 'readwiseReimport'
 
 export type NoteCommandId = CommandIdsOf<'note'>
 
@@ -56,6 +58,7 @@ export function useNoteCommands(input: NoteCommandInput): {
   commands: Record<NoteCommandId, CommandImpl>
   labels: Record<NoteCommandId, string>
   moveToFolder: (targetFolder: string) => Promise<void>
+  readwise: ReadwiseBookCommands
 } {
   const { note, isDeleted, isLocked, hasOwnLock, isFullWidth, dialog, titleInputRef } = input
   const { t } = useT('notes')
@@ -63,6 +66,7 @@ export function useNoteCommands(input: NoteCommandInput): {
   const createNoteFromNote = useCreateNoteFromNote()
   const { moveNote } = useNoteMutations()
   const noteId = note?.id ?? null
+  const readwise = useReadwiseBookCommands(note)
   const files = useNoteFileActions({ noteId, path: note?.path, hasOwnLock })
 
   const ready = note !== null && !isDeleted
@@ -101,6 +105,8 @@ export function useNoteCommands(input: NoteCommandInput): {
       ? t('editor.toolbar.removeBookmark')
       : t('editor.toolbar.addBookmark'),
     'note.setReminder': t('editor.toolbar.setReminder'),
+    'note.readwiseReimport': t('readwise.reimportAction'),
+    'note.readwiseRefresh': t('readwise.refreshAction'),
     'note.delete': t('editor.toolbar.delete')
   }
 
@@ -171,9 +177,19 @@ export function useNoteCommands(input: NoteCommandInput): {
       await input.toggleBookmark()
     }),
     'note.setReminder': item('note.setReminder', () => dialog.show('reminder')),
+    // Unlabeled: the palette says "Refresh Readwise Book Info", so a search for
+    // Readwise finds both. A Readwise note offers them on the pulling device only (D16).
+    'note.readwiseReimport': {
+      run: () => dialog.show('readwiseReimport'),
+      enabled: ready && readwise.isLinked && readwise.pullsHere
+    },
+    'note.readwiseRefresh': {
+      run: readwise.refresh,
+      enabled: ready && readwise.isLinked && readwise.pullsHere
+    },
     'note.delete': item('note.delete', () => dialog.show('delete'))
   }
 
   useTabCommands('note', commands)
-  return { commands, labels, moveToFolder }
+  return { commands, labels, moveToFolder, readwise }
 }

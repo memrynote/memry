@@ -20,7 +20,9 @@ const disconnectedStatus: ReadwiseStatusResult = {
   options: READWISE_OPTIONS_DEFAULTS,
   lastSyncAt: null,
   needsAttention: false,
-  hasImported: false
+  hasImported: false,
+  thisDevicePulls: true,
+  pullingDeviceName: null
 }
 /** Connected after a first run: the panel shows the settings, not the preview. */
 const connectedStatus: ReadwiseStatusResult = {
@@ -37,6 +39,8 @@ describe('ReadwiseImportPanel', () => {
   let disconnect: ReturnType<typeof vi.fn>
   let setOptions: ReturnType<typeof vi.fn>
   let syncNow: ReturnType<typeof vi.fn>
+  let listDeleted: ReturnType<typeof vi.fn>
+  let restoreBook: ReturnType<typeof vi.fn>
 
   beforeAll(async () => {
     i18n = await createRendererI18n({ locale: 'en' })
@@ -48,8 +52,12 @@ describe('ReadwiseImportPanel', () => {
     disconnect = vi.fn(() => Promise.resolve({ success: true }))
     setOptions = vi.fn(() => Promise.resolve(connectedStatus))
     syncNow = vi.fn(() => Promise.resolve({ success: true }))
+    listDeleted = vi.fn(() => Promise.resolve({ books: [] }))
+    restoreBook = vi.fn(() => Promise.resolve({ success: true }))
     ;(window as unknown as { api: unknown }).api = {
-      import: { readwise: { status, connect, disconnect, setOptions, syncNow } }
+      import: {
+        readwise: { status, connect, disconnect, setOptions, syncNow, listDeleted, restoreBook }
+      }
     }
   })
 
@@ -340,5 +348,68 @@ describe('ReadwiseImportPanel', () => {
     status.mockResolvedValue({ ...connectedStatus, needsAttention: true })
     renderPanel()
     expect(await screen.findByText(/needs your attention/)).toBeInTheDocument()
+  })
+
+  describe('Deleted books (D16)', () => {
+    const deleted = [
+      {
+        readwiseBookId: 1,
+        title: 'Deep Work',
+        deletedAt: '2026-10-03T10:00:00Z',
+        highlightCount: 41
+      },
+      {
+        readwiseBookId: 2,
+        title: 'Smart Notes',
+        deletedAt: '2026-09-28T10:00:00Z',
+        highlightCount: 1
+      }
+    ]
+
+    it('lists each deleted book with its highlight count, and a row leaves the list once restored', async () => {
+      status.mockResolvedValue(connectedStatus)
+      listDeleted.mockResolvedValue({ books: deleted })
+      renderPanel()
+
+      expect(await screen.findByText('Deep Work')).toBeInTheDocument()
+      expect(screen.getByText(/· 41 highlights/)).toBeInTheDocument()
+      expect(screen.getByText(/· 1 highlight$/)).toBeInTheDocument()
+      expect(
+        screen.getByText('Restoring recreates the note with all of its highlights.')
+      ).toBeInTheDocument()
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Restore' })[0])
+      await waitFor(() => expect(restoreBook).toHaveBeenCalledWith({ readwiseBookId: 1 }))
+      await waitFor(() => expect(screen.queryByText('Deep Work')).not.toBeInTheDocument())
+      expect(screen.getByText('Smart Notes')).toBeInTheDocument()
+    })
+
+    it('says there are none when the list is empty', async () => {
+      status.mockResolvedValue(connectedStatus)
+      renderPanel()
+      expect(await screen.findByText('No deleted books')).toBeInTheDocument()
+    })
+
+    it('keeps the row and shows the failure when a restore is refused', async () => {
+      status.mockResolvedValue(connectedStatus)
+      listDeleted.mockResolvedValue({ books: deleted })
+      restoreBook.mockResolvedValue({ success: false, error: 'restore refused' })
+      renderPanel()
+
+      fireEvent.click((await screen.findAllByRole('button', { name: 'Restore' }))[0])
+      expect(await screen.findByText('restore refused')).toBeInTheDocument()
+      expect(screen.getByText('Deep Work')).toBeInTheDocument()
+    })
+
+    it('names the pulling device and asks nothing of main on a device that does not pull', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        thisDevicePulls: false,
+        pullingDeviceName: 'MacBook Pro'
+      })
+      renderPanel()
+      expect(await screen.findByText('Readwise syncs on MacBook Pro.')).toBeInTheDocument()
+      expect(listDeleted).not.toHaveBeenCalled()
+    })
   })
 })

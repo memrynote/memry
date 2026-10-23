@@ -136,6 +136,18 @@ export const NOTE_COMMANDS = {
     group: 'note',
     i18nKey: 'commands.noteSetReminder'
   },
+  'note.readwiseReimport': {
+    context: 'note',
+    owner: 'note',
+    group: 'note',
+    i18nKey: 'commands.noteReadwiseReimport'
+  },
+  'note.readwiseRefresh': {
+    context: 'note',
+    owner: 'note',
+    group: 'note',
+    i18nKey: 'commands.noteReadwiseRefresh'
+  },
   'note.delete': {
     context: 'note',
     owner: 'note',
