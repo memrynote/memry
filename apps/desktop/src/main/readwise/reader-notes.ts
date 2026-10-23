@@ -94,14 +94,17 @@ async function write(document: ReaderDocument, options: ReaderNoteOptions): Prom
   // The image needs the note to exist (D14): download it, plan again with it.
   // Only the section is replaced, so the article text below it stays as written.
   const fetch = options.fetch ?? ((url: string) => net.fetch(url))
+  const before = await getNoteById(created.id)
   const images = await resolveImages(created.id, created.path, plan.imageUrls, fetch)
   if (images.size > 0) {
     const withImages = planReaderNote(document, { ...planOptions, images })
-    if (withImages) {
+    // Edited meanwhile (or open in an editor): leave it, the image stays an attachment.
+    const latest = await getNoteById(created.id)
+    if (withImages && before !== null && latest?.content === before.content) {
       const cover = withImages.frontmatter.cover
       await updateNoteCommand({
         id: created.id,
-        content: replaceSection(created.content, withImages.section),
+        content: replaceSection(before.content, withImages.section),
         ignoreInlineTags: true,
         ...(cover === undefined ? {} : { frontmatter: { cover } })
       })

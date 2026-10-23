@@ -136,9 +136,13 @@ async function upsert(
 
   let note: Note | null = null
   if (options.restore) {
-    note = await findNoteByReadwiseUrl(plan.frontmatter.readwise_url)
+    note = await findBookNote(book, plan)
     if (note) {
-      upsertLink(db, { readwiseBookId: book.user_book_id, noteId: note.id })
+      upsertLink(db, {
+        readwiseBookId: book.user_book_id,
+        readerDocumentId: book.external_id,
+        noteId: note.id
+      })
       return { status: 'unchanged', noteId: note.id }
     }
   } else if (link) {
@@ -152,11 +156,7 @@ async function upsert(
     }
   } else {
     // The book's own note, or the Reader note of its document (D11).
-    note =
-      (await findNoteByReadwiseUrl(plan.frontmatter.readwise_url)) ??
-      (book.external_id
-        ? await findNoteByReadwiseUrl(`https://read.readwise.io/read/${book.external_id}`)
-        : null)
+    note = await findBookNote(book, plan)
     if (note) {
       upsertLink(db, {
         readwiseBookId: book.user_book_id,
@@ -183,6 +183,16 @@ async function upsert(
     return rewriteSection(book, plan, note, options, fetch, section.range)
   }
   return appendToNote(book, note, options, fetch)
+}
+
+/** The book's own note, or the Reader note of its document (D11). */
+async function findBookNote(book: ReadwiseBook, plan: NotePlan): Promise<Note | null> {
+  return (
+    (await findNoteByReadwiseUrl(plan.frontmatter.readwise_url)) ??
+    (book.external_id
+      ? await findNoteByReadwiseUrl(`https://read.readwise.io/read/${book.external_id}`)
+      : null)
+  )
 }
 
 /** The note whose `readwise_url` names this book. Lowest id wins, as in `rebuildLinks`. */

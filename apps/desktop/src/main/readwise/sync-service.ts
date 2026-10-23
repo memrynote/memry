@@ -7,7 +7,7 @@ import { exportBooks, exportPages, ReadwiseError, type ReadwiseBook } from './cl
 import { awaitPullAuthority, claimLostToAnotherDevice } from './pull-gate'
 import { releaseTokenIfClaimedElsewhere } from './release'
 import { waitForVaultIndexBuild } from '../sync/vault-index-ready'
-import { listLinks, markLinkState } from './links-repository'
+import { completeLink, getLinkForBook, listLinks, markLinkState } from './links-repository'
 import { rebuildLinks } from './rebuild-links'
 import { upsertReadwiseNote, type UpsertOutcome } from './note-writer'
 import { listDocuments } from './reader'
@@ -500,6 +500,14 @@ export class ReadwiseSyncService {
     const title = bookTitle(book)
     const db = getDatabase()
     try {
+      // Before any skip: a deleted or category-off book still tells which Reader document it covers (D11).
+      const link = getLinkForBook(db, book.user_book_id, book.external_id)
+      if (link) {
+        completeLink(db, link, {
+          readwiseBookId: book.user_book_id,
+          readerDocumentId: book.external_id
+        })
+      }
       const plan = planNote(book, planOptions)
       if (plan === null) {
         removeRetry(db, book.user_book_id)

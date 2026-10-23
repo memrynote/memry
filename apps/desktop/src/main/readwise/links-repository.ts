@@ -113,11 +113,19 @@ export function upsertLink(db: DataDb, input: UpsertLinkInput): ReadwiseLink {
         .returning()
         .get()
     }
+    // Another row can already hold the id (a takeover rebuilt two notes for one
+    // document, D11): the unique index would reject it, so this row keeps its own.
+    const heldElsewhere =
+      readerDocumentId !== null &&
+      existing.readerDocumentId !== readerDocumentId &&
+      getLinkByReaderDocumentId(tx, readerDocumentId) !== undefined
     return tx
       .update(readwiseLinks)
       .set({
         readwiseBookId: readwiseBookId ?? existing.readwiseBookId,
-        readerDocumentId: readerDocumentId ?? existing.readerDocumentId,
+        readerDocumentId: heldElsewhere
+          ? existing.readerDocumentId
+          : (readerDocumentId ?? existing.readerDocumentId),
         noteId,
         state,
         updatedAt: utcNow()

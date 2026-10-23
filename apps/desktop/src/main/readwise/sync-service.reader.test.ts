@@ -429,6 +429,31 @@ describe('Readwise Reader documents', () => {
     expect(links.getLinkByReaderDocumentId(db(), 'd-old')?.readwiseBookId).toBe(3)
   })
 
+  it('a book of a category switched off still tells its document is covered, so a later update makes no Reader note', async () => {
+    readwise.books = [
+      stubBook(4, {
+        title: 'Muted',
+        category: 'articles',
+        source: 'reader',
+        external_id: 'd-muted',
+        highlights: [hl(41, 10, 1)]
+      })
+    ]
+    settings.writeReadwiseOptions(db(), { categories: { articles: false } })
+    await sync()
+    // The book was skipped, but its link-less state must not let the document through later.
+    readerOn()
+    reader.documents = [doc('d-muted', { updated_at: t(9) })]
+    await sync()
+    state.setReaderCursor(db(), '2026-10-02T00:00:00.000Z')
+    state.setCursor(db(), '2026-10-02T00:00:00.000Z')
+    state.setFullPassPending(db(), false)
+    state.setLastFullRead(db(), new Date().toISOString())
+    await sync()
+
+    expect(markdownFiles().filter((file) => file.includes('Muted'))).toEqual([])
+  })
+
   it('full text is written once below the section and never touched again; images are saved', async () => {
     readerOn(true)
     reader.documents = [
