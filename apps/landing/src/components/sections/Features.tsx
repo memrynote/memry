@@ -49,8 +49,10 @@ function useActiveModule() {
     // The observed band is the viewport's top 34%, so a callback fires exactly when a
     // panel's top crosses the line, instead of measuring every panel on every scroll frame.
     const observer = new IntersectionObserver(read, { rootMargin: '0px 0px -66% 0px' })
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state -- the active module comes from DOM layout, which exists only after mount
     for (const node of panelRefs.current.values()) observer.observe(node)
 
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state -- the active module comes from DOM layout, which exists only after mount
     read()
     return () => {
       observer.disconnect()

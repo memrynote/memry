@@ -347,6 +347,7 @@ function CalendarViewCard() {
         <div className="grid grid-cols-7 gap-1 pb-2">
           {CALENDAR_DAYS.map((d, i) => (
             <span
+              // oxlint-disable-next-line react/no-array-index-key -- static demo calendar; positional and never reordered
               key={i}
               className="text-center font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted"
             >
@@ -357,6 +358,7 @@ function CalendarViewCard() {
         <div className="grid grid-cols-7 gap-1">
           {cells.map((_, i) => (
             <div
+              // oxlint-disable-next-line react/no-array-index-key -- static demo calendar; positional and never reordered
               key={i}
               className="aspect-square rounded-md border border-border/40 bg-paper-alt/40 p-1"
             >
@@ -364,6 +366,7 @@ function CalendarViewCard() {
               <div className="mt-0.5 space-y-0.5">
                 {(CALENDAR_TASKS[i] ?? []).map((t, j) => (
                   <div
+                    // oxlint-disable-next-line react/no-array-index-key -- static demo calendar; positional and never reordered
                     key={j}
                     className={cn(
                       'truncate rounded px-1 py-0.5 font-mono-accent text-[8px]',

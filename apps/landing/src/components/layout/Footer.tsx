@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Container } from './Container'
 import { SocialLinks } from './SocialLinks'
@@ -70,7 +70,7 @@ function FooterLink({ href, children }: { href: string; children: ReactNode }) {
 }
 
 export function Footer() {
-  const currentYear = new Date().getFullYear()
+  const [currentYear] = useState(() => new Date().getFullYear())
   const { pathname } = useLocation()
 
   return (

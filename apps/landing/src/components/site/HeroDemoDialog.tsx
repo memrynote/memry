@@ -53,6 +53,7 @@ export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
     <AnimatePresence>
       {open && (
         <motion.div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated modal overlay; native dialog cannot take the framer-motion exit
           role="dialog"
           aria-modal="true"
           aria-label="MemryNote product demo"
@@ -114,6 +115,7 @@ function DemoVideo() {
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for the narrated demo yet
     <video
       ref={ref}
       src={DEMO_VIDEO}

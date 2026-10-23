@@ -145,6 +145,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
   useEffect(() => {
     const el = logRef.current
     if (el) el.scrollTop = el.scrollHeight // instant, like the app — no smooth scroll
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- messages is the trigger: scroll to bottom when the log grows
   }, [messages])
 
   useEffect(() => {

@@ -78,6 +78,7 @@ export function IosBetaPage() {
         sub="The TestFlight beta opens in the next few days, as soon as Apple approves the build. Leave the email you want the invite sent to, and you will get it when the beta opens."
         actions={
           status === 'success' ? (
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
             <p role="status" className="text-[15px] font-medium text-ink">
               You&rsquo;re on the list. Watch your inbox for the invite.
             </p>

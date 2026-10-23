@@ -46,6 +46,7 @@ function ScrollToHash() {
       return
     }
     scrollToLandingTarget(0, { immediate: true, offset: 0 })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- hash re-triggers scroll-to-anchor for same-path navigation
   }, [pathname, hash])
 
   return null
@@ -84,6 +85,7 @@ function ScrollDepthAnalytics() {
       window.removeEventListener('scroll', scheduleMeasure)
       window.removeEventListener('resize', scheduleMeasure)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- pathname re-measures layout after route change
   }, [pathname])
 
   return null

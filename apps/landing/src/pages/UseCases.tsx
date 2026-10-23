@@ -50,20 +50,14 @@ function WorkflowStep({
   )
 }
 
-function UseCaseSection({
-  useCase,
-  index
-}: {
-  useCase: (typeof USE_CASES)[number]
-  index: number
-}) {
+function UseCaseSection({ entry, index }: { entry: (typeof USE_CASES)[number]; index: number }) {
   const isEven = index % 2 === 1
   const number = String(index + 1).padStart(2, '0')
-  const Icon = useCase.icon
+  const Icon = entry.icon
 
   return (
     // The id gives the hero chips somewhere to land — scroll-mt clears the fixed nav pill.
-    <div id={useCase.id} className="scroll-mt-28">
+    <div id={entry.id} className="scroll-mt-28">
       {index > 0 && (
         <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mb-20 md:mb-28" />
       )}
@@ -85,7 +79,8 @@ function UseCaseSection({
           </div>
 
           <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-ink leading-[1] tracking-tight mb-6">
-            {useCase.title.split(' ').map((word, wi) => (
+            {entry.title.split(' ').map((word, wi) => (
+              // oxlint-disable-next-line react/no-array-index-key -- words of a static title; repeats possible and never reordered
               <span key={wi} className="block">
                 {word}
               </span>
@@ -93,15 +88,15 @@ function UseCaseSection({
           </h2>
 
           <p className="font-serif italic text-lg md:text-xl text-muted border-s-2 border-terracotta/30 ps-5 max-w-sm leading-relaxed mb-8">
-            &ldquo;{useCase.painQuote}&rdquo;
+            &ldquo;{entry.painQuote}&rdquo;
           </p>
 
-          <p className="text-base text-ink/70 leading-relaxed max-w-md">{useCase.description}</p>
+          <p className="text-base text-ink/70 leading-relaxed max-w-md">{entry.description}</p>
         </div>
 
         <div className="flex-1 flex flex-col gap-10 pt-2 md:pt-12">
           <ul className="space-y-4">
-            {useCase.features.map((feature, fi) => (
+            {entry.features.map((feature, fi) => (
               <motion.li
                 key={feature}
                 initial={{ opacity: 0, x: isEven ? -20 : 20 }}
@@ -125,12 +120,12 @@ function UseCaseSection({
           <div className="border border-border/60 rounded-lg p-5 bg-paper-alt/40">
             <p className="font-mono text-xs tracking-widest uppercase text-muted mb-4">Workflow</p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
-              {useCase.workflow.map((step, si) => (
+              {entry.workflow.map((step, si) => (
                 <WorkflowStep
                   key={step}
                   step={step}
                   index={si}
-                  total={useCase.workflow.length}
+                  total={entry.workflow.length}
                   isEven={isEven}
                 />
               ))}
@@ -146,14 +141,14 @@ function UseCaseSection({
 function PersonaChips() {
   return (
     <>
-      {USE_CASES.map((useCase) => {
-        const Icon = useCase.icon
+      {USE_CASES.map((entry) => {
+        const Icon = entry.icon
 
         return (
           <FeatureChip
-            key={useCase.id}
-            href={`#${useCase.id}`}
-            label={useCase.title}
+            key={entry.id}
+            href={`#${entry.id}`}
+            label={entry.title}
             icon={<Icon className="h-4 w-4" strokeWidth={1.5} />}
           />
         )
@@ -167,6 +162,7 @@ export function UseCasesPage() {
     <>
       <PageHead page="useCases" />
       <PageHero
+        // oxlint-disable-next-line react/hooks -- SITE_TINTS.useCases is a config key, not a hook
         tint={SITE_TINTS.useCases}
         eyebrow="Use cases"
         title={
@@ -181,8 +177,8 @@ export function UseCasesPage() {
       <section className="py-20 md:py-32">
         <Container>
           <div className="space-y-20 md:space-y-28">
-            {USE_CASES.map((useCase, i) => (
-              <UseCaseSection key={useCase.id} useCase={useCase} index={i} />
+            {USE_CASES.map((entry, i) => (
+              <UseCaseSection key={entry.id} entry={entry} index={i} />
             ))}
           </div>
         </Container>

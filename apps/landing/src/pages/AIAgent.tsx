@@ -512,7 +512,7 @@ function ApprovalCardLarge() {
         </div>
       </div>
 
-      <label className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-dark-border bg-black/20 px-4 py-3 text-[13px] text-ink-inverted/90">
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-dark-border bg-black/20 px-4 py-3 text-[13px] text-ink-inverted/90">
         <span className="flex items-center gap-2">
           <Sliders className="h-4 w-4 text-terracotta" />
           Always allow writes in this conversation
@@ -520,7 +520,7 @@ function ApprovalCardLarge() {
         <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-terracotta/40">
           <span className="absolute end-0.5 h-4 w-4 rounded-full bg-terracotta shadow" />
         </span>
-      </label>
+      </div>
 
       <div className="mt-5 flex items-center justify-end gap-2.5">
         <button
