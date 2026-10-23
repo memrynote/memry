@@ -18,7 +18,7 @@ import { inboxItems, inboxItemTags, settings as settingsTable } from '@memry/db-
 import type { DataDb } from './database.ts'
 import { createId } from '@memry/app-core/ids'
 import type { NotesService } from './notes.ts'
-import type { TasksService } from '@memry/app-core/tasks'
+import type { TasksService } from '@memry/app-core/tasks-types'
 
 function nowIso(): string {
   return new Date().toISOString()

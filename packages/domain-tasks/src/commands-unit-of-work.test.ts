@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  createTasksCommands,
-  type TasksDomainEvent,
-  type TasksUnitOfWork,
-  type TasksWrite
-} from './commands.ts'
+import { createTasksCommands } from './commands.ts'
+import type { TasksDomainEvent, TasksUnitOfWork, TasksWrite } from './commands-types.ts'
 import {
   createCommandRepository,
   createListItem,

@@ -180,15 +180,6 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     }
   }, [])
 
-  const folderRenameCallbackRef = useCallback((el: HTMLInputElement | null) => {
-    if (el) {
-      requestAnimationFrame(() => {
-        el.focus()
-        el.select()
-      })
-    }
-  }, [])
-
   const expandFolderPath = useCallback((folderPath: string) => {
     if (!folderPath) return
     const parts = folderPath.split('/')
@@ -681,7 +672,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           />
           {isBeingRenamed ? (
             <input
-              ref={folderRenameCallbackRef}
+              ref={renameCallbackRef}
               type="text"
               aria-label={t('tree.actions.rename')}
               value={actions.folderRenameValue}

@@ -81,7 +81,7 @@ export default defineConfig({
     // Swift app: the JS under it is generated bundles (editor, article-extract).
     'apps/ios/**',
     // Static assets served verbatim (e.g. the Excalidraw asset-path shim)
-    "apps/desktop/src/renderer/public/**",
+    'apps/desktop/src/renderer/public/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
     // Agent tooling and per-user scratch directories, not product code.
@@ -202,10 +202,7 @@ export default defineConfig({
       'import/first',
       'import/no-duplicates',
       'import/no-cycle',
-      [
-        'typescript/switch-exhaustiveness-check',
-        { considerDefaultExhaustiveForUnions: true }
-      ],
+      ['typescript/switch-exhaustiveness-check', { considerDefaultExhaustiveForUnions: true }],
       ['typescript/return-await', 'error-handling-correctness-only'],
       'typescript/no-deprecated',
       'typescript/no-misused-spread',
@@ -387,6 +384,39 @@ export default defineConfig({
         'apps/desktop/src/main/vault/notes-crud.ts'
       ],
       // TODO(phase-tbd): drop these overrides once large main-process modules are split
+      rules: disable('max-lines')
+    },
+    {
+      files: [
+        'apps/landing/src/pages/{AIAgent,Calendar,Inbox,Journal,Notes,Pricing,Tasks}.tsx',
+        'apps/landing/src/lib/{alternatives,constants}.ts'
+      ],
+      // Landing page content and comparison/pricing data tables: copy and markup, not logic.
+      rules: disable('max-lines')
+    },
+    {
+      files: [
+        'apps/desktop/scripts/seed-data/{notes,tasks}.ts',
+        'packages/contracts/scripts/vectors/calendar.ts',
+        'packages/editor-schema/src/conformance.ts'
+      ],
+      // Seed content and conformance-vector tables: fixtures, not logic.
+      rules: disable('max-lines')
+    },
+    {
+      files: [
+        'apps/sync-server/src/routes/{auth,blob,sync}.ts',
+        'apps/sync-server/src/services/sync.ts'
+      ],
+      // TODO(phase-tbd): drop this override once the sync-server auth, blob and sync modules are
+      // split. They hold auth, ciphertext storage and sync-protocol code; that split is a
+      // refactor of its own, not one to attach to a lint cleanup.
+      rules: disable('max-lines')
+    },
+    {
+      files: ['scripts/release.mjs', 'apps/desktop/scripts/agent-api-capture.mjs'],
+      // TODO(phase-tbd): drop this override once the release and agent-API capture scripts are split
+      // into modules. Single-file maintainer tooling, outside the shipped app.
       rules: disable('max-lines')
     },
     {

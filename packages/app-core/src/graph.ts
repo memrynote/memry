@@ -1,6 +1,6 @@
 import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { NotesService } from './service-types.ts'
-import type { TasksService } from './tasks.ts'
+import type { TasksService } from './tasks-types.ts'
 
 export interface GraphNode {
   id: string
