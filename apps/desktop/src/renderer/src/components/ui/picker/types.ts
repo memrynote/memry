@@ -28,3 +28,9 @@ export function usePickerContextOptional(): PickerContextValue | null {
 }
 
 export type PickerIndicator = 'check' | 'checkbox' | 'dot' | 'none'
+
+/**
+ * Set by `<Picker.List filterByLabel>`: rows and separators below it hide
+ * themselves while the search box holds a query that their label misses.
+ */
+export const PickerLabelFilterContext = createContext(false)

@@ -241,6 +241,8 @@
       "hideLocalGraph": "Hide local graph",
       "showLocalGraph": "Show local graph",
       "moreActions": "More actions",
+      "searchActions": "Search actions...",
+      "noMatchingActions": "No matching actions",
       "find": "Find…",
       "versionHistory": "Version history",
       "export": "Export",

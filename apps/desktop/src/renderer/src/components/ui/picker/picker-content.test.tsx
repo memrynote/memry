@@ -209,3 +209,54 @@ describe('PickerContent keyboard navigation', () => {
     expect(document.activeElement).toBe(rows[0])
   })
 })
+
+describe('Picker.List filterByLabel', () => {
+  const renderMenu = (): HTMLElement => {
+    render(
+      <Picker defaultOpen>
+        <Picker.Trigger>trigger</Picker.Trigger>
+        <Picker.Content>
+          <Picker.Search placeholder="search" />
+          <Picker.List filterByLabel emptyMessage="nothing">
+            <Picker.Item value="a" label="Export" />
+            <Picker.Separator />
+            <>
+              <Picker.Item value="b" label="Copy path" />
+              <Picker.Item value="c" label="Version history" />
+            </>
+          </Picker.List>
+        </Picker.Content>
+      </Picker>
+    )
+    return screen.getByPlaceholderText('search')
+  }
+
+  it('keeps only rows whose label matches, ignoring case, and drops separators', async () => {
+    const search = renderMenu()
+    await userEvent.type(search, 'PATH')
+
+    expect(screen.getByText('Copy path')).toBeTruthy()
+    expect(screen.queryByText('Export')).toBeNull()
+    expect(screen.queryByText('Version history')).toBeNull()
+    expect(document.querySelector('[data-slot="picker-separator"]')).toBeNull()
+  })
+
+  it('restores every row once the query is cleared', async () => {
+    const search = renderMenu()
+    await userEvent.type(search, 'path')
+    await userEvent.clear(search)
+
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(document.querySelector('[data-slot="picker-separator"]')).not.toBeNull()
+  })
+
+  it('shows the empty message only when nothing matches', async () => {
+    const search = renderMenu()
+    const empty = (): HTMLElement => screen.getByText('nothing').closest('div')!
+    expect(empty().className).toContain('hidden')
+
+    await userEvent.type(search, 'zzz')
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    expect(empty().parentElement!.children).toHaveLength(1)
+  })
+})
