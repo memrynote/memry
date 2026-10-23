@@ -92,6 +92,8 @@ Back restores the note you left _and_ where you were reading it — a note you h
 
 Right-click either arrow for the last few places that pane has been, and jump straight to one instead of pressing Back repeatedly. Each row names the note it takes you to.
 
+Middle-click either arrow to open the page it would take you to in a new background tab, without moving the current one.
+
 Opening or selecting something new starts a new history path, dropping whatever Forward was holding. History is per pane in a split, and it is kept for the current session only — it is not restored when you reopen the app.
 
 ## Split View
