@@ -26,7 +26,7 @@ export interface NoteFold {
   folded: boolean
   surfaces: FoldSurfaces
   view: FoldedView | null
-  /** Props for the chrome level menu; absent while the note cannot fold. */
+  /** Props for the chrome fold control; absent while the note cannot fold. */
   control: FoldLevelControlProps | undefined
   dispatch: (action: FoldAction) => void
   setLevel: (level: FoldLevel) => void
@@ -151,7 +151,7 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
     view,
     control:
       foldable && layers
-        ? { layers, requested: state.level, level, onSelectLevel: setLevel, onRetry: retry }
+        ? { layers, requested: state.level, level, onSelectLevel: setLevel }
         : undefined,
     dispatch: dispatchState,
     setLevel,

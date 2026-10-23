@@ -106,12 +106,6 @@ function addAlternative(ctx: ReturnType<typeof setup>, needle: string, variant: 
   return readWritingAlternativesFromYDoc(ctx.doc)[0]
 }
 
-function pressArrowDown(target: EventTarget): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
-  target.dispatchEvent(event)
-  return event
-}
-
 describe('WritingToolsSession (live Y.Doc binding)', () => {
   it('stores an alternative and swaps the body text in place, fixing "a"/"an"', () => {
     const { doc, session, bodyText, rangeOf } = setup('It was a great idea today.')
@@ -165,27 +159,6 @@ describe('WritingToolsSession (live Y.Doc binding)', () => {
     expect(readWritingAlternativesFromYDoc(doc)).toEqual([])
   })
 
-  it('leaves ghosted words out of the word count and counts them again once revived', async () => {
-    const { session, rangeOf } = setup('alpha beta gamma delta')
-    session.setWordCountEnabled(true)
-    const nextFrame = (): Promise<void> =>
-      new Promise((resolve) => requestAnimationFrame(() => resolve()))
-
-    await nextFrame()
-    expect(session.getSnapshot().wordCount).toBe(4)
-
-    const range = rangeOf('beta gamma')
-    expect(session.ghost(range.from, range.to)).toBe(true)
-    await nextFrame()
-    expect(session.getSnapshot().wordCount).toBe(2)
-
-    const ghostId = session.ghostAt(range.from + 1)
-    expect(ghostId).not.toBeNull()
-    session.revive(ghostId as string)
-    await nextFrame()
-    expect(session.getSnapshot().wordCount).toBe(4)
-  })
-
   it('stashes the selection into the overflow list and out of the body', () => {
     const { doc, session, bodyText, rangeOf } = setup('Keep this. Move that.')
     const range = rangeOf(' Move that.')
@@ -194,24 +167,6 @@ describe('WritingToolsSession (live Y.Doc binding)', () => {
 
     expect(bodyText()).toBe('Keep this.')
     expect(readWritingOverflowFromYDoc(doc).map((item) => item.text)).toEqual(['Move that.'])
-  })
-
-  it('cuts accepted trim suggestions and keeps the rest of the text', async () => {
-    const generateAssist = vi.fn<GenerateWritingAssist>().mockResolvedValue({
-      kind: 'trim',
-      cuts: [{ quote: ' really' }, { quote: 'not in the note' }, { quote: ' very' }]
-    })
-    const { session, bodyText } = setup('It is really a very good plan.', generateAssist)
-
-    expect(await session.runTrim('tighten')).toBe(2)
-    expect(session.getSnapshot().lab.trim).toMatchObject({ level: 'tighten', focusedIndex: 0 })
-
-    session.keepTrim()
-    expect(session.getSnapshot().lab.trim?.ids).toHaveLength(1)
-    session.cutTrim()
-
-    expect(bodyText()).toBe('It is really a good plan.')
-    expect(session.getSnapshot().lab.trim).toBeNull()
   })
 
   it('drops an alternative whose text was deleted instead of moving it onto the next character', () => {
@@ -289,38 +244,59 @@ describe('WritingToolsSession (live Y.Doc binding)', () => {
     expect(unique.resolved('alternatives')).toEqual([unique.rangeOf('cat')])
   })
 
-  it('cycles on ↓ only when the caret is in the hovered alternative and no menu owns the keys', () => {
+  it('cycles on ↑/↓ whenever the caret is in or touching the alternative, until Esc releases it', () => {
     const ctx = setup('Start here. One small step.')
-    const record = addAlternative(ctx, 'small', 'giant')
-    ctx.session.hoverAlternative(record.id)
+    addAlternative(ctx, 'small', 'giant')
+    const setCaret = (pos: number): void =>
+      ctx.view.dispatch(
+        ctx.view.state.tr.setSelection(TextSelection.create(ctx.view.state.doc, pos))
+      )
+    const press = (key: string, target: EventTarget = ctx.view.dom): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      target.dispatchEvent(event)
+      return event
+    }
+    const word = ctx.rangeOf('small')
 
-    // Caret elsewhere in the editor: ↓ stays caret movement.
-    const start = ctx.rangeOf('Start').from
-    ctx.view.dispatch(
-      ctx.view.state.tr.setSelection(TextSelection.create(ctx.view.state.doc, start))
-    )
-    expect(pressArrowDown(ctx.view.dom).defaultPrevented).toBe(false)
+    // Caret elsewhere: arrows stay caret movement.
+    setCaret(ctx.rangeOf('Start').from)
+    expect(press('ArrowDown').defaultPrevented).toBe(false)
     expect(ctx.bodyText()).toBe('Start here. One small step.')
 
-    // Caret inside the range, but a suggestion menu is open: the menu keeps ↓.
-    const inside = ctx.rangeOf('small').from + 2
-    ctx.view.dispatch(
-      ctx.view.state.tr.setSelection(TextSelection.create(ctx.view.state.doc, inside))
-    )
+    // A suggestion menu owns the keys.
+    setCaret(word.from + 2)
     const menu = document.createElement('div')
     menu.className = 'bn-suggestion-menu'
     document.body.appendChild(menu)
-    expect(pressArrowDown(ctx.view.dom).defaultPrevented).toBe(false)
+    expect(press('ArrowDown').defaultPrevented).toBe(false)
     menu.remove()
 
-    // Caret inside, nothing else open: ↓ shows the next variant.
-    expect(pressArrowDown(ctx.view.dom).defaultPrevented).toBe(true)
+    // Inside, no hover needed: swaps. Then at the start edge, then at the end edge.
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
     expect(ctx.bodyText()).toBe('Start here. One giant step.')
+    setCaret(ctx.rangeOf('giant').from)
+    expect(press('ArrowUp').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One small step.')
+    setCaret(ctx.rangeOf('small').to)
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One giant step.')
+
+    // The caret is still in the word after every swap: repeated presses keep working.
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One giant step.')
+
+    // Esc releases the caret: arrows move it until it leaves the word.
+    press('Escape')
+    expect(press('ArrowDown').defaultPrevented).toBe(false)
+    setCaret(ctx.rangeOf('Start').from)
+    setCaret(ctx.rangeOf('giant').from + 1)
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
 
     // Focus in some other control: left alone.
     const button = document.createElement('button')
     document.body.appendChild(button)
-    expect(pressArrowDown(button).defaultPrevented).toBe(false)
+    expect(press('ArrowDown', button).defaultPrevented).toBe(false)
     button.remove()
   })
 

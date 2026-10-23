@@ -1,12 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useReducer } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FoldLevel } from '@memry/contracts/note-fold'
 import { buildFoldedView } from './fold-display'
 import { layers, paragraph } from './fold-fixtures'
 import { FoldLevelControl } from './fold-level-control'
 import { FoldBody } from './fold-overlay'
+import { FoldPill } from './fold-pill'
 import { foldReducer, INITIAL_FOLD_STATE } from './fold-state'
 
 function Folded({ level }: { level: FoldLevel }) {
@@ -35,30 +36,6 @@ describe('FoldBody', () => {
 
     await userEvent.click(screen.getByRole('button', { expanded: true }))
     expect(screen.queryByText('Opened to Full · click again to fold')).toBeNull()
-  })
-
-  it('shows the source paragraph under a written line, underlining the sentences it rests on', () => {
-    render(<Folded level="takeaway" />)
-    const line = screen.getByRole('button', {
-      name: /open/i,
-      description: /Written from these sentences/
-    })
-    expect(line).toHaveTextContent('The team plan barely sold')
-
-    const note = screen.getAllByRole('note')[0]
-    expect(note).toHaveTextContent(
-      'First sentence here. Second sentence here. Third sentence here.'
-    )
-    // p1 rests on sentence 1 only.
-    expect(screen.getByText('Second sentence here.', { selector: 'span' })).toHaveClass('underline')
-    expect(screen.getByText('First sentence here.', { selector: 'span' })).not.toHaveClass(
-      'underline'
-    )
-  })
-
-  it("offers no evidence for the author's own words", () => {
-    render(<Folded level="brief" />)
-    expect(screen.queryByRole('note')).toBeNull()
   })
 
   it('renders Brief inline Markdown as elements, never as HTML or a link', () => {
@@ -112,55 +89,121 @@ describe('FoldBody', () => {
 })
 
 describe('FoldLevelControl', () => {
+  const HINT_KEY = 'memry:note-fold-hint-seen'
+
+  beforeEach(() => localStorage.setItem(HINT_KEY, '1'))
+
   function renderControl(overrides: Partial<Parameters<typeof FoldLevelControl>[0]> = {}) {
     const props = {
       layers: layers(),
       requested: 'full' as FoldLevel,
       level: 'full' as FoldLevel,
       onSelectLevel: vi.fn(),
-      onRetry: vi.fn(),
       ...overrides
     }
     render(<FoldLevelControl {...props} />)
     return props
   }
 
-  it('reads as the word count at Full', () => {
-    renderControl()
-    expect(screen.getByTestId('note-word-count')).toHaveTextContent('1,104 words')
+  it('is an icon at Full and folds to Brief on click', async () => {
+    const props = renderControl()
+    const control = screen.getByRole('button', { name: 'Fold note' })
+    expect(control).toHaveTextContent('')
+    await userEvent.click(control)
+    expect(props.onSelectLevel).toHaveBeenCalledWith('brief')
   })
 
-  it('names the level and its count when folded', () => {
-    renderControl({ requested: 'brief', level: 'brief' })
-    expect(screen.getByTestId('note-word-count')).toHaveTextContent('Brief · 212 words')
+  it('names the level when folded and returns to Full on click', async () => {
+    const props = renderControl({ requested: 'key', level: 'key' })
+    expect(screen.getByTestId('note-fold-level')).toHaveTextContent('Key')
+    await userEvent.click(screen.getByRole('button', { name: /Folded to Key/ }))
+    expect(props.onSelectLevel).toHaveBeenCalledWith('full')
   })
 
-  it('lists the levels with their counts and names the agent once', async () => {
+  it('shows the word count and shortcut in the tooltip', async () => {
     renderControl()
-    await userEvent.click(screen.getByRole('button', { name: 'Fold level' }))
-    expect(screen.getByRole('menuitemradio', { name: /Takeaway/ })).toHaveTextContent('46')
+    await userEvent.hover(screen.getByRole('button', { name: 'Fold note' }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Fold note · 1,104 words')
+  })
+
+  it('hints once on a long note and stays quiet after it is dismissed', async () => {
+    localStorage.removeItem(HINT_KEY)
+    const { unmount } = render(
+      <FoldLevelControl layers={layers()} requested="full" level="full" onSelectLevel={vi.fn()} />
+    )
+    expect(await screen.findByTestId('note-fold-hint')).toHaveTextContent('Long note? Skim it.')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Got it' }))
+    expect(screen.queryByTestId('note-fold-hint')).toBeNull()
+
+    unmount()
+    render(
+      <FoldLevelControl layers={layers()} requested="full" level="full" onSelectLevel={vi.fn()} />
+    )
+    expect(screen.queryByTestId('note-fold-hint')).toBeNull()
+  })
+
+  it('counts folding as having seen the hint', async () => {
+    localStorage.removeItem(HINT_KEY)
+    renderControl()
+    await userEvent.click(await screen.findByRole('button', { name: 'Fold note' }))
+    expect(localStorage.getItem(HINT_KEY)).toBe('1')
+  })
+})
+
+describe('FoldPill', () => {
+  function renderPill(overrides: Partial<Parameters<typeof FoldPill>[0]> = {}) {
+    const props = {
+      layers: layers(),
+      level: 'brief' as const,
+      openCount: 0,
+      onSelectLevel: vi.fn(),
+      onRetry: vi.fn(),
+      onCopy: vi.fn().mockResolvedValue(undefined),
+      ...overrides
+    }
+    render(<FoldPill {...props} />)
+    return props
+  }
+
+  it('switches level with one click and marks the current one', async () => {
+    const props = renderPill()
+    expect(screen.getByRole('button', { name: 'Brief' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'Takeaway' }))
+    expect(props.onSelectLevel).toHaveBeenCalledWith('takeaway')
+  })
+
+  it('names the agent once on a written level', () => {
+    renderPill({ level: 'key' })
     expect(screen.getAllByText('Written by Claude Code')).toHaveLength(1)
   })
 
-  it('greys a level still being written and lets it be chosen', async () => {
-    const props = renderControl({ layers: layers({ ready: [], status: 'writing' }) })
-    await userEvent.click(screen.getByRole('button', { name: 'Fold level' }))
-    const key = screen.getByRole('menuitemradio', { name: /^Key/ })
-    expect(key).toHaveTextContent('Writing…')
-    await userEvent.click(key)
+  it('lets a level still being written be chosen and says it is writing', async () => {
+    const props = renderPill({ layers: layers({ ready: [], status: 'writing' }) })
+    expect(screen.getByText('Writing…')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Key' }))
     expect(props.onSelectLevel).toHaveBeenCalledWith('key')
   })
 
-  it('offers only Full and Brief when there is no agent', async () => {
-    renderControl({ layers: layers({ ready: [], status: 'no_agent', agent: null }) })
-    await userEvent.click(screen.getByRole('button', { name: 'Fold level' }))
-    expect(screen.getAllByRole('menuitemradio')).toHaveLength(2)
+  it('dims the written levels and says why when there is no agent', () => {
+    renderPill({ layers: layers({ ready: [], status: 'no_agent', agent: null }) })
+    expect(screen.getByText('No agent connected · Settings → AI')).toBeInTheDocument()
+    for (const name of ['Key', 'Takeaway', 'Topic']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+    expect(screen.getByRole('button', { name: 'Full' })).toBeEnabled()
+  })
+
+  it('copies the folded view and says so', async () => {
+    const props = renderPill()
+    await userEvent.click(screen.getByRole('button', { name: 'Copy as text' }))
+    expect(props.onCopy).toHaveBeenCalledOnce()
+    expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument()
   })
 
   it('offers a retry after a failed run', async () => {
-    const props = renderControl({ layers: layers({ ready: [], status: 'failed' }) })
-    await userEvent.click(screen.getByRole('button', { name: 'Fold level' }))
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Last run failed · Retry' }))
+    const props = renderPill({ layers: layers({ ready: [], status: 'failed' }) })
+    await userEvent.click(screen.getByRole('button', { name: 'Last run failed · Retry' }))
     expect(props.onRetry).toHaveBeenCalledOnce()
   })
 })

@@ -2319,7 +2319,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     useImageHoverMenu(containerRef, resolveImageFromElement)
 
   // Writing tools: the note page's session decorates this editor and owns
-  // alternatives, ghosts, overflow and the Lab (see writing-tools-session.ts).
+  // alternatives, ghosts and overflow (see writing-tools-session.ts).
   useEffect(() => {
     if (!writingTools || !yjsDoc) return
     const container = editorContainerRef.current

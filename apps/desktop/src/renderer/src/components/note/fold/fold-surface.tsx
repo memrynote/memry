@@ -12,6 +12,7 @@ import {
   placeCaretAtEnd,
   placeCaretInParagraph
 } from './fold-caret'
+import { foldedMarkdown } from './fold-copy'
 import { FoldBody } from './fold-overlay'
 import { FoldPill } from './fold-pill'
 import { escapeHasEffect } from './fold-state'
@@ -53,7 +54,19 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
   const inActiveTab = tabId === null || tabId === activeTabId
   const rootRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLElement>(null)
-  const { layers, folded, surfaces, state, view, level, dispatch, step, setLevel, foldable } = fold
+  const {
+    layers,
+    folded,
+    surfaces,
+    state,
+    view,
+    level,
+    dispatch,
+    step,
+    setLevel,
+    retry,
+    foldable
+  } = fold
 
   // ⌘/Ctrl + scroll and trackpad pinch step levels inside the note area only.
   useEffect(() => {
@@ -85,6 +98,22 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [folded, inActiveTab, state, dispatch])
+
+  // ⌘C over a fold with nothing selected copies what the reader sees, as Markdown the
+  // editor parses back into blocks. A real selection copies normally.
+  useEffect(() => {
+    if (!folded || !view) return
+    const onCopy = (event: ClipboardEvent): void => {
+      const target = event.target instanceof Node ? event.target : null
+      const overFold = target === document.body || overlayRef.current?.contains(target)
+      if (!overFold || !inActiveTab) return
+      if (window.getSelection()?.toString()) return
+      event.clipboardData?.setData('text/plain', foldedMarkdown(view))
+      event.preventDefault()
+    }
+    document.addEventListener('copy', onCopy)
+    return () => document.removeEventListener('copy', onCopy)
+  }, [folded, view, inActiveTab])
 
   // Folding takes focus off the editor so keys reach the overlay.
   useEffect(() => {
@@ -145,20 +174,23 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
             setLevel('full')
           }}
           className={cn(
-            'flex min-h-[60vh] flex-col bg-background outline-none',
+            'flex min-h-screen flex-col bg-background outline-none',
             surfaces.incoming === 'overlay' && cn('relative z-10', INCOMING),
             surfaces.incoming === 'editor' && 'absolute inset-x-0 top-0 z-0'
           )}
           data-testid="note-fold-overlay"
         >
           <FoldBody view={view} dispatch={dispatch} />
-          <FoldPill
-            level={level}
-            agent={layers?.agent ?? null}
-            sectionCount={view.sectionCount}
-            openCount={state.opened.size}
-            onFull={() => setLevel('full')}
-          />
+          {layers && (
+            <FoldPill
+              layers={layers}
+              level={level}
+              openCount={state.opened.size}
+              onSelectLevel={setLevel}
+              onRetry={retry}
+              onCopy={() => navigator.clipboard.writeText(foldedMarkdown(view))}
+            />
+          )}
         </section>
       )}
       <div

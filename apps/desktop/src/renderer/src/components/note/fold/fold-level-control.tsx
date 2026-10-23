@@ -1,22 +1,12 @@
-import { useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { FoldLayers, FoldLevel } from '@memry/contracts/note-fold'
-import type { CommandId } from '@memry/contracts/commands'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { ChevronDown } from '@/lib/icons'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { bindingParts, isMac } from '@/lib/shortcut-catalog'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { cn } from '@/lib/utils'
-import { FOLD_ORDER, levelAvailability, levelWordCount } from './fold-display'
+import { levelWordCount } from './fold-display'
+import { useFoldHint } from './use-fold-hint'
 
 export interface FoldLevelControlProps {
   layers: FoldLayers
@@ -25,153 +15,125 @@ export interface FoldLevelControlProps {
   /** The level on screen: Brief while the requested one is still being written. */
   level: FoldLevel
   onSelectLevel: (level: FoldLevel) => void
-  onRetry: () => void
   disabled?: boolean
 }
 
-const LEVEL_COMMAND = {
-  full: 'fold.full',
-  brief: 'fold.brief',
-  key: 'fold.key',
-  takeaway: 'fold.takeaway',
-  topic: 'fold.topic'
-} as const satisfies Record<FoldLevel, CommandId>
-
-const WRITTEN_LEVELS: readonly FoldLevel[] = ['key', 'takeaway', 'topic']
-
-function ShortcutKeys({ level }: { level: FoldLevel }) {
-  const binding = useShortcutBinding(LEVEL_COMMAND[level])
+function FoldGlyph() {
   return (
-    <kbd className="rounded-sm border border-border px-1.5 py-px font-mono text-[11px] leading-3.5 text-text-secondary">
-      {bindingParts(binding).join(isMac ? '' : '+')}
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      className="shrink-0 text-current"
+    >
+      <path
+        d="M2 3.5H12M2 7H9M2 10.5H6"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function Keys({ parts, className }: { parts: string[]; className?: string }) {
+  return (
+    <kbd
+      className={cn(
+        'rounded-sm border px-1.5 py-px font-mono text-[11px] leading-3.5 tabular-nums',
+        className
+      )}
+    >
+      {parts.join(isMac ? '' : '+')}
     </kbd>
   )
 }
 
-function LevelRow({
-  layers,
-  level,
-  className
-}: {
-  layers: FoldLayers
-  level: FoldLevel
-  className?: string
-}) {
-  const { t } = useT('notes')
-  const writing = levelAvailability(layers, level) === 'writing'
-  return (
-    <DropdownMenuRadioItem
-      value={level}
-      className={cn('h-10 gap-2.5 py-0', className)}
-      data-testid={`note-fold-level-${level}`}
-    >
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className={cn('text-[13px] font-medium leading-4', writing && 'text-text-tertiary')}>
-          {t(`fold.level.${level}`)}
-        </span>
-        <span className="text-[11px] leading-3.5 text-text-tertiary">
-          {t(`fold.menuDescription.${level}`)}
-        </span>
-      </span>
-      <span className="w-14 text-end font-mono text-[11px] leading-3.5 tabular-nums text-text-secondary">
-        {writing ? (
-          <span className="text-text-tertiary">{t('fold.chrome.writing')}</span>
-        ) : (
-          levelWordCount(layers, level).toLocaleString()
-        )}
-      </span>
-      <ShortcutKeys level={level} />
-    </DropdownMenuRadioItem>
-  )
-}
-
 /**
- * The note's word count, which is also its fold level menu. At Full it reads
- * "1,104 words"; folded it reads "Brief · 212 words". Notes too short to fold
- * never render this.
+ * The note chrome's fold control, only on notes long enough to fold. At Full it
+ * is an icon: a click folds to Brief, and the tooltip carries the word count and
+ * shortcut. Folded it reads "icon + level" and a click returns to Full. The
+ * other levels are the pill's job. The first reader to open a long note gets a
+ * one-time hint, since an icon alone does not say a note can fold.
  */
 export function FoldLevelControl({
   layers,
   requested,
   level,
   onSelectLevel,
-  onRetry,
   disabled
 }: FoldLevelControlProps) {
   const { t } = useT('notes')
-  const [open, setOpen] = useState(false)
-  // A level chosen by shortcut or wheel must not leave the menu covering the note.
-  const [seenLevel, setSeenLevel] = useState(requested)
-  if (seenLevel !== requested) {
-    setSeenLevel(requested)
-    setOpen(false)
-  }
+  const briefBinding = useShortcutBinding('fold.brief')
+  const [hintDue, dismissHint] = useFoldHint()
+  const folded = level !== 'full'
+  const levelName = t(`fold.level.${level}`)
   const words = t('fold.chrome.words', { count: levelWordCount(layers, level) })
-  const label =
-    level === 'full' ? words : t('fold.chrome.folded', { level: t(`fold.level.${level}`), words })
-  // With no agent there is nothing to write: the menu offers Full and Brief only.
-  const showWritten =
-    layers.status === 'writing' || layers.status === 'ready' || layers.status === 'failed'
+  const label = folded ? t('fold.chrome.unfold', { level: levelName }) : t('fold.chrome.fold')
 
   return (
-    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={t('fold.chrome.menu')}
-          title={t('fold.chrome.menu')}
-          data-testid="note-fold-control"
-          className={cn(
-            'me-1 flex h-6.5 items-center gap-1.5 rounded-md px-2 text-xs tabular-nums outline-none transition-colors',
-            'hover:bg-surface-active focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-surface-active',
-            'disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none',
-            level === 'full' ? 'text-text-secondary' : 'font-medium text-foreground'
-          )}
+    <TooltipProvider delayDuration={300}>
+      <Popover
+        open={hintDue && !folded && !disabled}
+        onOpenChange={(open) => !open && dismissHint()}
+      >
+        <Tooltip>
+          <PopoverAnchor asChild>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={disabled}
+                aria-label={label}
+                aria-pressed={folded}
+                data-testid="note-fold-control"
+                onClick={() => {
+                  dismissHint()
+                  onSelectLevel(requested === 'full' ? 'brief' : 'full')
+                }}
+                className={cn(
+                  'me-1 flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-xs outline-none transition-colors',
+                  'hover:bg-surface-active focus-visible:ring-1 focus-visible:ring-ring',
+                  'disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none',
+                  folded ? 'font-medium text-foreground' : 'text-text-secondary'
+                )}
+              >
+                <FoldGlyph />
+                {folded && <span data-testid="note-fold-level">{levelName}</span>}
+              </button>
+            </TooltipTrigger>
+          </PopoverAnchor>
+          <TooltipContent side="bottom" align="end" className="flex items-center gap-2">
+            {folded ? `${levelName} · ${words}` : `${t('fold.chrome.fold')} · ${words}`}
+            {!folded && <Keys parts={bindingParts(briefBinding)} className="border-white/30" />}
+          </TooltipContent>
+        </Tooltip>
+        <PopoverContent
+          align="end"
+          className="flex w-60 flex-col gap-2.5 p-3"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          data-testid="note-fold-hint"
         >
-          <span data-testid="note-word-count">{label}</span>
-          <ChevronDown className="size-2.5 text-text-secondary" aria-hidden />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-75">
-        <DropdownMenuRadioGroup
-          value={requested}
-          onValueChange={(value) => onSelectLevel(value as FoldLevel)}
-        >
-          {FOLD_ORDER.filter((entry) => !WRITTEN_LEVELS.includes(entry)).map((entry) => (
-            <LevelRow key={entry} layers={layers} level={entry} />
-          ))}
-          {showWritten && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="pb-0.5 pt-1 text-[11px] font-medium text-text-tertiary">
-                {t('fold.chrome.writtenBy', {
-                  agent: layers.agent ?? t('fold.chrome.unknownAgent')
-                })}
-              </DropdownMenuLabel>
-              {WRITTEN_LEVELS.map((entry) => (
-                <LevelRow key={entry} layers={layers} level={entry} />
-              ))}
-            </>
-          )}
-        </DropdownMenuRadioGroup>
-        {(layers.status === 'off' || layers.status === 'no_agent') && (
-          <>
-            <DropdownMenuSeparator />
-            <p className="px-2 py-1.5 text-[11px] leading-4 text-text-tertiary">
-              {t(layers.status === 'off' ? 'fold.chrome.hintOff' : 'fold.chrome.hintNoAgent')}
-            </p>
-          </>
-        )}
-        {layers.status === 'failed' && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onRetry} className="text-[12px] text-text-secondary">
-              {t('fold.chrome.retry')}
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[13px] font-semibold leading-4">{t('fold.hint.title')}</p>
+            <p className="text-xs leading-4 text-text-secondary">{t('fold.hint.body')}</p>
+          </div>
+          <div className="flex items-center justify-between">
+            <Keys
+              parts={bindingParts(briefBinding)}
+              className="border-border text-text-secondary"
+            />
+            <button
+              type="button"
+              onClick={dismissHint}
+              className="rounded-sm text-xs font-medium text-text-secondary outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {t('fold.hint.dismiss')}
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
   )
 }

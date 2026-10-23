@@ -63,8 +63,6 @@ export interface FoldLine {
   /** Inline Markdown of the same line, for the author's Brief; null when it is plain (written lines, fallbacks). */
   md: string | null
   source: LineSource
-  /** Sentence indices a written line rests on; empty for the author's own words. */
-  evidence: readonly number[]
 }
 
 export interface ParagraphView {
@@ -74,8 +72,6 @@ export interface ParagraphView {
   tokens: readonly MorphToken[] | null
   /** Blocks the fold left out right after this paragraph, as a quiet marker. */
   skippedAfter: readonly FoldSkipped[]
-  /** Source sentences, for the evidence popover. */
-  sentences: readonly string[]
   fullText: string
   open: boolean
 }
@@ -108,7 +104,6 @@ export type FoldedItem =
 export interface FoldedView {
   level: FoldLevel
   items: readonly FoldedItem[]
-  sectionCount: number
 }
 
 const joinerFor = (language: string): string => (isCjk(language) ? '' : ' ')
@@ -119,15 +114,14 @@ function briefLine(paragraph: FoldParagraph, language: string): FoldLine {
     .sort((a, b) => a - b)
   const joiner = joinerFor(language)
   if (indices.length === 0) {
-    return { text: paragraph.text, md: null, source: 'author', evidence: [] }
+    return { text: paragraph.text, md: null, source: 'author' }
   }
   // Markdown is aligned 1:1 with the sentences; a snapshot that is not renders plain.
   const aligned = paragraph.sentencesMd.length === paragraph.sentences.length
   return {
     text: indices.map((index) => paragraph.sentences[index]).join(joiner),
     md: aligned ? indices.map((index) => paragraph.sentencesMd[index]).join(joiner) : null,
-    source: 'author',
-    evidence: []
+    source: 'author'
   }
 }
 
@@ -137,18 +131,17 @@ export function paragraphLine(
   level: FoldLevel,
   language: string
 ): FoldLine {
-  if (level === 'full') return { text: paragraph.text, md: null, source: 'author', evidence: [] }
+  if (level === 'full') return { text: paragraph.text, md: null, source: 'author' }
   if (level === 'key' && paragraph.key) {
     const { takeaway, reason } = paragraph.key
     return {
       text: [takeaway, reason].filter(Boolean).join(joinerFor(language)),
       md: null,
-      source: 'written',
-      evidence: paragraph.evidence
+      source: 'written'
     }
   }
   if (level === 'takeaway' && paragraph.takeaway) {
-    return { text: paragraph.takeaway, md: null, source: 'written', evidence: paragraph.evidence }
+    return { text: paragraph.takeaway, md: null, source: 'written' }
   }
   return briefLine(paragraph, language)
 }
@@ -193,7 +186,6 @@ function sectionView(
         line: paragraphLine(paragraph, open ? 'full' : level, language),
         tokens: open ? null : paragraphTokens(paragraph, level, joinerFor(language)),
         skippedAfter: [],
-        sentences: paragraph.sentences,
         fullText: paragraph.text,
         open
       })
@@ -253,21 +245,7 @@ export function buildFoldedView(
       section: sectionView(section, level, language, openParagraphs, level === 'topic')
     }
   })
-  return { level, items, sectionCount: sections.length }
-}
-
-export interface EvidenceSegment {
-  text: string
-  cited: boolean
-}
-
-/** Source sentences of a paragraph, marking the ones a written line rests on. Out-of-range indices are ignored. */
-export function evidenceSegments(
-  sentences: readonly string[],
-  evidence: readonly number[]
-): EvidenceSegment[] {
-  const cited = new Set(evidence)
-  return sentences.map((text, index) => ({ text, cited: cited.has(index) }))
+  return { level, items }
 }
 
 /** The source paragraph behind a hash, for putting the caret back on it. */

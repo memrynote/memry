@@ -1661,11 +1661,8 @@
     "chrome": {
       "alternatives": "Alternatives",
       "overflow": "Overflow",
-      "lab": "Lab",
       "menu": "Writing tools",
-      "close": "Close writing tools",
-      "showWordCount": "Show word count",
-      "words": "{count, plural, one {# word} other {# words}}"
+      "close": "Close writing tools"
     },
     "menu": {
       "aria": "Editor actions",
@@ -1708,35 +1705,6 @@
       "copy": "Copy",
       "copied": "Copied",
       "delete": "Delete"
-    },
-    "lab": {
-      "railAria": "Lab",
-      "check": "Check",
-      "convoluted": "Convoluted sentences",
-      "tone": "Words that don’t fit the tone",
-      "run": "Run",
-      "running": "Running…",
-      "results": "Results",
-      "noResults": "Nothing flagged.",
-      "trim": "Trim",
-      "slight": "Slight trim",
-      "tighten": "Tighten",
-      "sharper": "Even sharper",
-      "half": "Cut in half",
-      "stop": "Stop",
-      "checkFailed": "The check could not run",
-      "trimFailed": "Could not suggest cuts",
-      "noCuts": "Nothing to cut",
-      "emptyNote": "Write something first"
-    },
-    "trimReview": {
-      "aria": "Review cuts",
-      "position": "Cut {position} of {total}",
-      "previous": "Previous cut",
-      "next": "Next cut",
-      "keep": "Keep",
-      "cut": "Cut",
-      "cutAll": "Cut all"
     }
   },
   "vaultLock": {
@@ -2169,36 +2137,28 @@
       "takeaway": "Takeaway",
       "topic": "Topic"
     },
-    "menuDescription": {
-      "full": "Every word",
-      "brief": "Key sentences, as written",
-      "key": "Each point and its reason",
-      "takeaway": "One line per paragraph",
-      "topic": "A map of the sections"
-    },
     "chrome": {
-      "menu": "Fold level",
-      "folded": "{level} · {words}",
+      "fold": "Fold note",
+      "unfold": "Folded to {level}. Show full text",
       "words": "{count, plural, one {# word} other {# words}}",
       "writing": "Writing…",
       "writtenBy": "Written by {agent}",
       "retry": "Last run failed · Retry",
       "retryAction": "Retry",
-      "hintOff": "Key, Takeaway and Topic are written by your agent. Turn on Summarize long notes in Settings → AI.",
-      "hintNoAgent": "No agent found. Connect Claude, Codex or Antigravity in Settings → AI → Agents to get Key, Takeaway and Topic.",
+      "captionOff": "Turn on Summarize long notes in Settings → AI",
+      "captionNoAgent": "No agent connected · Settings → AI",
       "unknownAgent": "AI"
     },
+    "hint": {
+      "title": "Long note? Skim it.",
+      "body": "Fold it to its key sentences, then open only the paragraph you need.",
+      "dismiss": "Got it"
+    },
     "pill": {
-      "description": {
-        "full": "Every word",
-        "brief": "The author’s key sentences",
-        "key": "Written by {agent} from your sentences",
-        "takeaway": "Written by {agent}",
-        "topic": "A map of {count, plural, one {# section} other {# sections}}"
-      },
       "opened": "{count, plural, one {# paragraph open} other {# paragraphs open}}",
       "escape": "esc",
-      "fullText": "Full text",
+      "copy": "Copy as text",
+      "copied": "Copied",
       "aria": "Folded view"
     },
     "view": {
@@ -2209,7 +2169,6 @@
       "unfoldSection": "Unfold the section {heading}",
       "jumpToParagraph": "Show this paragraph in full: {topic}",
       "untitledSection": "Untitled",
-      "evidenceTitle": "Written from these sentences",
       "skipped": {
         "code": "… {count, plural, one {# code block} other {# code blocks}}",
         "table": "… {count, plural, one {# table} other {# tables}}",

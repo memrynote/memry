@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { FoldLayers } from '@memry/contracts/note-fold'
+import type { FoldLayers, FoldLevel } from '@memry/contracts/note-fold'
 import { layers } from './fold-fixtures'
 import { FoldLevelControl } from './fold-level-control'
 import { FoldSurface } from './fold-surface'
@@ -27,9 +27,11 @@ function serve(snapshot: FoldLayers): void {
   vi.mocked(window.api.noteFold.get).mockResolvedValue(snapshot)
 }
 
-async function chooseLevel(name: RegExp): Promise<void> {
-  await userEvent.click(await screen.findByRole('button', { name: 'Fold level' }))
-  await userEvent.click(screen.getByRole('menuitemradio', { name }))
+/** Folds from the chrome control (to Brief), then picks the level on the pill. */
+async function chooseLevel(level: FoldLevel): Promise<void> {
+  await userEvent.click(await screen.findByTestId('note-fold-control'))
+  if (level !== 'brief')
+    await userEvent.click(await screen.findByTestId(`note-fold-level-${level}`))
 }
 
 function TypingHost({ editor }: { editor: EditorHandle }) {
@@ -83,6 +85,8 @@ function fakeEditor(): EditorHandle & { calls: string[] } {
 describe('FoldSurface', () => {
   beforeEach(() => {
     vi.mocked(window.api.noteFold.get).mockReset()
+    // The first-note hint has its own test; it must not sit over these.
+    localStorage.setItem('memry:note-fold-hint-seen', '1')
     Element.prototype.scrollIntoView = vi.fn()
   })
 
@@ -90,14 +94,14 @@ describe('FoldSurface', () => {
     serve(layers({ status: 'short', totalWords: 90 }))
     render(<Host wordCount={90} />)
     await waitFor(() => expect(window.api.noteFold.get).toHaveBeenCalled())
-    expect(screen.queryByRole('button', { name: 'Fold level' })).toBeNull()
+    expect(screen.queryByTestId('note-fold-control')).toBeNull()
     expect(screen.queryByTestId('note-fold-overlay')).toBeNull()
   })
 
   it('opens at Full: the editor shows and no overlay covers it', async () => {
     serve(layers())
     render(<Host />)
-    await screen.findByRole('button', { name: 'Fold level' })
+    await screen.findByTestId('note-fold-control')
     expect(screen.getByTestId('editor')).toBeVisible()
     expect(screen.queryByTestId('note-fold-overlay')).toBeNull()
   })
@@ -105,10 +109,10 @@ describe('FoldSurface', () => {
   it('folds over the editor without unmounting it, and Esc returns to Full', async () => {
     serve(layers())
     render(<Host />)
-    await chooseLevel(/^Brief/)
+    await chooseLevel('brief')
 
     expect(await screen.findByTestId('note-fold-overlay')).toBeInTheDocument()
-    expect(screen.getByTestId('note-word-count')).toHaveTextContent('Brief · 212 words')
+    expect(screen.getByTestId('note-fold-level')).toHaveTextContent('Brief')
     // The same editor node: folding never touches the document or its view.
     expect(screen.getByTestId('editor')).toBeInTheDocument()
 
@@ -120,7 +124,7 @@ describe('FoldSurface', () => {
   it('Esc closes an opened paragraph before it leaves the fold', async () => {
     serve(layers())
     render(<Host />)
-    await chooseLevel(/^Takeaway/)
+    await chooseLevel('takeaway')
     await userEvent.click(await screen.findByText('Pro stays at $8'))
     expect(screen.getByText('Opened to Full · click again to fold')).toBeInTheDocument()
 
@@ -134,7 +138,7 @@ describe('FoldSurface', () => {
   it('returns to Full when the reader starts typing over the fold', async () => {
     serve(layers())
     render(<Host />)
-    await chooseLevel(/^Brief/)
+    await chooseLevel('brief')
     const overlay = await screen.findByTestId('note-fold-overlay')
 
     fireEvent.keyDown(overlay, { key: 'a' })
@@ -149,7 +153,7 @@ describe('FoldSurface', () => {
       return () => {}
     })
     render(<Host />)
-    await chooseLevel(/^Key/)
+    await chooseLevel('key')
     expect(await screen.findByTestId('note-fold-body')).toHaveAttribute('data-fold-level', 'brief')
 
     serve(layers())
@@ -162,7 +166,7 @@ describe('FoldSurface', () => {
   it('steps one level per ctrl+scroll gesture and leaves plain scrolling alone', async () => {
     serve(layers())
     render(<Host />)
-    await screen.findByRole('button', { name: 'Fold level' })
+    await screen.findByTestId('note-fold-control')
     const editor = screen.getByTestId('editor')
 
     expect(fireEvent.wheel(editor, { deltaY: 100 })).toBe(true)
@@ -173,21 +177,29 @@ describe('FoldSurface', () => {
     expect(await screen.findByTestId('note-fold-body')).toHaveAttribute('data-fold-level', 'brief')
   })
 
-  it('closes the level menu when a shortcut or wheel changes the level', async () => {
+  it('copies the folded view as Markdown on ⌘C, so the editor can paste it back as blocks', async () => {
     serve(layers())
     render(<Host />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Fold level' }))
-    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await chooseLevel('takeaway')
+    await screen.findByTestId('note-fold-overlay')
 
-    fireEvent.wheel(screen.getByTestId('editor'), { deltaY: 100, ctrlKey: true })
-    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    const setData = vi.fn()
+    const event = new Event('copy', { bubbles: true, cancelable: true })
+    Object.assign(event, { clipboardData: { setData } })
+    screen.getByTestId('note-fold-overlay').dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(setData).toHaveBeenCalledWith(
+      'text/plain',
+      expect.stringContaining('## Where we are\n\nThe team plan barely sold')
+    )
   })
 
   it('types the first character at the first paragraph on screen when none was touched', async () => {
     serve(layers())
     const editor = fakeEditor()
     render(<TypingHost editor={editor} />)
-    await chooseLevel(/^Brief/)
+    await chooseLevel('brief')
     const overlay = await screen.findByTestId('note-fold-overlay')
     // p1 is scrolled past; p2 is the first line in view.
     const onScreen = (hash: string, top: number): void => {
@@ -206,7 +218,7 @@ describe('FoldSurface', () => {
     serve(layers())
     const editor = fakeEditor()
     render(<TypingHost editor={editor} />)
-    await chooseLevel(/^Brief/)
+    await chooseLevel('brief')
     fireEvent.keyDown(await screen.findByTestId('note-fold-overlay'), { key: 'y' })
     await waitFor(() => expect(editor.calls).toEqual(['cursor:b3:end', 'insert:y']))
   })
@@ -215,7 +227,7 @@ describe('FoldSurface', () => {
     serve(layers())
     const editor = fakeEditor()
     render(<TypingHost editor={editor} />)
-    await chooseLevel(/^Takeaway/)
+    await chooseLevel('takeaway')
     await userEvent.click(await screen.findByText('Pro stays at $8'))
     fireEvent.keyDown(screen.getByTestId('note-fold-overlay'), { key: 'z' })
     await waitFor(() => expect(editor.calls).toEqual(['cursor:b2:end', 'insert:z']))

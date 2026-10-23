@@ -165,16 +165,9 @@ import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
-import {
-  TrimReviewBar,
-  WritingChrome,
-  WritingRail,
-  useWritingTools
-} from '@/components/note/writing-tools'
-import { useWordCountVisible } from '@/hooks/use-word-count-visible'
+import { WritingChrome, WritingRail, useWritingTools } from '@/components/note/writing-tools'
 import { FoldSurface } from '@/components/note/fold/fold-surface'
 import { useNoteFold } from '@/components/note/fold/use-note-fold'
-import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 import { useT } from '@memry/i18n/renderer'
 import { getTabIconForFileType } from '@memry/shared/file-types'
@@ -924,16 +917,10 @@ export function NotePage({ noteId }: NotePageProps) {
   const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
   const [reviewRailHidden, setReviewRailHidden] = useState(false)
 
-  // Writing tools: the side rail's Alternatives / Overflow / Lab modes, the
-  // live word count, and the editor right-click menu (see writing-tools/).
+  // Writing tools: the side rail's Alternatives / Overflow modes
+  // and the editor right-click menu (see writing-tools/).
   const { session: writingTools, snapshot: writingSnapshot } = useWritingTools()
-  const { enabled: aiEnabled } = useAISettingsContext()
-  const [wordCountVisible, toggleWordCount] = useWordCountVisible()
-  useEffect(() => {
-    writingTools.setWordCountEnabled(wordCountVisible)
-  }, [writingTools, wordCountVisible])
-  // The Lab needs AI; with AI off it is never shown, whatever was open.
-  const writingMode = writingSnapshot.mode === 'lab' && !aiEnabled ? null : writingSnapshot.mode
+  const writingMode = writingSnapshot.mode
 
   // An agent edit to this note is reviewed here, in place of the editor.
   const agentReviewTarget = useMemo(
@@ -1549,12 +1536,8 @@ export function NotePage({ noteId }: NotePageProps) {
         <WritingChrome
           mode={writingMode}
           onSelectMode={(mode) => writingTools.setMode(mode)}
-          aiEnabled={aiEnabled}
           alternativeCount={writingSnapshot.alternatives.length}
           overflowCount={writingSnapshot.overflow.length}
-          wordCountVisible={wordCountVisible}
-          wordCount={writingSnapshot.wordCount}
-          onToggleWordCount={toggleWordCount}
           fold={fold.control}
           disabled={isDeleted || Boolean(agentReview)}
         />
@@ -1798,12 +1781,7 @@ export function NotePage({ noteId }: NotePageProps) {
       contentWidth={noteContentWidth ?? undefined}
       sideRail={
         writingMode && !isLargeFile && !agentReview ? (
-          <WritingRail
-            mode={writingMode}
-            session={writingTools}
-            snapshot={writingSnapshot}
-            aiEnabled={aiEnabled}
-          />
+          <WritingRail mode={writingMode} session={writingTools} snapshot={writingSnapshot} />
         ) : hasReviewContent ? (
           <ReviewRail review={review} targetId={noteId} />
         ) : undefined
@@ -1823,22 +1801,17 @@ export function NotePage({ noteId }: NotePageProps) {
       onRailHiddenChange={setReviewRailHidden}
       marqueeZoneRef={setMarqueeZoneEl}
       topBar={
-        <>
-          <FindBar
-            isOpen={findInPage.isOpen}
-            query={findInPage.query}
-            matchCount={findInPage.matchCount}
-            currentIndex={findInPage.currentIndex}
-            inputRef={findInPage.inputRef}
-            onQueryChange={findInPage.setQuery}
-            onNext={findInPage.next}
-            onPrev={findInPage.prev}
-            onClose={findInPage.close}
-          />
-          {writingSnapshot.lab.trim && (
-            <TrimReviewBar session={writingTools} trim={writingSnapshot.lab.trim} />
-          )}
-        </>
+        <FindBar
+          isOpen={findInPage.isOpen}
+          query={findInPage.query}
+          matchCount={findInPage.matchCount}
+          currentIndex={findInPage.currentIndex}
+          inputRef={findInPage.inputRef}
+          onQueryChange={findInPage.setQuery}
+          onNext={findInPage.next}
+          onPrev={findInPage.prev}
+          onClose={findInPage.close}
+        />
       }
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}

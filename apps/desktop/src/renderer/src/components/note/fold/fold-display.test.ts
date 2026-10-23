@@ -5,7 +5,6 @@ import {
   buildFoldedView,
   chipLabel,
   effectiveLevel,
-  evidenceSegments,
   isFoldable,
   levelAvailability,
   paragraphLine,
@@ -61,8 +60,7 @@ describe('paragraph lines', () => {
     expect(line).toEqual({
       text: 'First sentence here. Third sentence here.',
       md: 'First sentence here. Third sentence here.',
-      source: 'author',
-      evidence: []
+      source: 'author'
     })
   })
 
@@ -84,13 +82,12 @@ describe('paragraph lines', () => {
     expect(line.text).toBe('Only text.')
   })
 
-  it('Key is the written point and its reason, resting on the evidence', () => {
+  it('Key is the written point and its reason', () => {
     const [p1] = layers().sections[0].paragraphs
     expect(paragraphLine(p1, 'key', 'en')).toEqual({
       text: 'The team plan barely sold. Buyers wanted device sync.',
       md: null,
-      source: 'written',
-      evidence: [1]
+      source: 'written'
     })
   })
 
@@ -119,7 +116,6 @@ describe('folded view', () => {
       'Pro stays at $8'
     ])
     expect(second.heading).toBeNull()
-    expect(view.sectionCount).toBe(2)
   })
 
   it('opens only the clicked paragraph to its full text', () => {
@@ -228,15 +224,5 @@ describe('skipped blocks', () => {
     const unfolded = sections(buildFoldedView(note, 'topic', none, new Set(['s1'])).items)[0]
     expect(unfolded.paragraphs.every((p) => p.skippedAfter.length === 0)).toBe(true)
     expect(buildFoldedView(note, 'topic', none, none).items[0].kind).toBe('card')
-  })
-})
-
-describe('evidence', () => {
-  it('marks the cited sentences and ignores out-of-range indices', () => {
-    expect(evidenceSegments(['A.', 'B.', 'C.'], [1, 9])).toEqual([
-      { text: 'A.', cited: false },
-      { text: 'B.', cited: true },
-      { text: 'C.', cited: false }
-    ])
   })
 })

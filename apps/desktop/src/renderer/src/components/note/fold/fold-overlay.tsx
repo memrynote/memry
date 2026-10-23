@@ -1,9 +1,8 @@
-import { Fragment, useEffect, useId, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import type { FoldLevel, FoldSkipped } from '@memry/contracts/note-fold'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import {
-  evidenceSegments,
   type FoldedView,
   type ParagraphView,
   type SectionView,
@@ -18,43 +17,6 @@ const HEADING_CLASS =
 const FOCUS_CLASS = 'outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 type Dispatch = (action: FoldAction) => void
-
-/**
- * The source paragraph under a written line, with the sentences the line rests
- * on underlined. Absolutely placed so revealing it never moves the lines
- * around it; it shows while the line is hovered or holds focus.
- */
-function Evidence({ paragraph, id }: { paragraph: ParagraphView; id: string }) {
-  const { t } = useT('notes')
-  return (
-    <div
-      id={id}
-      role="note"
-      className={cn(
-        'pointer-events-none invisible absolute inset-x-0 top-full z-20 -mt-0.5 rounded-lg border border-border bg-background px-3.5 py-2.5 text-[13px] leading-5 opacity-0 shadow-sm',
-        'transition-[opacity,visibility] duration-150 motion-reduce:transition-none',
-        'group-hover/line:pointer-events-auto group-hover/line:visible group-hover/line:opacity-100 group-hover/line:delay-200',
-        'group-focus-within/line:pointer-events-auto group-focus-within/line:visible group-focus-within/line:opacity-100'
-      )}
-    >
-      <p className="mb-1.5 text-[11px] text-text-secondary">{t('fold.view.evidenceTitle')}</p>
-      <p>
-        {evidenceSegments(paragraph.sentences, paragraph.line.evidence).map((segment, index) => (
-          <span
-            key={index}
-            className={cn(
-              segment.cited
-                ? 'text-foreground underline decoration-text-tertiary decoration-1 underline-offset-4'
-                : 'text-text-secondary'
-            )}
-          >
-            {segment.text}{' '}
-          </span>
-        ))}
-      </p>
-    </div>
-  )
-}
 
 /** Where the fold left blocks out: a quiet line, never interactive. */
 function SkippedMarkers({ markers }: { markers: readonly FoldSkipped[] }) {
@@ -81,8 +43,6 @@ function ParagraphLine({
 }) {
   const { t } = useT('notes')
   const written = paragraph.line.source === 'written' && !paragraph.open
-  const hasEvidence = written && paragraph.line.evidence.length > 0
-  const evidenceId = useId()
 
   const button = (
     <button
@@ -92,7 +52,6 @@ function ParagraphLine({
         paragraph.open ? t('fold.view.paragraphFold') : t('fold.view.paragraphOpenAction')
       }
       onClick={() => dispatch({ type: 'toggleParagraph', hash: paragraph.hash })}
-      aria-describedby={hasEvidence ? evidenceId : undefined}
       data-fold-paragraph={paragraph.hash}
       className={cn(
         'block w-full text-start text-base leading-7',
@@ -123,14 +82,7 @@ function ParagraphLine({
     </button>
   )
 
-  // One wrapper whether or not there is evidence, so a line keeps its place in
-  // the tree (and its slide) when a level change adds or drops the evidence.
-  return (
-    <div className="group/line relative">
-      {button}
-      {hasEvidence && <Evidence paragraph={paragraph} id={evidenceId} />}
-    </div>
-  )
+  return button
 }
 
 function SectionHeading({ section, dispatch }: { section: SectionView; dispatch: Dispatch }) {
