@@ -10,7 +10,7 @@ When embeddings are loaded, memrynote can rank notes by **semantic similarity** 
 
 - The [search palette](/user-guide/search) (semantic boost on top of keyword match)
 - "Related notes" suggestions in some surfaces
-- **Similar notes** under a note, **suggested tags** on an untagged note, and **Suggest groups**
+- **Similar notes** under a note, **suggested tags** in the add-tag picker, and **Suggest groups**
   on a canvas (see below)
 
 A query like "setting up authentication" can surface a note titled "OAuth flow" even when the words don't overlap.
@@ -159,9 +159,9 @@ Hover a row for two actions:
 
 ### Suggested tags
 
-A note with no tags shows **Suggested tags** under its title: tags that at least two of its most similar
-notes carry, strongest first. Click one to add it. It goes through the normal tag path, the same as
-adding it by hand. Click the **x** to hide the suggestions for that note.
+The add-tag picker on a note lists **Suggested** tags above **Recent**: tags that at least two of the
+note's most similar notes carry, strongest first. Tags the note already has are left out. Click one to add
+it. It goes through the normal tag path, the same as adding it by hand.
 
 ### Suggest groups on a canvas
 
