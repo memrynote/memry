@@ -228,7 +228,7 @@ export interface MainIpcInvokeHandlers {
   "import:readwise:list-deleted": (...args: [unknown]) => Awaited<Promise<{ books: ReadwiseDeletedBook[]; }> | { success: false; error: string }>
   "import:readwise:refresh-book": (...args: [{ noteId: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "import:readwise:reimport-book": (...args: [{ noteId: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
-  "import:readwise:restore-book": (...args: [{ readwiseBookId: number; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
+  "import:readwise:restore-book": (...args: [{ readwiseBookId?: number | undefined; readerDocumentId?: string | undefined; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "import:readwise:set-options": (...args: [{ rootFolder?: string | undefined; folderLayout?: "flat" | "by-category" | undefined; categories?: { books?: boolean | undefined; articles?: boolean | undefined; tweets?: boolean | undefined; podcasts?: boolean | undefined; supplementals?: boolean | undefined; } | undefined; cadence?: "manual" | "daily" | "hourly" | undefined; readerDocuments?: boolean | undefined; readerFullText?: boolean | undefined; journalHighlights?: boolean | undefined; }]) => Awaited<Promise<ReadwiseStatusResult> | { success: false; error: string }>
   "import:readwise:status": (...args: [unknown]) => Awaited<Promise<ReadwiseStatusResult> | { success: false; error: string }>
   "import:readwise:sync-now": (...args: [unknown]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>

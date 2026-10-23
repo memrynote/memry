@@ -9,6 +9,7 @@ import {
 import { foldTag } from '@memry/shared/tag-fold'
 import { READWISE_CATEGORIES, type ReadwiseDeletedBook } from '@memry/contracts/import-channels'
 import { getDatabase } from '../database'
+import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { updateNoteCommand } from '../notes/domain'
 import { getStatus } from '../vault'
@@ -16,12 +17,24 @@ import { getNoteById, type Note } from '../vault/notes'
 import type { RemoteFetch } from '../vault/remote-attachment'
 import { exportBooks } from './client'
 import { resolveImages } from './images'
-import { getLinkByBookId, getLinkByNoteId, listLinks } from './links-repository'
+import {
+  getLinkByBookId,
+  getLinkByNoteId,
+  getLinkByReaderDocumentId,
+  listLinks
+} from './links-repository'
 import { upsertReadwiseNote } from './note-writer'
 import { assertThisDevicePulls } from './pulling-device'
 import { parseReadwiseUrl } from './rebuild-links'
+import { getDocument } from './reader'
+import { writeReaderNote } from './reader-notes'
 import { getReadwiseToken } from './secrets'
 import { readReadwiseOptions } from './settings'
+
+const log = createLogger('ReadwiseBookCommands')
+
+/** One restore at a time per document: two calls would both create the note. */
+const restoring = new Set<string>()
 
 /**
  * The three commands for one book (#1408 D16). They need the token, so each
@@ -165,27 +178,55 @@ function isLive(highlight: { is_deleted?: boolean | null; is_discard?: boolean |
 
 /**
  * The Deleted books list (D16): link rows in state `note-deleted`, oldest
- * deletion last. The link row holds neither title nor highlight count, so one
- * `ids=` read names them. A book gone from Readwise cannot be restored and is
- * left out.
+ * deletion last. The link row holds no title, so a v2 book is named by one
+ * `ids=` read and a Reader document that has no book by one v3 read each. An
+ * item gone from Readwise cannot be restored and is left out.
  */
 export async function listDeletedBooks(): Promise<ReadwiseDeletedBook[]> {
   const token = await requireToken()
-  const rows = listLinks(getDatabase(), 'note-deleted').filter((row) => row.readwiseBookId !== null)
-  if (rows.length === 0) return []
-  const books = await fetchBooks(
-    token,
-    rows.map((row) => row.readwiseBookId as number)
-  )
+  const rows = listLinks(getDatabase(), 'note-deleted')
+  const bookRows = rows.filter((row) => row.readwiseBookId !== null)
+  const documentRows = rows.filter((row) => row.readwiseBookId === null && row.readerDocumentId)
   const deleted: ReadwiseDeletedBook[] = []
-  for (const row of rows) {
+
+  const books =
+    bookRows.length === 0
+      ? new Map<number, ReadwiseBook>()
+      : await fetchBooks(
+          token,
+          bookRows.map((row) => row.readwiseBookId as number)
+        )
+  for (const row of bookRows) {
     const book = books.get(row.readwiseBookId as number)
     if (!book || book.is_deleted) continue
     deleted.push({
       readwiseBookId: book.user_book_id,
+      readerDocumentId: row.readerDocumentId,
       title: (book.readable_title || book.title || '').trim() || 'Untitled',
       deletedAt: row.updatedAt,
       highlightCount: (book.highlights ?? []).filter(isLive).length
+    })
+  }
+  for (const row of documentRows) {
+    let document: Awaited<ReturnType<typeof getDocument>>
+    try {
+      document = await getDocument({
+        token,
+        id: row.readerDocumentId as string,
+        withHtmlContent: false
+      })
+    } catch (error) {
+      // One unreadable document must not hide the rest of the list.
+      log.warn('A deleted Reader document could not be read', { error })
+      continue
+    }
+    if (!document) continue
+    deleted.push({
+      readwiseBookId: null,
+      readerDocumentId: document.id,
+      title: (document.title ?? '').trim() || 'Untitled',
+      deletedAt: row.updatedAt,
+      highlightCount: 0
     })
   }
   return deleted.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
@@ -207,4 +248,49 @@ export async function restoreBook(
     fetch: deps.fetch
   })
   failureOf(outcome)
+}
+
+/**
+ * Restore for a Reader document that has no v2 book (D16): the note comes back
+ * the way a new document gets one, with its section, and with the article text
+ * and images when **Include full article text** is on. The text is written once,
+ * here, as at creation (D11).
+ */
+export async function restoreReaderDocument(
+  readerDocumentId: string,
+  deps: BookCommandDeps = {}
+): Promise<void> {
+  const token = await requireToken()
+  if (restoring.has(readerDocumentId)) throw new Error(t('errors:importer.readwiseBookBusy'))
+  restoring.add(readerDocumentId)
+  try {
+    await restoreDocument(token, readerDocumentId, deps)
+  } finally {
+    restoring.delete(readerDocumentId)
+  }
+}
+
+async function restoreDocument(
+  token: string,
+  readerDocumentId: string,
+  deps: BookCommandDeps
+): Promise<void> {
+  const link = getLinkByReaderDocumentId(getDatabase(), readerDocumentId)
+  if (link?.state !== 'note-deleted') throw new Error(t('errors:importer.readwiseNotDeleted'))
+  const options = readReadwiseOptions(getDatabase())
+  const document = await getDocument({
+    token,
+    id: readerDocumentId,
+    withHtmlContent: options.readerFullText
+  })
+  if (!document) throw new Error(t('errors:importer.readwiseBookGone'))
+  const outcome = await writeReaderNote(document, {
+    root: options.rootFolder,
+    folderLayout: options.folderLayout,
+    fullText: options.readerFullText,
+    restore: true,
+    fetch: deps.fetch
+  })
+  if (outcome.status === 'failed') throw new Error(outcome.reason)
+  if (outcome.status === 'skipped') throw new Error(t('errors:importer.readwiseBookBusy'))
 }

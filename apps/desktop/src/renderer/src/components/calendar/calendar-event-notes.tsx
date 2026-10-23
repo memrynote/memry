@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
@@ -15,7 +15,7 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { calendarService } from '@/services/calendar-service'
-import { notesService } from '@/services/notes-service'
+import { notesService, onNoteDeleted, onNoteRenamed, onNoteUpdated } from '@/services/notes-service'
 import { propertiesService } from '@/services/properties-service'
 import { useRelationSearch } from '@/components/note/info-section/editors/use-relation-search'
 
@@ -27,6 +27,8 @@ const log = createLogger('CalendarEventNotes')
 export const EVENT_LINK_PROPERTY = 'Event'
 /** `NoteCreateSchema` caps a title at 200 characters. */
 const MAX_NOTE_TITLE = 200
+/** Index reads lag the write, so wait for the projection before refetching. */
+const REFRESH_DELAY_MS = 250
 
 export interface CalendarEventNotesTarget {
   sourceType: 'event' | 'external_event'
@@ -72,6 +74,21 @@ export function CalendarEventNotes({
       ).notes
   })
   const linked = linkedQuery.data ?? []
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const refresh = (): void => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ['calendar', 'linked-notes'] })
+      }, REFRESH_DELAY_MS)
+    }
+    const offs = [onNoteUpdated(refresh), onNoteRenamed(refresh), onNoteDeleted(refresh)]
+    return () => {
+      if (timer) clearTimeout(timer)
+      offs.forEach((off) => off())
+    }
+  }, [queryClient])
 
   const run = async (action: () => Promise<void>, fallbackKey: string): Promise<void> => {
     setBusy(true)
