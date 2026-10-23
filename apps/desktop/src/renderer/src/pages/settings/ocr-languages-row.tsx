@@ -148,6 +148,7 @@ export function OcrLanguagesRow() {
         </DropdownMenu>
       </SettingRow>
       {notices.length > 0 && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live region wrapper; an output element changes layout semantics
         <div className="flex flex-col gap-1.5 pb-2.5" role="status" aria-live="polite">
           {notices.map((notice) => (
             <div key={notice.lang} className="flex items-center justify-between gap-3">

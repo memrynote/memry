@@ -168,7 +168,7 @@ function TemplateEditorSurface({
 
   // A tag created here has no colour in the notes query until the write lands;
   // hold it locally so the chip is not colourless in the meantime.
-  const pendingTagColorsRef = useRef<Map<string, string>>(new Map())
+  const [pendingTagColors, setPendingTagColors] = useState<ReadonlyMap<string, string>>(new Map())
 
   // Keyed lower-case on both sides, as note.tsx does: tag names are
   // case-preserving, so a raw-case lookup would miss the pending colour of a
@@ -176,9 +176,6 @@ function TemplateEditorSurface({
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const tag of allAvailableTags) map.set(foldTag(tag.tag), tag.color)
-    for (const key of pendingTagColorsRef.current.keys()) {
-      if (map.has(key)) pendingTagColorsRef.current.delete(key)
-    }
     return map
   }, [allAvailableTags])
 
@@ -187,10 +184,9 @@ function TemplateEditorSurface({
       fields.tags.map((name) => ({
         id: name,
         name,
-        color:
-          tagColorMap.get(foldTag(name)) ?? pendingTagColorsRef.current.get(foldTag(name)) ?? ''
+        color: tagColorMap.get(foldTag(name)) ?? pendingTagColors.get(foldTag(name)) ?? ''
       })),
-    [fields.tags, tagColorMap]
+    [fields.tags, tagColorMap, pendingTagColors]
   )
 
   const availableTags: Tag[] = useMemo(
@@ -209,7 +205,7 @@ function TemplateEditorSurface({
 
   const handleCreateTag = useCallback(
     (name: string, color: string) => {
-      pendingTagColorsRef.current.set(foldTag(name), color)
+      setPendingTagColors((prev) => new Map(prev).set(foldTag(name), color))
       if (fields.tags.includes(name)) return
       setFields({ tags: [...fields.tags, name] })
     },
@@ -486,7 +482,7 @@ export function TemplateEditorPage({ templateId, tabId }: TemplateEditorPageProp
   // Pinned to the identity this tab opened with. `templateId` changes once, when
   // a draft adopts its new id, and remounting the surface there would throw away
   // the editor the user is typing in.
-  const surfaceKey = useRef(templateId ?? 'new').current
+  const [surfaceKey] = useState(() => templateId ?? 'new')
 
   const { data: template, isLoading } = useQuery({
     queryKey: ['template-editor', templateId],

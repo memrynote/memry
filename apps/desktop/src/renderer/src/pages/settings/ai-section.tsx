@@ -630,6 +630,7 @@ export function AISettings({
                 description={t('ai.voice.providerDescription')}
               >
                 <div
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented radio group; a fieldset would add default borders and layout
                   role="group"
                   aria-label={t('ai.v2.voice.transcribeWith')}
                   className="inline-flex items-center gap-0.5 rounded-md bg-muted p-0.5"
