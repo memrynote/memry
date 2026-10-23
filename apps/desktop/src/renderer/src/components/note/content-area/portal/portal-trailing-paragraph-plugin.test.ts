@@ -114,7 +114,7 @@ describe('portal definition guard', () => {
       editor.document.map((b) => (b.type === 'codeBlock' ? 'portal' : JSON.stringify(b.content)))
     ).toContain('[{"type":"text","text":"h","styles":{}}]')
     const portalBlock = editor.document.find((b) => b.type === 'codeBlock')
-    expect(JSON.stringify(portalBlock?.content)).toContain(FENCE.replace(/"/g, '\\"'))
+    expect(JSON.stringify(portalBlock?.content)).toContain(JSON.stringify(FENCE).slice(1, -1))
     expect(editor.document.at(-1)?.type).toBe('paragraph')
   })
 })
