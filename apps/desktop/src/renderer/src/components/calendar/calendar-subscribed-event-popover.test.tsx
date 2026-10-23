@@ -24,7 +24,8 @@ vi.mock('@/services/calendar-service', () => ({
   }
 }))
 
-vi.mock('@/services/notes-service', () => ({
+vi.mock('@/services/notes-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/notes-service')>()),
   notesService: { create: mocks.createNote }
 }))
 

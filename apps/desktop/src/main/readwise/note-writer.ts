@@ -220,7 +220,7 @@ export async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note 
 }
 
 /** The note is open in an editor or took a network update moments ago (D6). */
-function isBusy(noteId: string): boolean {
+export function isBusy(noteId: string): boolean {
   return Boolean(getCrdtProvider().getDoc(noteId)) || wasRecentNetworkUpdate(noteId)
 }
 

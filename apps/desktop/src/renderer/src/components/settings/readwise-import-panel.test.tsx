@@ -664,12 +664,14 @@ describe('ReadwiseImportPanel', () => {
     const deleted = [
       {
         readwiseBookId: 1,
+        readerDocumentId: null,
         title: 'Deep Work',
         deletedAt: '2026-10-03T10:00:00Z',
         highlightCount: 41
       },
       {
         readwiseBookId: 2,
+        readerDocumentId: null,
         title: 'Smart Notes',
         deletedAt: '2026-09-28T10:00:00Z',
         highlightCount: 1
@@ -692,6 +694,28 @@ describe('ReadwiseImportPanel', () => {
       await waitFor(() => expect(restoreBook).toHaveBeenCalledWith({ readwiseBookId: 1 }))
       await waitFor(() => expect(screen.queryByText('Deep Work')).not.toBeInTheDocument())
       expect(screen.getByText('Smart Notes')).toBeInTheDocument()
+    })
+
+    it('restores a saved Reader article that has no book by its document id', async () => {
+      status.mockResolvedValue(connectedStatus)
+      listDeleted.mockResolvedValue({
+        books: [
+          {
+            readwiseBookId: null,
+            readerDocumentId: 'doc-1',
+            title: 'memrynote',
+            deletedAt: '2026-09-28T10:00:00Z',
+            highlightCount: 0
+          }
+        ]
+      })
+      renderPanel()
+
+      expect(await screen.findByText('memrynote')).toBeInTheDocument()
+      expect(screen.getByText(/saved article/)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Restore' }))
+      await waitFor(() => expect(restoreBook).toHaveBeenCalledWith({ readerDocumentId: 'doc-1' }))
+      await waitFor(() => expect(screen.queryByText('memrynote')).not.toBeInTheDocument())
     })
 
     it('says there are none when the list is empty', async () => {

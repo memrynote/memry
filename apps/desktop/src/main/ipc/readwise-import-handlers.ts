@@ -30,7 +30,8 @@ import {
   listDeletedBooks,
   refreshBookInfo,
   reimportBook,
-  restoreBook
+  restoreBook,
+  restoreReaderDocument
 } from '../readwise/book-commands'
 import { onReadwiseStatusChanged } from '../readwise/run-status'
 import { writeReadwiseOptions } from '../readwise/settings'
@@ -121,7 +122,8 @@ export function registerReadwiseImportHandlers(): void {
     ReadwiseImportChannels.invoke.RESTORE_BOOK,
     ReadwiseRestoreBookSchema,
     async (input) => {
-      await restoreBook(input.readwiseBookId)
+      if (input.readwiseBookId !== undefined) await restoreBook(input.readwiseBookId)
+      else await restoreReaderDocument(input.readerDocumentId as string)
       return { success: true as const }
     },
     'errors:importer.readwiseBookCommandFailed'

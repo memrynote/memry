@@ -22,6 +22,18 @@ export interface HtmlToMarkdownHooks {
   anchor?(href: string, text: string, collect: (asset: string) => void): string | null | undefined
   /** Resolve an `<img>` (same contract as {@link HtmlToMarkdownHooks.anchor}). */
   image?(src: string, alt: string, collect: (asset: string) => void): string | null | undefined
+  /**
+   * Resolve a `<figure>` that holds an `<img>` and a non-empty `<figcaption>`
+   * (same contract as {@link HtmlToMarkdownHooks.anchor}). `caption` is the
+   * caption's text with whitespace collapsed. Without this hook the caption is
+   * dropped and only the image is kept, which is what every importer wants.
+   */
+  captionedImage?(
+    src: string,
+    alt: string,
+    caption: string,
+    collect: (asset: string) => void
+  ): string | null | undefined
   /** Return true to drop a block element entirely (e.g. a metadata table). */
   skipBlock?(el: Element): boolean
 }
@@ -260,7 +272,16 @@ function renderFigure(ctx: Ctx, fig: Element): string {
       .join('\n')
   }
   const img = fig.querySelector('img')
-  if (img) return renderImage(ctx, img)
+  if (img) {
+    const caption = (fig.querySelector('figcaption')?.textContent ?? '').replace(/\s+/g, ' ').trim()
+    if (caption && ctx.hooks.captionedImage) {
+      const src = img.getAttribute('src') ?? ''
+      const alt = (img.getAttribute('alt') ?? '').trim()
+      const fromHook = ctx.hooks.captionedImage(src, alt, caption, ctx.collect)
+      if (fromHook != null) return fromHook
+    }
+    return renderImage(ctx, img)
+  }
   return renderBlocks(ctx, fig)
 }
 

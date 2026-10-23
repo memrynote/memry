@@ -1,9 +1,11 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`readerFullText > converts an HTML-heavy article and leaves no remote image 1`] = `
+exports[`prepareReaderFullText > converts an HTML-heavy article, keeps the image once saved, and leaves no remote URL 1`] = `
 "# Why notes compound
 
 First **paragraph** with a [link](https://example.com/a) and *emphasis*.
+
+![hero](../../attachments/n1/rw-0.png)
 
 > A quote worth keeping.
 

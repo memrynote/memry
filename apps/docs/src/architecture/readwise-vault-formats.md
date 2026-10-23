@@ -59,6 +59,7 @@ attachments/<note id>/rw-<16 hex>.<ext>
 - The 16 hex digits are the first 16 of the SHA-256 of the image URL, so the same image gets the same name on every device and a re-run reuses the file.
 - `<ext>` is `jpg`, `png`, `webp`, `gif` or `avif`, taken from the response content type.
 - Each image is capped at 25 MB. A failed download leaves the image out of the note and the next run tries again.
+- The article text of a Reader note (**Include full article text**) follows the same rules. Each `<img>` in the document, found through `src`, a lazy-load attribute, `srcset` or `<picture>`, is saved once the note exists, and the text is written with the refs, so no remote image URL is left in the note. An image without a caption is `![alt](../../attachments/<note id>/rw-<16 hex>.<ext>)`. An image with a caption is `<figure><img src="…"><figcaption>caption</figcaption></figure>`, the form the editor writes and reads back unchanged. The text is written once, so an image whose download failed stays out of that note, with its caption. Restoring the note from **Deleted books** writes the text again.
 
 ## Compatibility
 
