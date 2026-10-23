@@ -42,14 +42,11 @@ function formatTriggerDate(isoString: string): string {
   })
 }
 
-const TARGET_ICONS = new Map<string, typeof FileText>([
-  ['journal', Calendar],
-  ['task', CheckSquare]
-])
-
 function TargetIcon({ targetType }: { targetType: string }): React.JSX.Element {
-  const Icon = TARGET_ICONS.get(targetType) ?? FileText
-  return <Icon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+  const className = 'size-3.5 shrink-0 text-text-tertiary'
+  if (targetType === 'journal') return <Calendar className={className} aria-hidden="true" />
+  if (targetType === 'task') return <CheckSquare className={className} aria-hidden="true" />
+  return <FileText className={className} aria-hidden="true" />
 }
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
