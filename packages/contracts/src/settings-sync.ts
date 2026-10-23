@@ -215,7 +215,17 @@ export const SyncedSettingsSchema = z.object({
       readerDocuments: z.boolean().optional(),
       readerFullText: z.boolean().optional(),
       // Journal (#3476): additive, kept by older builds the same way.
-      journalHighlights: z.boolean().optional()
+      journalHighlights: z.boolean().optional(),
+      // Run status (#3477, D18): the pulling device writes it only when a run
+      // changed something or the error state changed; iOS shows it. `lastChangeAt`
+      // is ISO, `error` an error code. A cleared error is an explicit `null`.
+      status: z
+        .object({
+          lastChangeAt: z.string().nullable().optional(),
+          error: z.string().nullable().optional()
+        })
+        .catchall(z.unknown())
+        .optional()
     })
     .catchall(z.unknown())
     .optional()

@@ -160,8 +160,12 @@ export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInpu
  */
 export function applyMergedReadwiseSettings(db: DataDb, merged: Record<string, unknown>): void {
   const stored = readReadwiseGroup(db)
-  const { categories: mergedCategories, ...rest } = merged
+  const { categories: mergedCategories, status: mergedStatus, ...rest } = merged
   const next: Record<string, unknown> = { ...stored, ...rest }
+  if (typeof mergedStatus === 'object' && mergedStatus !== null) {
+    const current = typeof stored.status === 'object' && stored.status !== null ? stored.status : {}
+    next.status = { ...current, ...mergedStatus }
+  }
   if (typeof mergedCategories === 'object' && mergedCategories !== null) {
     const current =
       typeof stored.categories === 'object' && stored.categories !== null ? stored.categories : {}

@@ -14,6 +14,7 @@ enum SettingsRoute: Hashable, Sendable {
     case inbox, tasks
     case templates, template(String)
     case tags, properties, property(String)
+    case readwise
 
     /// A stable fragment for accessibility identifiers.
     var identifier: String {
@@ -139,6 +140,7 @@ struct SettingsDestination: View {
         case .tags: TagsScreen(context: context)
         case .properties: PropertiesScreen(context: context)
         case let .property(name): PropertyDetailScreen(context: context, name: name)
+        case .readwise: ReadwiseScreen(context: context)
         }
     }
 }

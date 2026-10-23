@@ -232,20 +232,20 @@ describe('upsertReadwiseNote', () => {
 
     const synced = [
       book(1, {
-        highlights: [...threeHighlights(), highlight(4, { created_at: '2026-10-23T08:00:00Z' })]
+        highlights: [...threeHighlights(), highlight(4, { created_at: '2030-01-01T08:00:00Z' })]
       }),
       book(1, {
         highlights: [
           ...threeHighlights(),
-          highlight(4, { created_at: '2026-10-23T08:00:00Z' }),
-          highlight(5, { created_at: '2026-10-24T08:00:00Z' })
+          highlight(4, { created_at: '2030-01-01T08:00:00Z' }),
+          highlight(5, { created_at: '2030-01-02T08:00:00Z' })
         ]
       }),
       book(1, {
         highlights: [
           ...threeHighlights(),
-          highlight(4, { created_at: '2026-10-23T08:00:00Z' }),
-          highlight(5, { created_at: '2026-10-24T08:00:00Z' })
+          highlight(4, { created_at: '2030-01-01T08:00:00Z' }),
+          highlight(5, { created_at: '2030-01-02T08:00:00Z' })
         ]
       })
     ]
@@ -286,7 +286,7 @@ describe('upsertReadwiseNote', () => {
           highlight(1, { text: 'Highlight 1 edited in Readwise', created_at: early }),
           highlight(2, { created_at: early }),
           highlight(3, { is_deleted: true }),
-          highlight(4, { created_at: '2026-10-23T08:00:00Z' })
+          highlight(4, { created_at: '2030-01-01T08:00:00Z' })
         ]
       })
     )
@@ -304,7 +304,7 @@ describe('upsertReadwiseNote', () => {
     const noteId = await created(book(1, { highlights: threeHighlights() }))
     await userEdits(noteId, (content) => content.replace(/<!-- readwise:end[^>]*-->/, ''))
     const next = book(1, {
-      highlights: [...threeHighlights(), highlight(4, { created_at: '2026-10-23T08:00:00Z' })]
+      highlights: [...threeHighlights(), highlight(4, { created_at: '2030-01-01T08:00:00Z' })]
     })
 
     expect((await sync(next)).status).toBe('appended')
@@ -323,7 +323,7 @@ describe('upsertReadwiseNote', () => {
     const noteId = await created(book(1, { highlights: threeHighlights() }))
     await userEdits(noteId, (content) => content.replace(/<!-- readwise:[^>]*-->/g, ''))
     const next = book(1, {
-      highlights: [...threeHighlights(), highlight(4, { created_at: '2026-10-23T08:00:00Z' })]
+      highlights: [...threeHighlights(), highlight(4, { created_at: '2030-01-01T08:00:00Z' })]
     })
 
     expect((await sync(next)).status).toBe('appended')
@@ -337,7 +337,7 @@ describe('upsertReadwiseNote', () => {
     const noteId = await created(book(1, { highlights: threeHighlights() }))
     await userEdits(noteId, (content) => content.replace('<!-- readwise:start -->', ''))
     const next = book(1, {
-      highlights: [...threeHighlights(), highlight(4, { created_at: '2026-10-23T08:00:00Z' })]
+      highlights: [...threeHighlights(), highlight(4, { created_at: '2030-01-01T08:00:00Z' })]
     })
 
     expect((await sync(next)).status).toBe('appended')
@@ -494,7 +494,7 @@ describe('upsertReadwiseNote', () => {
     const noteId = await created(book(1, { highlights: threeHighlights() }))
     await userEdits(noteId, (content) => `<!-- readwise:start -->\n\n${content}`)
     const next = book(1, {
-      highlights: [...threeHighlights(), highlight(4, { created_at: '2026-10-23T08:00:00Z' })]
+      highlights: [...threeHighlights(), highlight(4, { created_at: '2030-01-01T08:00:00Z' })]
     })
 
     expect((await sync(next)).status).toBe('appended')
@@ -602,7 +602,7 @@ describe('upsertReadwiseNote', () => {
         book(1, {
           highlights: [
             highlight(1),
-            highlight(2, { text: `![](${imageUrl})`, created_at: '2026-10-23T08:00:00Z' })
+            highlight(2, { text: `![](${imageUrl})`, created_at: '2030-01-01T08:00:00Z' })
           ]
         })
       )

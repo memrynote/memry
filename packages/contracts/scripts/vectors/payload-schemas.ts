@@ -325,7 +325,27 @@ const SPECS: TypeSpec[] = [
   {
     type: 'settings',
     schema: SettingsSyncPayloadSchema,
-    valid: { settings: { general: { theme: 'dark' } }, fieldClocks: { 'general.theme': CLOCK } },
+    // `readwise` is modelled since #3477 (§13.7.13): the pulling device's claim,
+    // its choices and the run status iOS shows.
+    valid: {
+      settings: {
+        general: { theme: 'dark' },
+        readwise: {
+          syncDeviceId: 'device-1',
+          syncDeviceName: 'Studio Mac',
+          rootFolder: 'Readwise',
+          status: { lastChangeAt: '2026-10-22T08:30:00.000Z', error: null }
+        }
+      },
+      fieldClocks: {
+        'general.theme': CLOCK,
+        'readwise.syncDeviceId': CLOCK,
+        'readwise.syncDeviceName': CLOCK,
+        'readwise.rootFolder': CLOCK,
+        'readwise.status.lastChangeAt': CLOCK,
+        'readwise.status.error': CLOCK
+      }
+    },
     boundary: { settings: {}, fieldClocks: {} },
     unknownKey: 'settings.experimental',
     unknownValue: null

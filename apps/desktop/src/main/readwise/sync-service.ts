@@ -15,6 +15,7 @@ import { upsertReadwiseNote, type UpsertOutcome } from './note-writer'
 import { listDocuments } from './reader'
 import { runReaderPass } from './reader-sync'
 import { readReadwiseOptions } from './settings'
+import { publishRunStatus } from './status-publish'
 import {
   addRetry,
   getCursor,
@@ -545,6 +546,16 @@ export class ReadwiseSyncService {
       if (claimMoved) this.deps.onClaimLost?.()
       // Also for a cancelled or failed run: the notes it wrote did change.
       const changedBooks = result.added + result.updated + result.appended
+      if (!claimMoved) {
+        try {
+          publishRunStatus(getDatabase(), {
+            changed: changedBooks + result.documents > 0,
+            now: (this.deps.now ?? (() => new Date()))()
+          })
+        } catch (error) {
+          log.warn('The Readwise status could not be published', { error })
+        }
+      }
       if (changedBooks + result.documents > 0 && observer.logActivity !== false) {
         recordActivity({
           kind: 'import',

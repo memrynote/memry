@@ -181,6 +181,21 @@ The first run on the new device reads your whole Readwise library once. It recog
 Memry remembers that you deleted a book's note on the device that pulled. That memory stays on that device. After you move Readwise, the new device does not know, so it brings that book back once. Delete the note again and it stays deleted.
 :::
 
+## Readwise on iPhone
+
+The iPhone app never talks to Readwise. The notes arrive through sync like any other note, and the app shows what the pulling desktop reports. Nothing on iPhone changes Readwise settings or starts a sync.
+
+Open **Settings → Readwise** to see:
+
+- **Syncs on**, the name of the desktop that pulls from Readwise.
+- **Folder**, the root folder of the Readwise notes.
+- **Last change**, when the last run that changed something finished. A run that changed nothing does not move it.
+- **Status**, **Up to date** or **Needs attention**. When a token is rejected or the subscription has expired, a card named **Readwise needs attention** says which, and that you fix it in memry on that desktop.
+
+The row reads **Not connected** until a desktop connects Readwise. The pulling desktop writes the status into your synced settings, and only when a run changed something or the error state changed, so an unchanged hourly run sends nothing. An iPhone shows it after its next sync.
+
+In a note, the section markers appear as a thin labeled divider with a book icon, for example **Readwise · syncs automatically**. The markers are read-only on iPhone, so editing around the section leaves it as it was for the desktop's next run.
+
 ## Disconnect
 
 Click **Disconnect** in the dialog. Memry deletes the token from this device and forgets where the last sync stopped. Every note stays, and there is no option to remove them. If this device was the one that pulled, Readwise is free again, and the next device you connect becomes the new one. To connect again, paste a token.

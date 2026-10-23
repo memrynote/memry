@@ -1559,10 +1559,34 @@
             "settings": {
               "general": {
                 "theme": "dark"
+              },
+              "readwise": {
+                "syncDeviceId": "device-1",
+                "syncDeviceName": "Studio Mac",
+                "rootFolder": "Readwise",
+                "status": {
+                  "lastChangeAt": "2026-10-22T08:30:00.000Z",
+                  "error": null
+                }
               }
             },
             "fieldClocks": {
               "general.theme": {
+                "device-a": 1
+              },
+              "readwise.syncDeviceId": {
+                "device-a": 1
+              },
+              "readwise.syncDeviceName": {
+                "device-a": 1
+              },
+              "readwise.rootFolder": {
+                "device-a": 1
+              },
+              "readwise.status.lastChangeAt": {
+                "device-a": 1
+              },
+              "readwise.status.error": {
                 "device-a": 1
               }
             }
@@ -1571,10 +1595,34 @@
             "settings": {
               "general": {
                 "theme": "dark"
+              },
+              "readwise": {
+                "syncDeviceId": "device-1",
+                "syncDeviceName": "Studio Mac",
+                "rootFolder": "Readwise",
+                "status": {
+                  "lastChangeAt": "2026-10-22T08:30:00.000Z",
+                  "error": null
+                }
               }
             },
             "fieldClocks": {
               "general.theme": {
+                "device-a": 1
+              },
+              "readwise.syncDeviceId": {
+                "device-a": 1
+              },
+              "readwise.syncDeviceName": {
+                "device-a": 1
+              },
+              "readwise.rootFolder": {
+                "device-a": 1
+              },
+              "readwise.status.lastChangeAt": {
+                "device-a": 1
+              },
+              "readwise.status.error": {
                 "device-a": 1
               }
             }
