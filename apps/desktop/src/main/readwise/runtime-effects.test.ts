@@ -15,6 +15,7 @@ let currentDb: DataDb | null = null
 vi.mock('../database', () => ({ getDatabase: () => currentDb }))
 vi.mock('../vault', () => ({ getStatus: () => ({ path: '/vaults/a' }) }))
 vi.mock('electron', () => ({ net: { isOnline: () => true } }))
+vi.mock('../sync/runtime', () => ({ getSyncEngine: () => ({ currentState: 'idle' }) }))
 vi.mock('../vault/activity-log', () => ({ recordActivity: vi.fn() }))
 
 const secrets = new Map<string, string>()
@@ -32,12 +33,15 @@ import { clearCursor, getCursor, getLastRun, setCursor } from './sync-state'
 import {
   BACKOFF_BASE_MS,
   canPull,
+  getReadwiseScheduler,
   READWISE_TICK_ID,
+  startReadwiseScheduler,
+  stopReadwiseScheduler,
   ReadwiseRunInProgressError,
   ReadwiseScheduler,
   ReadwiseUnavailableError
 } from './runtime-effects'
-import { connectReadwise } from './connection'
+import { connectReadwise, syncReadwiseNow } from './connection'
 
 const MINUTE = MINUTE_TICK_INTERVAL_MS
 const HOUR = 60 * MINUTE
@@ -279,5 +283,64 @@ describe('ReadwiseScheduler', () => {
 
   it('until #1417 claims devices, the token holder pulls', () => {
     expect(canPull()).toBe(true)
+  })
+
+  it('the process scheduler starts on the shared tick, runs at launch, and stops', async () => {
+    startReadwiseScheduler()
+    expect(getMinuteTickIds()).toContain(READWISE_TICK_ID)
+    const same = getReadwiseScheduler()
+    expect(getReadwiseScheduler()).toBe(same)
+    await advance(0)
+    expect(runs()).toBe(1)
+
+    stopReadwiseScheduler()
+    expect(getMinuteTickIds()).not.toContain(READWISE_TICK_ID)
+    expect(getReadwiseScheduler()).not.toBe(same)
+    stopReadwiseScheduler()
+  })
+
+  it('a tick whose schedule check throws logs and starts nothing, then recovers', async () => {
+    const original = currentDb
+    currentDb = null
+    scheduler.start()
+    await advance(0)
+    expect(runs()).toBe(0)
+
+    currentDb = original
+    await advance(MINUTE)
+    expect(runs()).toBe(1)
+  })
+
+  describe('syncReadwiseNow (the sync-now IPC body)', () => {
+    afterEach(() => stopReadwiseScheduler())
+
+    it('answers a readable error for a revoked token, and marks needs-attention', async () => {
+      readwise.failWhen = () => 401
+      await expect(syncReadwiseNow()).rejects.toThrow(/did not accept this token/)
+      expect(getLastRun(db())?.needsAttention).toBe(true)
+    })
+
+    it('answers the not-connected error without a token', async () => {
+      secrets.clear()
+      await expect(syncReadwiseNow()).rejects.toThrow(/not connected/)
+    })
+
+    it('answers the unavailable error on a device that does not pull', async () => {
+      const sched = getReadwiseScheduler()
+      vi.spyOn(sched, 'syncNow').mockRejectedValue(new ReadwiseUnavailableError('other-device'))
+      await expect(syncReadwiseNow()).rejects.toThrow(/does not sync on this device/)
+    })
+
+    it('answers the in-progress error beside a dialog run', async () => {
+      const sched = getReadwiseScheduler()
+      vi.spyOn(sched, 'syncNow').mockRejectedValue(new ReadwiseRunInProgressError())
+      await expect(syncReadwiseNow()).rejects.toThrow(/already running/)
+    })
+
+    it('rethrows an error that is not Readwise', async () => {
+      const sched = getReadwiseScheduler()
+      vi.spyOn(sched, 'syncNow').mockRejectedValue(new Error('disk gone'))
+      await expect(syncReadwiseNow()).rejects.toThrow('disk gone')
+    })
   })
 })
