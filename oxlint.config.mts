@@ -81,7 +81,7 @@ export default defineConfig({
     // Swift app: the JS under it is generated bundles (editor, article-extract).
     'apps/ios/**',
     // Static assets served verbatim (e.g. the Excalidraw asset-path shim)
-    "apps/desktop/src/renderer/public/**",
+    'apps/desktop/src/renderer/public/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
     // Agent tooling and per-user scratch directories, not product code.
@@ -202,10 +202,7 @@ export default defineConfig({
       'import/first',
       'import/no-duplicates',
       'import/no-cycle',
-      [
-        'typescript/switch-exhaustiveness-check',
-        { considerDefaultExhaustiveForUnions: true }
-      ],
+      ['typescript/switch-exhaustiveness-check', { considerDefaultExhaustiveForUnions: true }],
       ['typescript/return-await', 'error-handling-correctness-only'],
       'typescript/no-deprecated',
       'typescript/no-misused-spread',
@@ -276,6 +273,12 @@ export default defineConfig({
         // The 800-line cap was never applied to tests.
         'max-lines': 'off'
       }
+    },
+    {
+      // Node build and packaging scripts are CommonJS (electron-builder hooks, bootstrap before
+      // dependencies exist), so `require` is the module system there, not a legacy import.
+      files: ['**/*.cjs', 'scripts/**/*.js', 'apps/desktop/scripts/**/*.js'],
+      rules: disable('typescript/no-require-imports')
     },
     {
       files: [`${RENDERER}/**/*.tsx`],
