@@ -39,7 +39,7 @@ This directory owns the Electron app (`@memry/desktop`), the reference implement
 ## Renderer and UI
 
 - Read `DESIGN.md` before a UI change. Live token values are in `src/renderer/src/assets/base.css`, and `docs/DESIGN_TOKENS.md` catalogs them.
-- Every user-visible string goes through i18n. Add keys to `packages/i18n/src/locales/en/<namespace>.json`, and other locales fall back to English. ESLint rejects literal JSX text, user-facing attribute strings, toast strings, and `extractErrorMessage` fallbacks. `pnpm --filter @memry/desktop i18n:check` must pass.
+- Every user-visible string goes through i18n. Add keys to `packages/i18n/src/locales/en/<namespace>.json`, and other locales fall back to English. The oxlint i18n plugin (`scripts/i18n/oxlint/`) rejects literal JSX text, user-facing attribute strings, toast strings, and `extractErrorMessage` fallbacks. `pnpm --filter @memry/desktop i18n:check` must pass.
 - Show errors with `extractErrorMessage(err, fallback)` from `@/lib/ipc-error`, using a translated fallback.
 - Log with `createLogger('Scope')` from `@/lib/logger`.
 - Pre-commit scans each staged renderer file in full and rejects raw `console.*` calls and physical direction classes anywhere in it. Clean up a file you touch in the same commit.

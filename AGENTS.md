@@ -84,17 +84,20 @@ Renderer and main ship in one build, so an IPC contract change updates both side
 After code changes, run these with full output and fix every error before committing. A docs-only change needs `git diff --check` and its docs build.
 
 ```bash
-pnpm lint         # ESLint over apps/desktop
-pnpm typecheck    # shared packages, cli, desktop, sync-server; desktop's pretypecheck adds check:contracts, check:architecture, ipc:check
+pnpm lint           # oxlint, type-aware, over the whole JS/TS repo, held by the ratchet below
+pnpm typecheck      # TypeScript 7 via oxlint --type-check: shared packages, cli, desktop, sync-server; desktop's pretypecheck adds check:contracts, check:architecture, ipc:check
+pnpm format:check   # oxfmt
 git diff --check
 ```
 
-- `pnpm lint` and `pnpm typecheck` skip landing, extension, marketing-emails, iOS, and Rust. Their scoped guides name their gates.
+- `pnpm typecheck` skips landing, extension, marketing-emails, iOS, and Rust, and `pnpm lint` skips iOS and Rust. Their scoped guides name their gates.
+- Lint config lives in `oxlint.config.mts`. A rule with a backlog is a warning held at the per-file counts in `scripts/lint-baseline.json`; `pnpm lint` fails on any error or on any count above the baseline. Fix a violation, then run `pnpm lint --update` to lower the baseline. Raising it (`--allow-increase`) needs Kaan's approval. When a rule's backlog reaches zero it becomes an error with no config edit.
+- `scripts/typecheck.mjs` checks exactly the files each tsconfig includes. Code that needs the TypeScript compiler API imports the `typescript-6` alias, because TypeScript 7 has no JS API.
 - A package with its own `test` script runs its tests there. The other shared packages run under desktop's `shared` Vitest project (`pnpm --filter @memry/desktop test:shared`).
 - Shared code has no app-only changes. A change in `packages/` keeps every consumer green, including desktop, the CLI, and the sync server.
 - A failing test is a defect until proven otherwise. Fix the owner and keep a regression test. Skipping, loosening, or deleting a test to get green needs Kaan's approval.
 - Tests protect user-visible behavior and contracts, not implementation details. Test the seam that can lose data through the real adapter. A mocked boundary supplements that test and is never evidence that the boundary works. A bug fix ships with a test that fails without the fix.
-- Pre-commit runs lint-staged and the whitespace, staged-secret, and renderer guard checks, plus `check:lockfile` and `ipc:check` when their inputs change. Pre-push checks the branch name and the [docs gate](apps/docs/AGENTS.md#docs-gate). CI owns lint, typecheck, and tests, so they stay out of pre-push unless Kaan asks.
+- Pre-commit runs lint-staged (oxfmt, and oxlint errors without type information or fixes) and the whitespace, staged-secret, and renderer guard checks, plus `check:lockfile` and `ipc:check` when their inputs change. Pre-push checks the branch name and the [docs gate](apps/docs/AGENTS.md#docs-gate). CI owns lint, typecheck, and tests, so they stay out of pre-push unless Kaan asks.
 
 ## Authority and safety
 

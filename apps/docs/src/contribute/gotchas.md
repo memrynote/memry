@@ -318,7 +318,7 @@ toast.error(extractErrorMessage(err, 'Could not save note'))
 
 New code must use logical properties (`ms-*`, `pe-*`, `start-*`, `text-start`, `border-s`, `rounded-s-*`) instead of physical ones (`ml-*`, `pr-*`, `left-*`, `text-left`, `border-l`, `rounded-l-*`).
 
-ESLint does not check this. The pre-commit renderer guard (`scripts/check-staged-renderer-guards.mjs`) rejects physical direction classes in staged renderer source files, and it scans each whole staged file, not just new hunks. If you touch a file that still has physical direction classes, convert them to logical equivalents before committing.
+oxlint does not check this. The pre-commit renderer guard (`scripts/check-staged-renderer-guards.mjs`) rejects physical direction classes in staged renderer source files, and it scans each whole staged file, not just new hunks. If you touch a file that still has physical direction classes, convert them to logical equivalents before committing.
 
 ## Security Scan Patterns
 

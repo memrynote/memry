@@ -36,7 +36,7 @@ The server never sees plaintext. That is the product.
 
 ## Tests
 
-- `pnpm --filter @memry/sync-server test` runs Vitest against miniflare through `vitest.config.ts` and `wrangler.test.ts`, with no real Cloudflare account or production bindings. `pnpm --filter @memry/sync-server typecheck` is the type gate. Root ESLint skips this app.
+- `pnpm --filter @memry/sync-server test` runs Vitest against miniflare through `vitest.config.ts` and `wrangler.test.ts`, with no real Cloudflare account or production bindings. `pnpm --filter @memry/sync-server typecheck` is the type gate. Root `pnpm lint` (oxlint) covers this app.
 - A change that touches the wire also runs `pnpm test:sync-harness` and desktop's `test:main-integration`, the real desktop client against the real Worker. Unit suites on both sides mocked that seam and stayed green through a 58-day attachment upload outage.
 - Every fixed sync bug gets a regression test that names its issue number in a comment.
 - CI validates the bundle with `wrangler deploy --dry-run --outdir .wrangler/ci --env staging`.

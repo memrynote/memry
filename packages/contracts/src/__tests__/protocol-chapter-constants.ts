@@ -80,7 +80,7 @@ export const rawChapter = (slug: string): string =>
 /**
  * Collapse every run of whitespace to one space.
  *
- * Chapters are prettier-formatted, so a markdown table's column padding and a
+ * Chapters are formatter-formatted (oxfmt), so a markdown table's column padding and a
  * paragraph's line wrapping are both cosmetic and both move whenever an
  * unrelated cell grows. Comparing normalised text keeps this test about the
  * facts rather than about the formatter.

@@ -242,7 +242,7 @@ in the English bundles, and keeps non-English locale files aligned with English 
 tool tests when changing `apps/desktop/scripts/i18n/*` so scanner allowlists, JSON output, TODO
 limits, and locale-completeness behavior stay covered.
 
-Alongside it, the `i18n/no-toast-string-literal` ESLint rule guards toast copy in the renderer. It
+Alongside it, the `i18n/no-toast-string-literal` oxlint rule guards toast copy in the renderer. It
 judges the static text of the first argument, so interpolation is no exemption — a hard-coded
 English template such as ``toast.error(`Could not open ${name}`)`` is reported exactly like
 `toast.error('Could not open file')`. Pass the values as placeholders instead:
@@ -255,6 +255,29 @@ A template whose letters all come out of `t()` — ``toast.error(`${t('a')}: ${t
 valid, because only punctuation and spacing are hard-coded. `TODO(i18n): wrap … in t()` silences the
 rule for one call site, but `pnpm i18n:check` runs with `--max-todo 0`, so it is a review aid rather
 than a way to land untranslated copy.
+
+## Lint and format
+
+The repo lints with oxlint and formats with oxfmt. One config, `oxlint.config.mts`, covers every
+JS/TS file, tests included, with type-aware rules (TypeScript 7 through `oxlint-tsgolint`).
+
+```bash
+pnpm lint            # oxlint over the whole repo, through the lint ratchet
+pnpm lint --update   # lower scripts/lint-baseline.json after fixing violations
+pnpm format          # oxfmt, write
+pnpm format:check    # oxfmt, check only (CI runs this)
+```
+
+Many rules still have old violations. Each rule with a backlog runs as a warning, and
+`scripts/lint-ratchet.mjs` holds it at the per-file counts in `scripts/lint-baseline.json`. For
+example, if `src/a.ts` has 3 `typescript/no-floating-promises` warnings in the baseline, a fourth
+fails `pnpm lint` and the output lists every occurrence in that file. Fixing one and running
+`pnpm lint --update` lowers the count to 2. When a rule's last violation is gone it drops out of
+the baseline and becomes an error, with no config change.
+
+Pre-commit runs oxfmt and oxlint on staged files, errors only, without type information and
+without `--fix`: some oxlint fixers change types or behavior (`promise-function-async` adds
+`async`), so fixes stay an explicit `pnpm lint:fix` followed by `pnpm typecheck`.
 
 ## Focused Typecheck
 
@@ -276,7 +299,8 @@ pnpm --filter @memry/desktop typecheck:test:node   # tests/** harness + main/pre
 pnpm --filter @memry/desktop typecheck:test:web    # renderer tests
 ```
 
-`pnpm typecheck` runs all four, and CI has a step per project.
+`pnpm typecheck` runs all four, and CI has a step per project. Each one runs `scripts/typecheck.mjs`,
+which hands exactly the files a tsconfig includes to `oxlint --type-check` (TypeScript 7).
 
 `apps/desktop/tsconfig.test.node.json` and `apps/desktop/tsconfig.test.web.json` each carry an
 `exclude` array listing test files that already failed to compile when the gate was introduced.
