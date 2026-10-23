@@ -5,7 +5,7 @@ import { getStatus } from '../vault'
 import { ReadwiseError, verifyToken } from './client'
 import { deleteReadwiseToken, getReadwiseToken, setReadwiseToken } from './secrets'
 import { readReadwiseOptions } from './settings'
-import { clearRunState, getLastRun } from './sync-state'
+import { clearRunState, getCursor, getLastRun } from './sync-state'
 
 function requireVaultPath(): string {
   const { path: vaultPath } = getStatus()
@@ -13,8 +13,17 @@ function requireVaultPath(): string {
   return vaultPath
 }
 
-/** Flips to true when #1413 and #1415 put the import and sync engine in the build. */
-const RUN_AVAILABLE = false
+/** Flips to true when #1416's scheduler owns when a run starts outside the import dialog. */
+const SYNC_NOW_AVAILABLE = false
+
+/** The user-facing text for a Readwise failure, or null when `err` is not one. */
+export function describeReadwiseError(err: unknown): string | null {
+  if (!(err instanceof ReadwiseError)) return null
+  const t = getMainI18n().t
+  if (err.code === 'invalid-token') return t('errors:importer.readwiseInvalidToken')
+  if (err.code === 'rate-limited') return t('errors:importer.readwiseRateLimited')
+  return t('errors:importer.readwiseUnreachable')
+}
 
 export async function getReadwiseStatus(): Promise<ReadwiseStatusResult> {
   const vaultPath = requireVaultPath()
@@ -26,21 +35,20 @@ export async function getReadwiseStatus(): Promise<ReadwiseStatusResult> {
     options: readReadwiseOptions(db),
     lastSyncAt: lastRun?.at ?? null,
     needsAttention: lastRun?.needsAttention ?? false,
-    runAvailable: RUN_AVAILABLE
+    hasImported: getCursor(db) !== null,
+    syncNowAvailable: SYNC_NOW_AVAILABLE
   }
 }
 
 /** The check runs before anything is stored, so a bad token leaves no trace (D2). */
 export async function connectReadwise(token: string): Promise<ReadwiseStatusResult> {
   const vaultPath = requireVaultPath()
-  const t = getMainI18n().t
   try {
     await verifyToken(token.trim())
   } catch (err) {
-    if (!(err instanceof ReadwiseError)) throw err
-    if (err.code === 'invalid-token') throw new Error(t('errors:importer.readwiseInvalidToken'))
-    if (err.code === 'rate-limited') throw new Error(t('errors:importer.readwiseRateLimited'))
-    throw new Error(t('errors:importer.readwiseUnreachable'))
+    const message = describeReadwiseError(err)
+    if (message === null) throw err
+    throw new Error(message)
   }
   await setReadwiseToken(vaultPath, token)
   return await getReadwiseStatus()
@@ -54,5 +62,6 @@ export async function disconnectReadwise(): Promise<void> {
 }
 
 export async function syncReadwiseNow(): Promise<void> {
-  if (!RUN_AVAILABLE) throw new Error(getMainI18n().t('errors:importer.readwiseRunUnavailable'))
+  if (!SYNC_NOW_AVAILABLE)
+    throw new Error(getMainI18n().t('errors:importer.readwiseRunUnavailable'))
 }

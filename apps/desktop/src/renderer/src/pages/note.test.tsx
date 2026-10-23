@@ -801,6 +801,7 @@ vi.mock('@/components/ui/picker', () => ({
           {trailing}
         </button>
       ),
+      Search: () => null,
       Separator: () => <hr />
     }
   )

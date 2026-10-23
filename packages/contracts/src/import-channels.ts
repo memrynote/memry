@@ -458,6 +458,21 @@ export interface ReadwiseStatusResult {
   lastSyncAt: string | null
   /** The last run failed in a way the user must fix, such as a revoked token. */
   needsAttention: boolean
-  /** False until the import and sync engine (#1413, #1415) is in this build. */
-  runAvailable: boolean
+  /**
+   * A run has completed on this device (the cursor is set). False means the
+   * next run is the first import, which the dialog previews first (#1413).
+   */
+  hasImported: boolean
+  /** False until the scheduler (#1416) can start a run outside the import dialog. */
+  syncNowAvailable: boolean
 }
+
+/**
+ * Count keys of a Readwise preview group (`ImportPreviewGroup.counts[].labelKey`).
+ * The group's `label` is the category, and the first-import preview reads the
+ * counts back by these keys.
+ */
+export const READWISE_PREVIEW_COUNT_KEYS = {
+  books: 'import.preview.readwise.books',
+  highlights: 'import.preview.readwise.highlights'
+} as const

@@ -20,9 +20,16 @@ const disconnectedStatus: ReadwiseStatusResult = {
   options: READWISE_OPTIONS_DEFAULTS,
   lastSyncAt: null,
   needsAttention: false,
-  runAvailable: true
+  hasImported: false,
+  syncNowAvailable: true
 }
-const connectedStatus: ReadwiseStatusResult = { ...disconnectedStatus, connected: true }
+/** Connected after a first run: the panel shows the settings, not the preview. */
+const connectedStatus: ReadwiseStatusResult = {
+  ...disconnectedStatus,
+  connected: true,
+  hasImported: true
+}
+const firstImportStatus: ReadwiseStatusResult = { ...connectedStatus, hasImported: false }
 
 describe('ReadwiseImportPanel', () => {
   let i18n: I18nInstance
@@ -119,13 +126,155 @@ describe('ReadwiseImportPanel', () => {
     await screen.findByLabelText('Access token')
   })
 
-  it('keeps Import and Sync now closed while the run engine is not in the build', async () => {
-    status.mockResolvedValue({ ...connectedStatus, runAvailable: false })
+  it('is ready to import once connected, with Sync now left to the scheduler', async () => {
+    status.mockResolvedValue({ ...connectedStatus, syncNowAvailable: false })
     const states: OneNotePanelState[] = []
     renderPanel((state) => states.push(state))
 
     expect(await screen.findByRole('button', { name: 'Sync now' })).toBeDisabled()
-    await waitFor(() => expect(states[states.length - 1]).toEqual({ ready: false, options: {} }))
+    await waitFor(() =>
+      expect(states[states.length - 1]).toEqual({
+        ready: true,
+        options: {},
+        confirmLabel: undefined
+      })
+    )
+  })
+
+  describe('first import preview', () => {
+    const group = (label: string, books: number, highlights: number) => ({
+      label,
+      counts: [
+        { labelKey: 'import.preview.readwise.books', value: books },
+        { labelKey: 'import.preview.readwise.highlights', value: highlights }
+      ]
+    })
+    const libraryPreview = {
+      success: true,
+      preview: {
+        groups: [
+          group('books', 124, 900),
+          group('articles', 311, 1000),
+          group('tweets', 58, 100),
+          group('podcasts', 12, 24),
+          group('supplementals', 40, 0)
+        ]
+      }
+    }
+    let preview: ReturnType<typeof vi.fn>
+    let cancel: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      status.mockResolvedValue(firstImportStatus)
+      preview = vi.fn(() => Promise.resolve(libraryPreview))
+      cancel = vi.fn(() => Promise.resolve())
+      ;(window as unknown as { api: { import: Record<string, unknown> } }).api.import.preview =
+        preview
+      ;(window as unknown as { api: { import: Record<string, unknown> } }).api.import.cancel =
+        cancel
+    })
+
+    it('shows a count per category, and the books the enabled ones will import', async () => {
+      const states: OneNotePanelState[] = []
+      renderPanel((state) => states.push(state))
+
+      expect(
+        await screen.findByText(/2,?024 highlights across 505 books are ready|are ready/)
+      ).toBeInTheDocument()
+      expect(preview).toHaveBeenCalledWith(
+        expect.objectContaining({ importerId: 'readwise', sourcePaths: [] })
+      )
+      expect(screen.getByText('311')).toBeInTheDocument()
+      expect(
+        screen.getByText('Off: Supplementals. 505 books will import.', { exact: false })
+      ).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'Supplementals' })).not.toBeChecked()
+      await waitFor(() =>
+        expect(states[states.length - 1]).toEqual({
+          ready: true,
+          options: {},
+          confirmLabel: 'Import 505 books'
+        })
+      )
+    })
+
+    it('a category switch changes what Import will bring in', async () => {
+      setOptions.mockResolvedValue({
+        ...firstImportStatus,
+        options: {
+          ...READWISE_OPTIONS_DEFAULTS,
+          categories: { ...READWISE_OPTIONS_DEFAULTS.categories, tweets: false }
+        }
+      })
+      const states: OneNotePanelState[] = []
+      renderPanel((state) => states.push(state))
+
+      fireEvent.click(await screen.findByRole('switch', { name: 'Tweets' }))
+
+      await waitFor(() =>
+        expect(setOptions).toHaveBeenCalledWith({ categories: { tweets: false } })
+      )
+      await waitFor(() => expect(states[states.length - 1].confirmLabel).toBe('Import 447 books'))
+      expect(preview).toHaveBeenCalledTimes(1)
+    })
+
+    it('is not ready until the counts arrive, and stops the preview on unmount', async () => {
+      preview.mockReturnValue(new Promise(() => {}))
+      const states: OneNotePanelState[] = []
+      const { unmount } = renderPanel((state) => states.push(state))
+
+      await screen.findByText('Reading your Readwise library…')
+      await waitFor(() => expect(states.length).toBeGreaterThan(0))
+      expect(states[states.length - 1].ready).toBe(false)
+      unmount()
+      expect(cancel).toHaveBeenCalledWith({ importId: preview.mock.calls[0][0].importId })
+    })
+
+    it('offers a plain Import for an empty library', async () => {
+      preview.mockResolvedValue({
+        success: true,
+        preview: {
+          groups: ['books', 'articles', 'tweets', 'podcasts', 'supplementals'].map((c) =>
+            group(c, 0, 0)
+          )
+        }
+      })
+      const states: OneNotePanelState[] = []
+      renderPanel((state) => states.push(state))
+
+      await screen.findByText(/has no highlights yet/)
+      await waitFor(() =>
+        expect(states[states.length - 1]).toEqual({
+          ready: true,
+          options: {},
+          confirmLabel: 'Import'
+        })
+      )
+    })
+
+    it('shows a token problem from the preview and retries on request', async () => {
+      preview.mockResolvedValueOnce({
+        success: true,
+        preview: {
+          groups: [
+            {
+              label: 'Readwise',
+              counts: [],
+              error: { code: 'readwise.tokenInvalid', message: 'Readwise rejected the token' }
+            }
+          ]
+        }
+      })
+      const states: OneNotePanelState[] = []
+      renderPanel((state) => states.push(state))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('did not accept the stored token')
+      expect(states[states.length - 1].ready).toBe(false)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await screen.findByText('311')
+      expect(preview).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('opens the token page through the external-link route', async () => {

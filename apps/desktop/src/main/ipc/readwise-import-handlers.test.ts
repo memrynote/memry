@@ -64,7 +64,7 @@ describe('readwise import IPC handlers', () => {
 
   it('status reports disconnected with defaults on a fresh vault', async () => {
     const status = await handlerFor(ReadwiseImportChannels.invoke.STATUS)({}, undefined)
-    expect(status).toMatchObject({ connected: false, runAvailable: false })
+    expect(status).toMatchObject({ connected: false, hasImported: false, syncNowAvailable: false })
     expect((status.options as { rootFolder: string }).rootFolder).toBe('Readwise')
   })
 

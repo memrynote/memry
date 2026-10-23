@@ -47,6 +47,7 @@ vi.mock('@/components/ui/picker', () => {
         Trigger: ({ children }: { children: ReactNode }) => <>{children}</>,
         Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
         List: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+        Search: () => null,
         Separator: () => <hr />,
         Item: ({ label, value }: { label: string; value: string }) => (
           <button type="button" onClick={() => onValueChange?.(value)}>
