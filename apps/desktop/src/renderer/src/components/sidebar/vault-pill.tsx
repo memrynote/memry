@@ -65,6 +65,7 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
     return () => {
       observer.disconnect()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- vault count change re-measures the strip
   }, [vaults.length])
 
   const focusPath = hasTarget && progress > 0.5 ? targetPath : activePath
@@ -92,6 +93,7 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- group role on a div; <fieldset> would add border/legend layout
       role="group"
       data-testid="vault-pill"
       aria-label={t('vaultSwipe.indicatorLabel')}

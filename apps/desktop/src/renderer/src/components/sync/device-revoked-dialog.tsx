@@ -36,6 +36,7 @@ export function DeviceRevokedDialog({
     } finally {
       setExporting(false)
     }
+    // oxlint-disable-next-line react/memo-dependencies -- onExport is the only input; callback wraps async export
   }, [onExport])
 
   const hasUnsynced = unsyncedCount > 0

@@ -76,6 +76,7 @@ export function ReadwiseFirstImportPreview({
   useEffect(() => {
     const importId = crypto.randomUUID()
     let active = true
+    // oxlint-disable-next-line react/set-state-in-effect, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- resets to loading before the IPC preview request for the new options; preview is an IPC fetch keyed on options; not derivable during render
     setLoaded({ status: 'loading' })
     window.api.import
       .preview({ importId, importerId: 'readwise', sourcePaths: [] })
@@ -104,6 +105,7 @@ export function ReadwiseFirstImportPreview({
       active = false
       void window.api.import.cancel({ importId })
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- options.readerDocuments re-triggers the preview fetch (IPC reads it server-side)
   }, [attempt, t, options.readerDocuments])
 
   const counts = loaded.status === 'ready' ? loaded.counts : null

@@ -122,6 +122,8 @@ const dueDateOptions: BulkActionOption[] = [
 // COMPONENT
 // ============================================================================
 
+const NO_STATUSES: Status[] = []
+
 /**
  * Toolbar that appears when tasks are selected, providing bulk action buttons
  */
@@ -138,7 +140,7 @@ export const BulkActionToolbar = ({
   onDelete,
   onCancel,
   projects,
-  statuses = [],
+  statuses = NO_STATUSES,
   showStatusAction = false,
   className
 }: BulkActionToolbarProps): React.JSX.Element => {

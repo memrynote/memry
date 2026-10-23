@@ -76,6 +76,7 @@ export function RecoveryPhraseConfirm({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- form-level keydown/paste delegation for the inputs inside; the form itself is not a control
     <form
       onSubmit={submit}
       // Esc steps back to the phrase, not out of the host (the wizard listens on window).
@@ -127,6 +128,7 @@ export function RecoveryPhraseConfirm({
                 placeholder={t('setup.recovery.wordShort', { index: wordIndex + 1 })}
                 aria-label={t('setup.recovery.wordPlaceholder', { index: wordIndex + 1 })}
                 aria-invalid={showFeedback && !isCorrect}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
                 autoFocus={slotIndex === 0}
                 className={cn(
                   'h-10 rounded-lg bg-surface px-3 font-mono text-sm font-medium leading-[18px] text-foreground outline-none transition-shadow',

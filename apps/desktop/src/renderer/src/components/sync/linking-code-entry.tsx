@@ -127,6 +127,7 @@ export function LinkingCodeEntry({
             disabled={isLoading}
             placeholder={t('setup.linking.codePlaceholder')}
             rows={4}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
             autoFocus
             aria-describedby={error ? 'linking-error' : undefined}
             aria-invalid={!!error}

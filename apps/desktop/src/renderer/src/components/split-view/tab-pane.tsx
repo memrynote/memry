@@ -35,6 +35,7 @@ export const TabPane = ({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children
     <div
       className={cn('flex flex-col h-full w-full', className)}
       onClick={handleFocus}

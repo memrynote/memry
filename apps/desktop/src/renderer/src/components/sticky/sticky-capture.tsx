@@ -232,6 +232,7 @@ export function StickyCapture(): React.JSX.Element {
             )}
 
             {deleted && (
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
               <div role="status" className="flex items-center gap-2 px-4 pb-1 text-[12px]/4">
                 <span className="text-muted-foreground">{t('sticky.deleted')}</span>
                 <button

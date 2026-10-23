@@ -57,6 +57,7 @@ function mount(initialState: TabSystemState) {
   let latest: ReturnType<typeof useTabs> | null = null
 
   const Probe = (): null => {
+    // oxlint-disable-next-line react/globals -- test probe captures the hook result for later assertions
     latest = useTabs()
     return null
   }

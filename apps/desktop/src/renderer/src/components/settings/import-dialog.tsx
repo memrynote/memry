@@ -201,6 +201,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
             {run.preview && (
               <div className="flex flex-col border-t border-border">
                 {run.preview.groups.map((g, gi) => (
+                  // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                   <div key={gi} className="border-b border-border py-2.5 text-xs/4">
                     <div className="font-medium text-[13px]/4 text-foreground">{g.label}</div>
                     {g.error ? (
@@ -222,6 +223,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                             </summary>
                             <ul className="mt-1 ps-4 list-disc">
                               {g.warnings.map((w, i) => (
+                                // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                                 <li key={i}>{formatImportMessage(w)}</li>
                               ))}
                             </ul>

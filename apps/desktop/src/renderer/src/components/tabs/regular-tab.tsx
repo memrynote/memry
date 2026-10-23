@@ -114,6 +114,9 @@ const RegularTabComponent = ({
         className
       )}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && e.target === e.currentTarget) handleClick()
+      }}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

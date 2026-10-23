@@ -188,6 +188,7 @@ export const SidebarSection = ({
           </button>
 
           {actions && (
+            // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children
             <div
               // Every action in here is in the tab order, so hover cannot be
               // the only thing that reveals them — a keyboard user would land

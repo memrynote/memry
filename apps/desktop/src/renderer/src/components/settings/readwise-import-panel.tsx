@@ -102,6 +102,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
     return () => {
       active = false
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- refreshNonce re-triggers the status IPC read
   }, [t, refreshNonce])
 
   // A run starting, moving on or ending changes the banner.

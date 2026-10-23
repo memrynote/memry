@@ -96,6 +96,7 @@ export function SettingsGroup({ label, description, action, children }: Settings
       {/* Clips a search hit, which bleeds to the card edge, at the rounded corners. */}
       <div className={cn(SETTINGS_CARD, 'overflow-hidden')}>
         {items.map((child, i) => (
+          // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
           <div key={i}>{child}</div>
         ))}
       </div>

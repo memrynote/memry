@@ -171,11 +171,11 @@ export function DatePickerCalendar({
   onTodayClick
 }: DatePickerCalendarProps): React.JSX.Element {
   const { t: tPhaseF } = useT('tasks')
-  const today = useMemo(() => {
+  const [today] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
-  }, [])
+  })
 
   const initialMonth = selected ?? today
   const [viewYear, setViewYear] = useState(initialMonth.getFullYear())
@@ -290,6 +290,7 @@ export function DatePickerCalendar({
             to the same string, which would collide as a React key. */}
         {weekdays.map((day, dayIdx) => (
           <div
+            // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
             key={dayIdx}
             className="flex-1 min-w-0 text-[10px] text-center text-text-tertiary/60 font-medium leading-3 select-none"
           >
@@ -300,6 +301,7 @@ export function DatePickerCalendar({
 
       {/* Day grid */}
       {weeks.map((week, wi) => (
+        // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
         <div key={wi} className="flex items-center">
           {showWeekNumbers && (
             <div
@@ -322,6 +324,7 @@ export function DatePickerCalendar({
 
             const dayButton = (
               <button
+                // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                 key={`${wi}-${di}`}
                 type="button"
                 onClick={() => !isDisabled && handleDayClick(date, isOutsideMonth)}
@@ -375,6 +378,7 @@ export function DatePickerCalendar({
                     )}
                     {dots?.slice(0, 3).map((dotColor, i) => (
                       <span
+                        // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                         key={`${dotColor}-${i}`}
                         className="size-1 rounded-full"
                         style={{ backgroundColor: dotColor }}
@@ -388,6 +392,7 @@ export function DatePickerCalendar({
             if (!summary) return dayButton
 
             return (
+              // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
               <HoverCard key={`${wi}-${di}`} openDelay={200} closeDelay={0}>
                 <HoverCardTrigger asChild>{dayButton}</HoverCardTrigger>
                 <HoverCardContent side="top" align="center" className="w-auto min-w-[7.5rem] p-2">

@@ -444,6 +444,7 @@ export function CanvasTree({
     return () => {
       clearTimeout(timer)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- rows re-runs the focus attempt until the target row exists (see comment above)
   }, [focusRow, pendingFocus, rows])
 
   // Closes the window above. Deliberately NOT keyed on `rows`, so a later

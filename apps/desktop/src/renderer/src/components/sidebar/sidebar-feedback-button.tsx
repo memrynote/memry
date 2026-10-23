@@ -201,6 +201,7 @@ export function SidebarFeedbackButton() {
 
           <div className="flex flex-col gap-3">
             <Textarea
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
               autoFocus
               value={message}
               onChange={(e) => {

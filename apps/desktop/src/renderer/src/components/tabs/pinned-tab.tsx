@@ -64,6 +64,9 @@ export const PinnedTab = ({
             className
           )}
           onClick={handleClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.target === e.currentTarget) handleClick()
+          }}
           onMouseDown={handleMouseDown}
           role="tab"
           aria-selected={isActive}

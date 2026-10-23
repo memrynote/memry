@@ -60,6 +60,7 @@ export function EmailEntryForm({
           disabled={isLoading}
           aria-describedby={displayError ? 'email-error' : undefined}
           aria-invalid={!!displayError}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
           autoFocus
           className="h-9 text-sm focus-visible:border-[var(--tint)]/50"
         />

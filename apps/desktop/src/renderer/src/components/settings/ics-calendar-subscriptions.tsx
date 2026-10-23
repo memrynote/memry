@@ -418,6 +418,7 @@ function IcsSubscriptionRow({
                 }}
                 aria-label={t('calendar.subscriptions.renameLabel')}
                 maxLength={200}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
                 autoFocus
                 className="h-7 text-xs/4"
                 data-testid={`ics-source-title-input-${source.id}`}
@@ -517,6 +518,7 @@ function IcsColorPicker({ source, disabled, onPick }: IcsColorPickerProps): Reac
       />
       <PopoverContent align="start" className="w-auto p-2">
         <div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="group"
           aria-label={t('calendar.subscriptions.color')}
           className="grid grid-cols-6 gap-1.5"

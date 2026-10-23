@@ -65,6 +65,7 @@ export function SearchInputBar({
           onValueChange={onValueChange}
           onKeyDown={onKeyDown}
           placeholder={chips.length > 0 ? '' : placeholder}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
           autoFocus
           className="h-14 w-full border-0 bg-transparent text-[15px] leading-5 text-foreground caret-[var(--tint)]
             placeholder:text-text-tertiary focus:outline-none focus:ring-0"

@@ -57,10 +57,18 @@ const PRIORITY_DISPLAY: Record<
 
 const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
 
+const NO_COUNTS: Record<Priority, number> = {
+  urgent: 0,
+  high: 0,
+  medium: 0,
+  low: 0,
+  none: 0
+}
+
 export const PriorityFilter = ({
   selectedPriorities,
   onChange,
-  taskCountByPriority = {} as Record<Priority, number>,
+  taskCountByPriority = NO_COUNTS,
   className
 }: PriorityFilterProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
