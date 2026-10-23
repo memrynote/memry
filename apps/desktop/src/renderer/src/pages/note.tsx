@@ -1647,7 +1647,8 @@ export function NotePage({ noteId }: NotePageProps) {
           </Button>
         </Picker.Trigger>
         <Picker.Content align="end">
-          <Picker.List>
+          <Picker.Search placeholder={t('editor.toolbar.searchActions')} />
+          <Picker.List filterByLabel emptyMessage={t('editor.toolbar.noMatchingActions')}>
             <Picker.Item
               value="note.localGraph"
               label={noteLabels['note.localGraph']}

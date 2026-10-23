@@ -2,7 +2,7 @@ import * as React from 'react'
 import { CheckMark } from '@/components/ui/check-mark'
 import { FilterCheckbox } from '@/components/ui/filter-checkbox'
 import { cn } from '@/lib/utils'
-import { usePickerContext, type PickerIndicator } from './types'
+import { PickerLabelFilterContext, usePickerContext, type PickerIndicator } from './types'
 
 export interface PickerItemProps extends Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -46,7 +46,10 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
     },
     ref
   ) => {
-    const { value: contextValue, onValueChange } = usePickerContext()
+    const { value: contextValue, onValueChange, searchQuery } = usePickerContext()
+    const filtering = React.useContext(PickerLabelFilterContext)
+    const query = searchQuery.trim().toLowerCase()
+    if (filtering && query && !label.toLowerCase().includes(query)) return null
 
     const isSelected =
       checked ??
