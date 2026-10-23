@@ -161,6 +161,7 @@ import {
 } from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { FIND_REQUEST_KEY, readFindRequest } from '@/lib/find-request'
 import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
@@ -541,6 +542,16 @@ export function NotePage({ noteId }: NotePageProps) {
     if (isLargeFile) openLargeFileFindRef.current?.()
     else findInPage.open()
   }, [isLargeFile, findInPage])
+
+  // A search-palette hit on this note: open the find bar on its match. Cleared
+  // from the tab once taken, so coming back to the tab does not jump again.
+  const findRequest = useMemo(() => readFindRequest(activeTab?.viewState), [activeTab?.viewState])
+  const openFindAt = findInPage.openAt
+  useEffect(() => {
+    if (!findRequest || !activeTab || !note || !isActiveNote || isLargeFile) return
+    openFindAt(findRequest.query, findRequest.index)
+    saveTabState(activeTab.id, { viewState: { [FIND_REQUEST_KEY]: undefined } })
+  }, [findRequest, activeTab, note, isActiveNote, isLargeFile, openFindAt, saveTabState])
 
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
@@ -1780,7 +1791,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   return (
     <NoteLayout
-      suppressScrollRestore={Boolean(initialHeadingText)}
+      suppressScrollRestore={Boolean(initialHeadingText) || findRequest !== null}
       headings={headings}
       onHeadingClick={mindMapNavigation.navigateFromOutline}
       onActiveHeadingChange={handleActiveHeadingChange}

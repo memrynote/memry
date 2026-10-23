@@ -6,8 +6,6 @@ import type {
 } from '@memry/contracts/search-api'
 import { useT } from '@memry/i18n/renderer'
 import { CheckCircle2, Circle } from '@/lib/icons'
-import { notesService } from '@/services/notes-service'
-import { journalService } from '@/services/journal-service'
 import { tasksService, type Task } from '@/services/tasks-service'
 import { inboxService } from '@/services/inbox-service'
 import { stripMarkTags } from '@/services/search-service'
@@ -19,9 +17,10 @@ import { PriorityIcon } from '@/components/tasks/priority-icon'
 import { priorityConfig } from '@/data/task-model'
 import { dbTaskToUiTask } from '@/features/tasks/use-task-queries'
 import { HighlightedText, SearchCount } from './search-row'
-import { excerpt, matchLines, plainLines } from './search-text'
+import { excerpt, matchLines, plainLines, type Occurrences } from './search-text'
 import { dayLabel, folderSegments, hostOf, isPastDay, priorityFor } from './search-format'
 import { resultValue } from './search-result-item'
+import { loadBodyMarkdown } from './search-bodies'
 
 const log = createLogger('SearchPreview')
 /** Arrowing through results should not fire a read per row passed over. */
@@ -35,14 +34,10 @@ type Detail =
 async function loadDetail(item: SearchResultItemType): Promise<Detail | null> {
   const meta = item.metadata
   switch (meta.type) {
-    case 'note': {
-      if (meta.fileType && meta.fileType !== 'markdown') return null
-      const note = await notesService.get(item.id)
-      return note && !note.contentOmitted ? { kind: 'body', lines: plainLines(note.content) } : null
-    }
+    case 'note':
     case 'journal': {
-      const entry = await journalService.getEntry(meta.date)
-      return entry ? { kind: 'body', lines: plainLines(entry.content) } : null
+      const markdown = await loadBodyMarkdown(item)
+      return markdown === null ? null : { kind: 'body', lines: plainLines(markdown) }
     }
     case 'task': {
       const task = await tasksService.get(item.id)
@@ -150,6 +145,53 @@ function Matches({ lines, query }: { lines: string[]; query: string }): React.JS
           />
         </div>
       ))}
+    </section>
+  )
+}
+
+/** The picked occurrence with the lines around it, the hit marked. */
+function MatchContext({
+  occurrences,
+  index,
+  query
+}: {
+  occurrences: Occurrences
+  index: number
+  query: string
+}): React.JSX.Element | null {
+  const { t } = useT('common')
+  const hit = occurrences.hits[index]
+  if (!hit) return null
+  const line = occurrences.lines[hit.line]
+  const end = hit.start + query.trim().length
+  const around = (at: number): string | undefined => occurrences.lines[at]
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex justify-between text-[11px] font-medium leading-[14px] text-text-tertiary">
+        <span>
+          {t('searchPalette.matchOf', { index: index + 1, total: occurrences.hits.length })}
+        </span>
+      </div>
+      {around(hit.line - 1) && (
+        <p className="truncate text-[13px] leading-[21px] text-text-tertiary">
+          {around(hit.line - 1)}
+        </p>
+      )}
+      <div className="flex gap-3">
+        <span className="w-0.5 shrink-0 rounded-full bg-[var(--tint)]" />
+        <p className="min-w-0 text-[13px] leading-[21px] text-text-secondary [overflow-wrap:anywhere]">
+          {line.slice(0, hit.start)}
+          <mark className="rounded-[3px] bg-[color-mix(in_srgb,var(--tint)_30%,transparent)] px-px text-foreground">
+            {line.slice(hit.start, end)}
+          </mark>
+          {line.slice(end)}
+        </p>
+      </div>
+      {around(hit.line + 1) && (
+        <p className="truncate text-[13px] leading-[21px] text-text-tertiary">
+          {around(hit.line + 1)}
+        </p>
+      )}
     </section>
   )
 }
@@ -290,10 +332,13 @@ function InboxPreview({
 /** Read-only detail for the selected result. Never takes focus. */
 export function SearchPreview({
   item,
-  query
+  query,
+  match
 }: {
   item: SearchResultItemType
   query: string
+  /** The occurrence picked in the list, when a match row is selected. */
+  match?: { occurrences: Occurrences; index: number }
 }): React.JSX.Element {
   const { t, i18n } = useT('common')
   const locale = i18n.resolvedLanguage ?? i18n.language
@@ -352,7 +397,11 @@ export function SearchPreview({
             <>
               <Divider />
               <Body text={lines ? excerpt(lines, 240, item.title) : stripMarkTags(item.snippet)} />
-              {lines && <Matches lines={lines} query={query} />}
+              {match ? (
+                <MatchContext occurrences={match.occurrences} index={match.index} query={query} />
+              ) : (
+                lines && <Matches lines={lines} query={query} />
+              )}
             </>
           )}
         </>
