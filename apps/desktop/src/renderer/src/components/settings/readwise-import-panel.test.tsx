@@ -127,4 +127,70 @@ describe('ReadwiseImportPanel', () => {
     expect(await screen.findByRole('button', { name: 'Sync now' })).toBeDisabled()
     await waitFor(() => expect(states[states.length - 1]).toEqual({ ready: false, options: {} }))
   })
+
+  it('opens the token page through the external-link route', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderPanel()
+    fireEvent.click(await screen.findByRole('button', { name: 'Get your token' }))
+    expect(open).toHaveBeenCalledWith(
+      'https://readwise.io/access_token',
+      '_blank',
+      'noopener,noreferrer'
+    )
+    open.mockRestore()
+  })
+
+  it('shows the error when the status cannot be read', async () => {
+    status.mockRejectedValue(new Error('boom'))
+    renderPanel()
+    expect(await screen.findByText('boom')).toBeInTheDocument()
+  })
+
+  it('syncs now, and shows the failure when a sync or an option save is refused', async () => {
+    status.mockResolvedValue(connectedStatus)
+    renderPanel()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }))
+    await waitFor(() => expect(syncNow).toHaveBeenCalled())
+
+    syncNow.mockResolvedValue({ success: false, error: 'sync refused' })
+    fireEvent.click(screen.getByRole('button', { name: 'Sync now' }))
+    expect(await screen.findByText('sync refused')).toBeInTheDocument()
+
+    setOptions.mockResolvedValue({ success: false, error: 'save refused' })
+    fireEvent.click(screen.getByRole('switch', { name: 'Books' }))
+    expect(await screen.findByText('save refused')).toBeInTheDocument()
+  })
+
+  it('shows the failure when disconnecting is refused and stays connected', async () => {
+    status.mockResolvedValue(connectedStatus)
+    disconnect.mockResolvedValue({ success: false, error: 'cannot disconnect' })
+    renderPanel()
+    fireEvent.click(await screen.findByRole('button', { name: 'Disconnect' }))
+    expect(await screen.findByText('cannot disconnect')).toBeInTheDocument()
+    expect(screen.getByText('Where notes go')).toBeInTheDocument()
+  })
+
+  it('connects on Enter, and tells the user when the saved root folder no longer exists', async () => {
+    renderPanel()
+    const input = await screen.findByLabelText('Access token')
+    fireEvent.change(input, { target: { value: 'tok-1' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => expect(connect).toHaveBeenCalledWith({ token: 'tok-1' }))
+  })
+
+  it('lists a saved root folder that is not among the vault folders, and changes cadence', async () => {
+    status.mockResolvedValue({
+      ...connectedStatus,
+      options: { ...READWISE_OPTIONS_DEFAULTS, rootFolder: 'Gone/Away' }
+    })
+    renderPanel()
+    expect(await screen.findByText('/Gone/Away')).toBeInTheDocument()
+  })
+
+  it('shows the needs-attention line instead of the sync hint', async () => {
+    status.mockResolvedValue({ ...connectedStatus, needsAttention: true })
+    renderPanel()
+    expect(await screen.findByText(/needs your attention/)).toBeInTheDocument()
+  })
 })

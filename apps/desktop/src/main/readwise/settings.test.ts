@@ -109,6 +109,19 @@ describe('readwise synced settings group', () => {
     expect(Object.keys(manager.getPayload().fieldClocks)).not.toContain('readwise.syncDeviceId')
   })
 
+  it('treats a corrupt or non-object row as empty and writes over it', () => {
+    setSetting(db, READWISE_SETTINGS_KEY, '{nope')
+    expect(readReadwiseOptions(db)).toEqual(READWISE_OPTIONS_DEFAULTS)
+    setSetting(db, READWISE_SETTINGS_KEY, '[1]')
+    expect(readReadwiseOptions(db)).toEqual(READWISE_OPTIONS_DEFAULTS)
+    setSetting(db, READWISE_SETTINGS_KEY, JSON.stringify({ categories: 'x' }))
+    writeReadwiseOptions(db, { categories: { books: false }, cadence: 'manual' })
+    expect(JSON.parse(getSetting(db, READWISE_SETTINGS_KEY)!)).toEqual({
+      cadence: 'manual',
+      categories: { books: false }
+    })
+  })
+
   describe('folder rename', () => {
     it('follows a rename of the root folder, including the default one', () => {
       followFolderRenameInReadwise('Readwise', 'Reading')
