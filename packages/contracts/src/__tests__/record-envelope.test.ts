@@ -157,7 +157,7 @@ describe('record-envelope vectors', () => {
   }
 
   for (const entry of vectors.tamperCases) {
-    it(entry.name, async () => {
+    it(`${entry.name}`, async () => {
       const crypto = deterministicProvider()
       const firstCase = vectors.cases[0]
       await expect(
@@ -173,7 +173,7 @@ describe('record-envelope vectors', () => {
   }
 
   for (const entry of vectors.sizeCeilingCases) {
-    it(entry.name, async () => {
+    it(`${entry.name}`, async () => {
       const crypto = deterministicProvider()
       const signer = sodium.crypto_sign_seed_keypair(fromHex(vectors.cases[0].input.signingSeedHex))
       const call = (): Promise<unknown> =>

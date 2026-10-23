@@ -74,7 +74,7 @@ describe('attachment-manifest vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    describe(entry.name, () => {
+    describe(`${entry.name}`, () => {
       it('decrypts to its manifest', async () => {
         const { manifest, fileKey } = await decryptAttachmentManifest(
           reader,

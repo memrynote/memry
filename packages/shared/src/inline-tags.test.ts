@@ -104,7 +104,7 @@ describe('rewriteInlineTagsInMarkdown', () => {
 
 describe('rewriteInlineTagsInMarkdown shared cases', () => {
   for (const c of INLINE_TAG_RENAME_CASES) {
-    it(c.name, () => {
+    it(`${c.name}`, () => {
       const markdown = c.pieces.map((p) => (p.code ? `\`${p.text}\`` : p.text)).join('')
       const rewritten = rewriteInlineTagsInMarkdown(markdown, c.renames)
       expect(rewritten.replace(/`/g, '')).toBe(c.expected)

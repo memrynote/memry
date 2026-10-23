@@ -25,6 +25,26 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
+// Mock the stream conversion (vitest hoists this to the top of the file regardless)
+vi.mock('stream', async () => {
+  const actual = await vi.importActual('stream')
+  return {
+    ...actual,
+    Readable: {
+      fromWeb: vi.fn(() => ({
+        pipe: vi.fn().mockReturnThis(),
+        on: vi.fn((event, cb: () => void) => {
+          if (event === 'end')
+            setTimeout(() => {
+              cb()
+            }, 0)
+          return { on: vi.fn() }
+        })
+      }))
+    }
+  }
+})
+
 import {
   fetchUrlMetadata,
   fetchUrlHtml,
@@ -540,26 +560,6 @@ describe('URL Metadata Extraction', () => {
               .mockResolvedValueOnce({ value: imageData, done: false })
               .mockResolvedValueOnce({ done: true })
           })
-        }
-      })
-
-      // Mock the stream conversion
-      vi.mock('stream', async () => {
-        const actual = await vi.importActual('stream')
-        return {
-          ...actual,
-          Readable: {
-            fromWeb: vi.fn(() => ({
-              pipe: vi.fn().mockReturnThis(),
-              on: vi.fn((event, cb: () => void) => {
-                if (event === 'end')
-                  setTimeout(() => {
-                    cb()
-                  }, 0)
-                return { on: vi.fn() }
-              })
-            }))
-          }
         }
       })
 

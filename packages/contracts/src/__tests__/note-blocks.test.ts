@@ -73,7 +73,7 @@ describe('note-blocks vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(entry.name, () => {
+    it(`${entry.name}`, () => {
       const doc = applied(entry.updateHex)
       expect(extractBlocks(doc), entry.pins).toEqual(entry.expectedBlocks)
       expect(canonicalFragment(doc), entry.pins).toBe(entry.expectedCanonical)

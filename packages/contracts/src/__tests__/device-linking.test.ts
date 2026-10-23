@@ -156,7 +156,7 @@ describe('device-linking vectors', () => {
   })
 
   for (const entry of vectors.failureCases) {
-    it(entry.name as string, () => {
+    it(`${entry.name}`, () => {
       if ('verifyWithKeyHex' in entry) {
         const message = fromHex(entry.messageHex as string)
         const mac = sodium.from_base64(entry.macB64 as string, sodium.base64_variants.ORIGINAL)

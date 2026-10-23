@@ -37,7 +37,7 @@ describe('text-extract vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(entry.name, () => {
+    it(`${entry.name}`, () => {
       expect(extractText(applied(entry.updateHex)), entry.pins).toBe(entry.expectedText)
     })
   }

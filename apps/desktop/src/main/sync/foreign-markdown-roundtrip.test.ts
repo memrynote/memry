@@ -450,7 +450,7 @@ describe('foreign markdown round-trip, main pipeline', () => {
   ]
 
   for (const [group, cases] of groups) {
-    describe(group, () => {
+    describe(`${group}`, () => {
       it.each(cases)('$name (house style)', async ({ markdown, canonical }) => {
         const once = await roundTripCanonical(markdown)
         expect(once, 'round-trip reaches the canonical bytes').toBe(canonical ?? markdown)

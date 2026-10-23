@@ -114,7 +114,7 @@ describe('payload-schemas vectors', () => {
     const schema = SCHEMAS[group.type]
 
     for (const entry of group.cases.slice(0, 3)) {
-      it(entry.name, () => {
+      it(`${entry.name}`, () => {
         const parsed = schema.parse(entry.payload)
         expect(parsed, entry.pins).toEqual(entry.expectedParsed)
       })
@@ -138,7 +138,7 @@ describe('payload-schemas vectors', () => {
       ).toBeGreaterThan(0)
     })
 
-    it(group.cases[3].name, () => {
+    it(`${group.cases[3].name}`, () => {
       const entry = group.cases[3]
       const stored = entry.storedPayloadJson!
       // The conforming path: bytes survive.

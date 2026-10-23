@@ -84,9 +84,10 @@ describe('worker', () => {
     await import('./worker')
 
     await vi.waitFor(() => {
-      expect(
-        mockPort.postMessage.mock.calls.some(([msg]: [WorkerToMainMessage]) => msg.type === 'ready')
-      ).toBe(true)
+      const ready = mockPort.postMessage.mock.calls.some(
+        ([msg]: [WorkerToMainMessage]) => msg.type === 'ready'
+      )
+      if (!ready) throw new Error('worker has not posted ready yet')
     })
   })
 

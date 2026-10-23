@@ -81,7 +81,7 @@ describe('field-merge vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(entry.name, () => {
+    it(`${entry.name}`, () => {
       const result = mergeFields(
         entry.localData,
         entry.remoteData,

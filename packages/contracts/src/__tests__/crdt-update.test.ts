@@ -156,7 +156,7 @@ describe('crdt-update vectors', () => {
   }
 
   for (const entry of vectors.errorCases.filter((c) => c.expectErrorContains)) {
-    it(entry.name, async () => {
+    it(`${entry.name}`, async () => {
       const crypto = deterministicProvider()
       const signer = sodium.crypto_sign_seed_keypair(fromHex(vectors.cases[0].input.signingSeedHex))
       await expect(

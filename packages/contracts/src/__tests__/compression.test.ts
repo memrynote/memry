@@ -44,7 +44,7 @@ describe('compression vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(entry.name, () => {
+    it(`${entry.name}`, () => {
       const input = fromHex(entry.inputHex)
       const frame = compressPayload(input)
       expect(hex(frame), `${entry.pins} (a pako upgrade changing output also lands here)`).toBe(
@@ -58,7 +58,7 @@ describe('compression vectors', () => {
   }
 
   for (const entry of vectors.readerCases) {
-    it(entry.name, () => {
+    it(`${entry.name}`, () => {
       expect(hex(decompressPayload(fromHex(entry.frameHex))), entry.pins).toBe(
         entry.expectedInflatedHex
       )
@@ -66,7 +66,7 @@ describe('compression vectors', () => {
   }
 
   for (const entry of vectors.errorCases) {
-    it(entry.name, () => {
+    it(`${entry.name}`, () => {
       // MUST throw, and MUST NOT return an empty buffer.
       let returned: Uint8Array | undefined
       expect(() => {

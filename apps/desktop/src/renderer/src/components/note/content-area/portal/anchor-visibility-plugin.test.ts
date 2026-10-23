@@ -442,7 +442,7 @@ describe('Enter through the real BlockNote keymap', () => {
   }
 
   for (const spec of specs) {
-    describe(spec.name, () => {
+    describe(`${spec.name}`, () => {
       const setup = (blocks: PartialBlock[]) => {
         const m = mount(blocks)
         m.editor.replaceBlocks(m.editor.document, blocks)

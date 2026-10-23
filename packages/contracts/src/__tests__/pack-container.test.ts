@@ -65,7 +65,7 @@ describe('pack-container vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(entry.name, async () => {
+    it(`${entry.name}`, async () => {
       const bytes = fromHex(entry.packHex)
       const parsed = await parsePack(bytes)
       expect(parsed.version, entry.pins).toBe(entry.expected.version)
@@ -83,7 +83,7 @@ describe('pack-container vectors', () => {
   }
 
   for (const entry of vectors.errorCases) {
-    it(entry.name, async () => {
+    it(`${entry.name}`, async () => {
       const rejects = expect(parsePack(fromHex(entry.packHex)), entry.pins).rejects
       // `entry-count-too-large` has no asserted message: the reference reaches
       // "pack truncated" only because it does not apply §8.6's cap, and a

@@ -94,7 +94,9 @@ vi.mock('@/components/tasks/date-picker-calendar', () => ({
       type="button"
       onClick={() => {
         const date = new Date('2026-06-01T00:00:00.000Z')
-        expect(disabled?.(new Date('2020-01-01T00:00:00.000Z'))).toBe(true)
+        if (disabled?.(new Date('2020-01-01T00:00:00.000Z')) !== true) {
+          throw new Error('past dates must be disabled in the date picker')
+        }
         onSelect(date)
       }}
     >

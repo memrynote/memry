@@ -53,16 +53,11 @@ describe('round-trip conformance corpus, main pipeline', () => {
   // Broken on current main; fixed by the named sibling of epic #1843. `it.fails`
   // inverts the expectation, so the sibling landing turns these red and forces
   // the pending flag off — the case then asserts the fixed behavior forever.
-  if (pendingCases.length > 0) {
-    it.fails.each(pendingCases)(
-      '$name (pending #$pendingIssue)',
-      async ({ markdown, canonical }) => {
-        const once = await roundTrip(markdown)
-        expect(once, 'round-trip reaches the canonical bytes').toBe(canonical ?? markdown)
-        expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
-      }
-    )
-  }
+  it.fails.each(pendingCases)('$name (pending #$pendingIssue)', async ({ markdown, canonical }) => {
+    const once = await roundTrip(markdown)
+    expect(once, 'round-trip reaches the canonical bytes').toBe(canonical ?? markdown)
+    expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
+  })
 })
 
 describe('source-preserving round-trip, main pipeline (#1915)', () => {
@@ -101,12 +96,10 @@ describe('round-trip fuzz, main pipeline', () => {
     async ({ generate }) => assertFamily(generate)
   )
 
-  if (pendingFamilies.length > 0) {
-    it.fails.each(pendingFamilies)(
-      '$name stay byte-identical across 48 seeded cases (pending #$pendingIssue)',
-      async ({ generate }) => assertFamily(generate)
-    )
-  }
+  it.fails.each(pendingFamilies)(
+    '$name stay byte-identical across 48 seeded cases (pending #$pendingIssue)',
+    async ({ generate }) => assertFamily(generate)
+  )
 })
 
 describe('plain checkboxes, main pipeline', () => {

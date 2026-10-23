@@ -213,7 +213,7 @@ describe('getAllTagsWithCounts', () => {
   it('gives a brand-new task-only tag a definition row, so quick-add tags are not colourless', () => {
     // #given: the tag quick-add's `#tag` marker creates — it exists on a task
     // and nowhere else, and no vault path ever ran `ensureTagDefinitions` for
-    // it (that is only wired to notes).
+    // this tag (that is only wired to notes).
     insertTask(dataDb, 't1')
     insertTaskTag(dataDb, 't1', 'launch')
     expect(

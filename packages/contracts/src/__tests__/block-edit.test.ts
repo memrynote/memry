@@ -68,7 +68,7 @@ describe('block-edit vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    describe(entry.name, () => {
+    describe(`${entry.name}`, () => {
       it('renders its base document as the file records', () => {
         expect(canonicalFragment(applied(entry.baseUpdateHex))).toBe(entry.baseCanonical)
       })

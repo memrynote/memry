@@ -27,7 +27,7 @@ function docOf(pieces: (typeof INLINE_TAG_RENAME_CASES)[number]['pieces']): {
 
 describe('renameTagsInDoc shared cases', () => {
   for (const c of INLINE_TAG_RENAME_CASES) {
-    it(c.name, () => {
+    it(`${c.name}`, () => {
       const { doc, text } = docOf(c.pieces)
       renameTagsInDoc(doc, c.renames)
       expect(text.toString().replace(/<\/?[a-z]+>/g, '')).toBe(c.expected)

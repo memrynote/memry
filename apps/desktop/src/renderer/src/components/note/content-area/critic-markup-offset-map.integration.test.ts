@@ -72,6 +72,7 @@ describe('CriticMarkup offset map vs real BlockNote doc projection', () => {
   }
 
   for (const markdown of FIXTURES_BROKEN) {
+    // oxlint-disable-next-line vitest/no-disabled-tests -- known limitation: offset map collapses multi-blank-line gaps; see Blocked note below
     it.skip(`agrees with doc.textBetween for ${JSON.stringify(markdown)}`, async () => {
       // Blocked: offset map collapses multi-blank-line gaps to one separator;
       // doc produces one separator per empty paragraph block.
@@ -150,6 +151,7 @@ describe('CriticMarkup offset map vs real doc projection for structured markdown
 
   for (const annotated of STRUCTURED_FIXTURES_BROKEN) {
     const { markdown } = parseAnnotatedFixture(annotated)
+    // oxlint-disable-next-line vitest/no-disabled-tests -- known limitation: double-blank-line gap shifts following offsets; see Blocked note below
     it.skip(`agrees with the map for ${JSON.stringify(markdown)}`, async () => {
       // Blocked: double-blank-line gap shifts all following editor offsets.
     })
@@ -224,6 +226,7 @@ describe('CriticMarkup offset map vs real doc projection for atom inline nodes',
   for (const fixture of INLINE_ATOM_FIXTURES) {
     const { markdown } = parseAnnotatedFixture(fixture.annotated)
 
+    // oxlint-disable-next-line vitest/no-disabled-tests -- known limitation: atom inline nodes emit 0 chars in textBetween; see Blocked note below
     it.skip(`agrees with the projection-fed map for ${JSON.stringify(markdown)}`, () => {
       // Blocked: proseMirrorVisibleText / doc.textBetween emits 0 chars for
       // atom inline nodes; fix requires a custom leafText spec or walk.

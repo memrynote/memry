@@ -154,7 +154,7 @@ describe('settings:changed echo dedupe (#1063)', () => {
   }
 
   for (const testCase of CASES) {
-    describe(testCase.name, () => {
+    describe(`${testCase.name}`, () => {
       it('keeps state identity when the unchanged group is echoed back', async () => {
         const { result } = await mountLoaded(testCase)
 
