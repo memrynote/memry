@@ -27,6 +27,7 @@ import type {
 } from '@memry/contracts/search-api'
 import {
   normalizeScores,
+  buildPhraseQuery,
   buildPrefixQuery,
   parseSearchQuery,
   truncateQuery
@@ -104,9 +105,21 @@ function noteFileTypeFilter(noteFileTypes: NoteFileType[] | undefined) {
   )})`
 }
 
+/**
+ * Sort key that puts rows holding the typed words side by side ahead of rows
+ * that merely contain each word somewhere. The ordering only reorders the
+ * AND-match set, so which rows return is unchanged. `phraseQuery` is empty for
+ * single-word and operator queries, which keep plain bm25 order.
+ */
+function phraseFirst(phraseQuery: string) {
+  if (!phraseQuery) return sql`1 = 0`
+  return sql`nc.id NOT IN (SELECT id FROM fts_notes WHERE fts_notes MATCH ${phraseQuery})`
+}
+
 function searchNotes(
   indexDb: IndexDb,
   ftsQuery: string,
+  phraseQuery: string,
   limit: number,
   noteFileTypes?: NoteFileType[]
 ): SearchResultItem[] {
@@ -132,7 +145,7 @@ function searchNotes(
       AND ${noteFileTypeFilter(noteFileTypes)}
     -- Markdown notes first: a short OCR-read image out-ranks a long note in
     -- bm25, and a vault of pasted slides would push the note past the limit.
-    ORDER BY COALESCE(nc.file_type, 'markdown') <> 'markdown', rank
+    ORDER BY COALESCE(nc.file_type, 'markdown') <> 'markdown', ${phraseFirst(phraseQuery)}, rank
     LIMIT ${limit}
   `)
 
@@ -160,7 +173,12 @@ function searchNotes(
   })
 }
 
-function searchJournals(indexDb: IndexDb, ftsQuery: string, limit: number): SearchResultItem[] {
+function searchJournals(
+  indexDb: IndexDb,
+  ftsQuery: string,
+  phraseQuery: string,
+  limit: number
+): SearchResultItem[] {
   if (!ftsQuery) return []
 
   const rows = indexDb.all<FtsNoteRow>(sql`
@@ -179,7 +197,7 @@ function searchJournals(indexDb: IndexDb, ftsQuery: string, limit: number): Sear
     JOIN note_cache nc ON nc.id = fts_notes.id
     WHERE fts_notes MATCH ${ftsQuery}
       AND nc.date IS NOT NULL
-    ORDER BY rank
+    ORDER BY ${phraseFirst(phraseQuery)}, rank
     LIMIT ${limit}
   `)
 
@@ -539,6 +557,7 @@ export function searchAll(
   const truncated = truncateQuery(query.text)
   const hasOperators = /\b(AND|OR|NOT)\b/.test(truncated) || /"[^"]+"/.test(truncated)
   const ftsQuery = hasOperators ? parseSearchQuery(truncated) : buildPrefixQuery(truncated)
+  const phraseQuery = hasOperators ? '' : buildPhraseQuery(truncated)
 
   if (!ftsQuery) {
     return { groups: [], totalCount: 0, queryTimeMs: 0 }
@@ -559,10 +578,10 @@ export function searchAll(
     try {
       switch (type) {
         case 'note':
-          results = searchNotes(indexDb, ftsQuery, fetchLimit, query.noteFileTypes)
+          results = searchNotes(indexDb, ftsQuery, phraseQuery, fetchLimit, query.noteFileTypes)
           break
         case 'journal':
-          results = searchJournals(indexDb, ftsQuery, fetchLimit)
+          results = searchJournals(indexDb, ftsQuery, phraseQuery, fetchLimit)
           break
         case 'task':
           results = searchTasks(dataDb, ftsQuery, fetchLimit)
