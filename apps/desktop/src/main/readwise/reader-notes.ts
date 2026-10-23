@@ -2,7 +2,8 @@ import { net } from 'electron'
 import {
   planReaderNote,
   readerDocumentUrl,
-  type PlanReaderNoteOptions
+  type PlanReaderNoteOptions,
+  type ReaderNotePlan
 } from '@memry/importers/readwise'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
@@ -13,9 +14,9 @@ import { getNoteById } from '../vault/notes'
 import type { RemoteFetch } from '../vault/remote-attachment'
 import { resolveImages } from './images'
 import { getLinkByReaderDocumentId, markLinkState, upsertLink } from './links-repository'
-import { findNoteByReadwiseUrl, replaceSection } from './note-writer'
+import { findNoteByReadwiseUrl } from './note-writer'
 import type { ReaderDocument } from './reader'
-import { readerFullText } from './reader-full-text'
+import { prepareReaderFullText } from './reader-full-text'
 
 const log = createLogger('ReadwiseReaderNotes')
 
@@ -32,7 +33,18 @@ export interface ReaderNoteOptions extends Pick<
 > {
   /** Write the article text below the section. Only when the note is created. */
   fullText: boolean
+  /**
+   * Restore (D16): a note the user deleted comes back. The link's `note-deleted`
+   * state is ignored, a note that already names the document is adopted, and
+   * otherwise the note is created as for a new document.
+   */
+  restore?: boolean
   fetch?: RemoteFetch
+}
+
+/** The body of a new note: the section, then the article text when there is one. */
+function bodyOf(plan: ReaderNotePlan): string {
+  return plan.fullText ? `${plan.section}\n\n${plan.fullText}` : plan.section
 }
 
 /**
@@ -59,7 +71,7 @@ export async function writeReaderNote(
 async function write(document: ReaderDocument, options: ReaderNoteOptions): Promise<ReaderOutcome> {
   const db = getDatabase()
   const link = getLinkByReaderDocumentId(db, document.id)
-  if (link) {
+  if (link && !options.restore) {
     if (link.state !== 'linked') return { status: 'skipped', reason: link.state }
     if (await getNoteById(link.noteId)) return { status: 'unchanged', noteId: link.noteId }
     // A missing row also means "not indexed yet". `note-deleted` is sticky (D9).
@@ -74,9 +86,11 @@ async function write(document: ReaderDocument, options: ReaderNoteOptions): Prom
     return { status: 'unchanged', noteId: existing.id }
   }
 
-  const fullText =
-    options.fullText && document.html_content ? await readerFullText(document.html_content) : null
-  const planOptions = { ...options, fullText }
+  const article =
+    options.fullText && document.html_content
+      ? await prepareReaderFullText(document.html_content, document.url)
+      : null
+  const planOptions = { ...options, fullText: article?.render(new Map()) ?? null }
   const plan = planReaderNote(document, planOptions)
   if (plan === null) return { status: 'skipped', reason: 'has-book' }
 
@@ -86,25 +100,35 @@ async function write(document: ReaderDocument, options: ReaderNoteOptions): Prom
     folder: plan.folder,
     properties,
     tags: Array.isArray(tags) ? (tags as string[]) : undefined,
-    content: plan.fullText ? `${plan.section}\n\n${plan.fullText}` : plan.section,
+    content: bodyOf(plan),
     plainChecklists: true
   })
   upsertLink(db, { readerDocumentId: document.id, noteId: created.id })
 
-  // The image needs the note to exist (D14): download it, plan again with it.
-  // Only the section is replaced, so the article text below it stays as written.
+  // Images need the note to exist (D14): download them, then plan again with
+  // the refs. The article's images come out of the text without them, so the
+  // note is complete only once this second write lands (D6).
   const fetch = options.fetch ?? ((url: string) => net.fetch(url))
   const before = await getNoteById(created.id)
-  const images = await resolveImages(created.id, created.path, plan.imageUrls, fetch)
+  const images = await resolveImages(
+    created.id,
+    created.path,
+    [...plan.imageUrls, ...(article?.imageUrls ?? [])],
+    fetch
+  )
   if (images.size > 0) {
-    const withImages = planReaderNote(document, { ...planOptions, images })
-    // Edited meanwhile (or open in an editor): leave it, the image stays an attachment.
+    const withImages = planReaderNote(document, {
+      ...planOptions,
+      images,
+      fullText: article?.render(images) ?? null
+    })
+    // Edited meanwhile (or open in an editor): leave it, the images stay attachments.
     const latest = await getNoteById(created.id)
     if (withImages && before !== null && latest?.content === before.content) {
       const cover = withImages.frontmatter.cover
       await updateNoteCommand({
         id: created.id,
-        content: replaceSection(before.content, withImages.section),
+        content: bodyOf(withImages),
         ignoreInlineTags: true,
         ...(cover === undefined ? {} : { frontmatter: { cover } })
       })

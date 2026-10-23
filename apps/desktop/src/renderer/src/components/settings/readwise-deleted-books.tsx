@@ -7,6 +7,9 @@ import { SETTINGS_GROUP_LABEL } from '@/components/settings/settings-primitives'
 import { getActiveLocale } from '@/lib/active-locale'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
+const keyOf = (book: ReadwiseDeletedBook): string =>
+  String(book.readwiseBookId ?? book.readerDocumentId)
+
 interface ReadwiseDeletedBooksProps {
   /** False on a device another device pulls for: the list lives on the pulling device (D8, D16). */
   pullsHere: boolean
@@ -32,7 +35,7 @@ export function ReadwiseDeletedBooks({
 }: ReadwiseDeletedBooksProps) {
   const { t } = useT('settings')
   const [books, setBooks] = useState<ReadwiseDeletedBook[] | null>(null)
-  const [restoring, setRestoring] = useState<number | null>(null)
+  const [restoring, setRestoring] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const mounted = useRef(true)
 
@@ -61,17 +64,19 @@ export function ReadwiseDeletedBooks({
 
   const restore = useCallback(
     async (book: ReadwiseDeletedBook) => {
-      setRestoring(book.readwiseBookId)
+      setRestoring(keyOf(book))
       setError(null)
       try {
         unwrap(
-          await window.api.import.readwise.restoreBook({ readwiseBookId: book.readwiseBookId }),
+          await window.api.import.readwise.restoreBook(
+            book.readwiseBookId !== null
+              ? { readwiseBookId: book.readwiseBookId }
+              : { readerDocumentId: book.readerDocumentId as string }
+          ),
           t('import.dialog.readwise.deleted.restoreFailed')
         )
         if (mounted.current) {
-          setBooks(
-            (list) => list?.filter((row) => row.readwiseBookId !== book.readwiseBookId) ?? []
-          )
+          setBooks((list) => list?.filter((row) => keyOf(row) !== keyOf(book)) ?? [])
         }
       } catch (err) {
         if (mounted.current) {
@@ -111,7 +116,7 @@ export function ReadwiseDeletedBooks({
           <ul>
             {books.map((book) => (
               <li
-                key={book.readwiseBookId}
+                key={keyOf(book)}
                 className="flex min-h-13 items-center gap-4 border-b border-border py-2.5"
               >
                 <div className="flex min-w-0 grow flex-col gap-0.5">
@@ -119,10 +124,14 @@ export function ReadwiseDeletedBooks({
                     {book.title}
                   </span>
                   <span className="text-xs/4 text-muted-foreground">
-                    {t('import.dialog.readwise.deleted.meta', {
-                      date: deletedOn(book.deletedAt),
-                      count: book.highlightCount
-                    })}
+                    {book.readwiseBookId === null
+                      ? t('import.dialog.readwise.deleted.metaDocument', {
+                          date: deletedOn(book.deletedAt)
+                        })
+                      : t('import.dialog.readwise.deleted.meta', {
+                          date: deletedOn(book.deletedAt),
+                          count: book.highlightCount
+                        })}
                   </span>
                 </div>
                 <Button

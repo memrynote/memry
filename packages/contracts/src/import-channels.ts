@@ -493,13 +493,21 @@ export type ReadwiseSetOptionsInput = z.infer<typeof ReadwiseSetOptionsSchema>
 export const ReadwiseBookCommandSchema = z.object({ noteId: z.string().min(1) })
 export type ReadwiseBookCommandInput = z.infer<typeof ReadwiseBookCommandSchema>
 
-export const ReadwiseRestoreBookSchema = z.object({
-  readwiseBookId: z.number().int().positive()
-})
+/** A deleted note to restore: a v2 book, or a Reader document that has no book. Exactly one id. */
+export const ReadwiseRestoreBookSchema = z
+  .object({
+    readwiseBookId: z.number().int().positive().optional(),
+    readerDocumentId: z.string().min(1).optional()
+  })
+  .refine(
+    (input) => (input.readwiseBookId === undefined) !== (input.readerDocumentId === undefined)
+  )
 export type ReadwiseRestoreBookInput = z.infer<typeof ReadwiseRestoreBookSchema>
 
 export interface ReadwiseDeletedBook {
-  readwiseBookId: number
+  /** Null for a Reader document that has no v2 book: restore it by `readerDocumentId`. */
+  readwiseBookId: number | null
+  readerDocumentId: string | null
   title: string
   /** ISO time the link row went to `note-deleted`. */
   deletedAt: string

@@ -11,6 +11,7 @@ import { readSection } from '@memry/importers/readwise'
 import { book, highlight } from '@memry/importers/readwise/fixtures'
 import type { ReadwiseBook } from '@memry/importers/readwise'
 import { readdirSync } from 'node:fs'
+import { imageFileStem } from './images'
 import { join } from 'node:path'
 import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { ReadwiseStub, type StubBook } from '@tests/utils/readwise-stub'
@@ -110,8 +111,9 @@ class ReaderStub {
     this.requests.push(url)
     const after = url.searchParams.get('updatedAfter')
     const withHtml = url.searchParams.get('withHtmlContent') === 'true'
+    const wanted = url.searchParams.get('id')
     const selected = this.documents
-      .filter((d) => d.location === url.searchParams.get('location'))
+      .filter((d) => (wanted ? d.id === wanted : d.location === url.searchParams.get('location')))
       .filter((d) => !after || Date.parse(String(d.updated_at)) > Date.parse(after))
       .map((d) => (withHtml ? d : { ...d, html_content: undefined }))
     const index = Number(url.searchParams.get('pageCursor') ?? '0')
@@ -162,6 +164,7 @@ describe('Readwise Reader documents', () => {
   let engine: typeof import('../readwise/sync-service')
   let domain: typeof import('../notes/domain')
   let notes: typeof import('../vault/notes')
+  let attachments: typeof import('../vault/attachments')
   let state: typeof import('../readwise/sync-state')
   let links: typeof import('../readwise/links-repository')
   let secrets: typeof import('../readwise/secrets')
@@ -228,6 +231,7 @@ describe('Readwise Reader documents', () => {
     engine = await import('../readwise/sync-service')
     domain = await import('../notes/domain')
     notes = await import('../vault/notes')
+    attachments = await import('../vault/attachments')
     state = await import('../readwise/sync-state')
     links = await import('../readwise/links-repository')
     secrets = await import('../readwise/secrets')
@@ -490,6 +494,166 @@ describe('Readwise Reader documents', () => {
     expect(later.content).toContain('My own line.')
     expect(later.content).not.toContain('Rewritten upstream.')
     expect(writes()).toBe(0)
+  })
+
+  describe('inline images and captions (D14)', () => {
+    const SHOT = 'https://cdn.example.com/shots/notes.webp'
+    const BARE = 'https://cdn.example.com/shots/bare.jpg'
+    const LAZY = 'https://cdn.example.com/shots/lazy.png'
+    const SET = 'https://cdn.example.com/shots/set-1100.webp'
+    const BROKEN = 'https://cdn.example.com/shots/broken.png'
+    const HTML = [
+      '<p>Intro.</p>',
+      `<figure><img alt="Notes in app" src="${SHOT}"><figcaption>Notes in <em>MemryNote</em> &amp; more</figcaption></figure>`,
+      `<p>Between.</p><img alt="A bare image" src="${BARE}">`,
+      `<img src="data:image/gif;base64,R0lGOD" data-src="${LAZY}" alt="lazy">`,
+      `<picture><source srcset="${SET} 1100w, https://cdn.example.com/shots/set-400.webp 400w"><img alt="picture"></picture>`,
+      `<figure><img alt="gone" src="${BROKEN}"><figcaption>Lost caption</figcaption></figure>`,
+      '<p>Outro.</p>'
+    ].join('\n')
+
+    const stem = (url: string) => imageFileStem(url)
+    const attachmentNames = async (noteId: string) =>
+      (await attachments.listNoteAttachments(noteId)).map((file) => file.filename).sort()
+
+    async function importArticle() {
+      mocks.imageFetch.mockImplementation(async (url: string) => {
+        if (url === BROKEN) throw new Error('offline')
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: (name: string) => (name === 'Content-Type' ? 'image/png' : null) },
+          arrayBuffer: async () => PNG
+        }
+      })
+      readerOn(true)
+      reader.documents = [doc('d-img', { title: 'Pictures', image_url: COVER, html_content: HTML })]
+      await sync()
+      return noteOf('d-img')
+    }
+
+    it('saves every article image into the vault and writes it where the editor reads it', async () => {
+      const note = await importArticle()
+
+      const names = await attachmentNames(note.id)
+      expect(names).toEqual([COVER, SHOT, BARE, LAZY, SET].map((url) => `${stem(url)}.png`).sort())
+      const ref = (url: string) => `../../attachments/${note.id}/${stem(url)}.png`
+      expect(note.content).toContain(
+        `<figure><img src="${ref(SHOT)}"><figcaption>Notes in MemryNote &amp; more</figcaption></figure>`
+      )
+      expect(note.content).toContain(`![A bare image](${ref(BARE)})`)
+      expect(note.content).toContain(`![lazy](${ref(LAZY)})`)
+      expect(note.content).toContain(`![picture](${ref(SET)})`)
+      expect(note.content).toContain('Intro.')
+      expect(note.content).toContain('Outro.')
+    })
+
+    it('leaves a failed image out with its caption, and no remote URL in the note', async () => {
+      const note = await importArticle()
+
+      expect(note.content).not.toMatch(/https?:\/\/cdn\.example\.com/)
+      expect(note.content).not.toContain('Lost caption')
+      expect(note.content).not.toContain('data:image')
+      expect(String(note.frontmatter.cover)).toContain(stem(COVER))
+    })
+
+    it('is a no-op on the next run and downloads nothing again', async () => {
+      await importArticle()
+      reader.documents[0].updated_at = t(8)
+      resetWrites()
+      mocks.imageFetch.mockClear()
+
+      await sync()
+
+      expect(writes()).toBe(0)
+      expect(mocks.imageFetch).not.toHaveBeenCalled()
+    })
+
+    it('survives the editor round trip byte for byte', async () => {
+      const note = await importArticle()
+      const converter = await import('../sync/blocknote-converter')
+      const { CRDT_FRAGMENT_NAME } = await import('@memry/contracts/ipc-crdt')
+      const { writeMarkdownSourceToYDoc } = await import('@memry/shared/markdown-source')
+      const Y = await import('yjs')
+
+      let current = note.content
+      for (let pass = 0; pass < 2; pass++) {
+        const ydoc = new Y.Doc()
+        expect(
+          await converter.markdownToYFragment(current, ydoc.getXmlFragment(CRDT_FRAGMENT_NAME))
+        ).toBe(true)
+        writeMarkdownSourceToYDoc(ydoc, null)
+        current = (await converter.yDocToMarkdown(ydoc)) as string
+      }
+
+      expect(current.trim()).toBe(note.content.trim())
+    })
+  })
+
+  describe('restoring a Reader-only note (D16)', () => {
+    let commands: typeof import('./book-commands')
+    const fetchImage = (url: string) => mocks.imageFetch(url)
+
+    async function deleteImportedNote(fullText: boolean) {
+      readerOn(fullText)
+      reader.documents = [
+        doc('d-rs', {
+          title: 'Restorable',
+          html_content: `<p>Body text.</p><figure><img src="${COVER}" alt="x"><figcaption>Shown caption</figcaption></figure>`
+        })
+      ]
+      await sync()
+      const first = await noteOf('d-rs')
+      await notes.deleteNote(first.id)
+      state.clearRunState(db())
+      await sync()
+      expect(links.getLinkByReaderDocumentId(db(), 'd-rs')?.state).toBe('note-deleted')
+      commands = await import('./book-commands')
+      return first
+    }
+
+    it('lists the note in Deleted books and restores it with section, text and images', async () => {
+      const first = await deleteImportedNote(true)
+
+      expect(await commands.listDeletedBooks()).toEqual([
+        expect.objectContaining({
+          readwiseBookId: null,
+          readerDocumentId: 'd-rs',
+          title: 'Restorable'
+        })
+      ])
+      await commands.restoreReaderDocument('d-rs', { fetch: fetchImage })
+
+      const link = links.getLinkByReaderDocumentId(db(), 'd-rs')!
+      expect(link.state).toBe('linked')
+      const restored = (await notes.getNoteById(link.noteId))!
+      expect(readSection(restored.content).found).toBe(true)
+      expect(restored.content).toContain('Body text.')
+      expect(restored.content).toContain('<figcaption>Shown caption</figcaption>')
+      expect(restored.content).toMatch(
+        new RegExp(`attachments/${link.noteId}/rw-[0-9a-f]{16}\\.png`)
+      )
+      expect(restored.content).not.toContain(COVER)
+      expect(restored.properties.readwise_url).toBe(first.properties.readwise_url)
+      expect(await commands.listDeletedBooks()).toEqual([])
+      await expect(commands.restoreReaderDocument('d-rs')).rejects.toThrow()
+
+      // The next run leaves the restored note as it is.
+      reader.documents[0].updated_at = t(9)
+      resetWrites()
+      await sync()
+      expect(writes()).toBe(0)
+    })
+
+    it('restores only the section when full article text is off', async () => {
+      await deleteImportedNote(false)
+
+      await commands.restoreReaderDocument('d-rs', { fetch: fetchImage })
+
+      const restored = await noteOf('d-rs')
+      expect(readSection(restored.content).found).toBe(true)
+      expect(restored.content).not.toContain('Body text.')
+    })
   })
 
   it('asks for the article HTML only when the full-text switch is on', async () => {

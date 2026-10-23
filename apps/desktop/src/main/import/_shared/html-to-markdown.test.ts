@@ -163,4 +163,30 @@ describe('nested checklists', () => {
     )
     expect(markdown).toBe('- [x] Parent\n   - child')
   })
+
+  describe('figure captions', () => {
+    const figure =
+      '<figure><img src="a.png" alt="alt"><figcaption> The  caption </figcaption></figure>'
+
+    it('keeps only the image without a captionedImage hook, so other importers are unchanged', () => {
+      expect(convert(figure).markdown).toBe('![alt](a.png)')
+    })
+
+    it('hands the whitespace-collapsed caption to captionedImage', () => {
+      const { markdown } = convert(figure, {
+        captionedImage: (src, alt, caption) => `${src}|${alt}|${caption}`
+      })
+      expect(markdown).toBe('a.png|alt|The caption')
+    })
+
+    it('falls back to the image when the hook declines or the caption is empty', () => {
+      const hooks = { captionedImage: () => null }
+      expect(convert(figure, hooks).markdown).toBe('![alt](a.png)')
+      expect(
+        convert('<figure><img src="a.png" alt="alt"><figcaption> </figcaption></figure>', {
+          captionedImage: () => 'never'
+        }).markdown
+      ).toBe('![alt](a.png)')
+    })
+  })
 })
