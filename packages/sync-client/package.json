@@ -16,7 +16,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "dependencies": {
     "@memry/contracts": "workspace:*",

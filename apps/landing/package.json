@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm typecheck && vite build && node --import tsx scripts/prerender.ts",
-    "typecheck": "tsc -b",
+    "typecheck": "node ../../scripts/typecheck.mjs tsconfig.app.json tsconfig.node.json",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --import tsx --test 'src/**/*.test.ts' 'api/**/*.test.ts'",
@@ -54,7 +54,7 @@
     "postcss": "^8.5.15",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
-    "typescript": "~5.9.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.3.6"
   }

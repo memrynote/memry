@@ -17,7 +17,7 @@
     "sources:firefox": "node ../../scripts/build-extension-firefox-sources.mjs",
     "submit:firefox": "wxt submit --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/firefox-review-sources.zip",
     "release": "pnpm version patch --tag-version-prefix=extension-v --message \"chore(extension): release v%s\" && git push --follow-tags",
-    "typecheck": "wxt prepare && tsc --noEmit",
+    "typecheck": "wxt prepare && node ../../scripts/typecheck.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "postinstall": "wxt prepare"
@@ -36,7 +36,7 @@
     "eslint": "^9.39.4",
     "jsdom": "^25.0.1",
     "tailwindcss": "^4.1.18",
-    "typescript": "~5.9.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.46.4",
     "vitest": "^3.2.7",
     "wxt": "^0.20.6"

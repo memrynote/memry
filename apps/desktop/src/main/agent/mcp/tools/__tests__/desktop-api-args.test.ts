@@ -1,5 +1,6 @@
 import path from 'node:path'
-import ts from 'typescript'
+// TypeScript 7 ships no JS compiler API; this test needs the type checker, so it stays on 6.x.
+import ts from 'typescript-6'
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_DESKTOP_OPERATION_PARAMS,

@@ -124,7 +124,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "node ../../scripts/typecheck.mjs",
     "vectors:generate": "tsx scripts/gen-crypto-vectors.ts && tsx scripts/gen-protocol-vectors.ts",
     "vectors:check": "tsx scripts/gen-protocol-vectors.ts --check",
     "vectors:digest": "tsx scripts/print-chapter-digest.ts"

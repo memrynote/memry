@@ -19,7 +19,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
+    "typecheck": "node ../../scripts/typecheck.mjs tsconfig.json tsconfig.test.json"
   },
   "dependencies": {
     "@blocknote/code-block": "^0.54.2",

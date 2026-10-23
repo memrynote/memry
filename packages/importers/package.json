@@ -24,7 +24,7 @@
     "./todoist": "./src/todoist/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.9.0",

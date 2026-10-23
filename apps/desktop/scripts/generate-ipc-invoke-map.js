@@ -5,14 +5,11 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { randomBytes } = require('node:crypto')
-const { createRequire } = require('node:module')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
 const TSCONFIG_PATH = path.join(REPO_ROOT, 'tsconfig.node.json')
 const OUTPUT_PATH = path.join(REPO_ROOT, 'src/main/ipc/generated-ipc-invoke-map.ts')
 const CHECK_MODE = process.argv.includes('--check')
-const WORKSPACE_ROOT = path.resolve(REPO_ROOT, '../..')
-const workspaceRequire = createRequire(path.join(WORKSPACE_ROOT, 'package.json'))
 
 function normalizeGeneratedText(text) {
   return text.replace(/\r\n?/g, '\n')
@@ -52,24 +49,8 @@ function readExistingFile(filePath) {
   }
 }
 
-function loadTypeScript() {
-  try {
-    return workspaceRequire('typescript')
-  } catch (error) {
-    const pnpmStoreDir = path.join(WORKSPACE_ROOT, 'node_modules/.pnpm')
-    const packageDir = fs
-      .readdirSync(pnpmStoreDir, { withFileTypes: true })
-      .find((entry) => entry.isDirectory() && entry.name.startsWith('typescript@'))
-
-    if (!packageDir) {
-      throw error
-    }
-
-    return require(path.join(pnpmStoreDir, packageDir.name, 'node_modules/typescript'))
-  }
-}
-
-const ts = loadTypeScript()
+// TypeScript 7 ships no JS compiler API; this generator stays on the last 6.x release.
+const ts = require('typescript-6')
 
 function readProgram() {
   const config = ts.readConfigFile(TSCONFIG_PATH, ts.sys.readFile)
