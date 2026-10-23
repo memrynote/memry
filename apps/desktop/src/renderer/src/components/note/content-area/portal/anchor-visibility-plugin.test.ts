@@ -3,6 +3,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { PartialBlock } from '@blocknote/core'
 import { TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
@@ -282,5 +283,128 @@ describe('anchor visibility', () => {
       )
       expect(blockTexts(editor)).toEqual(['Lecture ^dna1zz'])
     })
+  })
+})
+
+describe('Enter through the real BlockNote keymap', () => {
+  type Spec = { name: string; make: (text: string, children?: PartialBlock[]) => PartialBlock }
+  const specs: Spec[] = [
+    { name: 'paragraph', make: para },
+    {
+      name: 'heading',
+      make: (text, children) =>
+        ({ type: 'heading', props: { level: 2 }, content: text, children }) as PartialBlock
+    },
+    {
+      name: 'bullet list item',
+      make: (text, children) =>
+        ({ type: 'bulletListItem', content: text, children }) as PartialBlock
+    },
+    {
+      name: 'numbered list item',
+      make: (text, children) =>
+        ({ type: 'numberedListItem', content: text, children }) as PartialBlock
+    },
+    {
+      name: 'checklist item',
+      make: (text, children) => ({ type: 'checkListItem', content: text, children }) as PartialBlock
+    }
+  ]
+
+  const press = (view: EditorView, init: KeyboardEventInit = {}): void => {
+    view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init })
+    )
+  }
+
+  /** [text, parentId] for every block, depth-first. */
+  function flat(editor: ReturnType<typeof mountTestEditor>['editor']): Array<[string, string]> {
+    const out: Array<[string, string]> = []
+    const walk = (blocks: typeof editor.document, parent: string): void => {
+      for (const b of blocks) {
+        out.push([
+          (b.content as Array<{ text: string }>)
+            .map((c) => c.text)
+            .join('')
+            .trim(),
+          parent
+        ])
+        walk(b.children as typeof editor.document, b.id)
+      }
+    }
+    walk(editor.document, 'root')
+    return out
+  }
+
+  for (const spec of specs) {
+    describe(spec.name, () => {
+      const setup = (blocks: PartialBlock[]) => {
+        const m = mount(blocks)
+        m.editor.replaceBlocks(m.editor.document, blocks)
+        return m
+      }
+
+      it('childless root: end split keeps the text and anchor on the first block', () => {
+        const { editor, view } = setup([spec.make('Root one ^rt1111'), para('after')])
+        caretAt(view, 'Root one ^rt1111', 'Root one'.length)
+        press(view)
+        expect(flat(editor).map(([t]) => t)).toEqual(['Root one ^rt1111', '', 'after'])
+      })
+
+      it('childless child: end split keeps the text and anchor on the first block', () => {
+        const { editor, view } = setup([
+          para('Parent ^par111', [spec.make('Kid one ^kid111'), spec.make('Kid two')])
+        ])
+        caretAt(view, 'Kid one ^kid111', 'Kid one'.length)
+        press(view)
+        expect(flat(editor).map(([t]) => t)).toEqual([
+          'Parent ^par111',
+          'Kid one ^kid111',
+          '',
+          'Kid two'
+        ])
+      })
+
+      it('childless last child: end split keeps the anchor on the original', () => {
+        const { editor, view } = setup([para('Parent ^par111', [spec.make('Kid one ^kid111')])])
+        caretAt(view, 'Kid one ^kid111', 'Kid one'.length)
+        press(view)
+        expect(flat(editor).map(([t]) => t)).toEqual(['Parent ^par111', 'Kid one ^kid111', ''])
+      })
+
+      it('start split gives the anchor to the second half', () => {
+        const { editor, view } = setup([spec.make('Hello world ^abc123')])
+        caretAt(view, 'Hello world ^abc123', 0)
+        press(view)
+        expect(flat(editor).map(([t]) => t)).toEqual(['', 'Hello world ^abc123'])
+      })
+
+      it('mid split keeps the anchor on the first half', () => {
+        const { editor, view } = setup([spec.make('Hello world ^abc123')])
+        caretAt(view, 'Hello world ^abc123', 'Hello'.length)
+        press(view)
+        expect(flat(editor).map(([t]) => t)).toEqual(['Hello ^abc123', 'world'])
+      })
+
+      it('with children: end split keeps the anchor on the original', () => {
+        const { editor, view } = setup([spec.make('Mom ^mom111', [para('kid')])])
+        caretAt(view, 'Mom ^mom111', 'Mom'.length)
+        press(view)
+        const texts = flat(editor).map(([t]) => t)
+        expect(texts.filter((t) => t.includes('^mom111'))).toEqual(['Mom ^mom111'])
+        expect(texts[0]).toBe('Mom ^mom111')
+      })
+    })
+  }
+
+  it('Shift+Enter inserts a hard break and leaves the anchor at the end', () => {
+    const m = mount([para('Hello ^abc123')])
+    m.editor.replaceBlocks(m.editor.document, [para('Hello ^abc123')])
+    caretAt(m.view, 'Hello ^abc123', 'Hello'.length)
+    press(m.view, { shiftKey: true })
+    expect(m.editor.document).toHaveLength(1)
+    const text = m.view.state.doc.textContent
+    expect(text.match(/\^abc123/g)).toHaveLength(1)
+    expect(text.endsWith(' ^abc123')).toBe(true)
   })
 })

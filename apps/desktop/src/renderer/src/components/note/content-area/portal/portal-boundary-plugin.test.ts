@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TextSelection } from '@tiptap/pm/state'
+import { ySyncPluginKey } from 'y-prosemirror'
 import type { PartialBlock } from '@blocknote/core'
 import type { PortalOpen } from '@memry/shared/portal-block'
 
@@ -99,6 +100,84 @@ const settle = async (): Promise<void> => {
 describe('Enter', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
+
+  describe('the anchor stays on the block that keeps the text', () => {
+    const kinds: Array<[string, (text: string, children?: PartialBlock[]) => PartialBlock]> = [
+      ['paragraph', para],
+      [
+        'bullet item',
+        (text, children) => ({ type: 'bulletListItem', content: text, children }) as PartialBlock
+      ],
+      [
+        'numbered item',
+        (text, children) => ({ type: 'numberedListItem', content: text, children }) as PartialBlock
+      ],
+      [
+        'checklist item',
+        (text, children) => ({ type: 'checkListItem', content: text, children }) as PartialBlock
+      ],
+      [
+        'heading',
+        (text, children) =>
+          ({ type: 'heading', props: { level: 2 }, content: text, children }) as PartialBlock
+      ]
+    ]
+    for (const [kind, make] of kinds) {
+      const cases: Array<[string, PartialBlock[], PortalWindowSpec, string, string[]]> = [
+        [
+          'last root',
+          [make('Root ^root1'), para('hidden')],
+          target(['root1']),
+          'Root',
+          ['Root ^root1', 'next', 'hidden']
+        ],
+        [
+          'child of a show-mode parent',
+          [para('Root ^root1', [make('kid ^kid111')])],
+          target(['root1'], { root1: { mode: 'show', ids: ['kid111'] } }),
+          'kid',
+          ['Root ^root1', 'kid ^kid111', 'next']
+        ],
+        [
+          'child of a hide-mode parent',
+          [para('Root ^root1', [make('kid ^kid111')])],
+          target(['root1'], { root1: { mode: 'hide', ids: [] } }),
+          'kid',
+          ['Root ^root1', 'kid ^kid111', 'next']
+        ],
+        [
+          'shown child between hidden siblings',
+          [para('Root ^root1', [para('a ^aaa111'), make('kid ^kid111'), para('b ^bbb111')])],
+          target(['root1'], { root1: { mode: 'show', ids: ['kid111'] } }),
+          'kid',
+          ['Root ^root1', 'a ^aaa111', 'kid ^kid111', 'next', 'b ^bbb111']
+        ]
+      ]
+      for (const [name, blocks, spec, caret, expected] of cases) {
+        it(`Enter at the visible end of a childless ${kind} (${name}) leaves the anchor on it`, async () => {
+          const { view } = mount(blocks, spec)
+          caretIn(view, caret, 'end')
+          press(view, 'Enter')
+          type(view, 'next')
+          await settle()
+          expect(texts(view)).toEqual(expected)
+        })
+      }
+    }
+
+    it('Shift+Enter in a window keeps the anchor at the end of the same block', () => {
+      const { view, editor } = mount(
+        [para('Root ^root1', [para('kid ^kid111')])],
+        target(['root1'], { root1: { mode: 'show', ids: ['kid111'] } })
+      )
+      caretIn(view, 'kid', 'end')
+      press(view, 'Enter', { shiftKey: true })
+      expect(editor.document[0].children).toHaveLength(1)
+      const text = view.state.doc.textContent
+      expect(text.match(/\^kid111/g)).toHaveLength(1)
+      expect(text.endsWith(' ^kid111')).toBe(true)
+    })
+  })
 
   it('at the end of the last root keeps the new block visible and, once typed in, lists it as a root', async () => {
     const { view, editor, plans } = mount([para('Root ^root1'), para('hidden')], target(['root1']))
@@ -415,5 +494,59 @@ describe('moveAcrossVisible', () => {
       { type: PORTAL_EXIT_EVENT, detail: { direction: 'before' } },
       { type: PORTAL_EXIT_EVENT, detail: { direction: 'after' } }
     ])
+  })
+})
+
+describe('pruning the fence after a deletion', () => {
+  const doc = (): PartialBlock[] => [
+    para('Root ^root11', [para('kid ^kid111'), para('other ^oth111')]),
+    para('Second ^sec111'),
+    para('tail')
+  ]
+  const spec = target(['root11', 'sec111'], { root11: { mode: 'show', ids: ['kid111', 'oth111'] } })
+
+  /** Delete the block whose text is `text`, tagging the transaction like y-prosemirror would. */
+  function deleteBlock(view: View, text: string, meta?: Record<string, boolean>): void {
+    let range: [number, number] | null = null
+    view.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'blockContainer' && node.firstChild?.textContent === text) {
+        range = [pos, pos + node.nodeSize]
+      }
+    })
+    const tr = view.state.tr.delete(range![0], range![1])
+    if (meta) tr.setMeta(ySyncPluginKey, meta)
+    view.dispatch(tr)
+  }
+
+  const written = (plans: PortalPlan[]) => plans.map((p) => p.definition.target)
+
+  it('drops the anchor of a block a local edit deleted', () => {
+    const { view, plans } = mount(doc(), spec)
+    deleteBlock(view, 'kid ^kid111')
+
+    expect(written(plans)).toEqual([
+      expect.objectContaining({
+        open: { root11: { mode: 'show', ids: ['oth111'] } }
+      })
+    ])
+  })
+
+  it('also prunes on this window own undo or redo, which y-prosemirror tags as a change origin', () => {
+    const { view, plans } = mount(doc(), spec)
+    deleteBlock(view, 'Second ^sec111', { isChangeOrigin: true, isUndoRedoOperation: true })
+
+    expect(written(plans)).toEqual([expect.objectContaining({ blocks: ['root11'] })])
+  })
+
+  it('prunes nothing on a remote update, or when the source has not hydrated', () => {
+    const { view, plans } = mount(doc(), spec)
+    deleteBlock(view, 'Second ^sec111', { isChangeOrigin: true })
+    deleteBlock(view, 'kid ^kid111', { isChangeOrigin: true })
+
+    expect(plans).toEqual([])
+
+    const hydrating = mount([para('')], spec)
+    hydrating.view.dispatch(hydrating.view.state.tr.insertText('typed'))
+    expect(hydrating.plans).toEqual([])
   })
 })

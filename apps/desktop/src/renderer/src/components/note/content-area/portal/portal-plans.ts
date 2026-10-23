@@ -236,6 +236,45 @@ export function planBackspaceAtStart(view: EditorView, def: PortalDefinition): P
   return next ? planner(def, () => next) : null
 }
 
+/** Every anchor the fence lists: roots, show/hide ids, a note portal's hide list. */
+export function listedAnchors(def: PortalDefinition): Set<string> {
+  const { target } = def
+  if (target.kind === 'note') return new Set(target.hide)
+  if (target.kind !== 'blocks') return new Set()
+  const listed = new Set(target.blocks)
+  for (const entry of Object.values(target.open)) entry.ids.forEach((id) => listed.add(id))
+  return listed
+}
+
+/**
+ * A local edit removed the blocks carrying `gone` from the source: drop those
+ * anchors from the fence so it does not keep naming blocks that no longer
+ * exist. The last root stays even when gone, so the portal shows its calm
+ * missing-block row instead of nothing. Null when the fence lists none of them.
+ */
+export function planPrune(def: PortalDefinition, gone: ReadonlySet<string>): PortalPlan | null {
+  const { target } = def
+  let next: PortalDefinition = def
+  if (target.kind === 'note') {
+    for (const anchor of target.hide) if (gone.has(anchor)) next = unhideBlock(next, anchor)
+  } else if (target.kind === 'blocks') {
+    for (const anchor of target.blocks) {
+      if (gone.has(anchor)) next = removeRoot(next, anchor) ?? next
+    }
+    const live = next.target.kind === 'blocks' ? next.target : target
+    const open = Object.fromEntries(
+      Object.entries(live.open).map(([parent, entry]) => [
+        parent,
+        { ...entry, ids: entry.ids.filter((id) => !gone.has(id)) }
+      ])
+    )
+    if (JSON.stringify(open) !== JSON.stringify(live.open)) {
+      next = { ...next, target: { ...live, open } }
+    }
+  }
+  return next === def ? null : planner(def, () => next)
+}
+
 /**
  * Whether hiding `blockId` (and its visible descendants) would leave a note
  * portal with nothing to show: a portal never shows nothing.

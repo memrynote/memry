@@ -54,6 +54,17 @@ interface AnchorScan {
 
 export const anchorVisibilityKey = new PluginKey<AnchorScan>('anchorVisibility')
 
+/**
+ * Meta on the transactions this plugin appends to put an anchor back. A portal
+ * window's filters must let them through: right after a split the window
+ * resolves blocks by anchor, so the block that kept the text (and is about to
+ * get its anchor back) looks hidden, and refusing the repair would leave the
+ * anchor on the new block and break every portal to the original.
+ */
+export function isAnchorRepair(tr: Transaction): boolean {
+  return tr.getMeta(anchorVisibilityKey) === 'repair'
+}
+
 /** Document position of `offset` characters into a textblock's text. */
 function posAtTextOffset(block: AnchorBlock, offset: number): number {
   let remaining = offset
@@ -258,6 +269,7 @@ function healTransaction(state: EditorState, heal: Heal): Transaction {
   const extra = state.doc.slice(extraFrom, extraTo).content
   const caretInExtra = state.selection.empty && state.selection.head >= extraFrom
   const tr = state.tr.delete(extraFrom, extraTo).insert(insertAt, extra)
+  tr.setMeta(anchorVisibilityKey, 'repair')
   if (caretInExtra && state.selection.head <= extraTo) {
     tr.setSelection(TextSelection.create(tr.doc, insertAt + extra.size))
   }
@@ -391,7 +403,7 @@ export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
         if (heal) return healTransaction(newState, heal)
         const edits = anchorFixes(before, after).sort((a, b) => b.from - a.from)
         if (edits.length > 0) {
-          tr = newState.tr
+          tr = newState.tr.setMeta(anchorVisibilityKey, 'repair')
           for (const edit of edits) {
             if (edit.text) tr.insert(edit.from, newState.schema.text(edit.text))
             else tr.delete(edit.from, edit.to)

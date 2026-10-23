@@ -8,6 +8,7 @@ import type { PartialBlock } from '@blocknote/core'
 import type { Plugin } from '@tiptap/pm/state'
 import { registerEditorPlugin } from '../register-editor-plugin'
 import { createAnchorVisibilityPlugin } from './anchor-visibility-plugin'
+import { createPortalDropGuardPlugin } from './portal-drop-guard-plugin'
 import { createPortalBoundaryPlugin } from './portal-boundary-plugin'
 import type { PortalWindowCallbacks } from './portal-plans'
 import { createPortalWindowPlugin, type PortalWindowSpec } from './portal-window-plugin'
@@ -28,5 +29,6 @@ export function mountPortalWindow(
   )
   registerEditorPlugin(mounted.editor, createAnchorVisibilityPlugin())
   registerEditorPlugin(mounted.editor, createPortalBoundaryPlugin(callbacks), prepend)
+  registerEditorPlugin(mounted.editor, createPortalDropGuardPlugin())
   return { ...mounted, resolved }
 }

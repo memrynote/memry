@@ -22,6 +22,7 @@ import {
   planExpandAll,
   planHide,
   planIncludeParent,
+  planPrune,
   planReconcile,
   planShow,
   planShowAllSiblings
@@ -359,5 +360,35 @@ describe('planBackspaceAtStart', () => {
     const alone = mount(doc, only)
     alone.editor.setTextCursorPosition(alone.editor.document[1], 'start')
     expect(planBackspaceAtStart(alone.view, only)).toBeNull()
+  })
+})
+
+describe('planPrune', () => {
+  const gone = (...anchors: string[]) => new Set(anchors)
+
+  it('drops gone roots, show ids and hide ids from a blocks fence', () => {
+    const def = define({
+      blocks: ['aaa111', 'bbb222'],
+      open: { aaa111: { show: ['kid111', 'kid222'] }, bbb222: { hide: ['kid333'] } }
+    })
+    const plan = planPrune(def, gone('bbb222', 'kid222', 'kid333'))
+
+    expect(plan?.definition.target).toMatchObject({
+      blocks: ['aaa111'],
+      open: { aaa111: { mode: 'show', ids: ['kid111'] }, bbb222: { mode: 'hide', ids: [] } }
+    })
+  })
+
+  it('leaves the last root so the missing-block row shows', () => {
+    expect(planPrune(define({ blocks: ['aaa111'] }), gone('aaa111'))).toBeNull()
+  })
+
+  it('drops a gone anchor from a note portal hide list', () => {
+    const plan = planPrune(define({ hide: ['aaa111', 'bbb222'] }), gone('aaa111'))
+    expect(plan?.definition.target).toMatchObject({ kind: 'note', hide: ['bbb222'] })
+  })
+
+  it('is null when the fence lists none of the gone anchors', () => {
+    expect(planPrune(define({ blocks: ['aaa111'] }), gone('zzz999'))).toBeNull()
   })
 })

@@ -14,8 +14,6 @@ vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: vi.fn().mockResolvedValue({ domain: '', title: '', favicon: '' })
 }))
 
-import { registerEditorPlugin } from '../register-editor-plugin'
-import { createPortalDropGuardPlugin } from './portal-drop-guard-plugin'
 import { para, unmountTestEditors } from './portal-test-editor'
 import { getPortalWindowState } from './portal-window-plugin'
 import { mountPortalWindow } from './portal-window-test-editor'
@@ -27,7 +25,6 @@ function mount() {
     [para('A ^aaaa1'), para('Hidden ^hid01', [para('inner')]), para('B ^bbbb1')],
     { kind: 'blocks', note: 'src', blocks: ['aaaa1', 'bbbb1'], open: {} }
   )
-  registerEditorPlugin(mounted.editor, createPortalDropGuardPlugin())
   const [hidden] = getPortalWindowState(mounted.view)!.hiddenSpans
   return { ...mounted, hidden }
 }

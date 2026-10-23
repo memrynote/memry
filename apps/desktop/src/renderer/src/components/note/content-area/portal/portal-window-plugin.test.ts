@@ -157,6 +157,17 @@ describe('portal window plugin', () => {
     expect(state.hiddenChildren).toEqual({})
   })
 
+  it('gives a hidden nested block of a note portal its source ancestors, outermost first', () => {
+    const { view } = mount(
+      [para('Unit ^unit11', [para('DNA', [para('helix ^hel111')])]), para('end')],
+      { kind: 'note', note: 'src', hide: ['hel111'] }
+    )
+    const [hidden] = getPortalWindowState(view)!.hiddenSiblings
+
+    expect(hidden.text).toBe('helix')
+    expect(hidden.ancestorTexts).toEqual(['Unit', 'DNA'])
+  })
+
   it('reports a missing anchor and shows nothing', () => {
     const { el, resolved } = mount([para('a'), para('b')], blocksTarget(['gone1']))
 

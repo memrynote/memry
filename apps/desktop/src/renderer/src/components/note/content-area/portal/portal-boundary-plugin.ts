@@ -24,13 +24,16 @@
  * @module note/content-area/portal/portal-boundary-plugin
  */
 
-import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state'
+import { Plugin, PluginKey, Selection, TextSelection, type Transaction } from '@tiptap/pm/state'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
-import type { PortalDefinition } from '@memry/shared/portal-block'
+import { extractAnchor, type PortalDefinition } from '@memry/shared/portal-block'
 import { anchorVisibleEnd } from './anchor-visibility-plugin'
+import { ySyncPluginKey } from 'y-prosemirror'
 import {
+  listedAnchors,
   planBackspaceAtStart,
+  planPrune,
   planReconcile,
   type PortalPlan,
   type PortalWindowCallbacks
@@ -49,7 +52,42 @@ export interface PortalExitDetail {
   direction: 'before' | 'after'
 }
 
-export const portalBoundaryKey = new PluginKey('portalBoundary')
+/**
+ * Set on a transaction that is the user's own edit here (typing, a local
+ * deletion, or this window's undo/redo) and that removed content. Remote
+ * updates and the first hydration of the source never set it: a missing anchor
+ * there can mean the source has not arrived, which must not touch the fence.
+ */
+interface LocalDeletion {
+  tr: Transaction | null
+}
+
+export const portalBoundaryKey = new PluginKey<LocalDeletion>('portalBoundary')
+
+function isLocalDeletion(tr: Transaction): boolean {
+  if (!tr.docChanged) return false
+  const sync = tr.getMeta(ySyncPluginKey) as
+    { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean } | undefined
+  if (sync?.isChangeOrigin && !sync.isUndoRedoOperation) return false
+  return tr.mapping.maps.some((map) => {
+    let deleted = false
+    map.forEach((from, to, newFrom, newTo) => {
+      deleted ||= to - from > newTo - newFrom
+    })
+    return deleted
+  })
+}
+
+function docAnchors(doc: PMNode): Set<string> {
+  const anchors = new Set<string>()
+  doc.descendants((node) => {
+    if (node.type.name !== 'blockContainer') return true
+    const anchor = extractAnchor(node.firstChild?.textContent ?? '')
+    if (anchor) anchors.add(anchor)
+    return true
+  })
+  return anchors
+}
 
 const ARROW_EDGE: Readonly<
   Record<string, { dir: 1 | -1; edge: 'up' | 'down' | 'left' | 'right' }>
@@ -249,6 +287,10 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
 
   return new Plugin({
     key: portalBoundaryKey,
+    state: {
+      init: (): LocalDeletion => ({ tr: null }),
+      apply: (tr, value) => (tr.docChanged ? (isLocalDeletion(tr) ? { tr } : { tr: null }) : value)
+    },
     props: {
       handleKeyDown(view, event) {
         if (event.metaKey || event.ctrlKey || event.altKey) return false
@@ -288,6 +330,20 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
           schedule(view)
         })
       }
+      // A local deletion (or undo) took blocks out of the source: the fence stops naming them.
+      const pruneGone = (view: EditorView, before: PMNode): void => {
+        if (!portalBoundaryKey.getState(view.state)?.tr) return
+        const window = getPortalWindowState(view)
+        if (!window) return
+        const def: PortalDefinition = { v: 1, target: window.spec, raw: {} }
+        const listed = listedAnchors(def)
+        if (listed.size === 0) return
+        const was = docAnchors(before)
+        const now = docAnchors(view.state.doc)
+        const gone = new Set([...listed].filter((anchor) => was.has(anchor) && !now.has(anchor)))
+        const plan = gone.size > 0 ? planPrune(def, gone) : null
+        if (plan) void callbacks.onPlan(plan)
+      }
       const schedule = (view: EditorView): void => {
         clearTimeout(timer)
         timer = setTimeout(() => reconcile(view), RECONCILE_DELAY_MS)
@@ -295,10 +351,13 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
       return {
         update(view, previous) {
           if (view.state.doc === previous.doc) return
-          if (pending) {
-            const done = pending
-            pending = null
-            if (!blockIds(view.state.doc).has(done.blockId)) void callbacks.onPlan(done.plan)
+          const done = pending
+          pending = null
+          if (done && !blockIds(view.state.doc).has(done.blockId)) {
+            // Backspace already planned the fence edit for the block it removed.
+            void callbacks.onPlan(done.plan)
+          } else {
+            pruneGone(view, previous.doc)
           }
           const window = getPortalWindowState(view)
           if (window && reconcileCandidates(window).size > 0) schedule(view)

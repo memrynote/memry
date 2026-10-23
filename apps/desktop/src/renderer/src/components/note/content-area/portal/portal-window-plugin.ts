@@ -53,6 +53,8 @@ export interface PortalWindowBlock {
   depth: number
   /** Position of the block's `blockContainer`. */
   pos: number
+  /** Texts (anchors stripped) of the block's ancestors in the source note, outermost first. */
+  ancestorTexts: string[]
 }
 
 export interface PortalWindowState {
@@ -136,14 +138,19 @@ function flattenBlocks(doc: PMNode): FlatBlock[] {
   return out
 }
 
-function toWindowBlock(block: FlatBlock): PortalWindowBlock {
+function toWindowBlock(block: FlatBlock, flat: readonly FlatBlock[]): PortalWindowBlock {
   const text = blockText(block.node)
+  const ancestorTexts: string[] = []
+  for (let p = block.parent; p >= 0; p = flat[p].parent) {
+    ancestorTexts.unshift(stripAnchor(blockText(flat[p].node)).trim())
+  }
   return {
     blockId: String(block.node.attrs.id),
     anchor: extractAnchor(text),
     text: stripAnchor(text).trim(),
     depth: block.depth,
-    pos: block.pos
+    pos: block.pos,
+    ancestorTexts
   }
 }
 
@@ -217,8 +224,10 @@ export function computePortalWindow(
     protectedSpans.push({ from: block.pos, to: end })
   })
 
-  const visible = flat.filter((block) => shown.has(block)).map(toWindowBlock)
-  const byBlock = new Map(flat.map((block) => [block, toWindowBlock(block)]))
+  const visible = flat
+    .filter((block) => shown.has(block))
+    .map((block) => toWindowBlock(block, flat))
+  const byBlock = new Map(flat.map((block) => [block, toWindowBlock(block, flat)]))
   const hiddenChildren: Record<string, PortalWindowBlock[]> = {}
   flat.forEach((block) => {
     const parent = block.parent >= 0 ? flat[block.parent] : null

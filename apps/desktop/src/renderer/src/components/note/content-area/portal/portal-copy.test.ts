@@ -6,7 +6,8 @@ const block = (text: string, depth: number) => ({
   anchor: null,
   text,
   depth,
-  pos: 0
+  pos: 0,
+  ancestorTexts: []
 })
 
 describe('portalContentsMarkdown', () => {

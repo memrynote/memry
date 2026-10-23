@@ -106,10 +106,11 @@ export function usePortalPicker(
         blocks,
         hostNoteId,
         ancestry: ancestryRef.current,
-        query
+        query,
+        activeBlockId: editor.getTextCursorPosition().block.id
       })
     },
-    [hostNoteId]
+    [editor, hostNoteId]
   )
 
   const pick = useCallback(

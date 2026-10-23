@@ -68,6 +68,7 @@ function unifiedSidebar() {
           items: [
             { text: 'Creating & Editing', link: '/user-guide/notes/editing' },
             { text: 'Wiki Links & Backlinks', link: '/user-guide/notes/wiki-links' },
+            { text: 'Portals', link: '/user-guide/notes/portals' },
             { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
             { text: 'Tags With Fields', link: '/user-guide/notes/tags-with-fields' },
             { text: 'Attachments', link: '/user-guide/notes/attachments' },

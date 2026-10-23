@@ -71,6 +71,34 @@ describe('buildPortalPickerList', () => {
   })
 })
 
+describe('host note self-references', () => {
+  const run = (blocks: ReturnType<typeof block>[]) =>
+    buildPortalPickerList({
+      notes: [],
+      blocks,
+      hostNoteId: 'host',
+      ancestry: [],
+      query: 'test',
+      activeBlockId: 'typing'
+    }).flatMap((i) => (i.kind === 'block' ? [i.blockId] : []))
+
+  it('never offers the block the query is typed in', () => {
+    expect(run([block('host', 'typing', '((test'), block('host', 'other', 'a test line')])).toEqual(
+      ['other']
+    )
+  })
+
+  it('drops any host block still holding a half-typed `((` line, keeps the rest', () => {
+    expect(
+      run([
+        block('host', 'stale', '((test more'),
+        block('host', 'keep', 'test'),
+        block('other', 'foreign', '((test in another note')
+      ])
+    ).toEqual(['keep', 'foreign'])
+  })
+})
+
 describe('create row', () => {
   it('closes the list with the trimmed query, and is absent for an empty one', () => {
     const base = { notes: [note('n1')], blocks: [], hostNoteId: 'host', ancestry: [] }

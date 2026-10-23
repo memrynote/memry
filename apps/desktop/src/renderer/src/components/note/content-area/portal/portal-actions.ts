@@ -27,10 +27,21 @@ import { routeUndoToHost } from './portal-undo-route'
 
 const log = createLogger('PortalActions')
 
+export interface CommitOptions {
+  /**
+   * The user asked for this edit through a control (crumb, menu, shortcut): the
+   * next Cmd+Z in the window undoes it, which only the host's history can.
+   * Edits the window makes by itself (placing a new block, pruning a deleted
+   * one) leave the window's own history in charge, so typing there stays undoable.
+   */
+  routeUndo?: boolean
+}
+
 /** Stamp what the plan needs, plan again, and write the result. False when nothing was written. */
 export async function commitPortalPlan(
   portal: PortalHandle,
-  plan: PortalPlan | null
+  plan: PortalPlan | null,
+  { routeUndo = false }: CommitOptions = {}
 ): Promise<boolean> {
   if (!plan) return false
   let next = plan
@@ -60,7 +71,7 @@ export async function commitPortalPlan(
     target
   }))
   // The caret may be in the window, whose Cmd+Z knows nothing of the host's fence.
-  const window = getPortalWindow(portal)?.view
+  const window = routeUndo ? getPortalWindow(portal)?.view : undefined
   if (written && window) routeUndoToHost(window, portal.editor)
   return written
 }
@@ -92,7 +103,7 @@ export function createPortalActions(read: () => PortalHandle): PortalActions {
     const portal = read()
     const view = getPortalWindow(portal)?.view
     if (!view || view.isDestroyed) return Promise.resolve(false)
-    return commitPortalPlan(portal, plan(view, portal))
+    return commitPortalPlan(portal, plan(view, portal), { routeUndo: true })
   }
   return {
     includeParent: (id) => run((view, p) => planIncludeParent(view, p.definition, id)),

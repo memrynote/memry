@@ -57,8 +57,14 @@ function HiddenBlocksSlot({
         ? state.visible.find((block) => block.blockId === scope.blockId)
         : undefined
     const trail = scope.kind === 'siblings' ? state.ancestors : parent ? [parent] : []
-    const path = [title, ...trail.map((block) => block.text)].filter(Boolean).join(PATH_SEPARATOR)
-    return hidden.map((block) => ({ key: block.blockId, path, text: block.text }))
+    const sharedPath = [title, ...trail.map((block) => block.text)]
+    const join = (parts: readonly string[]): string => parts.filter(Boolean).join(PATH_SEPARATOR)
+    // A note portal hides blocks at any depth, so each row carries its own source path.
+    return hidden.map((block) => ({
+      key: block.blockId,
+      path: state.spec.kind === 'note' ? join([title, ...block.ancestorTexts]) : join(sharedPath),
+      text: block.text
+    }))
   }, [state, scope, hidden, title])
 
   // The count drops as blocks come in; the popover goes with the last one.
