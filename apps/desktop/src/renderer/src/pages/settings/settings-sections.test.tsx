@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountSettings } from './account-section'
 import { AgentProvidersSection } from './agent-providers-section'
@@ -699,6 +699,36 @@ describe('settings section coverage', () => {
     // the sync toggle is the first one in the group.
     fireEvent.click(screen.getAllByRole('switch')[0])
     expect(mocks.syncStatus.pause).toHaveBeenCalledWith('settings')
+  })
+
+  it('reads a sync-settings blob without attachmentAutoDownload as on', async () => {
+    ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      plan: 'pro',
+      status: 'active',
+      source: 'paddle',
+      limits: {
+        storageLimit: 10 * 1024 * 1024 * 1024,
+        maxFileSize: 200 * 1024 * 1024,
+        maxVaults: 10,
+        versionHistoryDays: 365
+      },
+      usage: { storageUsed: 1536 },
+      expiresAt: null,
+      canManageBilling: true
+    })
+    // Blobs written by builds before the setting existed have no key.
+    const getSyncSettings = window.api.settings.getSyncSettings as ReturnType<typeof vi.fn>
+    getSyncSettings.mockResolvedValueOnce({ enabled: true, autoSync: true })
+    render(<AccountSettings />)
+    await screen.findAllByText('account.billing.plans.pro')
+    await waitFor(() => {
+      expect(getSyncSettings).toHaveBeenCalled()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(screen.getAllByRole('switch')[1]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('sells sync to an unpaid account with benefits and the guarantee, not an error', async () => {
