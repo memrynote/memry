@@ -47,6 +47,11 @@ const TARGET_ICONS = new Map<string, typeof FileText>([
   ['task', CheckSquare]
 ])
 
+function TargetIcon({ targetType }: { targetType: string }): React.JSX.Element {
+  const Icon = TARGET_ICONS.get(targetType) ?? FileText
+  return <Icon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+}
+
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
   const { t } = useT('inbox')
   const metadata = item.metadata as ReminderMetadata | undefined
@@ -132,7 +137,6 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
     return <div className="p-5 text-muted-foreground text-sm">{t('reminder.dataUnavailable')}</div>
   }
 
-  const TargetIcon = TARGET_ICONS.get(metadata.targetType) ?? FileText
   const isViewed = item.viewedAt != null
   const presetLabels = {
     'in-1-hour': t('reminder.presetInOneHour'),
@@ -181,7 +185,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           title={t('reminder.source')}
           className={cn(DRAWER_ROW, 'group')}
         >
-          <TargetIcon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <TargetIcon targetType={metadata.targetType} />
           <span className="min-w-0 flex-1 truncate text-text-primary">
             {metadata.targetType === 'journal'
               ? t('reminder.journalTitle', {
