@@ -32,9 +32,20 @@ import {
   reimportBook,
   restoreBook
 } from '../readwise/book-commands'
+import { onReadwiseStatusChanged } from '../readwise/run-status'
 import { writeReadwiseOptions } from '../readwise/settings'
+import { getReadwiseSyncService } from '../readwise/sync-service'
+import { claimErrorToast } from '../readwise/sync-state'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
+
+let stopBroadcasting: (() => void) | null = null
 
 export function registerReadwiseImportHandlers(): void {
+  stopBroadcasting?.()
+  stopBroadcasting = onReadwiseStatusChanged(() =>
+    broadcastToAllWindows(ReadwiseImportChannels.events.STATUS_CHANGED)
+  )
+
   registerCommand(
     ReadwiseImportChannels.invoke.STATUS,
     z.unknown(),
@@ -122,9 +133,28 @@ export function registerReadwiseImportHandlers(): void {
     (input): Promise<ReadwiseStatusResult> => withUserMessage(takeOverReadwise(input.token)),
     'errors:importer.readwiseTakeOverFailed'
   )
+
+  registerCommand(
+    ReadwiseImportChannels.invoke.CANCEL,
+    z.unknown(),
+    async () => {
+      getReadwiseSyncService().cancel()
+      return { success: true as const }
+    },
+    'errors:importer.readwiseCancelFailed'
+  )
+
+  registerCommand(
+    ReadwiseImportChannels.invoke.ACK_ERROR_TOAST,
+    z.unknown(),
+    async () => ({ first: claimErrorToast(getDatabase()) }),
+    'errors:importer.readwiseStatusFailed'
+  )
 }
 
 export function unregisterReadwiseImportHandlers(): void {
+  stopBroadcasting?.()
+  stopBroadcasting = null
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.STATUS)
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.CONNECT)
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.DISCONNECT)
@@ -135,4 +165,6 @@ export function unregisterReadwiseImportHandlers(): void {
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.LIST_DELETED)
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.RESTORE_BOOK)
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.TAKE_OVER)
+  ipcMain.removeHandler(ReadwiseImportChannels.invoke.CANCEL)
+  ipcMain.removeHandler(ReadwiseImportChannels.invoke.ACK_ERROR_TOAST)
 }

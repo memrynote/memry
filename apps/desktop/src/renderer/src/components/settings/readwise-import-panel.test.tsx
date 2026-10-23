@@ -22,7 +22,11 @@ const disconnectedStatus: ReadwiseStatusResult = {
   needsAttention: false,
   hasImported: false,
   thisDevicePulls: true,
-  pullingDeviceName: null
+  pullingDeviceName: null,
+  syncing: null,
+  lastRun: null,
+  error: null,
+  nextRunAt: null
 }
 /** Connected after a first run: the panel shows the settings, not the preview. */
 const connectedStatus: ReadwiseStatusResult = {
@@ -42,6 +46,8 @@ describe('ReadwiseImportPanel', () => {
   let listDeleted: ReturnType<typeof vi.fn>
   let restoreBook: ReturnType<typeof vi.fn>
   let takeOver: ReturnType<typeof vi.fn>
+  let cancel: ReturnType<typeof vi.fn>
+  let statusListeners: Array<() => void>
 
   beforeAll(async () => {
     i18n = await createRendererI18n({ locale: 'en' })
@@ -56,7 +62,15 @@ describe('ReadwiseImportPanel', () => {
     listDeleted = vi.fn(() => Promise.resolve({ books: [] }))
     restoreBook = vi.fn(() => Promise.resolve({ success: true }))
     takeOver = vi.fn(() => Promise.resolve(connectedStatus))
+    cancel = vi.fn(() => Promise.resolve({ success: true }))
+    statusListeners = []
     ;(window as unknown as { api: unknown }).api = {
+      onReadwiseStatusChanged: (callback: () => void) => {
+        statusListeners.push(callback)
+        return () => {
+          statusListeners = statusListeners.filter((listener) => listener !== callback)
+        }
+      },
       import: {
         readwise: {
           status,
@@ -66,7 +80,8 @@ describe('ReadwiseImportPanel', () => {
           syncNow,
           listDeleted,
           restoreBook,
-          takeOver
+          takeOver,
+          cancel
         }
       }
     }
@@ -104,9 +119,11 @@ describe('ReadwiseImportPanel', () => {
     })
     renderPanel()
 
-    expect(await screen.findByText('Readwise syncs on Desk Mac.')).toBeInTheDocument()
+    expect(await screen.findByText('Syncs on Desk Mac')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Connect' })).not.toBeInTheDocument()
-    const button = screen.getByRole('button', { name: 'Sync on this device instead' })
+    // The banner offers the takeover; the token form opens from it.
+    fireEvent.click(screen.getByRole('button', { name: 'Sync here instead' }))
+    const button = screen.getByRole('button', { name: 'Sync here instead' })
     expect(button).toBeDisabled()
 
     fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'tok-9' } })
@@ -125,9 +142,10 @@ describe('ReadwiseImportPanel', () => {
     takeOver.mockResolvedValue({ success: false, error: 'Turn on sync to move Readwise.' })
     renderPanel()
 
-    expect(await screen.findByText('Readwise syncs on another device.')).toBeInTheDocument()
+    expect(await screen.findByText('Syncs on another device')).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync here instead' }))
     fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'tok-9' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Sync on this device instead' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sync here instead' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Turn on sync')
     expect(screen.getByLabelText('Access token')).toBeInTheDocument()
@@ -444,10 +462,168 @@ describe('ReadwiseImportPanel', () => {
     expect(await screen.findByText('/Gone/Away')).toBeInTheDocument()
   })
 
-  it('shows the needs-attention line instead of the sync hint', async () => {
-    status.mockResolvedValue({ ...connectedStatus, needsAttention: true })
-    renderPanel()
-    expect(await screen.findByText(/needs your attention/)).toBeInTheDocument()
+  describe('status banner (#1418)', () => {
+    const banner = () => screen.findByTestId('readwise-status-banner')
+
+    it('shows the last run and the next sync when idle', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+        lastRun: {
+          books: 3,
+          added: 1,
+          updated: 2,
+          appended: 0,
+          deferred: 0,
+          failed: 0,
+          highlights: 12
+        },
+        nextRunAt: new Date(Date.now() + 55 * 60_000).toISOString()
+      })
+      renderPanel()
+      const el = await banner()
+      expect(el).toHaveAttribute('data-state', 'synced')
+      expect(el).toHaveTextContent('Synced 5 minutes ago')
+      expect(el).toHaveTextContent('Last run: 1 added, 2 updated, 12 highlights')
+      expect(el).toHaveTextContent('Next sync in 55 minutes')
+    })
+
+    it('says a run that changed nothing found nothing new', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        lastSyncAt: new Date().toISOString(),
+        lastRun: {
+          books: 0,
+          added: 0,
+          updated: 0,
+          appended: 0,
+          deferred: 0,
+          failed: 0,
+          highlights: 0
+        }
+      })
+      renderPanel()
+      expect(await banner()).toHaveTextContent('Last run: nothing new')
+    })
+
+    it('shows progress with Cancel while syncing, and Cancel stops the run', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        syncing: { stage: 'writing', planned: 12, done: 3 }
+      })
+      renderPanel()
+      const el = await banner()
+      expect(el).toHaveAttribute('data-state', 'syncing')
+      expect(el).toHaveTextContent('Writing books, 3 of 12')
+      expect(screen.getByRole('button', { name: 'Sync now' })).toBeDisabled()
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      await waitFor(() => expect(cancel).toHaveBeenCalled())
+    })
+
+    it('says it waits for memry sync before the first pull', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        syncing: { stage: 'waiting-for-sync', planned: null, done: 0 }
+      })
+      renderPanel()
+      const el = await banner()
+      expect(el).toHaveAttribute('data-state', 'waiting-for-sync')
+      expect(el).toHaveTextContent('Waiting for memry sync')
+    })
+
+    it('re-reads the status when main says it changed', async () => {
+      status.mockResolvedValue(connectedStatus)
+      renderPanel()
+      await banner()
+      status.mockResolvedValue({
+        ...connectedStatus,
+        syncing: { stage: 'reading', planned: null, done: 0 }
+      })
+      statusListeners.forEach((listener) => listener())
+      expect(await screen.findByText('Reading your library…')).toBeInTheDocument()
+    })
+
+    it.each([
+      ['rate-limited', 'Readwise is limiting requests'],
+      ['network', "Can't reach Readwise"],
+      ['server', 'Readwise had a problem'],
+      ['subscription-expired', 'Your Readwise subscription expired']
+    ] as const)('%s shows its title and Retry now, which syncs', async (kind, title) => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        error: { kind, detail: null },
+        nextRunAt: new Date(Date.now() + 5 * 60_000).toISOString()
+      })
+      renderPanel()
+      const el = await banner()
+      expect(el).toHaveAttribute('data-state', `error:${kind}`)
+      expect(el).toHaveTextContent(title)
+      expect(el).toHaveAttribute('role', 'alert')
+      fireEvent.click(screen.getByRole('button', { name: 'Retry now' }))
+      await waitFor(() => expect(syncNow).toHaveBeenCalled())
+    })
+
+    it('a transient error says when the next try is, a fixable one does not', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        error: { kind: 'network', detail: null },
+        nextRunAt: new Date(Date.now() + 5 * 60_000).toISOString()
+      })
+      const { unmount } = renderPanel()
+      expect(await banner()).toHaveTextContent('Memry tries again in 5 minutes.')
+      unmount()
+
+      status.mockResolvedValue({
+        ...connectedStatus,
+        error: { kind: 'subscription-expired', detail: null },
+        nextRunAt: null
+      })
+      renderPanel()
+      expect(await banner()).not.toHaveTextContent('tries again')
+    })
+
+    it('an unexpected failure shows its own text', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        error: { kind: 'unexpected', detail: 'disk gone' }
+      })
+      renderPanel()
+      expect(await banner()).toHaveTextContent('disk gone')
+    })
+
+    it('a rejected token offers a new token, which reconnects without a disconnect', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        needsAttention: true,
+        error: { kind: 'invalid-token', detail: null }
+      })
+      renderPanel()
+      const el = await banner()
+      expect(el).toHaveTextContent('Readwise needs a new token')
+
+      fireEvent.click(screen.getByRole('button', { name: 'Paste a new token' }))
+      fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'fresh' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }))
+
+      await waitFor(() => expect(connect).toHaveBeenCalledWith({ token: 'fresh' }))
+      expect(disconnect).not.toHaveBeenCalled()
+      await waitFor(() => expect(screen.queryByLabelText('Access token')).not.toBeInTheDocument())
+    })
+
+    it('keeps the new-token form and its error when Readwise refuses the token', async () => {
+      status.mockResolvedValue({
+        ...connectedStatus,
+        error: { kind: 'invalid-token', detail: null }
+      })
+      connect.mockResolvedValue({ success: false, error: 'Readwise did not accept this token.' })
+      renderPanel()
+      await banner()
+      fireEvent.click(screen.getByRole('button', { name: 'Paste a new token' }))
+      fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'bad' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }))
+      expect(await screen.findByRole('alert', { name: '' })).toBeTruthy()
+      expect(await screen.findByText('Readwise did not accept this token.')).toBeInTheDocument()
+    })
   })
 
   describe('Deleted books (D16)', () => {
@@ -508,7 +684,7 @@ describe('ReadwiseImportPanel', () => {
         pullingDeviceName: 'MacBook Pro'
       })
       renderPanel()
-      expect(await screen.findByText('Readwise syncs on MacBook Pro.')).toBeInTheDocument()
+      expect(await screen.findByText('Syncs on MacBook Pro')).toBeInTheDocument()
       expect(listDeleted).not.toHaveBeenCalled()
     })
   })

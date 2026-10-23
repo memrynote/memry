@@ -596,6 +596,7 @@ const createMockApi = () => ({
   onJournalEntryDeleted: vi.fn().mockReturnValue(() => {}),
   onJournalExternalChange: vi.fn().mockReturnValue(() => {}),
   onMenuCommand: vi.fn().mockReturnValue(() => {}),
+  onReadwiseStatusChanged: vi.fn().mockReturnValue(() => {}),
   onReminderDue: vi.fn().mockReturnValue(() => {}),
   onReminderCreated: vi.fn().mockReturnValue(() => {}),
   onReminderUpdated: vi.fn().mockReturnValue(() => {}),

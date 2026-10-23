@@ -325,7 +325,7 @@ function SettingsPageContent({
     case 'vault':
       return <VaultSettings focusTarget={focusTarget} focusRequestId={focusRequestId} />
     case 'import':
-      return <ImportSettings />
+      return <ImportSettings focusTarget={focusTarget} focusRequestId={focusRequestId} />
   }
 }
 

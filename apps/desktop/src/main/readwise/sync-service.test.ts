@@ -240,6 +240,55 @@ describe('Readwise incremental sync', () => {
     expect(state.getCursor(db())).toBe('2026-10-03T09:59:59.000Z')
   })
 
+  it('keeps the run counts for the status, and shows progress while it runs', async () => {
+    twoBooks()
+    const progress = await import('../readwise/run-status')
+    const seen: Array<ReturnType<typeof progress.getRunProgress>> = []
+    const stop = progress.onReadwiseStatusChanged(() => seen.push(progress.getRunProgress()))
+
+    await sync()
+    stop()
+
+    expect(state.getLastRun(db())?.counts).toEqual({
+      books: 2,
+      added: 2,
+      updated: 0,
+      appended: 0,
+      deferred: 0,
+      failed: 0,
+      highlights: 5
+    })
+    expect(seen.map((p) => p?.stage)).toEqual(
+      expect.arrayContaining(['waiting-for-sync', 'reading', 'writing'])
+    )
+    expect(seen.find((p) => p?.stage === 'writing')).toMatchObject({ planned: 2 })
+    expect(progress.getRunProgress()).toBeNull()
+  })
+
+  it('cancel stops a run that is reading, keeps the cursor and shows no error', async () => {
+    const service = new engine.ReadwiseSyncService()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) =>
+            init.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+          )
+      )
+    )
+    const progress = await import('../readwise/run-status')
+    const running = service.run(TOKEN, { signal: new AbortController().signal, book: () => {} })
+    await vi.waitFor(() => expect(progress.getRunProgress()?.stage).toBe('reading'))
+
+    service.cancel()
+    const result = await running
+
+    expect(result.cancelled).toBe(true)
+    expect(state.getCursor(db())).toBeNull()
+    expect(progress.getRunProgress()).toBeNull()
+    expect(progress.getRunFailure()).toBeNull()
+  })
+
   it('a second run on an unchanged library asks for the window and writes nothing', async () => {
     twoBooks()
     await sync()

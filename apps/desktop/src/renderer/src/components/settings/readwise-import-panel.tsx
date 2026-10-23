@@ -45,6 +45,10 @@ import { ReadwiseDeletedBooks } from '@/components/settings/readwise-deleted-boo
 import { ReadwiseTakeoverSection } from '@/components/settings/readwise-takeover-section'
 import { ReadwiseLocationSection } from '@/components/settings/readwise-location-section'
 import { ReadwiseReaderSection } from '@/components/settings/readwise-reader-section'
+import {
+  ReadwiseReconnectForm,
+  ReadwiseStatusBanner
+} from '@/components/settings/readwise-status-banner'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
 const TOKEN_URL = 'https://readwise.io/access_token'
@@ -73,6 +77,8 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
     willImport: 0,
     documents: 0
   })
+  const [reconnecting, setReconnecting] = useState(false)
+  const [refreshNonce, setRefreshNonce] = useState(0)
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -95,7 +101,10 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
     return () => {
       active = false
     }
-  }, [t])
+  }, [t, refreshNonce])
+
+  // A run starting, moving on or ending changes the banner.
+  useEffect(() => window.api.onReadwiseStatusChanged(() => setRefreshNonce((n) => n + 1)), [])
 
   // Wrapped in queueMicrotask for the same reason as the OneNote panel: the
   // parent state update happens asynchronously.
@@ -122,24 +131,33 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
     }
   }, [ready, confirmLabel, onStateChange])
 
-  const connect = async () => {
-    if (!token.trim() || isConnecting) return
+  const connect = async (pasted: string = token) => {
+    if (!pasted.trim() || isConnecting) return
     setIsConnecting(true)
     setTokenError(null)
     try {
       const result = unwrap(
-        await window.api.import.readwise.connect({ token }),
+        await window.api.import.readwise.connect({ token: pasted }),
         t('import.dialog.readwise.connectFailed')
       )
       if (!mountedRef.current) return
       setStatus(result)
       setToken('')
+      setReconnecting(false)
     } catch (err) {
       if (mountedRef.current) {
         setTokenError(extractErrorMessage(err, t('import.dialog.readwise.connectFailed')))
       }
     } finally {
       if (mountedRef.current) setIsConnecting(false)
+    }
+  }
+
+  const cancelSync = async () => {
+    try {
+      unwrap(await window.api.import.readwise.cancel(), t('import.dialog.error'))
+    } catch (err) {
+      if (mountedRef.current) setError(extractErrorMessage(err, t('import.dialog.error')))
     }
   }
 
@@ -196,13 +214,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
   }
 
   if (!status.thisDevicePulls) {
-    return (
-      <ReadwiseTakeoverSection
-        deviceName={status.pullingDeviceName}
-        disabled={disabled}
-        onTakenOver={setStatus}
-      />
-    )
+    return <ReadwiseTakeoverSection status={status} disabled={disabled} onTakenOver={setStatus} />
   }
 
   if (!status.connected) {
@@ -271,6 +283,28 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
+      <section className="flex flex-col gap-3">
+        <ReadwiseStatusBanner
+          status={status}
+          busy={isSyncing}
+          onRetry={() => void syncNow()}
+          onCancel={() => void cancelSync()}
+          onPasteNew={() => setReconnecting(true)}
+        />
+        {reconnecting && (
+          <ReadwiseReconnectForm
+            error={tokenError}
+            busy={isConnecting}
+            disabled={disabled}
+            onSubmit={(pasted) => void connect(pasted)}
+            onCancel={() => {
+              setReconnecting(false)
+              setTokenError(null)
+            }}
+          />
+        )}
+      </section>
+
       <ReadwiseLocationSection
         options={options}
         disabled={disabled}
@@ -335,17 +369,13 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           </SettingRow>
           <SettingRow
             label={t('import.dialog.readwise.syncNow.label')}
-            description={
-              status.needsAttention
-                ? t('import.dialog.readwise.needsAttention')
-                : t('import.dialog.readwise.syncNow.description')
-            }
+            description={t('import.dialog.readwise.syncNow.description')}
           >
             <Button
               variant="outline"
               size="sm"
               onClick={() => void syncNow()}
-              disabled={disabled || isSyncing}
+              disabled={disabled || isSyncing || status.syncing !== null}
             >
               {t('import.dialog.readwise.syncNow.button')}
             </Button>

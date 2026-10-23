@@ -154,6 +154,19 @@ export class ReadwiseScheduler {
     return await this.beginRun(token, 'manual')
   }
 
+  /** When the schedule next starts a run (epoch ms), or null when nothing will: Manual, parked, or no first import yet. */
+  nextRunAt(): number | null {
+    const db = getDatabase()
+    const { cadence } = readReadwiseOptions(db)
+    if (cadence === 'manual' || getCursor(db) === null || getLastRun(db)?.needsAttention) {
+      return null
+    }
+    const now = this.deps.now()
+    if (this.failures > 0) return Math.max(this.nextRetryAt, now)
+    if (this.lastAttemptAt === null) return now
+    return Math.max(this.lastAttemptAt + CADENCE_INTERVAL_MS[cadence], now)
+  }
+
   private beginRun(token: string, origin: 'scheduled' | 'manual'): Promise<RunResult> {
     this.lastAttemptAt = this.deps.now()
     const abort = new AbortController()

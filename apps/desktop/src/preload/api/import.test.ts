@@ -21,7 +21,9 @@ describe('importApi.readwise', () => {
     ['refreshBook', ReadwiseImportChannels.invoke.REFRESH_BOOK, [{ noteId: 'n1' }]],
     ['listDeleted', ReadwiseImportChannels.invoke.LIST_DELETED, []],
     ['restoreBook', ReadwiseImportChannels.invoke.RESTORE_BOOK, [{ readwiseBookId: 7 }]],
-    ['takeOver', ReadwiseImportChannels.invoke.TAKE_OVER, [{ token: 't' }]]
+    ['takeOver', ReadwiseImportChannels.invoke.TAKE_OVER, [{ token: 't' }]],
+    ['cancel', ReadwiseImportChannels.invoke.CANCEL, []],
+    ['ackErrorToast', ReadwiseImportChannels.invoke.ACK_ERROR_TOAST, []]
   ] as const)('%s invokes its channel', async (method, channel, args) => {
     await (importApi.readwise[method] as (...a: unknown[]) => Promise<unknown>)(...args)
     expect(electronMock.ipcRenderer.invoke).toHaveBeenCalledWith(channel, ...args)

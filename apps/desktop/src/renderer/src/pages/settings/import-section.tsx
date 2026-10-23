@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import {
   SETTINGS_CARD,
@@ -12,6 +12,8 @@ import { ImportSourceIcon } from '@/components/import/import-source-icon'
 import { ImportDialog } from '@/components/settings/import-dialog'
 import { useImporters, type ImporterItem } from '@/hooks/use-importers'
 import { useReadwiseStatus } from '@/hooks/use-readwise-status'
+import { deriveReadwiseState } from '@/components/settings/readwise-state'
+import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 import { formatRelativePast } from '@/lib/format-relative-past'
 
 type ImportGroupId = 'reading' | 'noteApps' | 'tasks' | 'files'
@@ -55,7 +57,12 @@ function sortWithinGroup(group: ImportGroupId, items: ImporterItem[]): ImporterI
   return [...items].sort((a, b) => rank(a.id) - rank(b.id))
 }
 
-export function ImportSettings() {
+interface ImportSettingsProps {
+  focusTarget?: SettingsFocusTarget | null
+  focusRequestId?: number
+}
+
+export function ImportSettings({ focusTarget, focusRequestId }: ImportSettingsProps = {}) {
   const { t, i18n } = useT('settings')
   const { importers } = useImporters()
   const [active, setActive] = useState<ImporterItem | null>(null)
@@ -66,15 +73,36 @@ export function ImportSettings() {
 
   // Where other rows show a file format, Readwise shows its connection state (D1).
   const readwiseState = (): string => {
-    const status = readwise.status
-    if (!status?.connected) return t('import.v2.readwise.notConnected')
-    if (status.needsAttention) return t('import.v2.readwise.needsAttention')
-    if (status.lastSyncAt) {
-      return t('import.v2.readwise.synced', {
-        time: formatRelativePast(status.lastSyncAt, i18n.language)
-      })
+    const state = deriveReadwiseState(readwise.status)
+    switch (state.kind) {
+      case 'not-connected':
+        return t('import.v2.readwise.notConnected')
+      case 'other-device':
+        return state.deviceName
+          ? t('import.v2.readwise.otherDevice', { device: state.deviceName })
+          : t('import.v2.readwise.otherDeviceUnknown')
+      case 'waiting-for-sync':
+        return t('import.v2.readwise.waiting')
+      case 'syncing':
+        return t('import.v2.readwise.syncing')
+      case 'error':
+        return t(
+          {
+            'invalid-token': 'import.v2.readwise.invalidToken',
+            'subscription-expired': 'import.v2.readwise.subscriptionExpired',
+            'rate-limited': 'import.v2.readwise.rateLimited',
+            network: 'import.v2.readwise.network',
+            server: 'import.v2.readwise.server',
+            unexpected: 'import.v2.readwise.unexpected'
+          }[state.error]
+        )
+      case 'synced':
+        return t('import.v2.readwise.synced', {
+          time: formatRelativePast(state.at, i18n.language)
+        })
+      case 'connected':
+        return t('import.v2.readwise.connected')
     }
-    return t('import.v2.readwise.connected')
   }
 
   const formatOf = (item: ImporterItem): string => {
@@ -84,6 +112,12 @@ export function ImportSettings() {
     if (extension) return `.${extension}`
     return item.accountBased ? t('import.v2.formatAccount') : ''
   }
+
+  // The error toast's "Open Readwise" lands here with the Readwise panel open.
+  const readwiseItem = importers.find((item) => item.id === 'readwise') ?? null
+  useEffect(() => {
+    if (focusTarget === 'readwise-import' && readwiseItem) setActive(readwiseItem)
+  }, [focusTarget, focusRequestId, readwiseItem])
 
   const normalizedQuery = query.trim().toLowerCase()
   const groups = useMemo(() => {

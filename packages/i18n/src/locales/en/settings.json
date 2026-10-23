@@ -1650,7 +1650,7 @@
           "syncsOn": "Readwise syncs on {device}.",
           "syncsOnAnother": "Readwise syncs on another device.",
           "explain": "Only one device pulls from Readwise, so the same highlight is never written twice. To pull from this device instead, paste your token again: it never travels between devices. The other device stops at its next book, and every note stays.",
-          "button": "Sync on this device instead",
+          "button": "Sync here instead",
           "working": "Moving Readwise here…",
           "failed": "Could not move Readwise to this device"
         },
@@ -1722,7 +1722,6 @@
           "description": "Check Readwise for new highlights.",
           "button": "Sync now"
         },
-        "needsAttention": "Readwise needs your attention. Disconnect and connect again with a fresh token.",
         "disconnect": "Disconnect",
         "disconnectHint": "Disconnect removes the token from this device. Your notes stay.",
         "deleted": {
@@ -1750,6 +1749,75 @@
           "willImport": "will import",
           "off": "off",
           "retry": "Try again"
+        },
+        "status": {
+          "connected": "Connected",
+          "synced": "Synced {time}",
+          "syncing": "Syncing with Readwise",
+          "reading": "Reading your library…",
+          "writing": "Writing books, {done} of {total}",
+          "finishing": "Finishing up…",
+          "waitingTitle": "Waiting for memry sync",
+          "waitingDetail": "Memry waits until your other devices' notes have arrived, so no book is written twice. Readwise starts right after.",
+          "otherTitle": "Syncs on {device}",
+          "otherTitleUnknown": "Syncs on another device",
+          "otherDetail": "Only one device pulls from Readwise, so the same highlight is never written twice.",
+          "lastRun": "Last run: {counts}",
+          "lastRunNothing": "Last run: nothing new",
+          "nextRun": "Next sync {time}",
+          "retryAt": "Memry tries again {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise needs a new token",
+              "detail": "Readwise did not accept the saved token. Paste a fresh one from readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Your Readwise subscription expired",
+              "detail": "Renew your subscription on readwise.io, then try again."
+            },
+            "rate-limited": {
+              "title": "Readwise is limiting requests",
+              "detail": "Too many requests in a short time."
+            },
+            "network": {
+              "title": "Can't reach Readwise",
+              "detail": "Check your connection."
+            },
+            "server": {
+              "title": "Readwise had a problem",
+              "detail": "Readwise answered with an error."
+            },
+            "unexpected": {
+              "title": "The sync stopped",
+              "detail": "Something went wrong during the run."
+            }
+          },
+          "counts": {
+            "added": "{count} added",
+            "updated": "{count} updated",
+            "appended": "{count} extended",
+            "deferred": "{count} waiting for an open note",
+            "failed": "{count} failed",
+            "highlights": "{count, plural, one {# highlight} other {# highlights}}"
+          },
+          "actions": {
+            "cancel": "Cancel",
+            "retry": "Retry now",
+            "newToken": "Paste a new token",
+            "reconnect": "Reconnect",
+            "syncHere": "Sync here instead"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise needs a new token",
+            "description": "Syncing is paused until you paste a fresh one."
+          },
+          "subscription-expired": {
+            "title": "Your Readwise subscription expired",
+            "description": "Syncing is paused until the subscription is active again."
+          },
+          "open": "Open Readwise"
         }
       }
     },
@@ -1859,7 +1927,16 @@
         "notConnected": "Not connected",
         "connected": "Connected",
         "synced": "Synced {time}",
-        "needsAttention": "Needs attention"
+        "syncing": "Syncing…",
+        "waiting": "Waiting for sync",
+        "otherDevice": "Syncs on {device}",
+        "otherDeviceUnknown": "Syncs elsewhere",
+        "invalidToken": "Needs a new token",
+        "subscriptionExpired": "Subscription expired",
+        "rateLimited": "Rate limited",
+        "network": "Can't reach Readwise",
+        "server": "Readwise error",
+        "unexpected": "Sync failed"
       }
     }
   },

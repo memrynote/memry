@@ -17,6 +17,8 @@ vi.mock('electron', () => ({ app: mockApp, ipcMain: mockElectron.ipcMain }))
 let currentDb: DataDb | null = null
 vi.mock('../database', () => ({ getDatabase: () => currentDb }))
 vi.mock('../vault', () => ({ getStatus: () => ({ path: '/vaults/a' }) }))
+const broadcast = vi.hoisted(() => vi.fn())
+vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: broadcast }))
 
 const secrets = new Map<string, string>()
 vi.mock('../secrets/secret-storage', () => ({
@@ -179,6 +181,30 @@ describe('readwise import IPC handlers', () => {
     const status = await handlerFor(ReadwiseImportChannels.invoke.STATUS)({}, undefined)
     expect(status).toMatchObject({ connected: true, hasImported: true, needsAttention: false })
     expect(status.lastSyncAt).toEqual(expect.any(String))
+  })
+
+  it('tells every window when a run changes the status, and cancel and the toast ack answer', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) =>
+        input.includes('/auth/')
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ nextPageCursor: null, results: [] }), { status: 200 })
+      )
+    )
+    await handlerFor(ReadwiseImportChannels.invoke.CONNECT)({}, { token: TOKEN })
+    broadcast.mockClear()
+
+    await handlerFor(ReadwiseImportChannels.invoke.SYNC_NOW)({}, undefined)
+
+    expect(broadcast).toHaveBeenCalledWith(ReadwiseImportChannels.events.STATUS_CHANGED)
+    expect(await handlerFor(ReadwiseImportChannels.invoke.CANCEL)({}, undefined)).toEqual({
+      success: true
+    })
+    // No error to act on, so no toast.
+    expect(await handlerFor(ReadwiseImportChannels.invoke.ACK_ERROR_TOAST)({}, undefined)).toEqual({
+      first: false
+    })
   })
 
   it('status says this device pulls until another device holds the claim', async () => {

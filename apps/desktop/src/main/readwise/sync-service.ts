@@ -9,6 +9,7 @@ import { releaseTokenIfClaimedElsewhere } from './release'
 import { waitForVaultIndexBuild } from '../sync/vault-index-ready'
 import { completeLink, getLinkForBook, listLinks, markLinkState } from './links-repository'
 import { rebuildLinks } from './rebuild-links'
+import { clearRunFailure, recordRunFailure, setRunProgress } from './run-status'
 import { upsertReadwiseNote, type UpsertOutcome } from './note-writer'
 import { listDocuments } from './reader'
 import { runReaderPass } from './reader-sync'
@@ -17,6 +18,7 @@ import {
   addRetry,
   getCursor,
   getFullPassPending,
+  getLastRun,
   getLastFullRead,
   getRetryList,
   removeRetry,
@@ -237,11 +239,17 @@ type Written = { event: BookEvent } | { needsFull: true }
 
 export class ReadwiseSyncService {
   private running = false
+  private stopRun: (() => void) | null = null
 
   constructor(private readonly deps: SyncServiceDeps = {}) {}
 
   get isRunning(): boolean {
     return this.running
+  }
+
+  /** Stops the run in progress at its next book, whoever started it (#1418). A no-op when idle. */
+  cancel(): void {
+    this.stopRun?.()
   }
 
   /**
@@ -260,7 +268,9 @@ export class ReadwiseSyncService {
   async run(token: string, observer: RunObserver): Promise<RunResult> {
     if (this.running) throw new Error('A Readwise run is already in progress')
     this.running = true
-    const { signal } = observer
+    const stop = new AbortController()
+    this.stopRun = () => stop.abort()
+    const signal = AbortSignal.any([observer.signal, stop.signal])
     const result: RunResult = {
       cancelled: false,
       books: 0,
@@ -273,7 +283,9 @@ export class ReadwiseSyncService {
       highlights: 0
     }
     let claimMoved = false
+    let failed: unknown = null
     try {
+      setRunProgress({ stage: 'waiting-for-sync', planned: null, done: 0 })
       await this.deps.awaitReady?.(signal)
       const db = getDatabase()
       const startedAt = (this.deps.now ?? (() => new Date()))()
@@ -309,12 +321,26 @@ export class ReadwiseSyncService {
         ...(claimMoved ? { claimLost: true } : {})
       })
       if (cursor === null) adoptExistingNotes(db)
+      // An error the user must fix parks the schedule and keeps the last run's counts.
       const needsAttention = (error: unknown): void => {
-        if (error instanceof ReadwiseError && error.code === 'invalid-token') {
-          setLastRun(db, { at: new Date().toISOString(), needsAttention: true })
+        if (
+          error instanceof ReadwiseError &&
+          (error.code === 'invalid-token' || error.code === 'subscription-expired')
+        ) {
+          const previous = getLastRun(db)
+          setLastRun(db, {
+            at: new Date().toISOString(),
+            needsAttention: true,
+            attention: error.code,
+            ...(previous?.counts ? { counts: previous.counts } : {})
+          })
         }
       }
+      const mustFix = (error: unknown): boolean =>
+        error instanceof ReadwiseError &&
+        (error.code === 'invalid-token' || error.code === 'subscription-expired')
 
+      setRunProgress({ stage: 'reading', planned: null, done: 0 })
       observer.reading?.()
       // 1. The retry list, as full books.
       const retryIds = getRetryList(db).map((entry) => entry.readwiseBookId)
@@ -325,7 +351,7 @@ export class ReadwiseSyncService {
       } catch (error) {
         if (signal.aborted) return cancelled()
         needsAttention(error)
-        if (error instanceof ReadwiseError && error.code === 'invalid-token') throw error
+        if (mustFix(error)) throw error
         // The books stay on the list for the next run.
         retryFetched = false
         log.warn('The Readwise retry list could not be fetched', { error })
@@ -361,11 +387,15 @@ export class ReadwiseSyncService {
       const total = retryBooks.length + changed.length
       result.books = total
       observer.planned?.(total)
+      let done = 0
+      setRunProgress({ stage: 'writing', planned: total, done })
 
       const finish = (written: Written, payload: ReadwiseBook): void => {
         if ('needsFull' in written) return
         tally(result, written.event, payload)
         observer.book(written.event)
+        done += 1
+        setRunProgress({ stage: 'writing', planned: total, done }, { tick: true })
       }
 
       // The highlights each book brought, as the export reported them.
@@ -390,7 +420,7 @@ export class ReadwiseSyncService {
         } catch (error) {
           if (signal.aborted) return cancelled()
           needsAttention(error)
-          if (error instanceof ReadwiseError && error.code === 'invalid-token') throw error
+          if (mustFix(error)) throw error
           // Rate limit or network: each book is asked for again next run.
           const reason = error instanceof Error ? error.message : String(error)
           for (const book of needFull) {
@@ -470,10 +500,29 @@ export class ReadwiseSyncService {
           )
         if (!gained) setFullPassPending(db, false)
       }
-      setLastRun(db, { at: new Date().toISOString(), needsAttention: false })
+      setLastRun(db, {
+        at: new Date().toISOString(),
+        needsAttention: false,
+        counts: {
+          books: result.books,
+          added: result.added,
+          updated: result.updated,
+          appended: result.appended,
+          deferred: result.deferred,
+          failed: result.failed,
+          highlights: result.highlights
+        }
+      })
+      clearRunFailure()
       return result
+    } catch (error) {
+      failed = error
+      throw error
     } finally {
       this.running = false
+      this.stopRun = null
+      if (failed !== null) recordRunFailure(failed)
+      setRunProgress(null)
       if (claimMoved) this.deps.onClaimLost?.()
       // Also for a cancelled or failed run: the notes it wrote did change.
       const changedBooks = result.added + result.updated + result.appended

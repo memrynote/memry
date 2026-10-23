@@ -75,7 +75,33 @@ After your first import, Memry syncs without being asked.
 - **Sync now.** The button in the Readwise dialog runs a sync right away and shows when it is done. If a sync is already running, it waits for that one instead of starting a second. It cannot join an import you started from the same dialog; wait for that one to finish.
 - **Only with a token.** Memry never syncs a disconnected vault, and never starts your first import by itself: that one always waits for you, so you see the preview first.
 - **Offline.** Memry skips a scheduled sync while the computer is offline and tries again on the next minute once it is back. A sync that fails because Readwise or the network is unavailable is retried after 5 minutes, then 10, 20 and so on, up to 6 hours between attempts. A sync that fails halfway writes what it finished, and the next one picks up from there.
-- **A token Readwise rejects.** Memry stops the schedule instead of trying again every hour. The row shows **Needs attention** until you connect again with a fresh token. Connecting resumes the schedule.
+- **A token Readwise rejects, or a subscription that expired.** Memry stops the schedule instead of trying again every hour, and tells you once. See [Sync status](#sync-status). Pasting a fresh token, or **Retry now** after you renew, resumes the schedule.
+
+## Sync status
+
+A background sync you cannot see is one you cannot trust. The Readwise dialog starts with a status banner that says what Memry is doing, and the row in **Settings → Import** shows the same state in a few words. Memry stays quiet while all is well.
+
+| The banner says                        | What it means                                                                                                                                      | Action                |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| **Synced 5 minutes ago**               | The last run finished. Below the title: what it changed, such as _1 added, 2 updated, 12 highlights_, or _nothing new_, and when the next sync is. |                       |
+| **Syncing with Readwise**              | A run is going. It shows _Reading your library…_, then _Writing books, 3 of 12_.                                                                   | **Cancel**            |
+| **Waiting for memry sync**             | The run waits until sync has pulled your other devices' notes, so no book is written twice. It starts by itself.                                   | **Cancel**            |
+| **Syncs on Desk Mac**                  | Another device pulls from Readwise. See [Use Readwise on more than one device](#use-readwise-on-more-than-one-device).                             | **Sync here instead** |
+| **Readwise needs a new token**         | Readwise did not accept the saved token, for example because you made a new one. The schedule is paused.                                           | **Paste a new token** |
+| **Your Readwise subscription expired** | Readwise refused the account. The schedule is paused. Renew on readwise.io.                                                                        | **Retry now**         |
+| **Readwise is limiting requests**      | Too many requests in a short time. Memry says when it tries again.                                                                                 | **Retry now**         |
+| **Can't reach Readwise**               | You are offline, or Readwise is down. Memry says when it tries again.                                                                              | **Retry now**         |
+| **Readwise had a problem**             | Readwise answered with a server error. Memry says when it tries again.                                                                             | **Retry now**         |
+
+**Cancel** stops the run after the book in progress. Books already written stay, and the next run continues from where the last finished one stopped. **Paste a new token** opens a token field under the banner. It replaces the token and keeps your place, so nothing is imported again. Memry cannot tell every expired subscription from a rejected token, and in that case it shows **Readwise needs a new token**.
+
+The row reads **Not connected**, **Connected**, **Syncing…**, **Waiting for sync**, **Synced 5 minutes ago**, **Syncs on Desk Mac**, **Needs a new token**, **Subscription expired**, **Rate limited**, **Can't reach Readwise** or **Readwise error**.
+
+### The one notification
+
+Memry shows one notification, and only when you must act: a rejected or revoked token, or an expired subscription. It reads **Readwise needs a new token** or **Your Readwise subscription expired**, with an **Open Readwise** button that opens the dialog. It appears once for each time the problem starts. Failed retries do not show it again, and it returns only after the problem was fixed and then came back. The banner and the row keep showing the problem until you fix it.
+
+A network error or a rate limit shows no notification, because the next run tries again by itself. A successful run shows none either. A run that changed something adds a line to the vault activity list, as described in [Importing again](#importing-again).
 
 ## Fix one book
 
@@ -111,16 +137,16 @@ These choices sync to your other devices, so a device that takes over keeps them
 
 Readwise notes are ordinary notes, so they sync to your other devices like any note. If two devices also pulled from Readwise, they could both write the same new highlight within seconds of each other. A device that opens in the morning could also read Readwise before sync has delivered the notes the other device wrote, and create a second note for every new book. So only one device pulls from Readwise at a time. The others receive the notes through sync.
 
-- **Memry sync on.** The device where you connect Readwise becomes the one that pulls. Its name is saved with your synced settings. If another device already pulls, connecting is not offered there. Use **Sync on this device instead** (below).
+- **Memry sync on.** The device where you connect Readwise becomes the one that pulls. Its name is saved with your synced settings. If another device already pulls, connecting is not offered there. Use **Sync here instead** (below).
 - **Memry sync off.** There is no other device to race, so this device pulls and nothing is claimed.
 - **Waiting for sync.** After Memry starts, the pulling device waits until sync has finished one pull before it reads Readwise. It then sees the notes and edits your other devices made, and it never creates a note that already exists.
 
 ### Move Readwise to another device
 
-On a device that does not pull, the Readwise panel says **Readwise syncs on Desk Mac**, with the name of the pulling device, and offers **Sync on this device instead**.
+On a device that does not pull, the Readwise panel says **Syncs on Desk Mac**, with the name of the pulling device, and offers **Sync here instead**.
 
-1. Paste your access token again. The token never travels between devices, so each device needs its own copy.
-2. Click **Sync on this device instead**. Memry waits until your other devices can see the change, then finishes. Memry sync must be on and caught up for this.
+1. Click **Sync here instead**, then paste your access token again. The token never travels between devices, so each device needs its own copy.
+2. Click **Sync here instead** again. Memry waits until your other devices can see the change, then finishes. Memry sync must be on and caught up for this.
 3. The device that pulled before stops at its next book, deletes its copy of the token, and shows that Readwise now syncs elsewhere. Its notes stay.
 
 The first run on the new device reads your whole Readwise library once. It recognizes the notes that already exist by their `readwise_url` property, so it does not create them again. A section you have not edited comes out identical, so nothing is written to it. In a section you edited, only highlights newer than the last one in the note are added.
@@ -135,4 +161,4 @@ Click **Disconnect** in the dialog. Memry deletes the token from this device and
 
 ## The row in Settings → Import
 
-Where other sources show a file type, the Readwise row shows the connection: **Not connected**, **Connected**, **Synced 5 minutes ago**, or **Needs attention** when Readwise rejected the token and you need to connect again with a fresh one.
+Where other sources show a file type, the Readwise row shows the state of the sync. See [Sync status](#sync-status) for every state.
