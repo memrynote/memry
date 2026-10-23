@@ -161,7 +161,10 @@ export async function awaitPullAuthority(
       continue
     }
     if (waited >= READY_TIMEOUT_MS) {
-      log.info('Readwise run held back: memry sync has not completed a pull yet')
+      log.info(
+        'Readwise run held back: memry sync has not completed a pull yet',
+        readPullEnv(getDatabase())
+      )
       throw new ReadwisePullGateError('not-ready')
     }
     await sleepFn(POLL_MS, signal)

@@ -39,7 +39,6 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
-  vaultPath: '',
   imageFetch: vi.fn(),
   /** Memry sync's transport as the gate sees it. */
   syncEngine: null as null | {
@@ -64,7 +63,6 @@ vi.mock('../secrets/secret-storage', () => ({
     mocks.secrets.delete(`${service}/${account}`)
   }
 }))
-vi.mock('../store', () => ({ getCurrentVaultPath: () => mocks.vaultPath }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
@@ -188,7 +186,6 @@ describe('one pulling device', () => {
 
   beforeEach(async () => {
     vault = createTestVault('readwise-takeover')
-    mocks.vaultPath = vault.path
     indexDb = createTestIndexDb()
     mocks.secrets.clear()
     mocks.syncEngine = null

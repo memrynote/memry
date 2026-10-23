@@ -1,6 +1,6 @@
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
-import { getCurrentVaultPath } from '../store'
+import { getStatus } from '../vault'
 import { deleteReadwiseToken, getReadwiseToken } from './secrets'
 import { claimLostToAnotherDevice } from './pull-gate'
 import { clearRunState } from './sync-state'
@@ -14,7 +14,7 @@ const log = createLogger('Readwise:Release')
  * later. Every note stays (D9). Returns true when it released something.
  */
 export async function releaseTokenIfClaimedElsewhere(): Promise<boolean> {
-  const vaultPath = getCurrentVaultPath()
+  const { path: vaultPath } = getStatus()
   if (!vaultPath || !claimLostToAnotherDevice()) return false
   const hadToken = (await getReadwiseToken(vaultPath)) !== null
   await deleteReadwiseToken(vaultPath)

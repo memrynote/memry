@@ -11,8 +11,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 import { ImportChannels } from '@memry/contracts/import-channels'
+import {
+  markPullCompleted,
+  markSyncEligible,
+  markSyncIneligible,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
 import { readSection, type ReadwiseBook } from '@memry/importers/readwise'
 import { book, highlight, COVER_URL } from '@memry/importers/readwise/fixtures'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -27,7 +34,6 @@ import { createNoteDerivedStateProjector } from '../../projections/projectors/no
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
   imageFetch: vi.fn(),
-  syncState: { current: 'idle' as string },
   recordActivity: vi.fn()
 }))
 
@@ -56,9 +62,6 @@ vi.mock('../../notes/runtime-effects', async (importOriginal) => ({
 }))
 vi.mock('../../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
-}))
-vi.mock('../../sync/runtime', () => ({
-  getSyncEngine: () => ({ currentState: mocks.syncState.current })
 }))
 vi.mock('../../notes/domain', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../notes/domain')>()
@@ -148,7 +151,8 @@ describe('Readwise first import', () => {
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
     mocks.secrets.clear()
-    mocks.syncState.current = 'idle'
+    // Sync off: no claim, this device pulls (D8). The gate has its own tests in readwise/.
+    markSyncIneligible()
     mocks.recordActivity.mockClear()
     mocks.imageFetch.mockReset()
     mocks.imageFetch.mockImplementation(async () => ({
@@ -217,6 +221,7 @@ describe('Readwise first import', () => {
   })
 
   afterEach(async () => {
+    resetSyncDecision()
     await stopProjectionRuntime()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
@@ -508,15 +513,52 @@ describe('Readwise first import', () => {
       await expect(run()).rejects.toThrow(/not connected/)
     })
 
-    it('waits for memry sync to finish its launch pull before writing', async () => {
-      mocks.syncState.current = 'syncing'
-      setTimeout(() => {
-        mocks.syncState.current = 'idle'
-      }, 700)
+    it('with sync on, waits for memry sync to complete a pull since launch before it reads Readwise (D8)', async () => {
+      markSyncEligible()
+      const deviceId = 'dev-import'
+      dataDb.db
+        .insert(syncDevices)
+        .values({
+          id: deviceId,
+          name: 'This Mac',
+          platform: 'macos',
+          appVersion: '1.0.0',
+          linkedAt: new Date(),
+          isCurrentDevice: true,
+          signingPublicKey: 'key'
+        })
+        .run()
+      const { writeClaim } = await import('../../readwise/claim')
+      writeClaim(asClientDb(dataDb.db), { deviceId, deviceName: 'This Mac' })
+      setTimeout(markPullCompleted, 700)
+
       const started = Date.now()
       await run()
+
       expect(Date.now() - started).toBeGreaterThanOrEqual(500)
       expect(vaultFiles('Readwise/Books')).toHaveLength(2)
+    })
+
+    it('a run another device took over stops with a sentence that names that device', async () => {
+      markSyncEligible()
+      markPullCompleted()
+      dataDb.db
+        .insert(syncDevices)
+        .values({
+          id: 'dev-import',
+          name: 'This Mac',
+          platform: 'macos',
+          appVersion: '1.0.0',
+          linkedAt: new Date(),
+          isCurrentDevice: true,
+          signingPublicKey: 'key'
+        })
+        .run()
+      const { writeClaim } = await import('../../readwise/claim')
+      writeClaim(asClientDb(dataDb.db), { deviceId: 'dev-other', deviceName: 'Desk Mac' })
+
+      await expect(run()).rejects.toThrow(/Readwise syncs on Desk Mac/)
+      expect(vaultFiles('Readwise/Books')).toHaveLength(0)
     })
 
     it('does not start a second run while one is going', async () => {
