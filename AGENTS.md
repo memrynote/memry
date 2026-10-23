@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Kaan owns this repo. Memry is a local-first, end-to-end encrypted notes app, and real users run it on real vaults. The task defines scope and authorization. Kaan's explicit instructions take precedence over skill guidelines and workflow defaults. When one conflicts with a rule in this file, ask for explicit confirmation before following it. Before working in a directory, read its scoped `AGENTS.md` and the matching guides in [Read when relevant](#read-when-relevant), including when you change callers outside that directory. Put a new rule with its owner instead of adding a competing one here.
+Kaan owns this repo. MemryNote is a local-first, end-to-end encrypted notes app, and real users run it on real vaults. The task defines scope and authorization. Kaan's explicit instructions take precedence over skill guidelines and workflow defaults. When one conflicts with a rule in this file, ask for explicit confirmation before following it. Before working in a directory, read its scoped `AGENTS.md` and the matching guides in [Read when relevant](#read-when-relevant), including when you change callers outside that directory. Put a new rule with its owner instead of adding a competing one here.
 
 ## Design priorities
 
