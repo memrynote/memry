@@ -44,6 +44,7 @@ import {
 import { ReadwiseDeletedBooks } from '@/components/settings/readwise-deleted-books'
 import { ReadwiseTakeoverSection } from '@/components/settings/readwise-takeover-section'
 import { ReadwiseLocationSection } from '@/components/settings/readwise-location-section'
+import { ReadwiseReaderSection } from '@/components/settings/readwise-reader-section'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
 const TOKEN_URL = 'https://readwise.io/access_token'
@@ -67,7 +68,11 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
   const [isSyncing, setIsSyncing] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [firstImport, setFirstImport] = useState<FirstImportState>({ ready: false, willImport: 0 })
+  const [firstImport, setFirstImport] = useState<FirstImportState>({
+    ready: false,
+    willImport: 0,
+    documents: 0
+  })
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -99,7 +104,12 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
   const ready = Boolean(status?.connected && (!isFirstImport || firstImport.ready))
   const confirmLabel = isFirstImport
     ? firstImport.willImport > 0
-      ? t('import.dialog.readwise.importBooks', { count: firstImport.willImport })
+      ? t(
+          firstImport.documents > 0
+            ? 'import.dialog.readwise.importNotes'
+            : 'import.dialog.readwise.importBooks',
+          { count: firstImport.willImport }
+        )
       : t('import.dialog.readwise.importNone')
     : undefined
   useEffect(() => {
@@ -289,6 +299,12 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           ))}
         </div>
       </section>
+
+      <ReadwiseReaderSection
+        options={options}
+        disabled={disabled}
+        onChange={(input) => void setOptions(input)}
+      />
 
       <section className="flex flex-col">
         <h4 className={SETTINGS_GROUP_LABEL}>{t('import.dialog.readwise.groups.sync')}</h4>

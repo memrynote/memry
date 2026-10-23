@@ -26,13 +26,16 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 export interface FirstImportState {
   /** The counts are in, so Import can run. */
   ready: boolean
-  /** Books the enabled categories will bring in. */
+  /** Notes the first run will write: the enabled categories' books and the saved Reader documents. */
   willImport: number
+  /** Saved Reader documents among them. */
+  documents: number
 }
 
 interface Counts {
   books: number
   highlights: number
+  documents: number
 }
 
 type Loaded =
@@ -46,7 +49,8 @@ function toCounts(preview: ImportPreview): Map<string, Counts> {
     const value = (key: string): number => group.counts.find((c) => c.labelKey === key)?.value ?? 0
     counts.set(group.label, {
       books: value(READWISE_PREVIEW_COUNT_KEYS.books),
-      highlights: value(READWISE_PREVIEW_COUNT_KEYS.highlights)
+      highlights: value(READWISE_PREVIEW_COUNT_KEYS.highlights),
+      documents: value(READWISE_PREVIEW_COUNT_KEYS.documents)
     })
   }
   return counts
@@ -100,7 +104,7 @@ export function ReadwiseFirstImportPreview({
       active = false
       void window.api.import.cancel({ importId })
     }
-  }, [attempt, t])
+  }, [attempt, t, options.readerDocuments])
 
   const counts = loaded.status === 'ready' ? loaded.counts : null
   const summary = useMemo(() => {
@@ -109,25 +113,28 @@ export function ReadwiseFirstImportPreview({
     let willImport = 0
     const off: ReadwiseCategory[] = []
     for (const [category, value] of counts ?? []) {
+      if (category === 'reader') continue
       books += value.books
       highlights += value.highlights
       const enabled = category === 'other' || options.categories[category as ReadwiseCategory]
       if (enabled) willImport += value.books
       else if (value.books > 0) off.push(category as ReadwiseCategory)
     }
-    return { books, highlights, willImport, off }
-  }, [counts, options.categories])
+    const documents = options.readerDocuments ? (counts?.get('reader')?.documents ?? 0) : 0
+    return { books, highlights, willImport: willImport + documents, documents, off }
+  }, [counts, options.categories, options.readerDocuments])
 
   const ready = loaded.status === 'ready'
   useEffect(() => {
     let cancelled = false
     queueMicrotask(() => {
-      if (!cancelled) onStateChange({ ready, willImport: summary.willImport })
+      if (!cancelled)
+        onStateChange({ ready, willImport: summary.willImport, documents: summary.documents })
     })
     return () => {
       cancelled = true
     }
-  }, [ready, summary.willImport, onStateChange])
+  }, [ready, summary.willImport, summary.documents, onStateChange])
 
   if (loaded.status === 'loading') {
     return (
@@ -163,13 +170,15 @@ export function ReadwiseFirstImportPreview({
     <div className="flex min-w-0 flex-col gap-5">
       <p className="text-xs/5 text-muted-foreground">
         {summary.books === 0
-          ? t('import.dialog.readwise.preview.empty')
+          ? summary.documents > 0
+            ? t('import.dialog.readwise.preview.introReaderOnly', { documents: summary.documents })
+            : t('import.dialog.readwise.preview.empty')
           : summary.off.length > 0
             ? t('import.dialog.readwise.preview.introOff', {
                 highlights: summary.highlights,
                 books: summary.books,
                 off: offNames,
-                willImport: summary.willImport
+                willImport: summary.willImport - summary.documents
               })
             : t('import.dialog.readwise.preview.intro', {
                 highlights: summary.highlights,
@@ -209,6 +218,34 @@ export function ReadwiseFirstImportPreview({
               </li>
             )
           })}
+          <li className="col-span-2 flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-xs/4 text-foreground">
+                {t('import.dialog.readwise.preview.readerLabel')}
+              </span>
+              <Switch
+                checked={options.readerDocuments}
+                onCheckedChange={(next) => onSetOptions({ readerDocuments: next })}
+                aria-label={t('import.dialog.readwise.reader.documents.label')}
+                className={ACCENT_SWITCH}
+                disabled={disabled}
+              />
+            </div>
+            {options.readerDocuments ? (
+              <>
+                <span className="text-xl/6 font-semibold tabular-nums text-foreground">
+                  {summary.documents}
+                </span>
+                <span className="text-xs/4 text-muted-foreground">
+                  {t('import.dialog.readwise.preview.willImport')}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs/4 text-muted-foreground">
+                {t('import.dialog.readwise.reader.documents.description')}
+              </span>
+            )}
+          </li>
           {other && (
             <li className="flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
               <span className="truncate text-xs/4 text-foreground">

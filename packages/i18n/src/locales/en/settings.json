@@ -1572,7 +1572,8 @@
       "confirm": "Import",
       "readwise": {
         "books": "{count, plural, one {# book} other {# books}}",
-        "highlights": "{count, plural, one {# highlight} other {# highlights}}"
+        "highlights": "{count, plural, one {# highlight} other {# highlights}}",
+        "documents": "{count, plural, one {# document} other {# documents}}"
       }
     },
     "dialog": {
@@ -1656,7 +1657,18 @@
         "groups": {
           "location": "Where notes go",
           "categories": "What to bring in",
+          "reader": "Readwise Reader",
           "sync": "Sync"
+        },
+        "reader": {
+          "documents": {
+            "label": "Also import saved Reader documents",
+            "description": "Off by default. Can add thousands of notes."
+          },
+          "fullText": {
+            "label": "Include full article text",
+            "description": "Written once, when the note is created"
+          }
         },
         "rootFolder": {
           "label": "Folder",
@@ -1727,10 +1739,13 @@
         },
         "importNow": "Import now",
         "importBooks": "{count, plural, one {Import # book} other {Import # books}}",
+        "importNotes": "{count, plural, one {Import # note} other {Import # notes}}",
         "importNone": "Import",
         "preview": {
           "intro": "{highlights, plural, one {# highlight} other {# highlights}} across {books, plural, one {# book} other {# books}} are ready. Nothing is written until you confirm.",
           "introOff": "{highlights, plural, one {# highlight} other {# highlights}} across {books, plural, one {# book} other {# books}} are ready. Off: {off}. {willImport, plural, one {# book} other {# books}} will import. Nothing is written until you confirm.",
+          "introReaderOnly": "Your Readwise library has no highlights yet. {documents, plural, one {# saved Reader document} other {# saved Reader documents}} will import as notes. Nothing is written until you confirm.",
+          "readerLabel": "Saved Reader documents",
           "empty": "Your Readwise library has no highlights yet. Nothing is written. Import to finish setting up.",
           "willImport": "will import",
           "off": "off",

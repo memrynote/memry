@@ -48,6 +48,8 @@ export interface ReadwiseBook {
   book_tags?: ReadwiseTag[] | null
   document_note?: string | null
   summary?: string | null
+  /** A Reader book's `external_id` is the Reader document's id (D11). */
+  external_id?: string | null
   highlights?: ReadwiseHighlight[] | null
 }
 

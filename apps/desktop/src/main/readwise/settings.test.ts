@@ -84,6 +84,21 @@ describe('readwise synced settings group', () => {
     })
   })
 
+  it('keeps the two Reader switches off until set, each under its own field clock', () => {
+    expect(readReadwiseOptions(db)).toMatchObject({ readerDocuments: false, readerFullText: false })
+
+    writeReadwiseOptions(db, { readerDocuments: true, readerFullText: true })
+
+    expect(readReadwiseOptions(db)).toMatchObject({ readerDocuments: true, readerFullText: true })
+    expect(Object.keys(manager.getPayload().fieldClocks).sort()).toEqual([
+      'readwise.readerDocuments',
+      'readwise.readerFullText'
+    ])
+    // A stored value that is not a boolean reads as the default.
+    setSetting(db, READWISE_SETTINGS_KEY, JSON.stringify({ readerDocuments: 'yes' }))
+    expect(readReadwiseOptions(db).readerDocuments).toBe(false)
+  })
+
   it('reads a layout or cadence only a newer build knows as the default', () => {
     setSetting(
       db,
@@ -158,6 +173,17 @@ describe('readwise synced settings group', () => {
       applyMergedReadwiseSettings(db, { categories: { tweets: false } })
       expect(getFullPassPending(db)).toBe(false)
       applyMergedReadwiseSettings(db, { categories: { tweets: true } })
+      expect(getFullPassPending(db)).toBe(true)
+    })
+
+    it('is set when saved Reader documents go from off to on, never for the text switch', () => {
+      writeReadwiseOptions(db, { readerFullText: true })
+      expect(getFullPassPending(db)).toBe(false)
+      writeReadwiseOptions(db, { readerDocuments: true })
+      expect(getFullPassPending(db)).toBe(true)
+      setFullPassPending(db, false)
+      writeReadwiseOptions(db, { readerDocuments: false })
+      applyMergedReadwiseSettings(db, { readerDocuments: true })
       expect(getFullPassPending(db)).toBe(true)
     })
 

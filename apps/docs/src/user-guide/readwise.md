@@ -50,6 +50,22 @@ If the import stops halfway, for example when you quit the app, the next import 
 
 A run that changes nothing writes nothing. A run that changes something adds one line to the vault activity list in **Settings**, such as _Readwise: 3 books, 12 highlights_. Your own text above, below and inside the section is never overwritten.
 
+## Readwise Reader
+
+Readwise Reader is the read-it-later app. Your Reader highlights already come through the steps above, because Readwise stores them like any other highlight. Memry joins the two: a Reader document that has highlights is one note, and its highlights sit in that note's section. The note lands in the `Articles` folder, or the folder of its category.
+
+A Reader library can also hold thousands of saved documents you never highlighted. Those stay out of your vault unless you ask. In **Readwise Reader**, in the dialog's settings, there are two switches, both off:
+
+- **Also import saved Reader documents.** Documents in **New**, **Later**, **Shortlist** and **Archive** that have no highlights become notes in the `Reader` folder, inside your Readwise folder. **Feed** items, such as RSS and newsletters you never saved, are never read. The first-import preview shows a **Saved Reader documents** tile with a switch. With the switch on, the tile shows how many documents will import, and the **Import** button counts them as notes. Reading a large library takes a few minutes, because Reader allows 20 requests a minute.
+- **Include full article text.** The article text is written once, below the Readwise section, when the note is created. After that it is yours: Memry never changes it, and a note that exists when you turn this on does not change. Images inside the text are left out; the cover image is saved as usual.
+
+What a Reader note holds, once, when it is created: the author, site name, publication date, word count, source link, link to Reader and the tags. An article's image becomes its cover, and another document's image sits at the top of the section. Where the document is in Reader (**New** or **Archive**) and how far you have read are not saved, because they change while you read.
+
+- **One note per document.** If you highlight a saved document later, its note stays in `Reader` and the highlights are added to the section there. Memry never moves a note and never makes a second one.
+- **Turning the switch off** stops new Reader notes. It deletes none, and it makes no request to Reader.
+- **A document you delete in Reader** keeps its note. **A note you delete** stays deleted.
+- Memry only reads from Reader. Nothing is changed in your Readwise account.
+
 ## Automatic syncing
 
 After your first import, Memry syncs without being asked.
@@ -77,12 +93,13 @@ These commands need your token, so they run on the device that syncs with Readwi
 
 Once you have imported, the dialog shows your choices.
 
-| Setting           | Default     | What it does                                                                                                                                       |
-| ----------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Folder**        | `Readwise`  | The vault folder new books land in. It is created the first time a note is written.                                                                |
-| **Folder layout** | By category | **By category** sorts notes into `Books`, `Articles`, `Tweets` and `Podcasts` folders. **One folder** puts every note directly in the root folder. |
-| **Categories**    | See below   | One switch per category of Readwise item.                                                                                                          |
-| **Sync**          | Hourly      | How often Memry checks Readwise for new highlights: **Manual**, **Hourly** or **Daily**.                                                           |
+| Setting             | Default     | What it does                                                                                                                                       |
+| ------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Folder**          | `Readwise`  | The vault folder new books land in. It is created the first time a note is written.                                                                |
+| **Folder layout**   | By category | **By category** sorts notes into `Books`, `Articles`, `Tweets` and `Podcasts` folders. **One folder** puts every note directly in the root folder. |
+| **Categories**      | See below   | One switch per category of Readwise item.                                                                                                          |
+| **Readwise Reader** | Off         | **Also import saved Reader documents** and **Include full article text**. See [Readwise Reader](#readwise-reader).                                 |
+| **Sync**            | Hourly      | How often Memry checks Readwise for new highlights: **Manual**, **Hourly** or **Daily**.                                                           |
 
 Turning a category off keeps the notes you already have and skips its books on the next import. Notes of an unknown category go into an `Other` folder.
 

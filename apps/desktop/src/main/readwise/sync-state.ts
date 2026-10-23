@@ -9,6 +9,7 @@ import type { DataDb } from '../database/types'
  * settings sync payload is one `synced_settings` row, so none of it syncs.
  */
 const CURSOR_KEY = 'readwise.cursor'
+const READER_CURSOR_KEY = 'readwise.readerCursor'
 const RETRY_KEY = 'readwise.retryList'
 const FULL_PASS_KEY = 'readwise.fullPass'
 const LAST_RUN_KEY = 'readwise.lastRun'
@@ -41,6 +42,15 @@ export function setCursor(db: DataDb, cursor: string): void {
 
 export function clearCursor(db: DataDb): void {
   deleteSetting(db, CURSOR_KEY)
+}
+
+/** Newest Reader document `updated_at` the last Reader pass saw, minus one second (Reader time). Null: the next pass lists everything. */
+export function getReaderCursor(db: DataDb): string | null {
+  return getSetting(db, READER_CURSOR_KEY)
+}
+
+export function setReaderCursor(db: DataDb, cursor: string): void {
+  setSetting(db, READER_CURSOR_KEY, cursor)
 }
 
 export function getRetryList(db: DataDb): RetryEntry[] {
@@ -123,6 +133,7 @@ export function setLastRun(db: DataDb, run: LastRun): void {
 /** Forgets the connection's run state, so a reconnect starts from a full export. */
 export function clearRunState(db: DataDb): void {
   deleteSetting(db, CURSOR_KEY)
+  deleteSetting(db, READER_CURSOR_KEY)
   deleteSetting(db, RETRY_KEY)
   deleteSetting(db, FULL_PASS_KEY)
   deleteSetting(db, LAST_RUN_KEY)

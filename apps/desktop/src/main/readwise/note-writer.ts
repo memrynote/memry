@@ -24,7 +24,7 @@ import { getStatus } from '../vault'
 import { getNoteById, type Note } from '../vault/notes'
 import type { RemoteFetch } from '../vault/remote-attachment'
 import { resolveImages } from './images'
-import { getLinkByBookId, markLinkState, upsertLink } from './links-repository'
+import { completeLink, getLinkForBook, markLinkState, upsertLink } from './links-repository'
 import { parseReadwiseUrl } from './rebuild-links'
 import { addRetry, removeRetry } from './sync-state'
 
@@ -124,7 +124,12 @@ async function upsert(
   options: UpsertOptions
 ): Promise<UpsertOutcome> {
   const db = getDatabase()
-  const link = getLinkByBookId(db, book.user_book_id)
+  const link = getLinkForBook(db, book.user_book_id, book.external_id)
+  if (link)
+    completeLink(db, link, {
+      readwiseBookId: book.user_book_id,
+      readerDocumentId: book.external_id
+    })
   if (link && link.state !== 'linked' && !options.restore) {
     return { status: 'skipped', reason: link.state }
   }
@@ -146,8 +151,19 @@ async function upsert(
       return { status: 'skipped', reason: 'note-deleted' }
     }
   } else {
-    note = await findNoteByReadwiseUrl(plan.frontmatter.readwise_url)
-    if (note) upsertLink(db, { readwiseBookId: book.user_book_id, noteId: note.id })
+    // The book's own note, or the Reader note of its document (D11).
+    note =
+      (await findNoteByReadwiseUrl(plan.frontmatter.readwise_url)) ??
+      (book.external_id
+        ? await findNoteByReadwiseUrl(`https://read.readwise.io/read/${book.external_id}`)
+        : null)
+    if (note) {
+      upsertLink(db, {
+        readwiseBookId: book.user_book_id,
+        readerDocumentId: book.external_id,
+        noteId: note.id
+      })
+    }
   }
 
   const fetch = options.fetch ?? ((url: string) => net.fetch(url))
@@ -170,9 +186,9 @@ async function upsert(
 }
 
 /** The note whose `readwise_url` names this book. Lowest id wins, as in `rebuildLinks`. */
-async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note | null> {
+export async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note | null> {
   const wanted = typeof readwiseUrl === 'string' ? parseReadwiseUrl(readwiseUrl) : null
-  if (!wanted || !('readwiseBookId' in wanted)) return null
+  if (!wanted) return null
   const rows = getIndexDatabase()
     .select({ noteId: noteProperties.noteId, value: noteProperties.value })
     .from(noteProperties)
@@ -180,9 +196,10 @@ async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note | null>
     .all()
     .filter((row) => {
       const identity = row.value ? parseReadwiseUrl(row.value) : null
-      return identity !== null && 'readwiseBookId' in identity
-        ? identity.readwiseBookId === wanted.readwiseBookId
-        : false
+      if (identity === null) return false
+      return 'readwiseBookId' in wanted
+        ? 'readwiseBookId' in identity && identity.readwiseBookId === wanted.readwiseBookId
+        : 'readerDocumentId' in identity && identity.readerDocumentId === wanted.readerDocumentId
     })
     .sort((a, b) => (a.noteId < b.noteId ? -1 : 1))
   for (const row of rows) {
@@ -247,7 +264,11 @@ async function createNote(
     content: plan.section,
     plainChecklists: true
   })
-  upsertLink(getDatabase(), { readwiseBookId: book.user_book_id, noteId: created.id })
+  upsertLink(getDatabase(), {
+    readwiseBookId: book.user_book_id,
+    readerDocumentId: book.external_id,
+    noteId: created.id
+  })
 
   // Images need the note to exist (D14). Write the section again with them,
   // and an article's cover with it. `cover` goes through `frontmatter`:
@@ -311,7 +332,7 @@ async function resetSection(
   return commit(note, content, options, 'updated')
 }
 
-function replaceSection(body: string, section: string): string {
+export function replaceSection(body: string, section: string): string {
   const read = readSection(body)
   if (!read.found) throw new Error('The new note has no readable Readwise section')
   return body.slice(0, read.range.start) + section + body.slice(read.range.end)

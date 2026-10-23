@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
 import {
   SyncedSettingsSchema,
   FieldClockMapSchema,
@@ -54,6 +55,26 @@ describe('SyncedSettingsSchema', () => {
 
       expect(parsed.success).toBe(true)
       expect(parsed.data).toEqual({ general: { theme: 'dark' } })
+    })
+
+    it('keeps the Reader switches, and a build that does not model them keeps them too', () => {
+      const reader = { readerDocuments: true, readerFullText: false }
+      expect(SyncedSettingsSchema.parse({ readwise: { ...reader } }).readwise).toEqual(reader)
+      expect(SyncedSettingsSchema.safeParse({ readwise: { readerDocuments: 'on' } }).success).toBe(
+        false
+      )
+
+      // The group as the build before #1420 shipped it: `catchall` carries the new leaves.
+      const before1420 = z
+        .object({
+          cadence: z.string().optional(),
+          categories: z.object({}).catchall(z.unknown()).optional()
+        })
+        .catchall(z.unknown())
+      expect(before1420.parse({ cadence: 'daily', ...reader })).toEqual({
+        cadence: 'daily',
+        ...reader
+      })
     })
 
     it('rejects a non-boolean category switch', () => {
