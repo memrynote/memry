@@ -23,11 +23,12 @@ vi.mock('../../database', () => ({
 
 const mockLocalMutation = vi.fn()
 vi.mock('../local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 
 import { projectHandler } from './project-handler'
+import type * as LocalMutationsModule from '../local-mutations'
 
 const CREATED = '2026-09-23T10:00:00.000Z'
 

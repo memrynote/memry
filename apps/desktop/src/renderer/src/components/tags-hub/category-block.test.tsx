@@ -4,9 +4,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { CategoryBlock, type CategoryBlockProps } from './category-block'
+import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
 
 vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  ...(await importOriginal<typeof UseTagSchemasModule>()),
   useTagSchemas: () => ({ data: undefined, isLoading: false }),
   useResolvedTag: () => null,
   useObjectIdentity: () => null,

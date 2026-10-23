@@ -5,10 +5,11 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDragContext } from '@/contexts/drag-context'
 import type { Project } from '@/data/tasks-data'
 import { KanbanCardContent } from './kanban-card'
+import type { Task } from '@/data/task-model'
 
 interface KanbanDragOverlayProps {
   projects: Project[]
-  allTasks: import('@/data/task-model').Task[]
+  allTasks: Task[]
 }
 
 const dropAnimation: DropAnimation = {

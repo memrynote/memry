@@ -41,7 +41,7 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   requireDatabase: () => state.data,
   getIndexDatabase: () => state.index
@@ -49,6 +49,7 @@ vi.mock('../database/client', async (importOriginal) => ({
 
 import { PropertyDefinitionsService } from '../vault/property-definitions'
 import { registerTagSchemaHandlers, unregisterTagSchemaHandlers } from './tag-schema-handlers'
+import type * as ClientModule from '../database/client'
 
 let vault: TestVaultResult
 let data: TestDatabaseResult

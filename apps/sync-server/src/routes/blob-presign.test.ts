@@ -65,7 +65,7 @@ vi.mock('../middleware/rate-limit', () => ({
 // Real signer, recorded inputs: URLs stay verifiable while tests can assert the
 // method + exact R2 key that went into each signature.
 vi.mock('../services/r2-presign', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../services/r2-presign')>()
+  const actual = await importOriginal<typeof R2PresignModule>()
   return {
     ...actual,
     presignR2Url: vi.fn(
@@ -89,6 +89,7 @@ import {
 } from '../__mocks__/blob-route-harness'
 import { presignR2Url } from '../services/r2-presign'
 import { CHUNK_CRYPTO_OVERHEAD } from '../services/upload-size'
+import type * as R2PresignModule from '../services/r2-presign'
 
 // The hash charset is enforced by contract (64 lowercase hex); fixtures comply.
 const HASH_A = 'a'.repeat(64)

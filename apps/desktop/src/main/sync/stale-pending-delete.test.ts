@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 let activeDb: unknown = null
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => activeDb
 }))
 
@@ -67,6 +67,7 @@ import { enqueueLocalSyncCreate, enqueueLocalSyncDelete } from './local-mutation
 import { recoverDirtyItems } from './dirty-recovery'
 import { getRemoteSyncAdapter } from './item-handlers'
 import { runInitialSeed } from './initial-seed'
+import type * as ClientModule from '../database/client'
 
 const DEVICE = 'device-A'
 const SOURCE_ID = 'google-calendar:primary'

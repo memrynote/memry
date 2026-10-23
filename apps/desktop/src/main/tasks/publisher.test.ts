@@ -45,7 +45,7 @@ vi.mock('../telemetry/track', () => ({
 }))
 
 vi.mock('../notes/header-status', async (importActual) => ({
-  ...(await importActual<typeof import('../notes/header-status')>()),
+  ...(await importActual<typeof HeaderStatusModule>()),
   syncHeaderStatusForTask: vi.fn()
 }))
 
@@ -58,6 +58,7 @@ import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
 import { syncHeaderStatusForTask } from '../notes/header-status'
 import * as localMutations from '../sync/local-mutations'
 import { publishProjectionEvent } from '../projections'
+import type * as HeaderStatusModule from '../notes/header-status'
 
 const TAGS_CHANGED = 'notes:tags-changed'
 

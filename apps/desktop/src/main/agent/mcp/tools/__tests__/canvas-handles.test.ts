@@ -46,6 +46,7 @@ vi.mock('../canvas-write', () => ({ invokeCanvasWrite: mocks.invokeCanvasWrite }
 
 // summarizeScene is pure — exercised for real so the wiring is proven end to end.
 import { createCanvasHandles } from '../canvas-handles'
+import type * as StoreModule from '../../../../canvas/store'
 
 const dataDb = {} as never
 
@@ -456,9 +457,7 @@ describe('canvas handles', () => {
       })
 
       it('tells two same-titled canvases apart after one moves in beside the other', async () => {
-        const store = await vi.importActual<typeof import('../../../../canvas/store')>(
-          '../../../../canvas/store'
-        )
+        const store = await vi.importActual<typeof StoreModule>('../../../../canvas/store')
         mocks.listCanvases.mockImplementation((db: never, vaultId: string) =>
           store.listCanvases(db, vaultId)
         )

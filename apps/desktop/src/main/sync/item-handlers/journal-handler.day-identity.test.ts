@@ -36,7 +36,7 @@ vi.mock('../../database/client', () => ({
 }))
 vi.mock('../../database', () => ({ getDatabase: () => currentDb.value }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@main/database/queries/notes')>()),
+  ...(await importOriginal<typeof NotesModule>()),
   noteCacheExists: vi.fn(() => true),
   getNoteCacheByPath: vi.fn(() => undefined),
   deleteNoteCache: vi.fn(),
@@ -61,6 +61,7 @@ import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { listOwedJournalDayMerges } from '../journal-day-merge'
 import { listDeclinedRefs } from '@memry/sync-client/declined-refs'
+import type * as NotesModule from '@main/database/queries/notes'
 
 const DATE = '2026-06-09'
 

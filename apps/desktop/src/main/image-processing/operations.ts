@@ -8,6 +8,7 @@ import type {
   ViewImagePayload,
   ViewImageSource
 } from './protocol'
+import type Sharp from 'sharp'
 
 const log = createLogger('ImageProcessing')
 const execFileAsync = promisify(execFile)
@@ -21,7 +22,7 @@ const VIEW_IMAGE_JPEG_QUALITY = 85
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'])
 const VIDEO_TYPES = new Set(['video/mp4', 'video/webm'])
 
-type SharpFactory = typeof import('sharp').default
+type SharpFactory = typeof Sharp
 
 let sharpPromise: Promise<SharpFactory> | null = null
 let cachedFfmpegPath: string | null | undefined

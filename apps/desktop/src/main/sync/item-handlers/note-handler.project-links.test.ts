@@ -70,7 +70,7 @@ vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn()
 // into the local sync adapter call recorded here.
 const mockLocalMutation = vi.fn()
 vi.mock('../local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 
@@ -78,6 +78,7 @@ import { noteHandler } from './note-handler'
 import { projectHandler } from './project-handler'
 import { syncNoteToCache } from '../../vault/note-sync'
 import { createNoteProjectLinksProjector } from '../../projections/projectors/note-project-links-projector'
+import type * as LocalMutationsModule from '../local-mutations'
 
 const NOTE_PATH = path.join('n1.md')
 

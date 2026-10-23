@@ -1,3 +1,4 @@
+import type ModuleFullNoExternal from 'posthog-js/dist/module.full.no-external'
 // posthog-js has no package.json "exports"/"browser" field, so the bare
 // specifier resolves to the lean dist/module.js bundle, which has no rrweb
 // compiled in and lazy-loads /static/recorder.js as a <script> for replay.
@@ -5,7 +6,7 @@
 // silently never starts. This subpath bundles rrweb in directly — which is also
 // why it is ~165KB over the wire, and why `load()` below imports it dynamically
 // instead of at module scope. See the comment on `load`.
-type PostHog = typeof import('posthog-js/dist/module.full.no-external').default
+type PostHog = typeof ModuleFullNoExternal
 
 export type LandingEventName =
   | 'landing_scroll_25'
@@ -40,7 +41,11 @@ export type LandingEventName =
   | 'landing_ios_beta_error'
 
 export type LandingCampaignKey =
-  'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'
+  | 'utm_source'
+  | 'utm_medium'
+  | 'utm_campaign'
+  | 'utm_content'
+  | 'utm_term'
 
 export type LandingCampaignData = Partial<Record<LandingCampaignKey, string>>
 

@@ -29,6 +29,10 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
+import type * as IndexModule from '../../vault/index'
+import type * as DatabaseModule from '../../database'
+import type * as AppleNotesImporterModule from './apple-notes-importer'
+import type * as ImportContextModule from '../import-context'
 
 vi.mock('electron', () => {
   const send = vi.fn()
@@ -610,10 +614,10 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
   let dbDir: string
   let dbPath: string
 
-  let vaultIndex: typeof import('../../vault/index')
-  let database: typeof import('../../database')
-  let importer: typeof import('./apple-notes-importer')
-  let importContext: typeof import('../import-context')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let importer: typeof AppleNotesImporterModule
+  let importContext: typeof ImportContextModule
   let platformSpy: ReturnType<typeof vi.spyOn> | null = null
 
   beforeEach(async () => {

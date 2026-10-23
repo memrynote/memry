@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../middleware/rate-limit')>()),
+  ...(await importOriginal<typeof RateLimitModule>()),
   createRateLimiter: vi.fn(() => async (_c: unknown, next: () => Promise<void>) => next())
 }))
 
 import { app } from '../index'
+import type * as RateLimitModule from '../middleware/rate-limit'
 
 const VALID_INSTALL_ID = '550e8400-e29b-41d4-a716-446655440000'
 const VALID_SESSION_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'

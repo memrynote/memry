@@ -25,6 +25,9 @@ import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
+import type * as IndexModule from './index'
+import type * as DatabaseModule from '../database'
+import type * as NotesModule from './notes'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -74,9 +77,9 @@ describe('notes operations', () => {
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
-  let vaultIndex: typeof import('./index')
-  let database: typeof import('../database')
-  let notes: typeof import('./notes')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let notes: typeof NotesModule
   let flushProjectionEventsSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(async () => {

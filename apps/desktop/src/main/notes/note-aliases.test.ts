@@ -18,7 +18,7 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn() }
 }))
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -40,6 +40,7 @@ import {
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { editNoteAliasesCommand } from './note-aliases'
+import type * as ClientModule from '../database/client'
 
 describe('editNoteAliasesCommand', () => {
   let vault: TestVaultResult

@@ -85,6 +85,7 @@ import { inboxService } from '@/services/inbox-service'
 import { reminderService } from '@/services/reminder-service'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { getI18n } from 'react-i18next'
+import type { CalendarEventReadOnlyMetadata } from '@/components/calendar/calendar-event-popover'
 
 const log = createLogger('CalendarPage')
 
@@ -302,7 +303,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     eventId: string | null
     draft: CalendarEventDraft
     anchorRect: AnchorRect
-    readOnlyMetadata?: import('@/components/calendar/calendar-event-popover').CalendarEventReadOnlyMetadata
+    readOnlyMetadata?: CalendarEventReadOnlyMetadata
   } | null>(null)
   const [inboxSnoozePopoverState, setInboxSnoozePopoverState] = useState<{
     item: CalendarProjectionItem

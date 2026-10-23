@@ -53,7 +53,7 @@ vi.mock('./notes-io', () => ({
 }))
 // File bodies live in memory; the outside-vault check still runs on the real vault.
 vi.mock('../lib/paths', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const actual = await importOriginal<typeof PathsModule>()
   const { OutsideVaultError } = await import('../lib/errors')
   return {
     ...actual,
@@ -80,6 +80,7 @@ import {
   applyProjectFrontmatterBackfill,
   PROJECT_FRONTMATTER_BACKFILL_KEY
 } from './backfill-project-frontmatter'
+import type * as PathsModule from '../lib/paths'
 
 const BASE_TIME = '2026-01-15T10:00:00.000Z'
 

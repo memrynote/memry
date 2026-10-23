@@ -90,7 +90,7 @@ vi.mock('../http-client', () => ({
 }))
 
 vi.mock('@memry/sync-client/retry', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/sync-client/retry')>()),
+  ...(await importOriginal<typeof RetryModule>()),
   withRetry: async (fn: () => Promise<unknown>) => ({ value: await fn() })
 }))
 vi.mock('../crdt-encrypt', () => ({ decryptCrdtUpdate: (packed: Uint8Array) => packed }))
@@ -130,7 +130,7 @@ vi.mock('../../vault/notes', () => ({
   }
 }))
 vi.mock('../../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: async (_vault: string, relative: string) =>
     h.files.get(`/vault/${relative}`) ?? null,
   openVaultFile: async (_vault: string, relative: string) => {
@@ -185,6 +185,8 @@ import { owesFileBody } from '../crdt-owed-file-body'
 import { readMergedFullState } from '../full-state-read'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
 import { generateContentHash, parseNote } from '../../vault/frontmatter'
+import type * as RetryModule from '@memry/sync-client/retry'
+import type * as PathsModule from '../../lib/paths'
 
 const NOTE = 'c8c29h5sqvgt'
 const NOTE_PATH = 'notes/Trip.md'

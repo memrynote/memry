@@ -12,6 +12,7 @@ import {
   parseShellPath,
   readLoginShellPath
 } from '../login-shell-path'
+import type * as LoginShellPathModule from '../login-shell-path'
 
 const probeOk =
   (path: string): RunShellProbe =>
@@ -26,7 +27,7 @@ const probeThrows =
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
-const freshModule = async (): Promise<typeof import('../login-shell-path')> => {
+const freshModule = async (): Promise<typeof LoginShellPathModule> => {
   vi.resetModules()
   return import('../login-shell-path')
 }

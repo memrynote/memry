@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { registerWidget } from '@/lib/home/widget-registry'
 import { GRID_MARGIN, GRID_ROW_HEIGHT } from '@/lib/home/widget-sizes'
 import type { HomePage } from '@/lib/home/types'
+import type * as LegacyModule from 'react-grid-layout/legacy'
 
 // Board width the grid believes it has. Deliberately NARROW (a 1280px window minus the sidebar and
 // page padding lands around here) — the regression this file guards is that a drag made at a narrow
@@ -14,7 +15,7 @@ import type { HomePage } from '@/lib/home/types'
 const BOARD_WIDTH = 900
 
 vi.mock('react-grid-layout/legacy', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-grid-layout/legacy')>()
+  const actual = await importOriginal<typeof LegacyModule>()
   return {
     ...actual,
     WidthProvider:

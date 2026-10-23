@@ -31,7 +31,7 @@ import {
   putChunkToPresignedUrl,
   type PresignedUrlWindow
 } from './attachment-presign'
-import { withRetry, DeadLetterError } from '@memry/sync-client/retry'
+import { withRetry, DeadLetterError, type RetryOptions } from '@memry/sync-client/retry'
 import { ManifestSignatureError } from '@memry/sync-client/push'
 import { recordBootstrapBytes } from './bootstrap-metrics'
 
@@ -1015,7 +1015,7 @@ export class AttachmentSyncService {
         : {})
     }
 
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+    const retryOpts: Partial<RetryOptions> = {
       maxRetries: 3,
       baseDelayMs: 2000
     }
@@ -1046,7 +1046,7 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}`
 
     try {
-      const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+      const retryOpts: Partial<RetryOptions> = {
         maxRetries: 2,
         baseDelayMs: 1000
       }
@@ -1080,7 +1080,7 @@ export class AttachmentSyncService {
     options?: { signal?: AbortSignal; isOnline?: () => boolean; onWaitingNetwork?: () => void }
   ): Promise<void> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/chunk/${chunkIndex}`
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+    const retryOpts: Partial<RetryOptions> = {
       maxRetries: 5,
       baseDelayMs: 2000,
       onRetry: (_attempt, error) => {
@@ -1118,7 +1118,7 @@ export class AttachmentSyncService {
         : encryptedManifest
     )
 
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+    const retryOpts: Partial<RetryOptions> = {
       maxRetries: 3,
       baseDelayMs: 2000
     }
@@ -1156,7 +1156,7 @@ export class AttachmentSyncService {
     } & DownloadNetOptions
   ): Promise<T> {
     let rateLimited: RateLimitError | null = null
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+    const retryOpts: Partial<RetryOptions> = {
       maxRetries: opts.maxRetries,
       baseDelayMs: opts.baseDelayMs,
       retryOn429: false,

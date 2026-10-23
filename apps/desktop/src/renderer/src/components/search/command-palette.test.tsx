@@ -12,6 +12,7 @@ import { searchService } from '@/services/search-service'
 import { notesService } from '@/services/notes-service'
 import { trackTelemetry } from '@/lib/telemetry'
 import { CommandPalette } from './command-palette'
+import type * as SearchServiceModule from '@/services/search-service'
 
 const openTab = vi.fn()
 let vaultStatus = {
@@ -31,7 +32,7 @@ vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab }) }))
 vi.mock('@/hooks/use-vault', () => ({ useVault: () => vaultStatus }))
 vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
 vi.mock('@/services/search-service', async (importActual) => ({
-  ...(await importActual<typeof import('@/services/search-service')>()),
+  ...(await importActual<typeof SearchServiceModule>()),
   searchService: {
     query: vi.fn(),
     getReasons: vi.fn(),

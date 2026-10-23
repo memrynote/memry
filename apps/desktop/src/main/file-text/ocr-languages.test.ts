@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OcrLanguage } from '@memry/contracts/ocr-languages-api'
+import type * as OcrLanguagesModule from './ocr-languages'
 
 const DATA = vi.hoisted(() => ({ deu: 'German model bytes', fra: 'French model bytes' }))
 
@@ -52,7 +53,7 @@ vi.mock('./ocr-language-data', async () => {
   return { OCR_LANGUAGE_DATA: { deu: pin(DATA.deu), fra: pin(DATA.fra) } }
 })
 
-type Module = typeof import('./ocr-languages')
+type Module = typeof OcrLanguagesModule
 let ocr: Module
 
 const serve = (bodies: Partial<Record<string, string>>) => (url: string) => {

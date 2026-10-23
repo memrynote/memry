@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../middleware/rate-limit')>()),
+  ...(await importOriginal<typeof RateLimitModule>()),
   createRateLimiter: vi.fn(() => async (_c: unknown, next: () => Promise<void>) => next())
 }))
 
@@ -10,12 +10,12 @@ vi.mock('../services/email', () => ({
 }))
 
 vi.mock('../lib/jwt-verify', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/jwt-verify')>()
+  const actual = await importOriginal<typeof JwtVerifyModule>()
   return { ...actual, verifyAccessToken: vi.fn() }
 })
 
 vi.mock('../services/entitlements', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../services/entitlements')>()
+  const actual = await importOriginal<typeof EntitlementsModule>()
   return { ...actual, getSyncEntitlement: vi.fn() }
 })
 
@@ -24,6 +24,9 @@ import { verifyAccessToken } from '../lib/jwt-verify'
 import { sendEmail } from '../services/email'
 import { getSyncEntitlement } from '../services/entitlements'
 import type { SyncEntitlement, SyncPlan, SyncEntitlementStatus } from '../services/entitlements'
+import type * as RateLimitModule from '../middleware/rate-limit'
+import type * as JwtVerifyModule from '../lib/jwt-verify'
+import type * as EntitlementsModule from '../services/entitlements'
 
 const sendEmailMock = vi.mocked(sendEmail)
 const verifyAccessTokenMock = vi.mocked(verifyAccessToken)

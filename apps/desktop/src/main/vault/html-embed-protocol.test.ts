@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 const race = vi.hoisted(() => ({ target: '', swap: (): void => {} }))
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     const real = await actual.realpath(probe)
     if (race.target !== '' && probe === race.target) {
@@ -22,6 +22,7 @@ vi.mock('fs/promises', async (importOriginal) => {
 })
 
 import { HTML_EMBED_CSP, resolveHtmlEmbedFile, serveHtmlEmbed } from './html-embed-protocol'
+import type * as PromisesModule from 'fs/promises'
 
 /** `memry-html://local/<abs>` for a path, the shape the renderer builds. */
 function embedUrl(absolutePath: string): string {

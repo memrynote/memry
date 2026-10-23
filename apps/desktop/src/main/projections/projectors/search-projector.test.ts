@@ -16,7 +16,7 @@ const openSpy = vi.hoisted(() => vi.fn())
 const statSpy = vi.hoisted(() => vi.fn())
 
 vi.mock('fs/promises', async () => {
-  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises')
+  const actual = await vi.importActual<typeof PromisesModule>('fs/promises')
   return {
     ...actual,
     default: { ...actual, open: openSpy, stat: statSpy },
@@ -26,7 +26,7 @@ vi.mock('fs/promises', async () => {
 })
 
 vi.mock('../../database', async () => {
-  const actual = await vi.importActual<typeof import('../../database')>('../../database')
+  const actual = await vi.importActual<typeof DatabaseModule>('../../database')
   return {
     ...actual,
     getDatabase,
@@ -44,6 +44,8 @@ vi.mock('electron', () => ({
 import { createSearchProjector } from './search-projector'
 import { createNoteDerivedStateProjector } from './note-derived-state-projector'
 import { searchAll } from '../../database/queries/search'
+import type * as PromisesModule from 'fs/promises'
+import type * as DatabaseModule from '../../database'
 
 describe('search projector', () => {
   let dataDb: TestDatabaseResult

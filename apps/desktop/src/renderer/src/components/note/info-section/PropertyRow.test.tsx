@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertyRow } from './PropertyRow'
 import type { Property } from './types'
+import type * as EditorsModule from './editors'
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -76,7 +77,7 @@ vi.mock('@/services/notes-service', () => ({
 }))
 
 vi.mock('./editors', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./editors')>()
+  const actual = await importOriginal<typeof EditorsModule>()
   return {
     ProjectEditor: actual.ProjectEditor,
     RelationEditor: ({

@@ -243,7 +243,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 }))
 
 vi.mock('../projections', async () => {
-  const actual = await vi.importActual<typeof import('../projections')>('../projections')
+  const actual = await vi.importActual<typeof ProjectionsModule>('../projections')
   return {
     // The real predicate: a mocked one would let a broken failure marker pass.
     isReconcileFailure: actual.isReconcileFailure,
@@ -366,6 +366,7 @@ import {
 import { getJournalConfig } from './journal-config'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { NoteError, NoteErrorCode } from '../lib/errors'
+import type * as ProjectionsModule from '../projections'
 
 describe('vault lifecycle', () => {
   beforeEach(async () => {

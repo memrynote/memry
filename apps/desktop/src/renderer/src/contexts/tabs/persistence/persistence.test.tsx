@@ -18,6 +18,7 @@ import {
 import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
 import { STORAGE_KEY, tabStateStorageKey, type PersistedTabState, type TabStorage } from './types'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
+import type * as SerializationModule from './serialization'
 
 const mocks = vi.hoisted(() => ({
   tabsState: null as TabSystemState | null,
@@ -52,7 +53,7 @@ vi.mock('sonner', () => ({
 // Counts full tab-tree serializations so the auto-save tests can assert how many
 // times the tree is walked, independently of how long the debounce waits.
 vi.mock('./serialization', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./serialization')>()
+  const actual = await importOriginal<typeof SerializationModule>()
   return {
     ...actual,
     serializeTabState: (state: TabSystemState) => {

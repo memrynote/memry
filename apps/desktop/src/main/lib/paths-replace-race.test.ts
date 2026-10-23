@@ -16,7 +16,7 @@ function swapOnRecheck(probe: unknown): void {
 }
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     swapOnRecheck(probe)
     return actual.realpath(probe)
@@ -24,7 +24,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, realpath }, realpath }
 })
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   const native = (probe: string): string => {
     swapOnRecheck(probe)
     return actual.realpathSync.native(probe)
@@ -34,6 +34,8 @@ vi.mock('fs', async (importOriginal) => {
 })
 
 import { openVaultFileSync, readVaultFile } from './paths'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 describe('a note file saved over while it is opened', () => {
   let vault: string

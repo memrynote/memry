@@ -22,7 +22,7 @@ vi.mock('../middleware/paid-sync', () => ({
 }))
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../middleware/rate-limit')>()
+  const actual = await importOriginal<typeof RateLimitModule>()
   return {
     ...actual,
     createRateLimiter: vi.fn().mockImplementation(() => async (_c: any, next: any) => {
@@ -45,6 +45,7 @@ vi.mock('../middleware/sync-types', () => ({
 // is exercised without any mock.
 
 import { bootstrap } from './bootstrap'
+import type * as RateLimitModule from '../middleware/rate-limit'
 
 const SECRET = 'test-bootstrap-hmac-key'
 const R2_ENV = {

@@ -8,11 +8,12 @@ const mocks = vi.hoisted(() => ({
 
 // Real `cacheBinaryDetection` — the caching contract is part of what is tested.
 vi.mock('../binary-detection', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../binary-detection')>()
+  const actual = await importOriginal<typeof BinaryDetectionModule>()
   return { ...actual, locateBinary: mocks.locateBinary, runBinaryCommand: mocks.runBinaryCommand }
 })
 
 import { MIN_CODEX_VERSION } from '../codex-binary'
+import type * as BinaryDetectionModule from '../binary-detection'
 
 /** Fresh module instance so each test starts with an empty detection cache. */
 async function loadDetector() {

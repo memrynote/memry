@@ -11,13 +11,13 @@ let activeDb: unknown = null
 let activeIndexDb: unknown = null
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => activeDb,
   getIndexDatabase: () => activeIndexDb
 }))
 
 vi.mock('../vault/journal', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../vault/journal')>()),
+  ...(await importOriginal<typeof JournalModule>()),
   getJournalPath: (date: string) => `/nonexistent/journals/${date}.md`
 }))
 
@@ -88,6 +88,8 @@ import {
 import { ItemApplier, type EmitToWindows } from './apply-item'
 import { getRemoteSyncAdapter, resolveClockConflict } from './item-handlers'
 import { runInitialSeed } from './initial-seed'
+import type * as ClientModule from '../database/client'
+import type * as JournalModule from '../vault/journal'
 
 const DEVICE = 'device-A'
 const PEER = 'device-B'

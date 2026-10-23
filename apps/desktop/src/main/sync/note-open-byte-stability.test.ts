@@ -144,7 +144,7 @@ vi.mock('../vault/notes', () => ({
 // and the second is the one the user feels (no mtime churn, no snapshot, no
 // sync push).
 vi.mock('../vault/file-ops', async () => {
-  const actual = await vi.importActual<typeof import('../vault/file-ops')>('../vault/file-ops')
+  const actual = await vi.importActual<typeof FileOpsModule>('../vault/file-ops')
   return {
     ...actual,
     atomicWrite: async (absolutePath: string, content: string) => {
@@ -169,6 +169,7 @@ import {
   resetWritebackState,
   scheduleWriteback
 } from './crdt-writeback'
+import type * as FileOpsModule from '../vault/file-ops'
 
 const NOTE_ID = 'byte-stability-note'
 const REL_PATH = path.join('notes', 'Byte Stability.md')

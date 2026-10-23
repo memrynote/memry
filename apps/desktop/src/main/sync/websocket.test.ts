@@ -6,9 +6,10 @@ import {
 } from './websocket'
 import { CertificatePinningError } from './certificate-pinning'
 import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import type * as EventsModule from 'events'
 
 const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
-  const { EventEmitter: EE } = require('events') as typeof import('events')
+  const { EventEmitter: EE } = require('events') as typeof EventsModule
   const instances: Array<InstanceType<typeof MockWS>> = []
 
   class MockWS extends EE {

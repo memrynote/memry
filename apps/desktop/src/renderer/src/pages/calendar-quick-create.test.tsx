@@ -6,6 +6,8 @@ import { CalendarPage } from '@/pages/calendar'
 import { CreateCalendarEventSchema } from '@memry/contracts/calendar-api'
 import type { TimeGridSelection } from '@/components/calendar/use-time-grid-marquee'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
+import type * as UseCalendarRangeModule from '@/hooks/use-calendar-range'
+import type * as UseTimeGridMarqueeModule from '@/components/calendar/use-time-grid-marquee'
 
 // The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
 const CalendarPageInDndContext = () => (
@@ -33,7 +35,7 @@ const {
 }))
 
 vi.mock('@/hooks/use-calendar-range', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-calendar-range')>()),
+  ...(await importOriginal<typeof UseCalendarRangeModule>()),
   useCalendarRange: mockUseCalendarRange
 }))
 
@@ -54,8 +56,7 @@ vi.mock('@/services/calendar-service', () => ({
 }))
 
 vi.mock('@/components/calendar/use-time-grid-marquee', async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import('@/components/calendar/use-time-grid-marquee')>()
+  const original = await importOriginal<typeof UseTimeGridMarqueeModule>()
   return {
     ...original,
     useTimeGridMarquee: mockUseTimeGridMarquee

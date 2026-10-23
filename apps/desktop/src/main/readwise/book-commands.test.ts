@@ -27,6 +27,14 @@ import {
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../notes/runtime-effects'
+import type * as DomainModule from '../notes/domain'
+import type * as BookCommandsModule from './book-commands'
+import type * as NoteWriterModule from './note-writer'
+import type * as NotesModule from '../vault/notes'
+import type * as LinksRepositoryModule from './links-repository'
+import type * as SettingsModule from '../database/queries/settings'
+import type * as CrdtProviderModule from '../sync/crdt-provider'
 
 vi.mock('electron', () => {
   const send = vi.fn()
@@ -40,7 +48,7 @@ vi.mock('electron', () => {
 })
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -48,7 +56,7 @@ vi.mock('../notes/runtime-effects', async (importOriginal) => ({
 }))
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => true) }))
 vi.mock('../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 
@@ -71,12 +79,12 @@ describe('Readwise book commands (D16)', () => {
   let vault: TestVaultResult
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
-  let commands: typeof import('./book-commands')
-  let writer: typeof import('./note-writer')
-  let notes: typeof import('../vault/notes')
-  let links: typeof import('./links-repository')
-  let settings: typeof import('../database/queries/settings')
-  let crdtProvider: typeof import('../sync/crdt-provider')
+  let commands: typeof BookCommandsModule
+  let writer: typeof NoteWriterModule
+  let notes: typeof NotesModule
+  let links: typeof LinksRepositoryModule
+  let settings: typeof SettingsModule
+  let crdtProvider: typeof CrdtProviderModule
   let readwise: ReadwiseStub
 
   beforeEach(async () => {

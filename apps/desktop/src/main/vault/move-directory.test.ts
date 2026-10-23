@@ -3,6 +3,8 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { moveDirectory } from './move-directory'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 const { windows } = vi.hoisted(() => ({
   windows: { held: false, lockedFiles: new Set<string>() }
@@ -17,7 +19,7 @@ function errno(code: string): NodeJS.ErrnoException {
 // refuses to be renamed, while a leaf directory and plain files still move.
 // Dot-named directories are ignored by the watcher, so nothing holds them.
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const rename = async (from: string, to: string): Promise<void> => {
     if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
     if (windows.held && !path.basename(from).startsWith('.')) {
@@ -35,7 +37,7 @@ vi.mock('fs/promises', async (importOriginal) => {
 // Windows and macOS resolve names case-insensitively; emulate that so the test
 // also holds on a case-sensitive filesystem.
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   const existsSync = (p: string): boolean =>
     actual.existsSync(p) ||
     (actual.existsSync(path.dirname(p)) &&

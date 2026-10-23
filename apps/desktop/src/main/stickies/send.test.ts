@@ -23,7 +23,7 @@ const notes = vi.hoisted(() => ({
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: () => [] } }))
 vi.mock('../database', () => ({ getDatabase: () => state.db, requireDatabase: () => state.db }))
 vi.mock('../sync/local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sync/local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   ...sync
 }))
 vi.mock('../notes/domain', () => ({
@@ -44,6 +44,7 @@ import { sendSticky, undoStickySend, STICKY_FOLDER } from './send'
 import { getStickySettings } from '../settings/sticky-settings'
 import { ensureDefaultTaskProject } from '../database/defaults'
 import type { DataDb } from '../database/types'
+import type * as LocalMutationsModule from '../sync/local-mutations'
 
 describe('sticky send', () => {
   let data: TestDatabaseResult

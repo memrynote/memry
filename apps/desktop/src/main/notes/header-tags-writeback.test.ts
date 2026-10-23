@@ -32,7 +32,7 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -72,6 +72,7 @@ import {
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { updateNoteCommand } from './domain'
+import type * as ClientModule from '../database/client'
 
 describe('a header tag added to an open note', () => {
   let vault: TestVaultResult

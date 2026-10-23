@@ -54,7 +54,7 @@ vi.mock('../vault/journal', () => ({
 }))
 
 vi.mock('@memry/domain-notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/domain-notes')>()),
+  ...(await importOriginal<typeof DomainNotesModule>()),
   getCanonicalJournalByDate: mocks.getCanonicalJournalByDate
 }))
 
@@ -81,6 +81,7 @@ import {
   stopProjectionRuntime,
   type ProjectionEvent
 } from '../projections'
+import type * as DomainNotesModule from '@memry/domain-notes'
 
 async function invoke(channel: string, input?: unknown) {
   const handler = mocks.handlers.get(channel)

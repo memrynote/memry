@@ -73,7 +73,7 @@ vi.mock('../vault/notes', () => ({
   maybeCreateSignificantSnapshot: () => null
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: async (_vault: string, relative: string) =>
     h.files.get(`/vault/${relative}`) ?? null
 }))
@@ -109,6 +109,7 @@ import { getCrdtProvider } from './crdt-provider'
 import { hasPendingWriteback } from './crdt-writeback'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
+import type * as PathsModule from '../lib/paths'
 
 const NOTE = 'lsk8vi9izpep'
 const NOTE_PATH = 'Baseline/Daily Routine.md'

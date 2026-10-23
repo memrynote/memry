@@ -3,9 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TaskRepeatSection } from './task-repeat-section'
 import type { RepeatConfig } from '@/data/task-model'
+import type * as RepeatUtilsModule from '@/lib/repeat-utils'
 
 vi.mock('@/lib/repeat-utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/repeat-utils')>()
+  const actual = await importOriginal<typeof RepeatUtilsModule>()
   return {
     ...actual,
     getRepeatDisplayText: vi.fn((config: RepeatConfig) => {

@@ -10,13 +10,13 @@ let activeIndexDb: unknown = null
 let vaultRoot = ''
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => activeDb,
   getIndexDatabase: () => activeIndexDb
 }))
 
 vi.mock('../vault/index', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../vault/index')>()
+  const actual = await importOriginal<typeof IndexModule>()
   return { ...actual, getStatus: () => ({ ...actual.getStatus(), path: vaultRoot }) }
 })
 
@@ -41,6 +41,8 @@ import {
 import { createMockDeps } from '@tests/utils/engine-mocks'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { noteHandler } from './item-handlers/note-handler'
+import type * as ClientModule from '../database/client'
+import type * as IndexModule from '../vault/index'
 
 const DEVICE = 'device-1'
 const PEER = 'device-2'

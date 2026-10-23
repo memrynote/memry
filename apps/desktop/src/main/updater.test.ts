@@ -176,6 +176,7 @@ vi.mock('./updater-install-health', () => ({
 
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
+import type * as UpdaterModule from './updater'
 
 async function loadUpdater() {
   vi.resetModules()
@@ -846,7 +847,7 @@ describe('updater', () => {
         )
 
       async function failToInstallOnReadOnlyVolume(): Promise<{
-        updater: typeof import('./updater')
+        updater: typeof UpdaterModule
         error: Error
       }> {
         const updater = await loadUpdater()

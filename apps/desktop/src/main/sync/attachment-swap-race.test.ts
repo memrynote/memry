@@ -16,7 +16,7 @@ function swapOnce(probe: unknown): void {
 }
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     const real = await actual.realpath(probe)
     swapOnce(probe)
@@ -25,7 +25,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, realpath }, realpath }
 })
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   const native = (probe: string): string => {
     const real = actual.realpathSync.native(probe)
     swapOnce(probe)
@@ -56,6 +56,8 @@ import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
 import { recordAttachmentFile } from './attachment-files'
 import { listPendingUploads } from './attachment-outbox'
 import { findNotesReferencingAttachment } from '../vault/attachment-reference-scan'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 const isWindows = process.platform === 'win32'
 

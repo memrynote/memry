@@ -17,7 +17,7 @@ vi.mock('@/components/note/content-area/task-block/task-prefetch-context', () =>
 
 const created = vi.hoisted(() => ({ editor: null as { document: unknown[] } | null }))
 vi.mock('@blocknote/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@blocknote/react')>()
+  const actual = await importOriginal<typeof ReactModule>()
   return {
     ...actual,
     useCreateBlockNote: ((...args: Parameters<typeof actual.useCreateBlockNote>) => {
@@ -29,6 +29,7 @@ vi.mock('@blocknote/react', async (importOriginal) => {
 })
 
 import { CanvasNoteBody } from './canvas-note-body'
+import type * as ReactModule from '@blocknote/react'
 
 describe('CanvasNoteBody', () => {
   it('shows a task line with its markup as written', async () => {

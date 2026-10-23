@@ -22,6 +22,7 @@ import { waitForAppReady, waitForVaultReady, navigateTo } from './utils/electron
 import * as path from 'path'
 import * as fs from 'fs'
 import matter from 'gray-matter'
+import type { Page } from '@playwright/test'
 
 // ============================================================================
 // Helpers
@@ -178,11 +179,7 @@ function readFolderConfig(vaultPath: string, folderPath: string): Record<string,
   return parsed.data as Record<string, unknown>
 }
 
-async function openFolderView(
-  page: import('@playwright/test').Page,
-  folderPath: string,
-  folderName: string
-): Promise<void> {
+async function openFolderView(page: Page, folderPath: string, folderName: string): Promise<void> {
   if (page.isClosed()) return
 
   const dataSelector = `[data-tree-node-id="folder-${folderPath}"]`
@@ -221,7 +218,7 @@ async function openFolderView(
     .catch(() => {})
 }
 
-async function openColumnSelector(page: import('@playwright/test').Page): Promise<boolean> {
+async function openColumnSelector(page: Page): Promise<boolean> {
   const button = page.getByRole('button', { name: /Properties/ }).first()
   const isVisible = await button.isVisible().catch(() => false)
   if (!isVisible) return false
@@ -234,10 +231,7 @@ async function openColumnSelector(page: import('@playwright/test').Page): Promis
   return true
 }
 
-async function toggleColumn(
-  page: import('@playwright/test').Page,
-  columnName: string
-): Promise<void> {
+async function toggleColumn(page: Page, columnName: string): Promise<void> {
   const searchInput = page.getByPlaceholder('Search columns...')
   const hasSearch = await searchInput.isVisible().catch(() => false)
   if (!hasSearch) return
@@ -251,7 +245,7 @@ async function toggleColumn(
 }
 
 async function switchViewType(
-  page: import('@playwright/test').Page,
+  page: Page,
   label: 'Table' | 'List' | 'Board' | 'Gallery'
 ): Promise<boolean> {
   const button = page.locator(`header button[title="${label}"]`).first()

@@ -6,9 +6,10 @@ import { JournalHeaderActions } from './journal/journal-header-actions'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './note/content-area/wiki-link-menu'
 import { WikiLinkPreviewCard } from './note/content-area/wiki-link-preview-card'
 import { TabPane } from './split-view/tab-pane'
+import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
 
 vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  ...(await importOriginal<typeof UseTagSchemasModule>()),
   useTagSchemas: () => ({ data: undefined, isLoading: false }),
   useResolvedTag: () => null,
   useObjectIdentity: () => null,

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import type { VaultStatus } from '@memry/contracts/vault-api'
 import { readStartupVaultArg } from '@memry/contracts/startup-vault'
+import type * as EmbeddingsModule from './lib/embeddings'
 
 const appOnMock = vi.fn()
 const isVaultSwitchInProgressMock = vi.fn(() => false)
@@ -259,7 +260,7 @@ vi.mock('./inbox/voice-model', () => ({
 // Keep the real module (other importers use initEmbeddingModel/getModelInfo/etc.);
 // spy only stopEmbeddingModel to assert the embeddings utilityProcess is stopped on quit (#805).
 vi.mock('./lib/embeddings', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./lib/embeddings')>()),
+  ...(await importOriginal<typeof EmbeddingsModule>()),
   stopEmbeddingModel: stopEmbeddingModelMock
 }))
 

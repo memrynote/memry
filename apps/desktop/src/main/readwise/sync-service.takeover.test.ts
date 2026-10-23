@@ -36,6 +36,19 @@ import {
   stopProjectionRuntime
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../notes/runtime-effects'
+import type * as DomainModule from '../notes/domain'
+import type * as ImportedNoteModule from '../import/_shared/imported-note'
+import type * as SyncServiceModule from './sync-service'
+import type * as NotesModule from '../vault/notes'
+import type * as SyncStateModule from './sync-state'
+import type * as LinksRepositoryModule from './links-repository'
+import type * as SecretsModule from './secrets'
+import type * as ClaimModule from './claim'
+import type * as SettingsModule from './settings'
+import type * as ConnectionModule from './connection'
+import type * as PullGateModule from './pull-gate'
+import type { BookEvent } from './sync-service'
 
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
@@ -65,7 +78,7 @@ vi.mock('../secrets/secret-storage', () => ({
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -76,11 +89,11 @@ vi.mock('../sync/crdt-external-feed', () => ({
 }))
 vi.mock('../sync/runtime', () => ({ getSyncEngine: () => mocks.syncEngine }))
 vi.mock('../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 vi.mock('../import/_shared/imported-note', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../import/_shared/imported-note')>()
+  const actual = await importOriginal<typeof ImportedNoteModule>()
   return { ...actual, createImportedNote: vi.fn(actual.createImportedNote) }
 })
 vi.mock('../vault/activity-log', () => ({ recordActivity: vi.fn() }))
@@ -116,17 +129,17 @@ describe('one pulling device', () => {
   let deviceA: Device
   let deviceB: Device
   let current: Device
-  let engine: typeof import('./sync-service')
-  let domain: typeof import('../notes/domain')
-  let notes: typeof import('../vault/notes')
-  let imported: typeof import('../import/_shared/imported-note')
-  let state: typeof import('./sync-state')
-  let links: typeof import('./links-repository')
-  let secrets: typeof import('./secrets')
-  let claim: typeof import('./claim')
-  let settings: typeof import('./settings')
-  let connection: typeof import('./connection')
-  let gate: typeof import('./pull-gate')
+  let engine: typeof SyncServiceModule
+  let domain: typeof DomainModule
+  let notes: typeof NotesModule
+  let imported: typeof ImportedNoteModule
+  let state: typeof SyncStateModule
+  let links: typeof LinksRepositoryModule
+  let secrets: typeof SecretsModule
+  let claim: typeof ClaimModule
+  let settings: typeof SettingsModule
+  let connection: typeof ConnectionModule
+  let gate: typeof PullGateModule
 
   const db = () => asClientDb(current.result.db)
   const writes = () =>
@@ -252,7 +265,7 @@ describe('one pulling device', () => {
   })
 
   async function sync(over: { onBook?: () => void } = {}) {
-    const events: import('./sync-service').BookEvent[] = []
+    const events: BookEvent[] = []
     const result = await engine.getReadwiseSyncService().run(TOKEN, {
       signal: new AbortController().signal,
       book: (event) => {

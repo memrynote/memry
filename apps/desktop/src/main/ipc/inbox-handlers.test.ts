@@ -115,7 +115,7 @@ vi.mock('../inbox/runtime-effects', () => ({
 }))
 
 vi.mock('../inbox/domain', async () => {
-  const actual = await vi.importActual<typeof import('../inbox/domain')>('../inbox/domain')
+  const actual = await vi.importActual<typeof DomainModule>('../inbox/domain')
 
   return {
     ...actual,
@@ -215,6 +215,7 @@ import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
 import * as captureModule from '../inbox/capture'
 import * as statsModule from '../inbox/stats'
+import type * as DomainModule from '../inbox/domain'
 
 describe('inbox-handlers', () => {
   let mockDb: {

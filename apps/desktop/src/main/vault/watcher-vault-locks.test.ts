@@ -41,7 +41,7 @@ vi.mock('../notes/runtime-effects', () => ({
   queueEmbeddedVaultFiles: vi.fn()
 }))
 vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sync/crdt-writeback')>()),
+  ...(await importOriginal<typeof CrdtWritebackModule>()),
   isWritebackIgnored: mocks.isWritebackIgnored
 }))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))
@@ -61,6 +61,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
 import { VaultWatcher } from './watcher'
+import type * as CrdtWritebackModule from '../sync/crdt-writeback'
 
 describe('watcher ignore window and read-only locks (#2606)', () => {
   let vault: ReturnType<typeof createTestVault>

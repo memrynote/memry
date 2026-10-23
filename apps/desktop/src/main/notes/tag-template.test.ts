@@ -30,7 +30,7 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -71,6 +71,7 @@ import {
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { undoTagTemplateCommand, updateNoteWithTagTemplateCommand } from './domain'
+import type * as ClientModule from '../database/client'
 
 const TEMPLATE_BODY = '## Agenda\n\nNotes go here\n'
 

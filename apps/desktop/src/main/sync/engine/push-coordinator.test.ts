@@ -32,7 +32,7 @@ vi.mock('../item-handlers', () => ({
 // Keep the real SyncServerError / RateLimitError classes: withRetry, withAuthRetry
 // and classifyError all branch on `instanceof` and on statusCode.
 vi.mock('../http-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../http-client')>()
+  const actual = await importOriginal<typeof HttpClientModule>()
   return { ...actual, postToServer: postToServerMock }
 })
 
@@ -44,6 +44,7 @@ import {
 import type { HoldOutcome } from '../../canvas/assets/chunk-holds'
 import { PUSH_DEBOUNCE_MS } from './sync-context'
 import { SyncServerError } from '../http-client'
+import type * as HttpClientModule from '../http-client'
 
 interface QueueRow {
   id: string

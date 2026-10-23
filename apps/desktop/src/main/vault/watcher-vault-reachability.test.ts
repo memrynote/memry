@@ -46,7 +46,7 @@ vi.mock('../notes/runtime-effects', () => ({
   queueEmbeddedVaultFiles: vi.fn()
 }))
 vi.mock('./indexer', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./indexer')>()
+  const actual = await importOriginal<typeof IndexerModule>()
   return {
     ...actual,
     findVaultFiles: vi.fn(async (...args: Parameters<typeof actual.findVaultFiles>) => {
@@ -83,6 +83,7 @@ import {
 import { clearIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { VaultWatcher } from './watcher'
+import type * as IndexerModule from './indexer'
 
 interface WatcherInternals {
   vaultPath: string | null

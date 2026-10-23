@@ -31,12 +31,13 @@ vi.mock('../../projections', () => ({
 
 const mockLocalMutation = vi.fn()
 vi.mock('../../sync/local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../sync/local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 
 import { syncLargeFileBodyToCache, syncNoteStatToCache } from '../../vault/note-sync'
 import { createNoteProjectLinksProjector } from './note-project-links-projector'
+import type * as LocalMutationsModule from '../../sync/local-mutations'
 
 const CREATED = '2026-01-01T00:00:00.000Z'
 

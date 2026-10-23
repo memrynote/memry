@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const race = vi.hoisted(() => ({ target: '', swap: (): void => {} }))
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     const real = await actual.realpath(probe)
     if (race.target !== '' && probe === race.target) {
@@ -24,6 +24,7 @@ vi.mock('../telemetry/diagnostics', () => ({ trackMainLog: () => undefined }))
 
 import { serveMemryFile } from './memry-file-protocol'
 import { toMemryFileUrl } from './paths'
+import type * as PromisesModule from 'fs/promises'
 
 const isWindows = process.platform === 'win32'
 

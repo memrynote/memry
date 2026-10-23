@@ -3,6 +3,7 @@ import type { SyncContext } from './sync-context'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts } from './crdt-body-debts'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as RetryModule from '@memry/sync-client/retry'
 
 const fetchCrdtSnapshotMock = vi.fn()
 const getFromServerMock = vi.fn()
@@ -32,7 +33,7 @@ vi.mock('../../crypto/index', () => ({
 const withRetryMock = vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 
 vi.mock('@memry/sync-client/retry', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/sync-client/retry')>()),
+  ...(await importOriginal<typeof RetryModule>()),
   withRetry: (fn: () => Promise<unknown>, options?: unknown) => withRetryMock(fn, options)
 }))
 

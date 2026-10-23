@@ -16,6 +16,7 @@ import path from 'path'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel, minimalPdfBytes } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
+import type { Page } from '@playwright/test'
 
 const ORIGINAL_NAME = 'shared-report.pdf'
 
@@ -143,7 +144,7 @@ test.describe('Shared attachment references', () => {
  * use: tab state is seeded into localStorage, then the window is reloaded.
  */
 async function restoreSingleNoteTab(
-  page: import('@playwright/test').Page,
+  page: Page,
   vaultPath: string,
   noteId: string,
   title: string

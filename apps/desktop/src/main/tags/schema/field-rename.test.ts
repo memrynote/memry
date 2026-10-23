@@ -34,7 +34,7 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn() }
 }))
 vi.mock('../../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -43,11 +43,11 @@ vi.mock('../../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({ getDoc: () => undefined, recordOwedFullState: vi.fn() })
 }))
 vi.mock('../../vault-locks/registry', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../vault-locks/registry')>()),
+  ...(await importOriginal<typeof RegistryModule>()),
   isNoteLocked: (noteId: string) => state.locked.has(noteId)
 }))
 vi.mock('../../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteUpdate: vi.fn()
 }))
 
@@ -65,6 +65,9 @@ import { PropertyDefinitionsService } from '../../vault/property-definitions'
 import { createDesktopTasksDomain } from '../../tasks/domain'
 import { runTagSchemaCommand } from './commands'
 import { FIELD_RENAME_JOB_SETTING, renameField, resumeFieldRename } from './field-rename'
+import type * as ClientModule from '../../database/client'
+import type * as RegistryModule from '../../vault-locks/registry'
+import type * as RuntimeEffectsModule from '../../notes/runtime-effects'
 
 let vault: TestVaultResult
 let data: TestDatabaseResult

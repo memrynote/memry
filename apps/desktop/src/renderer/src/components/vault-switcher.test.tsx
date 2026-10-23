@@ -71,7 +71,7 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 vi.mock('@/hooks/use-vault', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-vault')>()),
+  ...(await importOriginal<typeof UseVaultModule>()),
   useVault: () => ({
     status: mocks.status,
     isLoading: false,
@@ -103,6 +103,7 @@ vi.mock('@/components/download-vault-dialog', () => ({
 import { VaultSwitcher } from './vault-switcher'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 import type { SandboxInfo, VaultInfo } from '../../../preload/index.d'
+import type * as UseVaultModule from '@/hooks/use-vault'
 
 const vault = (name: string, extra: Partial<VaultInfo> = {}): VaultInfo => ({
   path: `/vaults/${name}`,

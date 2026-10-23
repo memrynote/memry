@@ -22,7 +22,7 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
 vi.mock('../database', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database')>()),
+  ...(await importOriginal<typeof DatabaseModule>()),
   getIndexDatabase: () => state.index,
   getDatabase: () => state.data,
   requireDatabase: () => state.data
@@ -48,6 +48,7 @@ vi.mock('../tags/runtime-effects', () => ({
 
 import * as vaultIndex from '../vault/index'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
+import type * as DatabaseModule from '../database'
 
 const SECRET = '---\ntags: [old]\n---\nOutside secret\n'
 

@@ -21,7 +21,7 @@ const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown 
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: () => [] } }))
 vi.mock('../../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -33,6 +33,7 @@ import { addPreset } from '../presets'
 import { runTagSchemaCommand } from './commands'
 import { rewriteSchemaReferences } from './references'
 import { saveTagViews } from './views'
+import type * as ClientModule from '../../database/client'
 
 let vault: TestVaultResult
 let data: TestDatabaseResult

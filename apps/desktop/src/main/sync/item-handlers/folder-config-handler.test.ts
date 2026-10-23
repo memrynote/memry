@@ -39,6 +39,7 @@ vi.mock('../../lib/logger', () => ({
 import { folderConfigHandler } from './folder-config-handler'
 import { writeFolderConfig, readFolderConfig, folderExists } from '../../vault/folders'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
+import type * as FoldersModule from '../../vault/folders'
 
 /**
  * The vault mirror write is fire-and-forget, so give Node a chance to drain the
@@ -304,8 +305,7 @@ describe('folderConfigHandler', () => {
     // ever opened, and the REAL vault/folders module behind the mock. Guards
     // the exemption removal in registry.test.ts.
     it('#given the real vault module and no vault ever opened #when remote upsert arrives #then applies and emits without an unhandled rejection', async () => {
-      const actual =
-        await vi.importActual<typeof import('../../vault/folders')>('../../vault/folders')
+      const actual = await vi.importActual<typeof FoldersModule>('../../vault/folders')
       mockReadFolderConfig.mockImplementation(actual.readFolderConfig)
       mockWriteFolderConfig.mockImplementation(actual.writeFolderConfig)
 

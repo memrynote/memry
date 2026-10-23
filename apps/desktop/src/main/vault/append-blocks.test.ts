@@ -56,7 +56,7 @@ vi.mock('./notes-io', () => ({
   toAbsolutePath: vi.fn((p: string) => `/vault/${p}`)
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: async (_vault: string, p: string) =>
     written.find((w) => w.path === `/vault/${p}`)?.content ?? null
 }))
@@ -65,6 +65,7 @@ vi.mock('../lib/logger', () => ({
 }))
 
 import { appendBlocksToNote } from './append-blocks'
+import type * as PathsModule from '../lib/paths'
 
 function seedNote(id: string, notePath: string, body: string) {
   noteRows[id] = {

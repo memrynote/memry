@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as LaunchTimelineModule from './launch-timeline'
 
 const scopedLogger = {
   debug: vi.fn(),
@@ -20,7 +21,7 @@ const LAUNCH_AT = new Date('2026-07-22T10:00:00.000Z').getTime()
 
 // The module stamps process start at import time, so every test gets a fresh
 // copy with the clock parked at LAUNCH_AT.
-async function importTimeline(): Promise<typeof import('./launch-timeline')> {
+async function importTimeline(): Promise<typeof LaunchTimelineModule> {
   vi.resetModules()
   vi.setSystemTime(LAUNCH_AT)
   return import('./launch-timeline')

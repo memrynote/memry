@@ -20,6 +20,12 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
+import type * as RemindersModule from './reminders'
+import type {
+  getDatabase as DatabasegetDatabase,
+  getIndexDatabase as DatabasegetIndexDatabase
+} from '../database'
+import type { BrowserWindow as ElectronBrowserWindow } from 'electron'
 
 const { emitCalendarProjectionChanged, scheduleGoogleCalendarSourceSync } = vi.hoisted(() => ({
   emitCalendarProjectionChanged: vi.fn(),
@@ -109,10 +115,10 @@ class MockNotification {
   }
 }
 
-let remindersService: typeof import('./reminders')
-let getDatabase: typeof import('../database').getDatabase
-let getIndexDatabase: typeof import('../database').getIndexDatabase
-let BrowserWindow: typeof import('electron').BrowserWindow
+let remindersService: typeof RemindersModule
+let getDatabase: typeof DatabasegetDatabase
+let getIndexDatabase: typeof DatabasegetIndexDatabase
+let BrowserWindow: typeof ElectronBrowserWindow
 
 describe('reminders service', () => {
   let dataDb: TestDatabaseResult
@@ -529,8 +535,8 @@ describe('reminders service', () => {
 
     // The window dies between the banner being shown and the user clicking it.
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-      destroyed as unknown as import('electron').BrowserWindow,
-      window as unknown as import('electron').BrowserWindow
+      destroyed as unknown as ElectronBrowserWindow,
+      window as unknown as ElectronBrowserWindow
     ])
 
     expect(() => {

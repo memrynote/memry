@@ -88,7 +88,7 @@ const contentAreaMocks = vi.hoisted(() => ({
 // only the routing matters, so it stands in as a probe for which kind was asked
 // for. Rendering the real one would reach `listVaultAttachments` over IPC.
 vi.mock('./attachment-picker-dialog', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./attachment-picker-dialog')>()),
+  ...(await importOriginal<typeof AttachmentPickerDialogModule>()),
   AttachmentPickerDialog: ({ kind }: { kind: string }) => (
     <div data-testid="attachment-picker-dialog" data-kind={kind} />
   )
@@ -460,6 +460,7 @@ import { ContentArea } from './ContentArea'
 import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {

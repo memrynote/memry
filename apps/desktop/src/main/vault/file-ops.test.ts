@@ -27,9 +27,10 @@ import {
   setVaultFileWriteGuard
 } from './file-ops'
 import { NoteError, NoteErrorCode } from '../lib/errors'
+import type * as PromisesModule from 'fs/promises'
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   return {
     ...actual,
     rename: vi.fn(actual.rename)

@@ -41,7 +41,7 @@ vi.mock('./notes-io', () => ({
 }))
 
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   openVaultFile: async (_vault: string, relative: string) => ({
     stat: () => mocks.stat(`/vault/${relative}`),
     readFile: () => mocks.safeRead(`/vault/${relative}`),
@@ -70,6 +70,7 @@ vi.mock('../sync/local-mutations', () => ({
 }))
 
 import { getNoteById } from './notes-crud'
+import type * as PathsModule from '../lib/paths'
 
 const cachedRow = {
   id: 'note-1',

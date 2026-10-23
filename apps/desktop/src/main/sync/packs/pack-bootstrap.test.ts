@@ -11,6 +11,7 @@ import { SYNC_STATE_KEYS } from '../engine/sync-context'
 import { createCrdtSnapshotApplier } from './crdt-snapshot-applier'
 import { contiguousAppliedCursor, runPackBootstrap, type PackBootstrapDeps } from './pack-bootstrap'
 import { buildTestPack } from './test-pack-builder'
+import type * as HttpClientModule from '../http-client'
 
 // The whole point of pack-seeded bodies: not one item-granular CRDT request is
 // issued for a note a pack covered. Mocking the module is how that is proved
@@ -21,7 +22,7 @@ const httpSpies = vi.hoisted(() => ({
 }))
 
 vi.mock('../http-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../http-client')>()
+  const actual = await importOriginal<typeof HttpClientModule>()
   return { ...actual, ...httpSpies }
 })
 

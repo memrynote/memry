@@ -12,12 +12,13 @@ const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown 
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: () => [] } }))
 vi.mock('../../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
 
 import { previewTagImpact } from './impact'
+import type * as ClientModule from '../../database/client'
 
 let data: TestDatabaseResult
 let index: TestDatabaseResult

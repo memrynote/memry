@@ -33,7 +33,7 @@ vi.mock('../vault', () => ({
 
 // Mock paths module
 vi.mock('../lib/paths', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const actual = await importOriginal<typeof PathsModule>()
   return {
     ...actual,
     toMemryFileUrl: vi.fn((path: string) => `memry-file://${encodeURIComponent(path)}`)
@@ -42,6 +42,7 @@ vi.mock('../lib/paths', async (importOriginal) => {
 
 import { getStatus } from '../vault'
 import { toMemryFileUrl } from '../lib/paths'
+import type * as PathsModule from '../lib/paths'
 
 describe('Inbox Attachment Management', () => {
   let testVaultPath: string

@@ -13,6 +13,7 @@ import { TabErrorBoundary } from './tabs/tab-error-boundary'
 import { KanbanDragOverlay } from './tasks/kanban/kanban-drag-overlay'
 import { useSnoozeCountdown } from './snooze/use-snooze-countdown'
 import { VaultSettings } from '@/pages/settings/vault-section'
+import type * as TaskUtilsModule from '@/lib/task-utils'
 
 const mocks = vi.hoisted(() => ({
   dragState: {
@@ -116,7 +117,7 @@ vi.mock('./tasks/kanban/kanban-card', () => ({
 }))
 
 vi.mock('@/lib/task-utils', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/task-utils')>('@/lib/task-utils')
+  const actual = await vi.importActual<typeof TaskUtilsModule>('@/lib/task-utils')
   return {
     ...actual,
     getFilteredTasks: (tasks: any[], projectId: string) =>

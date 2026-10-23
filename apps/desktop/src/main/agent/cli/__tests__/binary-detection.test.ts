@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Keep the real implementations but watch spawnSync: a synchronous probe is the
 // regression this module exists to prevent.
 vi.mock('node:child_process', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:child_process')>()
+  const actual = await importOriginal<typeof NodeChildProcessModule>()
   return { ...actual, spawnSync: vi.fn(actual.spawnSync) }
 })
 
@@ -16,6 +16,7 @@ import {
   locateBinary,
   runBinaryCommand
 } from '../binary-detection'
+import type * as NodeChildProcessModule from 'node:child_process'
 
 const usable: BinaryStatus = {
   detected: true,

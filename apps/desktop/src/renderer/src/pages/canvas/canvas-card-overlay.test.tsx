@@ -6,6 +6,7 @@ import { CanvasCardLayer } from './canvas-card-overlay'
 import { CANVAS_ITEM_DRAG_MIME, noteCardSize, type CardElement } from './canvas-cards'
 import { revealScroll } from './canvas-add-card'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type * as UseCanvasEntitiesModule from './use-canvas-entities'
 
 // Stub the Excalidraw runtime imports so the overlay mounts in jsdom without
 // pulling the real (canvas-dependent) library.
@@ -105,8 +106,7 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 vi.mock('./use-canvas-entities', async () => {
-  const actual =
-    await vi.importActual<typeof import('./use-canvas-entities')>('./use-canvas-entities')
+  const actual = await vi.importActual<typeof UseCanvasEntitiesModule>('./use-canvas-entities')
   return { entityKey: actual.entityKey, useCanvasEntities: () => mocks.entities }
 })
 // Keep the card lightweight; its own test covers rendering.

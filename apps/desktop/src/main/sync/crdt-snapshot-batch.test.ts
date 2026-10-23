@@ -26,13 +26,14 @@ vi.mock('./crdt-encrypt', () => ({
 
 // SyncServerError stays real: the 404/413 branches are `instanceof` checks.
 vi.mock('./http-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./http-client')>()
+  const actual = await importOriginal<typeof HttpClientModule>()
   return { ...actual, pushCrdtSnapshotBatch: pushCrdtSnapshotBatchMock }
 })
 
 import { createCrdtSnapshotBatchPush, type CrdtSnapshotBatchDeps } from './crdt-snapshot-batch'
 import { SyncServerError } from './http-client'
 import type { SnapshotBatchEntry, SnapshotCoverage } from './crdt-provider'
+import type * as HttpClientModule from './http-client'
 
 const entry = (
   noteId: string,

@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as LoggerModule from './logger'
 
 const stripTimestamp = (line: string): string => line.slice('2026-10-01 14:24:40.000 '.length)
 
@@ -31,7 +32,7 @@ describe('main.log file transport', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
-  const loadLogger = async (): Promise<typeof import('./logger')> => {
+  const loadLogger = async (): Promise<typeof LoggerModule> => {
     const logger = await import('./logger')
     logger.log.transports.console.level = false
     logger.log.transports.file.level = 'debug'

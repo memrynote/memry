@@ -16,6 +16,9 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as IndexModule from './index'
+import type * as DatabaseModule from '../database'
+import type * as NotesModule from './notes'
 
 vi.mock('electron', () => {
   const mockWebContents = { send: vi.fn() }
@@ -52,9 +55,9 @@ describe('binary file metadata safety (#2073)', () => {
   let dataDb: TestDatabaseResult
   let testDb: TestDatabaseResult
 
-  let vaultIndex: typeof import('./index')
-  let database: typeof import('../database')
-  let notes: typeof import('./notes')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let notes: typeof NotesModule
 
   beforeEach(async () => {
     tempVault = createTestVault('binary-metadata-safety')

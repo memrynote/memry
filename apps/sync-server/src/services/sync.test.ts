@@ -5,7 +5,7 @@ import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
 
 vi.mock('./blob', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./blob')>()),
+  ...(await importOriginal<typeof BlobModule>()),
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn()
 }))
@@ -55,6 +55,7 @@ import {
 import { getDevice } from './device'
 import { getBlob, putBlob } from './blob'
 import { adjustStorageUsed, reserveStorage } from './quota'
+import type * as BlobModule from './blob'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 const mockedVerifyEd25519 = vi.mocked(verifyEd25519)

@@ -64,8 +64,7 @@ vi.mock('../note-sync', () => ({
 }))
 
 vi.mock('../../vault/file-ops', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
+  const actual = await vi.importActual<typeof FileOpsModule>('../../vault/file-ops')
   return {
     ...actual,
     atomicWrite: vi.fn().mockResolvedValue(undefined),
@@ -94,6 +93,7 @@ vi.mock('fs', () => ({
 }))
 
 import { noteHandler } from './note-handler'
+import type * as FileOpsModule from '../../vault/file-ops'
 
 function makeCachedNote(overrides: Record<string, unknown> = {}) {
   return {

@@ -84,7 +84,7 @@ vi.mock('@memry/shared/utc', () => ({
 }))
 
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: (_vault: string, relative: string) =>
     mocks.safeRead(mocks.toAbsolutePath(relative))
 }))
@@ -168,6 +168,7 @@ import {
   writebackNow
 } from './crdt-writeback'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
+import type * as PathsModule from '../lib/paths'
 
 // A real, empty folder: the outside-vault check resolves every read against it.
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))

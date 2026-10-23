@@ -42,7 +42,7 @@ const importFiles = vi.hoisted(() =>
   vi.fn(async () => ({ importedFiles: [], errors: [] as string[] }))
 )
 vi.mock('../vault/notes-crud', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../vault/notes-crud')>()),
+  ...(await importOriginal<typeof NotesCrudModule>()),
   importFiles
 }))
 
@@ -107,7 +107,7 @@ vi.mock('@memry/sync-client/offline-clock', () => ({
 // hand-off to the same local sync adapters it drains into.
 vi.mock('../sync/sync-intents', async () => {
   const { callLocalMutation } =
-    await vi.importActual<typeof import('../sync/local-mutations')>('../sync/local-mutations')
+    await vi.importActual<typeof LocalMutationsModule>('../sync/local-mutations')
   const method = {
     create: 'enqueueCreate',
     update: 'enqueueUpdate',
@@ -153,7 +153,7 @@ vi.mock('@main/database/queries/projects', () => ({
 // running against those mocks — only the propagation calls themselves are
 // stubbed.
 vi.mock('../tasks/project-name-propagation', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../tasks/project-name-propagation')>()
+  const actual = await importOriginal<typeof ProjectNamePropagationModule>()
   return {
     ...actual,
     propagateProjectRename: vi.fn(),
@@ -170,6 +170,9 @@ import * as projectQueries from '@main/database/queries/projects'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { incrementTaskClocksOffline } from '@memry/sync-client/offline-clock'
 import { propagateProjectRename, propagateProjectDelete } from '../tasks/project-name-propagation'
+import type * as NotesCrudModule from '../vault/notes-crud'
+import type * as LocalMutationsModule from '../sync/local-mutations'
+import type * as ProjectNamePropagationModule from '../tasks/project-name-propagation'
 
 describe('tasks-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }

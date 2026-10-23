@@ -35,7 +35,7 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -51,7 +51,7 @@ vi.mock('../sync/crdt-provider', () => ({
 
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => false) }))
 vi.mock('../sync/local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sync/local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   ...sync
 }))
 vi.mock('../journal/runtime-effects', () => ({
@@ -91,6 +91,8 @@ import {
   resumeTagRename,
   type TagRenameResult
 } from './rename-tag'
+import type * as ClientModule from '../database/client'
+import type * as LocalMutationsModule from '../sync/local-mutations'
 
 describe('renameTagEverywhere', () => {
   let vault: TestVaultResult

@@ -27,7 +27,7 @@ const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
 const { dbs, provider, journalSync, logger } = vi.hoisted(() => {
-  const docs = new Map<string, import('yjs').Doc>()
+  const docs = new Map<string, Doc>()
   return {
     dbs: { data: null as unknown, index: null as unknown },
     logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
@@ -128,6 +128,7 @@ import {
   runJournalDayMerges
 } from './journal-day-merge'
 import { listPendingDeletes } from './pending-deletes'
+import type { Doc } from 'yjs'
 
 const DATE = '2026-06-09'
 const DAY = `j${DATE}`

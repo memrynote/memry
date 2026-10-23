@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('./attachment-backfill', () => ({ backfillUnsyncedAttachments: mocks.backfill }))
 vi.mock('./attachment-outbox', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./attachment-outbox')>()),
+  ...(await importOriginal<typeof AttachmentOutboxModule>()),
   drainAttachmentOutbox: mocks.drain,
   dropUploadsWithoutFile: mocks.dropGone
 }))
@@ -21,6 +21,7 @@ vi.mock('./token-manager', () => ({ getValidAccessToken: mocks.getToken }))
 vi.mock('../store', () => ({ getCurrentVaultPath: () => mocks.vaultPath }))
 
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
+import type * as AttachmentOutboxModule from './attachment-outbox'
 
 function deferredToken(): { resolve: (token: string) => void } {
   let resolve!: (token: string) => void

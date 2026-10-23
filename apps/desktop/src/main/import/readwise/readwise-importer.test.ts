@@ -30,6 +30,17 @@ import {
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../../notes/runtime-effects'
+import type * as DomainModule from '../../notes/domain'
+import type * as ImportedNoteModule from '../_shared/imported-note'
+import type * as ReadwiseImporterModule from './readwise-importer'
+import type * as RunnerModule from '../runner'
+import type * as RegistryModule from '../registry'
+import type * as NotesModule from '../../vault/notes'
+import type * as SyncStateModule from '../../readwise/sync-state'
+import type * as LinksRepositoryModule from '../../readwise/links-repository'
+import type * as SecretsModule from '../../readwise/secrets'
+import type * as SettingsModule from '../../readwise/settings'
 
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
@@ -54,7 +65,7 @@ vi.mock('../../secrets/secret-storage', () => ({
 }))
 vi.mock('../../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -64,11 +75,11 @@ vi.mock('../../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
 }))
 vi.mock('../../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 vi.mock('../_shared/imported-note', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../_shared/imported-note')>()
+  const actual = await importOriginal<typeof ImportedNoteModule>()
   return { ...actual, createImportedNote: vi.fn(actual.createImportedNote) }
 })
 vi.mock('../../vault/activity-log', () => ({ recordActivity: mocks.recordActivity }))
@@ -129,16 +140,16 @@ describe('Readwise first import', () => {
   let vault: TestVaultResult
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
-  let importer: typeof import('./readwise-importer')
-  let runner: typeof import('../runner')
-  let registry: typeof import('../registry')
-  let domain: typeof import('../../notes/domain')
-  let notes: typeof import('../../vault/notes')
-  let state: typeof import('../../readwise/sync-state')
-  let links: typeof import('../../readwise/links-repository')
-  let secrets: typeof import('../../readwise/secrets')
-  let settings: typeof import('../../readwise/settings')
-  let imported: typeof import('../_shared/imported-note')
+  let importer: typeof ReadwiseImporterModule
+  let runner: typeof RunnerModule
+  let registry: typeof RegistryModule
+  let domain: typeof DomainModule
+  let notes: typeof NotesModule
+  let state: typeof SyncStateModule
+  let links: typeof LinksRepositoryModule
+  let secrets: typeof SecretsModule
+  let settings: typeof SettingsModule
+  let imported: typeof ImportedNoteModule
   let pages: ReadwiseBook[][]
   let requests: URL[]
   let importCount = 0
@@ -412,9 +423,7 @@ describe('Readwise first import', () => {
     })
 
     it('reports a failing book, puts it on the retry list, and finishes the rest', async () => {
-      const actual = await vi.importActual<typeof import('../_shared/imported-note')>(
-        '../_shared/imported-note'
-      )
+      const actual = await vi.importActual<typeof ImportedNoteModule>('../_shared/imported-note')
       vi.mocked(imported.createImportedNote).mockImplementation(async (input) => {
         if (input.title === 'Atomic Habits') throw new Error('disk is read-only')
         return actual.createImportedNote(input)

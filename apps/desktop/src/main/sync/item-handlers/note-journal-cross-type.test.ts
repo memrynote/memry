@@ -40,7 +40,7 @@ vi.mock('../../database/client', () => ({
 }))
 vi.mock('../../database', () => ({ getDatabase: () => currentDb.value }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@main/database/queries/notes')>()),
+  ...(await importOriginal<typeof NotesModule>()),
   reindexNoteNames: vi.fn(() => []),
   reresolveLinks: vi.fn(() => ({ sourceIds: [], targetIds: [] })),
   pathLinkKeys: vi.fn(() => []),
@@ -66,6 +66,7 @@ vi.mock('../../vault/index', () => ({
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { noteHandler } from './note-handler'
+import type * as NotesModule from '@main/database/queries/notes'
 
 const ID = 'legacyagent0609'
 const DATE = '2026-06-09'
