@@ -191,9 +191,6 @@ export function PortalBlockRenderer({
           ) : null}
         </div>
         <div className={cn('memry-portal-block-source mt-1.5', !showSource && 'hidden')}>
-          <div contentEditable={false} className="pb-1 text-[11px] text-muted-foreground">
-            {t('portalBlock.definition')}
-          </div>
           <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-[0.8125rem]">
             <code ref={contentRef} />
           </pre>

@@ -3,7 +3,6 @@
     "copyFailed": "Could not copy the portal",
     "hiddenCount": "{count} hidden",
     "windowFailed": "This portal could not be opened. Open the source note instead.",
-    "definition": "Portal definition",
     "noTarget": "This portal has no target yet. Add a note to the definition, or remove the block.",
     "invalidJson": "This portal’s definition is not valid JSON. Fix it below, or remove the block.",
     "invalidShape": "This portal’s definition has no note or search. Fix it below, or remove the block.",
