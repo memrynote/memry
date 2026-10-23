@@ -153,8 +153,5 @@
     "src/renderer/src/services/vault-service.test.ts",
     "src/renderer/src/services/window-api-forwarder.test.ts",
     "src/renderer/src/sync/use-yjs-collaboration.test.tsx"
-  ],
-  "compilerOptions": {
-    "composite": false
-  }
+  ]
 }

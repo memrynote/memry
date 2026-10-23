@@ -168,8 +168,5 @@
     "src/main/vault/vault-preferences.test.ts",
     "src/preload/api/preload-api.test.ts",
     "src/preload/generated-rpc.test.ts"
-  ],
-  "compilerOptions": {
-    "composite": false
-  }
+  ]
 }

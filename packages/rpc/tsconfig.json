@@ -2,7 +2,6 @@
   "extends": "@memry/typescript-config/node.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "baseUrl": ".",
     "paths": {
       "@memry/contracts": ["../contracts/src/index.ts"],
       "@memry/contracts/*": ["../contracts/src/*"],

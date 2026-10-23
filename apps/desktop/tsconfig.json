@@ -6,10 +6,11 @@
     },
     {
       "path": "./tsconfig.web.json"
-    }
+    },
+    { "path": "./tsconfig.test.node.json" },
+    { "path": "./tsconfig.test.web.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@memry/contracts": ["../../packages/contracts/src/index.ts"],
       "@memry/contracts/*": ["../../packages/contracts/src/*"],
