@@ -64,9 +64,15 @@ export function highlightInstant(dates: HighlightDates): string | null {
 }
 
 function line({ title, count }: JournalBook): string {
-  // `]` and `|` cannot sit in a wiki-link target.
-  // `<!--` and `-->` would make the line read as a marker, so the section could never be re-rendered.
-  const target = collapseWhitespace(title.replace(/[\]|[]|<!--|-->/g, ' ')) || 'Untitled'
+  // `]` and `|` cannot sit in a wiki-link target, and `<!--` would make the line read as a marker,
+  // so the section could never be re-rendered.
+  const target =
+    collapseWhitespace(
+      title
+        .split('<!--')
+        .join(' ')
+        .replace(/[\]|[]/g, ' ')
+    ) || 'Untitled'
   return `- [[${target}]]: ${count} highlight${count === 1 ? '' : 's'}`
 }
 
