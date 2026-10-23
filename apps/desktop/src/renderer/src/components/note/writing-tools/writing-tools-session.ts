@@ -1,13 +1,12 @@
 /**
  * One note's writing tools: alternatives, ghosted ranges, the overflow list,
- * the word count and the AI Lab. The note page owns the session (its rail and
+ * and the word count. The note page owns the session (its rail and
  * chrome read the snapshot); the editor attaches to it once it has a
  * ProseMirror view and the note's Y.Doc.
  *
  * Persistent records live in the Y.Doc side arrays (see
  * `@memry/shared` writing-tools/yjs.ts). The body only changes when the user
- * acts: picking a variant swaps the anchored text in place, Cut deletes a trim
- * suggestion, Stash moves the selection into the overflow list.
+ * acts: picking a variant swaps the anchored text in place, Stash moves the selection into the overflow list.
  */
 
 import { TextSelection } from '@tiptap/pm/state'
@@ -29,16 +28,10 @@ import {
   type WritingOverflowItem,
   type WritingVariant
 } from '@memry/shared'
-import type {
-  WritingAssistInput,
-  WritingAssistResult,
-  WritingCheckKind,
-  WritingTrimLevel
-} from '@memry/contracts/writing-tools-api'
+import type { WritingAssistInput, WritingAssistResult } from '@memry/contracts/writing-tools-api'
 import { registerEditorPlugin } from '../content-area/register-editor-plugin'
 import {
   anchorsForRange,
-  collectTextBlocks,
   createWritingToolsPlugin,
   isAlternativeRange,
   isStashableRange,
@@ -49,25 +42,9 @@ import {
   type WritingToolsPluginState
 } from './writing-tools-plugin'
 import { newOverflowItem, renderOverflowHtml, stashHtml } from './overflow-html'
-import { articleFixBefore, countWordsExcluding, cutSpacing, findQuoteRanges } from './writing-text'
+import { articleFixBefore } from './writing-text'
 
-export type WritingRailMode = 'alternatives' | 'overflow' | 'lab'
-
-export interface LabFlag {
-  id: string
-  check: WritingCheckKind
-  quote: string
-  reason: string
-}
-
-export type LabRun = WritingCheckKind | WritingTrimLevel
-
-export interface WritingTrimReview {
-  level: WritingTrimLevel
-  /** Remaining suggestions, in document order */
-  ids: string[]
-  focusedIndex: number
-}
+export type WritingRailMode = 'alternatives' | 'overflow'
 
 export interface WritingAlternativeDraft {
   id: string
@@ -87,13 +64,6 @@ export interface WritingToolsSnapshot {
   hoveredAlternativeId: string | null
   /** Newest first */
   overflow: WritingOverflowItem[]
-  wordCount: number
-  lab: {
-    running: LabRun | null
-    flags: LabFlag[]
-    focusedFlagId: string | null
-    trim: WritingTrimReview | null
-  }
 }
 
 export type GenerateWritingAssist = (input: WritingAssistInput) => Promise<WritingAssistResult>
@@ -119,9 +89,7 @@ const EMPTY_SNAPSHOT: WritingToolsSnapshot = {
   draft: null,
   focusAlternativeId: null,
   hoveredAlternativeId: null,
-  overflow: [],
-  wordCount: 0,
-  lab: { running: null, flags: [], focusedFlagId: null, trim: null }
+  overflow: []
 }
 
 /** Elements whose arrow keys are navigation, never alternative cycling. */
@@ -160,11 +128,9 @@ export class WritingToolsSession {
   private ghostRecords: WritingGhost[] = []
   private overflowRecords: WritingOverflowItem[] = []
   private draftState: DraftState | null = null
-  private flagDetails = new Map<string, LabFlag>()
-  private trimLevel: WritingTrimLevel | null = null
-  private wordCountEnabled = false
   private measureFrame: number | null = null
-  private labRequest = 0
+  /** Esc released the caret from this alternative; arrows move the caret until it leaves. */
+  private escapedAlternativeId: string | null = null
 
   constructor(
     private readonly generateAssist: GenerateWritingAssist,
@@ -193,10 +159,6 @@ export class WritingToolsSession {
     if (sameJson(merged, this.snapshot)) return
     this.snapshot = merged
     for (const listener of this.listeners) listener()
-  }
-
-  private patchLab(next: Partial<WritingToolsSnapshot['lab']>): void {
-    this.patch({ lab: { ...this.snapshot.lab, ...next } })
   }
 
   private get view(): EditorView | null {
@@ -269,9 +231,7 @@ export class WritingToolsSession {
       this.doc = null
       this.container = null
       this.draftState = null
-      this.flagDetails.clear()
-      this.trimLevel = null
-      this.labRequest++
+      this.escapedAlternativeId = null
       this.snapshot = { ...EMPTY_SNAPSHOT, mode: this.snapshot.mode }
       for (const listener of this.listeners) listener()
     }
@@ -302,24 +262,16 @@ export class WritingToolsSession {
       return record ? [record] : []
     })
 
-    const flags = pluginState.flags.flatMap((range) => {
-      const flag = this.flagDetails.get(range.id)
-      return flag ? [flag] : []
-    })
-
-    let trim: WritingTrimReview | null = null
-    if (this.trimLevel && pluginState.trims.length > 0) {
-      const ids = pluginState.trims.map((range) => range.id)
-      const focused = pluginState.focusedTrimId ? ids.indexOf(pluginState.focusedTrimId) : -1
-      trim = { level: this.trimLevel, ids, focusedIndex: Math.max(0, focused) }
-    } else if (this.trimLevel && pluginState.trims.length === 0) {
-      this.trimLevel = null
+    if (this.escapedAlternativeId) {
+      const view = this.view
+      if (!view || this.alternativeAtSelection(view) !== this.escapedAlternativeId) {
+        this.escapedAlternativeId = null
+      }
     }
 
     this.patch({
       alternatives,
-      hoveredAlternativeId: pluginState.hoveredAlternativeId,
-      lab: { ...this.snapshot.lab, flags, focusedFlagId: pluginState.focusedFlagId, trim }
+      hoveredAlternativeId: pluginState.hoveredAlternativeId
     })
     this.scheduleMeasure()
   }
@@ -338,10 +290,6 @@ export class WritingToolsSession {
     if (!view || !pluginState) return
 
     const next: Partial<WritingToolsSnapshot> = {}
-    if (this.wordCountEnabled) {
-      next.wordCount = countWordsExcluding(collectTextBlocks(view.state.doc), pluginState.ghosts)
-    }
-
     if (this.snapshot.mode === 'alternatives' && this.container) {
       const root = this.container.closest<HTMLElement>('.marquee-zone') ?? this.container
       const rootTop = root.getBoundingClientRect().top
@@ -371,21 +319,11 @@ export class WritingToolsSession {
     this.scheduleMeasure()
   }
 
-  setWordCountEnabled(enabled: boolean): void {
-    this.wordCountEnabled = enabled
-    if (enabled) this.scheduleMeasure()
-  }
-
   // -------------------------------------------------------------------------
   // Rail mode
   // -------------------------------------------------------------------------
 
   setMode(mode: WritingRailMode | null): void {
-    // Lab results are transient: closing the Lab takes its flags and cuts away.
-    if (this.snapshot.mode === 'lab' && mode !== 'lab') {
-      this.stopTrim()
-      if (this.snapshot.lab.flags.length > 0) this.clearFlags()
-    }
     this.patch({ mode })
     if (mode !== 'alternatives') this.cancelDraft()
     this.scheduleMeasure()
@@ -746,202 +684,6 @@ export class WritingToolsSession {
   }
 
   // -------------------------------------------------------------------------
-  // Lab
-  // -------------------------------------------------------------------------
-
-  private documentText(): string {
-    const view = this.view
-    if (!view) return ''
-    return collectTextBlocks(view.state.doc)
-      .map((block) => block.text.replace(/\ufffc/g, ' '))
-      .filter((text) => text.trim().length > 0)
-      .join('\n\n')
-  }
-
-  /** Resolves to the number of findings placed in the note; null for an empty note. */
-  async runCheck(check: WritingCheckKind): Promise<number | null> {
-    const markdown = this.documentText()
-    if (!markdown.trim()) return null
-    const request = ++this.labRequest
-    this.patchLab({ running: check })
-    try {
-      const result = await this.generateAssist({ kind: 'check', check, markdown })
-      const view = this.view
-      if (request !== this.labRequest || !view || result.kind !== 'check') return 0
-      const ranges = findQuoteRanges(
-        collectTextBlocks(view.state.doc),
-        result.findings.map((finding) => finding.quote)
-      )
-      this.flagDetails.clear()
-      const flags = ranges.map((range) => {
-        const finding = result.findings[range.index]
-        const flag: LabFlag = {
-          id: newId('flag'),
-          check,
-          quote: finding.quote,
-          reason: finding.reason
-        }
-        this.flagDetails.set(flag.id, flag)
-        return { id: flag.id, from: range.from, to: range.to }
-      })
-      this.dispatchMeta({ type: 'setFlags', flags: flags.sort((a, b) => a.from - b.from) })
-      return flags.length
-    } finally {
-      if (request === this.labRequest) this.patchLab({ running: null })
-    }
-  }
-
-  focusFlag(id: string): void {
-    const view = this.view
-    const range = this.pluginState?.flags.find((flag) => flag.id === id)
-    if (!view || !range) return
-    view.dispatch(
-      view.state.tr
-        .setSelection(TextSelection.create(view.state.doc, range.from, range.to))
-        .setMeta(writingToolsPluginKey, { type: 'focusFlag', id } satisfies WritingToolsMeta)
-        .scrollIntoView()
-    )
-    view.focus()
-  }
-
-  clearFlags(): void {
-    this.flagDetails.clear()
-    this.dispatchMeta({ type: 'setFlags', flags: [] })
-  }
-
-  /**
-   * Resolves to the number of cuts proposed; null for an empty note. Replaces
-   * any suggestions on screen.
-   */
-  async runTrim(level: WritingTrimLevel): Promise<number | null> {
-    const markdown = this.documentText()
-    if (!markdown.trim()) return null
-    const request = ++this.labRequest
-    this.patchLab({ running: level })
-    try {
-      const result = await this.generateAssist({ kind: 'trim', level, markdown })
-      const view = this.view
-      if (request !== this.labRequest || !view || result.kind !== 'trim') return 0
-      const trims = findQuoteRanges(
-        collectTextBlocks(view.state.doc),
-        result.cuts.map((cut) => cut.quote)
-      )
-        .map((range) => ({ id: newId('trim'), from: range.from, to: range.to }))
-        .sort((a, b) => a.from - b.from)
-      this.trimLevel = trims.length > 0 ? level : null
-      this.dispatchMeta({ type: 'setTrims', trims, focusedId: trims[0]?.id ?? null })
-      if (trims[0]) this.scrollToRange(trims[0])
-      return trims.length
-    } finally {
-      if (request === this.labRequest) this.patchLab({ running: null })
-    }
-  }
-
-  private scrollToRange(range: { from: number; to: number }): void {
-    const view = this.view
-    if (!view) return
-    try {
-      const { node } = view.domAtPos(range.from)
-      const element = node instanceof HTMLElement ? node : node.parentElement
-      element?.scrollIntoView({ block: 'center', behavior: 'auto' })
-    } catch {
-      // Nothing to scroll to.
-    }
-  }
-
-  /** A trim range widened by the one space that would otherwise be left doubled. */
-  private cutRange(view: EditorView, range: WritingRange): { from: number; to: number } {
-    const { doc } = view.state
-    const charBefore = range.from > 1 ? doc.textBetween(range.from - 1, range.from, '', '') : ''
-    const charAfter =
-      range.to < doc.content.size ? doc.textBetween(range.to, range.to + 1, '', '') : ''
-    switch (cutSpacing(charBefore, charAfter)) {
-      case 'before':
-        return { from: range.from - 1, to: range.to }
-      case 'after':
-        return { from: range.from, to: range.to + 1 }
-      default:
-        return { from: range.from, to: range.to }
-    }
-  }
-
-  private trimRanges(): WritingRange[] {
-    return this.pluginState?.trims ?? []
-  }
-
-  focusTrim(direction: 1 | -1): void {
-    const trims = this.trimRanges()
-    if (trims.length === 0) return
-    const current = trims.findIndex((range) => range.id === this.pluginState?.focusedTrimId)
-    const next = trims[(Math.max(0, current) + direction + trims.length) % trims.length]
-    this.dispatchMeta({ type: 'focusTrim', id: next.id })
-    this.scrollToRange(next)
-  }
-
-  /** Keep the focused text: drop the suggestion, move to the next one. */
-  keepTrim(): void {
-    this.settleFocusedTrim(false)
-  }
-
-  /** Cut the focused suggestion from the body, move to the next one. */
-  cutTrim(): void {
-    this.settleFocusedTrim(true)
-  }
-
-  private settleFocusedTrim(cut: boolean): void {
-    const view = this.view
-    const trims = this.trimRanges()
-    const index = trims.findIndex((range) => range.id === this.pluginState?.focusedTrimId)
-    if (!view || index === -1) return
-    const focused = trims[index]
-    const remaining = trims.filter((range) => range.id !== focused.id)
-    const nextFocus = remaining[Math.min(index, remaining.length - 1)] ?? null
-    const meta: WritingToolsMeta = {
-      type: 'setTrims',
-      trims: remaining,
-      focusedId: nextFocus?.id ?? null
-    }
-    // The meta's ranges are pre-cut positions, so the cut goes in a separate
-    // transaction that the plugin maps them through.
-    this.dispatchMeta(meta)
-    if (cut) {
-      const range = this.cutRange(view, focused)
-      view.dispatch(view.state.tr.delete(range.from, range.to))
-    }
-    if (nextFocus) {
-      const mapped = this.trimRanges().find((range) => range.id === nextFocus.id)
-      if (mapped) this.scrollToRange(mapped)
-    }
-  }
-
-  cutAllTrims(): void {
-    const view = this.view
-    const trims = this.trimRanges()
-    if (!view || trims.length === 0) return
-    const tr = view.state.tr
-    // Back to front, so earlier positions stay valid. Suggestions never
-    // overlap (quotes are matched to distinct spans), but two can share the
-    // one space between them, so each cut is clamped to the previous start.
-    let limit = view.state.doc.content.size
-    for (const trim of [...trims].sort((a, b) => b.from - a.from)) {
-      const range = this.cutRange(view, trim)
-      const to = Math.min(range.to, limit)
-      if (to > range.from) tr.delete(range.from, to)
-      limit = range.from
-    }
-    tr.setMeta(writingToolsPluginKey, { type: 'setTrims', trims: [], focusedId: null })
-    view.dispatch(tr)
-    this.trimLevel = null
-  }
-
-  stopTrim(): void {
-    this.labRequest++
-    this.trimLevel = null
-    this.patchLab({ running: null })
-    this.dispatchMeta({ type: 'setTrims', trims: [], focusedId: null })
-  }
-
-  // -------------------------------------------------------------------------
   // DOM events
   // -------------------------------------------------------------------------
 
@@ -976,34 +718,60 @@ export class WritingToolsSession {
   }
 
   /**
-   * ↑/↓ over a hovered alternative cycles it. Owned at the window, in capture,
-   * because the editor need not have focus while the pointer rests on the
-   * text. Arrow keys stay caret movement and menu navigation everywhere else:
-   * inside the editor the caret has to be in or touching the hovered range,
-   * outside it nothing may hold focus, and any open menu keeps its keys.
+   * ↑/↓ cycle an alternative whenever the caret (or selection) is in it,
+   * touching either edge included, so the arrows never leave the user stuck
+   * on it. Esc releases the caret from that alternative: arrows move the
+   * caret normally until it has left the word. With focus outside the
+   * editor, the hovered alternative is cycled instead. Owned at the window,
+   * in capture, for that case. Menus keep their own arrow keys.
    */
   private handleWindowKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    const isEscape = event.key === 'Escape'
+    if (!isEscape && event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
     const view = this.view
-    const hovered = this.pluginState?.hoveredAlternativeId
-    if (!view || !hovered) return
+    if (!view) return
     const target = event.target instanceof Element ? event.target : null
     if (target?.closest(ARROW_KEY_OWNERS)) return
     if (document.querySelector(OPEN_MENUS)) return
 
+    let id: string | null
     if (target && view.dom.contains(target)) {
-      const { selection } = view.state
-      const range = this.rangeOf('alternatives', hovered)
-      if (!selection.empty || !range) return
-      if (selection.from < range.from || selection.from > range.to) return
-    } else if (target && target !== document.body && target !== document.documentElement) {
+      id = this.alternativeAtSelection(view)
+    } else if (
+      !isEscape &&
+      (!target || target === document.body || target === document.documentElement)
+    ) {
+      id = this.pluginState?.hoveredAlternativeId ?? null
+    } else {
       return
     }
+    if (!id || id === this.escapedAlternativeId) return
 
-    if (this.cycleAlternative(hovered, event.key === 'ArrowDown' ? 1 : -1)) {
-      event.preventDefault()
-      event.stopPropagation()
+    if (isEscape) {
+      // Not consumed: Esc keeps its other jobs.
+      this.escapedAlternativeId = id
+      return
     }
+    if (!this.cycleAlternative(id, event.key === 'ArrowDown' ? 1 : -1)) return
+    event.preventDefault()
+    event.stopPropagation()
+    this.keepCaretIn(view, id)
+  }
+
+  /** The alternative holding the whole selection, edges included. */
+  private alternativeAtSelection(view: EditorView): string | null {
+    const { from, to } = view.state.selection
+    const hit = this.pluginState?.alternatives.find((range) => range.from <= from && to <= range.to)
+    return hit?.id ?? null
+  }
+
+  /** A swap can map the caret just outside the new text; pull it back to the end. */
+  private keepCaretIn(view: EditorView, id: string): void {
+    const range = this.rangeOf('alternatives', id)
+    if (!range || !view.hasFocus()) return
+    const { from, to } = view.state.selection
+    if (range.from <= from && to <= range.to) return
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, range.to)))
   }
 }

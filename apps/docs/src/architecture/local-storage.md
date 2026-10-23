@@ -268,6 +268,16 @@ unknown version reads as "no layout", and the graph falls back to a fresh arrang
 renderer writes the row when the simulation comes to rest and immediately on pin or unpin,
 through one serialized queue, so an older write never lands after a newer one.
 
+### Note Fold Cache
+
+`note_fold_chunks` in index.db caches what the agent wrote for a fold chunk (a heading and its
+paragraphs, or a slice of a long section). It is keyed by `(chunk_hash, language, model_id)`, so an
+edit elsewhere in the note never invalidates it, and another agent never reads its rows. `payload`
+is validated JSON. Nothing here syncs and the table is safe to drop: the next open writes the
+levels again. Rows older than 90 days are pruned when a vault opens. Word maps for the slide
+animation and inline Markdown for Brief are computed from the cached output on each read, so they
+need no stored copy. Users see this as [Folding Long Notes](/user-guide/notes/folding).
+
 ### Extracted Text
 
 Text read out of PDFs, images and HTML blocks lives in index.db, so every device reads its own

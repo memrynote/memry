@@ -58,6 +58,7 @@ import {
   registerOcrLanguagesHandlers,
   unregisterOcrLanguagesHandlers
 } from './ocr-languages-handlers'
+import { registerNoteFoldHandlers, unregisterNoteFoldHandlers } from './note-fold-handlers'
 import { registerOnboardingHandlers, unregisterOnboardingHandlers } from './onboarding-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import { installIpcChannelLabels } from './lib/ipc-channel-labels'
@@ -211,6 +212,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   registerVaultLockHandlers()
   registerStickyHandlers()
   registerOcrLanguagesHandlers()
+  registerNoteFoldHandlers()
   registerOnboardingHandlers()
 
   handlersRegistered = true
@@ -265,6 +267,7 @@ export function unregisterAllHandlers(): void {
   unregisterVaultLockHandlers()
   unregisterStickyHandlers()
   unregisterOcrLanguagesHandlers()
+  unregisterNoteFoldHandlers()
   unregisterOnboardingHandlers()
 
   handlersRegistered = false

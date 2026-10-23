@@ -85,6 +85,7 @@ import {
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { createSearchProjector } from '../projections/projectors/search-projector'
 import { openPdfDocument } from '../file-text/pdf-host'
+import { createNoteFoldProjector, startNoteFold, stopNoteFold } from '../note-fold'
 import { createImageEmbeddingProjector } from '../projections/projectors/image-embedding-projector'
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
 import { createVoiceEmbeddingProjector } from '../projections/projectors/voice-embedding-projector'
@@ -787,6 +788,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // so getPropertyType() finds correct types during note sync
   const propDefService = PropertyDefinitionsService.init(vaultPath)
 
+  startNoteFold()
   startProjectionRuntime([
     createNoteDerivedStateProjector(() => vaultPath),
     createSearchProjector(
@@ -801,7 +803,8 @@ async function openVault(vaultPath: string): Promise<void> {
     createVoiceEmbeddingProjector(() => vaultPath),
     createInboxStatsProjector(),
     createNoteProjectLinksProjector(),
-    createFileTextProjector(fileTextNoteChanged)
+    createFileTextProjector(fileTextNoteChanged),
+    createNoteFoldProjector()
   ])
 
   // Set the vault path before indexing so getConfig() (and the journal-config
@@ -1243,6 +1246,7 @@ async function closeOpenVault(options?: { projectionDrainTimeoutMs?: number }): 
   await stopFileTextExtraction()
   timer.mark('fileText')
 
+  stopNoteFold()
   await stopVaultAgentServices()
   timer.mark('agent')
 

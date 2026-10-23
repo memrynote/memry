@@ -77,6 +77,7 @@ function unifiedSidebar() {
             { text: 'Cover Image', link: '/user-guide/notes/cover-image' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
+            { text: 'Folding Long Notes', link: '/user-guide/notes/folding' },
             { text: 'Mind Map', link: '/user-guide/notes/mind-map' },
             { text: 'Version History', link: '/user-guide/notes/version-history' },
             { text: 'Writing Tools', link: '/user-guide/notes/writing-tools' }

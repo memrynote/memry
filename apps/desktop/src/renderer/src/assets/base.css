@@ -1550,14 +1550,22 @@
   width: 308px;
 }
 
-/* ===== Writing tools: alternatives, ghosts, Lab flags and trim cuts =====
+/* ===== Writing tools: alternatives and ghosts =====
    Decorations only (writing-tools-plugin.ts); the note text is untouched. */
 .writing-alt {
+  border-radius: 3px 3px 0 0;
+  background-color: var(--tint-lighter);
   text-decoration-line: underline;
   text-decoration-style: dashed;
-  text-decoration-color: var(--text-tertiary);
-  text-decoration-thickness: 1px;
+  text-decoration-color: var(--tint);
+  text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
+  transition: background-color 150ms ease-out;
+}
+
+/* The rail card for this alternative is hovered: light its words up. */
+.writing-alt.is-linked {
+  background-color: var(--tint-muted);
 }
 
 .writing-alt-dots {
@@ -1572,12 +1580,18 @@
 .writing-alt-dots > span {
   width: 4px;
   height: 4px;
-  border: 1px solid var(--text-tertiary);
+  border: 1px solid var(--tint);
   border-radius: 9999px;
 }
 
 .writing-alt-dots > span.is-filled {
-  background-color: var(--text-tertiary);
+  background-color: var(--tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writing-alt {
+    transition: none;
+  }
 }
 
 .writing-alt-hint-anchor {
@@ -1609,31 +1623,8 @@
   transition: opacity 150ms ease-out;
 }
 
-.writing-lab-flag {
-  text-decoration-line: underline;
-  text-decoration-style: solid;
-  text-decoration-color: var(--tint);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-
-.writing-lab-flag.is-focused {
-  background-color: var(--tint-lighter);
-}
-
-.writing-trim {
-  opacity: 0.35;
-  transition: opacity 150ms ease-out;
-}
-
-.writing-trim.is-focused {
-  opacity: 0.6;
-  background-color: var(--surface-active);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .writing-ghost,
-  .writing-trim {
+  .writing-ghost {
     transition: none;
   }
 }

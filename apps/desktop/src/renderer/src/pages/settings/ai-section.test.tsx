@@ -124,10 +124,72 @@ describe('AISettings', () => {
     render(<AISettings />)
     await waitFor(() => expect(screen.getByText('Search images by content')).toBeInTheDocument())
 
-    await userEvent.click(screen.getAllByRole('switch')[1])
+    await userEvent.click(screen.getAllByRole('switch')[2])
 
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ imageEmbeddings: false })
     expect(toast.success).toHaveBeenCalledWith('Image search disabled')
+  })
+
+  it('shows Summarize long notes only while AI is on and saves it on its own', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
+    const { unmount } = render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('Enable AI Features')).toBeInTheDocument())
+    expect(screen.queryByText('Summarize long notes')).not.toBeInTheDocument()
+    unmount()
+
+    api.settings.getAISettings = vi
+      .fn()
+      .mockResolvedValue({ enabled: true, imageEmbeddings: true, summarizeLongNotes: false })
+    render(<AISettings />)
+    const toggle = await screen.findByRole('switch', { name: 'Summarize long notes' })
+    expect(toggle).not.toBeChecked()
+
+    await userEvent.click(toggle)
+
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ summarizeLongNotes: true })
+    expect(toggle).toBeChecked()
+  })
+
+  it('offers only detected agents plus Auto in the summary agent chooser', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'auto'
+    })
+    api.noteFold.getAgentStatus = vi.fn().mockResolvedValue({
+      choice: 'auto',
+      available: [{ id: 'codex_cli', label: 'Codex' }],
+      resolved: 'Codex'
+    })
+    render(<AISettings />)
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Agent that writes summaries' })
+    )
+
+    expect(await screen.findByRole('option', { name: 'Codex' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Auto' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Claude' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: 'Codex' }))
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ summarizeAgent: 'codex_cli' })
+  })
+
+  it('says no agent was found and opens the Agents tab from the link', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'auto'
+    })
+    api.noteFold.getAgentStatus = vi
+      .fn()
+      .mockResolvedValue({ choice: 'auto', available: [], resolved: null })
+    render(<AISettings />)
+
+    expect(await screen.findByText(/No agent found/)).toBeInTheDocument()
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Open Agents' }))
+    expect(await screen.findByTestId('agent-providers-panel')).toBeInTheDocument()
   })
 
   it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {

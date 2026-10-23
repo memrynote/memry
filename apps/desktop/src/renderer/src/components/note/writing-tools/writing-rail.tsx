@@ -2,7 +2,6 @@ import { useT } from '@memry/i18n/renderer'
 import { X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { AlternativesRail } from './alternatives-rail'
-import { LabRail } from './lab-rail'
 import { OverflowRail } from './overflow-rail'
 import type {
   WritingRailMode,
@@ -14,17 +13,14 @@ interface WritingRailProps {
   mode: WritingRailMode
   session: WritingToolsSession
   snapshot: WritingToolsSnapshot
-  /** Lab needs AI; its tab is not rendered without it. */
-  aiEnabled: boolean
 }
 
 /** The note side rail in one of its writing modes (review cards are the default mode). */
-export function WritingRail({ mode, session, snapshot, aiEnabled }: WritingRailProps) {
+export function WritingRail({ mode, session, snapshot }: WritingRailProps) {
   return (
     <div className="flex flex-col gap-2">
       <WritingRailTabs
         mode={mode}
-        aiEnabled={aiEnabled}
         alternativeCount={snapshot.alternatives.length}
         overflowCount={snapshot.overflow.length}
         onSelect={(next) => session.setMode(next)}
@@ -37,7 +33,6 @@ export function WritingRail({ mode, session, snapshot, aiEnabled }: WritingRailP
 
 interface WritingRailTabsProps {
   mode: WritingRailMode
-  aiEnabled: boolean
   alternativeCount: number
   overflowCount: number
   onSelect: (mode: WritingRailMode) => void
@@ -46,7 +41,6 @@ interface WritingRailTabsProps {
 
 function WritingRailTabs({
   mode,
-  aiEnabled,
   alternativeCount,
   overflowCount,
   onSelect,
@@ -55,8 +49,7 @@ function WritingRailTabs({
   const { t } = useT('notes')
   const tabs: Array<{ mode: WritingRailMode; label: string; count?: number }> = [
     { mode: 'alternatives', label: t('writingTools.chrome.alternatives'), count: alternativeCount },
-    { mode: 'overflow', label: t('writingTools.chrome.overflow'), count: overflowCount },
-    ...(aiEnabled ? [{ mode: 'lab' as const, label: t('writingTools.chrome.lab') }] : [])
+    { mode: 'overflow', label: t('writingTools.chrome.overflow'), count: overflowCount }
   ]
   const closeLabel = t('writingTools.chrome.close')
   return (
@@ -105,13 +98,11 @@ function WritingRailTabs({
   )
 }
 
-function WritingRailBody({ mode, session, snapshot }: Omit<WritingRailProps, 'aiEnabled'>) {
+function WritingRailBody({ mode, session, snapshot }: WritingRailProps) {
   switch (mode) {
     case 'alternatives':
       return <AlternativesRail session={session} snapshot={snapshot} />
     case 'overflow':
       return <OverflowRail session={session} snapshot={snapshot} />
-    case 'lab':
-      return <LabRail session={session} snapshot={snapshot} />
   }
 }

@@ -1683,11 +1683,8 @@
     "chrome": {
       "alternatives": "Alternatives",
       "overflow": "Overflow",
-      "lab": "Lab",
       "menu": "Writing tools",
-      "close": "Close writing tools",
-      "showWordCount": "Show word count",
-      "words": "{count, plural, one {# word} other {# words}}"
+      "close": "Close writing tools"
     },
     "menu": {
       "aria": "Editor actions",
@@ -1730,35 +1727,6 @@
       "copy": "Copy",
       "copied": "Copied",
       "delete": "Delete"
-    },
-    "lab": {
-      "railAria": "Lab",
-      "check": "Check",
-      "convoluted": "Convoluted sentences",
-      "tone": "Words that don’t fit the tone",
-      "run": "Run",
-      "running": "Running…",
-      "results": "Results",
-      "noResults": "Nothing flagged.",
-      "trim": "Trim",
-      "slight": "Slight trim",
-      "tighten": "Tighten",
-      "sharper": "Even sharper",
-      "half": "Cut in half",
-      "stop": "Stop",
-      "checkFailed": "The check could not run",
-      "trimFailed": "Could not suggest cuts",
-      "noCuts": "Nothing to cut",
-      "emptyNote": "Write something first"
-    },
-    "trimReview": {
-      "aria": "Review cuts",
-      "position": "Cut {position} of {total}",
-      "previous": "Previous cut",
-      "next": "Next cut",
-      "keep": "Keep",
-      "cut": "Cut",
-      "cutAll": "Cut all"
     }
   },
   "vaultLock": {
@@ -2182,5 +2150,55 @@
   },
   "details": {
     "add": "Add details"
+  },
+  "fold": {
+    "level": {
+      "full": "Full",
+      "brief": "Brief",
+      "key": "Key",
+      "takeaway": "Takeaway",
+      "topic": "Topic"
+    },
+    "chrome": {
+      "fold": "Fold note",
+      "unfold": "Folded to {level}. Show full text",
+      "words": "{count, plural, one {# word} other {# words}}",
+      "writing": "Writing…",
+      "writtenBy": "Written by {agent}",
+      "retry": "Last run failed · Retry",
+      "retryAction": "Retry",
+      "captionOff": "Turn on Summarize long notes in Settings → AI",
+      "captionNoAgent": "No agent connected · Settings → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Long note? Skim it.",
+      "body": "Fold it to its key sentences, then open only the paragraph you need.",
+      "dismiss": "Got it"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# paragraph open} other {# paragraphs open}}",
+      "escape": "esc",
+      "copy": "Copy as text",
+      "copied": "Copied",
+      "aria": "Folded view"
+    },
+    "view": {
+      "aria": "Folded {level} view",
+      "paragraphOpen": "Opened to Full · click again to fold",
+      "paragraphFold": "Fold this paragraph",
+      "paragraphOpenAction": "Open this paragraph in full",
+      "unfoldSection": "Unfold the section {heading}",
+      "jumpToParagraph": "Show this paragraph in full: {topic}",
+      "untitledSection": "Untitled",
+      "skipped": {
+        "code": "… {count, plural, one {# code block} other {# code blocks}}",
+        "table": "… {count, plural, one {# table} other {# tables}}",
+        "image": "… {count, plural, one {# image} other {# images}}",
+        "callout": "… {count, plural, one {# callout} other {# callouts}}",
+        "embed": "… {count, plural, one {# embed} other {# embeds}}",
+        "other": "… {count, plural, one {# more block} other {# more blocks}}"
+      }
+    }
   }
 }

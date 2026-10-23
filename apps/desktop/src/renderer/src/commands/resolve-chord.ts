@@ -23,6 +23,8 @@ export interface KeydownEnv {
   focusOwnsLocalCommandMenu: boolean
   /** The user's rebinds by command id. */
   overrides: Readonly<Record<string, ShortcutBinding>>
+  /** The user's per-folder "new note" chords. */
+  folderShortcuts: readonly FolderNoteShortcut[]
   isAvailable: (id: CommandId) => boolean
 }
 
@@ -64,7 +66,9 @@ function allowedInInput(policy: InInputPolicy, chord: ShortcutBinding, e: Keyboa
  * Which command, if any, does this keydown mean? Pure: no DOM, no store.
  *
  * Order: commands the user rebound come before the rest (a stale collision
- * resolves in the user's favor), then table order. A chord that matches but
+ * resolves in the user's favor), then table order. A fold command's default
+ * chord yields to a folder shortcut the user bound to the same keys: the
+ * app's own default never takes a chord from the user's data. A chord that matches but
  * fails a policy or has no available owner is skipped, so the key passes
  * through to whatever else listens. The winner is picked across every command,
  * whatever its phase, and is returned only to its own phase's listener: a
@@ -78,6 +82,7 @@ export function resolveChord(e: KeyboardEvent, env: KeydownEnv, phase: KeyPhase)
 
   for (const { id, spec } of [...rebound, ...rest]) {
     const override = env.overrides[id]
+    const yieldsToFolder = override === undefined && COMMAND_META[id].owner === 'fold'
     const chords: { chord: ShortcutBinding; inInput: InInputPolicy; primary: boolean }[] = [
       {
         chord: override ?? resolvePlatformBinding(spec.default, env.isMac),
@@ -96,6 +101,7 @@ export function resolveChord(e: KeyboardEvent, env: KeydownEnv, phase: KeyPhase)
 
     for (const { chord, inInput, primary } of chords) {
       if (!matchesChord(e, chord, env.isMac)) continue
+      if (yieldsToFolder && resolveFolderChord(e, env, env.folderShortcuts) !== null) continue
       if (spec.skipAltGraph && e.getModifierState('AltGraph')) continue
       if (spec.richText === 'yield' && env.isRichTextFocused) continue
       // Only the primary chord belongs to the local menu; aliases still reach the app.
@@ -112,8 +118,8 @@ export function resolveChord(e: KeyboardEvent, env: KeydownEnv, phase: KeyPhase)
 /**
  * Which folder's "new note" shortcut, if any, does this keydown mean? The user
  * adds these chords at runtime, so they are data rather than commands. Callers ask
- * only after `resolveChord` found no command: a command always wins a shared
- * chord. A chord without ⌘/Ctrl stays out of fields, where it would eat typing.
+ * only after `resolveChord` found no command: a command wins a shared
+ * chord, except a fold command on its default chord, which yields. A chord without ⌘/Ctrl stays out of fields, where it would eat typing.
  */
 export function resolveFolderChord(
   e: KeyboardEvent,

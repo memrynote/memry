@@ -1,8 +1,7 @@
 /**
  * ProseMirror glue for the writing tools: resolves the Y.RelativePosition
- * anchors of alternatives and ghosts to document ranges, keeps the transient
- * Lab ranges (style flags, trim cuts) mapped through edits, and paints all of
- * them as decorations. Nothing here changes the document; mirrors
+ * anchors of alternatives and ghosts to document ranges and paints them as
+ * decorations. Nothing here changes the document; mirrors
  * `critic-markup-decorations.ts` / `date-mention-ghost-plugin.ts`.
  *
  * Anchored ranges are resolved from the Y.Doc only when the binding is known
@@ -56,20 +55,10 @@ export interface AlternativeDisplay {
 export interface WritingToolsPluginState {
   alternatives: WritingRange[]
   ghosts: WritingRange[]
-  flags: WritingRange[]
-  trims: WritingRange[]
   hoveredAlternativeId: string | null
-  focusedFlagId: string | null
-  focusedTrimId: string | null
 }
 
-export type WritingToolsMeta =
-  | { type: 'refresh' }
-  | { type: 'hover'; id: string | null }
-  | { type: 'setFlags'; flags: WritingRange[] }
-  | { type: 'focusFlag'; id: string | null }
-  | { type: 'setTrims'; trims: WritingRange[]; focusedId: string | null }
-  | { type: 'focusTrim'; id: string | null }
+export type WritingToolsMeta = { type: 'refresh' } | { type: 'hover'; id: string | null }
 
 export interface WritingToolsPluginOptions {
   getAlternatives: () => AnchoredRecord[]
@@ -330,11 +319,7 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
     state: {
       init: (_config, state) => ({
         ...resolveAnchored(state),
-        flags: [],
-        trims: [],
-        hoveredAlternativeId: null,
-        focusedFlagId: null,
-        focusedTrimId: null
+        hoveredAlternativeId: null
       }),
       apply(tr, previous, _oldState, newState) {
         const meta = tr.getMeta(writingToolsPluginKey) as WritingToolsMeta | undefined
@@ -349,23 +334,10 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
                 alternatives: mapRanges(previous.alternatives, tr),
                 ghosts: mapRanges(previous.ghosts, tr)
               }
-        next = { ...next, flags: mapRanges(next.flags, tr), trims: mapRanges(next.trims, tr) }
 
         switch (meta?.type) {
           case 'hover':
             next = { ...next, hoveredAlternativeId: meta.id }
-            break
-          case 'setFlags':
-            next = { ...next, flags: meta.flags, focusedFlagId: null }
-            break
-          case 'focusFlag':
-            next = { ...next, focusedFlagId: meta.id }
-            break
-          case 'setTrims':
-            next = { ...next, trims: meta.trims, focusedTrimId: meta.focusedId }
-            break
-          case 'focusTrim':
-            next = { ...next, focusedTrimId: meta.id }
             break
         }
         return next
@@ -396,7 +368,10 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
           if (!display) continue
           decorations.push(
             Decoration.inline(alternative.from, alternative.to, {
-              class: 'writing-alt',
+              class:
+                pluginState.hoveredAlternativeId === alternative.id
+                  ? 'writing-alt is-linked'
+                  : 'writing-alt',
               'data-writing-alt-id': alternative.id
             }),
             Decoration.widget(
@@ -419,28 +394,6 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
               })
             )
           }
-        }
-
-        for (const flag of pluginState.flags) {
-          decorations.push(
-            Decoration.inline(flag.from, flag.to, {
-              class:
-                flag.id === pluginState.focusedFlagId
-                  ? 'writing-lab-flag is-focused'
-                  : 'writing-lab-flag',
-              'data-writing-flag-id': flag.id
-            })
-          )
-        }
-
-        for (const trim of pluginState.trims) {
-          decorations.push(
-            Decoration.inline(trim.from, trim.to, {
-              class:
-                trim.id === pluginState.focusedTrimId ? 'writing-trim is-focused' : 'writing-trim',
-              'data-writing-trim-id': trim.id
-            })
-          )
         }
 
         return DecorationSet.create(state.doc, decorations)

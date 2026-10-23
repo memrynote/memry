@@ -1,6 +1,5 @@
 export { EditorContextMenu, editorContextMenuEntries, findWordAt } from './editor-context-menu'
 export type { EditorMenuAction, EditorMenuContext, EditorMenuEntry } from './editor-context-menu'
-export { TrimReviewBar } from './trim-review-bar'
 export { useWritingTools } from './use-writing-tools'
 export { WritingChrome } from './writing-chrome'
 export { WritingRail } from './writing-rail'

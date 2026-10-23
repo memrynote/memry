@@ -206,7 +206,7 @@ export interface ContentAreaProps {
     onReplaceMarksFromYjs?: (marks: import('@memry/shared').CriticMarkupMark[]) => void
   }
   /**
-   * The note page's writing tools (alternatives, ghosts, overflow, Lab). When
+   * The note page's writing tools (alternatives, ghosts, overflow). When
    * set, the editor attaches to the session and right-clicking text opens the
    * editor's own context menu instead of the native one.
    */
