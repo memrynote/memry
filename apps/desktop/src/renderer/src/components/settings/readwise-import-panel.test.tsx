@@ -97,7 +97,11 @@ describe('ReadwiseImportPanel', () => {
   })
 
   it('names the pulling device and takes over with the token pasted again (D8)', async () => {
-    status.mockResolvedValue({ ...disconnectedStatus, thisDevicePulls: false, pullingDeviceName: 'Desk Mac' })
+    status.mockResolvedValue({
+      ...disconnectedStatus,
+      thisDevicePulls: false,
+      pullingDeviceName: 'Desk Mac'
+    })
     renderPanel()
 
     expect(await screen.findByText('Readwise syncs on Desk Mac.')).toBeInTheDocument()
@@ -113,7 +117,11 @@ describe('ReadwiseImportPanel', () => {
   })
 
   it('shows why a takeover failed and keeps the form', async () => {
-    status.mockResolvedValue({ ...disconnectedStatus, thisDevicePulls: false, pullingDeviceName: null })
+    status.mockResolvedValue({
+      ...disconnectedStatus,
+      thisDevicePulls: false,
+      pullingDeviceName: null
+    })
     takeOver.mockResolvedValue({ success: false, error: 'Turn on sync to move Readwise.' })
     renderPanel()
 

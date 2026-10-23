@@ -1,4 +1,10 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  markSyncEligible,
+  markSyncIneligible,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
+import { insertThisDevice } from '@tests/utils/sync-device'
 import sodium from 'libsodium-wrappers-sumo'
 import { mockApp, mockElectron } from '@tests/utils/mock-electron'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -43,12 +49,14 @@ describe('readwise import IPC handlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    markSyncIneligible()
     result = createTestDataDb()
     currentDb = asClientDb(result.db)
     secrets.clear()
     registerReadwiseImportHandlers()
   })
   afterEach(() => {
+    resetSyncDecision()
     unregisterReadwiseImportHandlers()
     vi.unstubAllGlobals()
     currentDb = null
@@ -180,11 +188,15 @@ describe('readwise import IPC handlers', () => {
       pullingDeviceName: null
     })
     setSetting(currentDb!, 'readwise', JSON.stringify({ syncDeviceId: 'other-device' }))
+    insertThisDevice(currentDb!)
+    markSyncEligible()
     expect(await status({}, undefined)).toMatchObject({ thisDevicePulls: false })
   })
 
   it('refuses the four book commands over IPC on a device that does not pull', async () => {
     setSetting(currentDb!, 'readwise', JSON.stringify({ syncDeviceId: 'other-device' }))
+    insertThisDevice(currentDb!)
+    markSyncEligible()
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     const calls: Array<[string, unknown]> = [
@@ -196,7 +208,7 @@ describe('readwise import IPC handlers', () => {
     for (const [channel, input] of calls) {
       const res = await handlerFor(channel)({}, input)
       expect(res).toMatchObject({ success: false })
-      expect(String(res.error)).toMatch(/syncs on another device/)
+      expect(String(res.error)).toMatch(/Readwise syncs on another device/)
     }
     expect(fetchMock).not.toHaveBeenCalled()
   })

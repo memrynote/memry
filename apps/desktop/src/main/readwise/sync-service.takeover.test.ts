@@ -457,7 +457,8 @@ describe('one pulling device', () => {
       state.setCursor(db(), '2026-10-01T00:00:00.000Z')
       expect(await connection.getReadwiseStatus()).toMatchObject({
         connected: false,
-        thisDevicePulls: false, pullingDeviceName: 'Desk Mac'
+        thisDevicePulls: false,
+        pullingDeviceName: 'Desk Mac'
       })
 
       const status = await connection.takeOverReadwise(TOKEN)

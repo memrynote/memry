@@ -6,6 +6,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import sodium from 'libsodium-wrappers-sumo'
 import { ReadwiseStub } from '@tests/utils/readwise-stub'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -32,7 +33,6 @@ import { setReadwiseToken } from './secrets'
 import { clearCursor, getCursor, getLastRun, setCursor } from './sync-state'
 import {
   BACKOFF_BASE_MS,
-  canPull,
   getReadwiseScheduler,
   READWISE_TICK_ID,
   startReadwiseScheduler,
@@ -74,6 +74,7 @@ describe('ReadwiseScheduler', () => {
   const setCadence = (cadence: string) => setSetting(db(), 'readwise', JSON.stringify({ cadence }))
 
   beforeEach(async () => {
+    markSyncIneligible()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-22T10:00:00Z'))
     result = createTestDataDb()
@@ -91,6 +92,7 @@ describe('ReadwiseScheduler', () => {
   })
 
   afterEach(() => {
+    resetSyncDecision()
     scheduler.stop()
     vi.useRealTimers()
     vi.unstubAllGlobals()
@@ -279,10 +281,6 @@ describe('ReadwiseScheduler', () => {
     vi.spyOn(service, 'isRunning', 'get').mockReturnValue(true)
     await expect(scheduler.syncNow()).rejects.toBeInstanceOf(ReadwiseRunInProgressError)
     expect(runs()).toBe(0)
-  })
-
-  it('until #1417 claims devices, the token holder pulls', () => {
-    expect(canPull()).toBe(true)
   })
 
   it('the process scheduler starts on the shared tick, runs at launch, and stops', async () => {
