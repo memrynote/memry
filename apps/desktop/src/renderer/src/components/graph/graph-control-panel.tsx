@@ -96,6 +96,8 @@ const KEY_TO_ENTITY: Record<string, 'note' | 'task' | 'journal' | 'project' | 't
   showTags: 'tag'
 }
 
+const EMPTY_COLLAPSED_IDS: readonly string[] = []
+
 export function GraphControlPanel({
   filterState,
   dispatch,
@@ -108,7 +110,7 @@ export function GraphControlPanel({
   colorBy = 'type',
   onColorByChange,
   categories,
-  collapsedCategoryIds = [],
+  collapsedCategoryIds = EMPTY_COLLAPSED_IDS,
   onToggleCategory
 }: GraphControlPanelProps): React.JSX.Element {
   const { t } = useT('graph')

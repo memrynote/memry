@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout/legacy'
 import 'react-grid-layout/css/styles.css'
 import './home-grid.css'
@@ -63,17 +63,14 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
   // changes and the controlled `layout` prop is swapped under react-grid-layout while the pointer
   // is still down, which snaps the widget back and discards the drag. Hold the pre-interaction
   // layout until the pointer lifts; the next render picks up whatever arrived in the meantime.
-  const interacting = useRef(false)
-  const frozenLayout = useRef<Layout | null>(null)
-  const effectiveLayout = interacting.current ? (frozenLayout.current ?? layout) : layout
+  const [frozenLayout, setFrozenLayout] = useState<Layout | null>(null)
+  const effectiveLayout = frozenLayout ?? layout
 
   const beginInteraction = (): void => {
-    interacting.current = true
-    frozenLayout.current = layout
+    setFrozenLayout(layout)
   }
   const endInteraction = (): void => {
-    interacting.current = false
-    frozenLayout.current = null
+    setFrozenLayout(null)
   }
 
   // The grid has one column count at every width, so what RGL reports here IS the board's
