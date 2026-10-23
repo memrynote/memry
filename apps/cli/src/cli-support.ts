@@ -16,6 +16,8 @@ export interface CliVaultRegistry {
   listVaults(): Promise<CliKnownVault[]> | CliKnownVault[]
   getDefaultVaultPath(): Promise<string | null> | string | null
   setDefaultVaultPath(reference: string): Promise<CliKnownVault> | CliKnownVault
+  /** Unregisters a vault from the known list. Never touches its files. */
+  removeVault?(reference: string): Promise<CliKnownVault> | CliKnownVault
 }
 
 export interface CliRuntimeDeps {

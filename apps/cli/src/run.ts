@@ -27,6 +27,11 @@ import {
   runTemplates
 } from './cli-commands-library.ts'
 import { runAgent, runCalendar, runGraph, runSearch, runSync } from './cli-commands-misc.ts'
+import { runCanvas } from './commands/canvas.ts'
+import { runHomePages } from './commands/home-pages.ts'
+import { runIcons } from './commands/icons.ts'
+import { runImport } from './commands/import.ts'
+import { runReadwise } from './commands/readwise.ts'
 
 export type { CliIo, CliKnownVault, CliRuntimeDeps, CliVaultRegistry } from './cli-support.ts'
 
@@ -74,9 +79,19 @@ async function route(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void>
       return runGraph(app, parsed, io)
     case 'search':
       return runSearch(app, parsed, io)
+    case 'canvas':
+      return runCanvas(app, parsed, io)
+    case 'home-pages':
+      return runHomePages(app, parsed, io)
+    case 'icons':
+      return runIcons(app, parsed, io)
+    case 'import':
+      return runImport(app, parsed, io)
+    case 'readwise':
+      return runReadwise(app, parsed, io)
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search>'
+        'Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search|canvas|home-pages|icons|import|readwise>'
       )
   }
 }

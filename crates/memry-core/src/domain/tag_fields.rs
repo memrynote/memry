@@ -1,7 +1,7 @@
 //! A note's tag fields (§13.7.7.1): the properties its tags' schemas list,
 //! grouped per tag, with the value the note holds for each.
 //!
-//! Twin of desktop's `resolveTagSchemas` (`apps/desktop/src/main/tags/tag-schema.ts`)
+//! Twin of desktop's `resolveTagSchemas` (`packages/app-core/src/tag-schema.ts`)
 //! and `buildFieldGroups` (`renderer/src/features/tag-fields/build-field-groups.ts`).
 //! A field carries no type: the vault-wide property definition owns it, and a
 //! field with none reads as `text`. A field's value is an ordinary note

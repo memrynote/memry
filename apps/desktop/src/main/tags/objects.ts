@@ -28,7 +28,7 @@ import {
   type NoteSummaryRow
 } from '@main/database/queries/tag-objects'
 import type { DataDb, IndexDb } from '../database/types'
-import { descendantsOf } from './tag-schema'
+import { descendantsOf } from '@memry/app-core/tag-schema'
 import { tagKey } from '@memry/shared/tag-fold'
 
 export type ResolvedTags = ReadonlyMap<string, ResolvedTag>

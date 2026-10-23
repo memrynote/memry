@@ -8,8 +8,12 @@ import {
   taskTags
 } from '@memry/db-schema/data-schema'
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
+import { plainVersionedMap, stampVersionedMapPatch, type JsonValue } from '@memry/shared/versioned'
 import { createId } from './ids.ts'
+import { deleteTaskBranches, type DeleteTaskOptions } from './task-delete.ts'
 import type { TaskRecord, ProjectRecord, StatusRecord, TasksService } from './tasks-types.ts'
+
+export type { DeleteTaskOptions } from './task-delete.ts'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -108,8 +112,15 @@ function toTask(db: DataDb, row: typeof tasks.$inferSelect): TaskRecord {
     modifiedAt: row.modifiedAt,
     tags: getTags(db, row.id),
     linkedNoteIds: getLinkedNoteIds(db, row.id),
-    linkedCanvasIds: getLinkedCanvasIds(db, row.id)
+    linkedCanvasIds: getLinkedCanvasIds(db, row.id),
+    fields: plainVersionedMap(row.fields)
   }
+}
+
+function clockTotal(clock: Readonly<Record<string, number>> | null | undefined): number {
+  let total = 0
+  for (const tick of Object.values(clock ?? {})) total += tick
+  return total
 }
 
 function toProject(row: typeof projects.$inferSelect): ProjectRecord {
@@ -138,6 +149,11 @@ function toStatus(row: typeof statuses.$inferSelect): StatusRecord {
     isDone: row.isDone,
     createdAt: row.createdAt
   }
+}
+
+function createFields(fields: Record<string, JsonValue> | undefined) {
+  const stamped = fields ? stampVersionedMapPatch(undefined, fields, 0) : {}
+  return Object.keys(stamped).length > 0 ? stamped : null
 }
 
 function nextTaskPosition(db: DataDb, projectId: string): number {
@@ -175,12 +191,14 @@ export function createTasksService(dataDb: DataDb): TasksService {
           position: nextTaskPosition(dataDb, projectId),
           dueDate: input.dueDate ?? null,
           dueTime: input.dueTime ?? null,
+          durationMinutes: input.durationMinutes ?? null,
           startDate: input.startDate ?? null,
           repeatConfig: input.repeatConfig ?? null,
           repeatFrom: input.repeatFrom ?? null,
           sourceNoteId: input.sourceNoteId ?? null,
           completedAt: null,
           archivedAt: null,
+          fields: createFields(input.fields),
           createdAt: time,
           modifiedAt: time
         })
@@ -260,6 +278,9 @@ export function createTasksService(dataDb: DataDb): TasksService {
 
     async update(id, updates) {
       const time = nowIso()
+      const existing = updates.fields
+        ? dataDb.select().from(tasks).where(eq(tasks.id, id)).get()
+        : undefined
       const task = dataDb
         .update(tasks)
         .set({
@@ -271,6 +292,18 @@ export function createTasksService(dataDb: DataDb): TasksService {
           ...(updates.dueDate !== undefined ? { dueDate: updates.dueDate } : {}),
           ...(updates.dueTime !== undefined ? { dueTime: updates.dueTime } : {}),
           ...(updates.dueTime === null ? { durationMinutes: null } : {}),
+          ...(updates.durationMinutes !== undefined
+            ? { durationMinutes: updates.durationMinutes }
+            : {}),
+          ...(updates.fields && existing
+            ? {
+                fields: stampVersionedMapPatch(
+                  existing.fields,
+                  updates.fields,
+                  clockTotal(existing.clock)
+                )
+              }
+            : {}),
           ...(updates.startDate !== undefined ? { startDate: updates.startDate } : {}),
           ...(updates.repeatConfig !== undefined ? { repeatConfig: updates.repeatConfig } : {}),
           ...(updates.repeatFrom !== undefined ? { repeatFrom: updates.repeatFrom } : {}),
@@ -516,11 +549,8 @@ export function createTasksService(dataDb: DataDb): TasksService {
       return existingIds.length
     },
 
-    async bulkDelete(ids) {
-      const existingIds = existingTaskIds(dataDb, ids)
-      if (existingIds.length === 0) return 0
-      dataDb.delete(tasks).where(inArray(tasks.id, existingIds)).run()
-      return existingIds.length
+    async bulkDelete(ids, options) {
+      return deleteTaskBranches(dataDb, ids, options)
     },
 
     async reorder(ids, positions) {
@@ -536,8 +566,8 @@ export function createTasksService(dataDb: DataDb): TasksService {
       return true
     },
 
-    async delete(id) {
-      dataDb.delete(tasks).where(eq(tasks.id, id)).run()
+    async delete(id, options) {
+      deleteTaskBranches(dataDb, [id], options)
       return true
     },
 

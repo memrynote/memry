@@ -1,4 +1,8 @@
 import type { MemryApp } from './app-core/memry-app.ts'
+import { runInboxExtras } from './commands/inbox.ts'
+import { runProjectLinks, runTaskActivity } from './commands/project-links.ts'
+import { runTagFields } from './commands/tag-fields.ts'
+import { parseDurationFlag, parseFieldFlags } from './commands/task-fields.ts'
 import {
   type CliIo,
   type ParsedCli,
@@ -16,6 +20,7 @@ import {
 } from './cli-support.ts'
 
 export async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runTaskActivity(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'create':
       print(
@@ -37,7 +42,10 @@ export async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
           sourceNoteId: parseNullableFlag(parsed.flags, 'source-note'),
           priority: parseNumber(getFlag(parsed.flags, 'priority'), 0),
           tags: getFlagList(parsed.flags, 'tag'),
-          linkedNoteIds: getFlagList(parsed.flags, 'link-note')
+          linkedNoteIds: getFlagList(parsed.flags, 'link-note'),
+          linkedCanvasIds: getFlagList(parsed.flags, 'link-canvas'),
+          durationMinutes: parseDurationFlag(parsed.flags),
+          fields: parseFieldFlags(parsed.flags)
         })
       )
       return
@@ -93,7 +101,12 @@ export async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
           tags: parsed.flags.has('tag') ? getFlagList(parsed.flags, 'tag') : undefined,
           linkedNoteIds: parsed.flags.has('link-note')
             ? getFlagList(parsed.flags, 'link-note')
-            : undefined
+            : undefined,
+          linkedCanvasIds: parsed.flags.has('link-canvas')
+            ? getFlagList(parsed.flags, 'link-canvas')
+            : undefined,
+          durationMinutes: parseDurationFlag(parsed.flags),
+          fields: parseFieldFlags(parsed.flags)
         })
       )
       return
@@ -197,7 +210,11 @@ export async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
     }
     case 'bulk-delete':
       if (!hasFlag(parsed.flags, 'yes')) throw new Error('Pass --yes to delete tasks')
-      print(io, parsed.json, { count: await app.tasks.bulkDelete(parsed.positionals) })
+      print(io, parsed.json, {
+        count: await app.tasks.bulkDelete(parsed.positionals, {
+          keepSubtasks: hasFlag(parsed.flags, 'keep-subtasks')
+        })
+      })
       return
     case 'reorder':
       print(io, parsed.json, {
@@ -207,17 +224,20 @@ export async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
     case 'delete':
       if (!hasFlag(parsed.flags, 'yes')) throw new Error('Pass --yes to delete a task')
       print(io, parsed.json, {
-        success: await app.tasks.delete(requireFirst(parsed.positionals, 'task id'))
+        success: await app.tasks.delete(requireFirst(parsed.positionals, 'task id'), {
+          keepSubtasks: hasFlag(parsed.flags, 'keep-subtasks')
+        })
       })
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] tasks create|list|get|update|done|reopen|archive|unarchive|move|get-subtasks|get-linked-tasks|today|upcoming|overdue|stats|tags|convert-to-subtask|convert-to-task|duplicate|bulk-done|bulk-archive|bulk-move|bulk-delete|reorder|delete'
+        'Usage: memrynote [--vault <path>] tasks create|list|get|update|done|reopen|archive|unarchive|move|get-subtasks|get-linked-tasks|today|upcoming|overdue|stats|tags|convert-to-subtask|convert-to-task|duplicate|bulk-done|bulk-archive|bulk-move|bulk-delete|reorder|delete|activity'
       )
   }
 }
 
 export async function runProjects(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runProjectLinks(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'list':
       print(io, parsed.json, await app.tasks.projects.list())
@@ -332,7 +352,7 @@ export async function runProjects(app: MemryApp, parsed: ParsedCli, io: CliIo): 
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] projects list|get|create|update|archive|unarchive|delete|reorder|statuses|status-create|status-update|status-delete|status-reorder'
+        'Usage: memrynote [--vault <path>] projects list|get|create|update|archive|unarchive|delete|reorder|statuses|status-create|status-update|status-delete|status-reorder|link|unlink|links|for-item|pin|unpin|contents|set-home-note|capture-url|import-files'
       )
   }
 }
@@ -551,8 +571,9 @@ export async function runInbox(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
       })
       return
     default:
+      if (await runInboxExtras(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] inbox capture|capture-link|capture-file|get|list|tags|stats|patterns|archived|filing-history|stale-threshold|set-stale-threshold|update|add-tag|remove-tag|mark-viewed|convert-note|convert-task|link-note|snooze|unsnooze|snoozed|bulk-tag|bulk-snooze|bulk-archive|archive|unarchive|delete'
+        'Usage: memrynote [--vault <path>] inbox capture|capture-link|capture-file|get|list|tags|stats|patterns|archived|filing-history|stale-threshold|set-stale-threshold|update|add-tag|remove-tag|mark-viewed|convert-note|convert-task|link-note|snooze|unsnooze|snoozed|bulk-tag|bulk-snooze|bulk-archive|archive|unarchive|delete|file|bulk-file|file-all-stale|convert-event|convert-reminder|suggestions|undo|capture-image|capture-pdf|capture-voice|jobs|retry'
       )
   }
 }
@@ -631,9 +652,14 @@ export async function runJournal(app: MemryApp, parsed: ParsedCli, io: CliIo): P
     case 'streak':
       print(io, parsed.json, await app.journal.streak())
       return
+    case 'properties': {
+      const from = requireFirst(parsed.positionals, 'from date (YYYY-MM-DD)')
+      print(io, parsed.json, await app.journal.properties(from, parsed.positionals[1] ?? from))
+      return
+    }
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] journal get|write|append|delete|month|heatmap|stats|context|tags|streak'
+        'Usage: memrynote [--vault <path>] journal get|write|append|delete|month|heatmap|stats|context|tags|streak|properties'
       )
   }
 }
@@ -694,8 +720,9 @@ export async function runTags(app: MemryApp, parsed: ParsedCli, io: CliIo): Prom
       })
       return
     default:
+      if (await runTagFields(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] tags list|notes|color|rename|remove-from-note|merge|delete'
+        'Usage: memrynote [--vault <path>] tags list|notes|color|rename|remove-from-note|merge|delete|schema|impact|objects|linked-here|categories|set-icon|pin|unpin|reorder|fill-status|fill-fields'
       )
   }
 }

@@ -4,7 +4,7 @@ import { PropertyDefinitionsFileSchema } from '@memry/contracts/property-types'
 import { parseRelationValue } from '@memry/contracts/relation-uri'
 import { plainVersionedMap } from '@memry/shared/versioned'
 
-import { parseSchemaColumn, resolveTagSchemas } from '../../src/main/tags/tag-schema'
+import { parseSchemaColumn, resolveTagSchemas } from '@memry/app-core/tag-schema'
 import { JOURNAL_NOTES } from './journal'
 import {
   OBJECT_NOTE_FILES,

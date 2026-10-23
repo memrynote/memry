@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { NotesService } from '@memry/app-core/service-types'
-import type { TaskRecord, TasksService } from '@memry/app-core/tasks-types'
+import type { DeleteTaskOptions, TaskRecord, TasksService } from '@memry/app-core/tasks'
 import { parseStatusCategories } from '@memry/contracts/property-types'
 import { statuses, tasks } from '@memry/db-schema/data-schema'
 import { getPropertyDefinition } from '@memry/storage-data'
@@ -108,6 +108,8 @@ export function withHeaderStatusSync(
     duplicate: after((id) => tasksService.duplicate(id)),
     bulkComplete: afterIds((ids) => tasksService.bulkComplete(ids)),
     bulkMove: afterIds((ids, projectId) => tasksService.bulkMove(ids, projectId)),
-    bulkDelete: afterIds((ids) => tasksService.bulkDelete(ids))
+    bulkDelete: afterIds((ids: string[], options?: DeleteTaskOptions) =>
+      tasksService.bulkDelete(ids, options)
+    )
   }
 }

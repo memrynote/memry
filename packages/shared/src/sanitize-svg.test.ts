@@ -1,7 +1,7 @@
 /**
  * SVG sanitizer for stored custom icons.
  *
- * @module icons/sanitize-svg.test
+ * @module shared/sanitize-svg.test
  */
 
 import { describe, it, expect } from 'vitest'

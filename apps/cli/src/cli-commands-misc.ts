@@ -1,4 +1,8 @@
 import type { MemryApp } from './app-core/memry-app.ts'
+import { runAgentExtras } from './commands/agent.ts'
+import { runCalendarExtras } from './commands/calendar.ts'
+import { parseSearchOptions } from './commands/search.ts'
+import { runSyncExtras } from './commands/sync.ts'
 import {
   type AgentBackend,
   type AgentLocalProviderSettingsInput,
@@ -18,6 +22,8 @@ import {
 } from './cli-support.ts'
 
 export async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runCalendarExtras(app, parsed, io)) return
+
   if (parsed.subcommand === 'sources') {
     print(
       io,
@@ -155,7 +161,7 @@ export async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): 
 
   if (parsed.subcommand !== 'events') {
     throw new Error(
-      'Usage: memrynote [--vault <path>] calendar events create|get|list|update|delete OR calendar sources|select-source|provider-status|google-settings|set-default-google-calendar|range|external|bindings'
+      'Usage: memrynote [--vault <path>] calendar events create|get|list|update|delete OR calendar sources|select-source|provider-status|google-settings|set-default-google-calendar|range|external|bindings|linked-notes|providers|provider-calendars|refresh|set-default-calendar|ics|retry-sync|writer-compat (events also: search)'
     )
   }
 
@@ -274,8 +280,9 @@ export async function runSync(app: MemryApp, parsed: ParsedCli, io: CliIo): Prom
       )
       return
     default:
+      if (await runSyncExtras(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] sync status|queue-size|history|devices|storage|quarantine|check-device|pause|resume|settings|update-setting'
+        'Usage: memrynote [--vault <path>] sync status|queue-size|history|devices|storage|quarantine|check-device|pause|resume|settings|update-setting|trigger|note-state|large-notes|unsent-notes|binding|progress|rename-device|remove-device'
       )
   }
 }
@@ -325,8 +332,9 @@ export async function runAgent(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
       return
     }
     default:
+      if (await runAgentExtras(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] agent backends|models|local-settings|set-local-settings'
+        'Usage: memrynote [--vault <path>] agent backends|models|local-settings|set-local-settings|conversations|conversation|preferences|set-preferences|local-models|test-local|mcp-status|mcp'
       )
   }
 }
@@ -389,7 +397,8 @@ export async function runSearch(app: MemryApp, parsed: ParsedCli, io: CliIo): Pr
         await app.search(
           [parsed.subcommand, ...parsed.positionals]
             .filter((part): part is string => !!part)
-            .join(' ')
+            .join(' '),
+          parseSearchOptions(parsed)
         )
       )
   }

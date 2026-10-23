@@ -16,7 +16,7 @@
  * Returns `null` when nothing usable survives, which callers treat as an
  * unreadable image.
  *
- * @module icons/sanitize-svg
+ * @module shared/sanitize-svg
  */
 
 /** Elements dropped together with everything inside them. */

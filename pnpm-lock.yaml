@@ -119,6 +119,9 @@ importers:
       '@memry/editor-schema':
         specifier: workspace:*
         version: link:../../packages/editor-schema
+      '@memry/importers':
+        specifier: workspace:*
+        version: link:../../packages/importers
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared

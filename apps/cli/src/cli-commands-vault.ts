@@ -1,4 +1,6 @@
 import type { MemryApp } from './app-core/memry-app.ts'
+import { runVaultAdmin } from './commands/vault-admin.ts'
+import { runFolderTools, runNoteTools, runPropertyTools } from './commands/note-tools.ts'
 import {
   type CliIo,
   type CliVaultRegistry,
@@ -40,9 +42,14 @@ export async function runVault(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
         )
       )
       return
+    case 'reindex':
+    case 'set-icon':
+    case 'activity':
+    case 'locks':
+      return runVaultAdmin(app, parsed, io)
     default:
       throw new Error(
-        'Usage: memrynote vault list|current|use OR memrynote [--vault <path>] vault init|status|config|update-config'
+        'Usage: memrynote vault list|current|use|remove OR memrynote [--vault <path>] vault init|status|config|update-config|reindex|set-icon|activity|locks'
       )
   }
 }
@@ -69,12 +76,26 @@ export async function runVaultRegistryCommand(
       print(io, parsed.json, vault)
       return true
     }
+    case 'remove': {
+      const reference = parsed.positionals[0]
+      if (!reference) throw new Error('Usage: memrynote vault remove <vault-name-or-path> --yes')
+      if (!hasFlag(parsed.flags, 'yes')) {
+        throw new Error('Pass --yes to remove the vault from the list (its files are kept)')
+      }
+      const resolved = await requireVaultRegistry(registry)
+      if (!resolved.removeVault) {
+        throw new Error('This CLI cannot remove vaults. Run Memry from the desktop app command.')
+      }
+      print(io, parsed.json, { removed: await resolved.removeVault(reference) })
+      return true
+    }
     default:
       return false
   }
 }
 
 export async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runNoteTools(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'create':
       print(
@@ -315,12 +336,13 @@ export async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] notes create|list|get|exists|preview|resolve|links|update|rename|move|set-local-only|local-only-count|delete|attach|attachments|delete-attachment|import-files|export-html|export-pdf|export-markdown|snapshot|versions|version|restore-version|delete-version'
+        'Usage: memrynote [--vault <path>] notes create|list|get|exists|preview|resolve|links|update|rename|move|set-local-only|local-only-count|delete|attach|attachments|delete-attachment|import-files|export-html|export-pdf|export-markdown|snapshot|versions|version|restore-version|delete-version|aliases|apply-template|unlinked-mentions|link-mention|carried-tasks|similar|suggest-tags|positions|reorder|read-lines|grep|attachment-rename'
       )
   }
 }
 
 export async function runFolders(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runFolderTools(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'list':
       print(io, parsed.json, await app.folders.list())
@@ -349,11 +371,14 @@ export async function runFolders(app: MemryApp, parsed: ParsedCli, io: CliIo): P
       })
       return
     default:
-      throw new Error('Usage: memrynote [--vault <path>] folders list|create|rename|delete')
+      throw new Error(
+        'Usage: memrynote [--vault <path>] folders list|create|rename|delete|template'
+      )
   }
 }
 
 export async function runProperties(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runPropertyTools(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'get':
       print(
@@ -423,7 +448,7 @@ export async function runProperties(app: MemryApp, parsed: ParsedCli, io: CliIo)
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] properties get|set|rename|definitions|define|update-definition|delete-definition'
+        'Usage: memrynote [--vault <path>] properties get|set|rename|definitions|define|update-definition|delete-definition|ensure|option-add|option-remove|option-rename|option-color|merge|resolve-refs|calendar-names|calendar-visibility'
       )
   }
 }

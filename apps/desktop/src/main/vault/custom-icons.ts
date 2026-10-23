@@ -14,7 +14,7 @@ import fs from 'fs/promises'
 import { getStatus } from './index'
 import { getMemryDir } from './init'
 import { VaultError, VaultErrorCode } from '../lib/errors'
-import { sanitizeSvgBytes } from '../icons/sanitize-svg'
+import { sanitizeSvgBytes } from '@memry/shared/sanitize-svg'
 
 const ICONS_DIR = 'icons'
 

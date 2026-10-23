@@ -20,7 +20,7 @@ import {
   renameCustomIcon
 } from '../icons/store'
 import { downloadRemoteIcon } from '../icons/remote-icon'
-import { sanitizeSvgBytes } from '../icons/sanitize-svg'
+import { sanitizeSvgBytes } from '@memry/shared/sanitize-svg'
 import {
   enqueueCustomIconCreate,
   enqueueCustomIconDelete,

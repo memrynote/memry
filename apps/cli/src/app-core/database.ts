@@ -7,6 +7,7 @@ import * as dataSchema from '@memry/db-schema/data-schema'
 import * as indexSchema from '@memry/db-schema/index-schema'
 import { projects, statuses } from '@memry/db-schema/data-schema'
 import { eq } from 'drizzle-orm'
+import { foldTag } from '@memry/shared/tag-fold'
 import { resolveMigrationsDir } from './migrations-path.ts'
 import { getDataDbPath, getIndexDbPath, getMemryDir } from './paths.ts'
 
@@ -36,6 +37,12 @@ function configure(sqlite: Database.Database, cacheSize: number): void {
   sqlite.pragma('busy_timeout = 5000')
   sqlite.pragma(`cache_size = ${cacheSize}`)
   sqlite.pragma(`temp_store = ${sqliteTempStore}`)
+  // A tag's identity (desktop registers the same function in
+  // database/sqlite-functions.ts); the tag columns are COLLATE NOCASE, which
+  // folds ASCII only.
+  sqlite.function('tag_fold', { deterministic: true }, (value: unknown) =>
+    typeof value === 'string' ? foldTag(value) : (value as null)
+  )
 }
 
 function sleepSync(ms: number): void {

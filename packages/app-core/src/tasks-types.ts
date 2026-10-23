@@ -1,3 +1,6 @@
+import type { JsonValue } from '@memry/shared/versioned'
+import type { DeleteTaskOptions } from './task-delete.ts'
+
 export interface TaskRecord {
   id: string
   projectId: string
@@ -21,6 +24,8 @@ export interface TaskRecord {
   tags: string[]
   linkedNoteIds: string[]
   linkedCanvasIds: string[]
+  /** Custom field values by name; removed fields are left out. */
+  fields: Record<string, JsonValue>
 }
 
 export interface ProjectRecord {
@@ -68,6 +73,7 @@ export interface CreateTaskInput {
   parentId?: string | null
   dueDate?: string | null
   dueTime?: string | null
+  durationMinutes?: number | null
   startDate?: string | null
   repeatConfig?: unknown
   repeatFrom?: string | null
@@ -76,6 +82,8 @@ export interface CreateTaskInput {
   tags?: string[]
   linkedNoteIds?: string[]
   linkedCanvasIds?: string[]
+  /** Field values by name. On update a null value removes the field. */
+  fields?: Record<string, JsonValue>
 }
 
 export interface MoveTaskInput {
@@ -124,9 +132,9 @@ export interface TasksService {
   bulkComplete(ids: string[]): Promise<number>
   bulkArchive(ids: string[]): Promise<number>
   bulkMove(ids: string[], projectId: string): Promise<number>
-  bulkDelete(ids: string[]): Promise<number>
+  bulkDelete(ids: string[], options?: DeleteTaskOptions): Promise<number>
   reorder(ids: string[], positions: number[]): Promise<boolean>
-  delete(id: string): Promise<boolean>
+  delete(id: string, options?: DeleteTaskOptions): Promise<boolean>
   projects: {
     list(): Promise<ProjectRecord[]>
     get(id: string): Promise<ProjectRecord | null>
