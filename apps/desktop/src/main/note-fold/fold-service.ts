@@ -14,6 +14,7 @@ import {
   type ChunkAi,
   type ParsedChunk
 } from './engine'
+import { expandInlineTokens, withoutInlineTokens } from './engine-tokens'
 import {
   deleteChunkPayload,
   readChunkPayload,
@@ -181,8 +182,9 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
     const fetched = await deps.getSource(noteId)
     if (fetched === null) unindexed.add(noteId)
     else unindexed.delete(noteId)
-    const source = fetched ?? ''
-    const language = detectLanguage(source)
+    const raw = fetched ?? ''
+    const language = detectLanguage(withoutInlineTokens(raw))
+    const source = expandInlineTokens(raw, language)
     const sections = isFoldable(source, language) ? buildSections(source, language) : []
     const foldable = sections.length > 0
     const enabled = foldable && deps.isEnabled()
