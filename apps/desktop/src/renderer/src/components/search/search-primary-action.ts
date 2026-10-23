@@ -5,6 +5,8 @@ import { resultValue } from './search-result-item'
 type PrimaryActionKey =
   | 'searchPalette.actions.open'
   | 'searchPalette.actions.openNote'
+  | 'searchPalette.actions.openAtMatch'
+  | 'searchPalette.actions.hideMatches'
   | 'searchPalette.actions.openFile'
   | 'searchPalette.actions.openJournal'
   | 'searchPalette.actions.openTask'
@@ -49,6 +51,10 @@ export function primaryActionKey(
       }
       return null
     }
+    case 'match':
+      return 'searchPalette.actions.openAtMatch'
+    case 'matches':
+      return a === 'less' ? 'searchPalette.actions.hideMatches' : 'searchPalette.actions.showAll'
     case 'reason':
       return 'searchPalette.actions.open'
     case 'scope':

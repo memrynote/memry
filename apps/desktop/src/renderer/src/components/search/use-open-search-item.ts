@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { ContentType, SearchResultItem } from '@memry/contracts/search-api'
 import { getTabIconForFileType } from '@memry/shared/file-types'
 import { useTabs } from '@/contexts/tabs'
+import { FIND_REQUEST_KEY, type FindRequest } from '@/lib/find-request'
 import { trackTelemetry } from '@/lib/telemetry'
 
 export interface OpenableSearchItem {
@@ -9,6 +10,8 @@ export interface OpenableSearchItem {
   title: string
   type: ContentType
   metadata?: SearchResultItem['metadata']
+  /** Opens a note or journal day on this match of the query instead of at the top. */
+  find?: FindRequest
 }
 
 /** Opens a search hit in the tab its type belongs to. */
@@ -37,7 +40,8 @@ export function useOpenSearchItem(): (item: OpenableSearchItem) => void {
             isPinned: false,
             isModified: false,
             isPreview: false,
-            isDeleted: false
+            isDeleted: false,
+            ...(isMarkdown && item.find && { viewState: { [FIND_REQUEST_KEY]: item.find } })
           })
           break
         }
@@ -52,7 +56,8 @@ export function useOpenSearchItem(): (item: OpenableSearchItem) => void {
             isPinned: false,
             isModified: false,
             isPreview: false,
-            isDeleted: false
+            isDeleted: false,
+            ...(item.find && { viewState: { date, [FIND_REQUEST_KEY]: item.find } })
           })
           break
         }

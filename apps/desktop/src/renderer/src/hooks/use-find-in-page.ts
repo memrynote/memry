@@ -7,6 +7,7 @@ import {
   useRef,
   type RefObject
 } from 'react'
+import { findOffsets } from '@/lib/find-text'
 import { isShortcutRecording } from './use-keyboard-shortcuts-base'
 
 /**
@@ -31,6 +32,11 @@ interface FindInPageResult {
   matchCount: number
   currentIndex: number
   open: () => void
+  /**
+   * Opens the bar on `query` and lands on match `index`. Waits for the document
+   * to render that many matches, so it can be called before the editor fills.
+   */
+  openAt: (query: string, index: number) => void
   close: () => void
   setQuery: (query: string) => void
   next: () => void
@@ -40,16 +46,11 @@ interface FindInPageResult {
 
 function findTextRanges(element: HTMLElement, query: string): Range[] {
   const ranges: Range[] = []
-  const lowerQuery = query.toLowerCase()
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
 
   let node: Node | null
   while ((node = walker.nextNode())) {
-    const text = node.textContent?.toLowerCase() ?? ''
-    let startPos = 0
-    while (startPos < text.length) {
-      const index = text.indexOf(lowerQuery, startPos)
-      if (index === -1) break
+    for (const index of findOffsets(node.textContent ?? '', query)) {
       try {
         const range = new Range()
         range.setStart(node, index)
@@ -58,7 +59,6 @@ function findTextRanges(element: HTMLElement, query: string): Range[] {
       } catch {
         // Node may have been removed between TreeWalker iteration and Range creation
       }
-      startPos = index + 1
     }
   }
 
@@ -104,9 +104,11 @@ export function useFindInPage(
   }, [])
 
   const currentIndexRef = useRef(-1)
+  // The match `openAt` asked for, until the document has rendered enough of them.
+  const pendingIndexRef = useRef<number | null>(null)
 
   const performSearch = useCallback(
-    (searchQuery: string) => {
+    (searchQuery: string, keepIndex = false) => {
       clearHighlights()
 
       if (!searchQuery || !containerRef.current) {
@@ -127,9 +129,16 @@ export function useFindInPage(
         } catch {
           // CSS Highlight API not supported
         }
-        setCurrentIndex(0)
-        currentIndexRef.current = 0
-        highlightAndScroll(0)
+        const pending = pendingIndexRef.current
+        let start = keepIndex && currentIndexRef.current >= 0 ? currentIndexRef.current : 0
+        if (pending !== null && pending < ranges.length) {
+          start = pending
+          pendingIndexRef.current = null
+        }
+        if (start >= ranges.length) start = 0
+        setCurrentIndex(start)
+        currentIndexRef.current = start
+        highlightAndScroll(start)
       } else {
         setCurrentIndex(-1)
         currentIndexRef.current = -1
@@ -166,7 +175,7 @@ export function useFindInPage(
   }, [currentIndex, highlightAndScroll])
 
   const rerunSearch = useEffectEvent(() => {
-    performSearch(query)
+    performSearch(query, true)
   })
 
   // Re-search when editor DOM mutates while find bar is open
@@ -205,8 +214,25 @@ export function useFindInPage(
     })
   }, [performSearch, query])
 
+  const openAt = useCallback(
+    (searchQuery: string, index: number) => {
+      pendingIndexRef.current = index
+      setIsOpen(true)
+      setQueryState(searchQuery)
+      cancelPendingSearch()
+      performSearch(searchQuery)
+      if (focusFrameRef.current !== null) cancelAnimationFrame(focusFrameRef.current)
+      focusFrameRef.current = requestAnimationFrame(() => {
+        focusFrameRef.current = null
+        inputRef.current?.focus()
+      })
+    },
+    [performSearch, cancelPendingSearch]
+  )
+
   const close = useCallback(() => {
     setIsOpen(false)
+    pendingIndexRef.current = null
     cancelPendingSearch()
     setQueryState('')
     clearHighlights()
@@ -220,6 +246,7 @@ export function useFindInPage(
     (q: string) => {
       setQueryState(q)
       if (!isOpen) return
+      pendingIndexRef.current = null
       cancelPendingSearch()
       pendingQueryRef.current = q
       searchTimeoutRef.current = setTimeout(() => {
@@ -232,6 +259,7 @@ export function useFindInPage(
   )
 
   const next = useCallback(() => {
+    pendingIndexRef.current = null
     flushPendingSearch()
     const len = matchesRef.current.length
     if (len === 0) return
@@ -242,6 +270,7 @@ export function useFindInPage(
   }, [flushPendingSearch, highlightAndScroll])
 
   const prev = useCallback(() => {
+    pendingIndexRef.current = null
     flushPendingSearch()
     const len = matchesRef.current.length
     if (len === 0) return
@@ -293,6 +322,7 @@ export function useFindInPage(
     matchCount,
     currentIndex,
     open,
+    openAt,
     close,
     setQuery,
     next,

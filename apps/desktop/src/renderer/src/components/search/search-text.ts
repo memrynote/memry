@@ -1,4 +1,5 @@
-/** Turns markdown bodies into the plain lines the search preview shows. */
+/** Turns markdown bodies into the plain lines the search palette shows. */
+import { findOffsets } from '@/lib/find-text'
 
 const MATCH_RADIUS = 48
 
@@ -16,8 +17,7 @@ function plainLine(line: string): string {
     .trim()
 }
 
-/** Body lines with frontmatter, code fences, and markdown syntax removed. */
-export function plainLines(markdown: string): string[] {
+function bodyLines(markdown: string, keepCode: boolean): string[] {
   const body = markdown.replace(/^---\n[\s\S]*?\n---\n?/, '')
   const lines: string[] = []
   let inFence = false
@@ -26,11 +26,62 @@ export function plainLines(markdown: string): string[] {
       inFence = !inFence
       continue
     }
-    if (inFence) continue
+    if (inFence && !keepCode) continue
     const line = plainLine(raw)
     if (line) lines.push(line)
   }
   return lines
+}
+
+/** Body lines with frontmatter, code fences, and markdown syntax removed. */
+export function plainLines(markdown: string): string[] {
+  return bodyLines(markdown, false)
+}
+
+export interface Occurrence {
+  /** Index into `Occurrences.lines`. */
+  line: number
+  start: number
+}
+
+export interface Occurrences {
+  lines: string[]
+  /** Every hit in document order, so `hits[n]` is what the find bar calls match n. */
+  hits: Occurrence[]
+}
+
+/**
+ * Where `query` occurs in a note body, counted the way the find bar will count
+ * it once the note is open. Code stays in: the editor renders it, so the find
+ * bar matches inside it and an index that skipped it would land on the wrong hit.
+ */
+export function findOccurrences(markdown: string, query: string): Occurrences {
+  const lines = bodyLines(markdown, true)
+  const needle = query.trim()
+  const hits = lines.flatMap((text, line) =>
+    findOffsets(text, needle).map((start) => ({ line, start }))
+  )
+  return { lines, hits }
+}
+
+const SNIPPET_BEFORE = 20
+const SNIPPET_AFTER = 60
+
+/** A hit with the words around it, ready to render with the hit marked. */
+export function occurrenceSnippet(
+  lines: string[],
+  hit: Occurrence,
+  query: string
+): { before: string; match: string; after: string } {
+  const text = lines[hit.line]
+  const end = hit.start + query.trim().length
+  const from = Math.max(0, hit.start - SNIPPET_BEFORE)
+  const to = Math.min(text.length, end + SNIPPET_AFTER)
+  return {
+    before: `${from > 0 ? '…' : ''}${text.slice(from, hit.start)}`,
+    match: text.slice(hit.start, end),
+    after: `${text.slice(end, to)}${to < text.length ? '…' : ''}`
+  }
 }
 
 const normalized = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')

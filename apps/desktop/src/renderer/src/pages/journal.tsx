@@ -122,6 +122,7 @@ import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { FIND_REQUEST_KEY, readFindRequest, type FindRequest } from '@/lib/find-request'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
@@ -369,6 +370,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     editorContainerRef as RefObject<HTMLElement | null>,
     isActiveJournal && currentViewState.type === 'day'
   )
+
+  // A search-palette hit on this day: open the find bar on its match. Cleared
+  // from the tab once taken, so coming back to the tab does not jump again.
+  const [findRequest, setFindRequest] = useTabViewState<FindRequest | null>({
+    key: FIND_REQUEST_KEY,
+    defaultValue: null,
+    parse: (raw) => readFindRequest({ [FIND_REQUEST_KEY]: raw }) ?? undefined
+  })
+  const openFindAt = findInPage.openAt
+  useEffect(() => {
+    if (!findRequest || !isActiveJournal || currentViewState.type !== 'day') return
+    openFindAt(findRequest.query, findRequest.index)
+    setFindRequest(null)
+  }, [findRequest, isActiveJournal, currentViewState.type, openFindAt, setFindRequest])
 
   // Date parts and heatmap
   const isToday = selectedDate === today
