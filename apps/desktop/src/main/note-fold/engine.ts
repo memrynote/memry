@@ -140,6 +140,14 @@ interface RawSection {
   skipped: FoldSkipped[]
 }
 
+const LIST_MARKER = /^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/
+const SENTENCE_END = /[.!?…。！？:;]["'”’)\]*_`]*$/
+
+function endSentence(item: string): string {
+  const trimmed = item.trimEnd()
+  return trimmed === '' || SENTENCE_END.test(trimmed) ? trimmed : `${trimmed}.`
+}
+
 const EMBED_LINE = /^\s*!\[\[[^\]]*\]\]\s*$/
 const HTML_BLOCK_LINE = /^\s*<\/?[A-Za-z][^>]*>\s*$/
 
@@ -229,9 +237,10 @@ export function parseSections(markdown: string): RawSection[] {
       continue
     }
     if (skipBlock) continue
-    buffer.push(
-      line.replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/, '').replace(/^\s*>\s?/, '')
-    )
+    const item = LIST_MARKER.exec(line)
+    // A list item is its own sentence. Without a full stop the sentence
+    // splitter would run every item of the list into one.
+    buffer.push(item ? endSentence(line.slice(item[0].length)) : line.replace(/^\s*>\s?/, ''))
   }
   flush()
   if (current.heading !== null || current.paragraphs.length > 0) sections.push(current)

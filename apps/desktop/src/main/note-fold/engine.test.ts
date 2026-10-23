@@ -279,4 +279,24 @@ describe('fold engine', () => {
       expect(FoldLayersSchema.safeParse(full).success).toBe(true)
     })
   })
+
+  it('keeps every item of a list as its own sentence', () => {
+    const note = [
+      '## Who',
+      '',
+      '- People who read long-form on a phone',
+      '- Researchers who quote what they read.',
+      '- Anyone who lost highlights (again)',
+      '',
+      '1. First step',
+      '2. Second step: do it'
+    ].join('\n')
+    const paragraphs = buildSections(note, 'en')[0].chunks.flatMap((c) => c.paragraphs)
+    expect(paragraphs[0].sentences).toEqual([
+      'People who read long-form on a phone.',
+      'Researchers who quote what they read.',
+      'Anyone who lost highlights (again).'
+    ])
+    expect(paragraphs[1].sentences).toEqual(['First step.', 'Second step: do it.'])
+  })
 })
