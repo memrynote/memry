@@ -79,9 +79,6 @@ export function SearchMatchRows({
               </mark>
               <span className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">{after}</span>
             </span>
-            <span className="w-4 shrink-0 text-end font-mono text-[11px] leading-[14px] tabular-nums text-text-tertiary">
-              {i + 1}
-            </span>
           </Command.Item>
         )
       })}

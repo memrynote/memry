@@ -230,6 +230,42 @@ describe('useFindInPage', () => {
       expect(result.current.currentIndex).toBe(1)
     })
 
+    it('closes on the first click into the document when search opened it', () => {
+      const { result } = renderHook(() => useFindInPage(ref))
+      act(() => result.current.openAt('beta', 0))
+
+      act(() => {
+        container.dispatchEvent(new Event('pointerdown'))
+      })
+
+      expect(result.current.isOpen).toBe(false)
+      expect(result.current.matchCount).toBe(0)
+    })
+
+    it('stays open on a click when the user opened it with the shortcut', () => {
+      const { result } = renderHook(() => useFindInPage(ref))
+      act(() => result.current.open())
+      typeQuery({ result } as Hook, 'beta')
+
+      act(() => {
+        container.dispatchEvent(new Event('pointerdown'))
+      })
+
+      expect(result.current.isOpen).toBe(true)
+    })
+
+    it('stays open on a click once the user has edited the query', () => {
+      const hook = renderHook(() => useFindInPage(ref))
+      act(() => hook.result.current.openAt('beta', 0))
+      typeQuery(hook, 'alpha')
+
+      act(() => {
+        container.dispatchEvent(new Event('pointerdown'))
+      })
+
+      expect(hook.result.current.isOpen).toBe(true)
+    })
+
     it('forgets an unmet request once the user moves on', async () => {
       container.innerHTML = '<p>alpha alpha</p>'
       const { result } = renderHook(() => useFindInPage(ref))
