@@ -74,7 +74,7 @@ older than 90 days are removed. See [Local Storage](/architecture/local-storage#
 
 ## Known Limits
 
-- The folded view shows plain paragraphs. Lists, headings inside lists and nested structure are
-  flattened.
+- The folded view shows paragraphs. A list becomes one paragraph in which each item is its own
+  sentence, and a full stop is added to an item that has none. Nesting is flattened.
 - Key, Takeaway and Topic need an agent. There is no offline version of them.
 - Summaries are written in the note's language, and sentence splitting follows that language.
