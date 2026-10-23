@@ -14,6 +14,11 @@
  *   join with a block   the merged text goes before it, the anchor stays last
  *   paste               a pasted block carrying an anchor the note already has
  *                       loses it (first in document order keeps it otherwise)
+ *   range delete        deleting a range (Select-All, a selection, Cut) that
+ *                       leaves a block with no visible text takes the anchor
+ *                       with it: the block becomes a plain empty block. Typing
+ *                       or pasting over the range, and deleting one character
+ *                       at a caret, keep it.
  *   Remote changes (sync) are never rewritten.
  * - Typing cannot land after the anchor: the caret is moved to the visible end
  *   synchronously (keydown, beforeinput, compositionstart, paste, selectionchange)
@@ -29,6 +34,7 @@
  */
 
 import { Extension } from '@tiptap/core'
+import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform'
 import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state'
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
@@ -150,8 +156,50 @@ interface Edit {
   text: string
 }
 
+/** The block's text without its hidden trailing anchor. */
+function visibleText(block: AnchorBlock): string {
+  const range = trailingRange(block)
+  const text = block.node.textContent
+  return range ? text.slice(0, range.start) : text
+}
+
+/**
+ * Blocks whose visible text one range deletion emptied. A deletion is a range
+ * one when the selection before it was not a caret and no step puts text back,
+ * so typing or pasting over a selection never counts.
+ */
+function emptiedByRangeDelete(
+  trs: readonly Transaction[],
+  oldState: EditorState,
+  before: AnchorScan,
+  after: AnchorScan
+): Set<string> {
+  const emptied = new Set<string>()
+  if (oldState.selection.empty) return emptied
+  const insertsText = trs.some((tr) =>
+    tr.steps.some(
+      (step) =>
+        (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) &&
+        step.slice.content.textBetween(0, step.slice.content.size) !== ''
+    )
+  )
+  if (insertsText) return emptied
+  const oldById = new Map(before.blocks.map((b) => [b.id, b]))
+  for (const block of after.blocks) {
+    const old = oldById.get(block.id)
+    if (old?.anchor && visibleText(old).trim() !== '' && visibleText(block).trim() === '') {
+      emptied.add(block.id)
+    }
+  }
+  return emptied
+}
+
 /** Edits that put every anchor back on the one block that owns it. */
-function anchorFixes(before: AnchorScan, after: AnchorScan): Edit[] {
+function anchorFixes(
+  before: AnchorScan,
+  after: AnchorScan,
+  rangeEmptied: ReadonlySet<string>
+): Edit[] {
   const edits: Edit[] = []
   const byId = new Map(after.blocks.map((b) => [b.id, b]))
   const holders = new Map<string, AnchorBlock[]>()
@@ -173,7 +221,18 @@ function anchorFixes(before: AnchorScan, after: AnchorScan): Edit[] {
     })
   }
 
+  // The user deleted the text of these blocks in one range operation: the
+  // anchor goes with it, and is not restored below.
+  const released = new Set<string>()
+  for (const id of rangeEmptied) {
+    const block = byId.get(id)
+    if (block?.anchor) strip(block)
+    const anchor = before.blocks.find((b) => b.id === id)?.anchor
+    if (anchor) released.add(anchor)
+  }
+
   for (const [anchor, group] of holders) {
+    if (released.has(anchor)) continue
     const ownerId = oldOwner.get(anchor)
     const keeper = (ownerId && group.find((b) => b.id === ownerId)) || group[0]
     const owner = ownerId ? byId.get(ownerId) : undefined
@@ -182,6 +241,7 @@ function anchorFixes(before: AnchorScan, after: AnchorScan): Edit[] {
   }
 
   for (const [anchor, ownerId] of oldOwner) {
+    if (released.has(anchor)) continue
     const owner = byId.get(ownerId)
     const group = holders.get(anchor) ?? []
     if (!owner) {
@@ -401,7 +461,8 @@ export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
       if (trs.some(isLocalDocChange)) {
         const heal = findHeal(before, after)
         if (heal) return healTransaction(newState, heal)
-        const edits = anchorFixes(before, after).sort((a, b) => b.from - a.from)
+        const rangeEmptied = emptiedByRangeDelete(trs, oldState, before, after)
+        const edits = anchorFixes(before, after, rangeEmptied).sort((a, b) => b.from - a.from)
         if (edits.length > 0) {
           tr = newState.tr.setMeta(anchorVisibilityKey, 'repair')
           for (const edit of edits) {

@@ -16,7 +16,7 @@ vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: vi.fn().mockResolvedValue({ domain: '', title: '', favicon: '' })
 }))
 
-import { ySyncPluginKey } from 'y-prosemirror'
+import { undo, yUndoPluginKey, ySyncPluginKey } from 'y-prosemirror'
 import { registerEditorPlugin } from '../register-editor-plugin'
 import { ANCHOR_HIDDEN_CLASS, createAnchorVisibilityPlugin } from './anchor-visibility-plugin'
 import { mountTestEditor, para, unmountTestEditors } from './portal-test-editor'
@@ -254,16 +254,121 @@ describe('anchor visibility', () => {
       expect(blockTexts(editor)).toEqual(['new ^dna1'])
     })
 
-    it('Select-All then Delete empties the text; the block keeps its address', () => {
-      const { editor, view } = mountOne()
+    function selectAll(view: EditorView): void {
       const from = view.state.doc.resolve(rawEnd(view)).start()
       view.dispatch(
         view.state.tr.setSelection(TextSelection.create(view.state.doc, from, rawEnd(view)))
       )
-      view.dom.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+    }
+
+    function press(view: EditorView, key: string): void {
+      view.dom.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    }
+
+    describe('deleting the whole visible text', () => {
+      it.each(['Backspace', 'Delete'])(
+        'Select-All then %s removes the anchor with the text',
+        (key) => {
+          const { editor, view } = mountOne()
+          selectAll(view)
+          press(view, key)
+          expect(blockTexts(editor)).toEqual([''])
+        }
       )
-      expect(blockTexts(editor)).toEqual([' ^dna1'])
+
+      it('Cut removes the anchor with the text', () => {
+        const { editor, view } = mountOne()
+        selectAll(view)
+        view.dispatch(view.state.tr.deleteSelection().setMeta('uiEvent', 'cut'))
+        expect(blockTexts(editor)).toEqual([''])
+      })
+
+      it('a selection of only the visible text takes the hidden anchor too', () => {
+        const { editor, view } = mountOne()
+        const from = view.state.doc.resolve(rawEnd(view)).start()
+        view.dispatch(
+          view.state.tr.setSelection(
+            TextSelection.create(view.state.doc, from, from + 'DNA'.length)
+          )
+        )
+        press(view, 'Backspace')
+        expect(blockTexts(editor)).toEqual([''])
+      })
+
+      it('undo brings the text and the anchor back together', () => {
+        const { editor, view } = mountOne()
+        // Keep the deletion out of the undo item that holds the setup.
+        yUndoPluginKey.getState(view.state)?.undoManager.stopCapturing()
+        selectAll(view)
+        press(view, 'Backspace')
+        expect(blockTexts(editor)).toEqual([''])
+        undo(view.state)
+        expect(blockTexts(editor)).toEqual([TEXT])
+      })
+
+      it('a remote deletion of the text leaves the anchor to the sender', () => {
+        const { editor, view } = mountOne()
+        selectAll(view)
+        view.dispatch(
+          view.state.tr.deleteSelection().setMeta(ySyncPluginKey, { isChangeOrigin: true })
+        )
+        expect(blockTexts(editor)).toEqual([''])
+      })
+    })
+
+    describe('what keeps the anchor', () => {
+      it('typing over the selection keeps it', () => {
+        const { editor, view } = mountOne()
+        selectAll(view)
+        const { from, to } = view.state.selection
+        view.someProp('handleTextInput', (f) => f(view, from, to, 'x', () => view.state.tr))
+        expect(blockTexts(editor)).toEqual(['x ^dna1'])
+      })
+
+      it('a replacement transaction over the selection restores the anchor after the new text', () => {
+        const { editor, view } = mountOne()
+        selectAll(view)
+        const { from, to } = view.state.selection
+        view.dispatch(view.state.tr.insertText('x', from, to))
+        expect(blockTexts(editor)).toEqual(['x ^dna1'])
+      })
+
+      it('pasting over the selection keeps it', () => {
+        const { editor, view } = mountOne()
+        selectAll(view)
+        class FakeTransfer {
+          types = ['text/plain']
+          getData = (type: string): string => (type === 'text/plain' ? 'pasted' : '')
+        }
+        class FakeClipboardEvent extends Event {
+          clipboardData = new FakeTransfer()
+        }
+        vi.stubGlobal('DataTransfer', FakeTransfer)
+        vi.stubGlobal('ClipboardEvent', FakeClipboardEvent)
+        try {
+          view.pasteText('pasted')
+        } finally {
+          vi.unstubAllGlobals()
+        }
+        expect(blockTexts(editor)).toEqual(['pasted ^dna1'])
+      })
+
+      it('deleting one character at a time until empty keeps it', () => {
+        const { editor, view } = mountOne()
+        caretAt(view, TEXT, 'DNA'.length)
+        for (let i = 0; i < 3; i += 1) press(view, 'Backspace')
+        expect(blockTexts(editor)).toEqual([' ^dna1'])
+      })
+
+      it('deleting part of the text keeps it', () => {
+        const { editor, view } = mountOne()
+        const from = view.state.doc.resolve(rawEnd(view)).start()
+        view.dispatch(
+          view.state.tr.setSelection(TextSelection.create(view.state.doc, from, from + 2))
+        )
+        press(view, 'Backspace')
+        expect(blockTexts(editor)).toEqual(['A ^dna1'])
+      })
     })
 
     it('heals text that landed after a multi-character anchor in one undoable step', () => {
