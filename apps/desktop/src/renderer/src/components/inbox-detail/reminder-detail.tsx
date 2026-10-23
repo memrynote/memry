@@ -42,10 +42,10 @@ function formatTriggerDate(isoString: string): string {
   })
 }
 
-const TARGET_ICONS = {
-  journal: Calendar,
-  task: CheckSquare
-} as const
+const TARGET_ICONS = new Map<string, typeof FileText>([
+  ['journal', Calendar],
+  ['task', CheckSquare]
+])
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
   const { t } = useT('inbox')
@@ -132,7 +132,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
     return <div className="p-5 text-muted-foreground text-sm">{t('reminder.dataUnavailable')}</div>
   }
 
-  const TargetIcon = TARGET_ICONS[metadata.targetType as keyof typeof TARGET_ICONS] ?? FileText
+  const TargetIcon = TARGET_ICONS.get(metadata.targetType) ?? FileText
   const isViewed = item.viewedAt != null
   const presetLabels = {
     'in-1-hour': t('reminder.presetInOneHour'),

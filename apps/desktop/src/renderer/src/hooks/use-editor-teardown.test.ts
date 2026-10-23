@@ -178,7 +178,8 @@ describe('useEditorTeardown', () => {
         createElement(
           VaultWorkspaceLifecycleContext.Provider,
           { value: lifecycle },
-          createElement(Activity, { mode }, children)
+          // oxlint-disable-next-line react/no-children-prop -- Activity requires children in props; createElement's children argument does not satisfy its prop type
+          createElement(Activity, { mode, children })
         )
       const view = renderHook(
         () => {
