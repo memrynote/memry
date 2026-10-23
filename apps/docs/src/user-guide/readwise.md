@@ -2,8 +2,8 @@
 
 Connect Readwise to bring the highlights you keep in Readwise into your vault as notes. This works on every plan, free included. It is an integration with your Readwise account, not cloud sync, and it only reads from Readwise: Memry never writes anything back.
 
-::: warning Importing is manual for now
-**Import now** brings everything in Readwise into your vault when you press it. New highlights do not arrive by themselves yet, and **Sync now** stays disabled until they do.
+::: warning Syncing is manual for now
+**Import now** brings in everything new since the last time, but it only runs when you press it. Memry does not check Readwise by itself yet, and **Sync now** stays disabled until it does.
 :::
 
 ## Connect
@@ -38,15 +38,19 @@ Highlight text is quoted as plain text. A `#tag` or `[[link]]` in a highlight do
 
 ### Importing again
 
-You can press **Import now** again at any time. Memry checks every book against its note and writes only what differs:
+Press **Import now** again at any time. After the first import, Memry asks Readwise only for what changed since the last run, and writes only the books that changed:
 
-- A note whose Readwise section you have not edited is brought up to date.
-- A note whose section you edited gets only the new highlights, added at the end of the section. Your edits stay. A highlight you deleted from the note stays deleted, unless it is the newest one.
-- A note you deleted stays deleted. A book you deleted in Readwise keeps its note, and Memry stops updating it.
-- A note that is open in the editor is skipped and written on the next import after you close it.
-- A book that fails to write, such as one whose folder is read-only, is reported in the summary and retried on the next import. It never stops the rest of the run.
+- **New highlights** arrive in the note. In a section you have not edited, they sit in the order they appear in the book. In a section you edited, they are added at the end, and your edits stay.
+- **Edits and deletions in Readwise** reach a section you have not edited. In a section you edited, Readwise edits of older highlights do not arrive, and a highlight you deleted from the note stays deleted.
+- **A new book** becomes a new note. **A note you deleted** stays deleted, and Memry does not bring the book back. **A book you deleted in Readwise** keeps its note, and Memry stops updating it.
+- **A note that is open in the editor** is skipped and written on the next import after you close it.
+- **A book that fails to write**, such as one whose folder is read-only, is reported in the summary and fetched again on the next import. It never stops the rest of the run.
+- **Turning a category on** brings in all of its books on the next import. Turning one off leaves its notes as they are.
+- **A change to the whole book** with no highlight change, such as a new document note, can take up to a day to reach the note, because Memry reads your whole library once a day to catch those.
 
-An import that finds nothing to change writes nothing. Your own text above, below and inside the section is never overwritten.
+If the import stops halfway, for example when you quit the app, the next import covers the same changes again. Nothing is skipped or written twice.
+
+A run that changes nothing writes nothing. A run that changes something adds one line to the vault activity list in **Settings**, such as _Readwise: 3 books, 12 highlights_. Your own text above, below and inside the section is never overwritten.
 
 ## Choose where notes go
 

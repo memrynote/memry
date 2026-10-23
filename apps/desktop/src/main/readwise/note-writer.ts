@@ -38,6 +38,13 @@ export interface UpsertOptions {
    * an editor, because the user asked for the change. `reset` implies it.
    */
   userInitiated?: boolean
+  /**
+   * The book holds only the highlights that changed (D7, step 2). Such a
+   * payload can append to a touched section, and nothing else: a new note or
+   * an untouched section needs the whole book, so the writer answers
+   * `needs-full` and writes nothing.
+   */
+  incremental?: boolean
   /** The options `plan` was made with. The writer plans again once images are saved. */
   planOptions: PlanNoteOptions
   fetch?: RemoteFetch
@@ -48,6 +55,8 @@ export type UpsertOutcome =
   /** `note-deleted` and `source-deleted` links do nothing (D9). */
   | { status: 'skipped'; reason: 'note-deleted' | 'source-deleted' | 'busy'; noteId?: string }
   | { status: 'failed'; reason: string }
+  /** `incremental` only: the write needs the book's full highlight list. Nothing was written. */
+  | { status: 'needs-full' }
 
 /**
  * The one write path from a Readwise book into the vault (D5, D6). `plan` is
@@ -84,6 +93,7 @@ async function upsertOne(
 ): Promise<UpsertOutcome> {
   try {
     const outcome = await upsert(book, plan, options)
+    if (outcome.status === 'needs-full') return outcome
     if (outcome.status === 'skipped' && outcome.reason === 'busy') {
       addRetry(getDatabase(), book.user_book_id, 'note-open')
     } else {
@@ -127,9 +137,17 @@ async function upsert(
   }
 
   const fetch = options.fetch ?? ((url: string) => net.fetch(url))
-  if (!note) return createNote(book, plan, options, fetch)
+  if (!note) {
+    return options.incremental ? { status: 'needs-full' } : createNote(book, plan, options, fetch)
+  }
 
   const section = readSection(note.content)
+  if (options.incremental && !options.reset && section.found && section.untouched) {
+    // An open note waits for the next run, so skip the full fetch for it (D6).
+    return isBusy(note.id)
+      ? { status: 'skipped', reason: 'busy', noteId: note.id }
+      : { status: 'needs-full' }
+  }
   if (options.reset) return resetSection(book, plan, note, options, fetch)
   if (section.found && section.untouched) {
     return rewriteSection(book, plan, note, options, fetch, section.range)
@@ -160,6 +178,11 @@ async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note | null>
   return null
 }
 
+/** The note is open in an editor or took a network update moments ago (D6). */
+function isBusy(noteId: string): boolean {
+  return Boolean(getCrdtProvider().getDoc(noteId)) || wasRecentNetworkUpdate(noteId)
+}
+
 /**
  * The one place a section write reaches `updateNoteCommand`. Images were
  * downloaded since the note was read, so it reads the note again: a body that
@@ -178,9 +201,7 @@ async function commit(
   const latest = await getNoteById(note.id)
   if (!latest || latest.content !== note.content) return busy
   const userStarted = options.userInitiated || options.reset
-  if (!userStarted && (getCrdtProvider().getDoc(note.id) || wasRecentNetworkUpdate(note.id))) {
-    return busy
-  }
+  if (!userStarted && isBusy(note.id)) return busy
   await updateNoteCommand({ id: note.id, content, ignoreInlineTags: true })
   return { status, noteId: note.id }
 }
