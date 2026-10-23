@@ -551,7 +551,7 @@ describe('Readwise Reader documents', () => {
     it('leaves a failed image out with its caption, and no remote URL in the note', async () => {
       const note = await importArticle()
 
-      expect(note.content).not.toMatch(/https?:\/\/cdn\.example\.com/)
+      expect(note.content).not.toContain('cdn.example.com')
       expect(note.content).not.toContain('Lost caption')
       expect(note.content).not.toContain('data:image')
       expect(String(note.frontmatter.cover)).toContain(stem(COVER))
