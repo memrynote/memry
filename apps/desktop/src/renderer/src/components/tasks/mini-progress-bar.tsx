@@ -29,6 +29,7 @@ export const MiniProgressBar = ({
   return (
     <div
       className={cn('w-5 h-1 rounded-full overflow-hidden bg-surface-active shrink-0', className)}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="progressbar"
       aria-valuenow={percentage}
       aria-valuemin={0}

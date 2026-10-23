@@ -50,6 +50,7 @@ export function FillGhostRow({ field, proposal, onAccept, onReject, busy }: Fill
     highlightSource(rowRef.current, proposal.sourceText)
   }
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- pointer/hover handler is a convenience; keyboard access is provided by inner controls
     <li
       ref={rowRef}
       className={cn(

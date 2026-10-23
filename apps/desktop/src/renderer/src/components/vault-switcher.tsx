@@ -202,7 +202,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
     setVaultToDelete({ uuid, name })
   }
 
-  const handleConfirmDelete = useCallback(async () => {
+  const handleConfirmDelete = async (): Promise<void> => {
     if (!vaultToDelete) return
     setDeleting(true)
     try {
@@ -216,7 +216,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
     } finally {
       setDeleting(false)
     }
-  }, [vaultToDelete, refreshAccountVaults, refreshVaults, tPhaseF])
+  }
 
   return (
     <SidebarMenu className={renderTrigger ? 'w-auto max-w-full' : undefined}>
@@ -323,6 +323,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                           )}
                         >
                           <span
+                            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
                             role="button"
                             tabIndex={0}
                             onClick={(e) => {
@@ -336,6 +337,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                           </span>
                           {vault.vaultUuid && isAuthenticated && (
                             <span
+                              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
                               role="button"
                               tabIndex={0}
                               onClick={(e) => {
@@ -386,6 +388,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                         })}
                       </span>
                       <span
+                        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
                         role="button"
                         tabIndex={0}
                         onClick={(e) => {
@@ -457,6 +460,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                     </span>
                     {sandbox.exists && status?.path !== sandbox.path && !sandboxBusy && (
                       <span
+                        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
                         role="button"
                         tabIndex={0}
                         onClick={(e) => {

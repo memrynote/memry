@@ -75,6 +75,7 @@ const chevronStart = (row: HTMLElement, root: HTMLElement): number => {
 const renderTree = (withSelectColumn: boolean): number[] => {
   const { container } = render(
     <TaskExpansionContext.Provider
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- single-render test fixture; identity stability is irrelevant
       value={{ expandedIds: new Set(['sub1', 'sub2']), toggle: vi.fn(), expand: vi.fn() }}
     >
       <ParentTaskRow

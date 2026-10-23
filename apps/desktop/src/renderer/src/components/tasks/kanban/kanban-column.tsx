@@ -259,6 +259,7 @@ export const KanbanColumn = ({
               onBlur={handleAddSubmit}
               placeholder={tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.taskTitle')}
               aria-label={tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.taskTitle')}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
               autoFocus
               className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none"
             />

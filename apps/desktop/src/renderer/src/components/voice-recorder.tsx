@@ -374,6 +374,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         <div className="flex h-5 min-w-0 grow items-center gap-0.5 overflow-hidden">
           {waveformBars.map((height, i) => (
             <div
+              // oxlint-disable-next-line react/no-array-index-key -- fixed-length waveform; bars are purely positional
               key={i}
               className="w-0.5 rounded-[1px] bg-muted-foreground shrink-0 transition-[height] duration-75"
               style={{

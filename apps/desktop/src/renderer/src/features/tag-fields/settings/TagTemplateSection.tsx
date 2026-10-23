@@ -139,6 +139,7 @@ export function TagTemplateSection({
             <span className="text-xs text-text-tertiary">{template.name}</span>
           ) : (
             sections.map((section, index) => (
+              // oxlint-disable-next-line react/no-array-index-key -- sections have no id and heading can repeat; list is static per template
               <div key={index} className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold">{section.heading}</span>
                 <span className="truncate text-xs text-text-tertiary">{section.hint ?? '-'}</span>

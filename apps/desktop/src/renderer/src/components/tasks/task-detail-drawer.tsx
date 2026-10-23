@@ -517,6 +517,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   <div
                     key={key}
                     className={cn(DRAWER_ROW, 'group cursor-pointer')}
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
                     role="button"
                     tabIndex={0}
                     onClick={openRef}

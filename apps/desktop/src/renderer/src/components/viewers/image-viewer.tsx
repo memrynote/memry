@@ -313,6 +313,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
       </div>
 
       {/* Image container */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
       <div
         ref={containerRef}
         className={cn(
@@ -336,6 +337,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
           style={{
             // Live ref, not `position`: a render triggered mid-drag (e.g. wheel zoom) must not
             // rewrite the transform with the stale pointer-down offset.
+            // oxlint-disable-next-line react/refs -- live drag offset must be read at render time (see comment above)
             transform: buildTransform(positionRef.current, scale, rotation)
           }}
           draggable={false}

@@ -31,6 +31,7 @@ export const AddFileToProjectDialog = ({
 
   useEffect(() => {
     if (!open) return
+    // oxlint-disable-next-line react/set-state-in-effect -- IPC fetch on dialog open; loading flag belongs to that fetch
     setIsLoading(true)
     tasksService
       .listProjects()

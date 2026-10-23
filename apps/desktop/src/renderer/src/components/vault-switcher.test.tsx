@@ -35,6 +35,7 @@ vi.mock('@/components/ui/picker', async () => {
   Picker.Trigger = ({ children }: { children: ReactNode }) => {
     const onOpenChange = React.useContext(OpenChangeContext)
     return (
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
       <div
         data-testid="picker-trigger"
         onClick={() => {

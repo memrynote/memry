@@ -134,6 +134,7 @@ export function AddFieldPopover({
           <div className="flex flex-col">
             <div className="p-2">
               <Input
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
                 autoFocus
                 value={name}
                 onChange={(event) => {
@@ -233,6 +234,7 @@ export function AddFieldPopover({
               </span>
             </div>
             <Input
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
               autoFocus
               value={name}
               onChange={(event) => {

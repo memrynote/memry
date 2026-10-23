@@ -22,6 +22,7 @@ export function VaultSwitchingScreen({ target }: { target: VaultSwitchTarget }) 
   return (
     <div
       className="flex h-screen w-full bg-sidebar"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="status"
       aria-live="polite"
       aria-label={t('vaultSwipe.switchingTo', { name: target.name })}

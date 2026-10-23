@@ -84,10 +84,12 @@ const resolveStatus = (
   }
 }
 
+const NO_PROJECTS: Project[] = []
+
 export const ParentTaskRow = ({
   task,
   project,
-  projects: _projects = [],
+  projects: _projects = NO_PROJECTS,
   allTasks,
   subtasks,
   progress,
@@ -210,6 +212,7 @@ export const ParentTaskRow = ({
   return (
     <div className={cn('group group/row relative', className)}>
       <TaskRowMenu task={task} enabled={!isOverlay}>
+        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
         <div
           ref={rowRef}
           style={isOverlay && overlayWidth ? { width: `${overlayWidth}px` } : undefined}

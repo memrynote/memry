@@ -89,9 +89,11 @@ export function QuickFieldsCard({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- pointer/hover handler is a convenience; keyboard access is provided by inner controls
     <div
       data-inline-choice-menu
       data-testid="quick-fields-card"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="dialog"
       aria-label={t('tagObjects.quickFields.aria', { title: target.title })}
       onKeyDown={onKeyDown}

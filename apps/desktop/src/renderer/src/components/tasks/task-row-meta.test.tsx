@@ -24,14 +24,16 @@ type PickerStub = { open?: boolean; onOpenChange?: (open: boolean) => void }
 const { pickerStub } = vi.hoisted(() => ({
   pickerStub:
     (name: string) =>
-    ({ open, onOpenChange }: PickerStub): React.JSX.Element => (
-      <button
-        type="button"
-        data-testid={name}
-        data-open={open === undefined ? 'uncontrolled' : String(open)}
-        onClick={() => onOpenChange?.(!open)}
-      />
-    )
+    ({ open, onOpenChange }: PickerStub): React.JSX.Element =>
+      (
+        // oxlint-disable-next-line jsx-a11y/control-has-associated-label -- label provided by surrounding context; element is a layout cell or test fixture
+        <button
+          type="button"
+          data-testid={name}
+          data-open={open === undefined ? 'uncontrolled' : String(open)}
+          onClick={() => onOpenChange?.(!open)}
+        />
+      )
 }))
 
 vi.mock('@/components/tasks/inline-status-popover', () => ({

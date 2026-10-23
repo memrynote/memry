@@ -36,13 +36,15 @@ interface TaskSectionProps {
 const toDividerVariant = (v: TaskSectionVariant): SectionDividerVariant =>
   v === 'overdue' ? 'overdue' : 'default'
 
+const NO_TASKS: Task[] = []
+
 export const TaskSection = ({
   id,
   title,
   subtitle: _subtitle,
   count,
   tasks,
-  allTasks = [],
+  allTasks = NO_TASKS,
   projects,
   variant,
   emptyMessage,

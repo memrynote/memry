@@ -68,6 +68,7 @@ export const PickerItem = React.forwardRef<HTMLButtonElement, PickerItemProps>(
       <button
         ref={ref}
         type="button"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
         role="option"
         aria-selected={isSelected}
         data-slot="picker-item"
