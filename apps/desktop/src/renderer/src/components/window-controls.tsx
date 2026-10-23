@@ -16,7 +16,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { useTabs } from '@/contexts/tabs/context'
-import { buildHistoryEntries } from '@/contexts/tabs/helpers'
+import { buildHistoryEntries, type HistoryEntry } from '@/contexts/tabs/helpers'
 import { cn } from '@/lib/utils'
 
 interface WindowControlsProps {
@@ -35,7 +35,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
   const { state: sidebarState } = useSidebar()
   const sidebarTooltip = sidebarState === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar'
 
-  const { state, navBack, navForward, canNavBack, canNavForward } = useTabs()
+  const { state, navBack, navForward, canNavBack, canNavForward, openTab } = useTabs()
 
   const backEntries = React.useMemo(
     () => buildHistoryEntries(state, state.activeGroupId, 'back'),
@@ -53,6 +53,19 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
   const goForwardSteps = (n: number): void => {
     for (let i = 0; i < n; i++) navForward()
   }
+
+  // Read on mousedown: a middle click never produces a `click` event. Opens the
+  // page a plain click would land on, in a new background tab.
+  const openEntryInNewTab =
+    (entry: HistoryEntry | undefined) =>
+    (e: React.MouseEvent): void => {
+      if (e.button !== 1) return
+      e.preventDefault()
+      if (!entry) return
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- identity and timestamps are minted by openTab
+      const { id, openedAt, lastAccessedAt, ...tab } = entry.tab
+      openTab({ ...tab, isPinned: false, isPreview: false }, { background: true, forceNew: true })
+    }
 
   return (
     <>
@@ -92,6 +105,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
               <button
                 type="button"
                 onClick={() => navBack()}
+                onMouseDown={openEntryInNewTab(backEntries[0])}
                 disabled={!canNavBack}
                 aria-disabled={!canNavBack}
                 aria-label={tPhaseF('phaseF.componentsWindowControls.browserBack')}
@@ -106,7 +120,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
                 <ChevronLeft className="size-4" />
               </button>
             </ContextMenuTrigger>
-            <ContextMenuContent className="w-64">
+            <ContextMenuContent className="z-[70] w-64">
               {backEntries.map((e) => (
                 <ContextMenuItem
                   key={`${e.tab.id}-${e.steps}`}
@@ -129,6 +143,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
               <button
                 type="button"
                 onClick={() => navForward()}
+                onMouseDown={openEntryInNewTab(forwardEntries[0])}
                 disabled={!canNavForward}
                 aria-disabled={!canNavForward}
                 aria-label={tPhaseF('phaseF.componentsWindowControls.browserForward')}
@@ -143,7 +158,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
                 <ChevronRight className="size-4" />
               </button>
             </ContextMenuTrigger>
-            <ContextMenuContent className="w-64">
+            <ContextMenuContent className="z-[70] w-64">
               {forwardEntries.map((e) => (
                 <ContextMenuItem
                   key={`${e.tab.id}-${e.steps}`}

@@ -12,6 +12,7 @@ const tabs = vi.hoisted(() => ({
     state: TabSystemState
     navBack: ReturnType<typeof vi.fn>
     navForward: ReturnType<typeof vi.fn>
+    openTab: ReturnType<typeof vi.fn>
     canNavBack: boolean
     canNavForward: boolean
   }
@@ -69,6 +70,7 @@ const setTabs = (over: Partial<typeof tabs.value> = {}): void => {
     state: mkState(['a'], [], []),
     navBack: vi.fn(),
     navForward: vi.fn(),
+    openTab: vi.fn(),
     canNavBack: false,
     canNavForward: false,
     ...over
@@ -174,6 +176,28 @@ describe('WindowControls', () => {
     // 3rd entry ('Note a') is 3 steps back.
     fireEvent.click(items[2])
     expect(tabs.value.navBack).toHaveBeenCalledTimes(3)
+  })
+
+  it('opens the back and forward targets in a background tab on middle-click', () => {
+    setTabs({
+      state: mkState(['a', 'b', 'c'], ['a'], ['c']),
+      canNavBack: true,
+      canNavForward: true
+    })
+    renderWithSidebar(<WindowControls />)
+
+    fireEvent.mouseDown(screen.getByLabelText('Browser back'), { button: 1 })
+    fireEvent.mouseDown(screen.getByLabelText('Browser forward'), { button: 1 })
+
+    expect(tabs.value.openTab).toHaveBeenCalledTimes(2)
+    expect(tabs.value.openTab).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ path: '/note/a', isPinned: false }),
+      { background: true, forceNew: true }
+    )
+    expect(tabs.value.openTab.mock.calls[1][0]).toMatchObject({ path: '/note/c' })
+    expect(tabs.value.openTab.mock.calls[0][0]).not.toHaveProperty('id')
+    expect(tabs.value.navBack).not.toHaveBeenCalled()
   })
 
   it('does not open the back menu when there is no back history', () => {
