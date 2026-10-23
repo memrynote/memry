@@ -2,6 +2,7 @@ import { APP_COMMANDS } from './app'
 import { CANVAS_COMMANDS } from './canvas'
 import { EDITOR_COMMANDS } from './editor'
 import { FILE_COMMANDS } from './file'
+import { FOLD_COMMANDS } from './fold'
 import { FOLDER_COMMANDS } from './folder'
 import { JOURNAL_COMMANDS } from './journal'
 import { NAV_COMMANDS } from './nav'
@@ -38,6 +39,7 @@ export const COMMANDS = {
   ...FOLDER_COMMANDS,
   ...FILE_COMMANDS,
   ...VIEW_COMMANDS,
+  ...FOLD_COMMANDS,
   ...SETTINGS_COMMANDS,
   ...SYNC_COMMANDS,
   ...APP_COMMANDS

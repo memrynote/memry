@@ -22,14 +22,21 @@ const importers: ImporterItem[] = [
   importer('apple-notes', 'Apple Notes', ['sqlite']),
   importer('bear', 'Bear', ['bear2bk', 'zip']),
   { ...importer('onenote', 'OneNote', []), accountBased: true },
-  importer('roam', 'Roam', ['json'])
+  importer('roam', 'Roam', ['json']),
+  { ...importer('readwise', 'Readwise', []), accountBased: true }
 ]
+
+let readwiseStatus: unknown = null
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, vars?: Record<string, unknown>) =>
-      vars?.count !== undefined ? `${key}:${vars.count}` : key
+      vars?.count !== undefined ? `${key}:${vars.count}` : key,
+    i18n: { language: 'en' }
   })
+}))
+vi.mock('@/hooks/use-readwise-status', () => ({
+  useReadwiseStatus: () => ({ status: readwiseStatus, refresh: () => {} })
 }))
 vi.mock('@/hooks/use-importers', () => ({
   useImporters: () => ({ importers, isLoading: false })
@@ -61,6 +68,70 @@ describe('ImportSettings', () => {
     expect(
       within(screen.getByTestId('import-group-files')).getByTestId('import-source-markdown')
     ).toHaveTextContent('.md')
+  })
+
+  it('lists Readwise first, in its own reading group, with its connection state', () => {
+    readwiseStatus = null
+    const { unmount } = render(<ImportSettings />)
+    const reading = screen.getByTestId('import-group-reading')
+    expect(screen.getAllByTestId(/^import-group-/)[0].getAttribute('data-testid')).toBe(
+      'import-group-reading'
+    )
+    expect(within(reading).getByTestId('import-source-readwise')).toHaveTextContent(
+      'import.v2.readwise.notConnected'
+    )
+    unmount()
+
+    const states: Array<[Record<string, unknown>, string]> = [
+      [{ error: { kind: 'invalid-token' } }, 'import.v2.readwise.invalidToken'],
+      [{ error: { kind: 'subscription-expired' } }, 'import.v2.readwise.subscriptionExpired'],
+      [{ error: { kind: 'rate-limited' } }, 'import.v2.readwise.rateLimited'],
+      [{ error: { kind: 'network' } }, 'import.v2.readwise.network'],
+      [{ error: { kind: 'server' } }, 'import.v2.readwise.server'],
+      [{ error: { kind: 'unexpected' } }, 'import.v2.readwise.unexpected'],
+      [{ syncing: { stage: 'reading', planned: null, done: 0 } }, 'import.v2.readwise.syncing'],
+      [
+        { syncing: { stage: 'waiting-for-sync', planned: null, done: 0 } },
+        'import.v2.readwise.waiting'
+      ],
+      [
+        { lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString() },
+        'import.v2.readwise.synced'
+      ],
+      [{}, 'import.v2.readwise.connected']
+    ]
+    for (const [over, text] of states) {
+      readwiseStatus = {
+        connected: true,
+        thisDevicePulls: true,
+        syncing: null,
+        error: null,
+        lastSyncAt: null,
+        ...over
+      }
+      const { unmount } = render(<ImportSettings />)
+      expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(text)
+      unmount()
+    }
+
+    // The token stays on the pulling device, so another device is never "connected".
+    readwiseStatus = {
+      connected: false,
+      thisDevicePulls: false,
+      pullingDeviceName: 'Desk Mac',
+      syncing: null,
+      error: null
+    }
+    render(<ImportSettings />)
+    expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(
+      'import.v2.readwise.otherDevice'
+    )
+    readwiseStatus = null
+  })
+
+  it('opens the Readwise panel when the error toast asks for it', () => {
+    render(<ImportSettings focusTarget="readwise-import" focusRequestId={1} />)
+    expect(screen.getByTestId('import-dialog')).toHaveTextContent('Readwise')
   })
 
   it('filters by name, id, and file extension', () => {

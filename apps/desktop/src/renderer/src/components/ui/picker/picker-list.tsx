@@ -1,8 +1,23 @@
 import { cn } from '@/lib/utils'
+import { PickerEmpty } from './picker-empty'
+import { PickerLabelFilterContext } from './types'
 
-interface PickerListProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface PickerListProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * Filter the rows by label against the picker's search query, for a menu
+   * whose rows are declared inline. `emptyMessage` shows when none match.
+   */
+  filterByLabel?: boolean
+  emptyMessage?: string
+}
 
-export function PickerList({ className, children, ...props }: PickerListProps): React.JSX.Element {
+export function PickerList({
+  className,
+  children,
+  filterByLabel = false,
+  emptyMessage,
+  ...props
+}: PickerListProps): React.JSX.Element {
   return (
     <div
       data-slot="picker-list"
@@ -10,7 +25,11 @@ export function PickerList({ className, children, ...props }: PickerListProps): 
       role="listbox"
       {...props}
     >
-      {children}
+      <PickerLabelFilterContext.Provider value={filterByLabel}>
+        {children}
+      </PickerLabelFilterContext.Provider>
+      {/* Hidden until every row filters itself out and this is the only child. */}
+      {filterByLabel && <PickerEmpty message={emptyMessage} className="hidden only:flex" />}
     </div>
   )
 }

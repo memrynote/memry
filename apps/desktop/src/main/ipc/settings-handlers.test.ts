@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import { refreshNoteFold } from '../note-fold'
 import {
   DEFAULT_STICKY_SHORTCUT,
   GENERAL_SETTINGS_DEFAULTS
@@ -79,6 +80,7 @@ vi.mock('electron', () => ({
   }
 }))
 
+vi.mock('../note-fold', () => ({ refreshNoteFold: vi.fn() }))
 vi.mock('../stickies/sticky-window', () => ({ showStickyWindow: vi.fn() }))
 
 vi.mock('../database', () => ({
@@ -334,7 +336,12 @@ describe('settings-handlers', () => {
     expect(getResult).toBeNull()
 
     const aiResult = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-    expect(aiResult).toEqual({ enabled: true, imageEmbeddings: true })
+    expect(aiResult).toEqual({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: false,
+      summarizeAgent: 'auto'
+    })
   })
 
   it('gets and sets journal settings', async () => {
@@ -550,7 +557,12 @@ describe('settings-handlers', () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValue('false')
     const aiSettings = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-    expect(aiSettings).toEqual({ enabled: false, imageEmbeddings: false })
+    expect(aiSettings).toEqual({
+      enabled: false,
+      imageEmbeddings: false,
+      summarizeLongNotes: false,
+      summarizeAgent: 'auto'
+    })
 
     const setAi = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
     expect(setAi).toEqual({ success: true })
@@ -569,6 +581,56 @@ describe('settings-handlers', () => {
     expect(result).toEqual({ success: true })
     expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'ai.imageEmbeddings', 'false')
     expect(settingsQueries.setSetting).not.toHaveBeenCalledWith({}, 'ai.enabled', expect.anything())
+  })
+
+  it('stores summarize long notes under its own key and reads it only when exactly true', async () => {
+    registerSettingsHandlers()
+    const result = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, {
+      summarizeLongNotes: true
+    })
+    expect(result).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'ai.summarizeLongNotes', 'true')
+    expect(settingsQueries.setSetting).not.toHaveBeenCalledWith({}, 'ai.enabled', expect.anything())
+
+    ;(settingsQueries.getSetting as Mock).mockReturnValue('true')
+    expect(await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)).toMatchObject({
+      summarizeLongNotes: true
+    })
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+    expect(await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)).toMatchObject({
+      summarizeLongNotes: false
+    })
+  })
+
+  it('stores the summarize agent, refreshes note fold, and reads an unknown stored value as auto', async () => {
+    registerSettingsHandlers()
+    const result = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, {
+      summarizeAgent: 'codex_cli'
+    })
+    expect(result).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'ai.summarizeAgent', 'codex_cli')
+    expect(refreshNoteFold).toHaveBeenCalled()
+
+    ;(settingsQueries.getSetting as Mock).mockReturnValue('codex_cli')
+    expect(await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)).toMatchObject({
+      summarizeAgent: 'codex_cli'
+    })
+    ;(settingsQueries.getSetting as Mock).mockReturnValue('some_future_agent')
+    expect(await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)).toMatchObject({
+      summarizeAgent: 'auto'
+    })
+  })
+
+  it('rejects an unknown summarize agent without writing it', async () => {
+    registerSettingsHandlers()
+    await expect(
+      invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { summarizeAgent: 'nope' })
+    ).rejects.toThrow()
+    expect(settingsQueries.setSetting).not.toHaveBeenCalledWith(
+      {},
+      'ai.summarizeAgent',
+      expect.anything()
+    )
   })
 
   it('gets and sets voice transcription settings', async () => {

@@ -159,7 +159,8 @@ export function describeVaultActivity(
         title: canceled
           ? t('vault.activity.entry.importCanceled', { importer: importerName })
           : t('vault.activity.entry.import', { importer: importerName }),
-        detail: formatActivityCounts(entry.counts, t),
+        // A run that writes its own line (Readwise sync, D19) carries it in `message`.
+        detail: entry.message ?? formatActivityCounts(entry.counts, t),
         tone: failed > 0 ? 'error' : (entry.counts?.skipped ?? 0) > 0 ? 'warning' : 'neutral'
       }
     }

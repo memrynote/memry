@@ -18,6 +18,7 @@ export interface TagsRowProps {
   hideWhenEmpty?: boolean
   hideAddButton?: boolean
   fieldHints?: TagFieldHints
+  noteId?: string
 }
 
 export const TagsRow = memo(function TagsRow({
@@ -32,7 +33,8 @@ export const TagsRow = memo(function TagsRow({
   className,
   hideWhenEmpty = false,
   hideAddButton = false,
-  fieldHints
+  fieldHints,
+  noteId
 }: TagsRowProps) {
   const { t } = useT('notes')
   const currentTagIds = tags.map((t) => t.id)
@@ -64,6 +66,7 @@ export const TagsRow = memo(function TagsRow({
           onCreateTag={onCreateTag}
           disabled={disabled}
           fieldHints={fieldHints}
+          noteId={noteId}
         >
           <AddTagButton disabled={disabled} />
         </TagInputPopup>

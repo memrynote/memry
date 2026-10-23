@@ -13,6 +13,13 @@ import { createRendererI18n } from '@memry/i18n/renderer'
 import { TagsRow } from './TagsRow'
 import type { Tag } from './TagChip'
 
+const suggestions = vi.hoisted(() => ({
+  tags: [] as Array<{ tag: string; confidence: number; support: number }>
+}))
+vi.mock('@/hooks/use-note-similarity', () => ({
+  useTagSuggestions: () => suggestions.tags
+}))
+
 let i18nEn: I18nInstance
 let i18nTr: I18nInstance
 
@@ -311,6 +318,28 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
     // Recent tags are shown when no search query
     // Use getAllByText since the tag might appear in multiple places
     expect(screen.getAllByText('javascript').length).toBeGreaterThan(0)
+  })
+
+  it('lists similar-note tag suggestions above Recent, without the ones already on the note', async () => {
+    const user = userEvent.setup()
+    suggestions.tags = [
+      { tag: 'node', confidence: 0.7, support: 3 },
+      { tag: 'react', confidence: 0.6, support: 2 }
+    ]
+    renderWithI18n(<TagsRow {...defaultProps} noteId="note-1" />)
+
+    await user.click(screen.getByRole('button', { name: /add tag/i }))
+
+    const section = screen.getByTestId('suggested-tags')
+    expect(within(section).getByText('node')).toBeInTheDocument()
+    expect(within(section).queryByText('react')).not.toBeInTheDocument()
+    expect(
+      section.compareDocumentPosition(screen.getByText('Recent')) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+
+    await user.click(within(section).getByText('node'))
+    expect(defaultProps.onAddTag).toHaveBeenCalledWith('tag-5')
+    suggestions.tags = []
   })
 
   it('should filter tags as user types', async () => {

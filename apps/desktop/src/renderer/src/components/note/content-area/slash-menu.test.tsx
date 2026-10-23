@@ -120,6 +120,24 @@ describe('SlashMenu', () => {
     expect(suggestionMenu.closeMenu).not.toHaveBeenCalled()
   })
 
+  it('accepts the highlighted row on Tab instead of indenting', () => {
+    const onItemClick = vi.fn()
+    const list = items()
+    render(
+      <SlashMenu items={list} loadingState="loaded" selectedIndex={0} onItemClick={onItemClick} />
+    )
+
+    pressInEditor({ key: 'Tab', shiftKey: true })
+    expect(onItemClick).not.toHaveBeenCalled()
+
+    const target = document.createElement('p')
+    editorElement.appendChild(target)
+    const notPrevented = fireEvent.keyDown(target, { key: 'Tab' })
+
+    expect(notPrevented).toBe(false)
+    expect(onItemClick).toHaveBeenCalledWith(list[0])
+  })
+
   it('ignores keys typed outside the editor', () => {
     render(<SlashMenu items={items()} loadingState="loaded" selectedIndex={0} />)
 

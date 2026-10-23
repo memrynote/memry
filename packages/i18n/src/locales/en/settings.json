@@ -1384,6 +1384,19 @@
       "disabled": "AI features disabled",
       "error": "Failed to update setting"
     },
+    "summarizeLongNotes": {
+      "label": "Summarize long notes",
+      "description": "Writes shorter versions of long notes with your connected agent, so you can fold a note down to its key points. Runs on this device.",
+      "error": "Failed to update summarize long notes",
+      "failed": "Last run failed \u00b7",
+      "retry": "Retry",
+      "retryError": "Could not retry summarizing",
+      "agentLabel": "Agent that writes summaries",
+      "agentAuto": "Auto",
+      "agentError": "Failed to change the summary agent",
+      "noAgent": "No agent found \u00b7",
+      "openAgents": "Open Agents"
+    },
     "imageSearch": {
       "label": "Search images by content",
       "description": "Find photos by what they show. Downloads a 109 MB image model the first time an image is indexed.",
@@ -1550,7 +1563,8 @@
       "csv": "Import a .csv file — one note per row, columns become properties",
       "raindrop": "Import a Raindrop.io bookmark export (.csv) — bookmarks land in the inbox",
       "apple-notes": "Import from the Apple Notes database (NoteStore.sqlite, macOS)",
-      "onenote": "Import OneNote notebooks (requires a Microsoft account)"
+      "onenote": "Import OneNote notebooks (requires a Microsoft account)",
+      "readwise": "Import your highlights from Readwise (requires an access token)"
     },
     "action": "Import",
     "select": "Select an app to import from…",
@@ -1568,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Warnings",
-      "confirm": "Import"
+      "confirm": "Import",
+      "readwise": {
+        "books": "{count, plural, one {# book} other {# books}}",
+        "highlights": "{count, plural, one {# highlight} other {# highlights}}",
+        "documents": "{count, plural, one {# document} other {# documents}}"
+      }
     },
     "dialog": {
       "title": "Import from {name}",
@@ -1631,7 +1650,197 @@
         "failed": "{count} failed"
       },
       "error": "Import failed",
-      "previewError": "Preview failed"
+      "previewError": "Preview failed",
+      "readwise": {
+        "intro": "Paste your Readwise access token. Memry checks it with Readwise first, then keeps it in your system keychain on this device. It never syncs.",
+        "tokenLabel": "Access token",
+        "tokenPlaceholder": "Paste your token",
+        "getToken": "Get your token",
+        "connect": "Connect",
+        "connecting": "Connecting…",
+        "connectFailed": "Could not connect to Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise syncs on {device}.",
+          "syncsOnAnother": "Readwise syncs on another device.",
+          "explain": "Only one device pulls from Readwise, so the same highlight is never written twice. To pull from this device instead, paste your token again: it never travels between devices. The other device stops at its next book, and every note stays.",
+          "button": "Sync here instead",
+          "working": "Moving Readwise here…",
+          "failed": "Could not move Readwise to this device"
+        },
+        "groups": {
+          "location": "Where notes go",
+          "categories": "What to bring in",
+          "reader": "Readwise Reader",
+          "journal": "Journal",
+          "sync": "Sync"
+        },
+        "journal": {
+          "highlights": {
+            "label": "List each day's highlights in the journal",
+            "description": "Adds a Readwise section to the day you highlighted, linking each book note. New highlights only, no backfill.",
+            "firstImport": "The first import writes nothing to the journal."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Also import saved Reader documents",
+            "description": "Off by default. Can add thousands of notes."
+          },
+          "fullText": {
+            "label": "Include full article text",
+            "description": "Written once, when the note is created"
+          }
+        },
+        "rootFolder": {
+          "label": "Folder",
+          "description": "New books land here. Existing notes stay where they are."
+        },
+        "layout": {
+          "label": "Folder layout",
+          "description": "Applies to new books only.",
+          "options": {
+            "by-category": "By category",
+            "flat": "One folder"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Books",
+            "description": "Kindle, Apple Books and other highlights"
+          },
+          "articles": {
+            "label": "Articles",
+            "description": "Web articles and newsletters"
+          },
+          "tweets": {
+            "label": "Tweets",
+            "description": "Saved tweets and threads"
+          },
+          "podcasts": {
+            "label": "Podcasts",
+            "description": "Podcast episodes and snips"
+          },
+          "supplementals": {
+            "label": "Supplementals",
+            "description": "Books Readwise adds by itself, without your highlights"
+          },
+          "other": {
+            "label": "Other",
+            "description": "Categories Readwise added after this version"
+          }
+        },
+        "cadence": {
+          "label": "Frequency",
+          "description": "How often new highlights arrive.",
+          "options": {
+            "manual": "Manual",
+            "hourly": "Hourly",
+            "daily": "Daily"
+          }
+        },
+        "syncNow": {
+          "label": "Sync now",
+          "description": "Check Readwise for new highlights.",
+          "button": "Sync now"
+        },
+        "disconnect": "Disconnect",
+        "disconnectHint": "Disconnect removes the token from this device. Your notes stay.",
+        "deleted": {
+          "heading": "Deleted books",
+          "description": "Notes you deleted in memry. They stay deleted until you restore them.",
+          "meta": "Deleted {date} · {count, plural, one {# highlight} other {# highlights}}",
+          "restore": "Restore",
+          "footer": "Restoring recreates the note with all of its highlights.",
+          "empty": "No deleted books",
+          "syncsOn": "Readwise syncs on {device}.",
+          "syncsOnAnotherDevice": "Readwise syncs on another device.",
+          "loadFailed": "Could not load the deleted books",
+          "restoreFailed": "Could not restore the note"
+        },
+        "importNow": "Import now",
+        "importBooks": "{count, plural, one {Import # book} other {Import # books}}",
+        "importNotes": "{count, plural, one {Import # note} other {Import # notes}}",
+        "importNone": "Import",
+        "preview": {
+          "intro": "{highlights, plural, one {# highlight} other {# highlights}} across {books, plural, one {# book} other {# books}} are ready. Nothing is written until you confirm.",
+          "introOff": "{highlights, plural, one {# highlight} other {# highlights}} across {books, plural, one {# book} other {# books}} are ready. Off: {off}. {willImport, plural, one {# book} other {# books}} will import. Nothing is written until you confirm.",
+          "introReaderOnly": "Your Readwise library has no highlights yet. {documents, plural, one {# saved Reader document} other {# saved Reader documents}} will import as notes. Nothing is written until you confirm.",
+          "readerLabel": "Saved Reader documents",
+          "empty": "Your Readwise library has no highlights yet. Nothing is written. Import to finish setting up.",
+          "willImport": "will import",
+          "off": "off",
+          "retry": "Try again"
+        },
+        "status": {
+          "connected": "Connected",
+          "synced": "Synced {time}",
+          "syncing": "Syncing with Readwise",
+          "reading": "Reading your library…",
+          "writing": "Writing books, {done} of {total}",
+          "finishing": "Finishing up…",
+          "waitingTitle": "Waiting for memry sync",
+          "waitingDetail": "Memry waits until your other devices' notes have arrived, so no book is written twice. Readwise starts right after.",
+          "otherTitle": "Syncs on {device}",
+          "otherTitleUnknown": "Syncs on another device",
+          "otherDetail": "Only one device pulls from Readwise, so the same highlight is never written twice.",
+          "lastRun": "Last run: {counts}",
+          "lastRunNothing": "Last run: nothing new",
+          "nextRun": "Next sync {time}",
+          "retryAt": "Memry tries again {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise needs a new token",
+              "detail": "Readwise did not accept the saved token. Paste a fresh one from readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Your Readwise subscription expired",
+              "detail": "Renew your subscription on readwise.io, then try again."
+            },
+            "rate-limited": {
+              "title": "Readwise is limiting requests",
+              "detail": "Too many requests in a short time."
+            },
+            "network": {
+              "title": "Can't reach Readwise",
+              "detail": "Check your connection."
+            },
+            "server": {
+              "title": "Readwise had a problem",
+              "detail": "Readwise answered with an error."
+            },
+            "unexpected": {
+              "title": "The sync stopped",
+              "detail": "Something went wrong during the run."
+            }
+          },
+          "counts": {
+            "added": "{count} added",
+            "updated": "{count} updated",
+            "appended": "{count} extended",
+            "deferred": "{count} waiting for an open note",
+            "failed": "{count} failed",
+            "highlights": "{count, plural, one {# highlight} other {# highlights}}"
+          },
+          "actions": {
+            "cancel": "Cancel",
+            "retry": "Retry now",
+            "newToken": "Paste a new token",
+            "reconnect": "Reconnect",
+            "syncHere": "Sync here instead"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise needs a new token",
+            "description": "Syncing is paused until you paste a fresh one."
+          },
+          "subscription-expired": {
+            "title": "Your Readwise subscription expired",
+            "description": "Syncing is paused until the subscription is active again."
+          },
+          "open": "Open Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Failed to read file",
@@ -1668,6 +1877,16 @@
         "unknownPriority": "Unknown priority {priority} → none",
         "unparsedDate": "Could not parse date \"{date}\"",
         "subtaskNoParent": "Sub-task \"{title}\" has no parent at indent {indent}; imported top-level"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise is not connected.",
+        "tokenInvalid": "Readwise did not accept the stored token. Disconnect and connect again with a fresh one.",
+        "unreachable": "Could not reach Readwise. Check your connection and try again.",
+        "categoryOff": "{count, plural, one {# book is} other {# books are}} in a category you turned off and {count, plural, one {was} other {were}} not imported.",
+        "unchanged": "{count, plural, one {# book was} other {# books were}} already up to date.",
+        "sourceDeleted": "{count, plural, one {# book was} other {# books were}} deleted in Readwise. The notes stay.",
+        "noteDeleted": "{count, plural, one {# note was} other {# notes were}} deleted in Memry and stay deleted.",
+        "busy": "{count, plural, one {# note is} other {# notes are}} open in an editor and will be written on the next run."
       }
     },
     "status": {
@@ -1708,6 +1927,9 @@
       },
       "todoist": {
         "importing": "Importing Todoist tasks…"
+      },
+      "readwise": {
+        "fetching": "Reading your Readwise library…"
       }
     },
     "v2": {
@@ -1717,9 +1939,25 @@
       "showMore": "{count, plural, one {Show # more} other {Show # more}}",
       "showLess": "Show less",
       "groups": {
+        "reading": "Reading",
         "noteApps": "Note apps",
         "tasks": "Tasks, journal & bookmarks",
         "files": "Files"
+      },
+      "readwise": {
+        "notConnected": "Not connected",
+        "connected": "Connected",
+        "synced": "Synced {time}",
+        "syncing": "Syncing…",
+        "waiting": "Waiting for sync",
+        "otherDevice": "Syncs on {device}",
+        "otherDeviceUnknown": "Syncs elsewhere",
+        "invalidToken": "Needs a new token",
+        "subscriptionExpired": "Subscription expired",
+        "rateLimited": "Rate limited",
+        "network": "Can't reach Readwise",
+        "server": "Readwise error",
+        "unexpected": "Sync failed"
       }
     }
   },
@@ -2190,6 +2428,26 @@
         "actualSize": {
           "label": "Actual Size",
           "description": "Reset zoom to 100%"
+        },
+        "foldFull": {
+          "label": "Fold: Full",
+          "description": "Show every word of the note"
+        },
+        "foldBrief": {
+          "label": "Fold: Brief",
+          "description": "Show only the key sentences, as written"
+        },
+        "foldKey": {
+          "label": "Fold: Key",
+          "description": "Show each point and its reason"
+        },
+        "foldTakeaway": {
+          "label": "Fold: Takeaway",
+          "description": "Show one line per paragraph"
+        },
+        "foldTopic": {
+          "label": "Fold: Topic",
+          "description": "Show the note as a map of its sections"
         }
       }
     },

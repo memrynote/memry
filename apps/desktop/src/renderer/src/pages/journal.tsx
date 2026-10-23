@@ -50,6 +50,9 @@ import {
 import { journalService } from '@/services/journal-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { FoldLevelControl } from '@/components/note/fold/fold-level-control'
+import { FoldSurface } from '@/components/note/fold/fold-surface'
+import { useNoteFold } from '@/components/note/fold/use-note-fold'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
@@ -122,6 +125,7 @@ import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { FIND_REQUEST_KEY, readFindRequest, type FindRequest } from '@/lib/find-request'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
@@ -369,6 +373,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     editorContainerRef as RefObject<HTMLElement | null>,
     isActiveJournal && currentViewState.type === 'day'
   )
+
+  // A search-palette hit on this day: open the find bar on its match. Cleared
+  // from the tab once taken, so coming back to the tab does not jump again.
+  const [findRequest, setFindRequest] = useTabViewState<FindRequest | null>({
+    key: FIND_REQUEST_KEY,
+    defaultValue: null,
+    parse: (raw) => readFindRequest({ [FIND_REQUEST_KEY]: raw }) ?? undefined
+  })
+  const openFindAt = findInPage.openAt
+  useEffect(() => {
+    if (!findRequest || !isActiveJournal || currentViewState.type !== 'day') return
+    openFindAt(findRequest.query, findRequest.index)
+    setFindRequest(null)
+  }, [findRequest, isActiveJournal, currentViewState.type, openFindAt, setFindRequest])
 
   // Date parts and heatmap
   const isToday = selectedDate === today
@@ -744,6 +762,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [isDayView, selectedDate]
   )
   const agentReview = useAgentBodyReview(agentReviewTarget)
+
+  // Folding: the same level view as a note, for the day on screen (see components/note/fold/).
+  const fold = useNoteFold(
+    isDayView && !isLocked && !agentReview ? entryId : null,
+    entry?.wordCount ?? 0
+  )
 
   // Mind map, wired as on the note page: composed onto the review's
   // editor-ready callback so it reads the live block tree of the editor that
@@ -1185,26 +1209,29 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               onYearClick={navigateToYear}
               onTodayClick={handleTodayClick}
             />
-            <JournalHeaderActions
-              viewState={currentViewState}
-              isBookmarked={isBookmarked}
-              isFullWidth={isFullWidth}
-              hasEntry={!!entry}
-              journalDate={selectedDate}
-              isMindMapAvailable={mindMap.isAvailable}
-              isMindMapOpen={isMindMapOpen}
-              isLocalGraphOpen={isLocalGraphOpen}
-              lockAction={lockAction}
-              onPrevious={() => runJournal('journal.previous')}
-              onNext={() => runJournal('journal.next')}
-              onToggleFullWidth={() => runJournal('journal.toggleFullWidth')}
-              onBookmarkToggle={() => runJournal('journal.toggleBookmark')}
-              onToggleMindMap={() => runJournal('journal.toggleMindMap')}
-              onVersionHistory={() => runJournal('journal.versionHistory')}
-              onExport={() => runJournal('journal.export')}
-              onOpenSettings={() => openSettingsModal('journal')}
-              onMenuAction={runMenuAction}
-            />
+            <div className="flex items-center gap-0.5">
+              {fold.control && <FoldLevelControl {...fold.control} />}
+              <JournalHeaderActions
+                viewState={currentViewState}
+                isBookmarked={isBookmarked}
+                isFullWidth={isFullWidth}
+                hasEntry={!!entry}
+                journalDate={selectedDate}
+                isMindMapAvailable={mindMap.isAvailable}
+                isMindMapOpen={isMindMapOpen}
+                isLocalGraphOpen={isLocalGraphOpen}
+                lockAction={lockAction}
+                onPrevious={() => runJournal('journal.previous')}
+                onNext={() => runJournal('journal.next')}
+                onToggleFullWidth={() => runJournal('journal.toggleFullWidth')}
+                onBookmarkToggle={() => runJournal('journal.toggleBookmark')}
+                onToggleMindMap={() => runJournal('journal.toggleMindMap')}
+                onVersionHistory={() => runJournal('journal.versionHistory')}
+                onExport={() => runJournal('journal.export')}
+                onOpenSettings={() => openSettingsModal('journal')}
+                onMenuAction={runMenuAction}
+              />
+            </div>
           </div>
 
           <div
@@ -1335,63 +1362,65 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               {/* Hidden, never unmounted, while an agent edit is under
                               review: the editor keeps its Y.Doc binding and undo
                               history until the review is settled. */}
-                              <div
-                                className={cn(agentReview && 'hidden')}
-                                inert={Boolean(agentReview) || undefined}
-                              >
-                                <ContentArea
-                                  key={editorState.key}
-                                  noteId={entry?.id}
-                                  editable={!isLocked}
-                                  initialContent={review.editorInitialContent}
-                                  contentType="markdown"
-                                  externalContentRevision={externalUpdateCount}
-                                  placeholder={
-                                    selectedDate > today
-                                      ? t('editor.placeholder.future')
-                                      : isToday
-                                        ? t('editor.placeholder.today')
-                                        : t('editor.placeholder.past')
-                                  }
-                                  stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                                  onStickyToolbarChange={(sticky) =>
-                                    void updateEditorSettings({
-                                      toolbarMode: sticky ? 'sticky' : 'floating'
-                                    })
-                                  }
-                                  spellCheck={editorSettings.spellCheck}
-                                  onContentChange={handleContentChange}
-                                  onMarkdownChange={handleMarkdownChange}
-                                  onHeadingsChange={handleHeadingsChange}
-                                  onLinkClick={handleLinkClick}
-                                  onInternalLinkClick={(...args) =>
-                                    void handleInternalLinkClick(...args)
-                                  }
-                                  noteTags={chipTags}
-                                  onInlineTagsChange={handleInlineTagsChange}
-                                  tagColorMap={tagColorMap}
-                                  tagIconMap={tagIconMap}
-                                  focusAtEndRef={focusAtEndRef}
-                                  openTemplateInsertRef={openTemplateInsertRef}
-                                  marqueeZoneEl={marqueeZoneEl}
-                                  review={{
-                                    plainMarkdown: review.plainMarkdown,
-                                    marks: review.marks,
-                                    hoveredMarkId: review.hoveredMarkId,
-                                    onEditorReady: handleEditorReady,
-                                    onAddComment: review.openCommentComposer,
-                                    getMarkdownSourceOffsetForEditorOffset:
-                                      review.getMarkdownSourceOffsetForEditorOffset,
-                                    getEditorOffsetForMarkdownSourceOffset:
-                                      review.getEditorOffsetForMarkdownSourceOffset,
-                                    onPersistCurrentMarkdown: review.persistCurrentMarkdown,
-                                    onPlainMarkdownChange: review.handlePlainMarkdownChange,
-                                    onHoveredMarkChange: review.setHoveredMarkId,
-                                    onMarkPositionsChange: review.setMarkPositions,
-                                    onReplaceMarksFromYjs: review.replaceMarksFromYjs
-                                  }}
-                                />
-                              </div>
+                              <FoldSurface fold={fold}>
+                                <div
+                                  className={cn(agentReview && 'hidden')}
+                                  inert={Boolean(agentReview) || undefined}
+                                >
+                                  <ContentArea
+                                    key={editorState.key}
+                                    noteId={entry?.id}
+                                    editable={!isLocked}
+                                    initialContent={review.editorInitialContent}
+                                    contentType="markdown"
+                                    externalContentRevision={externalUpdateCount}
+                                    placeholder={
+                                      selectedDate > today
+                                        ? t('editor.placeholder.future')
+                                        : isToday
+                                          ? t('editor.placeholder.today')
+                                          : t('editor.placeholder.past')
+                                    }
+                                    stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                                    onStickyToolbarChange={(sticky) =>
+                                      void updateEditorSettings({
+                                        toolbarMode: sticky ? 'sticky' : 'floating'
+                                      })
+                                    }
+                                    spellCheck={editorSettings.spellCheck}
+                                    onContentChange={handleContentChange}
+                                    onMarkdownChange={handleMarkdownChange}
+                                    onHeadingsChange={handleHeadingsChange}
+                                    onLinkClick={handleLinkClick}
+                                    onInternalLinkClick={(...args) =>
+                                      void handleInternalLinkClick(...args)
+                                    }
+                                    noteTags={chipTags}
+                                    onInlineTagsChange={handleInlineTagsChange}
+                                    tagColorMap={tagColorMap}
+                                    tagIconMap={tagIconMap}
+                                    focusAtEndRef={focusAtEndRef}
+                                    openTemplateInsertRef={openTemplateInsertRef}
+                                    marqueeZoneEl={marqueeZoneEl}
+                                    review={{
+                                      plainMarkdown: review.plainMarkdown,
+                                      marks: review.marks,
+                                      hoveredMarkId: review.hoveredMarkId,
+                                      onEditorReady: handleEditorReady,
+                                      onAddComment: review.openCommentComposer,
+                                      getMarkdownSourceOffsetForEditorOffset:
+                                        review.getMarkdownSourceOffsetForEditorOffset,
+                                      getEditorOffsetForMarkdownSourceOffset:
+                                        review.getEditorOffsetForMarkdownSourceOffset,
+                                      onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                                      onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                                      onHoveredMarkChange: review.setHoveredMarkId,
+                                      onMarkPositionsChange: review.setMarkPositions,
+                                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                                    }}
+                                  />
+                                </div>
+                              </FoldSurface>
                             </>
                           )}
                           {agentReview ? null : (

@@ -346,6 +346,25 @@ describe('attachment operations', () => {
       expect(result.type).toBe('image')
     })
 
+    it('stores the file under the exact name when the caller names it', async () => {
+      const result = await saveAttachment('note123', Buffer.from('data'), 'rw-0123abcd.png', {
+        exactFilename: true
+      })
+
+      expect(result.success).toBe(true)
+      expect(
+        fs.existsSync(path.join(tempVault.path, 'attachments', 'note123', 'rw-0123abcd.png'))
+      ).toBe(true)
+    })
+
+    it('refuses an exact filename that is not a plain file name', async () => {
+      const result = await saveAttachment('note123', Buffer.from('data'), '../escape.png', {
+        exactFilename: true
+      })
+
+      expect(result.success).toBe(false)
+    })
+
     it('T393: creates note attachments folder', async () => {
       const data = Buffer.from('data')
 

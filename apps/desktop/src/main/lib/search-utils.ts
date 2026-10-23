@@ -23,6 +23,16 @@ export function buildPrefixQuery(query: string): string {
   return terms.map((term) => `"${term}"*`).join(' ')
 }
 
+/**
+ * Adjacent-words form of a plain multi-word query (`"this is roughly"*`, the
+ * last word still a prefix). Empty for a single word, where adjacency means
+ * nothing.
+ */
+export function buildPhraseQuery(query: string): string {
+  const terms = escapeSearchQuery(query).split(/\s+/).filter(Boolean)
+  return terms.length < 2 ? '' : `"${terms.join(' ')}"*`
+}
+
 export function normalizeScores(results: SearchResultItem[]): SearchResultItem[] {
   if (results.length === 0) return results
 

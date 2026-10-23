@@ -161,6 +161,8 @@
     "noteToggleLock": "Lock or Unlock Note",
     "noteToggleBookmark": "Toggle Note Bookmark",
     "noteSetReminder": "Set Note Reminder",
+    "noteReadwiseReimport": "Re-import from Readwise",
+    "noteReadwiseRefresh": "Refresh Readwise Book Info",
     "noteDelete": "Delete Note",
     "journalPrevious": "Previous Journal Period",
     "journalNext": "Next Journal Period",

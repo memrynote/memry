@@ -59,6 +59,19 @@ describe('downloadAttachmentFromUrl', () => {
     expect(emitNoteAttachmentSaved).toHaveBeenCalledWith(NOTE_ID, '/v/a.jpg')
   })
 
+  it("stores the file under the caller's stem and the response type's extension", async () => {
+    const result = await downloadAttachmentFromUrl(
+      { noteId: NOTE_ID, url: 'https://example.com/photos/harbour.jpg' },
+      { fetch: async () => response({ headers: { 'Content-Type': 'image/png' } }) },
+      { fileStem: 'rw-0123abcd' }
+    )
+
+    expect(result.ok).toBe(true)
+    expect(saveAttachment).toHaveBeenCalledWith(NOTE_ID, expect.any(Buffer), 'rw-0123abcd.png', {
+      exactFilename: true
+    })
+  })
+
   it('refuses a link to a page rather than to an image', async () => {
     const result = await download('https://example.com/photos/harbour', async () =>
       response({ headers: { 'Content-Type': 'text/html' } })

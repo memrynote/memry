@@ -48,6 +48,11 @@ export interface AISettings {
   enabled: boolean
   /** Embed images with the vision encoder so text queries find them. Default on. */
   imageEmbeddings: boolean
+  /** Fold long notes into summary levels. Local, default off. */
+  summarizeLongNotes: boolean
+  /** Which agent writes the summaries. Local, default `auto`. */
+  summarizeAgent:
+    'auto' | 'claude_cli' | 'codex_cli' | 'antigravity_cli' | 'local_openai_compatible'
 }
 
 export interface AIModelStatus {

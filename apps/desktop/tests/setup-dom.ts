@@ -78,6 +78,18 @@ const createMockApi = () => ({
   // Native context menu bridge (main-process IPC in production)
   showContextMenu: vi.fn().mockResolvedValue(null),
 
+  noteFold: {
+    get: vi.fn(),
+    retry: vi.fn().mockResolvedValue(null),
+    getLastRun: vi.fn().mockResolvedValue({ status: 'idle', noteId: null }),
+    getAgentStatus: vi.fn().mockResolvedValue({
+      choice: 'auto',
+      available: [{ id: 'claude_cli', label: 'Claude' }],
+      resolved: 'Claude'
+    }),
+    onUpdated: vi.fn().mockReturnValue(() => {})
+  },
+
   // OCR languages (read by Settings > General on mount)
   ocrLanguages: {
     get: vi.fn().mockResolvedValue({ selected: ['eng'], statuses: { eng: { state: 'ready' } } }),
@@ -596,6 +608,7 @@ const createMockApi = () => ({
   onJournalEntryDeleted: vi.fn().mockReturnValue(() => {}),
   onJournalExternalChange: vi.fn().mockReturnValue(() => {}),
   onMenuCommand: vi.fn().mockReturnValue(() => {}),
+  onReadwiseStatusChanged: vi.fn().mockReturnValue(() => {}),
   onReminderDue: vi.fn().mockReturnValue(() => {}),
   onReminderCreated: vi.fn().mockReturnValue(() => {}),
   onReminderUpdated: vi.fn().mockReturnValue(() => {}),

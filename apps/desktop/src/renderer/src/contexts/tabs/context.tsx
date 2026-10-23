@@ -230,7 +230,7 @@ interface TabActionsContextType {
   splitView: (
     direction: SplitDirection,
     groupId?: string,
-    options?: { cloneActiveTab?: boolean }
+    options?: { cloneActiveTab?: boolean; position?: 'first' | 'second' }
   ) => string | null
 
   /**
@@ -718,7 +718,7 @@ export const TabProvider = ({
     (
       direction: SplitDirection,
       groupId?: string,
-      options?: { cloneActiveTab?: boolean }
+      options?: { cloneActiveTab?: boolean; position?: 'first' | 'second' }
     ): string | null => {
       const actualGroupId = groupId ?? activeGroupIdRef.current
       // Mirrors the reducer's own guard: splitting a group that is already gone is
@@ -733,7 +733,8 @@ export const TabProvider = ({
           direction,
           groupId: actualGroupId,
           newGroupId,
-          cloneActiveTab: options?.cloneActiveTab
+          cloneActiveTab: options?.cloneActiveTab,
+          position: options?.position
         }
       })
       return newGroupId

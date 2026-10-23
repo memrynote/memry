@@ -14,6 +14,8 @@ export interface EditorHandle {
   undo(): boolean
   redo(): boolean
   focus(): void
+  setTextCursorPosition(block: string, placement: 'start' | 'end'): void
+  insertInlineContent(content: string[]): void
   readonly domElement?: HTMLElement
 }
 

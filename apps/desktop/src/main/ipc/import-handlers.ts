@@ -20,6 +20,10 @@ import {
   registerOneNoteImportHandlers,
   unregisterOneNoteImportHandlers
 } from './onenote-import-handlers'
+import {
+  registerReadwiseImportHandlers,
+  unregisterReadwiseImportHandlers
+} from './readwise-import-handlers'
 
 /**
  * Generic import IPC: start a run (resolves with the final summary) and cancel
@@ -111,6 +115,7 @@ export function registerImportHandlers(): void {
   )
 
   registerOneNoteImportHandlers()
+  registerReadwiseImportHandlers()
 }
 
 export function unregisterImportHandlers(): void {
@@ -122,4 +127,5 @@ export function unregisterImportHandlers(): void {
   ipcMain.removeHandler(AppleNotesImportChannels.invoke.FOLDERS)
   ipcMain.removeHandler(AppleNotesImportChannels.invoke.CHECK_UNLOCK)
   unregisterOneNoteImportHandlers()
+  unregisterReadwiseImportHandlers()
 }

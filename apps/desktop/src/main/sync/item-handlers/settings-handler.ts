@@ -35,6 +35,8 @@ import {
   SIDEBAR_SHOW_FILES_SETTINGS_KEY
 } from '../../settings/sidebar-tree-view-store'
 import { createLogger } from '../../lib/logger'
+import { releaseTokenIfClaimedElsewhere } from '../../readwise/release'
+import { applyMergedReadwiseSettings } from '../../readwise/settings'
 import { applyMergedCalendarSettings } from '../../calendar/calendar-settings-sync'
 import { applyTraySetting } from '../../tray'
 import type {
@@ -149,6 +151,19 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
       setSetting(db, 'features', JSON.stringify({ ...current, ...merged.features }))
     } catch (err) {
       log.warn('Failed to propagate merged features settings:', err)
+    }
+  }
+
+  // The Readwise group (#1408 D8) is one data DB row, merged leaf by leaf.
+  if (merged.readwise) {
+    try {
+      applyMergedReadwiseSettings(getDatabase(), merged.readwise)
+      // Another device took Readwise over: this one gives up its token (D8).
+      void releaseTokenIfClaimedElsewhere().catch((err) =>
+        log.warn('Failed to release the Readwise token after a takeover:', err)
+      )
+    } catch (err) {
+      log.warn('Failed to propagate merged readwise settings:', err)
     }
   }
 

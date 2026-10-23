@@ -46,7 +46,24 @@ export const IMPORT_MESSAGE_CODES = {
   todoistEmptyTitle: 'todoist.emptyTitle',
   todoistUnknownPriority: 'todoist.unknownPriority',
   todoistUnparsedDate: 'todoist.unparsedDate',
-  todoistSubtaskNoParent: 'todoist.subtaskNoParent'
+  todoistSubtaskNoParent: 'todoist.subtaskNoParent',
+
+  /** Preview error: no token is stored for this vault. */
+  readwiseTokenMissing: 'readwise.tokenMissing',
+  /** Preview error: Readwise rejected the stored token. */
+  readwiseTokenInvalid: 'readwise.tokenInvalid',
+  /** Preview error: Readwise could not be reached, or is rate limiting. */
+  readwiseUnreachable: 'readwise.unreachable',
+  /** Skip reason: books in a category the user switched off. Takes `{count}`. */
+  readwiseCategoryOff: 'readwise.categoryOff',
+  /** Skip reason: books whose note already matches Readwise. Takes `{count}`. */
+  readwiseUnchanged: 'readwise.unchanged',
+  /** Skip reason: books deleted in Readwise; their notes stay. Takes `{count}`. */
+  readwiseSourceDeleted: 'readwise.sourceDeleted',
+  /** Skip reason: books whose note the user deleted; they stay deleted. Takes `{count}`. */
+  readwiseNoteDeleted: 'readwise.noteDeleted',
+  /** Skip reason: books whose note is open in an editor; the next run writes them. Takes `{count}`. */
+  readwiseBusy: 'readwise.busy'
 } as const
 
 export type ImportMessageCode = (typeof IMPORT_MESSAGE_CODES)[keyof typeof IMPORT_MESSAGE_CODES]
@@ -77,7 +94,8 @@ export const IMPORT_STATUS_CODES = {
   raindropImporting: 'status.raindrop.importing',
   roamReading: 'status.roam.reading',
   ticktickImporting: 'status.ticktick.importing',
-  todoistImporting: 'status.todoist.importing'
+  todoistImporting: 'status.todoist.importing',
+  readwiseFetching: 'status.readwise.fetching'
 } as const
 
 export type ImportStatusCode = (typeof IMPORT_STATUS_CODES)[keyof typeof IMPORT_STATUS_CODES]
@@ -142,6 +160,10 @@ export const IMPORT_STATUS = {
   todoistImporting: {
     code: IMPORT_STATUS_CODES.todoistImporting,
     message: 'Importing Todoist tasks…'
+  },
+  readwiseFetching: {
+    code: IMPORT_STATUS_CODES.readwiseFetching,
+    message: 'Reading your Readwise library…'
   }
 } satisfies Record<
   Exclude<keyof typeof IMPORT_STATUS_CODES, 'importingItem' | 'onenoteDownloadingAttachment'>,

@@ -34,7 +34,7 @@ import {
   ChevronsUp
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
+import { MEMRY_NOTE_DRAG_MIME, setTabDragData } from '@/lib/drag-mime'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
@@ -1399,10 +1399,14 @@ export function VirtualizedNotesTree({
         // Every non-folder item is a note entity — tag it so the spatial canvas
         // can create a referencing card on drop (markdown notes set no other MIME).
         e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', itemId))
+        // What a click would open, so a pane's split zones can open it where
+        // it is dropped and the editor can link it.
+        const note = noteMap.get(itemId)
+        if (note) setTabDragData(e.dataTransfer, noteTabData(note))
       }
       setDragState({ draggedId: itemId })
     },
-    [isDragDisabled, setDragState]
+    [isDragDisabled, setDragState, noteMap]
   )
 
   const handleDragEnd = useCallback(() => {

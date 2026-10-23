@@ -8,9 +8,7 @@ describe('WritingRail', () => {
   it('closes the rail from its close button', async () => {
     const session = new WritingToolsSession(vi.fn(), () => '', true)
     session.setMode('overflow')
-    render(
-      <WritingRail mode="overflow" session={session} snapshot={session.getSnapshot()} aiEnabled />
-    )
+    render(<WritingRail mode="overflow" session={session} snapshot={session.getSnapshot()} />)
     await userEvent.click(screen.getByRole('button', { name: 'Close writing tools' }))
     expect(session.getSnapshot().mode).toBeNull()
   })

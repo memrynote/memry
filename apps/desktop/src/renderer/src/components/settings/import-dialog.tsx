@@ -18,6 +18,7 @@ import {
   OneNoteImportPanel,
   type OneNotePanelState
 } from '@/components/settings/onenote-import-panel'
+import { ReadwiseImportPanel } from '@/components/settings/readwise-import-panel'
 import {
   AppleNotesFolderPanel,
   type AppleNotesPanelState
@@ -29,7 +30,8 @@ const ACCOUNT_PANELS: Record<
   string,
   React.ComponentType<{ disabled: boolean; onStateChange: (state: OneNotePanelState) => void }>
 > = {
-  onenote: OneNoteImportPanel
+  onenote: OneNoteImportPanel,
+  readwise: ReadwiseImportPanel
 }
 
 interface ImportDialogProps {
@@ -131,7 +133,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{item ? t('import.dialog.title', { name: item.name }) : ''}</DialogTitle>
           <DialogDescription>{item ? t(item.descriptionKey) : ''}</DialogDescription>
@@ -329,7 +331,13 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               onPointerDown={startImport}
               onClick={startImport}
             >
-              {needsPreview ? t('import.preview.confirm') : t('import.dialog.start')}
+              {isAccountBased && accountState.confirmLabel
+                ? accountState.confirmLabel
+                : item?.id === 'readwise'
+                  ? t('import.dialog.readwise.importNow')
+                  : needsPreview
+                    ? t('import.preview.confirm')
+                    : t('import.dialog.start')}
             </Button>
           )}
         </DialogFooter>

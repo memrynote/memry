@@ -257,6 +257,10 @@ vi.mock('./sticky-handlers', () => ({
   unregisterStickyHandlers: hoisted.unregisterStickyHandlers
 }))
 
+vi.mock('./note-fold-handlers', () => ({
+  registerNoteFoldHandlers: vi.fn(),
+  unregisterNoteFoldHandlers: vi.fn()
+}))
 vi.mock('./ocr-languages-handlers', () => ({
   registerOcrLanguagesHandlers: hoisted.registerOcrLanguagesHandlers,
   unregisterOcrLanguagesHandlers: hoisted.unregisterOcrLanguagesHandlers

@@ -70,7 +70,7 @@ function filenameFor(url: string, extension: string): string {
 }
 
 export type RemoteImageFetchResult =
-  | { ok: true; bytes: Buffer; filename: string }
+  | { ok: true; bytes: Buffer; filename: string; extension: string }
   | { ok: false; reason: Exclude<DownloadAttachmentFromUrlFailure, 'write-failed'> }
 
 /**
@@ -116,17 +116,32 @@ export async function fetchRemoteImage(
   // Checked again on the real body: `Content-Length` is a claim, not a limit.
   if (bytes.byteLength > MAX_BYTES) return { ok: false, reason: 'too-large' }
 
-  return { ok: true, bytes, filename: filenameFor(url, extension) }
+  return { ok: true, bytes, filename: filenameFor(url, extension), extension }
+}
+
+export interface DownloadAttachmentOptions {
+  /**
+   * Name the file `<fileStem>.<extension>` (extension from the response type)
+   * and store it exactly so, instead of the URL's own name behind a random
+   * prefix. The caller can then find the file again from the stem alone.
+   */
+  fileStem?: string
 }
 
 export async function downloadAttachmentFromUrl(
   input: DownloadAttachmentFromUrlInput,
-  deps: RemoteAttachmentDeps
+  deps: RemoteAttachmentDeps,
+  options: DownloadAttachmentOptions = {}
 ): Promise<DownloadAttachmentFromUrlResult> {
   const fetched = await fetchRemoteImage(input.url, deps)
   if (!fetched.ok) return fetched
 
-  const saved = await saveAttachment(input.noteId, fetched.bytes, fetched.filename)
+  const { fileStem } = options
+  const saved = fileStem
+    ? await saveAttachment(input.noteId, fetched.bytes, `${fileStem}.${fetched.extension}`, {
+        exactFilename: true
+      })
+    : await saveAttachment(input.noteId, fetched.bytes, fetched.filename)
   if (!saved.success || !saved.path) {
     logger.error('A linked image could not be written to the vault', {
       noteId: input.noteId,

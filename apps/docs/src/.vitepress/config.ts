@@ -62,6 +62,7 @@ function unifiedSidebar() {
       collapsed: false,
       items: [
         { text: 'Importing Notes', link: '/user-guide/import' },
+        { text: 'Readwise', link: '/user-guide/readwise' },
         {
           text: 'Notes',
           collapsed: true,
@@ -77,6 +78,7 @@ function unifiedSidebar() {
             { text: 'Cover Image', link: '/user-guide/notes/cover-image' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
+            { text: 'Folding Long Notes', link: '/user-guide/notes/folding' },
             { text: 'Mind Map', link: '/user-guide/notes/mind-map' },
             { text: 'Version History', link: '/user-guide/notes/version-history' },
             { text: 'Writing Tools', link: '/user-guide/notes/writing-tools' }
@@ -219,6 +221,7 @@ function unifiedSidebar() {
         { text: 'Cryptography', link: '/architecture/cryptography' },
         { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
         { text: 'Calendar Providers', link: '/architecture/calendar-providers' },
+        { text: 'Readwise Vault Formats', link: '/architecture/readwise-vault-formats' },
         { text: 'Observability & Telemetry', link: '/architecture/observability' }
       ]
     },

@@ -237,14 +237,21 @@
       "idx": 33,
       "version": "6",
       "when": 1792900000000,
-      "tag": "0033_portal_refs",
+      "tag": "0033_note_fold_chunks",
       "breakpoints": true
     },
     {
       "idx": 34,
       "version": "6",
       "when": 1792900100000,
-      "tag": "0034_block_link_refs",
+      "tag": "0034_portal_refs",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1792900200000,
+      "tag": "0035_block_link_refs",
       "breakpoints": true
     }
   ]

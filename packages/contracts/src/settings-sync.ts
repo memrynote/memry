@@ -181,6 +181,53 @@ export const SyncedSettingsSchema = z.object({
       spatialCanvas: z.boolean().optional()
     })
     .catchall(z.unknown())
+    .optional(),
+  // Readwise choices follow the user to the device that takes over (#1408 D8),
+  // one field clock per leaf (`readwise.categories.supplementals`, ...). The
+  // token never syncs. Values stay loose strings on purpose: a layout or
+  // cadence only a newer build knows must ride along instead of failing the
+  // whole settings payload, and readers fall back to the default. `catchall`
+  // keeps fields a newer build adds. A build older than this strips the group
+  // on parse but echoes its clocks, so the merge keeps the value (§6.9.0 of
+  // docs/protocol/06). `syncDeviceId` names the one device that pulls from
+  // Readwise (D8) and `syncDeviceName` is its label for the other devices'
+  // panels. Both clear with an explicit `null`, never by removing the key
+  // (§13.4).
+  readwise: z
+    .object({
+      syncDeviceId: z.string().nullable().optional(),
+      syncDeviceName: z.string().nullable().optional(),
+      rootFolder: z.string().optional(),
+      folderLayout: z.string().optional(),
+      categories: z
+        .object({
+          books: z.boolean().optional(),
+          articles: z.boolean().optional(),
+          tweets: z.boolean().optional(),
+          podcasts: z.boolean().optional(),
+          supplementals: z.boolean().optional()
+        })
+        .catchall(z.unknown())
+        .optional(),
+      cadence: z.string().optional(),
+      // Reader (#1420): additive. A build without these keeps them through
+      // `catchall`, and its echoed field clocks keep the merge.
+      readerDocuments: z.boolean().optional(),
+      readerFullText: z.boolean().optional(),
+      // Journal (#3476): additive, kept by older builds the same way.
+      journalHighlights: z.boolean().optional(),
+      // Run status (#3477, D18): the pulling device writes it only when a run
+      // changed something or the error state changed; iOS shows it. `lastChangeAt`
+      // is ISO, `error` an error code. A cleared error is an explicit `null`.
+      status: z
+        .object({
+          lastChangeAt: z.string().nullable().optional(),
+          error: z.string().nullable().optional()
+        })
+        .catchall(z.unknown())
+        .optional()
+    })
+    .catchall(z.unknown())
     .optional()
 })
 

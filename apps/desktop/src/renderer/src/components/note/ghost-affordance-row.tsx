@@ -32,6 +32,7 @@ export interface GhostAffordanceRowProps {
   disabled?: boolean
   className?: string
   tagFieldHints?: TagFieldHints
+  noteId?: string
 }
 
 const ICON_CLASS = 'h-3.5 w-3.5 shrink-0'
@@ -53,7 +54,8 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   existingNames,
   disabled = false,
   className,
-  tagFieldHints
+  tagFieldHints,
+  noteId
 }: GhostAffordanceRowProps) {
   const { t } = useT('notes')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -155,6 +157,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         onOpenChange={setIsTagPopupOpen}
         disabled={disabled}
         fieldHints={tagFieldHints}
+        noteId={noteId}
       >
         {POPUP_ANCHOR}
       </TagInputPopup>

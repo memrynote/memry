@@ -358,3 +358,225 @@ export interface OneNoteImportOptionsInput {
   /** Skip pages a previous OneNote run already imported (default true). */
   skipPreviouslyImported?: boolean
 }
+
+// ============================================================================
+// Readwise (account-based importer, #1408 D1/D2) — pasted access token, the
+// root folder, folder layout, per-category switches and cadence. The token goes
+// to secret storage and never comes back over IPC. The backfill itself runs
+// over the generic `import:start` channel.
+// ============================================================================
+
+export const ReadwiseImportChannels = {
+  invoke: {
+    /** Connection state, the synced options and the last run's outcome. */
+    STATUS: 'import:readwise:status',
+    /** Verify a pasted token against Readwise, then store it. */
+    CONNECT: 'import:readwise:connect',
+    /** Delete the token. Every note stays (D9). */
+    DISCONNECT: 'import:readwise:disconnect',
+    /** Ask the pulling device for a run now. */
+    SYNC_NOW: 'import:readwise:sync-now',
+    /** Change the synced options. */
+    SET_OPTIONS: 'import:readwise:set-options',
+    /** Rewrite one book's section from scratch, after the user confirmed (D16). */
+    REIMPORT_BOOK: 'import:readwise:reimport-book',
+    /** Write one book's current Readwise info into the note's properties (D16). */
+    REFRESH_BOOK: 'import:readwise:refresh-book',
+    /** Link rows in state `note-deleted`, for the panel's Deleted books list (D16). */
+    LIST_DELETED: 'import:readwise:list-deleted',
+    /** Recreate the note of a deleted book (D16). */
+    RESTORE_BOOK: 'import:readwise:restore-book',
+    /** Make this device the one that pulls from Readwise (D8). Asks for the token again. */
+    TAKE_OVER: 'import:readwise:take-over',
+    /** Stop the run in progress. It writes nothing further and keeps the cursor (#1418). */
+    CANCEL: 'import:readwise:cancel',
+    /**
+     * True the first time a window asks during an error the user must fix, false
+     * after that, until the error is fixed and comes back. The caller shows the
+     * toast only on true (D19).
+     */
+    ACK_ERROR_TOAST: 'import:readwise:ack-error-toast'
+  },
+  events: {
+    /** The status changed: a run started, moved on, or ended. Carries no payload; read `STATUS`. */
+    STATUS_CHANGED: 'import:readwise:status-changed'
+  }
+} as const
+
+export const READWISE_CATEGORIES = [
+  'books',
+  'articles',
+  'tweets',
+  'podcasts',
+  'supplementals'
+] as const
+export type ReadwiseCategory = (typeof READWISE_CATEGORIES)[number]
+
+export const READWISE_FOLDER_LAYOUTS = ['by-category', 'flat'] as const
+export type ReadwiseFolderLayout = (typeof READWISE_FOLDER_LAYOUTS)[number]
+
+export const READWISE_CADENCES = ['manual', 'hourly', 'daily'] as const
+export type ReadwiseCadence = (typeof READWISE_CADENCES)[number]
+
+export interface ReadwiseOptions {
+  rootFolder: string
+  folderLayout: ReadwiseFolderLayout
+  categories: Record<ReadwiseCategory, boolean>
+  cadence: ReadwiseCadence
+  /** Also import saved Reader documents that have no highlights (D11). Off: a library can hold thousands. */
+  readerDocuments: boolean
+  /** Write the full article text once, below the section, when a Reader note is created (D11). */
+  readerFullText: boolean
+  /** List each day's new highlights in the journal entry of that day (D17). Off: it writes into files the user writes. */
+  journalHighlights: boolean
+}
+
+/** D3: supplementals are listed and off. D1/#1416: hourly by default. */
+export const READWISE_OPTIONS_DEFAULTS: ReadwiseOptions = {
+  rootFolder: 'Readwise',
+  folderLayout: 'by-category',
+  categories: {
+    books: true,
+    articles: true,
+    tweets: true,
+    podcasts: true,
+    supplementals: false
+  },
+  cadence: 'hourly',
+  readerDocuments: false,
+  readerFullText: false,
+  journalHighlights: false
+}
+
+export const ReadwiseConnectSchema = z.object({
+  /** Verified, then stored in secret storage. Never persisted anywhere else. */
+  token: z.string().trim().min(1)
+})
+export type ReadwiseConnectInput = z.infer<typeof ReadwiseConnectSchema>
+
+/** The token never travels between devices (D2), so a takeover takes it again. */
+export const ReadwiseTakeOverSchema = ReadwiseConnectSchema
+export type ReadwiseTakeOverInput = z.infer<typeof ReadwiseTakeOverSchema>
+
+/** A vault-relative folder path: no leading slash, no `.` or `..` segment. */
+export const ReadwiseRootFolderSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.replace(/^\/+|\/+$/g, ''))
+  .refine(
+    (value) =>
+      value.length > 0 &&
+      value.split('/').every((part) => part !== '' && part !== '.' && part !== '..'),
+    'Invalid folder path'
+  )
+
+export const ReadwiseSetOptionsSchema = z.object({
+  rootFolder: ReadwiseRootFolderSchema.optional(),
+  folderLayout: z.enum(READWISE_FOLDER_LAYOUTS).optional(),
+  categories: z
+    .object({
+      books: z.boolean().optional(),
+      articles: z.boolean().optional(),
+      tweets: z.boolean().optional(),
+      podcasts: z.boolean().optional(),
+      supplementals: z.boolean().optional()
+    })
+    .optional(),
+  cadence: z.enum(READWISE_CADENCES).optional(),
+  readerDocuments: z.boolean().optional(),
+  readerFullText: z.boolean().optional(),
+  journalHighlights: z.boolean().optional()
+})
+export type ReadwiseSetOptionsInput = z.infer<typeof ReadwiseSetOptionsSchema>
+
+/** A book command on a note that has a Readwise link (D16). */
+export const ReadwiseBookCommandSchema = z.object({ noteId: z.string().min(1) })
+export type ReadwiseBookCommandInput = z.infer<typeof ReadwiseBookCommandSchema>
+
+export const ReadwiseRestoreBookSchema = z.object({
+  readwiseBookId: z.number().int().positive()
+})
+export type ReadwiseRestoreBookInput = z.infer<typeof ReadwiseRestoreBookSchema>
+
+export interface ReadwiseDeletedBook {
+  readwiseBookId: number
+  title: string
+  /** ISO time the link row went to `note-deleted`. */
+  deletedAt: string
+  highlightCount: number
+}
+
+/** Why the last run failed. Only the first two need the user (D19): they park the schedule and get a toast. */
+export const READWISE_ERROR_KINDS = [
+  'invalid-token',
+  'subscription-expired',
+  'rate-limited',
+  'network',
+  'server',
+  'unexpected'
+] as const
+export type ReadwiseErrorKind = (typeof READWISE_ERROR_KINDS)[number]
+
+export interface ReadwiseRunCounts {
+  /** Books looked at. */
+  books: number
+  added: number
+  updated: number
+  appended: number
+  /** Skipped because the note was open in an editor; retried next run. */
+  deferred: number
+  failed: number
+  highlights: number
+}
+
+export interface ReadwiseRunError {
+  kind: ReadwiseErrorKind
+  /** The failure's own text, for `unexpected` only. */
+  detail: string | null
+}
+
+/** A run in progress. `waiting-for-sync` is D8: it starts after memry sync has pulled. */
+export interface ReadwiseRunProgress {
+  stage: 'waiting-for-sync' | 'reading' | 'writing'
+  /** Books to write, once the export has been read. */
+  planned: number | null
+  done: number
+}
+
+export interface ReadwiseStatusResult {
+  connected: boolean
+  options: ReadwiseOptions
+  /** ISO time of the last completed run on this device, or null. */
+  lastSyncAt: string | null
+  /** The last run failed in a way the user must fix, such as a revoked token. */
+  needsAttention: boolean
+  /**
+   * A run has completed on this device (the cursor is set). False means the
+   * next run is the first import, which the dialog previews first (#1413).
+   */
+  hasImported: boolean
+  /** False when another device holds the claim. Book commands need the token, so they run on the pulling device (D8, D16). */
+  thisDevicePulls: boolean
+  /** The pulling device's name, when known. */
+  pullingDeviceName: string | null
+  /** The run in progress on this device, or null (#1418). */
+  syncing: ReadwiseRunProgress | null
+  /** Counts of the last completed run on this device, or null. */
+  lastRun: ReadwiseRunCounts | null
+  /** Why the last run failed; null once a run succeeds or the token changes. */
+  error: ReadwiseRunError | null
+  /** ISO time the scheduler will next run, or null (manual, parked, or not pulling). */
+  nextRunAt: string | null
+}
+
+/**
+ * Count keys of a Readwise preview group (`ImportPreviewGroup.counts[].labelKey`).
+ * The group's `label` is the category, and the first-import preview reads the
+ * counts back by these keys.
+ */
+export const READWISE_PREVIEW_COUNT_KEYS = {
+  books: 'import.preview.readwise.books',
+  highlights: 'import.preview.readwise.highlights',
+  /** The `reader` group: saved Reader documents without highlights. */
+  documents: 'import.preview.readwise.documents'
+} as const

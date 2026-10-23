@@ -22,8 +22,16 @@ import {
   filterMenuValues
 } from './search-filter-menu'
 import { SearchTagPicker, matchingTags, tagValue, useSearchTags } from './search-tag-picker'
-import { SearchResultGroup, groupValues } from './search-result-group'
+import {
+  SearchResultGroup,
+  groupValues,
+  visibleResults,
+  type MatchLists
+} from './search-result-group'
 import { resultValue } from './search-result-item'
+import { parseMatchValue } from './search-matches'
+import { hasBody } from './search-bodies'
+import { useOccurrences } from './use-occurrences'
 import { SearchPreview } from './search-preview'
 import { SearchEmptyState, emptyStateValues } from './search-empty-state'
 import { SearchActionBar, type SearchAction } from './search-action-bar'
@@ -69,10 +77,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   const [mode, setMode] = useState<Mode>('search')
   const [menuQuery, setMenuQuery] = useState('')
   const [selected, setSelected] = useState('')
-  const [expanded, setExpanded] = useState<{ query: string; types: ContentType[] }>({
-    query: '',
-    types: []
-  })
+  const [expanded, setExpanded] = useState<{
+    query: string
+    types: ContentType[]
+    /** Result values whose note shows every match rather than the first few. */
+    notes: string[]
+  }>({ query: '', types: [], notes: [] })
   const [itemCount, setItemCount] = useState<number | null>(null)
   const tags = useSearchTags(open && mode === 'tags')
 
@@ -122,6 +132,20 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     () => (expanded.query === query ? expanded.types : []),
     [expanded, query]
   )
+  const expandedNotes = useMemo(
+    () => (expanded.query === query ? expanded.notes : []),
+    [expanded, query]
+  )
+  const occurrences = useOccurrences(
+    results
+      .flatMap((group) => visibleResults(group, expandedTypes.includes(group.type)))
+      .filter(hasBody),
+    query
+  )
+  const matches = useMemo<MatchLists>(
+    () => ({ occurrences, expandedNotes }),
+    [occurrences, expandedNotes]
+  )
 
   const toggleType = useCallback(
     (type: ContentType) =>
@@ -152,9 +176,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     else if (filters.types.length > 0) setFilters({ ...filters, types: filters.types.slice(0, -1) })
   }
 
-  const handleSelect = (item: SearchResultItemType): void => {
+  const handleSelect = (item: SearchResultItemType, matchIndex?: number): void => {
     handleClose()
-    openItem({ id: item.id, title: item.title, type: item.metadata.type, metadata: item.metadata })
+    openItem({
+      id: item.id,
+      title: item.title,
+      type: item.metadata.type,
+      metadata: item.metadata,
+      find: matchIndex === undefined ? undefined : { query: query.trim(), index: matchIndex }
+    })
     searchService
       .addReason({
         itemId: item.id,
@@ -164,6 +194,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         searchQuery: query
       })
       .catch((err) => log.warn('Failed to persist recent search', err))
+  }
+
+  const toggleMatches = (item: SearchResultItemType): void => {
+    const value = resultValue(item)
+    setExpanded({
+      query,
+      types: expandedTypes,
+      notes: expandedNotes.includes(value)
+        ? expandedNotes.filter((v) => v !== value)
+        : [...expandedNotes, value]
+    })
   }
 
   const handleReasonSelect = (reason: SearchReason): void => {
@@ -197,7 +238,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       case 'open':
         return [...reasons.map(reasonValue), ...CONTENT_TYPES.map(scopeValue), PICK_TAG_VALUE]
       case 'results':
-        return results.flatMap((group) => groupValues(group, expandedTypes.includes(group.type)))
+        return results.flatMap((group) =>
+          groupValues(group, expandedTypes.includes(group.type), matches)
+        )
       case 'empty':
         return emptyStateValues(filters.types.length > 0, hasFilters)
       default:
@@ -208,10 +251,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   // cmdk only auto-selects when nothing is selected, so a value that left the
   // list (new results, another mode) falls back to the first row here.
   const selectedValue = values.includes(selected) ? selected : (values[0] ?? '')
+  const selectedMatch = parseMatchValue(selectedValue)
   const selectedResult =
     view === 'results'
-      ? results.flatMap((g) => g.results).find((item) => resultValue(item) === selectedValue)
+      ? results
+          .flatMap((g) => g.results)
+          .find((item) => resultValue(item) === (selectedMatch?.result ?? selectedValue))
       : undefined
+  const selectedHits = selectedResult ? occurrences.get(resultValue(selectedResult)) : undefined
 
   // ---- Input ---------------------------------------------------------------
 
@@ -286,15 +333,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   const nextSection = useCallback(
     (direction: 1 | -1) => {
       const starts = results
-        .map((group) => groupValues(group, expandedTypes.includes(group.type))[0])
+        .map((group) => groupValues(group, expandedTypes.includes(group.type), matches)[0])
         .filter(Boolean)
       if (starts.length < 2) return
       const current = results.findIndex((group) =>
-        groupValues(group, expandedTypes.includes(group.type)).includes(selectedValue)
+        groupValues(group, expandedTypes.includes(group.type), matches).includes(selectedValue)
       )
       setSelected(starts[(current + direction + starts.length) % starts.length])
     },
-    [results, expandedTypes, selectedValue]
+    [results, expandedTypes, matches, selectedValue]
   )
 
   useEffect(() => {
@@ -461,8 +508,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
                       group={group}
                       query={query}
                       expanded={expandedTypes.includes(group.type)}
-                      onExpand={(type) => setExpanded({ query, types: [...expandedTypes, type] })}
+                      matches={matches}
+                      onExpand={(type) =>
+                        setExpanded({
+                          query,
+                          types: [...expandedTypes, type],
+                          notes: expandedNotes
+                        })
+                      }
                       onSelect={handleSelect}
+                      onOpenMatch={handleSelect}
+                      onToggleMatches={toggleMatches}
                     />
                   ))}
                 {view === 'empty' && (
@@ -481,7 +537,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
               </Command.List>
               {selectedResult && (
                 <div className="hidden min-w-0 flex-1 min-[720px]:flex">
-                  <SearchPreview item={selectedResult} query={query} />
+                  <SearchPreview
+                    item={selectedResult}
+                    query={query}
+                    match={
+                      selectedMatch && selectedHits
+                        ? { occurrences: selectedHits, index: selectedMatch.index }
+                        : undefined
+                    }
+                  />
                 </div>
               )}
             </div>

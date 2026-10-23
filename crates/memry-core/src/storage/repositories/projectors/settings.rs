@@ -37,9 +37,9 @@ pub const SETTINGS_ITEM_ID: &str = "synced_settings";
 /// A group outside this list is stripped from the read view and survives only
 /// in the verbatim payload, which is what FR-063 requires: a preference with no
 /// phone equivalent must come back unchanged.
-pub const MODELLED_GROUPS: [&str; 10] = [
+pub const MODELLED_GROUPS: [&str; 11] = [
     "general", "editor", "tasks", "calendar", "keyboard", "notes", "sync", "inbox", "journal",
-    "sidebar",
+    "sidebar", "readwise",
 ];
 
 const SETTINGS_FIELDS: &[Field] = &[

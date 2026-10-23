@@ -21,6 +21,7 @@ export type CommandOwner =
   | 'sidebar'
   | 'dayPanel'
   | 'zoom'
+  | 'fold'
   | 'window'
   | 'appearance'
   | 'editor'

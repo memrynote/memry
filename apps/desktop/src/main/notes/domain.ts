@@ -37,6 +37,7 @@ import {
   withAppFolderChange
 } from './folder-config-effects'
 import { followFolderRenameInShortcuts } from '../ipc/settings-handlers'
+import { followFolderRenameInReadwise } from '../readwise/settings'
 
 const log = createLogger('NotesDomain')
 
@@ -151,6 +152,7 @@ export async function renameFolderCommand(oldPath: string, newPath: string): Pro
     }
     syncFolderConfigRename(oldPath, newPath)
     followFolderRenameInShortcuts(oldPath, newPath)
+    followFolderRenameInReadwise(oldPath, newPath)
   })
 }
 

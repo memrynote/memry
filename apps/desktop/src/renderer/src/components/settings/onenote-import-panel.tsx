@@ -23,6 +23,8 @@ export interface OneNotePanelState {
   /** True when an import can start (connected + at least one section picked). */
   ready: boolean
   options: OneNoteImportOptionsInput
+  /** Replaces the dialog's Import button label (Readwise's "Import 505 books"). */
+  confirmLabel?: string
 }
 
 interface OneNoteImportPanelProps {

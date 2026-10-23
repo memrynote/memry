@@ -188,6 +188,100 @@ describe('useFindInPage', () => {
     expect(result.current.matchCount).toBe(0)
   })
 
+  describe('openAt', () => {
+    it('opens on the requested match instead of the first', () => {
+      const { result } = renderHook(() => useFindInPage(ref))
+
+      act(() => result.current.openAt('beta', 1))
+
+      expect(result.current.isOpen).toBe(true)
+      expect(result.current.query).toBe('beta')
+      expect(result.current.matchCount).toBe(2)
+      expect(result.current.currentIndex).toBe(1)
+    })
+
+    it('waits for the document to render that many matches before landing', async () => {
+      container.innerHTML = '<p>alpha</p>'
+      const { result } = renderHook(() => useFindInPage(ref))
+
+      act(() => result.current.openAt('alpha', 2))
+      expect(result.current.currentIndex).toBe(0)
+
+      await act(async () => {
+        container.append(document.createTextNode(' alpha alpha'))
+        await Promise.resolve()
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(result.current.matchCount).toBe(3)
+      expect(result.current.currentIndex).toBe(2)
+    })
+
+    it('stays on the match when an edit re-runs the search', async () => {
+      const { result } = renderHook(() => useFindInPage(ref))
+      act(() => result.current.openAt('beta', 1))
+
+      await act(async () => {
+        container.append(document.createTextNode(' gamma'))
+        await Promise.resolve()
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(result.current.currentIndex).toBe(1)
+    })
+
+    it('closes on the first click into the document when search opened it', () => {
+      const { result } = renderHook(() => useFindInPage(ref))
+      act(() => result.current.openAt('beta', 0))
+
+      act(() => {
+        container.dispatchEvent(new Event('pointerdown'))
+      })
+
+      expect(result.current.isOpen).toBe(false)
+      expect(result.current.matchCount).toBe(0)
+    })
+
+    it('stays open on a click when the user opened it with the shortcut', () => {
+      const { result } = renderHook(() => useFindInPage(ref))
+      act(() => result.current.open())
+      typeQuery({ result } as Hook, 'beta')
+
+      act(() => {
+        container.dispatchEvent(new Event('pointerdown'))
+      })
+
+      expect(result.current.isOpen).toBe(true)
+    })
+
+    it('stays open on a click once the user has edited the query', () => {
+      const hook = renderHook(() => useFindInPage(ref))
+      act(() => hook.result.current.openAt('beta', 0))
+      typeQuery(hook, 'alpha')
+
+      act(() => {
+        container.dispatchEvent(new Event('pointerdown'))
+      })
+
+      expect(hook.result.current.isOpen).toBe(true)
+    })
+
+    it('forgets an unmet request once the user moves on', async () => {
+      container.innerHTML = '<p>alpha alpha</p>'
+      const { result } = renderHook(() => useFindInPage(ref))
+      act(() => result.current.openAt('alpha', 5))
+
+      act(() => result.current.next())
+      await act(async () => {
+        container.append(document.createTextNode(' alpha alpha alpha alpha'))
+        await Promise.resolve()
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(result.current.currentIndex).toBe(1)
+    })
+  })
+
   describe('query debounce', () => {
     it('costs one whole-container walk for a typed burst, not one per keystroke', () => {
       // 200 paragraphs, each `alpha beta gamma alpha`: 200 text nodes, and 'a'

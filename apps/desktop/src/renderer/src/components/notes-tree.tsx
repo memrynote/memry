@@ -443,6 +443,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         isLast={isLast}
         hideLines={hideLines}
         canvasNoteId={note.id}
+        dragTab={noteTabData(note)}
       >
         <TreeNodeTrigger
           // A file dropped on a note belongs in the folder that note lives in.

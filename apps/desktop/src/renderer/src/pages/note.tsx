@@ -65,7 +65,7 @@ import {
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
-import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
+import { NoteSimilarNotes } from '@/components/note/similar-notes'
 import {
   useNote,
   useNoteMutations,
@@ -164,18 +164,16 @@ import {
 } from '@memry/shared/cover-image'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
+import { FIND_REQUEST_KEY, readFindRequest } from '@/lib/find-request'
+import { ReadwiseMenuGroup } from '@/components/note/readwise-menu-group'
+import { ReadwiseReimportDialog } from '@/components/note/readwise-reimport-dialog'
 import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
-import {
-  TrimReviewBar,
-  WritingChrome,
-  WritingRail,
-  useWritingTools
-} from '@/components/note/writing-tools'
-import { useWordCountVisible } from '@/hooks/use-word-count-visible'
-import { useAISettingsContext } from '@/contexts/ai-settings-context'
+import { WritingChrome, WritingRail, useWritingTools } from '@/components/note/writing-tools'
+import { FoldSurface } from '@/components/note/fold/fold-surface'
+import { useNoteFold } from '@/components/note/fold/use-note-fold'
 
 import { useT } from '@memry/i18n/renderer'
 import { getTabIconForFileType } from '@memry/shared/file-types'
@@ -544,6 +542,16 @@ export function NotePage({ noteId }: NotePageProps) {
     if (isLargeFile) openLargeFileFindRef.current?.()
     else findInPage.open()
   }, [isLargeFile, findInPage])
+
+  // A search-palette hit on this note: open the find bar on its match. Cleared
+  // from the tab once taken, so coming back to the tab does not jump again.
+  const findRequest = useMemo(() => readFindRequest(activeTab?.viewState), [activeTab?.viewState])
+  const openFindAt = findInPage.openAt
+  useEffect(() => {
+    if (!findRequest || !activeTab || !note || !isActiveNote || isLargeFile) return
+    openFindAt(findRequest.query, findRequest.index)
+    saveTabState(activeTab.id, { viewState: { [FIND_REQUEST_KEY]: undefined } })
+  }, [findRequest, activeTab, note, isActiveNote, isLargeFile, openFindAt, saveTabState])
 
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
@@ -934,16 +942,10 @@ export function NotePage({ noteId }: NotePageProps) {
   const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
   const [reviewRailHidden, setReviewRailHidden] = useState(false)
 
-  // Writing tools: the side rail's Alternatives / Overflow / Lab modes, the
-  // live word count, and the editor right-click menu (see writing-tools/).
+  // Writing tools: the side rail's Alternatives / Overflow modes
+  // and the editor right-click menu (see writing-tools/).
   const { session: writingTools, snapshot: writingSnapshot } = useWritingTools()
-  const { enabled: aiEnabled } = useAISettingsContext()
-  const [wordCountVisible, toggleWordCount] = useWordCountVisible()
-  useEffect(() => {
-    writingTools.setWordCountEnabled(wordCountVisible)
-  }, [writingTools, wordCountVisible])
-  // The Lab needs AI; with AI off it is never shown, whatever was open.
-  const writingMode = writingSnapshot.mode === 'lab' && !aiEnabled ? null : writingSnapshot.mode
+  const writingMode = writingSnapshot.mode
 
   // An agent edit to this note is reviewed here, in place of the editor.
   const agentReviewTarget = useMemo(
@@ -951,6 +953,13 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId]
   )
   const agentReview = useAgentBodyReview(agentReviewTarget)
+
+  // Folding: a read-only level view over the editor (see components/note/fold/).
+  // A locked note, a large file, and an agent edit under review never fold.
+  const fold = useNoteFold(
+    isLargeFile || isLocked || agentReview ? null : noteId,
+    note?.wordCount ?? 0
+  )
 
   // Mind map. `onEditorReady` is composed rather than replaced so the map reads
   // the live block tree off the editor that stays mounted behind it, with no
@@ -1517,7 +1526,8 @@ export function NotePage({ noteId }: NotePageProps) {
   const {
     commands: noteCommands,
     labels: noteLabels,
-    moveToFolder
+    moveToFolder,
+    readwise
   } = useNoteCommands({
     note,
     isDeleted,
@@ -1569,12 +1579,9 @@ export function NotePage({ noteId }: NotePageProps) {
         <WritingChrome
           mode={writingMode}
           onSelectMode={(mode) => writingTools.setMode(mode)}
-          aiEnabled={aiEnabled}
           alternativeCount={writingSnapshot.alternatives.length}
           overflowCount={writingSnapshot.overflow.length}
-          wordCountVisible={wordCountVisible}
-          wordCount={writingSnapshot.wordCount}
-          onToggleWordCount={toggleWordCount}
+          fold={fold.control}
           disabled={isDeleted || Boolean(agentReview)}
         />
       )}
@@ -1676,7 +1683,8 @@ export function NotePage({ noteId }: NotePageProps) {
           </Button>
         </Picker.Trigger>
         <Picker.Content align="end">
-          <Picker.List>
+          <Picker.Search placeholder={t('editor.toolbar.searchActions')} />
+          <Picker.List filterByLabel emptyMessage={t('editor.toolbar.noMatchingActions')}>
             <Picker.Item
               value="note.localGraph"
               label={noteLabels['note.localGraph']}
@@ -1793,6 +1801,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 icon={<Lock className="size-4" />}
               />
             )}
+            {readwise.isLinked && <ReadwiseMenuGroup readwise={readwise} labels={noteLabels} />}
             <Picker.Separator />
             <Picker.Item
               value="note.delete"
@@ -1808,7 +1817,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   return (
     <NoteLayout
-      suppressScrollRestore={Boolean(initialHeadingText)}
+      suppressScrollRestore={Boolean(initialHeadingText) || findRequest !== null}
       headings={headings}
       onHeadingClick={mindMapNavigation.navigateFromOutline}
       onActiveHeadingChange={handleActiveHeadingChange}
@@ -1817,12 +1826,7 @@ export function NotePage({ noteId }: NotePageProps) {
       contentWidth={noteContentWidth ?? undefined}
       sideRail={
         writingMode && !isLargeFile && !agentReview ? (
-          <WritingRail
-            mode={writingMode}
-            session={writingTools}
-            snapshot={writingSnapshot}
-            aiEnabled={aiEnabled}
-          />
+          <WritingRail mode={writingMode} session={writingTools} snapshot={writingSnapshot} />
         ) : hasReviewContent ? (
           <ReviewRail review={review} targetId={noteId} />
         ) : undefined
@@ -1842,22 +1846,17 @@ export function NotePage({ noteId }: NotePageProps) {
       onRailHiddenChange={setReviewRailHidden}
       marqueeZoneRef={setMarqueeZoneEl}
       topBar={
-        <>
-          <FindBar
-            isOpen={findInPage.isOpen}
-            query={findInPage.query}
-            matchCount={findInPage.matchCount}
-            currentIndex={findInPage.currentIndex}
-            inputRef={findInPage.inputRef}
-            onQueryChange={findInPage.setQuery}
-            onNext={findInPage.next}
-            onPrev={findInPage.prev}
-            onClose={findInPage.close}
-          />
-          {writingSnapshot.lab.trim && (
-            <TrimReviewBar session={writingTools} trim={writingSnapshot.lab.trim} />
-          )}
-        </>
+        <FindBar
+          isOpen={findInPage.isOpen}
+          query={findInPage.query}
+          matchCount={findInPage.matchCount}
+          currentIndex={findInPage.currentIndex}
+          inputRef={findInPage.inputRef}
+          onQueryChange={findInPage.setQuery}
+          onNext={findInPage.next}
+          onPrev={findInPage.prev}
+          onClose={findInPage.close}
+        />
       }
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
@@ -1932,6 +1931,7 @@ export function NotePage({ noteId }: NotePageProps) {
           {/* Tags: visible when tags exist */}
           <TagsRow
             fieldHints={tagFieldHints}
+            noteId={noteId}
             tags={headerTags}
             availableTags={availableTags}
             recentTags={recentTags}
@@ -1949,13 +1949,6 @@ export function NotePage({ noteId }: NotePageProps) {
             }
             hideWhenEmpty
             disabled={isLocked}
-          />
-
-          <NoteSuggestedTags
-            noteId={noteId}
-            tags={note.tags}
-            disabled={isDeleted || isLocked}
-            onAccept={(tag) => void addHeaderTag(tag)}
           />
 
           {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
@@ -2007,6 +2000,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           <GhostAffordanceRow
             tagFieldHints={tagFieldHints}
+            noteId={noteId}
             availableTags={availableTags}
             recentTags={recentTags}
             currentTagIds={headerTags.map((t) => t.id)}
@@ -2063,62 +2057,64 @@ export function NotePage({ noteId }: NotePageProps) {
               {/* Hidden, never unmounted, while an agent edit is under review:
                 the editor keeps its Y.Doc binding and undo history, and comes
                 back exactly as it was once the review is settled. */}
-              <div
-                className={cn(agentReview && 'hidden')}
-                inert={Boolean(agentReview) || undefined}
-              >
-                {/* `externalUpdateCount` is deliberately NOT part of the key: an
+              <FoldSurface fold={fold}>
+                <div
+                  className={cn(agentReview && 'hidden')}
+                  inert={Boolean(agentReview) || undefined}
+                >
+                  {/* `externalUpdateCount` is deliberately NOT part of the key: an
                 update that did not originate here is handed to the live editor
                 via `externalContentRevision` instead of destroying and
                 rebuilding the editor for every remote change. `noteId` stays —
                 a different note in this tab is a genuinely different document. */}
-                <ContentArea
-                  key={noteId}
-                  noteId={noteId}
-                  editable={!isLocked}
-                  notePath={note.path}
-                  initialContent={review.editorInitialContent}
-                  contentType="markdown"
-                  externalContentRevision={externalUpdateCount}
-                  placeholder={t('editor.content.placeholder')}
-                  stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                  onStickyToolbarChange={(sticky) =>
-                    void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
-                  }
-                  spellCheck={editorSettings.spellCheck}
-                  onContentChange={handleContentChange}
-                  onMarkdownChange={handleMarkdownChange}
-                  onHeadingsChange={handleHeadingsChange}
-                  onLinkClick={handleLinkClick}
-                  onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
-                  initialHighlight={initialHighlight}
-                  initialAnchorId={initialAnchorId}
-                  noteTags={note.tags}
-                  onInlineTagsChange={handleInlineTagsChange}
-                  tagColorMap={tagColorMap}
-                  tagIconMap={tagIconMap}
-                  focusAtEndRef={focusAtEndRef}
-                  openTemplateInsertRef={openTemplateInsertRef}
-                  marqueeZoneEl={marqueeZoneEl}
-                  writingTools={writingTools}
-                  review={{
-                    plainMarkdown: review.plainMarkdown,
-                    marks: review.marks,
-                    hoveredMarkId: review.hoveredMarkId,
-                    onEditorReady: handleEditorReadyWithAttachments,
-                    onAddComment: review.openCommentComposer,
-                    getMarkdownSourceOffsetForEditorOffset:
-                      review.getMarkdownSourceOffsetForEditorOffset,
-                    getEditorOffsetForMarkdownSourceOffset:
-                      review.getEditorOffsetForMarkdownSourceOffset,
-                    onPersistCurrentMarkdown: review.persistCurrentMarkdown,
-                    onPlainMarkdownChange: review.handlePlainMarkdownChange,
-                    onHoveredMarkChange: review.setHoveredMarkId,
-                    onMarkPositionsChange: review.setMarkPositions,
-                    onReplaceMarksFromYjs: review.replaceMarksFromYjs
-                  }}
-                />
-              </div>
+                  <ContentArea
+                    key={noteId}
+                    noteId={noteId}
+                    editable={!isLocked}
+                    notePath={note.path}
+                    initialContent={review.editorInitialContent}
+                    contentType="markdown"
+                    externalContentRevision={externalUpdateCount}
+                    placeholder={t('editor.content.placeholder')}
+                    stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                    onStickyToolbarChange={(sticky) =>
+                      void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
+                    }
+                    spellCheck={editorSettings.spellCheck}
+                    onContentChange={handleContentChange}
+                    onMarkdownChange={handleMarkdownChange}
+                    onHeadingsChange={handleHeadingsChange}
+                    onLinkClick={handleLinkClick}
+                    onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
+                    initialHighlight={initialHighlight}
+                    initialAnchorId={initialAnchorId}
+                    noteTags={note.tags}
+                    onInlineTagsChange={handleInlineTagsChange}
+                    tagColorMap={tagColorMap}
+                    tagIconMap={tagIconMap}
+                    focusAtEndRef={focusAtEndRef}
+                    openTemplateInsertRef={openTemplateInsertRef}
+                    marqueeZoneEl={marqueeZoneEl}
+                    writingTools={writingTools}
+                    review={{
+                      plainMarkdown: review.plainMarkdown,
+                      marks: review.marks,
+                      hoveredMarkId: review.hoveredMarkId,
+                      onEditorReady: handleEditorReadyWithAttachments,
+                      onAddComment: review.openCommentComposer,
+                      getMarkdownSourceOffsetForEditorOffset:
+                        review.getMarkdownSourceOffsetForEditorOffset,
+                      getEditorOffsetForMarkdownSourceOffset:
+                        review.getEditorOffsetForMarkdownSourceOffset,
+                      onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                      onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                      onHoveredMarkChange: review.setHoveredMarkId,
+                      onMarkPositionsChange: review.setMarkPositions,
+                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                    }}
+                  />
+                </div>
+              </FoldSurface>
             </EditorErrorBoundary>
           )}
           {agentReview ? null : (
@@ -2268,6 +2264,12 @@ export function NotePage({ noteId }: NotePageProps) {
         targetTitle={pendingWikiLinkCreate}
         onClose={() => setPendingWikiLinkCreate(null)}
         onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
+      />
+
+      <ReadwiseReimportDialog
+        {...dialog.bind('readwiseReimport')}
+        title={note.title}
+        onConfirm={() => void readwise.reimport()}
       />
 
       {/* Delete confirmation */}

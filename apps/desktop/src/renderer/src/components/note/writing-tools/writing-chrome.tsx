@@ -2,13 +2,15 @@ import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import {
+  FoldLevelControl,
+  type FoldLevelControlProps
+} from '@/components/note/fold/fold-level-control'
 import { PenLine } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { WritingRailMode } from './writing-tools-session'
@@ -16,13 +18,10 @@ import type { WritingRailMode } from './writing-tools-session'
 interface WritingChromeProps {
   mode: WritingRailMode | null
   onSelectMode: (mode: WritingRailMode | null) => void
-  /** Lab needs AI; its entry is not rendered without it. */
-  aiEnabled: boolean
   alternativeCount: number
   overflowCount: number
-  wordCountVisible: boolean
-  wordCount: number
-  onToggleWordCount: () => void
+  /** Present while the note is long enough to fold: the fold control sits beside it. */
+  fold?: FoldLevelControlProps
   disabled?: boolean
 }
 
@@ -32,38 +31,26 @@ const TRIGGER_CLASS =
 const NO_MODE = 'none'
 
 /**
- * Every writing tool behind one chrome control: the rail modes and the word
- * count toggle. The live count, when turned on, is plain text beside it.
+ * Every writing tool behind one chrome control: the rail modes.
  */
 export function WritingChrome({
   mode,
   onSelectMode,
-  aiEnabled,
   alternativeCount,
   overflowCount,
-  wordCountVisible,
-  wordCount,
-  onToggleWordCount,
+  fold,
   disabled
 }: WritingChromeProps) {
   const { t } = useT('notes')
   const modes: Array<{ mode: WritingRailMode; label: string; count?: number }> = [
     { mode: 'alternatives', label: t('writingTools.chrome.alternatives'), count: alternativeCount },
-    { mode: 'overflow', label: t('writingTools.chrome.overflow'), count: overflowCount },
-    ...(aiEnabled ? [{ mode: 'lab' as const, label: t('writingTools.chrome.lab') }] : [])
+    { mode: 'overflow', label: t('writingTools.chrome.overflow'), count: overflowCount }
   ]
   const label = t('writingTools.chrome.menu')
 
   return (
     <>
-      {wordCountVisible && (
-        <span
-          data-testid="note-word-count"
-          className="me-1 px-1 text-xs tabular-nums text-text-secondary"
-        >
-          {t('writingTools.chrome.words', { count: wordCount })}
-        </span>
-      )}
+      {fold && <FoldLevelControl {...fold} disabled={disabled} />}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
@@ -107,14 +94,6 @@ export function WritingChrome({
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuCheckboxItem
-            checked={wordCountVisible}
-            onCheckedChange={onToggleWordCount}
-            data-testid="note-word-count-toggle"
-          >
-            {t('writingTools.chrome.showWordCount')}
-          </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

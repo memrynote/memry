@@ -11,6 +11,7 @@ import { TabBarWithDrag } from '@/components/tabs'
 import { TabContent } from './tab-content'
 import { EmptyPaneState } from './empty-pane-state'
 import { SplitDropZones } from './split-drop-zones'
+import { NativeSplitDropZones } from './native-split-drop-zones'
 import { SplitPreview } from './split-preview'
 import type { DropZonePosition } from './drop-zone'
 import { cn } from '@/lib/utils'
@@ -198,6 +199,9 @@ export const TabPaneWithDropZones = ({
 
         {/* Drop zones overlay */}
         <SplitDropZones groupId={groupId} isActive={showDropZones} />
+
+        {/* Same zones for a sidebar row dragged in (native drag and drop) */}
+        <NativeSplitDropZones groupId={groupId} editorOwnsCenter={activeTab?.type === 'note'} />
       </div>
     </div>
   )

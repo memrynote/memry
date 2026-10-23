@@ -52,6 +52,8 @@ vi.mock('./split-drop-zones', () => ({
   )
 }))
 
+vi.mock('./native-split-drop-zones', () => ({ NativeSplitDropZones: () => null }))
+
 vi.mock('./split-preview', () => ({
   SplitPreview: ({ zone }: { zone: string | null }) => <div>preview {zone ?? 'none'}</div>
 }))

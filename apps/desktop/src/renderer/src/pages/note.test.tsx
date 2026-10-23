@@ -671,13 +671,6 @@ vi.mock('@/components/note/info-section', () => ({
   )
 }))
 
-vi.mock('@/components/note/similar-notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/components/note/similar-notes')>()),
-  NoteSuggestedTags: ({ disabled }: { disabled?: boolean }) => (
-    <div data-testid="note-suggested-tags" data-disabled={String(!!disabled)} />
-  )
-}))
-
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
   useIsNoteLocked: () => mocks.isNoteLocked,
@@ -801,6 +794,7 @@ vi.mock('@/components/ui/picker', () => ({
           {trailing}
         </button>
       ),
+      Search: () => null,
       Separator: () => <hr />
     }
   )
@@ -1595,12 +1589,11 @@ describe('NotePage', () => {
   })
 
   describe('a locked note (#2606)', () => {
-    it('disables the properties section and the suggested tags', async () => {
+    it('disables the properties section', async () => {
       mocks.isNoteLocked = true
       renderWithProviders(<NotePage noteId="note-1" />)
 
       expect(await screen.findByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
-      expect(screen.getByTestId('note-suggested-tags')).toHaveAttribute('data-disabled', 'true')
     })
 
     it('disables the local-only toggle on a locked note', async () => {
@@ -1612,11 +1605,10 @@ describe('NotePage', () => {
       ).toBeDisabled()
     })
 
-    it('leaves both enabled on an unlocked note', async () => {
+    it('leaves the properties section enabled on an unlocked note', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
 
       expect(await screen.findByTestId('info-section')).toHaveAttribute('data-disabled', 'false')
-      expect(screen.getByTestId('note-suggested-tags')).toHaveAttribute('data-disabled', 'false')
     })
 
     it('says the note is locked, not deleted, when a property edit is refused', async () => {

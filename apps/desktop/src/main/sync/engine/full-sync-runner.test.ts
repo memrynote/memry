@@ -22,6 +22,7 @@ import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'
 import { SyncServerError } from '@memry/sync-client/http-errors'
+import { hasCompletedPullSinceStart, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import * as httpClient from '../http-client'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -498,6 +499,20 @@ describe('FullSyncRunner', () => {
       )
       expect(first).toBe(true)
       expect(second).toBe(false)
+    })
+
+    it('#then a delivered pull marks that memry sync pulled since launch, and a refused one does not (#1417)', async () => {
+      resetSyncDecision()
+      const refused = createHarness()
+      refused.actions.pull.mockImplementation(async () => INCOMPLETE)
+      await refused.runner.run()
+      expect(hasCompletedPullSinceStart()).toBe(false)
+
+      await createHarness().runner.run()
+      expect(hasCompletedPullSinceStart()).toBe(true)
+
+      resetSyncDecision()
+      expect(hasCompletedPullSinceStart()).toBe(false)
     })
 
     it('#then the check is handed the quarantine predicate and the live online flag', async () => {

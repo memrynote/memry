@@ -49,6 +49,7 @@ import {
 } from './canvas-row-menu'
 import { CanvasRowNameInput, type CanvasRowEdit } from './canvas-row-name-input'
 import { canvasTabData } from '@/lib/sidebar-tab-data'
+import { setTabDragData } from '@/lib/drag-mime'
 import { useOpenTarget } from '@/hooks/use-open-target'
 
 const CANVAS_ICON_SPACER = <div className="h-4 w-4" />
@@ -289,7 +290,10 @@ export function CanvasRow({
           // being named is not draggable either — a draggable ancestor swallows
           // the pointer, and the user could not select the text they are editing.
           draggable={!unreadable && !edit}
-          onDragStart={(event) => onDragStart(event, canvas)}
+          onDragStart={(event) => {
+            onDragStart(event, canvas)
+            setTabDragData(event.dataTransfer, canvasTabData(canvas, t('canvas.untitled')))
+          }}
           onDragEnd={onDragEnd}
         >
           {unreadable ? (

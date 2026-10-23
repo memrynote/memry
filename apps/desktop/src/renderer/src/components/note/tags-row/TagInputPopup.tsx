@@ -9,6 +9,7 @@ import { CornerDownLeft, List, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import { tagDisplayName } from '@/features/tag-fields/tag-display-name'
+import { useTagSuggestions } from '@/hooks/use-note-similarity'
 
 export interface TagFieldHints {
   bodyEmpty: boolean
@@ -25,6 +26,8 @@ interface TagInputPopupProps {
   onOpenChange?: (open: boolean) => void
   disabled?: boolean
   fieldHints?: TagFieldHints
+  /** Note whose similar notes supply the "Suggested" section. */
+  noteId?: string
   children: React.ReactNode
 }
 
@@ -38,6 +41,7 @@ export function TagInputPopup({
   onOpenChange: controlledOnOpenChange,
   disabled = false,
   fieldHints,
+  noteId,
   children
 }: TagInputPopupProps) {
   const { t } = useT('notes')
@@ -164,6 +168,15 @@ export function TagInputPopup({
         />
 
         <Picker.List className="max-h-[260px] gap-1.5">
+          {noteId && !searchQuery && open && (
+            <SuggestedTags
+              noteId={noteId}
+              availableTags={availableTags}
+              currentTagIds={currentTagIds}
+              onPick={handleTagClick}
+            />
+          )}
+
           {filteredRecentTags.length > 0 && !searchQuery && (
             <Picker.Section label={t('tagsRow.recent')}>
               <div className="flex flex-wrap gap-1.5 px-2 pb-1">
@@ -225,6 +238,41 @@ export function TagInputPopup({
         </Picker.List>
       </Picker.Content>
     </Picker>
+  )
+}
+
+/** Tags the note's closest notes share. Shown, never applied until picked. */
+function SuggestedTags({
+  noteId,
+  availableTags,
+  currentTagIds,
+  onPick
+}: {
+  noteId: string
+  availableTags: Tag[]
+  currentTagIds: string[]
+  onPick: (tag: Tag) => void
+}) {
+  const { t } = useT('notes')
+  const suggestions = useTagSuggestions(noteId)
+  const tags = suggestions.flatMap((suggestion) => {
+    const tag = availableTags.find(
+      (candidate) => foldTag(candidate.name) === foldTag(suggestion.tag)
+    )
+    return tag && !currentTagIds.includes(tag.id) ? [{ tag, support: suggestion.support }] : []
+  })
+  if (tags.length === 0) return null
+
+  return (
+    <Picker.Section label={t('tagsRow.suggested')}>
+      <div className="flex flex-wrap gap-1.5 px-2 pb-1" data-testid="suggested-tags">
+        {tags.map(({ tag, support }) => (
+          <span key={tag.id} title={t('suggestedTags.support', { count: support })}>
+            <TagChip tag={tag} onClick={() => onPick(tag)} />
+          </span>
+        ))}
+      </div>
+    </Picker.Section>
   )
 }
 

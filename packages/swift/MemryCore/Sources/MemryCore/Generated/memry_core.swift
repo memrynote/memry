@@ -8782,6 +8782,11 @@ public protocol SettingsProtocol: AnyObject, Sendable {
     func journalTemplates() throws  -> JournalTemplateSettings
     
     /**
+     * Read-only: iOS never pulls from Readwise or changes its settings (D13).
+     */
+    func readwiseStatus() throws  -> ReadwiseStatus
+    
+    /**
      * Drops one leaf so a receiver keeps its own value (§13.4). Ticks the
      * path's clock like any write.
      */
@@ -8910,6 +8915,18 @@ open func journalTemplates()throws  -> JournalTemplateSettings  {
     return try  FfiConverterTypeJournalTemplateSettings_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_settings_journal_templates(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Read-only: iOS never pulls from Readwise or changes its settings (D13).
+     */
+open func readwiseStatus()throws  -> ReadwiseStatus  {
+    return try  FfiConverterTypeReadwiseStatus_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_settings_readwise_status(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -21906,6 +21923,116 @@ public func FfiConverterTypeQuickAddSpan_lower(_ value: QuickAddSpan) -> RustBuf
 
 
 /**
+ * The `readwise` group as the read-only Readwise screen shows it (#3477,
+ * §13.7.13). Another device pulls; this device only reads what it reports.
+ */
+public struct ReadwiseStatus: Equatable, Hashable {
+    /**
+     * A device claimed the pull (`readwise.syncDeviceId` is a non-empty string).
+     */
+    public var connected: Bool
+    /**
+     * `readwise.syncDeviceId`, to find the device in the account's device list.
+     */
+    public var deviceId: String?
+    /**
+     * `readwise.syncDeviceName`, the claiming device's label.
+     */
+    public var deviceName: String?
+    /**
+     * `readwise.rootFolder`, or desktop's default when no device chose one.
+     */
+    public var rootFolder: String
+    /**
+     * `readwise.status.lastChangeAt`, ISO, the last run that changed something.
+     */
+    public var lastChangeAt: String?
+    /**
+     * `readwise.status.error`, an error code such as `invalid-token`.
+     */
+    public var error: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * A device claimed the pull (`readwise.syncDeviceId` is a non-empty string).
+         */connected: Bool, 
+        /**
+         * `readwise.syncDeviceId`, to find the device in the account's device list.
+         */deviceId: String?, 
+        /**
+         * `readwise.syncDeviceName`, the claiming device's label.
+         */deviceName: String?, 
+        /**
+         * `readwise.rootFolder`, or desktop's default when no device chose one.
+         */rootFolder: String, 
+        /**
+         * `readwise.status.lastChangeAt`, ISO, the last run that changed something.
+         */lastChangeAt: String?, 
+        /**
+         * `readwise.status.error`, an error code such as `invalid-token`.
+         */error: String?) {
+        self.connected = connected
+        self.deviceId = deviceId
+        self.deviceName = deviceName
+        self.rootFolder = rootFolder
+        self.lastChangeAt = lastChangeAt
+        self.error = error
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReadwiseStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReadwiseStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReadwiseStatus {
+        return
+            try ReadwiseStatus(
+                connected: FfiConverterBool.read(from: &buf), 
+                deviceId: FfiConverterOptionString.read(from: &buf), 
+                deviceName: FfiConverterOptionString.read(from: &buf), 
+                rootFolder: FfiConverterString.read(from: &buf), 
+                lastChangeAt: FfiConverterOptionString.read(from: &buf), 
+                error: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReadwiseStatus, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.connected, into: &buf)
+        FfiConverterOptionString.write(value.deviceId, into: &buf)
+        FfiConverterOptionString.write(value.deviceName, into: &buf)
+        FfiConverterString.write(value.rootFolder, into: &buf)
+        FfiConverterOptionString.write(value.lastChangeAt, into: &buf)
+        FfiConverterOptionString.write(value.error, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReadwiseStatus_lift(_ buf: RustBuffer) throws -> ReadwiseStatus {
+    return try FfiConverterTypeReadwiseStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReadwiseStatus_lower(_ value: ReadwiseStatus) -> RustBuffer {
+    return FfiConverterTypeReadwiseStatus.lower(value)
+}
+
+
+/**
  * What a reindex did.
  */
 public struct ReindexSummary: Equatable, Hashable {
@@ -34617,6 +34744,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_journal_templates() != 16210) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_settings_readwise_status() != 13039) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_remove() != 61907) {

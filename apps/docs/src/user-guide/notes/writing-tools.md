@@ -1,12 +1,12 @@
 # Writing Tools
 
 Tools for drafting in a note: try other wordings in place, fade text out without deleting it,
-keep leftovers beside the note, and ask the AI to check or trim your writing.
+and keep leftovers beside the note.
 
 All of them sit behind one **Writing tools** button (the pen) in the note chrome, left of the
-reminder bell. Its menu opens the rail beside the note on **Alternatives**, **Overflow** or **Lab**,
-with a count next to each, and turns the word count on or off. Pick the open one again to close the
-rail. Inside the rail, tabs switch between the three. Most of the time you won't need the button:
+reminder bell. Its menu opens the rail beside the note on **Alternatives** or **Overflow**,
+with a count next to each. Pick the open one again to close the
+rail. Inside the rail, tabs switch between the two. Most of the time you won't need the button:
 adding an alternative or stashing text opens the rail on the right tab by itself.
 
 ## Alternatives
@@ -31,8 +31,7 @@ for up to five versions. A sparkle marks the AI's suggestions and a person icon 
 ## Ghost
 
 Right-click a selection and choose **Ghost** to fade it out. It stays in the note, so you can read
-the paragraph without it and bring it back later with **Revive**. Ghosted text is left out of the
-word count.
+the paragraph without it and bring it back later with **Revive**.
 
 ## Overflow
 
@@ -40,20 +39,6 @@ A scratch list for the note: spare paragraphs, words you like, an outline. **Sta
 moves the selected text there with its formatting: bold, links, wiki links and mentions show in the
 list as they did in the note, and come back the same way when you drag the item into the note or
 copy and paste it. Text you type into the list directly is plain.
-
-## Lab
-
-Needs AI to be turned on. Lab never rewrites your text.
-
-- **Checks**: _Convoluted sentences_ and _Words that don't fit the tone_ underline the spots it
-  finds; click a result to jump to it.
-- **Trim**: _Slight trim_, _Tighten_, _Even sharper_ or _Cut in half_ dim the parts it would cut.
-  The bar at the bottom steps through them: **Keep**, **Cut**, or **Cut all**. **Stop** clears them.
-
-## Word count
-
-**Show word count** in the Writing tools menu turns on a live count, shown as plain text next to
-the button. The setting is kept on this device.
 
 ## Right-click menu
 

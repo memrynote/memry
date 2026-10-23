@@ -67,7 +67,14 @@ import type {
   ImportPreviewResponse,
   ImporterMeta,
   OneNoteAuthStatusResult,
-  OneNoteNotebooksResult
+  OneNoteNotebooksResult,
+  ReadwiseConnectInput,
+  ReadwiseBookCommandInput,
+  ReadwiseDeletedBook,
+  ReadwiseRestoreBookInput,
+  ReadwiseSetOptionsInput,
+  ReadwiseTakeOverInput,
+  ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type { OnboardingAgentStatus, OnboardingSources } from '@memry/contracts/onboarding-api'
@@ -135,6 +142,7 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
+import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -725,6 +733,15 @@ export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
   detectSources: () => Promise<OnboardingSources>
   isMemryVault: (path: string) => Promise<boolean>
+}
+
+export interface NoteFoldClientAPI {
+  get(noteId: string): Promise<FoldLayers>
+  /** No noteId retries the last failed note; null when there is nothing to retry. */
+  retry(noteId?: string): Promise<FoldLayers | null>
+  getLastRun(): Promise<FoldLastRun>
+  getAgentStatus(): Promise<FoldAgentStatus>
+  onUpdated(callback: (event: { noteId: string }) => void): () => void
 }
 
 export interface OcrLanguagesClientAPI {
@@ -2065,6 +2082,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   customIcons: CustomIconsClientAPI
   vaultLocks: VaultLocksClientAPI
   sticky: StickyClientAPI
+  noteFold: NoteFoldClientAPI
   ocrLanguages: OcrLanguagesClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI
@@ -2084,6 +2102,20 @@ interface API extends WindowAPI, GeneratedRpcApi {
       connect: () => Promise<OneNoteAuthStatusResult>
       disconnect: () => Promise<{ success: true }>
       notebooks: () => Promise<OneNoteNotebooksResult>
+    }
+    readwise: {
+      status: () => Promise<ReadwiseStatusResult>
+      connect: (input: ReadwiseConnectInput) => Promise<ReadwiseStatusResult>
+      disconnect: () => Promise<{ success: true }>
+      syncNow: () => Promise<{ success: true }>
+      setOptions: (input: ReadwiseSetOptionsInput) => Promise<ReadwiseStatusResult>
+      reimportBook: (input: ReadwiseBookCommandInput) => Promise<{ success: true }>
+      refreshBook: (input: ReadwiseBookCommandInput) => Promise<{ success: true }>
+      listDeleted: () => Promise<{ books: ReadwiseDeletedBook[] }>
+      restoreBook: (input: ReadwiseRestoreBookInput) => Promise<{ success: true }>
+      takeOver: (input: ReadwiseTakeOverInput) => Promise<ReadwiseStatusResult>
+      cancel: () => Promise<{ success: true }>
+      ackErrorToast: () => Promise<{ first: boolean }>
     }
   }
   updater: {
@@ -2196,6 +2228,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultBindingChanged: (callback: (state: VaultBindingState) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
+  onReadwiseStatusChanged: (callback: () => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
   onMenuCommand: (callback: (event: AppMenuCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void

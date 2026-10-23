@@ -22,9 +22,23 @@
  */
 let syncEligible = false
 
+/**
+ * The runtime's policy gates have answered for the open vault. False from a
+ * vault's open until `startSyncRuntime` reaches a verdict, so a consumer can
+ * tell "this install does not sync" from "the verdict is not in yet" (#1417).
+ */
+let syncDecided = false
+
+/**
+ * Memry sync delivered a pull since the runtime started: this device holds what
+ * other devices wrote up to that point (#1408 D8).
+ */
+let pullCompleted = false
+
 /** Past every policy gate: the runtime is expected to be running. */
 export function markSyncEligible(): void {
   syncEligible = true
+  syncDecided = true
 }
 
 /**
@@ -34,9 +48,29 @@ export function markSyncEligible(): void {
  */
 export function markSyncIneligible(): null {
   syncEligible = false
+  syncDecided = true
   return null
 }
 
 export function isSyncEligible(): boolean {
   return syncEligible
+}
+
+export function isSyncDecided(): boolean {
+  return syncDecided
+}
+
+/** The runtime stopped, so the next start decides again and pulls again. */
+export function resetSyncDecision(): void {
+  syncDecided = false
+  pullCompleted = false
+}
+
+/** A full sync's pull delivered. */
+export function markPullCompleted(): void {
+  pullCompleted = true
+}
+
+export function hasCompletedPullSinceStart(): boolean {
+  return pullCompleted
 }

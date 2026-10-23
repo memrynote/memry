@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
 import {
   SyncedSettingsSchema,
   FieldClockMapSchema,
@@ -16,6 +17,85 @@ describe('SyncedSettingsSchema', () => {
   it('keeps the features group, including a flag only a newer build knows', () => {
     const features = { home: true, journal: false, spatialCanvas: false, quickSwitcher: false }
     expect(SyncedSettingsSchema.parse({ features }).features).toEqual(features)
+  })
+
+  describe('readwise group', () => {
+    const readwise = {
+      rootFolder: 'Reading',
+      folderLayout: 'flat',
+      categories: { books: true, supplementals: false },
+      cadence: 'daily',
+      syncDeviceId: 'device-a'
+    }
+
+    it('keeps the group, including a field only a newer build knows', () => {
+      expect(SyncedSettingsSchema.parse({ readwise }).readwise).toEqual(readwise)
+    })
+
+    it('keeps the claim and a cleared claim, which is an explicit null (§13.4)', () => {
+      const claim = { syncDeviceId: 'device-a', syncDeviceName: 'Desk Mac' }
+      expect(SyncedSettingsSchema.parse({ readwise: claim }).readwise).toEqual(claim)
+      const cleared = { syncDeviceId: null, syncDeviceName: null }
+      expect(SyncedSettingsSchema.parse({ readwise: cleared }).readwise).toEqual(cleared)
+      expect(SyncedSettingsSchema.safeParse({ readwise: { syncDeviceId: 7 } }).success).toBe(false)
+    })
+
+    it('keeps a layout and cadence value only a newer build knows', () => {
+      const parsed = SyncedSettingsSchema.parse({
+        readwise: { folderLayout: 'by-year', cadence: 'weekly' }
+      })
+      expect(parsed.readwise).toEqual({ folderLayout: 'by-year', cadence: 'weekly' })
+    })
+
+    it('parses under the schema an older build ships, which has no readwise group', () => {
+      const olderBuild = SyncedSettingsSchema.omit({ readwise: true })
+      const payload = { general: { theme: 'dark' }, readwise }
+
+      const parsed = olderBuild.safeParse(payload)
+
+      expect(parsed.success).toBe(true)
+      expect(parsed.data).toEqual({ general: { theme: 'dark' } })
+    })
+
+    it('keeps the Reader switches, and a build that does not model them keeps them too', () => {
+      const reader = { readerDocuments: true, readerFullText: false }
+      expect(SyncedSettingsSchema.parse({ readwise: { ...reader } }).readwise).toEqual(reader)
+      expect(SyncedSettingsSchema.safeParse({ readwise: { readerDocuments: 'on' } }).success).toBe(
+        false
+      )
+
+      // The group as the build before #1420 shipped it: `catchall` carries the new leaves.
+      const before1420 = z
+        .object({
+          cadence: z.string().optional(),
+          categories: z.object({}).catchall(z.unknown()).optional()
+        })
+        .catchall(z.unknown())
+      expect(before1420.parse({ cadence: 'daily', ...reader })).toEqual({
+        cadence: 'daily',
+        ...reader
+      })
+    })
+
+    it('keeps the journal switch, and a build before it keeps it with the rest of the group', () => {
+      const group = { cadence: 'daily', readerDocuments: true, journalHighlights: true }
+      expect(SyncedSettingsSchema.parse({ readwise: { ...group } }).readwise).toEqual(group)
+      expect(
+        SyncedSettingsSchema.safeParse({ readwise: { journalHighlights: 'on' } }).success
+      ).toBe(false)
+
+      // The group as the build before #3476 shipped it: `catchall` carries the leaf.
+      const before3476 = z
+        .object({ cadence: z.string().optional(), readerDocuments: z.boolean().optional() })
+        .catchall(z.unknown())
+      expect(before3476.parse(group)).toEqual(group)
+    })
+
+    it('rejects a non-boolean category switch', () => {
+      expect(
+        SyncedSettingsSchema.safeParse({ readwise: { categories: { books: 'yes' } } }).success
+      ).toBe(false)
+    })
   })
 
   it('rejects a non-boolean features flag', () => {

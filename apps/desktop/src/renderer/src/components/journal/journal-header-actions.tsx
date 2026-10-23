@@ -210,7 +210,8 @@ export function JournalHeaderActions({
           </Button>
         </Picker.Trigger>
         <Picker.Content align="end">
-          <Picker.List>
+          <Picker.Search placeholder={tNotes('editor.toolbar.searchActions')} />
+          <Picker.List filterByLabel emptyMessage={tNotes('editor.toolbar.noMatchingActions')}>
             {hasEntry && (
               <Picker.Item
                 value="local-graph"

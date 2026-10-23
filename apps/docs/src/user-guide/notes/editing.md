@@ -379,7 +379,7 @@ table.
 
 ## Slash Commands
 
-Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
+Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to confirm the highlighted command.
 
 - **Recent** — the last three commands you used sit at the top of the menu, above every other command. They are remembered on this device only.
 - **Groups** — the rest of the menu is always the same order: **Blocks**, **More headings** (Heading 4–6), **Insert**, **Media** and **AI**. Every command is listed; none of them is hidden behind search.
@@ -851,6 +851,12 @@ Links in a note are enriched with the page title, site name and favicon, both fo
 Only the URL is written to the note file, so a mention that has been through a restart or a vault switch comes back showing its site's domain. Its title and favicon return the next time that note's links are looked up.
 
 That in-memory cache holds the 200 most recently used links and evicts the least recently used entry beyond that, which keeps a long session with many link-heavy notes from growing without a limit. Evicted links are simply fetched again the next time they are shown.
+
+## Readwise Sections
+
+A note that holds Readwise highlights wraps them in a section. The editor draws the start of the section as a filled band labeled **Readwise · syncs automatically**, with the line _Edit inside this section and Readwise stops updating it._ under it. A matching band, **End of Readwise section**, closes it. On a journal day the bands read **Readwise · today's highlights** and **End of Readwise**. On iPhone the same markers show as a thin line with a book icon and the same labels, and they cannot be edited there.
+
+The bands only change how the section looks. The file keeps the two marker comments exactly as written, and your own text above, below or inside the section is saved as you typed it. Deleting a band removes its marker. Any other HTML comment keeps its small `<!---->` chip. The labels follow the app language and mirror in right-to-left layouts.
 
 ## Comments
 

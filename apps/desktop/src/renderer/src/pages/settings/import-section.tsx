@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import {
   SETTINGS_CARD,
@@ -6,16 +6,22 @@ import {
   SettingsHeader
 } from '@/components/settings/settings-primitives'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import { ChevronRight, Search } from '@/lib/icons'
 import { ImportSourceIcon } from '@/components/import/import-source-icon'
 import { ImportDialog } from '@/components/settings/import-dialog'
 import { useImporters, type ImporterItem } from '@/hooks/use-importers'
+import { useReadwiseStatus } from '@/hooks/use-readwise-status'
+import { deriveReadwiseState } from '@/components/settings/readwise-state'
+import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
+import { formatRelativePast } from '@/lib/format-relative-past'
 
-type ImportGroupId = 'noteApps' | 'tasks' | 'files'
+type ImportGroupId = 'reading' | 'noteApps' | 'tasks' | 'files'
 
-const IMPORT_GROUP_ORDER: ImportGroupId[] = ['noteApps', 'tasks', 'files']
+const IMPORT_GROUP_ORDER: ImportGroupId[] = ['reading', 'noteApps', 'tasks', 'files']
 
 const IMPORT_GROUP_IDS: Record<ImportGroupId, string[]> = {
+  reading: ['readwise'],
   noteApps: [
     'notion',
     'evernote',
@@ -51,18 +57,67 @@ function sortWithinGroup(group: ImportGroupId, items: ImporterItem[]): ImporterI
   return [...items].sort((a, b) => rank(a.id) - rank(b.id))
 }
 
-export function ImportSettings() {
-  const { t } = useT('settings')
+interface ImportSettingsProps {
+  focusTarget?: SettingsFocusTarget | null
+  focusRequestId?: number
+}
+
+export function ImportSettings({ focusTarget, focusRequestId }: ImportSettingsProps = {}) {
+  const { t, i18n } = useT('settings')
   const { importers } = useImporters()
   const [active, setActive] = useState<ImporterItem | null>(null)
   const [query, setQuery] = useState('')
 
+  const hasReadwise = importers.some((item) => item.id === 'readwise')
+  const readwise = useReadwiseStatus(hasReadwise)
+
+  // Where other rows show a file format, Readwise shows its connection state (D1).
+  const readwiseState = (): string => {
+    const state = deriveReadwiseState(readwise.status)
+    switch (state.kind) {
+      case 'not-connected':
+        return t('import.v2.readwise.notConnected')
+      case 'other-device':
+        return state.deviceName
+          ? t('import.v2.readwise.otherDevice', { device: state.deviceName })
+          : t('import.v2.readwise.otherDeviceUnknown')
+      case 'waiting-for-sync':
+        return t('import.v2.readwise.waiting')
+      case 'syncing':
+        return t('import.v2.readwise.syncing')
+      case 'error':
+        return t(
+          {
+            'invalid-token': 'import.v2.readwise.invalidToken',
+            'subscription-expired': 'import.v2.readwise.subscriptionExpired',
+            'rate-limited': 'import.v2.readwise.rateLimited',
+            network: 'import.v2.readwise.network',
+            server: 'import.v2.readwise.server',
+            unexpected: 'import.v2.readwise.unexpected'
+          }[state.error]
+        )
+      case 'synced':
+        return t('import.v2.readwise.synced', {
+          time: formatRelativePast(state.at, i18n.language)
+        })
+      case 'connected':
+        return t('import.v2.readwise.connected')
+    }
+  }
+
   const formatOf = (item: ImporterItem): string => {
+    if (item.id === 'readwise') return readwiseState()
     if (IMPORT_FORMAT_OVERRIDES[item.id]) return IMPORT_FORMAT_OVERRIDES[item.id]
     const extension = item.fileSpec.extensions[0]
     if (extension) return `.${extension}`
     return item.accountBased ? t('import.v2.formatAccount') : ''
   }
+
+  // The error toast's "Open Readwise" lands here with the Readwise panel open.
+  const readwiseItem = importers.find((item) => item.id === 'readwise') ?? null
+  useEffect(() => {
+    if (focusTarget === 'readwise-import' && readwiseItem) setActive(readwiseItem)
+  }, [focusTarget, focusRequestId, readwiseItem])
 
   const normalizedQuery = query.trim().toLowerCase()
   const groups = useMemo(() => {
@@ -129,7 +184,12 @@ export function ImportSettings() {
                       {t(item.descriptionKey)}
                     </span>
                   </span>
-                  <span className="w-16 shrink-0 truncate text-end font-mono text-xs/4 text-muted-foreground">
+                  <span
+                    className={cn(
+                      'shrink-0 truncate text-end text-xs/4 text-muted-foreground',
+                      item.id === 'readwise' ? 'max-w-40' : 'w-16 font-mono'
+                    )}
+                  >
                     {formatOf(item)}
                   </span>
                   <ChevronRight
@@ -147,7 +207,10 @@ export function ImportSettings() {
         item={active}
         open={active !== null}
         onOpenChange={(open) => {
-          if (!open) setActive(null)
+          if (!open) {
+            setActive(null)
+            readwise.refresh()
+          }
         }}
       />
     </div>

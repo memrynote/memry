@@ -81,6 +81,7 @@ import { stopImageProcessing } from './image-processing/bridge'
 import { getEmbeddingWorkerCrashContext, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
+import { startReadwiseScheduler, stopReadwiseScheduler } from './readwise/runtime-effects'
 import { startIcsCalendarRunner, stopIcsCalendarRunner } from './calendar/ics/ics-runner'
 import {
   startCaldavCalendarRunner,
@@ -1780,6 +1781,16 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       }
+      try {
+        startReadwiseScheduler()
+      } catch (error) {
+        mainLog.warn('Readwise scheduler failed to start:', error)
+        trackMainLog('warn', {
+          scope: 'Startup',
+          action: 'readwise_scheduler_start_failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError'
+        })
+      }
       startIcsCalendarRunner()
       startCaldavCalendarRunner()
       // macOS Calendar (#2374) exists only on macOS; nothing starts elsewhere.
@@ -2267,6 +2278,9 @@ app.on('before-quit', (event) => {
 
         shutdownLog.info('stopping inbox review scheduler...')
         stopInboxReviewScheduler()
+
+        shutdownLog.info('stopping Readwise scheduler...')
+        stopReadwiseScheduler()
 
         shutdownLog.info('stopping Google Calendar sync runner...')
         stopGoogleCalendarSyncRunner()
