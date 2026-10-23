@@ -125,6 +125,8 @@ describe('Readwise journal highlights', () => {
   let crdtProvider: typeof import('../sync/crdt-provider')
   let registry: typeof import('../import/registry')
   let readwise: ReadwiseStub
+  let highlightsIndex: typeof import('../readwise/highlights-index')
+  let journalEffects: typeof import('../journal/runtime-effects')
   let journal: typeof import('../vault/journal')
   let journalOwner: typeof import('../journal/update-entry')
   let journalCreate: typeof import('../journal/create-entry')
@@ -186,6 +188,8 @@ describe('Readwise journal highlights', () => {
     registry.__resetRegistry()
     registry.registerImporter(readwiseImporter)
     journal = await import('../vault/journal')
+    highlightsIndex = await import('../readwise/highlights-index')
+    journalEffects = await import('../journal/runtime-effects')
     journalOwner = await import('../journal/update-entry')
     journalCreate = await import('../journal/create-entry')
     resetWrites()
@@ -481,5 +485,44 @@ describe('Readwise journal highlights', () => {
     } finally {
       deviceB.close()
     }
+  })
+
+  it('a failing index write stops the run before the cursor moves, so the arrival is found next run', async () => {
+    library()
+    journalOn()
+    await sync()
+    const cursor = state.getCursor(db())
+    edit(1, (b) => b.highlights.push(hl(13, 30, 5, 20, 13)))
+    vi.spyOn(highlightsIndex, 'upsertHighlights').mockImplementationOnce(() => {
+      throw new Error('database is locked')
+    })
+
+    await expect(sync()).rejects.toThrow('database is locked')
+    expect(state.getCursor(db())).toBe(cursor)
+    expect(await entry('2026-10-05')).toBeNull()
+
+    await sync()
+    expect(await entry('2026-10-05')).toBe(day(AH(1), DW(2)))
+  })
+
+  it('a step that fails after the file was written does not append the same line again', async () => {
+    library()
+    journalOn()
+    await sync()
+    edit(1, (b) => b.highlights.push(hl(13, 30, 5, 20, 13)))
+    await sync()
+    const mine = (await entry('2026-10-05'))!.replace('2 highlights', '2 highlights, mine')
+    await journalOwner.updateJournalEntry({ date: '2026-10-05', content: mine })
+    vi.mocked(journalEffects.enqueueJournalUpdate).mockImplementationOnce(() => {
+      throw new Error('sync queue unavailable')
+    })
+    edit(1, (b) => b.highlights.push(hl(14, 40, 5, 21, 14)))
+
+    await sync()
+    await sync()
+
+    const body = (await entry('2026-10-05'))!
+    expect(body.match(/- \[\[Deep Work\]\]: 1 highlight\n/g)).toHaveLength(1)
+    expect(state.getJournalPending(db())).toEqual({})
   })
 })

@@ -561,24 +561,26 @@ export class ReadwiseSyncService {
 
   /**
    * Keeps the highlight index current and writes the journal days that got a
-   * new arrival (#3476, D17). A journal problem never fails the run: the days
-   * stay pending and the next run writes them.
+   * new arrival (#3476, D17). A journal write problem never fails the run: the
+   * days stay pending and the next run writes them.
    */
   private async recordJournal(
     db: ReturnType<typeof getDatabase>,
     books: readonly ReadwiseBook[],
     { stopped, ...record }: Parameters<typeof recordHighlights>[2] & { stopped: () => boolean }
   ): Promise<void> {
+    // A failing index write aborts the run before the cursor moves, so the same
+    // window is read again: the arrivals in it are not lost.
+    recordHighlights(db, books, record)
+    if (!record.enabled) return
     try {
-      recordHighlights(db, books, record)
-      if (!record.enabled) return
       await flushJournal(db, {
         timeZone: record.timeZone,
         retryBookIds: new Set(getRetryList(db).map((entry) => entry.readwiseBookId)),
         stopped
       })
     } catch (error) {
-      log.warn('The Readwise journal step failed', { error })
+      log.warn('The Readwise journal could not be written', { error })
     }
   }
 

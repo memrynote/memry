@@ -10,8 +10,9 @@ import type { DataDb } from '../database/types'
  * renders the bytes the old one wrote.
  */
 
-/** SQLite's bound-variable limit is 32766 on current builds, 999 on old ones. */
-const CHUNK = 500
+/** SQLite allows 999 bound variables on old builds: 5 columns per inserted row, 1 per looked-up id. */
+const INSERT_CHUNK = 150
+const LOOKUP_CHUNK = 500
 
 type IndexRow = typeof readwiseHighlights.$inferInsert & { highlightId: number }
 
@@ -33,9 +34,9 @@ export function toIndexRows(books: readonly ReadwiseBook[]): IndexRow[] {
 }
 
 function insertRows(db: DataDb, rows: readonly IndexRow[]): void {
-  for (let i = 0; i < rows.length; i += CHUNK) {
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
     db.insert(readwiseHighlights)
-      .values(rows.slice(i, i + CHUNK))
+      .values(rows.slice(i, i + INSERT_CHUNK))
       .onConflictDoUpdate({
         target: readwiseHighlights.highlightId,
         set: {
@@ -52,15 +53,25 @@ function insertRows(db: DataDb, rows: readonly IndexRow[]): void {
 /** The ids among `ids` the index already holds. */
 export function knownHighlightIds(db: DataDb, ids: readonly number[]): Set<number> {
   const known = new Set<number>()
-  for (let i = 0; i < ids.length; i += CHUNK) {
+  for (let i = 0; i < ids.length; i += LOOKUP_CHUNK) {
     const rows = db
       .select({ id: readwiseHighlights.highlightId })
       .from(readwiseHighlights)
-      .where(inArray(readwiseHighlights.highlightId, ids.slice(i, i + CHUNK)))
+      .where(inArray(readwiseHighlights.highlightId, ids.slice(i, i + LOOKUP_CHUNK)))
       .all()
     for (const row of rows) known.add(row.id)
   }
   return known
+}
+
+/** A book deleted in Readwise: every highlight of it is deleted, whichever of them the payload held. */
+export function markBooksDeleted(db: DataDb, bookIds: readonly number[]): void {
+  for (let i = 0; i < bookIds.length; i += LOOKUP_CHUNK) {
+    db.update(readwiseHighlights)
+      .set({ deleted: true })
+      .where(inArray(readwiseHighlights.bookId, bookIds.slice(i, i + LOOKUP_CHUNK)))
+      .run()
+  }
 }
 
 export function upsertHighlights(db: DataDb, rows: readonly IndexRow[]): void {

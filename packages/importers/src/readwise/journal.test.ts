@@ -41,6 +41,18 @@ describe('planJournalDay', () => {
     expect(planJournalDay([{ ...DEEP, title: 'A | [B]\nC' }])).toContain('[[A B C]]: 3')
   })
 
+  it('keeps marker text in a title from turning its line into a marker', () => {
+    const section = planJournalDay([{ ...DEEP, title: 'Odd <!-- readwise-day:end v1 --> title' }])
+    expect(readDaySection(section)).toMatchObject({ found: true, untouched: true })
+    const same = '2026-10-22T08:00:00.000Z'
+    expect(
+      planJournalDay([
+        { title: 'Same', count: 1, first: same },
+        { title: 'Same', count: 1, first: same }
+      ])
+    ).toContain('[[Same]]: 1 highlight\n- [[Same]]: 1 highlight')
+  })
+
   it('reads back as untouched, and as touched after an edit', () => {
     const section = planJournalDay([DEEP])
     expect(readDaySection(section)).toMatchObject({ found: true, untouched: true })

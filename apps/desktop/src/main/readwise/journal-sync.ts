@@ -16,6 +16,7 @@ import { getNoteById } from '../vault/notes'
 import {
   highlightsBetween,
   knownHighlightIds,
+  markBooksDeleted,
   replaceIndex,
   toIndexRows,
   upsertHighlights
@@ -89,6 +90,10 @@ export function recordHighlights(
     } else {
       upsertHighlights(tx, rows)
     }
+    markBooksDeleted(
+      tx,
+      books.filter((book) => book.is_deleted).map((book) => book.user_book_id)
+    )
     setJournalPending(tx, pending)
   })
 }
@@ -112,8 +117,18 @@ async function writeDay(
   if (plan.kind === 'unchanged') return 'unchanged'
   // The read above waited on the disk: an editor may have opened since.
   if (isBusy(date)) return 'busy'
-  if (plan.kind === 'append') await appendToJournalEntry(date, plan.markdown)
-  else await updateJournalEntry({ date, content: plan.content })
+  try {
+    if (plan.kind === 'append') await appendToJournalEntry(date, plan.markdown)
+    else await updateJournalEntry({ date, content: plan.content })
+  } catch (error) {
+    // The file is written before the cache, sync queue and editor doc are
+    // updated. When it is on disk, a retry would append the same line again.
+    const now = (await readJournalEntry(date))?.content ?? null
+    const onDisk =
+      now !== null && (plan.kind === 'append' ? now.includes(plan.markdown) : now === plan.content)
+    if (!onDisk) throw error
+    log.warn('A Readwise journal day was written, but a later step failed', { date, error })
+  }
   return 'written'
 }
 
@@ -180,6 +195,7 @@ export async function flushJournal(db: DataDb, options: FlushOptions): Promise<v
     if (options.stopped()) return
     let outcome: DayWrite | 'failed'
     const stays: Record<string, number> = {}
+    const owed = pending[date]
     try {
       const day = new Map<number, JournalBook>()
       for (const [bookId, entry] of booksOfDay(db, date, options.timeZone)) {
@@ -194,6 +210,12 @@ export async function flushJournal(db: DataDb, options: FlushOptions): Promise<v
         if (title !== null && listed) arrivals.push({ title, count, first: listed.first })
         else if (title === null && options.retryBookIds.has(bookId)) stays[key] = count
       }
+      // Pending goes first: a crash after the write must not append the same
+      // lines again. A day that was not written gets its entry back below.
+      const rest = { ...getJournalPending(db) }
+      if (Object.keys(stays).length > 0) rest[date] = stays
+      else delete rest[date]
+      setJournalPending(db, rest)
       outcome = await writeDay(date, [...day.values()], arrivals)
     } catch (error) {
       log.warn('A Readwise journal day could not be written', { date, error })
@@ -201,11 +223,7 @@ export async function flushJournal(db: DataDb, options: FlushOptions): Promise<v
     }
     if (outcome === 'busy' || outcome === 'failed') {
       // Keep the whole day: the next run writes it, or the entry closes first.
-      continue
+      setJournalPending(db, { ...getJournalPending(db), [date]: owed })
     }
-    const left = { ...getJournalPending(db) }
-    if (Object.keys(stays).length > 0) left[date] = stays
-    else delete left[date]
-    setJournalPending(db, left)
   }
 }

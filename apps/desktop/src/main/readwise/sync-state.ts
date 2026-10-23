@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ReadwiseErrorKind, ReadwiseRunCounts } from '@memry/contracts/import-channels'
+import { readwiseHighlights } from '@memry/db-schema/schema/readwise-highlights'
 import { deleteSetting, getSetting, setSetting } from '../database/queries/settings'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/types'
@@ -215,4 +216,6 @@ export function clearRunState(db: DataDb): void {
   deleteSetting(db, ERROR_TOAST_KEY)
   deleteSetting(db, HIGHLIGHT_INDEX_KEY)
   deleteSetting(db, JOURNAL_PENDING_KEY)
+  // The index is derived from the export: the next full read fills it again.
+  db.delete(readwiseHighlights).run()
 }

@@ -65,14 +65,18 @@ export function highlightInstant(dates: HighlightDates): string | null {
 
 function line({ title, count }: JournalBook): string {
   // `]` and `|` cannot sit in a wiki-link target.
-  const target = collapseWhitespace(title.replace(/[\]|[]/g, ' ')) || 'Untitled'
+  // `<!--` and `-->` would make the line read as a marker, so the section could never be re-rendered.
+  const target = collapseWhitespace(title.replace(/[\]|[]|<!--|-->/g, ' ')) || 'Untitled'
   return `- [[${target}]]: ${count} highlight${count === 1 ? '' : 's'}`
 }
 
 function ordered(books: readonly JournalBook[]): JournalBook[] {
   return books
     .filter((book) => book.count > 0)
-    .sort((a, b) => (a.first < b.first ? -1 : a.first > b.first ? 1 : a.title < b.title ? -1 : 1))
+    .sort((a, b) => {
+      if (a.first !== b.first) return a.first < b.first ? -1 : 1
+      return a.title === b.title ? 0 : a.title < b.title ? -1 : 1
+    })
 }
 
 /** The sealed section for a day: every book with its count, ordered by its first highlight of the day. Empty when no book has a highlight. */
