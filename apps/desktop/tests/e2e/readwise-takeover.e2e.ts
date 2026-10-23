@@ -167,7 +167,7 @@ test.describe('Readwise: one pulling device (#1417)', () => {
       (token) => window.api.import.readwise.connect({ token }),
       TOKEN
     )
-    expect(connected).toMatchObject({ connected: true, syncsOn: null })
+    expect(connected).toMatchObject({ connected: true, thisDevicePulls: true })
 
     await startImport(pageA)
     await expect.poll(() => noteFiles(vaultPathA).length, { timeout: SYNC_TIMEOUT }).toBe(3)
@@ -180,7 +180,7 @@ test.describe('Readwise: one pulling device (#1417)', () => {
           const status = await pageB.evaluate(() => window.api.import.readwise.status())
           return {
             notes: noteFiles(vaultPathB).length,
-            syncsOn: status.syncsOn?.deviceName ?? null
+            syncsOn: status.pullingDeviceName
           }
         },
         { timeout: SYNC_TIMEOUT, intervals: [1_000, 3_000] }
@@ -202,7 +202,7 @@ test.describe('Readwise: one pulling device (#1417)', () => {
       (token) => window.api.import.readwise.takeOver({ token }),
       TOKEN
     )
-    expect(taken).toMatchObject({ connected: true, syncsOn: null })
+    expect(taken).toMatchObject({ connected: true, thisDevicePulls: true })
 
     // B's first run is a full export that adopts A's notes by readwise_url.
     await startImport(pageB)
@@ -219,7 +219,7 @@ test.describe('Readwise: one pulling device (#1417)', () => {
         async () => {
           await syncBoth(pageA, pageB)
           const status = await pageA.evaluate(() => window.api.import.readwise.status())
-          return { connected: status.connected, syncsOn: status.syncsOn !== null }
+          return { connected: status.connected, syncsOn: !status.thisDevicePulls }
         },
         { timeout: SYNC_TIMEOUT, intervals: [1_000, 3_000] }
       )
