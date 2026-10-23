@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   similar: [] as unknown[],
-  tagSuggestions: [] as unknown[],
   spatialCanvas: true,
   openTab: vi.fn(),
   addItemsToCanvas: vi.fn(),
@@ -26,9 +25,7 @@ vi.mock('sonner', () => ({
   toast: { success: mocks.toastSuccess, info: mocks.toastInfo, error: mocks.toastError }
 }))
 vi.mock('@/hooks/use-note-similarity', () => ({
-  useSimilarNotes: () => mocks.similar,
-  useTagSuggestions: (_id: string, { enabled }: { enabled: boolean }) =>
-    enabled ? mocks.tagSuggestions : []
+  useSimilarNotes: () => mocks.similar
 }))
 vi.mock('@/hooks/use-feature-flags', () => ({
   useFeatureFlags: () => ({ flags: { spatialCanvas: mocks.spatialCanvas } })
@@ -40,7 +37,7 @@ vi.mock('@/components/note/content-area/wiki-link', () => ({
   createWikiLinkInlineContent: (target: string) => ({ type: 'wikiLink', props: { target } })
 }))
 
-import { NoteSimilarNotes, NoteSuggestedTags } from './NoteSimilarity'
+import { NoteSimilarNotes } from './NoteSimilarity'
 
 const similar = { id: 'b', title: 'B', path: 'b.md', emoji: null, snippet: null, similarity: 0.8 }
 
@@ -135,31 +132,5 @@ describe('NoteSimilarNotes', () => {
     await waitFor(() =>
       expect(mocks.toastInfo).toHaveBeenCalledWith('similarNotes.alreadyOnCanvas:B')
     )
-  })
-})
-
-describe('NoteSuggestedTags', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.tagSuggestions = [{ tag: 'sleep', confidence: 0.6, support: 2 }]
-  })
-
-  it('hands a picked tag to the header-tag owner', async () => {
-    const onAccept = vi.fn()
-    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} onAccept={onAccept} />)
-    await userEvent.click(screen.getByRole('button', { name: 'suggestedTags.acceptAria:sleep' }))
-    expect(onAccept).toHaveBeenCalledWith('sleep')
-  })
-
-  it('hides for tagged notes and once dismissed', async () => {
-    const { unmount } = render(
-      <NoteSuggestedTags noteId="a" tags={['x']} disabled={false} onAccept={vi.fn()} />
-    )
-    expect(screen.queryByTestId('suggested-tags')).not.toBeInTheDocument()
-    unmount()
-
-    render(<NoteSuggestedTags noteId="a" tags={[]} disabled={false} onAccept={vi.fn()} />)
-    await userEvent.click(screen.getByRole('button', { name: 'suggestedTags.dismiss' }))
-    expect(screen.queryByTestId('suggested-tags')).not.toBeInTheDocument()
   })
 })

@@ -825,11 +825,7 @@
     "addToCanvasFailed": "Could not add the note to the canvas"
   },
   "suggestedTags": {
-    "label": "Suggested tags:",
-    "hint": "Tags shared by the notes most similar to this one. Nothing is added until you pick one.",
-    "acceptAria": "Add tag {tag}",
-    "support": "{count, plural, one {Used on # similar note} other {Used on # similar notes}}",
-    "dismiss": "Hide suggested tags"
+    "support": "{count, plural, one {Used on # similar note} other {Used on # similar notes}}"
   },
   "comments": {
     "railAria": "Comments",
@@ -869,6 +865,7 @@
     "removeAria": "Remove tag: {tag}",
     "inputPlaceholder": "Type tag name...",
     "recent": "Recent",
+    "suggested": "Suggested",
     "matching": "Matching",
     "all": "All Tags",
     "none": "No tags found",

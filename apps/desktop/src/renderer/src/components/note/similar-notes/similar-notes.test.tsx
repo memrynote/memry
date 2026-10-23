@@ -21,7 +21,6 @@ vi.mock('@/services/canvas-service', () => ({
 }))
 
 import { SimilarNotesSection } from './SimilarNotesSection'
-import { SuggestedTagsRow } from './SuggestedTagsRow'
 
 const note = (id: string, path: string): SimilarNoteItem => ({
   id,
@@ -81,38 +80,5 @@ describe('SimilarNotesSection', () => {
 
     await user.click(screen.getByText('Board'))
     expect(onAddToCanvas).toHaveBeenCalledWith(similar, { id: 'c1', title: 'Board' })
-  })
-})
-
-describe('SuggestedTagsRow', () => {
-  it('renders nothing without suggestions', () => {
-    const { container } = render(
-      <SuggestedTagsRow suggestions={[]} onAccept={vi.fn()} onDismiss={vi.fn()} />
-    )
-    expect(container).toBeEmptyDOMElement()
-  })
-
-  it('adds a tag only when one is picked, and can be dismissed', async () => {
-    const user = userEvent.setup()
-    const onAccept = vi.fn()
-    const onDismiss = vi.fn()
-
-    render(
-      <SuggestedTagsRow
-        suggestions={[
-          { tag: 'sleep', confidence: 0.7, support: 3 },
-          { tag: 'health', confidence: 0.5, support: 2 }
-        ]}
-        onAccept={onAccept}
-        onDismiss={onDismiss}
-      />
-    )
-    expect(onAccept).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole('button', { name: 'suggestedTags.acceptAria:health' }))
-    expect(onAccept).toHaveBeenCalledWith('health')
-
-    await user.click(screen.getByRole('button', { name: 'suggestedTags.dismiss' }))
-    expect(onDismiss).toHaveBeenCalled()
   })
 })

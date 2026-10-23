@@ -65,7 +65,7 @@ import {
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
-import { NoteSimilarNotes, NoteSuggestedTags } from '@/components/note/similar-notes'
+import { NoteSimilarNotes } from '@/components/note/similar-notes'
 import {
   useNote,
   useNoteMutations,
@@ -1902,6 +1902,7 @@ export function NotePage({ noteId }: NotePageProps) {
           {/* Tags: visible when tags exist */}
           <TagsRow
             fieldHints={tagFieldHints}
+            noteId={noteId}
             tags={headerTags}
             availableTags={availableTags}
             recentTags={recentTags}
@@ -1919,13 +1920,6 @@ export function NotePage({ noteId }: NotePageProps) {
             }
             hideWhenEmpty
             disabled={isLocked}
-          />
-
-          <NoteSuggestedTags
-            noteId={noteId}
-            tags={note.tags}
-            disabled={isDeleted || isLocked}
-            onAccept={(tag) => void addHeaderTag(tag)}
           />
 
           {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
@@ -1977,6 +1971,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           <GhostAffordanceRow
             tagFieldHints={tagFieldHints}
+            noteId={noteId}
             availableTags={availableTags}
             recentTags={recentTags}
             currentTagIds={headerTags.map((t) => t.id)}
