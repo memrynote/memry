@@ -259,6 +259,26 @@ export function ReadwiseFirstImportPreview({
               </span>
             </li>
           )}
+          <li className="col-span-2 flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-xs/4 text-foreground">
+                {t('import.dialog.readwise.journal.highlights.label')}
+              </span>
+              <Switch
+                checked={options.journalHighlights}
+                onCheckedChange={(next) => onSetOptions({ journalHighlights: next })}
+                aria-label={t('import.dialog.readwise.journal.highlights.label')}
+                className={ACCENT_SWITCH}
+                disabled={disabled}
+              />
+            </div>
+            <span className="text-xs/4 text-muted-foreground">
+              {t('import.dialog.readwise.journal.highlights.description')}
+            </span>
+            <span className="text-xs/4 text-muted-foreground">
+              {t('import.dialog.readwise.journal.highlights.firstImport')}
+            </span>
+          </li>
         </ul>
       </section>
 

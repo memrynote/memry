@@ -55,7 +55,7 @@ export function sealSection(body: string, last: string): string {
 export type SectionProblem =
   'no-start' | 'no-end' | 'out-of-order' | 'inline-marker' | 'duplicate-markers'
 
-export type SectionRead =
+export type SectionRead<M extends { hash: string } = EndMarker> =
   | {
       found: true
       /** Offsets in `body` of the start marker and just past the end marker. */
@@ -63,7 +63,7 @@ export type SectionRead =
       /** Text between the two marker lines. */
       text: string
       /** Null when the end marker is not a `v1` marker this build can read. */
-      marker: EndMarker | null
+      marker: M | null
       /** The hash matches, so the section is bytes Memry wrote. */
       untouched: boolean
     }
@@ -76,7 +76,7 @@ export type SectionRead =
        * sits inline: `no-start` and `out-of-order` reads. The writer appends
        * before it and keeps its state.
        */
-      end?: { range: { start: number; end: number }; marker: EndMarker | null }
+      end?: { range: { start: number; end: number }; marker: M | null }
     }
 
 function parseEndMarker(fieldsText: string): EndMarker | null {
@@ -86,12 +86,41 @@ function parseEndMarker(fieldsText: string): EndMarker | null {
     : null
 }
 
+/** Which markers delimit a section, and how its end marker's fields parse. */
+export interface SectionSpec<M extends { hash: string }> {
+  /** The whole start marker line. */
+  start: string
+  /** Prefix of every start marker, for the inline-marker check. */
+  startPrefix: string
+  /** Matches the end marker line, capturing its fields. */
+  endLine: RegExp
+  /** Prefix of every end marker, for the inline-marker check. */
+  endPrefix: string
+  parseEnd(fieldsText: string): M | null
+}
+
+const BOOK_SECTION: SectionSpec<EndMarker> = {
+  start: SECTION_START,
+  startPrefix: '<!-- readwise:start',
+  endLine: END_MARKER_LINE,
+  endPrefix: '<!-- readwise:end',
+  parseEnd: parseEndMarker
+}
+
 /**
  * Find the section in a note body. Both markers must be alone on their line,
  * once each, start before end. Anything else is reported as a problem and the
  * section is never untouched, so the writer appends instead of rewriting.
  */
 export function readSection(body: string): SectionRead {
+  return readMarkedSection(body, BOOK_SECTION)
+}
+
+/** `readSection` for any marker pair: the book section and the journal day section (D17). */
+export function readMarkedSection<M extends { hash: string }>(
+  body: string,
+  spec: SectionSpec<M>
+): SectionRead<M> {
   const starts: Array<{ from: number; to: number }> = []
   const ends: Array<{ from: number; to: number; text: string }> = []
   let inline = false
@@ -100,10 +129,10 @@ export function readSection(body: string): SectionRead {
   for (const rawLine of body.split('\n')) {
     const lineEnd = offset + rawLine.length
     const line = rawLine.trim()
-    const endMatch = END_MARKER_LINE.exec(line)
-    if (line === SECTION_START) starts.push({ from: offset, to: lineEnd })
+    const endMatch = spec.endLine.exec(line)
+    if (line === spec.start) starts.push({ from: offset, to: lineEnd })
     else if (endMatch) ends.push({ from: offset, to: lineEnd, text: endMatch[1] })
-    else if (line.includes('<!-- readwise:start') || line.includes('<!-- readwise:end')) {
+    else if (line.includes(spec.startPrefix) || line.includes(spec.endPrefix)) {
       inline = true
     }
     offset = lineEnd + 1
@@ -118,7 +147,8 @@ export function readSection(body: string): SectionRead {
     return { found: false, untouched: false, problem }
   }
   const [end] = ends
-  const endRead = { range: { start: end.from, end: end.to }, marker: parseEndMarker(end.text) }
+  const marker = spec.parseEnd(end.text)
+  const endRead = { range: { start: end.from, end: end.to }, marker }
   if (starts.length === 0) {
     return { found: false, untouched: false, problem: 'no-start', end: endRead }
   }
@@ -127,7 +157,6 @@ export function readSection(body: string): SectionRead {
     return { found: false, untouched: false, problem: 'out-of-order', end: endRead }
   }
 
-  const marker = parseEndMarker(end.text)
   const text = body.slice(start.to + 1, end.from - 1)
   return {
     found: true,

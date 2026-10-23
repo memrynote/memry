@@ -77,7 +77,11 @@ export function readReadwiseOptions(db: DataDb): ReadwiseOptions {
         ? stored.readerDocuments
         : defaults.readerDocuments,
     readerFullText:
-      typeof stored.readerFullText === 'boolean' ? stored.readerFullText : defaults.readerFullText
+      typeof stored.readerFullText === 'boolean' ? stored.readerFullText : defaults.readerFullText,
+    journalHighlights:
+      typeof stored.journalHighlights === 'boolean'
+        ? stored.journalHighlights
+        : defaults.journalHighlights
   }
 }
 
@@ -124,6 +128,10 @@ export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInpu
   if (updates.readerFullText !== undefined) {
     next.readerFullText = updates.readerFullText
     pushes.push(['readwise.readerFullText', updates.readerFullText])
+  }
+  if (updates.journalHighlights !== undefined) {
+    next.journalHighlights = updates.journalHighlights
+    pushes.push(['readwise.journalHighlights', updates.journalHighlights])
   }
   if (updates.categories) {
     const categories: Record<string, unknown> =

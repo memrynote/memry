@@ -213,7 +213,9 @@ export const SyncedSettingsSchema = z.object({
       // Reader (#1420): additive. A build without these keeps them through
       // `catchall`, and its echoed field clocks keep the merge.
       readerDocuments: z.boolean().optional(),
-      readerFullText: z.boolean().optional()
+      readerFullText: z.boolean().optional(),
+      // Journal (#3476): additive, kept by older builds the same way.
+      journalHighlights: z.boolean().optional()
     })
     .catchall(z.unknown())
     .optional()

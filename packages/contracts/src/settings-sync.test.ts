@@ -77,6 +77,20 @@ describe('SyncedSettingsSchema', () => {
       })
     })
 
+    it('keeps the journal switch, and a build before it keeps it with the rest of the group', () => {
+      const group = { cadence: 'daily', readerDocuments: true, journalHighlights: true }
+      expect(SyncedSettingsSchema.parse({ readwise: { ...group } }).readwise).toEqual(group)
+      expect(
+        SyncedSettingsSchema.safeParse({ readwise: { journalHighlights: 'on' } }).success
+      ).toBe(false)
+
+      // The group as the build before #3476 shipped it: `catchall` carries the leaf.
+      const before3476 = z
+        .object({ cadence: z.string().optional(), readerDocuments: z.boolean().optional() })
+        .catchall(z.unknown())
+      expect(before3476.parse(group)).toEqual(group)
+    })
+
     it('rejects a non-boolean category switch', () => {
       expect(
         SyncedSettingsSchema.safeParse({ readwise: { categories: { books: 'yes' } } }).success
