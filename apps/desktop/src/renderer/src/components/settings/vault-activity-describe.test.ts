@@ -94,6 +94,22 @@ describe('describeVaultActivity', () => {
     expect(result.tone).toBe('warning')
   })
 
+  it('shows the line an import run wrote itself, such as a Readwise sync', () => {
+    const result = describeVaultActivity(
+      entry({
+        kind: 'import',
+        source: 'import',
+        importer: 'readwise',
+        message: 'Readwise: 3 books, 12 highlights',
+        counts: { imported: 3, failed: 0 }
+      }),
+      t,
+      importerName
+    )
+    expect(result.detail).toBe('Readwise: 3 books, 12 highlights')
+    expect(result.tone).toBe('neutral')
+  })
+
   it('covers removal, a failed or canceled import, and kinds from a newer build', () => {
     expect(
       describeVaultActivity(entry({ kind: 'removed', path: 'a.md' }), t, importerName)

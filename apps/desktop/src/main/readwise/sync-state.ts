@@ -12,6 +12,7 @@ const CURSOR_KEY = 'readwise.cursor'
 const RETRY_KEY = 'readwise.retryList'
 const FULL_PASS_KEY = 'readwise.fullPass'
 const LAST_RUN_KEY = 'readwise.lastRun'
+const LAST_FULL_READ_KEY = 'readwise.lastFullRead'
 
 const log = createLogger('ReadwiseState')
 
@@ -85,6 +86,15 @@ export function setFullPassPending(db: DataDb, pending: boolean): void {
   else deleteSetting(db, FULL_PASS_KEY)
 }
 
+/** When a run last read the whole export (no `updatedAfter`), as an ISO time on this device's clock. */
+export function getLastFullRead(db: DataDb): string | null {
+  return getSetting(db, LAST_FULL_READ_KEY)
+}
+
+export function setLastFullRead(db: DataDb, at: string): void {
+  setSetting(db, LAST_FULL_READ_KEY, at)
+}
+
 export interface LastRun {
   /** ISO time the run finished on this device. */
   at: string
@@ -116,4 +126,5 @@ export function clearRunState(db: DataDb): void {
   deleteSetting(db, RETRY_KEY)
   deleteSetting(db, FULL_PASS_KEY)
   deleteSetting(db, LAST_RUN_KEY)
+  deleteSetting(db, LAST_FULL_READ_KEY)
 }

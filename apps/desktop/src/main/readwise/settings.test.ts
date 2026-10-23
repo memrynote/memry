@@ -15,6 +15,7 @@ import {
 } from '@memry/sync-client/settings-sync'
 import type { DataDb } from '../database/types'
 import { getSetting, setSetting } from '../database/queries/settings'
+import { getFullPassPending, setFullPassPending } from './sync-state'
 
 let currentDb: DataDb | null = null
 vi.mock('../database', () => ({
@@ -145,6 +146,25 @@ describe('readwise synced settings group', () => {
     it('does nothing without an open vault', () => {
       currentDb = null
       expect(() => followFolderRenameInReadwise('Readwise', 'Reading')).not.toThrow()
+    })
+  })
+
+  describe('full-pass flag (D7)', () => {
+    it('is set when a category goes from off to on, by the user or a merged device', () => {
+      writeReadwiseOptions(db, { categories: { supplementals: true } })
+      expect(getFullPassPending(db)).toBe(true)
+
+      setFullPassPending(db, false)
+      applyMergedReadwiseSettings(db, { categories: { tweets: false } })
+      expect(getFullPassPending(db)).toBe(false)
+      applyMergedReadwiseSettings(db, { categories: { tweets: true } })
+      expect(getFullPassPending(db)).toBe(true)
+    })
+
+    it('stays clear when nothing was switched on', () => {
+      writeReadwiseOptions(db, { categories: { books: false } })
+      writeReadwiseOptions(db, { categories: { articles: true }, rootFolder: 'Reading' })
+      expect(getFullPassPending(db)).toBe(false)
     })
   })
 })

@@ -9,6 +9,7 @@ import {
 import { getDatabase } from '../database'
 import { getSetting, setSetting } from '../database/queries/settings'
 import type { DataDb } from '../database/types'
+import { setFullPassPending } from './sync-state'
 import { createLogger } from '../lib/logger'
 import { syncSettingsFieldUpdate } from '../settings/runtime-effects'
 
@@ -74,6 +75,22 @@ export function readReadwiseOptions(db: DataDb): ReadwiseOptions {
   }
 }
 
+/**
+ * A category that goes from off to on needs its books read once, and the
+ * export has no category filter, so the next run reads all of it (D7). The
+ * flag is device-local run state.
+ */
+function flagCategoriesSwitchedOn(db: DataDb, before: ReadwiseOptions): void {
+  const after = readReadwiseOptions(db)
+  if (
+    READWISE_CATEGORIES.some(
+      (category) => after.categories[category] && !before.categories[category]
+    )
+  ) {
+    setFullPassPending(db, true)
+  }
+}
+
 /** Writes the changed fields, each under its own field clock. */
 export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInput): void {
   const stored = readStored(db)
@@ -106,7 +123,9 @@ export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInpu
   }
 
   if (pushes.length === 0) return
+  const before = readReadwiseOptions(db)
   setSetting(db, READWISE_SETTINGS_KEY, JSON.stringify(next))
+  flagCategoriesSwitchedOn(db, before)
   for (const [path, value] of pushes) syncSettingsFieldUpdate(path, value)
 }
 
@@ -124,7 +143,9 @@ export function applyMergedReadwiseSettings(db: DataDb, merged: Record<string, u
       typeof stored.categories === 'object' && stored.categories !== null ? stored.categories : {}
     next.categories = { ...current, ...mergedCategories }
   }
+  const before = readReadwiseOptions(db)
   setSetting(db, READWISE_SETTINGS_KEY, JSON.stringify(next))
+  flagCategoriesSwitchedOn(db, before)
 }
 
 /**

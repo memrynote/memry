@@ -119,6 +119,8 @@ export const readwiseImporter: Importer = {
       ctx.setPhase('scanning')
       await getReadwiseSyncService().run(token, {
         signal: ctx.signal,
+        // The runner writes the activity line for an import run.
+        logActivity: false,
         reading: () => ctx.status(IMPORT_STATUS.readwiseFetching),
         planned: (count) => {
           total = count
