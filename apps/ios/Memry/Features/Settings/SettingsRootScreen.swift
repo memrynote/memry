@@ -43,6 +43,11 @@ struct SettingsRootScreen: View {
                 SettingsLinkRow(title: SettingsCopy.templates, symbol: "doc.on.doc", route: .templates)
                 SettingsLinkRow(title: SettingsCopy.tags, symbol: "number", route: .tags)
                 SettingsLinkRow(title: SettingsCopy.properties, symbol: "list.bullet.rectangle", route: .properties)
+                SettingsLinkRow(
+                    title: ReadwiseCopy.title, symbol: "books.vertical",
+                    value: context.store.readwise.map { ReadwiseDisplay($0, devices: context.account.devices).summary },
+                    route: .readwise
+                )
             }
             Section(SettingsCopy.data) {
                 SettingsLinkRow(title: SettingsCopy.vaults, symbol: "externaldrive", route: .vaults)

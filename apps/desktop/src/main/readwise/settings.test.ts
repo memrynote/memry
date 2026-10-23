@@ -137,6 +137,21 @@ describe('readwise synced settings group', () => {
     expect(Object.keys(manager.getPayload().fieldClocks)).not.toContain('readwise.syncDeviceId')
   })
 
+  it('merges the run status leaf by leaf, so one leaf arriving keeps the other', () => {
+    setSetting(
+      db,
+      READWISE_SETTINGS_KEY,
+      JSON.stringify({ status: { lastChangeAt: '2026-10-22T08:30:00.000Z', error: null } })
+    )
+
+    applyMergedReadwiseSettings(db, { status: { error: 'invalid-token' } })
+
+    expect(JSON.parse(getSetting(db, READWISE_SETTINGS_KEY)!).status).toEqual({
+      lastChangeAt: '2026-10-22T08:30:00.000Z',
+      error: 'invalid-token'
+    })
+  })
+
   it('treats a corrupt or non-object row as empty and writes over it', () => {
     setSetting(db, READWISE_SETTINGS_KEY, '{nope')
     expect(readReadwiseOptions(db)).toEqual(READWISE_OPTIONS_DEFAULTS)

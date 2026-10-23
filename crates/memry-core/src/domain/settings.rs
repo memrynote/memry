@@ -20,7 +20,7 @@
 //! to `general.theme` byte for byte, and FR-063's "a preference with no
 //! equivalent" comes back to desktop unchanged.
 //!
-//! The ten modelled groups
+//! The eleven modelled groups
 //! ([`MODELLED_GROUPS`](crate::storage::repositories::projectors::settings::MODELLED_GROUPS))
 //! stay where they are — in the **projector**, which is the closed read view
 //! the vectors pin. This module deliberately has no group list: a dotted-path

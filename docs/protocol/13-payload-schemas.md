@@ -720,6 +720,35 @@ user sets it (`apps/desktop/src/main/ipc/settings-handlers.ts`, the
 (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts`,
 `propagateMergedSettings`).
 
+**The `readwise` group** (#1408 D8, D18) is the synced half of the Readwise
+import: `syncDeviceId` and `syncDeviceName` name the one desktop that pulls,
+`rootFolder`, `folderLayout`, `cadence`, `categories.*`, `readerDocuments`,
+`readerFullText` and `journalHighlights` are the user's choices, and
+`status.{lastChangeAt, error}` is the run status, one field clock per leaf
+(`readwise.status.error`) (`packages/contracts/src/settings-sync.ts:185-231`).
+Every key is optional, and the group and its `categories` and `status` objects
+accept a key they do not name (`packages/contracts/src/settings-sync.ts:196-230`).
+The token and the run state (cursor, retry list) are device-local and never here.
+
+**Normative, `readwise.status`.** `lastChangeAt` is an ISO 8601 string and
+`error` is an error code (`invalid-token`, `subscription-expired`) or `null`
+(`packages/contracts/src/settings-sync.ts:219-227`). **Only the pulling device
+writes them, and only when a run changed something or the error state changed:
+a run that changed nothing sends no field**
+(`apps/desktop/src/main/readwise/status-publish.ts:14-41`). A cleared error is an
+explicit `null`, never a removed key (§13.4). **Every other device treats the
+group as read-only.** The iOS app shows `syncDeviceName`, `rootFolder`,
+`status.lastChangeAt` and `status.error` and writes none of them (D13). It reads
+a `syncDeviceId` that is absent, `null` or empty as "not connected", and an
+unknown `error` code as a generic "needs attention".
+
+**Normative, `readwise` (compat).** A build that predates the group, or the
+`status` object inside it, strips what it does not know on parse and echoes the
+field clocks it received, so the merge keeps the pulling device's values
+(§6.9.0, `packages/sync-client/src/settings-merge.ts:22-26`). A client that does
+not model `readwise` keeps it byte for byte through §13.2
+(`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:158-166`).
+
 **Normative, compat (D7).** An older build whose schema lacks a key strips its
 value on parse but keeps its field clock, so it re-uploads the clock with no
 value. **An absent value under a field clock equal to the local one is not a
@@ -949,13 +978,14 @@ cannot stall every other synced setting
 about keys **inside** a modelled group; §13.2 is what protects an **unmodelled
 group**.
 
-### 13.10.1 The eleven modelled groups
+### 13.10.1 The twelve modelled groups
 
 **Normative.** "Unmodelled group" is only meaningful against a list, so here it
 is. The modelled groups are exactly:
 
 `general`, `editor`, `tasks`, `calendar`, `keyboard`, `notes`, `sync`, `inbox`,
-`journal`, `sidebar`, `features`.
+`journal`, `sidebar`, `features`, `readwise`
+(`packages/contracts/src/settings-sync.ts:12-231`).
 
 Every other group — `experimental` among them — is **unmodelled**: it is absent
 from the parsed read view and present, byte for byte, in the stored payload.

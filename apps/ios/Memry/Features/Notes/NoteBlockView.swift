@@ -146,6 +146,7 @@ struct NoteBlockView: View {
     /// comment), and a cell's inline images and checkboxes.
     private func editableField(_ editing: NoteEditingBridge) -> EditableBlockView? {
         guard block.id != nil, Self.editableKinds.contains(block.kind), !isAnsweredView,
+              ReadwiseMarker.of(block) == nil,
               NoteLinkDisplay.card(in: block) == nil,
               !block.inline.contains(where: { $0.marks.contains("inlineImage") || $0.marks.contains("inlineCheckbox") }),
               !reviewMarks.contains(where: { plainText.contains($0.visibleText) })
@@ -253,6 +254,8 @@ struct NoteBlockView: View {
             })
         case "divider":
             Divider().overlay(Tokens.Line.border.color)
+        case "paragraph" where ReadwiseMarker.of(block) != nil:
+            if let marker = ReadwiseMarker.of(block) { ReadwiseDivider(marker: marker) }
         case "columnList", "column":
             // Layout only: `NoteColumns.layout` draws their blocks, and they
             // have no words of their own.

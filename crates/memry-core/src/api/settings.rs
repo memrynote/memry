@@ -57,6 +57,50 @@ pub struct ReviewReminderSettings {
     pub time: String,
 }
 
+/// Desktop's `READWISE_OPTIONS_DEFAULTS.rootFolder`.
+pub const DEFAULT_READWISE_ROOT: &str = "Readwise";
+
+/// The `readwise` group as the read-only Readwise screen shows it (#3477,
+/// §13.7.13). Another device pulls; this device only reads what it reports.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReadwiseStatus {
+    /// A device claimed the pull (`readwise.syncDeviceId` is a non-empty string).
+    pub connected: bool,
+    /// `readwise.syncDeviceId`, to find the device in the account's device list.
+    pub device_id: Option<String>,
+    /// `readwise.syncDeviceName`, the claiming device's label.
+    pub device_name: Option<String>,
+    /// `readwise.rootFolder`, or desktop's default when no device chose one.
+    pub root_folder: String,
+    /// `readwise.status.lastChangeAt`, ISO, the last run that changed something.
+    pub last_change_at: Option<String>,
+    /// `readwise.status.error`, an error code such as `invalid-token`.
+    pub error: Option<String>,
+}
+
+fn readwise_from(all: &Map<String, Value>) -> ReadwiseStatus {
+    let group = all.get("readwise").and_then(Value::as_object);
+    let text = |value: Option<&Value>| {
+        value
+            .and_then(Value::as_str)
+            .filter(|t| !t.is_empty())
+            .map(str::to_owned)
+    };
+    let status = group
+        .and_then(|g| g.get("status"))
+        .and_then(Value::as_object);
+    let device_id = text(group.and_then(|g| g.get("syncDeviceId")));
+    ReadwiseStatus {
+        connected: device_id.is_some(),
+        device_id,
+        device_name: text(group.and_then(|g| g.get("syncDeviceName"))),
+        root_folder: text(group.and_then(|g| g.get("rootFolder")))
+            .unwrap_or_else(|| DEFAULT_READWISE_ROOT.to_owned()),
+        last_change_at: text(status.and_then(|s| s.get("lastChangeAt"))),
+        error: text(status.and_then(|s| s.get("error"))),
+    }
+}
+
 impl Settings {
     pub(crate) fn over(db: Db, store: &Arc<dyn SecureStore>) -> Result<Self, AuthError> {
         let tasks = Tasks::over(db, store)?;
@@ -239,6 +283,14 @@ impl Settings {
             settings::set(conn, &path, value, &device, now_ms())?;
             Ok(journal_from(&settings::all(conn)?))
         })
+    }
+
+    // ---- readwise (#3477) ----------------------------------------------------
+
+    /// Read-only: iOS never pulls from Readwise or changes its settings (D13).
+    pub fn readwise_status(&self) -> Result<ReadwiseStatus, StorageError> {
+        self.db
+            .call_blocking(|conn| Ok(readwise_from(&settings::all(conn)?)))
     }
 
     // ---- inbox (ST12) --------------------------------------------------------
@@ -433,5 +485,47 @@ mod tests {
         assert_eq!(got.time, "07:15");
         assert!(got.enabled);
         assert!(s.revision().expect("rev") > 0);
+    }
+
+    #[test]
+    fn readwise_status_reads_the_pulling_devices_group_and_keeps_it_on_a_write() {
+        let seed = concat!(
+            r#"{"settings":{"general":{"theme":"dark"},"readwise":{"syncDeviceId":"d1","#,
+            r#""syncDeviceName":"Studio Mac","rootFolder":"Reading","futureKey":7,"#,
+            r#""status":{"lastChangeAt":"2026-10-22T08:30:00.000Z","error":"invalid-token"}}},"#,
+            r#""fieldClocks":{"readwise.syncDeviceId":{"desk":1},"readwise.status.error":{"desk":1}}}"#
+        );
+        let (s, _d) = open("rw-status", Some(seed));
+        assert_eq!(
+            s.readwise_status().expect("read"),
+            ReadwiseStatus {
+                connected: true,
+                device_id: Some("d1".into()),
+                device_name: Some("Studio Mac".into()),
+                root_folder: "Reading".into(),
+                last_change_at: Some("2026-10-22T08:30:00.000Z".into()),
+                error: Some("invalid-token".into()),
+            }
+        );
+        s.set("general.theme".into(), r#""white""#.into())
+            .expect("set");
+        let p = payload(&s);
+        assert_eq!(p["settings"]["readwise"]["futureKey"], json!(7));
+        assert_eq!(
+            p["settings"]["readwise"]["status"]["error"],
+            json!("invalid-token")
+        );
+    }
+
+    #[test]
+    fn readwise_status_is_disconnected_without_a_claim_or_after_it_is_cleared() {
+        let (s, _d) = open("rw-none", Some(DESKTOP));
+        let none = s.readwise_status().expect("read");
+        assert!(!none.connected);
+        assert_eq!(none.root_folder, "Readwise");
+        assert_eq!(none.error, None);
+        s.set("readwise.syncDeviceId".into(), "null".into())
+            .expect("clear claim");
+        assert!(!s.readwise_status().expect("read").connected);
     }
 }

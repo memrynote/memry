@@ -854,7 +854,7 @@ That in-memory cache holds the 200 most recently used links and evicts the least
 
 ## Readwise Sections
 
-A note that holds Readwise highlights wraps them in a section. The editor draws the start of the section as a filled band labeled **Readwise · syncs automatically**, with the line _Edit inside this section and Readwise stops updating it._ under it. A matching band, **End of Readwise section**, closes it. On a journal day the bands read **Readwise · today's highlights** and **End of Readwise**.
+A note that holds Readwise highlights wraps them in a section. The editor draws the start of the section as a filled band labeled **Readwise · syncs automatically**, with the line _Edit inside this section and Readwise stops updating it._ under it. A matching band, **End of Readwise section**, closes it. On a journal day the bands read **Readwise · today's highlights** and **End of Readwise**. On iPhone the same markers show as a thin line with a book icon and the same labels, and they cannot be edited there.
 
 The bands only change how the section looks. The file keeps the two marker comments exactly as written, and your own text above, below or inside the section is saved as you typed it. Deleting a band removes its marker. Any other HTML comment keeps its small `<!---->` chip. The labels follow the app language and mirror in right-to-left layouts.
 

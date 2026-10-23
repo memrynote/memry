@@ -127,6 +127,9 @@ private final class RefusingSettings: SettingsProtocol, @unchecked Sendable {
     }
     func remove(path _: String) throws { throw StorageError.Invalid(what: "refused") }
     func reviewReminder() throws -> ReviewReminderSettings { ReviewReminderSettings(enabled: false, time: "18:00") }
+    func readwiseStatus() throws -> ReadwiseStatus {
+        ReadwiseStatus(connected: false, deviceId: nil, deviceName: nil, rootFolder: "Readwise", lastChangeAt: nil, error: nil)
+    }
     func revision() throws -> Int64 { 0 }
     func set(path _: String, json _: String) throws { throw StorageError.Invalid(what: "refused") }
     func setDefaultTemplate(templateId _: String?) throws -> JournalTemplateSettings { throw StorageError.Invalid(what: "refused") }

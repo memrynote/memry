@@ -46,6 +46,8 @@ final class SettingsStore {
     private(set) var languageRaw: String?
     private(set) var journal = JournalTemplateSettings(defaultTemplate: nil, weekdayTemplates: Array(repeating: nil, count: 7))
     private(set) var review = ReviewReminderSettings(enabled: false, time: "18:00")
+    /// What the pulling desktop reports about Readwise (#3477); read-only.
+    private(set) var readwise: ReadwiseStatus?
     private(set) var failure: UserFacingError?
     private(set) var isLoaded = false
     private var revision: Int64 = -1
@@ -67,8 +69,11 @@ final class SettingsStore {
     func load() async {
         let core = core
         do {
-            let (snapshot, journal, review, revision) = try await executor.run {
-                (try core.snapshot(), try core.journalTemplates(), try core.reviewReminder(), try core.revision())
+            let (snapshot, journal, review, readwise, revision) = try await executor.run {
+                (
+                    try core.snapshot(), try core.journalTemplates(), try core.reviewReminder(),
+                    try core.readwiseStatus(), try core.revision()
+                )
             }
             apply(snapshot: snapshot)
             // F5: an inbound language takes the same path as a local pick;
@@ -76,6 +81,7 @@ final class SettingsStore {
             LanguageOverride.apply(languageRaw)
             self.journal = journal
             self.review = review
+            self.readwise = readwise
             self.revision = revision
             isLoaded = true
         } catch {
