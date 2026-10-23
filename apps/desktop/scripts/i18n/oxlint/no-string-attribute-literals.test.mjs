@@ -1,18 +1,8 @@
-import { RuleTester } from 'eslint'
 import test from 'node:test'
-import tsParser from '@typescript-eslint/parser'
 import rule from './no-string-attribute-literals.mjs'
+import { createRuleTester } from './rule-tester.mjs'
 
-const tester = new RuleTester({
-  languageOptions: {
-    parser: tsParser,
-    parserOptions: {
-      ecmaFeatures: { jsx: true },
-      ecmaVersion: 'latest',
-      sourceType: 'module'
-    }
-  }
-})
+const tester = createRuleTester({ jsx: true })
 
 test('no-string-attribute-literals', () => {
   tester.run('no-string-attribute-literals', rule, {

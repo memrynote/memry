@@ -1,14 +1,8 @@
-import { RuleTester } from 'eslint'
 import test from 'node:test'
-import tsParser from '@typescript-eslint/parser'
 import rule from './no-error-fallback-literal.mjs'
+import { createRuleTester } from './rule-tester.mjs'
 
-const tester = new RuleTester({
-  languageOptions: {
-    parser: tsParser,
-    parserOptions: { ecmaVersion: 'latest', sourceType: 'module' }
-  }
-})
+const tester = createRuleTester()
 
 test('no-error-fallback-literal', () => {
   tester.run('no-error-fallback-literal', rule, {
