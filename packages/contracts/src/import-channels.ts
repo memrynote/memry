@@ -463,8 +463,6 @@ export interface ReadwiseStatusResult {
    * next run is the first import, which the dialog previews first (#1413).
    */
   hasImported: boolean
-  /** False until the scheduler (#1416) can start a run outside the import dialog. */
-  syncNowAvailable: boolean
 }
 
 /**

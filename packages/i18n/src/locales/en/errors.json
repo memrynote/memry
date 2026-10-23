@@ -232,7 +232,8 @@
     "readwiseUnreachable": "Could not reach Readwise. Check your connection and try again.",
     "readwiseDisconnectFailed": "Could not disconnect Readwise",
     "readwiseSyncFailed": "Could not start the Readwise sync",
-    "readwiseRunUnavailable": "Readwise import is not available in this build yet.",
+    "readwiseRunUnavailable": "Readwise does not sync on this device.",
+    "readwiseRunInProgress": "A Readwise import is already running. Try again when it finishes.",
     "readwiseOptionsFailed": "Could not save the Readwise settings",
     "readwiseNotConnected": "Readwise is not connected. Paste your access token first."
   },

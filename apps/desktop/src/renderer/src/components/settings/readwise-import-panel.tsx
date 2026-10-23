@@ -147,6 +147,8 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
     setError(null)
     try {
       unwrap(await window.api.import.readwise.syncNow(), t('import.dialog.error'))
+      const next = unwrap(await window.api.import.readwise.status(), t('import.dialog.error'))
+      if (mountedRef.current) setStatus(next)
     } catch (err) {
       if (mountedRef.current) setError(extractErrorMessage(err, t('import.dialog.error')))
     } finally {
@@ -315,7 +317,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
               variant="outline"
               size="sm"
               onClick={() => void syncNow()}
-              disabled={disabled || isSyncing || !status.syncNowAvailable}
+              disabled={disabled || isSyncing}
             >
               {t('import.dialog.readwise.syncNow.button')}
             </Button>

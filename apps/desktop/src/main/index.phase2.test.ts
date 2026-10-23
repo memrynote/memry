@@ -247,6 +247,11 @@ vi.mock('./inbox/review-scheduler', () => ({
   stopInboxReviewScheduler: vi.fn()
 }))
 
+vi.mock('./readwise/runtime-effects', () => ({
+  startReadwiseScheduler: vi.fn(),
+  stopReadwiseScheduler: vi.fn()
+}))
+
 vi.mock('./inbox/voice-model', () => ({
   stopVoiceModel: vi.fn(async () => undefined)
 }))

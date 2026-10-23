@@ -20,8 +20,7 @@ const disconnectedStatus: ReadwiseStatusResult = {
   options: READWISE_OPTIONS_DEFAULTS,
   lastSyncAt: null,
   needsAttention: false,
-  hasImported: false,
-  syncNowAvailable: true
+  hasImported: false
 }
 /** Connected after a first run: the panel shows the settings, not the preview. */
 const connectedStatus: ReadwiseStatusResult = {
@@ -126,12 +125,12 @@ describe('ReadwiseImportPanel', () => {
     await screen.findByLabelText('Access token')
   })
 
-  it('is ready to import once connected, with Sync now left to the scheduler', async () => {
-    status.mockResolvedValue({ ...connectedStatus, syncNowAvailable: false })
+  it('is ready to import once connected, with Sync now enabled', async () => {
+    status.mockResolvedValue(connectedStatus)
     const states: OneNotePanelState[] = []
     renderPanel((state) => states.push(state))
 
-    expect(await screen.findByRole('button', { name: 'Sync now' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Sync now' })).toBeEnabled()
     await waitFor(() =>
       expect(states[states.length - 1]).toEqual({
         ready: true,
