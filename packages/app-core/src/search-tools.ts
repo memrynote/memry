@@ -4,7 +4,7 @@ import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { createId } from './ids.ts'
 import type { InboxService, NotesService, TemplatesService } from './service-types.ts'
 import type { TagsService } from './tags.ts'
-import type { TasksService } from './tasks.ts'
+import type { TasksService } from './tasks-types.ts'
 
 export interface SearchStats {
   totalNotes: number

@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import type { Project, ProjectWithStatuses, Status, Task, TaskListItem } from './types.ts'
-import type { TasksCommandRepository, TasksDomainPublisher } from './commands.ts'
+import type { TasksCommandRepository, TasksDomainPublisher } from './commands-types.ts'
 
 export function createTask(overrides: Partial<Task> = {}): Task {
   return {
