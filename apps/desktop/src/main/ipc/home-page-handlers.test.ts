@@ -34,6 +34,8 @@ vi.mock('../home/runtime-effects', () => ({
   enqueueHomePageDelete: syncEffects.delete
 }))
 
+const byId = (x: string, y: string): number => x.localeCompare(y)
+
 describe('registerHomePageHandlers — lazy DB resolution', () => {
   it('does not throw at registration and registers all 10 channels without touching the DB', async () => {
     const { ipcMain } = await import('electron')
@@ -133,7 +135,9 @@ describe('home-page handlers', () => {
 
     await h.reorder({ ids: [b.id, a.id, c.id] })
 
-    expect(syncEffects.update.mock.calls.flat().sort()).toEqual([a.id, b.id].sort())
+    expect(syncEffects.update.mock.calls.flat().map(String).sort(byId)).toEqual(
+      [a.id, b.id].sort(byId)
+    )
     expect(broadcast).toHaveBeenCalledTimes(2)
 
     syncEffects.update.mockClear()
