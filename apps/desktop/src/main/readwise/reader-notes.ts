@@ -14,7 +14,7 @@ import { getNoteById } from '../vault/notes'
 import type { RemoteFetch } from '../vault/remote-attachment'
 import { resolveImages } from './images'
 import { getLinkByReaderDocumentId, markLinkState, upsertLink } from './links-repository'
-import { findNoteByReadwiseUrl } from './note-writer'
+import { findNoteByReadwiseUrl, isBusy } from './note-writer'
 import type { ReaderDocument } from './reader'
 import { prepareReaderFullText } from './reader-full-text'
 
@@ -122,16 +122,33 @@ async function write(document: ReaderDocument, options: ReaderNoteOptions): Prom
       images,
       fullText: article?.render(images) ?? null
     })
-    // Edited meanwhile (or open in an editor): leave it, the images stay attachments.
+    // Edited meanwhile, open in an editor, or just synced in (D6): leave it, the images stay attachments.
     const latest = await getNoteById(created.id)
-    if (withImages && before !== null && latest?.content === before.content) {
-      const cover = withImages.frontmatter.cover
-      await updateNoteCommand({
-        id: created.id,
-        content: bodyOf(withImages),
-        ignoreInlineTags: true,
-        ...(cover === undefined ? {} : { frontmatter: { cover } })
+    if (
+      !withImages ||
+      before === null ||
+      latest?.content !== before.content ||
+      isBusy(created.id)
+    ) {
+      log.warn('A Reader note changed while its images downloaded; they stay attachments only', {
+        documentId: document.id
       })
+    } else {
+      const cover = withImages.frontmatter.cover
+      try {
+        await updateNoteCommand({
+          id: created.id,
+          content: bodyOf(withImages),
+          ignoreInlineTags: true,
+          ...(cover === undefined ? {} : { frontmatter: { cover } })
+        })
+      } catch (error) {
+        // The note exists and is linked, so the run must not fail: the text is written once.
+        log.warn('A Reader note could not be written with its images', {
+          documentId: document.id,
+          error
+        })
+      }
     }
   }
   return { status: 'created', noteId: created.id }

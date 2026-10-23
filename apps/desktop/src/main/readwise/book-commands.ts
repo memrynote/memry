@@ -9,6 +9,7 @@ import {
 import { foldTag } from '@memry/shared/tag-fold'
 import { READWISE_CATEGORIES, type ReadwiseDeletedBook } from '@memry/contracts/import-channels'
 import { getDatabase } from '../database'
+import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { updateNoteCommand } from '../notes/domain'
 import { getStatus } from '../vault'
@@ -29,6 +30,11 @@ import { getDocument } from './reader'
 import { writeReaderNote } from './reader-notes'
 import { getReadwiseToken } from './secrets'
 import { readReadwiseOptions } from './settings'
+
+const log = createLogger('ReadwiseBookCommands')
+
+/** One restore at a time per document: two calls would both create the note. */
+const restoring = new Set<string>()
 
 /**
  * The three commands for one book (#1408 D16). They need the token, so each
@@ -202,11 +208,18 @@ export async function listDeletedBooks(): Promise<ReadwiseDeletedBook[]> {
     })
   }
   for (const row of documentRows) {
-    const document = await getDocument({
-      token,
-      id: row.readerDocumentId as string,
-      withHtmlContent: false
-    })
+    let document: Awaited<ReturnType<typeof getDocument>>
+    try {
+      document = await getDocument({
+        token,
+        id: row.readerDocumentId as string,
+        withHtmlContent: false
+      })
+    } catch (error) {
+      // One unreadable document must not hide the rest of the list.
+      log.warn('A deleted Reader document could not be read', { error })
+      continue
+    }
     if (!document) continue
     deleted.push({
       readwiseBookId: null,
@@ -248,6 +261,20 @@ export async function restoreReaderDocument(
   deps: BookCommandDeps = {}
 ): Promise<void> {
   const token = await requireToken()
+  if (restoring.has(readerDocumentId)) throw new Error(t('errors:importer.readwiseBookBusy'))
+  restoring.add(readerDocumentId)
+  try {
+    await restoreDocument(token, readerDocumentId, deps)
+  } finally {
+    restoring.delete(readerDocumentId)
+  }
+}
+
+async function restoreDocument(
+  token: string,
+  readerDocumentId: string,
+  deps: BookCommandDeps
+): Promise<void> {
   const link = getLinkByReaderDocumentId(getDatabase(), readerDocumentId)
   if (link?.state !== 'note-deleted') throw new Error(t('errors:importer.readwiseNotDeleted'))
   const options = readReadwiseOptions(getDatabase())

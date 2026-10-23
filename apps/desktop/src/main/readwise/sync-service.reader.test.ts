@@ -645,6 +645,16 @@ describe('Readwise Reader documents', () => {
       expect(writes()).toBe(0)
     })
 
+    it('still lists the other rows when one document cannot be read', async () => {
+      await deleteImportedNote(false)
+      const handle = reader.handle
+      reader.handle = async (input: string) =>
+        new URL(input).searchParams.has('id') ? new Response('', { status: 500 }) : handle(input)
+
+      expect(await commands.listDeletedBooks()).toEqual([])
+      reader.handle = handle
+    })
+
     it('restores only the section when full article text is off', async () => {
       await deleteImportedNote(false)
 

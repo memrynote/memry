@@ -29,6 +29,27 @@ function largestSrcsetUrl(srcset: string): string | null {
   return best?.url ?? null
 }
 
+/** More images than any article needs. Beyond this the rest are left out, so one page cannot start a flood of downloads. */
+export const MAX_ARTICLE_IMAGES = 50
+
+/** A literal loopback, private or link-local host: an article must not make this device fetch from its own network. */
+function isLocalHost(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true
+  if (host.includes(':')) return host === '::1' || /^(fc|fd|fe80)/.test(host)
+  const octets = host.split('.').map(Number)
+  if (octets.length !== 4 || octets.some((n) => !Number.isInteger(n))) return false
+  const [a, b] = octets
+  return (
+    a === 10 ||
+    a === 127 ||
+    a === 0 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  )
+}
+
 function absoluteHttpUrl(
   value: string | null | undefined,
   base: string | undefined
@@ -37,7 +58,9 @@ function absoluteHttpUrl(
   if (!trimmed) return null
   try {
     const url = new URL(trimmed, base)
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
+    return (url.protocol === 'http:' || url.protocol === 'https:') && !isLocalHost(url.hostname)
+      ? url.href
+      : null
   } catch {
     return null
   }
@@ -123,7 +146,7 @@ export async function prepareReaderFullText(
   const found = new Set<string>()
   convert(null, found)
   return {
-    imageUrls: [...found],
+    imageUrls: [...found].slice(0, MAX_ARTICLE_IMAGES),
     render: (images) => convert(images, new Set())
   }
 }

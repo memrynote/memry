@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { planReaderNote } from '@memry/importers/readwise'
-import { prepareReaderFullText } from './reader-full-text'
+import { MAX_ARTICLE_IMAGES, prepareReaderFullText } from './reader-full-text'
 
 const HTML = `
 <h1>Why notes compound</h1>
@@ -69,6 +69,28 @@ describe('prepareReaderFullText', () => {
       'https://example.com/img/large.png',
       'https://cdn.example.com/p.webp'
     ])
+  })
+
+  it('never fetches from this machine or its network, and caps the image count', async () => {
+    const local = await prepareReaderFullText(
+      [
+        'http://127.0.0.1:8080/a.png',
+        'http://localhost/b.png',
+        'http://192.168.1.5/c.png',
+        'http://169.254.169.254/d.png',
+        'http://[::1]/e.png',
+        'file:///etc/passwd',
+        'https://cdn.example.com/ok.png'
+      ]
+        .map((src) => `<img src="${src}">`)
+        .join('')
+    )
+    expect(local.imageUrls).toEqual(['https://cdn.example.com/ok.png'])
+
+    const many = await prepareReaderFullText(
+      Array.from({ length: 80 }, (_, i) => `<img src="https://cdn.example.com/${i}.png">`).join('')
+    )
+    expect(many.imageUrls).toHaveLength(MAX_ARTICLE_IMAGES)
   })
 
   it('feeds the mapper: the text stays below the section', async () => {
