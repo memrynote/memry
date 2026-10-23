@@ -17,6 +17,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
+import type * as CrdtWritebackModule from '../sync/crdt-writeback'
 
 const mocks = vi.hoisted(() => ({
   isWritebackIgnored: vi.fn(() => true),
@@ -61,7 +62,6 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
 import { VaultWatcher } from './watcher'
-import type * as CrdtWritebackModule from '../sync/crdt-writeback'
 
 describe('watcher ignore window and read-only locks (#2606)', () => {
   let vault: ReturnType<typeof createTestVault>

@@ -6,6 +6,7 @@ import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
+import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
@@ -460,7 +461,6 @@ import { ContentArea } from './ContentArea'
 import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
-import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {

@@ -72,7 +72,7 @@ interface VectorClass {
   /** Relative to `test-vectors/`. A class may own more than one file. */
   readonly files: ReadonlyArray<{
     readonly path: string
-    readonly build: () => Promise<unknown> | unknown
+    readonly build: () => unknown
   }>
 }
 

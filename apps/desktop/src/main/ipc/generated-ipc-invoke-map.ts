@@ -9,7 +9,7 @@ import type { CanvasFolderDeleteResponse, CanvasFolderListResponse, CanvasFolder
 import type { DeleteViewResponse, GetAvailablePropertiesResponse, GetConfigResponse, GetFolderSuggestionsResponse, GetViewsResponse, ListWithPropertiesResponse, SetConfigResponse, SetViewResponse } from '../../../../../packages/contracts/src/folder-view-api'
 import type { GraphViewsSettings } from '../../../../../packages/contracts/src/graph-api'
 import type { HomePageSetCoverResult } from '../../../../../packages/contracts/src/home-page-api'
-import type { AppleNotesCheckUnlockResult, AppleNotesFoldersResult, ImportPreview, ImporterMeta, OneNoteAuthStatusResult, OneNoteNotebooksResult, ReadwiseDeletedBook, ReadwiseStatusResult } from '../../../../../packages/contracts/src/import-channels'
+import type { AppleNotesCheckUnlockResult, AppleNotesFoldersResult, ImporterMeta, ImportPreview, OneNoteAuthStatusResult, OneNoteNotebooksResult, ReadwiseDeletedBook, ReadwiseStatusResult } from '../../../../../packages/contracts/src/import-channels'
 import type { ArchivedListResponse, BulkResponse, CapturePattern, CaptureResponse, FilingHistoryResponse, InboxItem, InboxJobsResponse, InboxListResponse, InboxStats, TranscribeAudioResponse } from '../../../../../packages/contracts/src/inbox-api'
 import type { Conversation, Message } from '../../../../../packages/contracts/src/ipc-agent'
 import type { CrdtHealth, CrdtSyncStep1Result } from '../../../../../packages/contracts/src/ipc-crdt'

@@ -9,6 +9,7 @@ import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import { ReminderChannels } from '@memry/contracts/ipc-channels'
+import type * as NotesModule from '@main/database/queries/notes'
 
 // Notes and journals share `note_metadata`, keyed by id alone, while the server
 // keeps one row per (type, id). Staging holds `legacyagent0609` as a journal
@@ -66,7 +67,6 @@ vi.mock('../../vault/index', () => ({
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { noteHandler } from './note-handler'
-import type * as NotesModule from '@main/database/queries/notes'
 
 const ID = 'legacyagent0609'
 const DATE = '2026-06-09'

@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests inject globals (window.__hintClicks) for introspection.
 /**
  * Hint Mode E2E Tests
  *

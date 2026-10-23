@@ -66,7 +66,7 @@ function readBlob(blob: Blob): Promise<string> {
       resolve(String(reader.result))
     }
     reader.onerror = () => {
-      reject(reader.error)
+      reject(reader.error ?? new Error('FileReader failed'))
     }
     reader.readAsText(blob)
   })
@@ -312,6 +312,7 @@ describe('writeBlockClipboard', () => {
   })
 
   it('surfaces a failed clipboard write to the caller', async () => {
+    // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     vi.stubGlobal('ClipboardItem', class {})
     vi.stubGlobal('navigator', {
       ...navigator,

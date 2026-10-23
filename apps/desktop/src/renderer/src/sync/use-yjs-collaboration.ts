@@ -129,7 +129,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
       publish({ fragment, doc, provider, isReady: true })
       log.debug('Collaboration ready', { noteId })
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       if (destroyed) return
       log.error('Failed to connect collaboration', err)
       provider.destroy()

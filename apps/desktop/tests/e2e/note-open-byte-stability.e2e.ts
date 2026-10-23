@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * Opening a note must not rewrite it — the real app (#1434, phase 3 of #1427).
  *

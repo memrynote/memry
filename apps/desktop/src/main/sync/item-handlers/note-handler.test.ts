@@ -4,6 +4,9 @@ import os from 'os'
 import * as path from 'path'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import { makeCtx, makeNotePayload } from '@tests/utils/fixtures/sync-item-handlers'
+import type * as FrontmatterModule from '../../vault/frontmatter'
+import type * as BulkApplyModule from '../bulk-apply'
+import type * as FileOpsModule from '../../vault/file-ops'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-handler-'))
 
@@ -183,9 +186,6 @@ import {
   fetchLocalNote,
   seedUnclockedNotes
 } from './note-handler-sync-helpers'
-import type * as FrontmatterModule from '../../vault/frontmatter'
-import type * as BulkApplyModule from '../bulk-apply'
-import type * as FileOpsModule from '../../vault/file-ops'
 
 describe('noteHandler.applyUpsert — path collision', () => {
   let ctx: ApplyContext

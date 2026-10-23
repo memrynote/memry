@@ -16,6 +16,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
+import type * as ClientModule from '../../database/client'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
 
@@ -33,7 +34,6 @@ import { addPreset } from '../presets'
 import { runTagSchemaCommand } from './commands'
 import { rewriteSchemaReferences } from './references'
 import { saveTagViews } from './views'
-import type * as ClientModule from '../../database/client'
 
 let vault: TestVaultResult
 let data: TestDatabaseResult

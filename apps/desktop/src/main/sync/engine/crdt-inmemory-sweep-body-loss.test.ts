@@ -9,6 +9,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { SyncContext } from './sync-context'
 import type { CrdtSnapshotMeta } from '../http-client'
+import type * as RetryModule from '@memry/sync-client/retry'
+import type * as PathsModule from '../../lib/paths'
 
 const EDITOR_WINDOW = vi.hoisted(() => 7)
 const AUTHOR_CLIENT = 0xffffffff
@@ -185,8 +187,6 @@ import { owesFileBody } from '../crdt-owed-file-body'
 import { readMergedFullState } from '../full-state-read'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
 import { generateContentHash, parseNote } from '../../vault/frontmatter'
-import type * as RetryModule from '@memry/sync-client/retry'
-import type * as PathsModule from '../../lib/paths'
 
 const NOTE = 'c8c29h5sqvgt'
 const NOTE_PATH = 'notes/Trip.md'
@@ -924,7 +924,7 @@ describe('CrdtProvider with no store (#2536)', () => {
           return coordinator.pullCrdtForNote(id)
         },
         () => false
-      ).catch((err: Error) => err.message)
+      ).catch((err) => err.message)
       const afterFailedFlush = { failed, owed: owesFileBody(NOTE), server: await bodyAfterPull() }
       await flushFullStates()
 

@@ -6,6 +6,7 @@ import type { FolderConfigSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as FoldersModule from '../../vault/folders'
 
 type MockQueue = Pick<SyncQueueManager, 'enqueue'> & { enqueue: ReturnType<typeof vi.fn> }
 
@@ -39,7 +40,6 @@ vi.mock('../../lib/logger', () => ({
 import { folderConfigHandler } from './folder-config-handler'
 import { writeFolderConfig, readFolderConfig, folderExists } from '../../vault/folders'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
-import type * as FoldersModule from '../../vault/folders'
 
 /**
  * The vault mirror write is fire-and-forget, so give Node a chance to drain the

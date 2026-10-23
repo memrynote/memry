@@ -25,7 +25,7 @@ export function LargeNotesWarning(): React.JSX.Element | null {
       .then((result) => {
         if (!cancelled) setData(result)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // Nothing to warn about is the common case; a failure here must not
         // push an error into a settings screen the user opened for something
         // else.

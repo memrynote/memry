@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as ClientModule from '../database/client'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
 const sync = vi.hoisted(() => ({
@@ -40,7 +41,6 @@ import {
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { editNoteAliasesCommand } from './note-aliases'
-import type * as ClientModule from '../database/client'
 
 describe('editNoteAliasesCommand', () => {
   let vault: TestVaultResult

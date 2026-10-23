@@ -393,7 +393,7 @@ export const waitUntilCaptured = (
   metadata: { source: string; action: string }
 ): void => {
   c.executionCtx.waitUntil(
-    promise.catch((error) =>
+    promise.catch((error: unknown) =>
       captureServerError(c.env, {
         error,
         method: c.req.method,

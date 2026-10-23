@@ -19,6 +19,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
+import type * as ClientModule from '../database/client'
 
 const state = vi.hoisted(() => ({
   data: null as unknown,
@@ -49,7 +50,6 @@ vi.mock('../database/client', async (importOriginal) => ({
 
 import { PropertyDefinitionsService } from '../vault/property-definitions'
 import { registerTagSchemaHandlers, unregisterTagSchemaHandlers } from './tag-schema-handlers'
-import type * as ClientModule from '../database/client'
 
 let vault: TestVaultResult
 let data: TestDatabaseResult

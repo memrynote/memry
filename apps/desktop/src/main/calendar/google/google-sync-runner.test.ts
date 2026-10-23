@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as SyncServiceModule from './sync-service'
 
 const {
   mockDbHolder,
@@ -73,7 +74,6 @@ vi.mock('./sync-service', async () => {
 })
 
 import { startGoogleCalendarSyncRunner, stopGoogleCalendarSyncRunner } from './google-sync-runner'
-import type * as SyncServiceModule from './sync-service'
 
 describe('startGoogleCalendarSyncRunner (concurrent start)', () => {
   beforeEach(() => {

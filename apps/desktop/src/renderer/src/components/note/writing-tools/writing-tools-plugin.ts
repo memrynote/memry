@@ -339,6 +339,8 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
           case 'hover':
             next = { ...next, hoveredAlternativeId: meta.id }
             break
+          default:
+            break
         }
         return next
       }

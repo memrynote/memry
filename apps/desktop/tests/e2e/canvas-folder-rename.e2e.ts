@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * Renaming a canvas folder from the row's own menu, in a real browser.
  *

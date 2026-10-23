@@ -181,7 +181,7 @@ function handleDecryptBatch(msg: Extract<MainToWorkerMessage, { type: 'decrypt-b
   }
 }
 
-init().catch((err) => {
+init().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err)
   log.error('Sync worker init failed', { message })
   process.exit(1)

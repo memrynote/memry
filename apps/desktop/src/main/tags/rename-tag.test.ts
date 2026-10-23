@@ -15,6 +15,8 @@ import {
   seedInboxProject,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
+import type * as ClientModule from '../database/client'
+import type * as LocalMutationsModule from '../sync/local-mutations'
 
 const state = vi.hoisted(() => ({
   data: null as unknown,
@@ -91,8 +93,6 @@ import {
   resumeTagRename,
   type TagRenameResult
 } from './rename-tag'
-import type * as ClientModule from '../database/client'
-import type * as LocalMutationsModule from '../sync/local-mutations'
 
 describe('renameTagEverywhere', () => {
   let vault: TestVaultResult

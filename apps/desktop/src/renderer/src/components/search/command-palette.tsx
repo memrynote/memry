@@ -95,7 +95,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       .then((stats) => {
         setItemCount(stats.totalIndexed)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.warn('Failed to load search stats', err)
       })
   }, [open, loadReasons])
@@ -200,7 +200,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         itemIcon: item.metadata.type === 'note' ? (item.metadata.emoji ?? null) : null,
         searchQuery: query
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.warn('Failed to persist recent search', err)
       })
   }

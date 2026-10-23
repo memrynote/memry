@@ -7,6 +7,8 @@ import { initializeFts, getFtsCount } from '../../database/fts'
 import { initializeFtsTasks } from '../../database/fts-tasks'
 import { initializeFtsInbox, getFtsInboxCount } from '../../database/fts-inbox'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as PromisesModule from 'fs/promises'
+import type * as DatabaseModule from '../../database'
 
 const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
@@ -44,8 +46,6 @@ vi.mock('electron', () => ({
 import { createSearchProjector } from './search-projector'
 import { createNoteDerivedStateProjector } from './note-derived-state-projector'
 import { searchAll } from '../../database/queries/search'
-import type * as PromisesModule from 'fs/promises'
-import type * as DatabaseModule from '../../database'
 
 describe('search projector', () => {
   let dataDb: TestDatabaseResult

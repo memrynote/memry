@@ -5,6 +5,7 @@ import path from 'path'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
+import type * as NotesModule from '@main/database/queries/notes'
 
 // Staging holds `vcpzueguep8y`, a journal for a day this vault already holds as
 // `j<date>`. Applying it hit `UNIQUE constraint failed: note_metadata.path` on
@@ -61,7 +62,6 @@ import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { listOwedJournalDayMerges } from '../journal-day-merge'
 import { listDeclinedRefs } from '@memry/sync-client/declined-refs'
-import type * as NotesModule from '@main/database/queries/notes'
 
 const DATE = '2026-06-09'
 

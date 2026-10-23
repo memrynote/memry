@@ -343,7 +343,7 @@ describe('scheduled cleanup', () => {
       .fn()
       .mockImplementation((url: string) =>
         Promise.resolve(
-          String(url).startsWith('https://api.github.com/')
+          url.startsWith('https://api.github.com/')
             ? new Response(
                 JSON.stringify([
                   { tag_name: 'v1', assets: [{ id: 1, name: 'a.dmg', download_count: 5 }] }

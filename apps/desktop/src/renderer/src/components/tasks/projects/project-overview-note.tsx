@@ -69,7 +69,7 @@ export const ProjectOverviewNote = ({
         setNote(loaded)
         lastSavedContentRef.current = loaded?.content ?? null
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.error(
           'Failed to load overview note',
           extractErrorMessage(error, t('projectHome.overview.loadError'))

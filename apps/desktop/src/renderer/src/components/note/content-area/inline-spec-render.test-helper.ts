@@ -15,6 +15,7 @@ import { BlockNoteEditor, BlockNoteSchema, defaultInlineContentSpecs } from '@bl
  * test, rather than the app's full `editorSchema`: these are unit tests of one
  * spec's presentation, and the full schema drags react-pdf into jsdom.
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- generic so callers keep their own spec type at the call site
 export function renderInlineSpec<Spec>(
   type: string,
   spec: Spec,

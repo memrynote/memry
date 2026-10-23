@@ -220,7 +220,8 @@ async function upload(token, file, body) {
         res = await put(`bytes */${size}`, Buffer.alloc(0))
         if (!res || res.status >= 500) continue
       } else failures = 0
-      if (res.ok) return res.json()
+      // oxlint-disable-next-line no-await-in-loop -- returns on this iteration; the await must finish before the finally closes the file
+      if (res.ok) return await res.json()
       if (res.status !== 308) throw await googleError(res)
       const range = res.headers.get('range')
       offset = range ? Number(range.split('-')[1]) + 1 : 0

@@ -26,7 +26,7 @@ export function DraggableTaskChip({
   onDeleteItem,
   onAddToProject
 }: DraggableTaskChipProps): React.JSX.Element {
-  const isDraggableTask = item.sourceType === 'task' && Boolean(item.editability?.canMove)
+  const isDraggableTask = item.sourceType === 'task' && item.editability?.canMove
 
   if (isDraggableTask) {
     return (

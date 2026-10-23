@@ -7,6 +7,7 @@ import { TagsChannels } from '@memry/contracts/ipc-channels'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus } from '@memry/contracts/vault-api'
 import { insertNoteCache, setNoteTags } from '@main/database/queries/notes'
+import type * as DatabaseModule from '../database'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown, vault: '' }))
 
@@ -48,7 +49,6 @@ vi.mock('../tags/runtime-effects', () => ({
 
 import * as vaultIndex from '../vault/index'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
-import type * as DatabaseModule from '../database'
 
 const SECRET = '---\ntags: [old]\n---\nOutside secret\n'
 

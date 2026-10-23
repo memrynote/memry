@@ -474,7 +474,7 @@ export function AgentProvider({
           dispatch({ type: 'set_source_window_id', sourceWindowId: result.windowId })
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_resolve_window', error)
         dispatch({
@@ -487,7 +487,7 @@ export function AgentProvider({
       .then((statuses) => {
         if (!cancelled) dispatch({ type: 'set_backend_statuses', statuses })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_backend_status', error)
         dispatch({
@@ -500,7 +500,7 @@ export function AgentProvider({
       .then((result) => {
         if (!cancelled) dispatch({ type: 'set_disclosure', accepted: result.accepted })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_load_disclosure', error)
         dispatch({
@@ -513,7 +513,7 @@ export function AgentProvider({
       .then((conversations) => {
         if (!cancelled) dispatch({ type: 'set_conversations', conversations })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_list_conversations', error)
         dispatch({
@@ -578,7 +578,7 @@ export function AgentProvider({
       // A retry that outlives its effect must not overwrite a newer target: the
       // bootstrap loop retries for seconds, and conversation switches are fast.
       cancelled ? Promise.resolve({ ok: false }) : setStreamTarget({ conversationId })
-    ).catch((error) => {
+    ).catch((error: unknown) => {
       if (cancelled) return
       trackRendererError('agent_set_stream_target', error)
     })

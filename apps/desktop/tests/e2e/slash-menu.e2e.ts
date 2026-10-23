@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * The `/` menu renders Memry's own rows (`slash-menu.tsx`) on top of
  * BlockNote's suggestion plumbing. These pin the parts a unit test cannot: that

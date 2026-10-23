@@ -20,8 +20,8 @@ export async function secureDeleteFile(filePath: string): Promise<void> {
       filePath,
       error: err instanceof Error ? err.message : String(err)
     })
-    await unlink(filePath).catch((unlinkErr: NodeJS.ErrnoException) => {
-      if (unlinkErr.code !== 'ENOENT') {
+    await unlink(filePath).catch((unlinkErr: unknown) => {
+      if (!(unlinkErr instanceof Error && 'code' in unlinkErr && unlinkErr.code === 'ENOENT')) {
         throw unlinkErr
       }
     })
@@ -47,8 +47,8 @@ export async function secureDeleteFile(filePath: string): Promise<void> {
     await handle.close()
   }
 
-  await unlink(filePath).catch((err: NodeJS.ErrnoException) => {
-    if (err.code !== 'ENOENT') {
+  await unlink(filePath).catch((err: unknown) => {
+    if (!(err instanceof Error && 'code' in err && err.code === 'ENOENT')) {
       throw err
     }
   })

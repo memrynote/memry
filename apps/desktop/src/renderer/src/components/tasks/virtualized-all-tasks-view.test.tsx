@@ -12,6 +12,7 @@ import type * as DragDropModule from '@/components/tasks/drag-drop'
 
 const useDroppableMock = vi.fn()
 const useDragContextMock = vi.fn()
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
 let noteIndexMock: TaskNoteIndex | undefined
 const measureMock = vi.fn()
 let virtualizerCount = 0

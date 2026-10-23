@@ -103,7 +103,7 @@ function subscribe(listener: () => void): () => void {
     void window.api.updater
       .getState()
       .then(publishState)
-      .catch((err) => {
+      .catch((err: unknown) => {
         publishError(
           extractErrorMessage(
             err,

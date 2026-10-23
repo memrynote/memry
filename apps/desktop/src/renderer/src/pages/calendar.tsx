@@ -1038,7 +1038,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
             previous.dueDate,
             previous.dueTime,
             minutesBetween(previousStartAt, item.endAt)
-          ).catch((err) => {
+          ).catch((err: unknown) => {
             log.error('Failed to undo task reschedule', {
               taskId: item.sourceId,
               error: extractErrorMessage(err)
@@ -1061,7 +1061,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       // Register undo so Cmd+Z restores the previous time (handled globally in App.tsx).
       registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveEvent'), () => {
         void commitEventTimes(item.sourceId, previousStartAt, previousEndAt, item.isAllDay).catch(
-          (err) => {
+          (err: unknown) => {
             log.error('Failed to undo calendar event move', {
               eventId: item.sourceId,
               error: extractErrorMessage(err)

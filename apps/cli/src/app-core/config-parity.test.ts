@@ -64,7 +64,7 @@ test('a corrupt config.json is reported and left untouched', async (t) => {
   assert.equal(config.journalFolder, 'journal')
   assert.equal(warn.mock.callCount(), 1)
   assert.match(
-    String(warn.mock.calls[0].arguments.join(' ')),
+    warn.mock.calls[0].arguments.join(' '),
     new RegExp(configPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   )
 })

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Home Dashboard — Bookmarks widget E2E (Group G)
  *

@@ -22,6 +22,8 @@ export function userMessageForTokenEndpointError(args: {
         return t('googleCalendar.misconfigured')
       }
       return t('googleCalendar.connectFailed')
+    default:
+      break
   }
 
   if (args.status >= 500) {

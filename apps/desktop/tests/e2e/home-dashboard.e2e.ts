@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, some vars intentionally unused
 /**
  * Home Dashboard E2E Tests
  *

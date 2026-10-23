@@ -2,6 +2,8 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: after a note file is opened and before the opened file is checked,
 // a save renames a new file over it, as the atomic write in vault/file-ops does.
@@ -34,8 +36,6 @@ vi.mock('fs', async (importOriginal) => {
 })
 
 import { openVaultFileSync, readVaultFile } from './paths'
-import type * as PromisesModule from 'fs/promises'
-import type * as FsModule from 'fs'
 
 describe('a note file saved over while it is opened', () => {
   let vault: string

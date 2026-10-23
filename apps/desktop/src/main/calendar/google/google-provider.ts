@@ -130,7 +130,7 @@ async function connectGoogle(
     trackMainError('calendar', 'source_discovery', error)
   }
 
-  void startGoogleCalendarSyncRunner().catch((error) => {
+  void startGoogleCalendarSyncRunner().catch((error: unknown) => {
     // Only the inner sync self-logs; pre-sync awaits (keychain read, auth
     // checks) can throw before that. Swallow to keep connect success green.
     log.warn('startGoogleCalendarSyncRunner failed after connect', error)
@@ -335,7 +335,7 @@ function onGoogleSelectionChanged(db: DataDb, before: CalendarSource, after: Cal
   // not. Fire and forget: the toggle must not wait on the network, and
   // the sync emits its own change events when the events land.
   if (after.isSelected && !before.isSelected) {
-    void syncGoogleCalendarSource(db, after.id).catch((err) => {
+    void syncGoogleCalendarSource(db, after.id).catch((err: unknown) => {
       log.warn('Immediate sync after enabling a Google calendar failed', err)
     })
   }

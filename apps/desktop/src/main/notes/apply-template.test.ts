@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type * as TemplatesModule from '../vault/templates'
 
 vi.mock('../vault/notes', () => ({
   getNoteById: vi.fn()
@@ -22,7 +23,6 @@ import { getTemplate } from '../vault/templates'
 import { updateNoteCommand } from './domain'
 import { NoteError, VaultError } from '../lib/errors'
 import type { Template } from '@memry/contracts/templates-api'
-import type * as TemplatesModule from '../vault/templates'
 
 const template: Template = {
   id: 't1',

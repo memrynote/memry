@@ -92,7 +92,7 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
       }
 
       if (req.method === 'POST' && req.url === '/api/ai/chat') {
-        handleChatRequest(req, res, model, toolChoice).catch((err) => {
+        handleChatRequest(req, res, model, toolChoice).catch((err: unknown) => {
           logger.error('Unhandled chat request error:', err)
           trackMainError('ai_inline', 'inline_chat_request_unhandled', err)
           if (!res.headersSent) {

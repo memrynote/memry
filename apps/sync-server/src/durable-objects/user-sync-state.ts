@@ -366,7 +366,7 @@ export class UserSyncState extends DurableObject<Bindings> {
       const parsed = parseClientMessage(message)
       if (parsed?.type === 'auth') {
         const token = (parsed.payload as { token?: unknown } | undefined)?.token
-        return this.handleAuthRefresh(ws, attachment, token).catch((error) =>
+        return this.handleAuthRefresh(ws, attachment, token).catch((error: unknown) =>
           this.captureError('ws_auth_refresh', error)
         )
       }

@@ -1,4 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import type * as RateLimitModule from '../middleware/rate-limit'
+import type * as JwtVerifyModule from '../lib/jwt-verify'
+import type * as EntitlementsModule from '../services/entitlements'
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => ({
   ...(await importOriginal<typeof RateLimitModule>()),
@@ -24,9 +27,6 @@ import { verifyAccessToken } from '../lib/jwt-verify'
 import { sendEmail } from '../services/email'
 import { getSyncEntitlement } from '../services/entitlements'
 import type { SyncEntitlement, SyncPlan, SyncEntitlementStatus } from '../services/entitlements'
-import type * as RateLimitModule from '../middleware/rate-limit'
-import type * as JwtVerifyModule from '../lib/jwt-verify'
-import type * as EntitlementsModule from '../services/entitlements'
 
 const sendEmailMock = vi.mocked(sendEmail)
 const verifyAccessTokenMock = vi.mocked(verifyAccessToken)

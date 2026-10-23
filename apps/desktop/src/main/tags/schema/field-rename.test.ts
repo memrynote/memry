@@ -22,6 +22,9 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
+import type * as ClientModule from '../../database/client'
+import type * as RegistryModule from '../../vault-locks/registry'
+import type * as RuntimeEffectsModule from '../../notes/runtime-effects'
 
 const state = vi.hoisted(() => ({
   data: null as unknown,
@@ -65,9 +68,6 @@ import { PropertyDefinitionsService } from '../../vault/property-definitions'
 import { createDesktopTasksDomain } from '../../tasks/domain'
 import { runTagSchemaCommand } from './commands'
 import { FIELD_RENAME_JOB_SETTING, renameField, resumeFieldRename } from './field-rename'
-import type * as ClientModule from '../../database/client'
-import type * as RegistryModule from '../../vault-locks/registry'
-import type * as RuntimeEffectsModule from '../../notes/runtime-effects'
 
 let vault: TestVaultResult
 let data: TestDatabaseResult

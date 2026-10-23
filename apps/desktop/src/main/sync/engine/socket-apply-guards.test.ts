@@ -179,6 +179,7 @@ describe('socket apply guards (#2300 review)', () => {
       await firstFlush
       await outcome
       await new Promise((resolve) => setTimeout(resolve, 10))
+      // oxlint-disable-next-line typescript/await-thenable -- TS narrows secondFlush to null; it is assigned inside the interval callback
       await secondFlush
       clearInterval(drain)
 

@@ -6,6 +6,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 
 import * as schema from '@memry/db-schema/data-schema'
+import type * as StoreModule from '../../../../canvas/store'
 
 const mocks = vi.hoisted(() => ({
   getCanvasContext: vi.fn(),
@@ -46,7 +47,6 @@ vi.mock('../canvas-write', () => ({ invokeCanvasWrite: mocks.invokeCanvasWrite }
 
 // summarizeScene is pure — exercised for real so the wiring is proven end to end.
 import { createCanvasHandles } from '../canvas-handles'
-import type * as StoreModule from '../../../../canvas/store'
 
 const dataDb = {} as never
 

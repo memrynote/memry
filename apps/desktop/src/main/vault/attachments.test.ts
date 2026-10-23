@@ -681,13 +681,13 @@ describe('attachment operations', () => {
       const saveResult = await saveAttachment('note123', Buffer.from('data'), 'test.png')
       const filename = path.basename(saveResult.path!)
 
-      const exists = await attachmentExists('note123', filename)
+      const exists = attachmentExists('note123', filename)
 
       expect(exists).toBe(true)
     })
 
     it('T394: returns false for non-existent attachment', async () => {
-      const exists = await attachmentExists('note123', 'nonexistent.png')
+      const exists = attachmentExists('note123', 'nonexistent.png')
 
       expect(exists).toBe(false)
     })

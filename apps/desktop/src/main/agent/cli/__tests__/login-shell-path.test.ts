@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as LoginShellPathModule from '../login-shell-path'
 
 const mocks = vi.hoisted(() => ({ trackMainLog: vi.fn() }))
 
@@ -12,7 +13,6 @@ import {
   parseShellPath,
   readLoginShellPath
 } from '../login-shell-path'
-import type * as LoginShellPathModule from '../login-shell-path'
 
 const probeOk =
   (path: string): RunShellProbe =>

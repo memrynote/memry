@@ -287,6 +287,7 @@ describe('Readwise incremental sync', () => {
         (_url: string, init: RequestInit) =>
           new Promise<Response>((_resolve, reject) =>
             init.signal?.addEventListener('abort', () => {
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
               reject(init.signal?.reason)
             })
           )

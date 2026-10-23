@@ -22,12 +22,12 @@ const IMAGE_URL = 'memry-file://local/v/attachments/n/diagram.png'
 describe('image block width in markdown', () => {
   it('writes a chosen width into the alt text and reads it back', async () => {
     const editor = createEditor()
-    const markdown = await editor.blocksToMarkdownLossy([
+    const markdown = editor.blocksToMarkdownLossy([
       { type: 'image', props: { url: IMAGE_URL, name: 'diagram.png', previewWidth: 320 } }
     ])
 
     expect(markdown.trim()).toBe(`![diagram.png|320](${IMAGE_URL})`)
-    const [block] = await editor.tryParseMarkdownToBlocks(markdown)
+    const [block] = editor.tryParseMarkdownToBlocks(markdown)
     expect(block.props).toMatchObject({ name: 'diagram.png', previewWidth: 320 })
   })
 
@@ -40,7 +40,7 @@ describe('image block width in markdown', () => {
 
   it('lets a real width attribute outrank the alt suffix', async () => {
     const editor = createEditor()
-    const [block] = await editor.tryParseHTMLToBlocks(
+    const [block] = editor.tryParseHTMLToBlocks(
       `<img src="${IMAGE_URL}" alt="shot|300" width="200">`
     )
 

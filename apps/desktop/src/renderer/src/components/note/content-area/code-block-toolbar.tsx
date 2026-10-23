@@ -179,8 +179,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
 
   const blockId = placement.block.closest('[data-id]')?.getAttribute('data-id')
   const currentBlock = blockId ? editor.getBlock(blockId) : undefined
-  const language =
-    currentBlock?.type === 'codeBlock' ? String(currentBlock.props.language ?? '') : ''
+  const language = currentBlock?.type === 'codeBlock' ? (currentBlock.props.language ?? '') : ''
   const copyLabel = copied ? t('editor.codeBlock.copied') : t('editor.codeBlock.copy')
   const inlineEndStyle = placement.isRtl
     ? { left: placement.inlineEnd }

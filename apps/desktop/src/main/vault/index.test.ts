@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as ProjectionsModule from '../projections'
 
 const mocks = vi.hoisted(() => ({
   sent: [] as Array<{ channel: string; payload: unknown }>,
@@ -366,7 +367,6 @@ import {
 import { getJournalConfig } from './journal-config'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import type * as ProjectionsModule from '../projections'
 
 describe('vault lifecycle', () => {
   beforeEach(async () => {

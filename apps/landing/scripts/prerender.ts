@@ -183,7 +183,7 @@ async function prerender() {
   }
 }
 
-prerender().catch((err) => {
+prerender().catch((err: unknown) => {
   console.error('Prerender failed:', err)
   process.exit(1)
 })

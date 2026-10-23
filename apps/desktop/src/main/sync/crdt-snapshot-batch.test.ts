@@ -5,6 +5,7 @@
  * back as `false` so the provider keeps the note pending.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as HttpClientModule from './http-client'
 
 const { pushCrdtSnapshotBatchMock } = vi.hoisted(() => ({
   pushCrdtSnapshotBatchMock: vi.fn()
@@ -33,7 +34,6 @@ vi.mock('./http-client', async (importOriginal) => {
 import { createCrdtSnapshotBatchPush, type CrdtSnapshotBatchDeps } from './crdt-snapshot-batch'
 import { SyncServerError } from './http-client'
 import type { SnapshotBatchEntry, SnapshotCoverage } from './crdt-provider'
-import type * as HttpClientModule from './http-client'
 
 const entry = (
   noteId: string,

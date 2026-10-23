@@ -19,6 +19,7 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as ClientModule from '../database/client'
 
 const state = vi.hoisted(() => ({
   data: null as unknown,
@@ -72,7 +73,6 @@ import {
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { updateNoteCommand } from './domain'
-import type * as ClientModule from '../database/client'
 
 describe('a header tag added to an open note', () => {
   let vault: TestVaultResult

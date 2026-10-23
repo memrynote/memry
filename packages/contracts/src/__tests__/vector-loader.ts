@@ -9,6 +9,7 @@
  */
 import { readFileSync } from 'node:fs'
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 export function loadVectorFile<T>(relativePath: string): T {
   return JSON.parse(
     readFileSync(new URL(`../../test-vectors/${relativePath}`, import.meta.url), 'utf8')

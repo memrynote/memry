@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as SyncServiceModule from './sync-service'
 
 const { mockDbHolder, powerMonitorHolder, syncNowMock } = vi.hoisted(() => ({
   mockDbHolder: { db: null as object | null },
@@ -62,7 +63,6 @@ import {
   WINDOW_FOCUS_REASON
 } from './google-sync-runner'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import type * as SyncServiceModule from './sync-service'
 
 describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
   let dbResult: TestDatabaseResult

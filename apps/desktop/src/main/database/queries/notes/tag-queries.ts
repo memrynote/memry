@@ -128,7 +128,7 @@ export function getAllTags(db: IndexDb): { tag: string; count: number }[] {
     .groupBy(tagFoldOf(noteTags.tag))
     .orderBy(desc(count()))
     .all()
-    .map((row) => ({ tag: row.tag, count: Number(row.count) }))
+    .map((row) => ({ tag: row.tag, count: row.count }))
 }
 
 /** Notes carrying `tag` in any spelling (one id per carrying row). */

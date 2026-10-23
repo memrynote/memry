@@ -10,6 +10,8 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes/note-crud'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: right after the outside-vault check resolves a locked note file,
 // the file is swapped for a link to a file outside the vault, before it is read.
@@ -73,8 +75,6 @@ import { installVaultLockFileGuard } from './files'
 import { invalidateVaultLocks } from './registry'
 import { checkLockedFilesAtOpen, reconcileLockedFiles, setVaultLock } from './service'
 import { getBaseline } from './store'
-import type * as PromisesModule from 'fs/promises'
-import type * as FsModule from 'fs'
 
 const isWindows = process.platform === 'win32'
 

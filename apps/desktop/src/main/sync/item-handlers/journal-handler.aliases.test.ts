@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
+import type * as NotesModule from '@main/database/queries/notes'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'journal-aliases-'))
 const vaultPath = path.join(root, 'vault')
@@ -54,7 +55,6 @@ vi.mock('../../vault/index', () => ({
 
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
-import type * as NotesModule from '@main/database/queries/notes'
 
 const DATE = '2026-06-09'
 const DAY = `j${DATE}`

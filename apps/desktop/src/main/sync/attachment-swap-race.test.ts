@@ -4,6 +4,8 @@ import path from 'path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam (#3095): right after the outside-vault check resolves a note file,
 // the file is swapped for a link to an outside markdown file, before it is read.
@@ -56,8 +58,6 @@ import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
 import { recordAttachmentFile } from './attachment-files'
 import { listPendingUploads } from './attachment-outbox'
 import { findNotesReferencingAttachment } from '../vault/attachment-reference-scan'
-import type * as PromisesModule from 'fs/promises'
-import type * as FsModule from 'fs'
 
 const isWindows = process.platform === 'win32'
 

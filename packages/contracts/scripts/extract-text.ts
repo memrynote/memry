@@ -34,7 +34,7 @@ const SKIPPED_BLOCKS = new Set(['divider'])
 
 function headingMarker(node: Y.XmlElement): string {
   const raw = node.getAttribute('level')
-  const level = typeof raw === 'string' ? Number.parseInt(raw, 10) : Number(raw ?? 1)
+  const level = typeof raw === 'string' ? Number.parseInt(raw, 10) : (raw ?? 1)
   const clamped = Number.isFinite(level) ? Math.min(Math.max(level, 1), 6) : 1
   return `${'#'.repeat(clamped)} `
 }

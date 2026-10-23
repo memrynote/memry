@@ -65,7 +65,7 @@ function useDetail(item: SearchResultItemType): Detail | null | undefined {
     let cancelled = false
     const timer = setTimeout(() => {
       void loadDetail(item)
-        .catch((err) => {
+        .catch((err: unknown) => {
           log.warn('Failed to load search preview', { key, err })
           return null
         })

@@ -5,6 +5,7 @@ import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
+import type * as PathsModule from '../lib/paths'
 
 type PreflightVerdict = {
   ok: boolean
@@ -25,7 +26,7 @@ const fsHooks = vi.hoisted(() => ({
 }))
 
 vi.mock('fs', async (importActual) => {
-  const actual = await importActual<typeof FsModule>()
+  const actual = await importActual<typeof fs>()
   fsHooks.realRenameSync = actual.renameSync
   const renameSync = (from: string, to: string): void => {
     ;(fsHooks.renameSync ?? actual.renameSync)(from, to)
@@ -321,8 +322,6 @@ import { listCrdtBodyDebts } from './engine/crdt-body-debts'
 import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 // The real toggle, so the local-only suite crosses the seam for real.
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
-import type * as FsModule from 'fs'
-import type * as PathsModule from '../lib/paths'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 mocks.vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-vault-'))

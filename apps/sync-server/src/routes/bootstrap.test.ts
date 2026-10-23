@@ -5,6 +5,7 @@ import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { errorHandler } from '../lib/errors'
 import { signBootstrapSession, verifyBootstrapSession } from '../services/bootstrap-session'
 import type { AppContext } from '../types'
+import type * as RateLimitModule from '../middleware/rate-limit'
 
 vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
@@ -45,7 +46,6 @@ vi.mock('../middleware/sync-types', () => ({
 // is exercised without any mock.
 
 import { bootstrap } from './bootstrap'
-import type * as RateLimitModule from '../middleware/rate-limit'
 
 const SECRET = 'test-bootstrap-hmac-key'
 const R2_ENV = {

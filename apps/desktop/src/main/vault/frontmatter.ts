@@ -294,7 +294,7 @@ export function extractTags(frontmatter: NoteFrontmatter): string[] {
 
   const byKey = new Map<string, string>()
   for (const raw of frontmatter.tags) {
-    const tag = String(raw).trim()
+    const tag = raw.trim()
     if (!tag) continue
     const key = foldTag(tag)
     if (!byKey.has(key)) byKey.set(key, tag)

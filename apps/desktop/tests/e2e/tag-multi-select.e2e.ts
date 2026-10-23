@@ -42,7 +42,7 @@ async function seedNotes(page: Page): Promise<void> {
         content: 'Carries only the first tag',
         tags: [tagA]
       })
-      return !!both?.success && !!onlyA?.success
+      return both?.success && onlyA?.success
     },
     { tagA: TAG_A, tagB: TAG_B, bothTitle: BOTH_TITLE, onlyATitle: ONLY_A_TITLE }
   )

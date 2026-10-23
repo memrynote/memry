@@ -58,7 +58,7 @@ describe('PropertyHistoryButton', () => {
     // #then the clipboard holds markdown the editor reads as the chart's code block
     const markdown = mocks.writeText.mock.calls[0][0] as string
     const editor = BlockNoteEditor.create({ schema: editorSchema })
-    const [block] = await editor.tryParseMarkdownToBlocks(markdown)
+    const [block] = editor.tryParseMarkdownToBlocks(markdown)
     expect(block.type).toBe('codeBlock')
     expect(block.props).toMatchObject({ language: 'memry-view' })
     const text = (block.content as Array<{ text: string }>).map((run) => run.text).join('')

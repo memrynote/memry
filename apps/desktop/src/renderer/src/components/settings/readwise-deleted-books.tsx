@@ -51,7 +51,7 @@ export function ReadwiseDeletedBooks({
         if (mounted.current)
           setBooks(unwrap(raw, t('import.dialog.readwise.deleted.loadFailed')).books)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (mounted.current) {
           setBooks([])
           setError(extractErrorMessage(err, t('import.dialog.readwise.deleted.loadFailed')))

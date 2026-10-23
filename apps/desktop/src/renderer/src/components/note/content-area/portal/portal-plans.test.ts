@@ -339,7 +339,7 @@ describe('planReconcile', () => {
     const { view, def, editor } = mount([para('Root ^root1')], define({ blocks: ['root1'] }))
     editor.insertBlocks([para('')], editor.document[0], 'after')
     editor.setTextCursorPosition(editor.document[1], 'start')
-    const id = String(editor.document[1].id)
+    const id = editor.document[1].id
 
     expect(planReconcile(view, def, [id])).toBeNull()
   })

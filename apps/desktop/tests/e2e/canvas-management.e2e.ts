@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * Canvas management — the sidebar folder tree, end to end.
  *

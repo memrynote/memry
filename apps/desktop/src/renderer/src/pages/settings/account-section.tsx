@@ -349,7 +349,7 @@ export function AccountSettings() {
       // Explicit !== false: blobs written by older versions have no key and
       // must read as "on" (the shipped default).
       .then((settings) => {
-        setAttachmentAutoDownload(settings.attachmentAutoDownload !== false)
+        setAttachmentAutoDownload(settings.attachmentAutoDownload)
       })
       .catch(() => {
         /* keep the default-on optimistic value */

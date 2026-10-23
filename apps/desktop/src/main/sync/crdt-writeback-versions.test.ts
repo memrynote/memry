@@ -6,6 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { MARKDOWN_SOURCE_MAP, writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as HtmlCommentsModule from '@memry/shared/html-comments'
+import type * as MarkdownSourceModule from '@memry/shared/markdown-source'
+import type * as NotesModule from '@main/database/queries/notes'
+import type * as PathsModule from '../lib/paths'
 
 const restoreThrows = vi.hoisted(() => ({ left: 0 }))
 // A build before #2741 parsed every note this way: no comment was masked, so
@@ -143,10 +147,6 @@ import { resetTelemetryThrottle } from '../telemetry/throttle'
 import type { Block } from '@blocknote/core'
 import { blocksToYFragment, markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
-import type * as HtmlCommentsModule from '@memry/shared/html-comments'
-import type * as MarkdownSourceModule from '@memry/shared/markdown-source'
-import type * as NotesModule from '@main/database/queries/notes'
-import type * as PathsModule from '../lib/paths'
 
 const NOTE = 'note-1'
 const NOTE_FILE = '/vault/notes/Fox.md'

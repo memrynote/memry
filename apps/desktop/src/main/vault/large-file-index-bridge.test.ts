@@ -22,6 +22,7 @@ vi.mock('../lib/logger', () => ({
 }))
 
 vi.mock('worker_threads', () => ({
+  // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
   Worker: class {
     constructor(path: string) {
       mocks.spawned.push(path)

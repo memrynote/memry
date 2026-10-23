@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Home Dashboard — Recently edited widget E2E (group F)
  *

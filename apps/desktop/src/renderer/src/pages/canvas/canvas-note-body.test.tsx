@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import type * as ReactModule from '@blocknote/react'
 
 // The file block's PDF preview pulls pdf.js, which touches `DOMMatrix` at
 // import time and jsdom has none.
@@ -29,7 +30,6 @@ vi.mock('@blocknote/react', async (importOriginal) => {
 })
 
 import { CanvasNoteBody } from './canvas-note-body'
-import type * as ReactModule from '@blocknote/react'
 
 describe('CanvasNoteBody', () => {
   it('shows a task line with its markup as written', async () => {

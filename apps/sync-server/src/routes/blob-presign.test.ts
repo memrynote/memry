@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { ErrorCodes } from '../lib/errors'
 import type { AppContext } from '../types'
+import type * as R2PresignModule from '../services/r2-presign'
 
 vi.mock('../services/blob', () => ({
   generateAttachmentChunkKey: (userId: string, vaultId: string, chunkHash: string) =>
@@ -89,7 +90,6 @@ import {
 } from '../__mocks__/blob-route-harness'
 import { presignR2Url } from '../services/r2-presign'
 import { CHUNK_CRYPTO_OVERHEAD } from '../services/upload-size'
-import type * as R2PresignModule from '../services/r2-presign'
 
 // The hash charset is enforced by contract (64 lowercase hex); fixtures comply.
 const HASH_A = 'a'.repeat(64)

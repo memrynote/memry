@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type * as ClientModule from '../database/client'
+import type * as JournalModule from '../vault/journal'
 
 /**
  * #2409: a re-created deterministic id is minted with a clock that happens
@@ -88,8 +90,6 @@ import {
 import { ItemApplier, type EmitToWindows } from './apply-item'
 import { getRemoteSyncAdapter, resolveClockConflict } from './item-handlers'
 import { runInitialSeed } from './initial-seed'
-import type * as ClientModule from '../database/client'
-import type * as JournalModule from '../vault/journal'
 
 const DEVICE = 'device-A'
 const PEER = 'device-B'

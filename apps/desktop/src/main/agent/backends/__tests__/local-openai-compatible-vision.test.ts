@@ -73,6 +73,7 @@ function createProvider(
     if (options.hangsOnImageProbe && !body.stream && carriesImage(body)) {
       return new Promise<Response>((_, reject) => {
         init?.signal?.addEventListener('abort', () => {
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
           reject(init.signal?.reason)
         })
       })

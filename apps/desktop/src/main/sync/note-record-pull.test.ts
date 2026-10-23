@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type * as ClientModule from '../database/client'
+import type * as IndexModule from '../vault/index'
 
 /**
  * A record pull of a note that this device already holds, through the real
@@ -41,8 +43,6 @@ import {
 import { createMockDeps } from '@tests/utils/engine-mocks'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { noteHandler } from './item-handlers/note-handler'
-import type * as ClientModule from '../database/client'
-import type * as IndexModule from '../vault/index'
 
 const DEVICE = 'device-1'
 const PEER = 'device-2'

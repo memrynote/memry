@@ -4,6 +4,7 @@ import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue
 import { setupTestDb, type TestDatabaseResult } from '@tests/utils/engine-mocks'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
+import type * as HttpClientModule from '../http-client'
 
 const { encryptPushBatchMock, postToServerMock, getHandlerMock, getRemoteSyncAdapterMock } =
   vi.hoisted(() => ({
@@ -44,7 +45,6 @@ import {
 import type { HoldOutcome } from '../../canvas/assets/chunk-holds'
 import { PUSH_DEBOUNCE_MS } from './sync-context'
 import { SyncServerError } from '../http-client'
-import type * as HttpClientModule from '../http-client'
 
 interface QueueRow {
   id: string

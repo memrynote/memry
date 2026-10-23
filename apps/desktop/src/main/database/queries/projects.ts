@@ -779,7 +779,7 @@ export function getProjectContents(db: DataDb, projectId: string): ProjectConten
     title: row.title,
     startAt: row.startAt,
     endAt: row.endAt,
-    isAllDay: Boolean(row.isAllDay)
+    isAllDay: row.isAllDay
   }))
 
   return {

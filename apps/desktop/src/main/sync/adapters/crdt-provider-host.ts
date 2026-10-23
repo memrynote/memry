@@ -51,7 +51,7 @@ export class DesktopCrdtProviderHost implements CrdtProviderHost {
         transport.sendToUi([Y.encodeStateAsUpdate(doc)])
         for (const frame of pendingFromUi.splice(0)) Y.applyUpdate(doc, frame, origin)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.error('CrdtProviderHost attach failed to open the doc', { docId, error: err })
       })
 

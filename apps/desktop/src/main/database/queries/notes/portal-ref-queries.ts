@@ -54,7 +54,7 @@ export function getPortalUsage(
     .groupBy(portalRefs.hostNoteId)
     .orderBy(noteCache.title)
     .all()
-    .map((row) => ({ ...row, count: Number(row.count), ordinal: Number(row.ordinal) }))
+    .map((row) => ({ ...row, count: row.count, ordinal: row.ordinal }))
 }
 
 /** Host notes of any portal to the given sources, for the incoming-reference lists. */

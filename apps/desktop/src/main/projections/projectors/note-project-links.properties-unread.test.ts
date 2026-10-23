@@ -11,6 +11,7 @@ import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import type { ProjectionEvent } from '../types'
+import type * as LocalMutationsModule from '../../sync/local-mutations'
 
 let dataDb: TestDatabaseResult
 
@@ -37,7 +38,6 @@ vi.mock('../../sync/local-mutations', async (importOriginal) => ({
 
 import { syncLargeFileBodyToCache, syncNoteStatToCache } from '../../vault/note-sync'
 import { createNoteProjectLinksProjector } from './note-project-links-projector'
-import type * as LocalMutationsModule from '../../sync/local-mutations'
 
 const CREATED = '2026-01-01T00:00:00.000Z'
 

@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import type * as HttpClientModule from '../sync/http-client'
+import type * as AttachmentOutboxModule from '../sync/attachment-outbox'
+import type * as AttachmentDownloadStateModule from '@memry/sync-client/attachment-download-state'
 
 // ============================================================================
 // Mocks
@@ -236,9 +239,6 @@ import { AttachmentTooLargeError, type TransferProgress } from '../sync/attachme
 import { SyncServerError } from '../sync/http-client'
 import { setCachedEntitlementFromStatus, getCachedMaxFileSize } from '../billing/entitlement-cache'
 import type { BillingStatus } from '../billing/paddle-billing'
-import type * as HttpClientModule from '../sync/http-client'
-import type * as AttachmentOutboxModule from '../sync/attachment-outbox'
-import type * as AttachmentDownloadStateModule from '@memry/sync-client/attachment-download-state'
 
 describe('sync-attachment-handlers', () => {
   beforeEach(() => {

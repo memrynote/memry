@@ -151,6 +151,7 @@ import type {
 } from '@memry/contracts/sticky-api'
 import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
+import type { SyncedSettings } from '../shared/contracts/settings-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1093,7 +1094,6 @@ import type {
   ListVaultActivityResult,
   VaultActivityRetentionDays
 } from '@memry/contracts/vault-activity-api'
-import type { SyncedSettings } from '../shared/contracts/settings-sync'
 
 export interface SearchClientAPI {
   query(params: {

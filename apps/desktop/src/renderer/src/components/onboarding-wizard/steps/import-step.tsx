@@ -41,13 +41,13 @@ function useImportSources(): { importers: ImporterMeta[]; sources: OnboardingSou
     window.api.import
       .list()
       .then((list) => !cancelled && setImporters(list.filter((meta) => !meta.accountBased)))
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.warn('Listing importers failed', error)
       })
     window.api.onboarding
       .detectSources()
       .then((found) => !cancelled && setSources(found))
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.warn('Detecting import sources failed', error)
         if (!cancelled) setSources({ obsidianVaults: [], installedApps: [] })
       })

@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type * as PathsModule from '../lib/paths'
 
 const calls: string[] = []
 const feedCalls: Array<{ noteId: string; content: string }> = []
@@ -65,7 +66,6 @@ vi.mock('../lib/logger', () => ({
 }))
 
 import { appendBlocksToNote } from './append-blocks'
-import type * as PathsModule from '../lib/paths'
 
 function seedNote(id: string, notePath: string, body: string) {
   noteRows[id] = {

@@ -20,12 +20,12 @@ describe('image crop', () => {
   it('round-trips a crop and a width through the vault file', async () => {
     const editor = createEditor()
     const name = withImageCrop('photo.png', CROP)
-    const markdown = await editor.blocksToMarkdownLossy([
+    const markdown = editor.blocksToMarkdownLossy([
       { type: 'image', props: { url: IMAGE_URL, name, previewWidth: 320 } }
     ])
 
     expect(markdown.trim()).toBe(`![photo.png|crop=10,5,80,60|320](${IMAGE_URL})`)
-    const [block] = await editor.tryParseMarkdownToBlocks(markdown)
+    const [block] = editor.tryParseMarkdownToBlocks(markdown)
     expect(block.props).toMatchObject({ name, previewWidth: 320 })
     expect(parseImageCrop((block.props as { name: string }).name)).toEqual({
       name: 'photo.png',

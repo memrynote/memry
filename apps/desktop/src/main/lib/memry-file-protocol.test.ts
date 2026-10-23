@@ -2,6 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
 
 // The seam: right after the outside-vault check resolves the requested file,
 // the file is swapped for a link to a file outside the vault, before it is read.
@@ -24,7 +25,6 @@ vi.mock('../telemetry/diagnostics', () => ({ trackMainLog: () => undefined }))
 
 import { serveMemryFile } from './memry-file-protocol'
 import { toMemryFileUrl } from './paths'
-import type * as PromisesModule from 'fs/promises'
 
 const isWindows = process.platform === 'win32'
 

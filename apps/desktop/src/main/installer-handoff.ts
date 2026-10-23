@@ -182,7 +182,7 @@ export function verifyAuthenticode(
           resolve({ ok: false, reason: `Get-AuthenticodeSignature failed: ${error.message}` })
           return
         }
-        resolve(judgeAuthenticode(String(stdout), INSTALLER_HANDOFF_SIGNER_SUBJECT))
+        resolve(judgeAuthenticode(stdout, INSTALLER_HANDOFF_SIGNER_SUBJECT))
       }
     )
   })

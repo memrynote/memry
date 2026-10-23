@@ -7,6 +7,7 @@ import { createTestDataDb, asClientDb, sql } from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { insertProject, insertProjectLink } from '@main/database/queries/projects'
 import { getSetting } from '@main/database/queries/settings'
+import type * as PathsModule from '../lib/paths'
 
 /**
  * A fake vault: `diskFiles` is the file the note actually has on disk,
@@ -80,7 +81,6 @@ import {
   applyProjectFrontmatterBackfill,
   PROJECT_FRONTMATTER_BACKFILL_KEY
 } from './backfill-project-frontmatter'
-import type * as PathsModule from '../lib/paths'
 
 const BASE_TIME = '2026-01-15T10:00:00.000Z'
 

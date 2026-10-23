@@ -7,6 +7,7 @@
 // permanent and cannot be re-keyed, so a leak here is unrecoverable.
 import { exportPKCS8, exportSPKI, generateKeyPair, importPKCS8, SignJWT } from 'jose'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import type * as RateLimitModule from '../middleware/rate-limit'
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => ({
   ...(await importOriginal<typeof RateLimitModule>()),
@@ -15,7 +16,6 @@ vi.mock('../middleware/rate-limit', async (importOriginal) => ({
 
 import { app } from '../index'
 import { hashTelemetryId } from '../services/telemetry'
-import type * as RateLimitModule from '../middleware/rate-limit'
 
 const ACCOUNT_ID = '99999999-9999-4999-8999-999999999999'
 const INSTALL_ID = '11111111-1111-4111-8111-111111111111'

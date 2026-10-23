@@ -9,7 +9,7 @@
  * gunzip → decode → convert path it uses in production. No real user DB ships.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
@@ -618,7 +618,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
   let database: typeof DatabaseModule
   let importer: typeof AppleNotesImporterModule
   let importContext: typeof ImportContextModule
-  let platformSpy: ReturnType<typeof vi.spyOn> | null = null
+  let platformSpy: MockInstance | null = null
 
   beforeEach(async () => {
     // Force darwin so the macOS guard passes regardless of CI host.

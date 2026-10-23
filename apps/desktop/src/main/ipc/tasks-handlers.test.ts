@@ -8,6 +8,9 @@ import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vite
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import type { LocalChange } from '../sync/sync-intents'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
+import type * as NotesCrudModule from '../vault/notes-crud'
+import type * as LocalMutationsModule from '../sync/local-mutations'
+import type * as ProjectNamePropagationModule from '../tasks/project-name-propagation'
 
 // Track mock calls
 const handleCalls: unknown[][] = []
@@ -170,9 +173,6 @@ import * as projectQueries from '@main/database/queries/projects'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { incrementTaskClocksOffline } from '@memry/sync-client/offline-clock'
 import { propagateProjectRename, propagateProjectDelete } from '../tasks/project-name-propagation'
-import type * as NotesCrudModule from '../vault/notes-crud'
-import type * as LocalMutationsModule from '../sync/local-mutations'
-import type * as ProjectNamePropagationModule from '../tasks/project-name-propagation'
 
 describe('tasks-handlers', () => {
   let mockDb: { run: Mock; get: Mock; all: Mock }

@@ -15,6 +15,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
+import type { Doc } from 'yjs'
 
 // The drain through its real adapters (#2939): the data and index databases,
 // the vault's day files, the journal handler, `createJournalEntry` and the
@@ -128,7 +129,6 @@ import {
   runJournalDayMerges
 } from './journal-day-merge'
 import { listPendingDeletes } from './pending-deletes'
-import type { Doc } from 'yjs'
 
 const DATE = '2026-06-09'
 const DAY = `j${DATE}`

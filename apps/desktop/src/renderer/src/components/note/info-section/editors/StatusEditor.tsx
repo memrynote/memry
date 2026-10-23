@@ -65,7 +65,7 @@ export function StatusEditor({
           {selectedOption ? (
             <SelectChip value={selectedOption.value} color={selectedOption.color} />
           ) : isOrphan ? (
-            <SelectChip value={String(value)} color="stone" />
+            <SelectChip value={value} color="stone" />
           ) : (
             <span className="text-[13px] text-text-tertiary font-sans">
               {t('properties.empty')}

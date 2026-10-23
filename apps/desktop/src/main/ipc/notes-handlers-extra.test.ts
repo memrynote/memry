@@ -4,6 +4,10 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
+import type * as PromisesModule from 'fs/promises'
+import type * as IndexModule from '../vault/index'
+import type * as FileTypesModule from '@memry/shared/file-types'
+import type * as ExportUtilsModule from '../lib/export-utils'
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
@@ -230,10 +234,6 @@ vi.mock('@memry/shared/file-types', async (importOriginal) => ({
 }))
 
 import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
-import type * as PromisesModule from 'fs/promises'
-import type * as IndexModule from '../vault/index'
-import type * as FileTypesModule from '@memry/shared/file-types'
-import type * as ExportUtilsModule from '../lib/export-utils'
 
 const invoke = async (channel: string, input?: unknown): Promise<unknown> => {
   const handler = mocks.handlers.get(channel)

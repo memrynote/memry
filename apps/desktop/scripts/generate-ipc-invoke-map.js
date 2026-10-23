@@ -281,8 +281,8 @@ function hoistTypeImports(signatures) {
   const aliasFor = new Map()
   const usedAliases = new Set(RESERVED_TYPE_NAMES)
   const keys = []
-  for (const name of [...pathsByName.keys()].sort()) {
-    for (const importPath of [...pathsByName.get(name)].sort()) {
+  for (const name of [...pathsByName.keys()].toSorted((a, b) => a.localeCompare(b))) {
+    for (const importPath of [...pathsByName.get(name)].toSorted((a, b) => a.localeCompare(b))) {
       let alias = name
       let suffix = 2
       if (usedAliases.has(alias) || pathsByName.get(name).size > 1) {
@@ -305,7 +305,7 @@ function hoistTypeImports(signatures) {
     byPath.get(importPath).push(alias === name ? name : `${name} as ${alias}`)
   }
   const importLines = [...byPath.keys()]
-    .sort()
+    .toSorted((a, b) => a.localeCompare(b))
     .map(
       (importPath) => `import type { ${byPath.get(importPath).join(', ')} } from '${importPath}'`
     )

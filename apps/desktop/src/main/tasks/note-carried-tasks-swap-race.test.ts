@@ -2,6 +2,8 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: right after the outside-vault check resolves a note file, the file
 // is swapped for a link to a file outside the vault, before it is read or chmodded.
@@ -54,8 +56,6 @@ vi.mock('../vault/notes-io', () => ({
 }))
 
 import { getCarriedTaskIds } from './note-carried-tasks'
-import type * as PromisesModule from 'fs/promises'
-import type * as FsModule from 'fs'
 
 describe('a note file swapped for an outside link after the vault check (#3058)', () => {
   let outside: string

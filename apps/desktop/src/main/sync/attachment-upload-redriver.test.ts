@@ -2,6 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as AttachmentOutboxModule from './attachment-outbox'
 
 const mocks = vi.hoisted(() => ({
   backfill: vi.fn(),
@@ -21,7 +22,6 @@ vi.mock('./token-manager', () => ({ getValidAccessToken: mocks.getToken }))
 vi.mock('../store', () => ({ getCurrentVaultPath: () => mocks.vaultPath }))
 
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
-import type * as AttachmentOutboxModule from './attachment-outbox'
 
 function deferredToken(): { resolve: (token: string) => void } {
   let resolve!: (token: string) => void

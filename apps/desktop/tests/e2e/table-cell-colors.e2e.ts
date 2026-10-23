@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * A table cell's colour has to still be there after the note is saved (#1639).
  *

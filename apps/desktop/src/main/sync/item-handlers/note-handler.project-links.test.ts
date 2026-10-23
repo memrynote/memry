@@ -18,6 +18,7 @@ import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as LocalMutationsModule from '../local-mutations'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-links-'))
 
@@ -78,7 +79,6 @@ import { noteHandler } from './note-handler'
 import { projectHandler } from './project-handler'
 import { syncNoteToCache } from '../../vault/note-sync'
 import { createNoteProjectLinksProjector } from '../../projections/projectors/note-project-links-projector'
-import type * as LocalMutationsModule from '../local-mutations'
 
 const NOTE_PATH = path.join('n1.md')
 

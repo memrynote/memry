@@ -18,7 +18,8 @@ import type {
 export function logListenerError(channel: string, error: unknown): void {
   const message = `[PreloadIpc] Listener for "${channel}" threw`
   const sink = (globalThis as typeof globalThis & { __electronLog?: unknown }).__electronLog as
-    { error?: (...data: unknown[]) => void } | undefined
+    | { error?: (...data: unknown[]) => void }
+    | undefined
   if (typeof sink?.error === 'function') {
     sink.error(message, error)
     return
@@ -52,6 +53,7 @@ interface ChannelSubscription {
 
 const channelSubscriptions = new Map<string, ChannelSubscription>()
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 export function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
   let subscription = channelSubscriptions.get(channel)
   if (!subscription) {

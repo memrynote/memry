@@ -1482,14 +1482,13 @@ export const listUserVaults = async (
     .all<UserVaultSummary>()
   return (results ?? []).map((r) => ({
     vaultUuid: r.vaultUuid,
-    itemCount: Number(r.itemCount),
+    itemCount: r.itemCount,
     createdAt: r.createdAt ?? null,
     encryptedName: r.encryptedName ?? null,
     nameNonce: r.nameNonce ?? null,
     encryptedIcon: r.encryptedIcon ?? null,
     iconNonce: r.iconNonce ?? null,
-    iconUpdatedAt:
-      r.iconUpdatedAt === null || r.iconUpdatedAt === undefined ? null : Number(r.iconUpdatedAt)
+    iconUpdatedAt: r.iconUpdatedAt ?? null
   }))
 }
 

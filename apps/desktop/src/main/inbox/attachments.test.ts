@@ -25,6 +25,7 @@ import {
   ALLOWED_AUDIO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from './attachments'
+import type * as PathsModule from '../lib/paths'
 
 // Mock the vault module
 vi.mock('../vault', () => ({
@@ -42,7 +43,6 @@ vi.mock('../lib/paths', async (importOriginal) => {
 
 import { getStatus } from '../vault'
 import { toMemryFileUrl } from '../lib/paths'
-import type * as PathsModule from '../lib/paths'
 
 describe('Inbox Attachment Management', () => {
   let testVaultPath: string

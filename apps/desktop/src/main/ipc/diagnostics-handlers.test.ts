@@ -57,6 +57,7 @@ type SendHandler = (
   payload: unknown
 ) => Promise<{ success: true; incidentId: string } | { success: false; error: string }>
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 const getHandler = <T>(channel: string): T => {
   const call = mockElectron.ipcMain.handle.mock.calls.find((c) => c[0] === channel)
   expect(call).toBeDefined()

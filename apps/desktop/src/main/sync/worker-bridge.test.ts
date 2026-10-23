@@ -23,6 +23,7 @@ let mockWorkerInstance: MockWorker
 
 vi.mock('worker_threads', () => {
   return {
+    // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     Worker: class {
       constructor() {
         mockWorkerInstance = new MockWorker()

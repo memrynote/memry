@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
+import type * as DomainModule from '../inbox/domain'
 
 // Track mock calls
 const handleCalls: unknown[][] = []
@@ -215,7 +216,6 @@ import * as snoozeModule from '../inbox/snooze'
 import * as suggestionsModule from '../inbox/suggestions'
 import * as captureModule from '../inbox/capture'
 import * as statsModule from '../inbox/stats'
-import type * as DomainModule from '../inbox/domain'
 
 describe('inbox-handlers', () => {
   let mockDb: {

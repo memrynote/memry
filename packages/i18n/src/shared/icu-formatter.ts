@@ -18,8 +18,8 @@ import { IntlMessageFormat } from 'intl-messageformat'
  *   resolver pass even though we add nothing to it.
  */
 export class IcuFormatter {
-  static type: 'i18nFormat' = 'i18nFormat'
-  type: 'i18nFormat' = 'i18nFormat'
+  static type = 'i18nFormat' as const
+  type = 'i18nFormat' as const
 
   private cache = new Map<string, IntlMessageFormat>()
 
@@ -27,7 +27,13 @@ export class IcuFormatter {
     // No init needed; cache is per-instance.
   }
 
-  parse(res: unknown, options: Record<string, unknown>, lng: string, ns: string, key: string): string {
+  parse(
+    res: unknown,
+    options: Record<string, unknown>,
+    lng: string,
+    ns: string,
+    key: string
+  ): string {
     if (typeof res !== 'string') return String(res)
     const cacheKey = `${lng}::${ns}::${key}`
     let fc = this.cache.get(cacheKey)

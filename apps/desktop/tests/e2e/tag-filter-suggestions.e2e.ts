@@ -33,7 +33,7 @@ async function seedNotes(page: Page): Promise<void> {
         content: 'Root plus the nested tag',
         tags: [root, child]
       })
-      return !!a?.success && !!b?.success
+      return a?.success && b?.success
     },
     { root: TAG_ROOT, child: TAG_CHILD, rootTitle: ROOT_ONLY_TITLE, childTitle: CHILD_TITLE }
   )

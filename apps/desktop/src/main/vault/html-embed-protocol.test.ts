@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import type * as PromisesModule from 'fs/promises'
 
 // The seam: right after the outside-vault check resolves the requested file,
 // the file is swapped for a link to a file outside the vault, before it is read.
@@ -22,7 +23,6 @@ vi.mock('fs/promises', async (importOriginal) => {
 })
 
 import { HTML_EMBED_CSP, resolveHtmlEmbedFile, serveHtmlEmbed } from './html-embed-protocol'
-import type * as PromisesModule from 'fs/promises'
 
 /** `memry-html://local/<abs>` for a path, the shape the renderer builds. */
 function embedUrl(absolutePath: string): string {

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
+import type * as BlobModule from './blob'
 
 vi.mock('./blob', async (importOriginal) => ({
   ...(await importOriginal<typeof BlobModule>()),
@@ -55,7 +56,6 @@ import {
 import { getDevice } from './device'
 import { getBlob, putBlob } from './blob'
 import { adjustStorageUsed, reserveStorage } from './quota'
-import type * as BlobModule from './blob'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
@@ -156,6 +156,7 @@ const createPushDb = (
     batches.push(statements.map((stmt) => ({ sql: stmt.sql, binds: stmt.binds })))
     return statements.map((stmt) => {
       if (stmt.sql.trimStart().startsWith('SELECT')) {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         if (options.lookupError) throw options.lookupError
         const rows =
           typeof options.existing === 'function'
@@ -163,6 +164,7 @@ const createPushDb = (
             : (options.existing ?? [])
         return { success: true, results: rows }
       }
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       if (options.writeError) throw options.writeError
       if (isCursorReservation(stmt.sql)) return answerCursorReservation(stmt.binds)
       return { success: true, results: [] }

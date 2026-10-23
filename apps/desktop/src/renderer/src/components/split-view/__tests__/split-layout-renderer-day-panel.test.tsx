@@ -13,6 +13,7 @@ interface CapturedPaneProps {
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
   panes: [] as CapturedPaneProps[],
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
   state: null as TabSystemState | null
 }))
 

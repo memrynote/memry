@@ -17,6 +17,7 @@ import { createTestVault } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
 import { generateContentHash } from './frontmatter'
+import type * as IndexerModule from './indexer'
 
 const mocks = vi.hoisted(() => ({
   watch: vi.fn(),
@@ -83,7 +84,6 @@ import {
 import { clearIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { VaultWatcher } from './watcher'
-import type * as IndexerModule from './indexer'
 
 interface WatcherInternals {
   vaultPath: string | null

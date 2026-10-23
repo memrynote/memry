@@ -30,6 +30,7 @@ const page = browser
   .find((p) => p.url().includes('renderer/index.html'))
 try {
   if (code) {
+    // oxlint-disable-next-line typescript/no-implied-eval -- the probe's purpose is to run ad-hoc code from the CLI against the page
     const run = new Function('page', `return (async () => { ${code} })()`)
     const r = await run(page)
     if (r !== undefined) console.log(typeof r === 'string' ? r : JSON.stringify(r, null, 1))

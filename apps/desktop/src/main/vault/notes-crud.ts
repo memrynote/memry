@@ -518,7 +518,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
   // just ticked in the app. Fire and forget otherwise — the note must render
   // immediately, and the task events that follow refresh the affected rows.
   if (!hasPendingWriteback(id)) {
-    void reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err) => {
+    void reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err: unknown) => {
       logger.warn('Failed to reconcile task checkboxes on note open', { id, error: err })
     })
   }

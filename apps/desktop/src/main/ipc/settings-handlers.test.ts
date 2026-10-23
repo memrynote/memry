@@ -174,6 +174,7 @@ import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 
 const originalPlatform = process.platform
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 function invokeSyncHandler<T>(channel: string, ...args: unknown[]): T {
   const listener = syncListeners.get(channel)
   if (!listener) {

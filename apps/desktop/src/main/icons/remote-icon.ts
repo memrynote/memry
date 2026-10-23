@@ -59,7 +59,7 @@ export interface RemoteIcon {
 async function chromiumFetch(url: string, init: RequestInit): Promise<Response> {
   try {
     const { net } = await import('electron')
-    if (typeof net?.fetch === 'function') return net.fetch(url, init)
+    if (typeof net?.fetch === 'function') return await net.fetch(url, init)
   } catch {
     // not running inside Electron
   }

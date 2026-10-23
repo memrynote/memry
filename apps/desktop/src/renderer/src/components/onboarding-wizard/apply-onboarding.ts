@@ -41,10 +41,10 @@ function startImport(choice: ImportChoice, t: Translate): void {
       sourcePaths: choice.sourcePaths
     })
     .then((result) => {
-      if ('error' in result) throw new Error(String(result.error))
+      if ('error' in result) throw new Error(result.error)
       toast.success(t('onboardingWizard.ready.importDone', { source: choice.label }))
     })
-    .catch((error) => {
+    .catch((error: unknown) => {
       log.warn('Onboarding import failed', { importer: choice.importerId, error })
       toast.error(t('onboardingWizard.ready.importFailed', { source: choice.label }))
     })
@@ -52,7 +52,7 @@ function startImport(choice: ImportChoice, t: Translate): void {
 
 function markOnboarded(): void {
   // The wizard replaces the sidebar tour; the star card still gets its turn.
-  recordOnboarded().catch((error) => {
+  recordOnboarded().catch((error: unknown) => {
     log.warn('Recording onboarding failed', error)
   })
   try {

@@ -28,7 +28,7 @@ export function resetVaultLockSyncService(): void {
 }
 
 export class VaultLockSyncService {
-  private controller: RecordSyncController<Record<string, unknown>, []>
+  private controller: RecordSyncController<Record<string, unknown>>
 
   constructor(deps: VaultLockSyncDeps) {
     const load = (lockId: string): Record<string, unknown> | undefined =>

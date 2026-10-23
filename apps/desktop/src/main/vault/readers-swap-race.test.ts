@@ -2,6 +2,8 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: right after the outside-vault check resolves a note file, the file
 // is swapped for a link to a file outside the vault, before it is read.
@@ -74,8 +76,6 @@ import { getNoteById } from './notes-crud'
 import { getNoteLinks } from './notes-queries'
 import { readCanvasScene } from '../canvas/store'
 import { OutsideVaultError } from '../lib/errors'
-import type * as PromisesModule from 'fs/promises'
-import type * as FsModule from 'fs'
 
 const isWindows = process.platform === 'win32'
 

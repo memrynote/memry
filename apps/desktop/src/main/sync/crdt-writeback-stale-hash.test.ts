@@ -4,6 +4,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import type * as PathsModule from '../lib/paths'
 
 const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
@@ -109,7 +110,6 @@ import { getCrdtProvider } from './crdt-provider'
 import { hasPendingWriteback } from './crdt-writeback'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
-import type * as PathsModule from '../lib/paths'
 
 const NOTE = 'lsk8vi9izpep'
 const NOTE_PATH = 'Baseline/Daily Routine.md'

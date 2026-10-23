@@ -60,6 +60,7 @@ import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 // The renderer's promotion rule. Imported from source on purpose: a copy of it
 // here would converge with itself and prove nothing.
 import { normalizeWikiLinks } from '../../renderer/src/components/note/content-area/wiki-link-utils'
+import type * as FileOpsModule from '../vault/file-ops'
 
 const mocks = vi.hoisted(() => ({
   vaultRoot: '',
@@ -169,7 +170,6 @@ import {
   resetWritebackState,
   scheduleWriteback
 } from './crdt-writeback'
-import type * as FileOpsModule from '../vault/file-ops'
 
 const NOTE_ID = 'byte-stability-note'
 const REL_PATH = path.join('notes', 'Byte Stability.md')

@@ -106,7 +106,7 @@ export interface InboxRecord {
   processingStatus: string | null
   sourceUrl: string | null
   sourceTitle: string | null
-  metadata: unknown | null
+  metadata: unknown
   attachmentPath: string | null
   thumbnailPath: string | null
   tags: string[]

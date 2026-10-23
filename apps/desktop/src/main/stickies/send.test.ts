@@ -4,6 +4,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { settings } from '@memry/db-schema/schema/settings'
 import { formatDateKey } from '@memry/domain-tasks/parsing'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as LocalMutationsModule from '../sync/local-mutations'
 
 const state = vi.hoisted(() => ({ db: null as unknown }))
 const sync = vi.hoisted(() => ({
@@ -44,7 +45,6 @@ import { sendSticky, undoStickySend, STICKY_FOLDER } from './send'
 import { getStickySettings } from '../settings/sticky-settings'
 import { ensureDefaultTaskProject } from '../database/defaults'
 import type { DataDb } from '../database/types'
-import type * as LocalMutationsModule from '../sync/local-mutations'
 
 describe('sticky send', () => {
   let data: TestDatabaseResult

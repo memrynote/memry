@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 
 import type { BinaryStatus } from '@memry/contracts/ipc-agent'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as NodeChildProcessModule from 'node:child_process'
 
 // Keep the real implementations but watch spawnSync: a synchronous probe is the
 // regression this module exists to prevent.
@@ -16,7 +17,6 @@ import {
   locateBinary,
   runBinaryCommand
 } from '../binary-detection'
-import type * as NodeChildProcessModule from 'node:child_process'
 
 const usable: BinaryStatus = {
   detected: true,

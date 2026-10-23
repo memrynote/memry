@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as FileOpsModule from '../../vault/file-ops'
 
 const VAULT_ROOT = '/tmp/test-vault-binary'
 
@@ -93,7 +94,6 @@ vi.mock('fs', () => ({
 }))
 
 import { noteHandler } from './note-handler'
-import type * as FileOpsModule from '../../vault/file-ops'
 
 function makeCachedNote(overrides: Record<string, unknown> = {}) {
   return {

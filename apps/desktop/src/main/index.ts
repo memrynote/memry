@@ -1600,7 +1600,7 @@ const appReady = app.whenReady().then(async () => {
       .then(() => {
         win.close()
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // The window silently refuses to close AND edits may be unsaved —
         // both symptoms arrive as support reports with no trail otherwise.
         mainLog.error('Window close flush failed:', err)
@@ -1829,7 +1829,7 @@ const appReady = app.whenReady().then(async () => {
       startCaldavCalendarRunner()
       // macOS Calendar (#2374) exists only on macOS; nothing starts elsewhere.
       if (process.platform === 'darwin') startAppleCalendarRunner()
-      void startGoogleCalendarSyncRunner().catch((error) => {
+      void startGoogleCalendarSyncRunner().catch((error: unknown) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
           scope: 'Startup',
@@ -1837,11 +1837,13 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       })
-      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch((err) => {
-        mainLog.error('capture server failed to start', err)
-      })
+      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch(
+        (err: unknown) => {
+          mainLog.error('capture server failed to start', err)
+        }
+      )
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       mainLog.error('autoOpenLastVault failed:', err)
       trackMainError('main_process', 'auto_open_last_vault_failed', err)
     })
@@ -1873,7 +1875,7 @@ const appReady = app.whenReady().then(async () => {
 // SQLite/logs) would otherwise reject unhandled, leaving createWindow() unreached:
 // process alive, no window, no taskbar entry, single-instance lock held. Guarantee
 // a visible window instead.
-void appReady.catch((error) => {
+void appReady.catch((error: unknown) => {
   ensureStartupWindow(error)
 })
 
@@ -2212,7 +2214,7 @@ async function flushDurabilityBeforeForcedExit(): Promise<void> {
   // them (#2522).
   const flushed = await completeWithin(
     Promise.all([
-      flushPendingWritebacks().catch((error) => {
+      flushPendingWritebacks().catch((error: unknown) => {
         shutdownLog.error('last-chance write-back flush failed', error)
       }),
       flushActivityLog()
@@ -2453,7 +2455,7 @@ app.on('before-quit', (event) => {
         app.quit()
       }
     })
-    .catch(async (error) => {
+    .catch(async (error: unknown) => {
       shutdownLog.error('error during cleanup:', error)
       // Same as the timeout path: the exit below outruns any log flush, so the
       // marker reports this shutdown failure on the next launch.

@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * Saving a note must not rewrite the bytes around a toggle (#1877, #1883).
  *

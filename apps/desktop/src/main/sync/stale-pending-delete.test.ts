@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type * as ClientModule from '../database/client'
 
 /**
  * #2423: a pending delete recorded before a re-create of the same id must not
@@ -67,7 +68,6 @@ import { enqueueLocalSyncCreate, enqueueLocalSyncDelete } from './local-mutation
 import { recoverDirtyItems } from './dirty-recovery'
 import { getRemoteSyncAdapter } from './item-handlers'
 import { runInitialSeed } from './initial-seed'
-import type * as ClientModule from '../database/client'
 
 const DEVICE = 'device-A'
 const SOURCE_ID = 'google-calendar:primary'

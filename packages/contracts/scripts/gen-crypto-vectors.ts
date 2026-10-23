@@ -289,7 +289,7 @@ const main = async (): Promise<void> => {
   console.log(`wrote ${outPath}`)
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error)
   process.exit(1)
 })

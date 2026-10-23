@@ -4,6 +4,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
+import type * as PathsModule from '../lib/paths'
 
 const mocks = vi.hoisted(() => ({
   yDocToMarkdown: vi.fn(),
@@ -168,7 +169,6 @@ import {
   writebackNow
 } from './crdt-writeback'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
-import type * as PathsModule from '../lib/paths'
 
 // A real, empty folder: the outside-vault check resolves every read against it.
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))

@@ -32,6 +32,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const VECTORS = new URL('../../../../../packages/contracts/test-vectors/', import.meta.url)
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 const load = <T>(name: string): T => JSON.parse(readFileSync(new URL(name, VECTORS), 'utf8')) as T
 
 const fromHex = (value: string): Uint8Array => Uint8Array.from(Buffer.from(value, 'hex'))

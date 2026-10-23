@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as BinaryDetectionModule from '../binary-detection'
 
 const mocks = vi.hoisted(() => ({
   locateBinary: vi.fn<(name: string) => Promise<string | null>>(),
@@ -13,7 +14,6 @@ vi.mock('../binary-detection', async (importOriginal) => {
 })
 
 import { MIN_CODEX_VERSION } from '../codex-binary'
-import type * as BinaryDetectionModule from '../binary-detection'
 
 /** Fresh module instance so each test starts with an empty detection cache. */
 async function loadDetector() {

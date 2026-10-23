@@ -38,7 +38,7 @@ export function useOccurrences(
     const timer = setTimeout(() => {
       void Promise.all(
         missing.map(async (item) => {
-          const markdown = await loadBodyMarkdown(item).catch((err) => {
+          const markdown = await loadBodyMarkdown(item).catch((err: unknown) => {
             log.warn('Failed to read a note body for search matches', { id: item.id, err })
             return null
           })

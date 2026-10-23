@@ -14,6 +14,7 @@ import { execFileSync } from 'node:child_process'
  * path must itself be import-free (or import only other import-free modules) — bare `node` type-
  * strips on import but does not resolve the project's path aliases or extensionless specifiers.
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 export function runInTz<T>(tz: string, script: string): T {
   const out = execFileSync(process.execPath, ['--input-type=module', '--eval', script], {
     env: { ...process.env, TZ: tz },

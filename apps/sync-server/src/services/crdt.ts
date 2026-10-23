@@ -609,7 +609,7 @@ export const pruneUpdatesBeforeSnapshot = async (
     .run()
 
   const changes = result.meta.changes ?? 0
-  const totalBytes = Number(bytes?.total_bytes ?? 0)
+  const totalBytes = bytes?.total_bytes ?? 0
   if (changes > 0 && totalBytes > 0) {
     await adjustStorageUsed(db, userId, -totalBytes)
   }
@@ -652,7 +652,7 @@ export const pruneUpdatesBeforeSnapshotBatch = async (
     const deleted = results[notes.length + i].meta.changes ?? 0
     changes += deleted
     if (deleted > 0) {
-      totalBytes += Number((results[i].results ?? [])[0]?.total_bytes ?? 0)
+      totalBytes += (results[i].results ?? [])[0]?.total_bytes ?? 0
     }
   }
 

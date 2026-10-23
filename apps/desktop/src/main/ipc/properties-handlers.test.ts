@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertiesChannels } from '@memry/contracts/properties-api'
+import type * as DomainNotesModule from '@memry/domain-notes'
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
@@ -81,7 +82,6 @@ import {
   stopProjectionRuntime,
   type ProjectionEvent
 } from '../projections'
-import type * as DomainNotesModule from '@memry/domain-notes'
 
 async function invoke(channel: string, input?: unknown) {
   const handler = mocks.handlers.get(channel)

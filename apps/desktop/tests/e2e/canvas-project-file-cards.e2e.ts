@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow canvas-cards.e2e.ts convention
 /**
  * Project and filed-file cards on the spatial canvas (#2082).
  *

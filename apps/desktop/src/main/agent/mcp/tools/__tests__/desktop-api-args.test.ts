@@ -177,7 +177,7 @@ describe('desktop API object arguments', () => {
         assertDesktopApiArgs({ operation, args })
         accepted.push(id)
       } catch (error) {
-        if (!String((error as Error).message).includes('zzSweep')) {
+        if (!(error as Error).message.includes('zzSweep')) {
           accepted.push(`${id} (${(error as Error).message})`)
         }
       }

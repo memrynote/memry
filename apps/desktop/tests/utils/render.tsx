@@ -170,9 +170,7 @@ export function resetMockApi(): void {
  * })
  * ```
  */
-export function configureMockApi(
-  config: Record<string, unknown | ((...args: unknown[]) => unknown)>
-): void {
+export function configureMockApi(config: Record<string, unknown>): void {
   const api = getMockApi()
   if (!api) return
 

@@ -69,7 +69,7 @@ export type {
 export const tasksService: TasksClientAPI = createWindowApiForwarder(() => window.api.tasks)
 
 export function queueTaskReorder(ids: string[], positions: number[]): void {
-  void tasksService.reorder(ids, positions).catch((error) => {
+  void tasksService.reorder(ids, positions).catch((error: unknown) => {
     tasksServiceLogger.error('Failed to reorder tasks:', error)
   })
 }

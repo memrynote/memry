@@ -89,7 +89,7 @@ export function OneNoteImportPanel({ disabled, onStateChange }: OneNoteImportPan
         setStatus(result)
         if (result.connected) void loadNotebooks()
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (active) setError(extractErrorMessage(err, t('import.dialog.error')))
       })
     return () => {

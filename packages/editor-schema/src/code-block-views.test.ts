@@ -64,10 +64,10 @@ describe('codeBlockViews', () => {
 
   it('writes the same markdown with or without the view', async () => {
     mount(false)
-    const plain = await editor!.blocksToMarkdownLossy(editor!.document)
+    const plain = editor!.blocksToMarkdownLossy(editor!.document)
     editor!.unmount()
     mount(true)
-    const viewed = await editor!.blocksToMarkdownLossy(editor!.document)
+    const viewed = editor!.blocksToMarkdownLossy(editor!.document)
 
     expect(viewed).toBe(plain)
     expect(viewed).toContain('```memry-view\n{"source":{"kind":"vault"}}\n```')

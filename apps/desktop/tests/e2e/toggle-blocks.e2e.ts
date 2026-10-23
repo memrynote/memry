@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * Toggles have to still be toggles after the note is closed and reopened (#1643).
  *

@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Task } from '@memry/domain-tasks'
+import type * as HeaderStatusModule from '../notes/header-status'
 
 const mockSend = vi.fn()
 
@@ -58,7 +59,6 @@ import { removeTaskLineFromSourceNote } from './remove-task-line-from-note'
 import { syncHeaderStatusForTask } from '../notes/header-status'
 import * as localMutations from '../sync/local-mutations'
 import { publishProjectionEvent } from '../projections'
-import type * as HeaderStatusModule from '../notes/header-status'
 
 const TAGS_CHANGED = 'notes:tags-changed'
 

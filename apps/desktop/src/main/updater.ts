@@ -466,7 +466,7 @@ export function initializeUpdater(): void {
 
   if (autoCheckEnabled) {
     startAutoCheckTimer()
-    void checkForUpdates().catch((error) => {
+    void checkForUpdates().catch((error: unknown) => {
       logger.warn(
         'startup update check failed',
         error,
@@ -486,7 +486,7 @@ function startAutoCheckTimer(): void {
     return
   }
   autoCheckTimer = setInterval(() => {
-    void checkForUpdates().catch((error) => {
+    void checkForUpdates().catch((error: unknown) => {
       logger.warn(
         'scheduled update check failed',
         error,
@@ -610,7 +610,7 @@ export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
   // Close the gap where an update is already waiting: opting in should not leave that
   // update stuck behind the manual Download button, so start its download now.
   if (enabled && state.status === 'available') {
-    void downloadUpdate().catch((error) => {
+    void downloadUpdate().catch((error: unknown) => {
       logger.warn(
         'auto-download on-enable download failed',
         error,
@@ -636,7 +636,7 @@ export function setAutoCheckEnabled(enabled: boolean): AppUpdateState {
   })
   if (enabled) {
     startAutoCheckTimer()
-    void checkForUpdates().catch((error) => {
+    void checkForUpdates().catch((error: unknown) => {
       logger.warn(
         'auto-check enable update check failed',
         error,

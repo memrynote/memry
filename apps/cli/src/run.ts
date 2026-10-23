@@ -168,7 +168,7 @@ function parseCliValue(value: string): unknown {
   }
 }
 
-function parseJsonFlag(flags: Map<string, string[]>, key: string): unknown | undefined {
+function parseJsonFlag(flags: Map<string, string[]>, key: string): unknown {
   if (!flags.has(key)) return undefined
   return parseCliValue(getFlag(flags, key) ?? '')
 }
@@ -1940,7 +1940,8 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
           parsed.json,
           await app.calendar.bindings.list({
             sourceType: getFlag(parsed.flags, 'source-type') as
-              CalendarBindingListOptions['sourceType'] | undefined,
+              | CalendarBindingListOptions['sourceType']
+              | undefined,
             sourceId: getFlag(parsed.flags, 'source'),
             provider: getFlag(parsed.flags, 'provider'),
             includeArchived: hasFlag(parsed.flags, 'archived')

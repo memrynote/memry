@@ -24,6 +24,10 @@ import {
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
+import type * as FileOpsModule from './file-ops'
+import type * as FileScanModule from './file-scan'
+import type * as JournalFolderFollowModule from './journal-folder-follow'
+import type * as SceneFileModule from '../canvas/scene-file'
 
 const mockWatch = vi.hoisted(() => vi.fn())
 const baseConfig: VaultConfig = {
@@ -181,10 +185,6 @@ import {
   registerCanvasFolderHandlers,
   unregisterCanvasFolderHandlers
 } from '../ipc/canvas-folder-handlers'
-import type * as FileOpsModule from './file-ops'
-import type * as FileScanModule from './file-scan'
-import type * as JournalFolderFollowModule from './journal-folder-follow'
-import type * as SceneFileModule from '../canvas/scene-file'
 
 describe('vault watcher', () => {
   let vault: ReturnType<typeof createTestVault>

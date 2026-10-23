@@ -150,7 +150,7 @@ async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
     withPlainCheckboxMarkers(blocks) as never[]
   )
   const md = normalizeSerializedMarkdown(
-    await writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
+    writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements)
 }

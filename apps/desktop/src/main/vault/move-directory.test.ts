@@ -4,7 +4,6 @@ import * as os from 'os'
 import * as path from 'path'
 import { moveDirectory } from './move-directory'
 import type * as PromisesModule from 'fs/promises'
-import type * as FsModule from 'fs'
 
 const { windows } = vi.hoisted(() => ({
   windows: { held: false, lockedFiles: new Set<string>() }
@@ -37,7 +36,7 @@ vi.mock('fs/promises', async (importOriginal) => {
 // Windows and macOS resolve names case-insensitively; emulate that so the test
 // also holds on a case-sensitive filesystem.
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof FsModule>()
+  const actual = await importOriginal<typeof fs>()
   const existsSync = (p: string): boolean =>
     actual.existsSync(p) ||
     (actual.existsSync(path.dirname(p)) &&
