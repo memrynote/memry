@@ -135,7 +135,9 @@ describe('usePortalDeleteGuard: menu delete', () => {
       void request([id])
     })
     await user.click(await screen.findByText('removeHere'))
-    await waitFor(() => expect(removeFromPortal).toHaveBeenCalledWith([id]))
+    await waitFor(() => {
+      expect(removeFromPortal).toHaveBeenCalledWith([id])
+    })
     expect(editor.document).toHaveLength(2)
   })
 })
@@ -147,7 +149,9 @@ describe('usePortalDeleteGuard: keyboard delete', () => {
     act(() => {
       editor.removeBlocks([editor.document[0].id])
     })
-    await waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledTimes(1)
+    })
     const [message, options] = mocks.toast.mock.calls[0]
     expect(message).toBe('undoToast')
     expect(options.action.label).toBe('undo')
@@ -159,7 +163,9 @@ describe('usePortalDeleteGuard: keyboard delete', () => {
     act(() => {
       editor.removeBlocks([editor.document[0].id])
     })
-    await waitFor(() => expect(mocks.getUsage).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mocks.getUsage).toHaveBeenCalled()
+    })
     expect(mocks.toast).not.toHaveBeenCalled()
   })
 })

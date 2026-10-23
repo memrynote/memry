@@ -317,13 +317,28 @@ vi.mock('@/components/calendar/promote-external-dialog', () => ({
       <div>
         {errorMessage && <div role="alert">{errorMessage}</div>}
         {agentAccessOff && <div>promote agent warning</div>}
-        <button type="button" onClick={() => onConfirm(false)}>
+        <button
+          type="button"
+          onClick={() => {
+            onConfirm(false)
+          }}
+        >
           promote once
         </button>
-        <button type="button" onClick={() => onConfirm(true)}>
+        <button
+          type="button"
+          onClick={() => {
+            onConfirm(true)
+          }}
+        >
           promote remember
         </button>
-        <button type="button" onClick={() => onOpenChange(false)}>
+        <button
+          type="button"
+          onClick={() => {
+            onOpenChange(false)
+          }}
+        >
           close promote
         </button>
       </div>
@@ -497,12 +512,12 @@ describe('CalendarPage callback coverage', () => {
   it('drives view navigation, filters, source cleanup, and anchor callbacks', async () => {
     const { rerender } = renderPage()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.lastShellProps?.selectedImportedSourceIds).toEqual([
         'google-work',
         'google-home'
       ])
-    )
+    })
     expect(screen.getByTestId('calendar-items')).toHaveTextContent('External meeting')
     expect(screen.getByTestId('calendar-items')).toHaveTextContent('Hidden source meeting')
 
@@ -535,9 +550,9 @@ describe('CalendarPage callback coverage', () => {
 
     mocks.calendarSources = [source('google-work', 'Work')]
     rerender(<CalendarPageInDndContext />)
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.lastShellProps?.selectedImportedSourceIds).toEqual(['google-work'])
-    )
+    })
   })
 
   it('leaves a calendar nothing polls unticked, and subscribes it when ticked', async () => {
@@ -550,9 +565,9 @@ describe('CalendarPage callback coverage', () => {
     ]
     renderPage()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.lastShellProps?.selectedImportedSourceIds).toEqual(['google-work'])
-    )
+    })
 
     mocks.lastShellProps?.onToggleImportedSource('google-home')
 
@@ -562,7 +577,9 @@ describe('CalendarPage callback coverage', () => {
   it('does not re-subscribe a calendar that is already syncing', async () => {
     renderPage()
 
-    await waitFor(() => expect(mocks.lastShellProps).not.toBeNull())
+    await waitFor(() => {
+      expect(mocks.lastShellProps).not.toBeNull()
+    })
     mocks.lastShellProps?.onToggleImportedSource('google-home')
     mocks.lastShellProps?.onToggleImportedSource('google-home')
 
@@ -576,22 +593,24 @@ describe('CalendarPage callback coverage', () => {
     expect(screen.getByTestId('popover-mode')).toHaveTextContent('create')
     fireEvent.click(screen.getByText('draft change'))
     fireEvent.click(screen.getByText('save popover'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.createEvent).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Draft title' })
       )
-    )
+    })
 
     fireEvent.click(screen.getByText('select event'))
     await waitFor(() => expect(screen.getByTestId('popover-mode')).toHaveTextContent('edit'))
     fireEvent.click(screen.getByText('draft change'))
     fireEvent.click(screen.getByText('save popover'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.updateEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'event-1' }))
-    )
+    })
 
     fireEvent.click(screen.getByText('quick save'))
-    await waitFor(() => expect(mocks.createEvent).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mocks.createEvent).toHaveBeenCalledTimes(2)
+    })
 
     fireEvent.click(screen.getByText('select task'))
     expect(screen.getByText('task popover:task-1')).toBeInTheDocument()
@@ -600,11 +619,11 @@ describe('CalendarPage callback coverage', () => {
 
     fireEvent.click(screen.getByText('select external'))
     fireEvent.click(await screen.findByText('promote remember'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.setCalendarGoogleSettings).toHaveBeenCalledWith({
         promoteConfirmDismissed: true
       })
-    )
+    })
     expect(mocks.promoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
 
     mocks.promoteExternal.mockResolvedValueOnce({ success: false, error: 'Promote denied' })
@@ -636,9 +655,9 @@ describe('CalendarPage callback coverage', () => {
       expect(mocks.promoteExternal).not.toHaveBeenCalled()
 
       fireEvent.click(screen.getByText('promote once'))
-      await waitFor(() =>
+      await waitFor(() => {
         expect(mocks.promoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
-      )
+      })
     }
   )
 
@@ -651,9 +670,9 @@ describe('CalendarPage callback coverage', () => {
 
     fireEvent.click(screen.getByText('select external'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.promoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
-    )
+    })
     expect(screen.queryByText('promote agent warning')).not.toBeInTheDocument()
   })
 
@@ -665,7 +684,9 @@ describe('CalendarPage callback coverage', () => {
     const expectedDueTime = `${String(nextStart.getHours()).padStart(2, '0')}:${String(nextStart.getMinutes()).padStart(2, '0')}`
 
     fireEvent.click(screen.getByText('move task'))
-    await waitFor(() => expect(mocks.taskUpdate).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.taskUpdate).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.taskUpdate).toHaveBeenCalledWith({
       id: 'task-1',
       dueDate: expectedDueDate,
@@ -682,7 +703,9 @@ describe('CalendarPage callback coverage', () => {
     renderPage()
 
     fireEvent.click(screen.getByText('move task'))
-    await waitFor(() => expect(mocks.taskUpdate).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.taskUpdate).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.taskUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'task-1', durationMinutes: 60 })
     )
@@ -692,7 +715,9 @@ describe('CalendarPage callback coverage', () => {
     renderPage()
 
     fireEvent.click(screen.getByText('move event'))
-    await waitFor(() => expect(mocks.updateEvent).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.updateEvent).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.updateEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'event-1',
@@ -714,7 +739,7 @@ describe('CalendarPage callback coverage', () => {
     renderPage()
 
     fireEvent.click(screen.getByText('select reminder'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'tasks',
@@ -722,7 +747,7 @@ describe('CalendarPage callback coverage', () => {
           viewState: expect.objectContaining({ openTaskId: 'task-9' })
         })
       )
-    )
+    })
     expect(mocks.reminderGet).toHaveBeenCalledWith('reminder-1')
   })
 
@@ -731,11 +756,11 @@ describe('CalendarPage callback coverage', () => {
     renderPage()
 
     fireEvent.click(screen.getByText('select reminder'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.logError).toHaveBeenCalledWith('Calendar reminder has no openable target', {
         reminderId: 'reminder-1'
       })
-    )
+    })
     expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
@@ -744,12 +769,12 @@ describe('CalendarPage callback coverage', () => {
     renderPage()
 
     fireEvent.click(screen.getByText('select reminder'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.logError).toHaveBeenCalledWith('Failed to open reminder from calendar', {
         reminderId: 'reminder-1',
         error: 'IPC down'
       })
-    )
+    })
     expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
@@ -767,17 +792,19 @@ describe('CalendarPage callback coverage', () => {
 
     fireEvent.click(screen.getByText('select inbox'))
     fireEvent.click(await screen.findByText('unsnooze item'))
-    await waitFor(() => expect(mocks.unsnooze).toHaveBeenCalledWith('snooze-1'))
+    await waitFor(() => {
+      expect(mocks.unsnooze).toHaveBeenCalledWith('snooze-1')
+    })
 
     mocks.snooze.mockResolvedValueOnce({ success: false, error: 'Snooze denied' })
     fireEvent.click(screen.getByText('select inbox'))
     fireEvent.click(await screen.findByText('reschedule item'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.logError).toHaveBeenCalledWith(
         'Failed to reschedule inbox item',
         expect.objectContaining({ itemId: 'snooze-1', error: 'Snooze denied' })
       )
-    )
+    })
     fireEvent.click(screen.getByText('dismiss inbox'))
 
     fireEvent.click(screen.getByText('delete event'))
@@ -786,16 +813,18 @@ describe('CalendarPage callback coverage', () => {
 
     fireEvent.click(screen.getByText('delete event'))
     fireEvent.click(await screen.findByText('confirm delete'))
-    await waitFor(() => expect(mocks.deleteMutateAsync).toHaveBeenCalledWith('event-1'))
+    await waitFor(() => {
+      expect(mocks.deleteMutateAsync).toHaveBeenCalledWith('event-1')
+    })
 
     mocks.deleteMutateAsync.mockResolvedValueOnce({ success: false, error: 'Delete denied' })
     fireEvent.click(screen.getByText('delete event'))
     fireEvent.click(await screen.findByText('confirm delete'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.logError).toHaveBeenCalledWith(
         'Failed to delete calendar event',
         expect.objectContaining({ eventId: 'event-1', error: 'Delete denied' })
       )
-    )
+    })
   })
 })

@@ -36,7 +36,7 @@ vi.mock('@memry/sync-client/tombstone-clocks', () => ({
     _itemId: string,
     current: Record<string, number> | null | undefined,
     deviceId: string
-  ) => ({ ...(current ?? {}), [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
+  ) => ({ ...current, [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
 }))
 
 vi.mock('@memry/storage-data', () => ({
@@ -81,7 +81,7 @@ type SnapshotCall = {
   extra: string[]
 }
 
-class TestContentSync extends ContentSyncService<Record<string, unknown>, []> {
+class TestContentSync extends ContentSyncService<Record<string, unknown>> {
   readonly itemType = 'note' as const
   protected readonly log = mocks.log as unknown as Logger.LogFunctions
   readonly snapshotCalls: SnapshotCall[] = []

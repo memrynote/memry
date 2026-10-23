@@ -12,7 +12,9 @@ function makeDoc(): { doc: Y.Doc; text: Y.Text; undoManager: Y.UndoManager } {
 }
 
 function type(doc: Y.Doc, text: Y.Text, value: string): void {
-  doc.transact(() => text.insert(text.length, value), TRACKED)
+  doc.transact(() => {
+    text.insert(text.length, value)
+  }, TRACKED)
 }
 
 describe('rearmUndoManager', () => {

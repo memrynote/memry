@@ -9,7 +9,7 @@ test.describe('Network control', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const [triggerA, triggerB] = await Promise.all([
       pageA.evaluate(() => window.api.syncOps.triggerSync()),

@@ -12,7 +12,9 @@ describe('lowerProcessPriority', () => {
 
       child.kill()
       await new Promise((resolve) => child.once('exit', resolve))
-      expect(() => lowerProcessPriority(child.pid)).not.toThrow()
+      expect(() => {
+        lowerProcessPriority(child.pid)
+      }).not.toThrow()
     } finally {
       child.kill()
     }

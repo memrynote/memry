@@ -682,7 +682,9 @@ export const CanvasFrameLayer = ({
               data-testid={`canvas-frame-chip-${frame.id}`}
               style={{ transform: chipTransform(frame) }}
               title={t('canvas.frame.editBinding')}
-              onClick={() => setBindingFrameId(frame.id)}
+              onClick={() => {
+                setBindingFrameId(frame.id)
+              }}
               className={`${className} pointer-events-auto transition-colors hover:bg-muted hover:text-foreground`}
             >
               {content}

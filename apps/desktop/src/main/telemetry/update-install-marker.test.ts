@@ -147,7 +147,9 @@ describe('update install marker', () => {
 
     // #when the install handoff records its attempt
     // #then the write failure never propagates
-    expect(() => markUpdateInstallStarted('2026.806.2')).not.toThrow()
+    expect(() => {
+      markUpdateInstallStarted('2026.806.2')
+    }).not.toThrow()
   })
 
   describe('installer hand-off outcomes', () => {

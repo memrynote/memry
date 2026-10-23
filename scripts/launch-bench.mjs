@@ -556,7 +556,7 @@ async function readRendererMetrics(webSocketDebuggerUrl) {
 
     const noteReadableMs = await readNoteReadableMs(client)
 
-    return { ...(evaluated.result?.value ?? {}), noteReadableMs }
+    return { ...evaluated.result?.value, noteReadableMs }
   } finally {
     client.close()
   }

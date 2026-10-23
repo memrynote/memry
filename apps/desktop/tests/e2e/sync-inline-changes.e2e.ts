@@ -63,7 +63,7 @@ test.describe('Sync inline changes (#2292)', () => {
     proxyB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const taskId = await pageA.evaluate(async () => {

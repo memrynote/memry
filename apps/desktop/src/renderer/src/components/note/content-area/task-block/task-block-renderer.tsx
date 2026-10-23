@@ -694,7 +694,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     editor.removeBlocks([block])
   }, [block, editor])
 
-  const openDetail = useCallback(() => openTaskDetail(taskId), [openTaskDetail, taskId])
+  const openDetail = useCallback(() => {
+    openTaskDetail(taskId)
+  }, [openTaskDetail, taskId])
 
   const handleOpenRelatedItem = useCallback(
     (ref: RelatedRef, itemTitle: string | null) => {
@@ -779,7 +781,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         ref={titleInputRef}
         type="text"
         value={editTitle}
-        onChange={(e) => handleTitleChange(e.target.value)}
+        onChange={(e) => {
+          handleTitleChange(e.target.value)
+        }}
         onBlur={handleTitleBlur}
         onKeyDown={handleTitleKeyDown}
         className="grow shrink min-w-24 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
@@ -930,7 +934,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
           hasActiveReminder: reminderSet,
           hostNoteId
         })}
-        onPick={(id) => handlePropertyOpenChange(id, true)}
+        onPick={(id) => {
+          handlePropertyOpenChange(id, true)
+        }}
         className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 group-focus/taskblock:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
       />
       {navigateArrow}

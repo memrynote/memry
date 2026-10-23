@@ -22,9 +22,9 @@ describe('AgentRuntime concurrent-turn lock', () => {
 
     agentRuntime.acquireTurnLock('conversation-1')
 
-    expect(() => agentRuntime.acquireTurnLock('conversation-1')).toThrow(
-      /already a turn in flight/i
-    )
+    expect(() => {
+      agentRuntime.acquireTurnLock('conversation-1')
+    }).toThrow(/already a turn in flight/i)
   })
 
   it('releases the lock when explicitly cleared', () => {
@@ -33,7 +33,9 @@ describe('AgentRuntime concurrent-turn lock', () => {
     agentRuntime.acquireTurnLock('conversation-1')
     agentRuntime.releaseTurnLock('conversation-1')
 
-    expect(() => agentRuntime.acquireTurnLock('conversation-1')).not.toThrow()
+    expect(() => {
+      agentRuntime.acquireTurnLock('conversation-1')
+    }).not.toThrow()
   })
 
   it('locks per conversation, not globally', () => {
@@ -41,6 +43,8 @@ describe('AgentRuntime concurrent-turn lock', () => {
 
     agentRuntime.acquireTurnLock('conversation-1')
 
-    expect(() => agentRuntime.acquireTurnLock('conversation-2')).not.toThrow()
+    expect(() => {
+      agentRuntime.acquireTurnLock('conversation-2')
+    }).not.toThrow()
   })
 })

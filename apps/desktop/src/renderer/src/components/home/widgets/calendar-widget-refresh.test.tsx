@@ -114,7 +114,11 @@ function renderApp(): { showBoard: (visible: boolean) => void } {
     </QueryClientProvider>
   )
   const view = render(tree(true))
-  return { showBoard: (visible: boolean) => view.rerender(tree(visible)) }
+  return {
+    showBoard: (visible: boolean) => {
+      view.rerender(tree(visible))
+    }
+  }
 }
 
 describe('home calendar widget stays current', () => {
@@ -135,25 +139,37 @@ describe('home calendar widget stays current', () => {
 
   it('shows an event created elsewhere while the board is open', async () => {
     renderApp()
-    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    await waitFor(() => {
+      expect(showsEvent('Standup')).toBe(true)
+    })
     expect(mockGetRange).toHaveBeenCalledTimes(1)
 
     server.items = [...server.items, projectionItem('e2', 'Design review', 14, 'event')]
     emit({ entityType: 'calendar_event', id: 'e2' })
 
-    await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(showsEvent('Design review')).toBe(true))
+    await waitFor(() => {
+      expect(mockGetRange).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(showsEvent('Design review')).toBe(true)
+    })
   })
 
   it('shows a provider event that syncs in while the board is open', async () => {
     renderApp()
-    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    await waitFor(() => {
+      expect(showsEvent('Standup')).toBe(true)
+    })
 
     server.items = [...server.items, projectionItem('g1', 'Sales sync', 15, 'external_event')]
     emit({ entityType: 'calendar_external_event', id: 'g1' })
 
-    await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(showsEvent('Sales sync')).toBe(true))
+    await waitFor(() => {
+      expect(mockGetRange).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(showsEvent('Sales sync')).toBe(true)
+    })
   })
 
   // The invalidation is the assertion, not the render: the board's range is still
@@ -162,7 +178,9 @@ describe('home calendar widget stays current', () => {
   // a second time.
   it('shows an event created while the board tab was unmounted', async () => {
     const { showBoard } = renderApp()
-    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    await waitFor(() => {
+      expect(showsEvent('Standup')).toBe(true)
+    })
     expect(mockGetRange).toHaveBeenCalledTimes(1)
 
     showBoard(false)
@@ -172,28 +190,40 @@ describe('home calendar widget stays current', () => {
     emit({ entityType: 'calendar_event', id: 'e2' })
 
     showBoard(true)
-    await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(showsEvent('Design review')).toBe(true))
+    await waitFor(() => {
+      expect(mockGetRange).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(showsEvent('Design review')).toBe(true)
+    })
     expect(showsEvent('Standup')).toBe(true)
   })
 
   it('shows a note that a calendar settings change brought into the projection', async () => {
     renderApp()
-    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    await waitFor(() => {
+      expect(showsEvent('Standup')).toBe(true)
+    })
     expect(mockGetRange).toHaveBeenCalledTimes(1)
 
     server.items = [...server.items, projectionItem('n1', 'Trip planning', 16, 'note')]
     emitSettings('calendar')
 
-    await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(showsEvent('Trip planning')).toBe(true))
+    await waitFor(() => {
+      expect(mockGetRange).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(showsEvent('Trip planning')).toBe(true)
+    })
   })
 
   // The trailing calendar emit is the control: it proves the same settle window is
   // long enough to observe a refetch, so the first assertion is not passing vacuously.
   it('ignores a settings change under another key', async () => {
     renderApp()
-    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    await waitFor(() => {
+      expect(showsEvent('Standup')).toBe(true)
+    })
     expect(mockGetRange).toHaveBeenCalledTimes(1)
 
     server.items = [...server.items, projectionItem('n1', 'Trip planning', 16, 'note')]
@@ -211,7 +241,9 @@ describe('home calendar widget stays current', () => {
 
   it('shows a provider event that syncs in while the board tab was unmounted', async () => {
     const { showBoard } = renderApp()
-    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    await waitFor(() => {
+      expect(showsEvent('Standup')).toBe(true)
+    })
 
     showBoard(false)
 
@@ -219,7 +251,11 @@ describe('home calendar widget stays current', () => {
     emit({ entityType: 'calendar_external_event', id: 'g1' })
 
     showBoard(true)
-    await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(showsEvent('Sales sync')).toBe(true))
+    await waitFor(() => {
+      expect(mockGetRange).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(showsEvent('Sales sync')).toBe(true)
+    })
   })
 })

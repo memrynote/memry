@@ -96,7 +96,9 @@ export const BulkPriorityDialog = ({
           {/* Priority options */}
           <RadioGroup
             value={selectedPriority}
-            onValueChange={(value) => setSelectedPriority(value as Priority)}
+            onValueChange={(value) => {
+              setSelectedPriority(value as Priority)
+            }}
             className="space-y-2"
           >
             {priorityOptions.map((option) => (
@@ -108,7 +110,9 @@ export const BulkPriorityDialog = ({
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:bg-accent/50'
                 )}
-                onClick={() => setSelectedPriority(option.value)}
+                onClick={() => {
+                  setSelectedPriority(option.value)
+                }}
               >
                 <RadioGroupItem value={option.value} id={option.value} />
                 {option.color ? (
@@ -129,7 +133,9 @@ export const BulkPriorityDialog = ({
               <Checkbox
                 id="include-completed-priority"
                 checked={includeCompleted}
-                onCheckedChange={(checked) => setIncludeCompleted(checked === true)}
+                onCheckedChange={(checked) => {
+                  setIncludeCompleted(checked === true)
+                }}
               />
               <Label
                 htmlFor="include-completed-priority"

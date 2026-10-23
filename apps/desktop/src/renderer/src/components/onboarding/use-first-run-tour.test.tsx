@@ -86,13 +86,17 @@ describe('useFirstRunTour', () => {
   })
 
   it('starts the tour when the flag is unset', async () => {
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
     expect(driveSpy).toHaveBeenCalledTimes(1)
   })
 
   it('sets the flag when the tour is destroyed (finish or skip)', async () => {
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
     expect(localStorage.getItem(TOUR_KEY)).toBeNull()
     capturedConfig?.onDestroyed?.()
@@ -103,7 +107,9 @@ describe('useFirstRunTour', () => {
     const announced = vi.fn()
     window.addEventListener(STAR_PROMPT_EVENT, announced)
 
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
     expect(localStorage.getItem(STAR_PROMPT_KEY)).toBeNull()
 
@@ -119,7 +125,9 @@ describe('useFirstRunTour', () => {
     window.addEventListener(STAR_PROMPT_EVENT, announced)
     localStorage.setItem(STAR_PROMPT_KEY, 'done')
 
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
     capturedConfig?.onDestroyed?.()
 
@@ -131,14 +139,18 @@ describe('useFirstRunTour', () => {
 
   it('does not start the tour when the flag is already set', async () => {
     localStorage.setItem(TOUR_KEY, '1')
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
     expect(driveSpy).not.toHaveBeenCalled()
   })
 
   it('keeps only the welcome step and steps whose target is mounted', async () => {
     document.body.innerHTML = '<button data-tour="new-note">new</button>'
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
 
     const steps = capturedConfig?.steps ?? []
@@ -161,7 +173,9 @@ describe('useFirstRunTour', () => {
     document.querySelector('[data-tour="rsb-day"]')?.addEventListener('click', dayClick)
     document.querySelector('[data-tour="rsb-agent"]')?.addEventListener('click', agentClick)
 
-    renderHook(() => useFirstRunTour())
+    renderHook(() => {
+      useFirstRunTour()
+    })
     await settle()
 
     const agentStep = capturedConfig?.steps?.find((s) => s.element === '[data-tour="rsb-agent"]')
@@ -180,7 +194,9 @@ describe('useFirstRunTour', () => {
     it('skips the tour for an existing user whose vault already has notes', async () => {
       vault.noteTotal = 42
 
-      renderHook(() => useFirstRunTour())
+      renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
 
       expect(driveSpy).not.toHaveBeenCalled()
@@ -191,14 +207,18 @@ describe('useFirstRunTour', () => {
     it('skips the tour when the vault settings record onboarding as completed', async () => {
       vault.onboardingCompleted = true
 
-      renderHook(() => useFirstRunTour())
+      renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
 
       expect(driveSpy).not.toHaveBeenCalled()
     })
 
     it('never shows the tour again once finished, even after localStorage is lost', async () => {
-      const firstLaunch = renderHook(() => useFirstRunTour())
+      const firstLaunch = renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
       expect(driveSpy).toHaveBeenCalledTimes(1)
       capturedConfig?.onDestroyed?.()
@@ -206,7 +226,9 @@ describe('useFirstRunTour', () => {
       firstLaunch.unmount()
 
       localStorage.clear()
-      renderHook(() => useFirstRunTour())
+      renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
 
       expect(driveSpy).toHaveBeenCalledTimes(1)
@@ -216,7 +238,9 @@ describe('useFirstRunTour', () => {
     it('carries a pre-fix localStorage flag into the vault settings', async () => {
       localStorage.setItem(TOUR_KEY, '1')
 
-      renderHook(() => useFirstRunTour())
+      renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
 
       expect(driveSpy).not.toHaveBeenCalled()
@@ -228,7 +252,9 @@ describe('useFirstRunTour', () => {
         throw new Error('vault closed')
       })
 
-      renderHook(() => useFirstRunTour())
+      renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
       capturedConfig?.onDestroyed?.()
       await settle()
@@ -243,7 +269,9 @@ describe('useFirstRunTour', () => {
         throw new Error('no vault open')
       })
 
-      renderHook(() => useFirstRunTour())
+      renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
 
       expect(driveSpy).not.toHaveBeenCalled()
@@ -282,7 +310,9 @@ describe('useFirstRunTour', () => {
         throw new Error('chunk load failed')
       })
 
-      render(() => hook())
+      render(() => {
+        hook()
+      })
       await settle()
 
       expect(driveSpy).not.toHaveBeenCalled()
@@ -296,7 +326,9 @@ describe('useFirstRunTour', () => {
         () => new Promise<void>((resolve) => (finishLoad = resolve))
       )
 
-      const { unmount } = render(() => hook())
+      const { unmount } = render(() => {
+        hook()
+      })
       await settle()
       unmount()
       finishLoad()
@@ -325,14 +357,18 @@ describe('useFirstRunTour', () => {
       return () => {
         const frames = [...pending.values()]
         pending.clear()
-        frames.forEach((cb) => cb(0))
+        frames.forEach((cb) => {
+          cb(0)
+        })
       }
     }
 
     it('cancels the queued frame when unmounted before the tour starts', async () => {
       const flush = deferFrames()
 
-      const { unmount } = renderHook(() => useFirstRunTour())
+      const { unmount } = renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
       unmount()
       flush()
@@ -341,7 +377,9 @@ describe('useFirstRunTour', () => {
     })
 
     it('never starts the tour when unmounted before the onboarding record is read', async () => {
-      const { unmount } = renderHook(() => useFirstRunTour())
+      const { unmount } = renderHook(() => {
+        useFirstRunTour()
+      })
       unmount()
       await settle()
 
@@ -349,7 +387,9 @@ describe('useFirstRunTour', () => {
     })
 
     it('destroys the driver instance when unmounted while the tour is running', async () => {
-      const { unmount } = renderHook(() => useFirstRunTour())
+      const { unmount } = renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
       expect(driveSpy).toHaveBeenCalledTimes(1)
 
@@ -362,7 +402,9 @@ describe('useFirstRunTour', () => {
       const announced = vi.fn()
       window.addEventListener(STAR_PROMPT_EVENT, announced)
 
-      const { unmount } = renderHook(() => useFirstRunTour())
+      const { unmount } = renderHook(() => {
+        useFirstRunTour()
+      })
       await settle()
       unmount()
 
@@ -377,7 +419,12 @@ describe('useFirstRunTour', () => {
     it('still starts exactly one tour when effects are double-invoked', async () => {
       const flush = deferFrames()
 
-      renderHook(() => useFirstRunTour(), { wrapper: StrictMode })
+      renderHook(
+        () => {
+          useFirstRunTour()
+        },
+        { wrapper: StrictMode }
+      )
       await settle()
       flush()
 

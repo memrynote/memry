@@ -46,7 +46,9 @@ export const useOpenTaskDetail = (): OpenTaskDetail => {
   const openInHost = useContext(TaskDetailHostContext)
   const { openTab } = useTabActions()
   const openInTasks = useCallback(
-    (taskId: string) => openTaskInTasksTab(openTab, taskId),
+    (taskId: string) => {
+      openTaskInTasksTab(openTab, taskId)
+    },
     [openTab]
   )
   return openInHost ?? openInTasks
@@ -55,7 +57,9 @@ export const useOpenTaskDetail = (): OpenTaskDetail => {
 /** One per tab: the task detail drawer any surface in the tab can open in place. */
 export const TaskDetailHost = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
-  const close = useCallback(() => setOpenTaskId(null), [])
+  const close = useCallback(() => {
+    setOpenTaskId(null)
+  }, [])
 
   return (
     <TaskDetailHostContext.Provider value={setOpenTaskId}>

@@ -352,7 +352,9 @@ const ListView = ({
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [handleKeyDown])
 
   // Click outside to cancel Quick-File
@@ -369,7 +371,9 @@ const ListView = ({
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [quickFileItemId])
 
   // Quick-File handlers

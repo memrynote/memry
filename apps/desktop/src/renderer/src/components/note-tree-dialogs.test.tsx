@@ -38,15 +38,17 @@ describe('NoteTreeDeleteDialog', () => {
   it('asks main which tasks the notes and folders carry', async () => {
     getCarriedTasks.mockResolvedValue({ taskIds: [] })
     renderDialog()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(getCarriedTasks).toHaveBeenCalledWith({ noteIds: ['n1'], folderPaths: ['Archive'] })
-    )
+    })
   })
 
   it('offers nothing extra when the notes carry no tasks', async () => {
     getCarriedTasks.mockResolvedValue({ taskIds: [] })
     const onConfirm = renderDialog()
-    await waitFor(() => expect(getCarriedTasks).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(getCarriedTasks).toHaveBeenCalled()
+    })
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Delete 2' }))
@@ -94,7 +96,9 @@ describe('NoteTreeDeleteDialog journal warning', () => {
 
   it('says nothing about the journal for any other folder', async () => {
     renderDialog(vi.fn(), 'Daily')
-    await waitFor(() => expect(getCarriedTasks).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(getCarriedTasks).toHaveBeenCalled()
+    })
     expect(screen.queryByText(/This includes your journal folder/)).not.toBeInTheDocument()
   })
 })

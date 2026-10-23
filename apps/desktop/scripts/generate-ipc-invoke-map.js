@@ -277,7 +277,7 @@ function generateFileContent(entries) {
   lines.push('  ReturnType<MainIpcInvokeHandlers[C]>')
   lines.push('')
 
-  return `${lines.join('\n')}`
+  return lines.join('\n')
 }
 
 function main() {

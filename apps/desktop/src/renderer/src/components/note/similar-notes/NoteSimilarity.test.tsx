@@ -116,11 +116,11 @@ describe('NoteSimilarNotes', () => {
 
     await user.click(screen.getByRole('button', { name: 'similarNotes.addToCanvasAria:B' }))
     await user.click(await screen.findByText('Board'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.addItemsToCanvas).toHaveBeenCalledWith('c1', [
         { entityType: 'note', entityId: 'b' }
       ])
-    )
+    })
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       'similarNotes.addedToCanvas:B',
       expect.objectContaining({ action: expect.anything() })
@@ -129,8 +129,8 @@ describe('NoteSimilarNotes', () => {
     mocks.addItemsToCanvas.mockResolvedValueOnce({ mutation: { applied: [] } })
     await user.click(screen.getByRole('button', { name: 'similarNotes.addToCanvasAria:B' }))
     await user.click(await screen.findByText('Board'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.toastInfo).toHaveBeenCalledWith('similarNotes.alreadyOnCanvas:B')
-    )
+    })
   })
 })

@@ -76,13 +76,18 @@ function mountWith(i18n: I18nInstance): void {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
   })
-  renderHook(() => useInboxNotifications(), {
-    wrapper: ({ children }) => (
-      <I18nextProvider i18n={i18n}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </I18nextProvider>
-    )
-  })
+  renderHook(
+    () => {
+      useInboxNotifications()
+    },
+    {
+      wrapper: ({ children }) => (
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </I18nextProvider>
+      )
+    }
+  )
 }
 
 beforeAll(async () => {

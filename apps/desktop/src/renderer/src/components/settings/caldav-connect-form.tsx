@@ -321,7 +321,9 @@ function CaldavAccountFields({
         <CalendarFieldRow label={t('calendar.caldav.presetLabel')}>
           <select
             value={presetId}
-            onChange={(event) => onPresetChange(event.target.value as CaldavPresetId)}
+            onChange={(event) => {
+              onPresetChange(event.target.value as CaldavPresetId)
+            }}
             aria-label={t('calendar.caldav.presetLabel')}
             className="h-7 w-full rounded-md border border-border bg-transparent px-2 text-xs/4 text-foreground"
           >
@@ -344,7 +346,9 @@ function CaldavAccountFields({
         >
           <Input
             value={serverInput}
-            onChange={(event) => onServerInputChange(event.target.value)}
+            onChange={(event) => {
+              onServerInputChange(event.target.value)
+            }}
             placeholder={
               preset.hostTemplate
                 ? t('calendar.caldav.hostPlaceholder')
@@ -376,7 +380,9 @@ function CaldavAccountFields({
         >
           <Input
             value={username}
-            onChange={(event) => onUsernameChange(event.target.value)}
+            onChange={(event) => {
+              onUsernameChange(event.target.value)
+            }}
             aria-label={t('calendar.providers.basic.usernameLabel')}
             spellCheck={false}
             autoComplete="username"
@@ -388,7 +394,9 @@ function CaldavAccountFields({
         <Input
           type="password"
           value={password}
-          onChange={(event) => onCredentialChange(event.target.value)}
+          onChange={(event) => {
+            onCredentialChange(event.target.value)
+          }}
           aria-label={t('calendar.providers.basic.passwordLabel')}
           autoComplete="current-password"
           className={CALENDAR_FIELD_INPUT}

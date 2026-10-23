@@ -335,7 +335,9 @@ describe('CalendarPage', () => {
 
       renderWithProviders(<CalendarPageInDndContext />)
 
-      await waitFor(() => expect(mockListSources).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(mockListSources).toHaveBeenCalled()
+      })
       expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
     })
 
@@ -344,7 +346,9 @@ describe('CalendarPage', () => {
 
       renderWithProviders(<CalendarPageInDndContext />)
 
-      await waitFor(() => expect(window.api.settings.getCalendarGoogleSettings).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(window.api.settings.getCalendarGoogleSettings).toHaveBeenCalled()
+      })
       expect(screen.queryByRole('heading', { name: PROMPT_TITLE })).not.toBeInTheDocument()
     })
 
@@ -492,7 +496,9 @@ describe('CalendarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
 
-    await waitFor(() => expect(screen.getAllByText('Planning block').length).toBeGreaterThan(0))
+    await waitFor(() => {
+      expect(screen.getAllByText('Planning block').length).toBeGreaterThan(0)
+    })
 
     expect(screen.getAllByText('Due draft').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Medication reminder').length).toBeGreaterThan(0)
@@ -566,7 +572,9 @@ describe('CalendarPage', () => {
   it('lands on today when nothing is stored', async () => {
     renderWithProviders(<CalendarPageInDndContext />)
 
-    await waitFor(() => expect(mockUseCalendarRange).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockUseCalendarRange).toHaveBeenCalled()
+    })
     const today = localDateString()
     const lastRange = mockUseCalendarRange.mock.lastCall?.[0]
     // The fetched window must contain today, whatever view is showing.
@@ -586,7 +594,9 @@ describe('CalendarPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'All day' }))
     fireEvent.pointerDown(screen.getByTestId('event-edit-save'), { button: 0 })
 
-    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockCreateEvent).toHaveBeenCalled()
+    })
     expect(mockCreateEvent.mock.lastCall?.[0]).toEqual(
       expect.objectContaining({
         title: 'Launch day',
@@ -606,14 +616,14 @@ describe('CalendarPage', () => {
     await user.click(await screen.findByText('Planning block'))
     fireEvent.pointerDown(await screen.findByTestId('event-edit-save'), { button: 0 })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUpdateEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'event-1',
           title: 'Planning block'
         })
       )
-    )
+    })
   })
 
   it('renders projected task, reminder, and snooze items with distinct styling markers', async () => {
@@ -622,7 +632,9 @@ describe('CalendarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Day' }))
 
-    await waitFor(() => expect(screen.getAllByText('Due draft').length).toBeGreaterThan(0))
+    await waitFor(() => {
+      expect(screen.getAllByText('Due draft').length).toBeGreaterThan(0)
+    })
 
     expect(screen.getAllByText('Due draft')[0].closest('[data-visual-type]')).toHaveAttribute(
       'data-visual-type',
@@ -653,7 +665,9 @@ describe('CalendarPage', () => {
 
     await user.click((await screen.findAllByText('Review investor email'))[0])
     await user.click(screen.getByRole('button', { name: 'Unsnooze now' }))
-    await waitFor(() => expect(mockUnsnooze).toHaveBeenCalledWith('snooze-1'))
+    await waitFor(() => {
+      expect(mockUnsnooze).toHaveBeenCalledWith('snooze-1')
+    })
   })
 
   // Skipping the confirmation also requires agent access to Google events to be on;
@@ -690,9 +704,9 @@ describe('CalendarPage', () => {
 
     await user.click(await screen.findByText('Customer call'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockPromoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
-    )
+    })
     expect(api.settings.setCalendarGoogleSettings).not.toHaveBeenCalled()
     expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
   })
@@ -765,7 +779,9 @@ describe('CalendarPage', () => {
 
     fireEvent.contextMenu(trigger)
 
-    await waitFor(() => expect(showContextMenu).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(showContextMenu).toHaveBeenCalled()
+    })
     expect(showContextMenu.mock.lastCall?.[0]).toEqual([
       expect.objectContaining({ id: 'add-to-project', label: 'Add to project' }),
       expect.objectContaining({ id: 'delete', label: 'Delete event' })
@@ -777,7 +793,9 @@ describe('CalendarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
-    await waitFor(() => expect(mockDeleteEvent).toHaveBeenCalledWith('event-1'))
+    await waitFor(() => {
+      expect(mockDeleteEvent).toHaveBeenCalledWith('event-1')
+    })
   })
 
   it('warns about Google Calendar when deleting a Google-bound event', async () => {
@@ -797,7 +815,9 @@ describe('CalendarPage', () => {
     expect(dialog).toHaveTextContent(/google calendar/i)
 
     await user.click(screen.getByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(mockDeleteEvent).toHaveBeenCalledWith('event-google'))
+    await waitFor(() => {
+      expect(mockDeleteEvent).toHaveBeenCalledWith('event-google')
+    })
   })
 
   it('cancels delete without calling the mutation', async () => {

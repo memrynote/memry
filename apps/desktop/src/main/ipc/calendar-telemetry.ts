@@ -15,7 +15,7 @@ export const trackCalendar = (
   action: string,
   source?: string,
   metrics?: { itemCount?: number }
-): void =>
+): void => {
   trackMainEvent(name, {
     surface: 'calendar',
     action,
@@ -23,3 +23,4 @@ export const trackCalendar = (
     result: 'success',
     metrics
   })
+}

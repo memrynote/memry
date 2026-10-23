@@ -8,7 +8,7 @@ import type {
   SettingsSyncPayload
 } from '@memry/contracts/settings-sync'
 import { increment } from '@memry/sync-client/vector-clock'
-import { SyncQueueManager } from './queue'
+import type { SyncQueueManager } from './queue'
 import { mergeSettingsPayloads, setSettingsPath } from './settings-merge'
 import { createLogger } from './logging'
 import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'

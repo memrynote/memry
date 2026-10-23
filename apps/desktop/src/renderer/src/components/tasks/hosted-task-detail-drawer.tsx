@@ -98,8 +98,9 @@ export const HostedTaskDetailDrawer = ({
   )
 
   const handleCanvasClick = useCallback(
-    (canvasId: string, title: string | null) =>
-      openTab(canvasTabData({ id: canvasId, title }, tCommon('canvas.untitled'))),
+    (canvasId: string, title: string | null) => {
+      openTab(canvasTabData({ id: canvasId, title }, tCommon('canvas.untitled')))
+    },
     [openTab, tCommon]
   )
 

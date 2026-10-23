@@ -291,7 +291,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
     renderGoogleCalendarConnection()
 
     const count = await screen.findByTestId('calendar-provider-count-google')
-    await waitFor(() => expect(count).toHaveAttribute('data-total-count', '3'))
+    await waitFor(() => {
+      expect(count).toHaveAttribute('data-total-count', '3')
+    })
     expect(count).toHaveAttribute('data-selected-count', '1')
   })
 
@@ -309,7 +311,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
     renderGoogleCalendarConnection()
 
     const work = await screen.findByTestId('calendar-source-row-google-calendar-work')
-    await waitFor(() => expect(work).toHaveTextContent(/Default|defaultPill/))
+    await waitFor(() => {
+      expect(work).toHaveTextContent(/Default|defaultPill/)
+    })
     expect(screen.getByTestId('calendar-source-row-google-calendar-home')).not.toHaveTextContent(
       /Default|defaultPill/
     )
@@ -406,7 +410,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument()
+    })
 
     await user.click(screen.getByRole('button', { name: 'Connect' }))
 
@@ -429,7 +435,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+    })
 
     await user.click(screen.getByRole('checkbox', { name: 'Home' }))
     expect(mockUpdateSourceSelection).toHaveBeenCalledWith({
@@ -449,7 +457,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument()
+    })
     expect(screen.queryByRole('switch', { name: AGENT_ACCESS_LABEL })).not.toBeInTheDocument()
   })
 
@@ -466,9 +476,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeChecked()
-    )
+    })
   })
 
   it('#given consent is unanswered #then the AI access switch reads as off', async () => {
@@ -484,9 +494,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).not.toBeChecked()
-    )
+    })
   })
 
   it('#when the user grants AI access from Settings #then the answer is persisted', async () => {
@@ -503,9 +513,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeInTheDocument()
-    )
+    })
     await user.click(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL }))
 
     expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
@@ -527,9 +537,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeChecked()
-    )
+    })
     await user.click(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL }))
 
     expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
@@ -573,7 +583,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() => expect(screen.getByText('Work')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Work')).toBeInTheDocument()
+    })
 
     const errorRow = screen.getByTestId('calendar-source-row-google-calendar-work')
     expect(errorRow).toHaveAttribute('data-sync-status', 'error')
@@ -605,7 +617,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() => expect(screen.getByText('alice@example.com')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('alice@example.com')).toBeInTheDocument()
+    })
     expect(screen.getByText('bob@example.com')).toBeInTheDocument()
 
     const aliceChip = screen.getByTestId('calendar-account-chip-alice@example.com')
@@ -634,7 +648,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
 
     renderGoogleCalendarConnection()
 
-    await waitFor(() => expect(screen.getByText('Reconnect Required')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Reconnect Required')).toBeInTheDocument()
+    })
 
     const accountChip = screen.getByTestId('calendar-account-chip-h4yfans@gmail.com')
     expect(accountChip).toHaveAttribute('data-account-status', 'reconnect_required')
@@ -658,7 +674,9 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
     renderGoogleCalendarConnection()
 
     // Wait for the connected row to render, then confirm no dialog appeared
-    await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+    })
     expect(
       screen.queryByRole('heading', { name: /Which calendar should new memrynote events go to/i })
     ).not.toBeInTheDocument()

@@ -60,7 +60,9 @@ const createAdapters = (): SyncPlatformAdapters => {
       baseUrl: () => 'http://localhost:0',
       online: {
         onStatusChanged: (cb) => {
-          const handler = ({ online }: { online: boolean }): void => cb(online)
+          const handler = ({ online }: { online: boolean }): void => {
+            cb(online)
+          }
           monitor.on('status-changed', handler)
           return () => {
             monitor.off('status-changed', handler)
@@ -75,9 +77,7 @@ const createAdapters = (): SyncPlatformAdapters => {
     attachmentStore: new DesktopAttachmentStore(async (vaultId) =>
       path.join(scratch, 'attachments', vaultId)
     ),
-    vaultFileSystem: new DesktopVaultFileSystem(
-      directoryVaultRoots(path.join(scratch, 'vaults'))
-    ),
+    vaultFileSystem: new DesktopVaultFileSystem(directoryVaultRoots(path.join(scratch, 'vaults'))),
     deviceRegistration: new DesktopDeviceRegistration({
       deviceId: async () => 'conformance-device',
       deviceInfo: async () => ({

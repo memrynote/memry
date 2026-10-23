@@ -170,7 +170,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
         </label>
         <select
           value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
+          onChange={(e) => {
+            setProjectId(e.target.value)
+          }}
           className={cn(
             'w-full rounded-md border bg-transparent px-2 py-1.5 text-sm',
             'focus:outline-none focus:ring-1 focus:ring-ring'
@@ -193,7 +195,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
             <button
               key={opt.value}
               type="button"
-              onClick={() => setPriority(opt.value)}
+              onClick={() => {
+                setPriority(opt.value)
+              }}
               title={opt.label}
               aria-label={opt.label}
               className={cn(
@@ -215,7 +219,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
         <input
           type="date"
           value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          onChange={(e) => {
+            setDueDate(e.target.value)
+          }}
           aria-label={tPhaseF(
             'phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.dueDate'
           )}

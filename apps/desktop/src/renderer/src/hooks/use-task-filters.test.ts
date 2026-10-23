@@ -1031,7 +1031,7 @@ describe('useSavedFilters', () => {
       })
     })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(savedFiltersService.update).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'filter-1',
@@ -1041,21 +1041,21 @@ describe('useSavedFilters', () => {
           })
         })
       )
-    )
+    })
 
     act(() => {
       result.current.toggleStar('filter-1')
     })
 
     expect(result.current.savedFilters[0].starred).toBe(true)
-    await waitFor(() =>
+    await waitFor(() => {
       expect(savedFiltersService.update).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'filter-1',
           config: expect.objectContaining({ starred: true })
         })
       )
-    )
+    })
   })
 
   it('handles saved-filter service failures and rolls back starred state', async () => {
@@ -1082,14 +1082,18 @@ describe('useSavedFilters', () => {
       result.current.updateFilter('filter-1', { name: 'Bad Update' })
     })
 
-    await waitFor(() => expect(savedFiltersService.create).toHaveBeenCalled())
-    await waitFor(() => expect(savedFiltersService.delete).toHaveBeenCalled())
-    await waitFor(() =>
+    await waitFor(() => {
+      expect(savedFiltersService.create).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(savedFiltersService.delete).toHaveBeenCalled()
+    })
+    await waitFor(() => {
       expect(savedFiltersService.update).toHaveBeenCalledWith({
         id: 'filter-1',
         name: 'Bad Update'
       })
-    )
+    })
 
     act(() => {
       result.current.toggleStar('filter-1')

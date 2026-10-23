@@ -32,7 +32,9 @@ export function SidebarSettingsButton(): React.JSX.Element {
         // click leaves settings.
         data-state={isSettingsOpen ? 'open' : undefined}
         aria-pressed={isSettingsOpen}
-        onClick={() => (isSettingsOpen ? closeSettings() : openSettings())}
+        onClick={() => {
+          isSettingsOpen ? closeSettings() : openSettings()
+        }}
         aria-label={settingsLabel}
         title={settingsLabel}
       >
@@ -56,7 +58,9 @@ export function SidebarSettingsButton(): React.JSX.Element {
         version={presentation.version}
         state={state}
         align="end"
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false)
+        }}
         onOpenSettings={() => {
           setOpen(false)
           openSettings()

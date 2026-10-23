@@ -101,7 +101,9 @@ describe('CanvasClusterSuggest', () => {
 
     await userEvent.click(screen.getByTestId('canvas-suggest-groups'))
 
-    await waitFor(() => expect(mocks.cluster).toHaveBeenCalledWith(['a', 'b', 'c']))
+    await waitFor(() => {
+      expect(mocks.cluster).toHaveBeenCalledWith(['a', 'b', 'c'])
+    })
     expect(mocks.toastInfo).toHaveBeenCalledWith('canvas.cluster.noGroups')
   })
 
@@ -112,7 +114,9 @@ describe('CanvasClusterSuggest', () => {
 
     await userEvent.click(screen.getByTestId('canvas-suggest-groups'))
 
-    await waitFor(() => expect(mocks.toastInfo).toHaveBeenCalledWith('canvas.cluster.disabled'))
+    await waitFor(() => {
+      expect(mocks.toastInfo).toHaveBeenCalledWith('canvas.cluster.disabled')
+    })
   })
 
   it('changes nothing until Create, then frames only the accepted groups in one update', async () => {
@@ -143,7 +147,9 @@ describe('CanvasClusterSuggest', () => {
 
     await user.click(screen.getByRole('button', { name: 'canvas.cluster.create' }))
 
-    await waitFor(() => expect(api.updateScene).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(api.updateScene).toHaveBeenCalledTimes(1)
+    })
     const frames = state.elements.filter((el) => el.type === 'frame')
     expect(frames).toHaveLength(1)
     expect(frames[0].name).toBe('Sleep notes')
@@ -171,7 +177,9 @@ describe('CanvasClusterSuggest', () => {
 
     await user.click(screen.getByRole('button', { name: 'canvas.cluster.create' }))
 
-    await waitFor(() => expect(mocks.toastInfo).toHaveBeenCalledWith('canvas.cluster.cardsGone'))
+    await waitFor(() => {
+      expect(mocks.toastInfo).toHaveBeenCalledWith('canvas.cluster.cardsGone')
+    })
     expect(api.updateScene).not.toHaveBeenCalled()
   })
 })

@@ -30,7 +30,9 @@ describe('MicrotaskBatchBroadcaster', () => {
       for (const u of updates) {
         batcher.enqueue('note-1', u)
       }
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then
       expect(broadcastFn).toHaveBeenCalledTimes(1)
@@ -50,7 +52,9 @@ describe('MicrotaskBatchBroadcaster', () => {
       for (const u of updates) {
         batcher.enqueue('note-1', u)
       }
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then
       const mergedUpdate = broadcastFn.mock.calls[0][1] as Uint8Array
@@ -72,7 +76,9 @@ describe('MicrotaskBatchBroadcaster', () => {
       // #when
       batcher.enqueue('note-1', u1)
       batcher.enqueue('note-2', u2)
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then
       expect(broadcastFn).toHaveBeenCalledTimes(2)
@@ -91,7 +97,9 @@ describe('MicrotaskBatchBroadcaster', () => {
       // #when
       batcher.enqueue('note-1', u1)
       batcher.enqueue('note-2', u2)
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then
       for (const [noteId, merged] of broadcastFn.mock.calls as [string, Uint8Array][]) {
@@ -112,7 +120,9 @@ describe('MicrotaskBatchBroadcaster', () => {
 
       // #when
       batcher.enqueue('note-1', update)
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then (single update is returned as-is, no Y.mergeUpdates call)
       const broadcastedUpdate = broadcastFn.mock.calls[0][1] as Uint8Array
@@ -146,7 +156,9 @@ describe('MicrotaskBatchBroadcaster', () => {
 
       // #when
       batcher.flush('note-1')
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then
       expect(broadcastFn).toHaveBeenCalledTimes(1)
@@ -219,7 +231,9 @@ describe('MicrotaskBatchBroadcaster', () => {
       batcher.flush('note-1')
       // enqueue second batch (new microtask scheduled)
       batcher.enqueue('note-1', makeUpdate(doc, '-batch2'))
-      await new Promise<void>((r) => queueMicrotask(r))
+      await new Promise<void>((r) => {
+        queueMicrotask(r)
+      })
 
       // #then
       expect(broadcastFn).toHaveBeenCalledTimes(2)

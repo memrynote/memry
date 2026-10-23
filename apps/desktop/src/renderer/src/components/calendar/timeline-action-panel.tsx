@@ -218,14 +218,18 @@ export function TimelineActionPanel({
                     icon={<ArrowRight />}
                     label={t('timeline.actions.open')}
                     keys={['↵']}
-                    onSelect={() => run('open')}
+                    onSelect={() => {
+                      run('open')
+                    }}
                   />
                   <ActionItem
                     value="open-in-tasks"
                     icon={<ArrowUpRight />}
                     label={t('timeline.actions.open-in-tasks')}
                     keys={[modifierKey, '↵']}
-                    onSelect={() => run('open-in-tasks')}
+                    onSelect={() => {
+                      run('open-in-tasks')
+                    }}
                   />
                 </CommandGroup>
                 <CommandGroup
@@ -237,14 +241,18 @@ export function TimelineActionPanel({
                     icon={<Calendar />}
                     label={t('timeline.actions.set-start')}
                     keys={['S']}
-                    onSelect={() => goTo('start')}
+                    onSelect={() => {
+                      goTo('start')
+                    }}
                   />
                   <ActionItem
                     value="set-due"
                     icon={<Clock />}
                     label={t('timeline.actions.set-due')}
                     keys={['D']}
-                    onSelect={() => goTo('due')}
+                    onSelect={() => {
+                      goTo('due')
+                    }}
                   />
                   {hasDates && (
                     <>
@@ -253,21 +261,27 @@ export function TimelineActionPanel({
                         icon={<ArrowRight />}
                         label={t('timeline.actions.move-later')}
                         keys={['W']}
-                        onSelect={() => run('move-later')}
+                        onSelect={() => {
+                          run('move-later')
+                        }}
                       />
                       <ActionItem
                         value="move-earlier"
                         icon={<ArrowLeft />}
                         label={t('timeline.actions.move-earlier')}
                         keys={['⇧', 'W']}
-                        onSelect={() => run('move-earlier')}
+                        onSelect={() => {
+                          run('move-earlier')
+                        }}
                       />
                       <ActionItem
                         value="clear-dates"
                         icon={<Eraser />}
                         label={t('timeline.actions.clear-dates')}
                         keys={['⌫']}
-                        onSelect={() => run('clear-dates')}
+                        onSelect={() => {
+                          run('clear-dates')
+                        }}
                       />
                     </>
                   )}
@@ -285,14 +299,18 @@ export function TimelineActionPanel({
                         : t('timeline.actions.complete')
                     }
                     keys={['C']}
-                    onSelect={() => run(isCompleted ? 'uncomplete' : 'complete')}
+                    onSelect={() => {
+                      run(isCompleted ? 'uncomplete' : 'complete')
+                    }}
                   />
                   <ActionItem
                     value="change-project"
                     icon={<FolderInput />}
                     label={t('timeline.actions.change-project')}
                     keys={['P']}
-                    onSelect={() => goTo('project')}
+                    onSelect={() => {
+                      goTo('project')
+                    }}
                   />
                 </CommandGroup>
               </CommandList>

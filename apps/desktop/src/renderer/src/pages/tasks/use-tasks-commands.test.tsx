@@ -40,7 +40,9 @@ beforeEach(() => {
 describe('tasks commands', () => {
   it('focuses the quick add by stamping the tab, with or without a selection', async () => {
     render(mount({ hasSelection: false }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
 
     await expect(runCommand('tasks.newTask', 'palette')).resolves.toBe('ran')
     expect(mocks.saveTabState).toHaveBeenCalledWith('t', {
@@ -52,7 +54,9 @@ describe('tasks commands', () => {
     const bulkComplete = vi.fn()
     const openBulkDelete = vi.fn()
     const { rerender } = render(mount({ hasSelection: false, bulkComplete, openBulkDelete }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
 
     await expect(runCommand('tasks.bulkComplete', 'palette')).resolves.toBe('unavailable')
     await expect(runCommand('tasks.bulkDelete', 'palette')).resolves.toBe('unavailable')

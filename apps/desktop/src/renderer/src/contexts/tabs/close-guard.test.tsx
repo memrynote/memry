@@ -8,7 +8,9 @@ describe('useCloseGuardRegistry', () => {
     const commit = vi.fn()
     const { result } = renderHook(() => useCloseGuardRegistry())
 
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
 
     expect(commit).toHaveBeenCalledTimes(1)
     expect(result.current.pending).toBeNull()
@@ -24,7 +26,9 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(true)
       })
     })
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
 
     expect(commit).toHaveBeenCalledTimes(1)
   })
@@ -39,7 +43,9 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(true)
       })
     })
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
 
     expect(commit).not.toHaveBeenCalled()
     expect(result.current.pending).toEqual({ tabId: 'tab-1' })
@@ -48,13 +54,17 @@ describe('useCloseGuardRegistry', () => {
   it('discard tells the guard, then commits without saving', async () => {
     const commit = vi.fn()
     const save = vi.fn().mockResolvedValue(true)
-    const discard = vi.fn(() => expect(commit).not.toHaveBeenCalled())
+    const discard = vi.fn(() => {
+      expect(commit).not.toHaveBeenCalled()
+    })
     const { result } = renderHook(() => useCloseGuardRegistry())
 
     act(() => {
       result.current.registerCloseGuard('tab-1', { isDirty: () => true, save, discard })
     })
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
     await act(async () => {
       await result.current.resolvePending('discard')
     })
@@ -73,7 +83,9 @@ describe('useCloseGuardRegistry', () => {
     act(() => {
       result.current.registerCloseGuard('tab-1', { isDirty: () => true, save })
     })
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
     await act(async () => {
       await result.current.resolvePending('save')
     })
@@ -104,7 +116,9 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(true)
       })
     })
-    act(() => result.current.requestClose(['tab-1', 'tab-2'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1', 'tab-2'], commit)
+    })
     await act(async () => {
       await result.current.resolvePending('cancel')
     })
@@ -127,7 +141,9 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(true)
       })
     })
-    act(() => result.current.requestClose(['tab-1', 'tab-2', 'tab-3'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1', 'tab-2', 'tab-3'], commit)
+    })
 
     expect(result.current.pending).toEqual({ tabId: 'tab-1' })
     await act(async () => {
@@ -152,7 +168,9 @@ describe('useCloseGuardRegistry', () => {
     act(() => {
       result.current.registerCloseGuard('tab-1', { isDirty: () => true, save })
     })
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
 
     // The dialog primitive closes itself on top of our own handler, so a cancel
     // lands mid-save. It must not abort the close the user just asked for.
@@ -182,8 +200,12 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(true)
       })
     })
-    act(() => result.current.requestClose(['tab-1'], first))
-    act(() => result.current.requestClose(['tab-1'], second))
+    act(() => {
+      result.current.requestClose(['tab-1'], first)
+    })
+    act(() => {
+      result.current.requestClose(['tab-1'], second)
+    })
 
     expect(second).not.toHaveBeenCalled()
     expect(result.current.pending).toEqual({ tabId: 'tab-1' })
@@ -199,7 +221,9 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(false)
       })
     })
-    act(() => result.current.requestClose(['tab-1'], vi.fn()))
+    act(() => {
+      result.current.requestClose(['tab-1'], vi.fn())
+    })
 
     expect(result.current.pendingCanSave).toBe(false)
   })
@@ -215,8 +239,12 @@ describe('useCloseGuardRegistry', () => {
         save: vi.fn().mockResolvedValue(true)
       })
     })
-    act(() => unregister())
-    act(() => result.current.requestClose(['tab-1'], commit))
+    act(() => {
+      unregister()
+    })
+    act(() => {
+      result.current.requestClose(['tab-1'], commit)
+    })
 
     expect(commit).toHaveBeenCalledTimes(1)
   })

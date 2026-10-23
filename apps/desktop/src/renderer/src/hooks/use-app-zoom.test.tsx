@@ -170,7 +170,9 @@ describe('useAppZoom', () => {
   })
 
   it('#given no zoom owner mounted #then the keystroke is not consumed', () => {
-    renderHook(() => useCommandDispatcher())
+    renderHook(() => {
+      useCommandDispatcher()
+    })
 
     const notConsumed = window.dispatchEvent(
       new KeyboardEvent('keydown', { key: '=', metaKey: true, bubbles: true, cancelable: true })

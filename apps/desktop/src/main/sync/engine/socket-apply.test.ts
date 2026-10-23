@@ -475,7 +475,7 @@ describe('createSocketApplier', () => {
           failed = true
           throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' })
         }
-        return realUnlink(file)
+        realUnlink(file)
       })
       vi.mocked(decryptPullBatch).mockResolvedValue({
         decrypted: [{ ...decrypted('n', type), deletedAt: 1_700_000_000 }],

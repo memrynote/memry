@@ -39,14 +39,14 @@ describe('VaultPickerStep', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerConfirm' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(window.api.syncLinking.finalizeVaultChoice).toHaveBeenCalledWith({
         sessionId: 'sess-1',
         parentFolderPath: '/tmp/parent',
         selectedVaultUuids: ['v-a', 'v-b'],
         primaryVaultUuid: 'v-a'
       })
-    )
+    })
   })
 
   it('surfaces a finalize failure via onError', async () => {
@@ -60,7 +60,9 @@ describe('VaultPickerStep', () => {
     await screen.findByRole('button', { name: '/tmp/parent' })
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerConfirm' }))
 
-    await waitFor(() => expect(onError).toHaveBeenCalledWith('boom'))
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('boom')
+    })
   })
 
   it('shows the finalize failure in the step itself', async () => {

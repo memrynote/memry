@@ -91,20 +91,20 @@ describe('TagTemplateSection without a template', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create template' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(window.api.templates.create).toHaveBeenCalledWith({
         name: 'Person',
         content: '## Notes\n'
       })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(editSchema).toHaveBeenCalledWith({
         kind: 'set-template',
         tag: 'person',
         template: { id: 'tpl-1', autofill: true }
       })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(openTab).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'template-editor',
@@ -113,7 +113,7 @@ describe('TagTemplateSection without a template', () => {
           entityId: 'tpl-1'
         })
       )
-    )
+    })
   })
 
   it('reports why creation failed and attaches nothing', async () => {
@@ -126,9 +126,9 @@ describe('TagTemplateSection without a template', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create template' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(toastMock.error).toHaveBeenCalledWith('Templates folder is read-only')
-    )
+    })
     expect(editSchema).not.toHaveBeenCalled()
     expect(openTab).not.toHaveBeenCalled()
   })
@@ -140,7 +140,9 @@ describe('TagTemplateSection without a template', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create template' }))
 
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('schema locked'))
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('schema locked')
+    })
     expect(openTab).not.toHaveBeenCalled()
   })
 
@@ -203,13 +205,13 @@ describe('TagTemplateSection with a template', () => {
 
     await user.click(await screen.findByRole('switch'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(editSchema).toHaveBeenCalledWith({
         kind: 'set-template',
         tag: 'person',
         template: { id: 'tpl-1', autofill: false }
       })
-    )
+    })
   })
 
   it('turns autofill back on', async () => {
@@ -222,13 +224,13 @@ describe('TagTemplateSection with a template', () => {
     expect(toggle).not.toBeChecked()
     await user.click(toggle)
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(editSchema).toHaveBeenCalledWith({
         kind: 'set-template',
         tag: 'person',
         template: { id: 'tpl-1', autofill: true }
       })
-    )
+    })
   })
 
   it('reports a failed autofill change', async () => {
@@ -238,7 +240,9 @@ describe('TagTemplateSection with a template', () => {
 
     await user.click(await screen.findByRole('switch'))
 
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('offline'))
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('offline')
+    })
   })
 
   it('locks the autofill switch on a read-only tag', async () => {

@@ -48,7 +48,9 @@ function noopPublisher(): TasksDomainPublisher {
 
 describe('project links domain', () => {
   let t: TestDatabaseResult
-  afterEach(() => t?.close())
+  afterEach(() => {
+    t?.close()
+  })
 
   it('#then links then unlinks a note', async () => {
     t = createTestDataDb()

@@ -67,7 +67,8 @@ export const portalBoundaryKey = new PluginKey<LocalDeletion>('portalBoundary')
 function isLocalDeletion(tr: Transaction): boolean {
   if (!tr.docChanged) return false
   const sync = tr.getMeta(ySyncPluginKey) as
-    { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean } | undefined
+    | { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean }
+    | undefined
   if (sync?.isChangeOrigin && !sync.isUndoRedoOperation) return false
   return tr.mapping.maps.some((map) => {
     let deleted = false
@@ -346,7 +347,9 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
       }
       const schedule = (view: EditorView): void => {
         clearTimeout(timer)
-        timer = setTimeout(() => reconcile(view), RECONCILE_DELAY_MS)
+        timer = setTimeout(() => {
+          reconcile(view)
+        }, RECONCILE_DELAY_MS)
       }
       return {
         update(view, previous) {

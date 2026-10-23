@@ -92,7 +92,9 @@ export function FieldListEditor({ tagKey, tag }: FieldListEditorProps): React.JS
       .catch((err: unknown) => {
         toast.error(extractErrorMessage(err, t('tagFields.settings.errors.moveField')))
       })
-      .finally(() => setPendingOrder(null))
+      .finally(() => {
+        setPendingOrder(null)
+      })
   }
 
   const saveRelation = async (field: ResolvedField, relation: RelationConfig): Promise<void> => {
@@ -140,7 +142,9 @@ export function FieldListEditor({ tagKey, tag }: FieldListEditorProps): React.JS
                   key={field.name}
                   field={field}
                   disabled={!editable}
-                  onAction={(kind) => setAction({ kind, field })}
+                  onAction={(kind) => {
+                    setAction({ kind, field })
+                  }}
                 />
               ))}
             </SortableContext>
@@ -175,7 +179,9 @@ export function FieldListEditor({ tagKey, tag }: FieldListEditorProps): React.JS
               tagName={tag?.name ?? tagKey}
               initial={action.field.relation}
               submitLabel={t('tagFields.settings.save')}
-              onCancel={() => setAction(null)}
+              onCancel={() => {
+                setAction(null)
+              }}
               onSubmit={(relation) => saveRelation(action.field, relation)}
             />
           </DialogContent>
@@ -297,19 +303,29 @@ function FieldRowMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={() => onAction('rename')}>
+        <DropdownMenuItem
+          onClick={() => {
+            onAction('rename')
+          }}
+        >
           <Pencil className="me-2 size-4" />
           {t('tagFields.settings.fields.rename')}
         </DropdownMenuItem>
         {field.relation && (
-          <DropdownMenuItem onClick={() => onAction('relation')}>
+          <DropdownMenuItem
+            onClick={() => {
+              onAction('relation')
+            }}
+          >
             <ArrowUpRight className="me-2 size-4" />
             {t('tagFields.settings.fields.relationSettings')}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => onAction('remove')}
+          onClick={() => {
+            onAction('remove')
+          }}
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="me-2 size-4" />

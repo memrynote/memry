@@ -370,7 +370,9 @@ export const ConvertActions = ({
                   <input
                     type="time"
                     value={startTime ?? ''}
-                    onChange={(e) => setStartTime(e.target.value || null)}
+                    onChange={(e) => {
+                      setStartTime(e.target.value || null)
+                    }}
                     aria-label={t('convert.start')}
                     className={cn(BARE_INPUT, 'w-[76px]')}
                   />
@@ -380,7 +382,9 @@ export const ConvertActions = ({
                   <input
                     type="time"
                     value={endTime ?? ''}
-                    onChange={(e) => setEndTime(e.target.value || null)}
+                    onChange={(e) => {
+                      setEndTime(e.target.value || null)
+                    }}
                     aria-label={t('convert.end')}
                     className={cn(BARE_INPUT, 'w-[76px]')}
                   />
@@ -400,7 +404,9 @@ export const ConvertActions = ({
               <MapPin className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
               <input
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => {
+                  setLocation(e.target.value)
+                }}
                 placeholder={t('convert.location')}
                 aria-label={t('convert.location')}
                 className={cn(BARE_INPUT, 'flex-1')}

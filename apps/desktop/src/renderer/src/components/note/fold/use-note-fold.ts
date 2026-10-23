@@ -104,7 +104,9 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
         if (next?.noteId === noteId) setLayers(next)
         else void refresh()
       })
-      .catch((error: unknown) => log.error('Failed to retry fold', { noteId, error }))
+      .catch((error: unknown) => {
+        log.error('Failed to retry fold', { noteId, error })
+      })
   }, [noteId, refresh])
 
   // Crossfade: when `folded` flips, both surfaces show for a moment. Set during
@@ -117,8 +119,12 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   }
   useEffect(() => {
     if (!phase.settling) return
-    const timer = setTimeout(() => setPhase((p) => ({ ...p, settling: false })), FOLD_CROSSFADE_MS)
-    return () => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      setPhase((p) => ({ ...p, settling: false }))
+    }, FOLD_CROSSFADE_MS)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [phase])
 
   const view = useMemo(
@@ -130,7 +136,12 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   )
 
   const foldedTo = useCallback(
-    (target: FoldLevel) => ({ enabled: foldable, run: () => setLevel(target) }),
+    (target: FoldLevel) => ({
+      enabled: foldable,
+      run: () => {
+        setLevel(target)
+      }
+    }),
     [foldable, setLevel]
   )
   useTabCommands('fold', {

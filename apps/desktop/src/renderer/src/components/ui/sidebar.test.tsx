@@ -67,7 +67,9 @@ describe('SidebarProvider shortcuts', () => {
   beforeEach(() => {
     localStorage.clear()
     setWindowWidth(1024)
-    dispatcher = renderHook(() => useCommandDispatcher())
+    dispatcher = renderHook(() => {
+      useCommandDispatcher()
+    })
   })
 
   afterEach(() => {
@@ -240,7 +242,9 @@ describe('SidebarProvider open-state persistence', () => {
     localStorage.clear()
     setWindowWidth(1024)
     mocks.logger.error.mockClear()
-    dispatcher = renderHook(() => useCommandDispatcher())
+    dispatcher = renderHook(() => {
+      useCommandDispatcher()
+    })
   })
 
   afterEach(() => {

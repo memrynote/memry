@@ -118,13 +118,17 @@ describe('agent fill for one note', () => {
 
     tagsApi.getFillStatus.mockResolvedValue(status({ available: false }))
     const unavailable = renderWithProviders(<Harness noteId="n1" />)
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(2)
+    })
     expect(screen.queryByTestId('field-fill-action')).not.toBeInTheDocument()
     unavailable.unmount()
 
     tagsApi.getFillStatus.mockResolvedValue(status())
     const disabled = renderWithProviders(<Harness noteId="n1" disabled />)
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(3))
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(3)
+    })
     expect(screen.queryByTestId('field-fill-action')).not.toBeInTheDocument()
     disabled.unmount()
 
@@ -133,7 +137,9 @@ describe('agent fill for one note', () => {
       slots: personGroup.slots.map((slot) => ({ ...slot, value: 'x' }))
     }
     renderWithProviders(<Harness noteId="n1" groups={[filled]} />)
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(4))
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(4)
+    })
     expect(screen.queryByTestId('field-fill-action')).not.toBeInTheDocument()
   })
 
@@ -170,8 +176,12 @@ describe('agent fill for one note', () => {
     expect(await screen.findByText('· 2 suggestions')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Accept Company' }))
 
-    await waitFor(() => expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: 'Acme' }))
-    await waitFor(() => expect(screen.getAllByTestId('field-fill-proposal')).toHaveLength(1))
+    await waitFor(() => {
+      expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: 'Acme' })
+    })
+    await waitFor(() => {
+      expect(screen.getAllByTestId('field-fill-proposal')).toHaveLength(1)
+    })
     expect(screen.getByRole('button', { name: 'Accept Role' })).toBeInTheDocument()
     expect(screen.getByText('· 1 suggestion')).toBeInTheDocument()
   })
@@ -198,9 +208,9 @@ describe('agent fill for one note', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /Accept all/ }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: 'Acme', Role: 'CTO' })
-    )
+    })
     expect(await screen.findByTestId('field-fill-action')).toBeInTheDocument()
     expect(screen.queryByTestId('field-fill-proposal')).not.toBeInTheDocument()
   })
@@ -215,7 +225,9 @@ describe('agent fill for one note', () => {
     expect(propertiesApi.merge).not.toHaveBeenCalled()
     fireEvent.keyDown(window, { key: 'Enter', metaKey: true })
 
-    await waitFor(() => expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: 'Acme' }))
+    await waitFor(() => {
+      expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: 'Acme' })
+    })
   })
 
   it('"Dismiss" closes the review without writing', async () => {
@@ -238,7 +250,9 @@ describe('agent fill for one note', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Accept Company' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk full'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('disk full')
+    })
     expect(screen.getByRole('button', { name: 'Accept Company' })).toBeEnabled()
   })
 
@@ -254,16 +268,16 @@ describe('agent fill for one note', () => {
     expect(await screen.findByTitle('Creates a new #company when accepted')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Accept Company' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(notesApi.create).toHaveBeenCalledWith({
         title: 'Acme',
         content: '',
         tags: ['company']
       })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: ['memry://note/n_acme'] })
-    )
+    })
   })
 
   it.each<[string, FillFieldsResult, string]>([
@@ -290,7 +304,9 @@ describe('agent fill for one note', () => {
     renderWithProviders(<Harness noteId="n1" />)
     await clickFill()
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('ipc down'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('ipc down')
+    })
     expect(await screen.findByTestId('field-fill-action')).toBeInTheDocument()
   })
 
@@ -301,7 +317,9 @@ describe('agent fill for one note', () => {
     tagsApi.getFillStatus.mockResolvedValue(status({ available: false }))
     await userEvent.click(action)
 
-    await waitFor(() => expect(screen.queryByTestId('field-fill-action')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.queryByTestId('field-fill-action')).not.toBeInTheDocument()
+    })
     expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(2)
   })
 
@@ -317,13 +335,13 @@ describe('agent fill for one note', () => {
     renderWithProviders(<Harness noteId="n1" groups={[inheritedGroup]} />)
     await clickFill()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(tagsApi.fillFields).toHaveBeenCalledWith({
         noteId: 'n1',
         tag: 'client',
         acceptDisclosure: false
       })
-    )
+    })
   })
 
   it('drops an in-flight review when the editor switches to another note', async () => {
@@ -361,13 +379,13 @@ describe('agent fill first-run disclosure', () => {
 
     await userEvent.click(within(disclosure).getByRole('button', { name: 'Suggest values' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(tagsApi.fillFields).toHaveBeenCalledWith({
         noteId: 'n1',
         tag: 'person',
         acceptDisclosure: true
       })
-    )
+    })
     expect(await screen.findByTestId('field-fill-proposal')).toBeInTheDocument()
   })
 
@@ -478,8 +496,8 @@ describe('ghost value of a link to an existing note', () => {
     expect(within(row).getByText('Acme Inc')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Accept Company' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(propertiesApi.merge).toHaveBeenCalledWith('n1', { Company: ['memry://note/n_acme'] })
-    )
+    })
   })
 })

@@ -284,7 +284,9 @@ describe('bulk apply page session', () => {
   describe('#given an unreadable journal file', () => {
     it('#then replay drops it instead of crashing the pull', () => {
       fs.writeFileSync(journalFile, '{not json', 'utf-8')
-      expect(() => replayBulkApplyJournal()).not.toThrow()
+      expect(() => {
+        replayBulkApplyJournal()
+      }).not.toThrow()
       expect(readJournal()).toBeNull()
     })
   })
@@ -304,7 +306,9 @@ describe('bulk apply page session', () => {
       deleteSyncedVaultFile(target)
 
       expect(fs.existsSync(target)).toBe(false)
-      expect(() => deleteSyncedVaultFile(target)).not.toThrow()
+      expect(() => {
+        deleteSyncedVaultFile(target)
+      }).not.toThrow()
       expect(readJournal()).toBeNull()
     })
   })
@@ -467,7 +471,7 @@ describe('bulk apply page session', () => {
       }) as typeof fs.openSync)
       const fsyncSpy = vi.spyOn(fs, 'fsyncSync').mockImplementation((fd: number) => {
         fsyncTargets.push({ path: fdPaths.get(fd) ?? `unknown-fd-${fd}`, order: 0 })
-        return realFsyncSync(fd)
+        realFsyncSync(fd)
       })
       const origExec = raw.exec.bind(raw)
       const execSpy = vi.fn((sql: string) => origExec(sql))
@@ -566,7 +570,9 @@ describe('bulk apply page session', () => {
         throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
       })
 
-      expect(() => page.commit()).toThrow('ENOSPC')
+      expect(() => {
+        page.commit()
+      }).toThrow('ENOSPC')
       openSpy.mockRestore()
 
       expect(raw.inTransaction).toBe(false)
@@ -589,7 +595,9 @@ describe('bulk apply page session', () => {
         return origExec(sql)
       }) as typeof indexRaw.exec
 
-      expect(() => page.commit()).not.toThrow()
+      expect(() => {
+        page.commit()
+      }).not.toThrow()
       indexRaw.exec = origExec
 
       // Without this rollback the index connection would sit in an open
@@ -614,7 +622,9 @@ describe('bulk apply page session', () => {
         return origExec(sql)
       }) as typeof raw.exec
 
-      expect(() => page.commit()).toThrow('data commit boom')
+      expect(() => {
+        page.commit()
+      }).toThrow('data commit boom')
       raw.exec = origExec
 
       expect(sqlLog).toContain('ROLLBACK')
@@ -718,7 +728,9 @@ describe('bulk apply page session', () => {
         return origExec(sql)
       }) as typeof raw.exec
 
-      expect(() => page.commit()).toThrow('data commit boom')
+      expect(() => {
+        page.commit()
+      }).toThrow('data commit boom')
       raw.exec = origExec
 
       expect(notify).not.toHaveBeenCalled()
@@ -736,7 +748,9 @@ describe('bulk apply page session', () => {
         raw.prepare("INSERT INTO t (id, v) VALUES ('a', 'x')").run()
       })
 
-      expect(() => page.commit()).not.toThrow()
+      expect(() => {
+        page.commit()
+      }).not.toThrow()
 
       expect(later).toHaveBeenCalledOnce()
       expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })

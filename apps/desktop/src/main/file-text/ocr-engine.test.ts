@@ -12,8 +12,9 @@ class FakeWorker extends EventEmitter {
   pid = 0
   killed = false
   posted: OcrMainToWorkerMessage[] = []
-  answer: (message: Extract<OcrMainToWorkerMessage, { type: 'recognize' }>) => void = (message) =>
+  answer: (message: Extract<OcrMainToWorkerMessage, { type: 'recognize' }>) => void = (message) => {
     this.reply({ type: 'recognized', requestId: message.requestId, text: 'Heron count' })
+  }
 
   postMessage(message: OcrMainToWorkerMessage): void {
     this.posted.push(message)
@@ -39,7 +40,10 @@ vi.mock('electron', () => ({
     fork: (_path: string, _args: string[], options: { env?: Record<string, string> }) => {
       const worker = new FakeWorker()
       workers.push(worker)
-      if (crashOnSpawn.value) worker.answer = () => worker.kill()
+      if (crashOnSpawn.value)
+        worker.answer = () => {
+          worker.kill()
+        }
       forkOptions.push(options)
       worker.reply({ type: 'ready' })
       return worker
@@ -111,15 +115,18 @@ describe('OCR engine', () => {
 
   it('fails the request when the worker reports an error', async () => {
     await recognizeText(source)
-    workers[0].answer = (message) =>
+    workers[0].answer = (message) => {
       workers[0].reply({ type: 'failed', requestId: message.requestId, error: 'bad image' })
+    }
 
     await expect(recognizeText(source)).rejects.toThrow('bad image')
   })
 
   it('fails the request in flight when the worker exits, and starts a new worker next time', async () => {
     await recognizeText(source)
-    workers[0].answer = () => workers[0].kill()
+    workers[0].answer = () => {
+      workers[0].kill()
+    }
 
     await expect(recognizeText(source)).rejects.toThrow('OCR worker exited (code 1)')
     await expect(recognizeText(source)).resolves.toBe('Heron count')
@@ -178,7 +185,9 @@ describe('OCR engine', () => {
     workers[0].answer = () => {}
 
     const pending = recognizeText(source)
-    await vi.waitFor(() => expect(workers[0].posted).toHaveLength(2))
+    await vi.waitFor(() => {
+      expect(workers[0].posted).toHaveLength(2)
+    })
     stopOcr()
 
     await expect(pending).rejects.toThrow('OCR stopped')

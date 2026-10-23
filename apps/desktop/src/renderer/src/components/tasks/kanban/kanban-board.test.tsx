@@ -38,7 +38,12 @@ vi.mock('./kanban-column', () => ({
         </button>
       ))}
       {tasks.map((task) => (
-        <button key={`${task.id}-complete`} onClick={() => onToggleComplete(task.id)}>
+        <button
+          key={`${task.id}-complete`}
+          onClick={() => {
+            onToggleComplete(task.id)
+          }}
+        >
           complete {task.id}
         </button>
       ))}

@@ -34,9 +34,15 @@ export const AddEventToProjectDialog = ({
     setIsLoading(true)
     tasksService
       .listProjects()
-      .then((res) => setProjects(res.projects.filter((project) => project.archivedAt == null)))
-      .catch((error) => log.error('Failed to list projects', extractErrorMessage(error)))
-      .finally(() => setIsLoading(false))
+      .then((res) => {
+        setProjects(res.projects.filter((project) => project.archivedAt == null))
+      })
+      .catch((error) => {
+        log.error('Failed to list projects', extractErrorMessage(error))
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
   }, [open])
 
   const handleSelect = async (project: ProjectWithStats): Promise<void> => {

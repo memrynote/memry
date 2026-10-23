@@ -84,7 +84,12 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
     hasEmoji: boolean
   }) => (
     <div role="listbox" aria-label="icon-picker">
-      <button type="button" onClick={() => onSelect('icon:StarIcon')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelect('icon:StarIcon')
+        }}
+      >
         pick Star
       </button>
       {hasEmoji && (
@@ -103,7 +108,12 @@ vi.mock('@/components/tasks/project-icon', () => ({
 
 vi.mock('@/components/tasks/color-picker', () => ({
   ColorPicker: ({ onChange }: { value: string; onChange: (color: string) => void }) => (
-    <button type="button" onClick={() => onChange('#00f')}>
+    <button
+      type="button"
+      onClick={() => {
+        onChange('#00f')
+      }}
+    >
       pick blue
     </button>
   )
@@ -126,10 +136,20 @@ vi.mock('@/components/tasks/status-editor', () => ({
   }) => (
     <div>
       {error && <span>{error}</span>}
-      <button type="button" onClick={() => onChange(invalidStatuses)}>
+      <button
+        type="button"
+        onClick={() => {
+          onChange(invalidStatuses)
+        }}
+      >
         invalid statuses
       </button>
-      <button type="button" onClick={() => onChange(validStatuses)}>
+      <button
+        type="button"
+        onClick={() => {
+          onChange(validStatuses)
+        }}
+      >
         valid statuses
       </button>
     </div>
@@ -320,12 +340,16 @@ describe('ProjectModal', () => {
       render(<ProjectModal isOpen onClose={vi.fn()} onSave={vi.fn()} project={makeProject()} />)
 
       const toggle = await screen.findByRole('switch', { name: 'defaultProject' })
-      await waitFor(() => expect(toggle).toBeEnabled())
+      await waitFor(() => {
+        expect(toggle).toBeEnabled()
+      })
       expect(toggle).toHaveAttribute('aria-checked', 'false')
 
       fireEvent.click(toggle)
 
-      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+      await waitFor(() => {
+        expect(toggle).toHaveAttribute('aria-checked', 'true')
+      })
       expect(setTaskSettings).toHaveBeenCalledWith({ defaultProjectId: 'project-1' })
     })
 
@@ -334,11 +358,15 @@ describe('ProjectModal', () => {
       render(<ProjectModal isOpen onClose={vi.fn()} onSave={vi.fn()} project={makeProject()} />)
 
       const toggle = await screen.findByRole('switch', { name: 'defaultProject' })
-      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+      await waitFor(() => {
+        expect(toggle).toHaveAttribute('aria-checked', 'true')
+      })
 
       fireEvent.click(toggle)
 
-      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'))
+      await waitFor(() => {
+        expect(toggle).toHaveAttribute('aria-checked', 'false')
+      })
       expect(setTaskSettings).toHaveBeenCalledWith({ defaultProjectId: null })
     })
 

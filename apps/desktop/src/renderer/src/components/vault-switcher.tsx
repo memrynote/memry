@@ -258,7 +258,9 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
           <Picker.Content
             width="auto"
             onOpenAutoFocus={handleOpenAutoFocus}
-            onCloseAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => {
+              e.preventDefault()
+            }}
             className="min-w-56"
             align={renderTrigger ? (placement?.align ?? 'center') : 'start'}
             side={isMobile ? 'bottom' : renderTrigger ? (placement?.side ?? 'top') : 'right'}
@@ -323,7 +325,9 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                           <span
                             role="button"
                             tabIndex={0}
-                            onClick={(e) => handleRemoveClick(e, vault)}
+                            onClick={(e) => {
+                              handleRemoveClick(e, vault)
+                            }}
                             onKeyDown={(e) => e.key === 'Enter' && handleRemoveClick(e, vault)}
                             className="size-5 flex items-center justify-center rounded hover:bg-accent"
                             aria-label={`Remove ${vault.name} from list`}
@@ -334,7 +338,9 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                             <span
                               role="button"
                               tabIndex={0}
-                              onClick={(e) => handleDeleteClick(e, vault.vaultUuid!, vault.name)}
+                              onClick={(e) => {
+                                handleDeleteClick(e, vault.vaultUuid!, vault.name)
+                              }}
                               onKeyDown={(e) =>
                                 e.key === 'Enter' &&
                                 handleDeleteClick(e, vault.vaultUuid!, vault.name)
@@ -382,13 +388,13 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
                       <span
                         role="button"
                         tabIndex={0}
-                        onClick={(e) =>
+                        onClick={(e) => {
                           handleDeleteClick(
                             e,
                             vault.vaultUuid,
                             vault.name ?? tPhaseF('phaseF.componentsVaultSwitcher.untitledVault')
                           )
-                        }
+                        }}
                         onKeyDown={(e) =>
                           e.key === 'Enter' &&
                           handleDeleteClick(
@@ -484,7 +490,12 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
         </Picker>
       </SidebarMenuItem>
 
-      <DownloadVaultDialog vault={vaultToDownload} onClose={() => setVaultToDownload(null)} />
+      <DownloadVaultDialog
+        vault={vaultToDownload}
+        onClose={() => {
+          setVaultToDownload(null)
+        }}
+      />
 
       <AlertDialog open={!!vaultToRemove} onOpenChange={(o) => !o && setVaultToRemove(null)}>
         <AlertDialogContent>
@@ -501,7 +512,12 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <Button variant="outline" onClick={() => setVaultToRemove(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVaultToRemove(null)
+              }}
+            >
               {tPhaseF('phaseF.componentsVaultSwitcher.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirmRemove}>

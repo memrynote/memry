@@ -408,7 +408,7 @@ export const VirtualizedAllTasksView = ({
     // `void` keeps the call out of the synchronous setter path so the
     // no-pass-live-state-to-parent lint recognizes this as a side-effecting
     // sync call rather than a state pass-through.
-    void virtualizer.measure()
+    virtualizer.measure()
     return () => {}
   }, [
     expandedIds,
@@ -429,7 +429,12 @@ export const VirtualizedAllTasksView = ({
       <div className={cn('flex-1 overflow-auto pt-4', className)}>
         <TaskEmptyState
           variant="all"
-          onAddTask={onFocusQuickAdd ?? (() => onQuickAdd('New Task'))}
+          onAddTask={
+            onFocusQuickAdd ??
+            (() => {
+              onQuickAdd('New Task')
+            })
+          }
         />
       </div>
     )

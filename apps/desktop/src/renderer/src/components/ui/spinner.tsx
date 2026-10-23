@@ -24,8 +24,12 @@ const SPINNER_DELAY_MS = 150
 function DelayedSpinner({ className, ...props }: React.ComponentProps<typeof Spinner>) {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), SPINNER_DELAY_MS)
-    return () => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      setVisible(true)
+    }, SPINNER_DELAY_MS)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [])
 
   if (!visible) return null

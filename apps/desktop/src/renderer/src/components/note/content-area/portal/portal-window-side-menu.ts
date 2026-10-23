@@ -146,7 +146,11 @@ export function createInnermostSideMenuPlugin(): Plugin {
       queueMicrotask(() => {
         if (!view.isDestroyed) innermostEditorWinsAround(view)
       })
-      return { update: () => innermostEditorWinsAround(view) }
+      return {
+        update: () => {
+          innermostEditorWinsAround(view)
+        }
+      }
     }
   })
 }

@@ -155,7 +155,9 @@ describe('JournalReminderButton', () => {
       screen.getByRole('button', { name: 'phaseF.componentsReminderReminderPicker.save' })
     )
 
-    await waitFor(() => expect(reminderApi().update).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(reminderApi().update).toHaveBeenCalledTimes(1)
+    })
     const [payload] = reminderApi().update.mock.calls[0] as [{ id: string; remindAt: string }]
     expect(payload.id).toBe('rem-journal-1')
     const moved = new Date(payload.remindAt)

@@ -285,7 +285,9 @@ export class SyncWorkerBridge {
    */
   private ensureSweepTimer(): void {
     if (this.sweepTimer) return
-    this.sweepTimer = setInterval(() => this.sweepStalePending(), PENDING_SWEEP_INTERVAL_MS)
+    this.sweepTimer = setInterval(() => {
+      this.sweepStalePending()
+    }, PENDING_SWEEP_INTERVAL_MS)
     this.sweepTimer.unref?.()
   }
 

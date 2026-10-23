@@ -119,11 +119,11 @@ describe('CalendarPage event colour', () => {
     await user.click(screen.getByRole('button', { name: 'Basil' }))
     await user.click(screen.getByTestId('event-edit-save'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Kickoff', color: 'basil' })
       )
-    )
+    })
   })
 
   it('opens a coloured event with its colour selected and saves it back', async () => {
@@ -137,11 +137,11 @@ describe('CalendarPage event colour', () => {
     expect(screen.getByRole('button', { name: 'Tomato' })).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByTestId('event-edit-save'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUpdateEvent).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'event-1', color: 'tomato' })
       )
-    )
+    })
   })
 
   it('opens an event that shows its calendar colour with Default color selected', async () => {
@@ -158,10 +158,10 @@ describe('CalendarPage event colour', () => {
     )
     await user.click(screen.getByTestId('event-edit-save'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUpdateEvent).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'event-1', color: null })
       )
-    )
+    })
   })
 })

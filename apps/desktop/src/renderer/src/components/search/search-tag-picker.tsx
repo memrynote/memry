@@ -23,7 +23,9 @@ export function useSearchTags(enabled: boolean): TagWithCount[] {
       .then(({ tags: all }) => {
         if (!cancelled) setTags(all)
       })
-      .catch((err) => log.warn('Failed to load tags for search', err))
+      .catch((err) => {
+        log.warn('Failed to load tags for search', err)
+      })
     return () => {
       cancelled = true
     }
@@ -80,7 +82,9 @@ export function SearchTagPicker({
         <SearchRow
           key={tag.name}
           value={tagValue(tag.name)}
-          onSelect={() => onPick(tag.name)}
+          onSelect={() => {
+            onPick(tag.name)
+          }}
           icon={
             <span
               className="size-2 rounded-full"

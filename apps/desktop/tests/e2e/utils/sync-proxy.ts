@@ -236,7 +236,9 @@ export async function startSyncProxy(
       await new Promise<void>((resolve) => {
         for (const socket of tunnels) socket.destroy()
         server.closeAllConnections?.()
-        server.close(() => resolve())
+        server.close(() => {
+          resolve()
+        })
       })
     }
   }

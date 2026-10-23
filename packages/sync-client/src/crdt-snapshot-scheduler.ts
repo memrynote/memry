@@ -82,7 +82,11 @@ export class CrdtSnapshotScheduler {
     const remainingMaxWait = firstRequestedAt + this.maxWaitMs - this.now()
     const delay = Math.max(0, Math.min(this.quietMs, remainingMaxWait))
 
-    const timer = unrefTimer(setTimeout(() => this.fire(noteId), delay))
+    const timer = unrefTimer(
+      setTimeout(() => {
+        this.fire(noteId)
+      }, delay)
+    )
     this.pending.set(noteId, { timer, firstRequestedAt })
   }
 
@@ -112,7 +116,11 @@ export class CrdtSnapshotScheduler {
     }
 
     this.due.add(noteId)
-    this.batchTimer ??= unrefTimer(setTimeout(() => this.flush(), this.batchWindowMs))
+    this.batchTimer ??= unrefTimer(
+      setTimeout(() => {
+        this.flush()
+      }, this.batchWindowMs)
+    )
   }
 
   private flush(): void {

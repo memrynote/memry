@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { cn } from '@/lib/utils'
-import { TagChip, Tag } from './TagChip'
+import type { Tag } from './TagChip'
+import { TagChip } from './TagChip'
 import { AddTagButton } from './AddTagButton'
 import { TagInputPopup, type TagFieldHints } from './TagInputPopup'
 import { useT } from '@memry/i18n/renderer'
@@ -52,7 +53,13 @@ export const TagsRow = memo(function TagsRow({
           key={tag.id}
           tag={tag}
           onRemove={disabled ? undefined : onRemoveTag}
-          onClick={onTagClick ? () => onTagClick(tag) : undefined}
+          onClick={
+            onTagClick
+              ? () => {
+                  onTagClick(tag)
+                }
+              : undefined
+          }
           disabled={disabled}
         />
       ))}

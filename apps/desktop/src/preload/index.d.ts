@@ -1,4 +1,4 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
+import type { ElectronAPI } from '@electron-toolkit/preload'
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
@@ -25,7 +25,12 @@ import type {
   FillFieldsInput,
   FillFieldsResult
 } from '@memry/contracts/tag-fill-api'
-import type { GraphLayout, SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
+import type {
+  GraphLayout,
+  SaveGraphLayoutRequest,
+  GraphViewsSettings,
+  GraphViewsSettingsPatch
+} from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
   AgentEvent,
@@ -51,7 +56,6 @@ import type {
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { GlobalCaptureResult, StickyShortcutResult } from '@memry/contracts/settings-schemas'
-import type { GraphViewsSettings, GraphViewsSettingsPatch } from '@memry/contracts/graph-api'
 import type {
   AppleNotesFoldersInput,
   AppleNotesFoldersResult,
@@ -201,7 +205,15 @@ export type DeleteAttachmentResponse = NotesRpc.DeleteAttachmentResponse
 
 // Template types (Phase 15)
 export type TemplatePropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'project'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+  | 'project'
 
 export interface TemplateProperty {
   name: string
@@ -1682,7 +1694,7 @@ interface SyncAuthClientAPI {
   initOAuth: (input: { provider: 'google' }) => Promise<{
     state: string
   }>
-  refreshToken /* auth action */: () => Promise<{
+  refreshToken/* auth action */ : () => Promise<{
     success: boolean
     /** True only when the session can no longer refresh and needs a new sign-in. */
     sessionEnded?: boolean

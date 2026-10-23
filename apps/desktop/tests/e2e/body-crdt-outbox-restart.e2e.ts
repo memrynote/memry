@@ -40,7 +40,7 @@ test.describe('Body CRDT durable outbox', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `Outbox Restart ${Date.now()}`
     const initialBody = 'shared note from A'

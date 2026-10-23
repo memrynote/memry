@@ -107,7 +107,13 @@ export function CalendarTaskPopoverMeta({
           <TagChip
             key={tag.id}
             tag={tag}
-            onClick={onTagClick ? () => onTagClick(tag) : undefined}
+            onClick={
+              onTagClick
+                ? () => {
+                    onTagClick(tag)
+                  }
+                : undefined
+            }
           />
         ))}
         {overflowCount > 0 && (

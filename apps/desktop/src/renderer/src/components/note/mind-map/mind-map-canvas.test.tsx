@@ -105,9 +105,10 @@ const BUILT_ELEMENTS = [
   { type: 'rectangle', id: 'built-1' }
 ] as unknown as readonly MindMapElement[]
 
-function mountSurface(
-  initialFocusHref: string | null = null
-): { controls: () => MindMapControls; unmount: () => void } {
+function mountSurface(initialFocusHref: string | null = null): {
+  controls: () => MindMapControls
+  unmount: () => void
+} {
   let latest: MindMapControls | null = null
   const view = render(
     <MindMapCanvas
@@ -273,7 +274,11 @@ describe('MindMapCanvas controls', () => {
     mocks.appState = { scrollX: -100, scrollY: 0, zoom: { value: 2 }, offsetLeft: 0, offsetTop: 0 }
     await act(async () => {
       notify?.()
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => {
+          resolve(null)
+        })
+      )
     })
 
     // `(200 - 100) * 2`, the same transform the affordance anchor uses.
@@ -335,7 +340,9 @@ describe('MindMapCanvas controls', () => {
     const surface = mountSurface()
     mocks.scrollToContent.mockClear()
 
-    act(() => surface.controls().fit())
+    act(() => {
+      surface.controls().fit()
+    })
 
     expect(mocks.scrollToContent).toHaveBeenCalledWith(undefined, {
       fitToContent: true,
@@ -346,7 +353,9 @@ describe('MindMapCanvas controls', () => {
   it('copies the live scene as an image, not the elements the map was built from', async () => {
     const surface = mountSurface()
 
-    await act(async () => await surface.controls().copyImage())
+    await act(async () => {
+      await surface.controls().copyImage()
+    })
 
     expect(vi.mocked(exportToBlob).mock.calls[0][0]).toMatchObject({
       elements: LIVE_ELEMENTS,
@@ -363,7 +372,9 @@ describe('MindMapCanvas controls', () => {
   it('copies the live scene as SVG markup, which the sanitized clipboard carries as text', async () => {
     const surface = mountSurface()
 
-    await act(async () => await surface.controls().copyVector())
+    await act(async () => {
+      await surface.controls().copyVector()
+    })
 
     expect(vi.mocked(exportToSvg).mock.calls[0][0]).toMatchObject({
       elements: LIVE_ELEMENTS,
@@ -376,8 +387,12 @@ describe('MindMapCanvas controls', () => {
   it('pins the export settings instead of inheriting the theme or the camera', async () => {
     const surface = mountSurface()
 
-    await act(async () => await surface.controls().copyImage())
-    await act(async () => await surface.controls().copyVector())
+    await act(async () => {
+      await surface.controls().copyImage()
+    })
+    await act(async () => {
+      await surface.controls().copyVector()
+    })
 
     // The map's colours are authored light, so the same note copies the same
     // way whichever theme the app is in, and drops onto any background.

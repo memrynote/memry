@@ -143,8 +143,9 @@ export function PortalNoteView({
       foldLabel: (expanded) =>
         expanded ? t('portalBlock.collapseChildren') : t('portalBlock.expandChildren'),
       editable: editor.isEditable && !locked,
-      openHidden: (id, anchorEl) =>
-        setHiddenRequest({ scope: { kind: 'children', blockId: id }, anchorEl }),
+      openHidden: (id, anchorEl) => {
+        setHiddenRequest({ scope: { kind: 'children', blockId: id }, anchorEl })
+      },
       toggleFold: (id, expanded) =>
         void (expanded ? actions.collapse(id) : actions.expandAll(id)).then(reportFailure)
     }
@@ -270,19 +271,27 @@ export function PortalNoteView({
         onIncludeParent={(ancestor) =>
           void actions.includeParent(ancestor.blockId).then(reportFailure)
         }
-        onOpenHidden={(anchorEl) => setHiddenRequest({ scope: { kind: 'siblings' }, anchorEl })}
-        onOpenSource={() => openSource()}
-        onOpenSourceInNewTab={() => openSource({ inNewTab: true })}
-        onOpenBeside={() => openSource({ toTheSide: true })}
-        onCopyContents={() =>
+        onOpenHidden={(anchorEl) => {
+          setHiddenRequest({ scope: { kind: 'siblings' }, anchorEl })
+        }}
+        onOpenSource={() => {
+          openSource()
+        }}
+        onOpenSourceInNewTab={() => {
+          openSource({ inNewTab: true })
+        }}
+        onOpenBeside={() => {
+          openSource({ toTheSide: true })
+        }}
+        onCopyContents={() => {
           writeClipboard(
             portalContentsMarkdown(windowState?.visible ?? []),
             t('portalBlock.copiedContents')
           )
-        }
-        onCopyLink={() =>
+        }}
+        onCopyLink={() => {
           writeClipboard(portalLinkText(title, target), t('portalBlock.copiedLink'))
-        }
+        }}
         onRemove={() => editor.removeBlocks([blockId])}
         onMenuOpenChange={setMenuOpen}
       />
@@ -294,7 +303,9 @@ export function PortalNoteView({
       selected={selected}
       toolbar={toolbar}
       data-portal-kind={target.kind}
-      onFocus={() => setFocusWithin(true)}
+      onFocus={() => {
+        setFocusWithin(true)
+      }}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false)
       }}
@@ -320,7 +331,9 @@ export function PortalNoteView({
           portal={handle}
           scope={hiddenRequest?.scope ?? null}
           anchorEl={hiddenRequest?.anchorEl ?? null}
-          onClose={() => setHiddenRequest(null)}
+          onClose={() => {
+            setHiddenRequest(null)
+          }}
         />
       ) : null}
     </PortalFrame>

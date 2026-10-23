@@ -127,7 +127,9 @@ export function GoogleCalendarConnectDialog({
               type="button"
               className="w-full gap-2.5"
               disabled={connectMutation.isPending}
-              onClick={() => connectMutation.mutate()}
+              onClick={() => {
+                connectMutation.mutate()
+              }}
             >
               {connectMutation.isPending ? (
                 <Loader2 className="size-4 animate-spin" />

@@ -125,7 +125,7 @@ function Probe({ noteId }: { noteId: string }): React.JSX.Element {
       </button>
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           // openTab takes Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>, so every
           // other Tab field is required — see contexts/tabs/types.ts.
           openTab(
@@ -142,14 +142,24 @@ function Probe({ noteId }: { noteId: string }): React.JSX.Element {
             },
             { groupId: secondaryGroupId }
           )
-        }
+        }}
       >
         open-note
       </button>
-      <button type="button" onClick={() => setActiveGroup(primaryGroupId)}>
+      <button
+        type="button"
+        onClick={() => {
+          setActiveGroup(primaryGroupId)
+        }}
+      >
         focus-primary
       </button>
-      <button type="button" onClick={() => setEditors((n) => n + 1)}>
+      <button
+        type="button"
+        onClick={() => {
+          setEditors((n) => n + 1)
+        }}
+      >
         mount-editor
       </button>
       {editors >= 1 && <EditorStandIn noteId={noteId} testId="editor-a" />}
@@ -190,7 +200,9 @@ async function mountEditor(
   testId = 'editor-a'
 ): Promise<void> {
   await user.click(screen.getByText('mount-editor'))
-  await waitFor(() => expect(screen.getByTestId(`${testId}-binding`)).toHaveTextContent(binding))
+  await waitFor(() => {
+    expect(screen.getByTestId(`${testId}-binding`)).toHaveTextContent(binding)
+  })
 }
 
 describe('useNoteEditLock', () => {
@@ -241,12 +253,14 @@ describe('useNoteEditLock', () => {
     expect(screen.getByTestId('lock')).toHaveTextContent('note-open-in-tab')
 
     await act(async () => {
-      ipc.settle.forEach((resolve) => resolve())
+      ipc.settle.forEach((resolve) => {
+        resolve()
+      })
       await Promise.resolve()
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('editor-a-binding')).toHaveTextContent('fragment')
-    )
+    })
     // The lock released without any tab or claim change: the only input that
     // moved is the registry's published snapshot, reaching the overlay through
     // useLiveFragmentQuery's subscription.
@@ -271,16 +285,20 @@ describe('useNoteEditLock', () => {
     expect(screen.getByTestId('lock-memoized')).toHaveTextContent('note-open-in-tab')
 
     await act(async () => {
-      ipc.settle.forEach((resolve) => resolve())
+      ipc.settle.forEach((resolve) => {
+        resolve()
+      })
       await Promise.resolve()
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('editor-a-binding')).toHaveTextContent('fragment')
-    )
+    })
     // Nothing about the tabs changed, so `visibleNoteTabIds` keeps its identity:
     // the ONLY thing that can invalidate this memo is the query function taking a
     // new identity with the registry's version.
-    await waitFor(() => expect(screen.getByTestId('lock-memoized')).toHaveTextContent('null'))
+    await waitFor(() => {
+      expect(screen.getByTestId('lock-memoized')).toHaveTextContent('null')
+    })
     expect(screen.getByTestId('lock')).toHaveTextContent('null')
   })
 
@@ -317,9 +335,9 @@ describe('useNoteEditLock', () => {
     // Control: ownership CAN be lost here — a genuine second consumer takes the
     // non-owner slot — so 'true' above is a real property, not a constant.
     await user.click(screen.getByText('mount-editor'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('editor-b-binding')).toHaveTextContent('fragment')
-    )
+    })
     expect(screen.getByTestId('editor-b-owner')).toHaveTextContent('false')
     expect(screen.getByTestId('editor-a-owner')).toHaveTextContent('true')
   })

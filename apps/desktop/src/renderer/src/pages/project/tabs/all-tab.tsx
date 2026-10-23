@@ -50,7 +50,9 @@ const SortButton = ({
   return (
     <button
       type="button"
-      onClick={() => onSort(sortKey)}
+      onClick={() => {
+        onSort(sortKey)
+      }}
       aria-sort={active ? (sort?.dir === 'asc' ? 'ascending' : 'descending') : undefined}
       className={cn(
         'flex items-center gap-1 text-xs font-semibold tracking-[0.02em] hover:text-foreground',
@@ -104,12 +106,13 @@ export const AllTab = ({ source, showDone, handlers }: AllTabProps): React.JSX.E
       : built.filter((row) => !collapsed.has(row.parentNoteId ?? ''))
   }, [source, now, showDone, sort, collapsed])
 
-  const toggleCollapsed = (noteId: string): void =>
+  const toggleCollapsed = (noteId: string): void => {
     setCollapsed((current) => {
       const next = new Set(current)
       if (!next.delete(noteId)) next.add(noteId)
       return next
     })
+  }
 
   const renderRow = (row: AllRow): React.JSX.Element | null => {
     if (row.task) {
@@ -146,7 +149,9 @@ export const AllTab = ({ source, showDone, handlers }: AllTabProps): React.JSX.E
             label={t('projectHub.all.columns.title')}
             sortKey="title"
             sort={sort}
-            onSort={(key) => setSort(nextSort(sort, key))}
+            onSort={(key) => {
+              setSort(nextSort(sort, key))
+            }}
           />
         </div>
         <div className="flex w-24 shrink-0 justify-end">
@@ -154,7 +159,9 @@ export const AllTab = ({ source, showDone, handlers }: AllTabProps): React.JSX.E
             label={t('projectHub.all.columns.daysLeft')}
             sortKey="due"
             sort={sort}
-            onSort={(key) => setSort(nextSort(sort, key))}
+            onSort={(key) => {
+              setSort(nextSort(sort, key))
+            }}
           />
         </div>
       </div>
@@ -183,7 +190,9 @@ export const AllTab = ({ source, showDone, handlers }: AllTabProps): React.JSX.E
                             : 'projectHub.all.collapse',
                           { title: row.title }
                         )}
-                        onClick={() => toggleCollapsed(row.id)}
+                        onClick={() => {
+                          toggleCollapsed(row.id)
+                        }}
                         className="text-muted-foreground/60 hover:text-foreground"
                       >
                         {collapsed.has(row.id) ? (

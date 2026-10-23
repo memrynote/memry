@@ -36,7 +36,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
     setOffset({ x: 0, y: 0 })
   }, [])
 
-  const zoomBy = useCallback((factor: number) => setScale((s) => clampScale(s * factor)), [])
+  const zoomBy = useCallback((factor: number) => {
+    setScale((s) => clampScale(s * factor))
+  }, [])
 
   return (
     <DialogPrimitive.Root open onOpenChange={(open) => !open && onClose()}>
@@ -47,7 +49,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
           aria-describedby={undefined}
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden outline-none"
           onClick={(e) => e.target === e.currentTarget && onClose()}
-          onWheel={(e) => zoomBy(e.deltaY < 0 ? BUTTON_STEP : 1 / BUTTON_STEP)}
+          onWheel={(e) => {
+            zoomBy(e.deltaY < 0 ? BUTTON_STEP : 1 / BUTTON_STEP)
+          }}
         >
           <DialogPrimitive.Title className="sr-only">
             {t('editor.imageLightbox.title')}
@@ -88,7 +92,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
               variant="ghost"
               size="icon"
               aria-label={t('editor.imageLightbox.zoomOut')}
-              onClick={() => zoomBy(1 / BUTTON_STEP)}
+              onClick={() => {
+                zoomBy(1 / BUTTON_STEP)
+              }}
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
@@ -99,7 +105,9 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
               variant="ghost"
               size="icon"
               aria-label={t('editor.imageLightbox.zoomIn')}
-              onClick={() => zoomBy(BUTTON_STEP)}
+              onClick={() => {
+                zoomBy(BUTTON_STEP)
+              }}
             >
               <ZoomIn className="h-4 w-4" />
             </Button>

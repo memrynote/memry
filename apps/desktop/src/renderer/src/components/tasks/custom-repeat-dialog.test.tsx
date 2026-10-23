@@ -76,7 +76,9 @@ vi.mock('@/components/ui/select', () => ({
     <select
       value={value}
       disabled={disabled}
-      onChange={(event) => onValueChange(event.target.value)}
+      onChange={(event) => {
+        onValueChange(event.target.value)
+      }}
     >
       {children}
     </select>
@@ -97,7 +99,12 @@ vi.mock('@/components/ui/popover', () => ({
 
 vi.mock('./date-picker-calendar', () => ({
   DatePickerCalendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
-    <button type="button" onClick={() => onSelect(new Date('2026-06-01T00:00:00Z'))}>
+    <button
+      type="button"
+      onClick={() => {
+        onSelect(new Date('2026-06-01T00:00:00Z'))
+      }}
+    >
       pick mocked date
     </button>
   )

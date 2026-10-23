@@ -331,9 +331,9 @@ export function CommentComposer({
                 type="button"
                 className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-full hover:bg-background"
                 aria-label={`${tCommon('button.remove')} ${attachment.name}`}
-                onClick={() =>
+                onClick={() => {
                   setAttachments((current) => current.filter((item) => item.id !== attachment.id))
-                }
+                }}
               >
                 <X className="size-3" aria-hidden="true" />
               </button>

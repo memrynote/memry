@@ -18,8 +18,12 @@
  *      the 242-requests-in-4-seconds regime of #1466.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SyncContext } from './sync-context'
-import { CRDT_SWEEP_CHUNK_NOTES, crdtSweepChunkDelayMs, type CrdtPullCost } from './sync-context'
+import {
+  type SyncContext,
+  CRDT_SWEEP_CHUNK_NOTES,
+  crdtSweepChunkDelayMs,
+  type CrdtPullCost
+} from './sync-context'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { CrdtSnapshotMeta } from '../http-client'
 

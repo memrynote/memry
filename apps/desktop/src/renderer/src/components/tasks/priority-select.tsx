@@ -72,7 +72,12 @@ export const PrioritySelect = ({
   )
 
   return (
-    <Picker value={value} onValueChange={(v) => onChange(v as Priority)}>
+    <Picker
+      value={value}
+      onValueChange={(v) => {
+        onChange(v as Priority)
+      }}
+    >
       <Picker.Trigger
         variant="button"
         chevron

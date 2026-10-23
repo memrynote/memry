@@ -136,7 +136,9 @@ export function CalendarEventNotes({
           className={cn(ACTION_CLASS, linking && 'bg-accent text-foreground')}
           aria-expanded={linking}
           disabled={busy}
-          onClick={() => setLinking((open) => !open)}
+          onClick={() => {
+            setLinking((open) => !open)
+          }}
         >
           <Link2 className="size-3.5" aria-hidden />
           {t('eventNotes.link')}
@@ -149,7 +151,9 @@ export function CalendarEventNotes({
             <li key={note.id}>
               <button
                 type="button"
-                onClick={() => onOpenNote(note.id)}
+                onClick={() => {
+                  onOpenNote(note.id)
+                }}
                 className="flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-start text-[13px]/5 text-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-(--tint-ring)"
               >
                 {note.emoji ? (
@@ -200,7 +204,9 @@ function NoteSearch({
       <input
         autoFocus
         value={query}
-        onChange={(event) => setQuery(event.target.value)}
+        onChange={(event) => {
+          setQuery(event.target.value)
+        }}
         placeholder={t('eventNotes.searchPlaceholder')}
         aria-label={t('eventNotes.searchPlaceholder')}
         className="h-7 rounded-md border border-border bg-transparent px-2 text-[13px] outline-none focus-visible:ring-1 focus-visible:ring-(--tint-ring)"
@@ -210,7 +216,9 @@ function NoteSearch({
           key={note.id}
           type="button"
           disabled={disabled}
-          onClick={() => onPick(note)}
+          onClick={() => {
+            onPick(note)
+          }}
           className="flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-start text-[13px]/5 outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-(--tint-ring)"
         >
           <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

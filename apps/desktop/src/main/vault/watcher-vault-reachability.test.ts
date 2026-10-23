@@ -200,7 +200,9 @@ describe('watcher and an unreachable vault (#2785)', () => {
     fs.rmSync(abs('notes/gone.md'))
     internals().handleFileDelete(abs('notes/gone.md'))
     await vi.advanceTimersByTimeAsync(600)
-    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledWith('note-gone'))
+    await vi.waitFor(() => {
+      expect(syncNoteDelete).toHaveBeenCalledWith('note-gone')
+    })
     await flushProjectionEvents()
 
     expect(syncNoteDelete).toHaveBeenCalledWith('note-gone')
@@ -216,7 +218,9 @@ describe('watcher and an unreachable vault (#2785)', () => {
     fs.rmSync(abs('notes/gone.md'))
     internals().handleFileDelete(abs('notes/gone.md'))
     await vi.advanceTimersByTimeAsync(600)
-    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledWith('note-gone'))
+    await vi.waitFor(() => {
+      expect(syncNoteDelete).toHaveBeenCalledWith('note-gone')
+    })
     await flushProjectionEvents()
 
     expect(syncNoteDelete).toHaveBeenCalledTimes(1)
@@ -237,7 +241,9 @@ describe('watcher and an unreachable vault (#2785)', () => {
     fs.rmSync(abs('notes/gone.md'))
     internals().handleFileDelete(abs('notes/gone.md'))
     await vi.advanceTimersByTimeAsync(600)
-    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledWith('note-gone'))
+    await vi.waitFor(() => {
+      expect(syncNoteDelete).toHaveBeenCalledWith('note-gone')
+    })
     await flushProjectionEvents()
 
     expect(syncNoteDelete).toHaveBeenCalledTimes(1)

@@ -1136,24 +1136,30 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onToday={handleToday}
         onSearchJump={handleSearchJump}
         todayRequestKey={todayRequestKey}
-        onCreateEvent={(anchorRect) =>
+        onCreateEvent={(anchorRect) => {
           setPopoverState({
             mode: 'create',
             eventId: null,
             draft: createDraftFromAnchor(anchorDate),
             anchorRect
           })
-        }
-        onToggleMemryItems={() => setShowMemryItems((current) => !current)}
-        onToggleImportedCalendars={() => setShowImportedCalendars((current) => !current)}
-        onToggleImportedSource={(sourceId) => handleToggleImportedSource(sourceId)}
-        onToggleVisualType={(visualType) =>
+        }}
+        onToggleMemryItems={() => {
+          setShowMemryItems((current) => !current)
+        }}
+        onToggleImportedCalendars={() => {
+          setShowImportedCalendars((current) => !current)
+        }}
+        onToggleImportedSource={(sourceId) => {
+          handleToggleImportedSource(sourceId)
+        }}
+        onToggleVisualType={(visualType) => {
           setSelectedVisualTypes((current) =>
             current.includes(visualType)
               ? current.filter((type) => type !== visualType)
               : [...current, visualType]
           )
-        }
+        }}
         onSelectItem={(...args) => void handleSelectItem(...args)}
         onSelectTask={handleSelectTask}
         weekStartsOn={weekStartsOn}
@@ -1166,23 +1172,35 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onInboxSnoozeOpenInInbox={handleInboxSnoozeOpenInInbox}
         onInboxSnoozeUnsnooze={handleInboxSnoozeUnsnooze}
         onInboxSnoozeReschedule={handleInboxSnoozeReschedule}
-        onInboxSnoozePopoverDismiss={() => setInboxSnoozePopoverState(null)}
+        onInboxSnoozePopoverDismiss={() => {
+          setInboxSnoozePopoverState(null)
+        }}
         notePopoverState={notePopoverState}
         onNoteOpen={handleNoteOpen}
-        onNotePopoverDismiss={() => setNotePopoverState(null)}
-        onPopoverDismiss={() => setPopoverState(null)}
-        onPopoverDraftChange={(draft) =>
+        onNotePopoverDismiss={() => {
+          setNotePopoverState(null)
+        }}
+        onPopoverDismiss={() => {
+          setPopoverState(null)
+        }}
+        onPopoverDraftChange={(draft) => {
           setPopoverState((current) => (current ? { ...current, draft } : current))
-        }
-        onAnchorChange={(date) => setAnchorDate(date)}
-        onWeekVisibleRangeChange={(startDate) => setAnchorDate(startDate)}
+        }}
+        onAnchorChange={(date) => {
+          setAnchorDate(date)
+        }}
+        onWeekVisibleRangeChange={(startDate) => {
+          setAnchorDate(startDate)
+        }}
         onPopoverSave={() => void handlePopoverSave()}
         onQuickSave={handleQuickSave}
         googleConnectAction={<GoogleCalendarConnectPrompt />}
       />
       <CalendarSubscribedEventPopover
         target={subscribedPopoverState}
-        onDismiss={() => setSubscribedPopoverState(null)}
+        onDismiss={() => {
+          setSubscribedPopoverState(null)
+        }}
         onOpenNote={(noteId) => {
           setSubscribedPopoverState(null)
           handleNoteOpen(noteId)
@@ -1192,14 +1210,18 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         <CalendarTaskPopover
           taskId={taskPopoverState.taskId}
           anchorRect={taskPopoverState.anchorRect}
-          onDismiss={() => setTaskPopoverState(null)}
+          onDismiss={() => {
+            setTaskPopoverState(null)
+          }}
         />
       )}
       <DeleteCalendarEventDialog
         open={pendingDelete !== null}
         title={pendingDelete?.title ?? ''}
         hasGoogleBinding={pendingDelete?.binding !== null && pendingDelete?.binding !== undefined}
-        onCancel={() => setPendingDelete(null)}
+        onCancel={() => {
+          setPendingDelete(null)
+        }}
         onConfirm={() => void handleConfirmDelete()}
       />
       <AddEventToProjectDialog

@@ -191,7 +191,9 @@ export function useMentionSuggestions(
     [expanded, canvasesEnabled, onCreate]
   )
 
-  const showMore = useCallback(() => setExpanded(true), [])
+  const showMore = useCallback(() => {
+    setExpanded(true)
+  }, [])
 
   const openCanvasChoice = useCallback((next: CanvasChoiceState | null) => {
     canvasChoiceRef.current = next

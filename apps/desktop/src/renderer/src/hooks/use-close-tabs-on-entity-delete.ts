@@ -26,6 +26,8 @@ export function useCloseTabsOnEntityDelete(): void {
   const { closeTabsByEntityId } = useTabActions()
 
   useEffect(() => {
-    return onCanvasDeleted((event) => closeTabsByEntityId(event.id))
+    return onCanvasDeleted((event) => {
+      closeTabsByEntityId(event.id)
+    })
   }, [closeTabsByEntityId])
 }

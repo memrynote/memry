@@ -130,13 +130,27 @@ export function ImageCropDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setRect(FULL)}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setRect(FULL)
+            }}
+          >
             {t('editor.imageCrop.reset')}
           </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false)
+            }}
+          >
             {t('editor.imageCrop.cancel')}
           </Button>
-          <Button onClick={() => onApply(normalizeImageCrop(rect))}>
+          <Button
+            onClick={() => {
+              onApply(normalizeImageCrop(rect))
+            }}
+          >
             {t('editor.imageCrop.apply')}
           </Button>
         </DialogFooter>

@@ -42,23 +42,31 @@ describe('usePortalSourceNote', () => {
     const { result } = renderHook(() => usePortalSourceNote('src'))
     expect(result.current.note).toBe(note)
 
-    act(() => handlers.deleted.forEach((cb) => cb({ id: 'src' })))
+    act(() => {
+      handlers.deleted.forEach((cb) => cb({ id: 'src' }))
+    })
 
     expect(result.current.note).toBeNull()
   })
 
   it('ignores the deletion of another note', () => {
     const { result } = renderHook(() => usePortalSourceNote('src'))
-    act(() => handlers.deleted.forEach((cb) => cb({ id: 'other' })))
+    act(() => {
+      handlers.deleted.forEach((cb) => cb({ id: 'other' }))
+    })
     expect(result.current.note).toBe(note)
   })
 
   it('recovers, and reloads the note, when the source note comes back', () => {
     const { result } = renderHook(() => usePortalSourceNote('src'))
-    act(() => handlers.deleted.forEach((cb) => cb({ id: 'src' })))
+    act(() => {
+      handlers.deleted.forEach((cb) => cb({ id: 'src' }))
+    })
     expect(result.current.note).toBeNull()
 
-    act(() => handlers.created.forEach((cb) => cb({ note: { id: 'src' } })))
+    act(() => {
+      handlers.created.forEach((cb) => cb({ note: { id: 'src' } }))
+    })
 
     expect(refetch).toHaveBeenCalledTimes(1)
     expect(result.current.note).toBe(note)
@@ -66,7 +74,9 @@ describe('usePortalSourceNote', () => {
 
   it('does not reload a note that was never deleted', () => {
     renderHook(() => usePortalSourceNote('src'))
-    act(() => handlers.created.forEach((cb) => cb({ note: { id: 'src' } })))
+    act(() => {
+      handlers.created.forEach((cb) => cb({ note: { id: 'src' } }))
+    })
     expect(refetch).not.toHaveBeenCalled()
   })
 })

@@ -101,14 +101,18 @@ function readZipEntries(buffer: Buffer): Promise<RawEntry[]> {
                 }
                 const chunks: Buffer[] = []
                 stream.on('data', (c) => chunks.push(c as Buffer))
-                stream.on('end', () => res(Buffer.concat(chunks)))
+                stream.on('end', () => {
+                  res(Buffer.concat(chunks))
+                })
                 stream.on('error', rej)
               })
             })
         })
         zip.readEntry()
       })
-      zip.on('end', () => resolve(out))
+      zip.on('end', () => {
+        resolve(out)
+      })
       zip.on('error', reject)
       zip.readEntry()
     })

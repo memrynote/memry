@@ -108,7 +108,9 @@ async function vaultAt(dir, make, rebuild) {
 async function clipVault() {
   const base = await vaultAt(
     path.join(VAULTS, 'base'),
-    (vault) => seedBase({ app, vault }),
+    (vault) => {
+      seedBase({ app, vault })
+    },
     seedBaseFlag
   )
   const extra = path.join(dir, 'vault.mjs')

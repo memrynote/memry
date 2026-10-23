@@ -83,7 +83,9 @@ const url = `http://127.0.0.1:${server.address().port}/index.html`
 
 async function openPage(browser) {
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 })
-  page.on('pageerror', (e) => console.error('pageerror:', e.message))
+  page.on('pageerror', (e) => {
+    console.error('pageerror:', e.message)
+  })
   page.on('console', (m) => {
     if (m.type() === 'error' || m.type() === 'warning') console.error('console:', m.text())
   })

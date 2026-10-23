@@ -274,7 +274,7 @@ beforeEach(() => {
     getLocal: vi.fn().mockResolvedValue({ nodes: [{ id: 'local-1' }], edges: [] })
   } as never
   api.journal = {
-    ...(api.journal ?? {}),
+    ...api.journal,
     getDayContext: vi.fn().mockResolvedValue({
       tasks: [{ id: 'task-1', dueDate: '2026-05-10' }],
       events: [{ id: 'event-1' }],
@@ -314,7 +314,9 @@ describe('AI hooks', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true }) as never
 
     const globallyDisabled = renderHook(() => useAIInline(false))
-    await waitFor(() => expect(globallyDisabled.result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(globallyDisabled.result.current.loading).toBe(false)
+    })
     expect(globallyDisabled.result.current.port).toBeNull()
     expect(invoke).toHaveBeenCalledWith('ai-inline:stop-server')
     expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-settings')
@@ -325,13 +327,17 @@ describe('AI hooks', () => {
 
     invoke.mockResolvedValueOnce({ enabled: false, provider: 'ollama' })
     const disabled = renderHook(() => useAIInline())
-    await waitFor(() => expect(disabled.result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(disabled.result.current.loading).toBe(false)
+    })
     expect(disabled.result.current.port).toBeNull()
     disabled.unmount()
 
     invoke.mockResolvedValueOnce({ enabled: true, provider: 'ollama' }).mockResolvedValueOnce(3210)
     const healthy = renderHook(() => useAIInline())
-    await waitFor(() => expect(healthy.result.current.port).toBe(3210))
+    await waitFor(() => {
+      expect(healthy.result.current.port).toBe(3210)
+    })
     healthy.unmount()
 
     invoke
@@ -342,9 +348,15 @@ describe('AI hooks', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ success: false, error: '401 api key' })
     const failed = renderHook(() => useAIInline())
-    await waitFor(() => expect(failed.result.current.error).toContain('Ollama is not running'))
-    act(() => failed.result.current.retry())
-    await waitFor(() => expect(failed.result.current.error).toContain('Invalid API key for openai'))
+    await waitFor(() => {
+      expect(failed.result.current.error).toContain('Ollama is not running')
+    })
+    act(() => {
+      failed.result.current.retry()
+    })
+    await waitFor(() => {
+      expect(failed.result.current.error).toContain('Invalid API key for openai')
+    })
   })
 })
 
@@ -365,8 +377,12 @@ describe('navigation and keyboard hooks', () => {
       })
     )
 
-    await waitFor(() => expect(result.current.activeHeadingId).toBe('h2'))
-    act(() => result.current.setActiveHeading('h1'))
+    await waitFor(() => {
+      expect(result.current.activeHeadingId).toBe('h2')
+    })
+    act(() => {
+      result.current.setActiveHeading('h1')
+    })
     expect(result.current.activeHeadingId).toBe('h1')
   })
 
@@ -377,17 +393,22 @@ describe('navigation and keyboard hooks', () => {
       onOpenBulkArchiveDialog: vi.fn(),
       onOpenSourceUrl: vi.fn()
     }
-    const { rerender } = renderHook((props) => useInboxKeyboard(props), {
-      initialProps: {
-        enabled: true,
-        isDetailPanelOpen: false,
-        isBulkFilePanelOpen: false,
-        isInBulkMode: false,
-        focusedItemId: 'item-1',
-        items: mocks.inbox.items as never,
-        ...callbacks
+    const { rerender } = renderHook(
+      (props) => {
+        useInboxKeyboard(props)
+      },
+      {
+        initialProps: {
+          enabled: true,
+          isDetailPanelOpen: false,
+          isBulkFilePanelOpen: false,
+          isInBulkMode: false,
+          focusedItemId: 'item-1',
+          items: mocks.inbox.items as never,
+          ...callbacks
+        }
       }
-    })
+    )
 
     fireEvent.keyDown(window, { key: 'r' })
     expect(callbacks.onRefresh).toHaveBeenCalled()
@@ -429,9 +450,14 @@ describe('navigation and keyboard hooks', () => {
       focusedItemId: 'item-1',
       ...callbacks
     }
-    const { rerender, unmount } = renderHook((props) => useInboxKeyboard(props), {
-      initialProps: { ...baseProps, items: mocks.inbox.items as never }
-    })
+    const { rerender, unmount } = renderHook(
+      (props) => {
+        useInboxKeyboard(props)
+      },
+      {
+        initialProps: { ...baseProps, items: mocks.inbox.items as never }
+      }
+    )
 
     const keydownAdds = (): unknown[] => addSpy.mock.calls.filter(([type]) => type === 'keydown')
     const keydownRemoves = (): unknown[] =>
@@ -476,7 +502,9 @@ describe('navigation and keyboard hooks', () => {
     expect(countdown.result.current.isExpired).toBe(true)
     countdown.unmount()
 
-    const flush = renderHook(() => useFlushOnQuit())
+    const flush = renderHook(() => {
+      useFlushOnQuit()
+    })
     await act(async () => {
       await mocks.taskListeners.flush('flush-1')
     })
@@ -502,18 +530,24 @@ describe('state and settings hooks', () => {
     )
 
     expect(result.current.isExpanded('task-1')).toBe(true)
-    act(() => result.current.toggleExpanded('task-2'))
+    act(() => {
+      result.current.toggleExpanded('task-2')
+    })
     expect(result.current.isExpanded('task-2')).toBe(true)
-    act(() => result.current.collapse('task-1'))
+    act(() => {
+      result.current.collapse('task-1')
+    })
     expect(result.current.isExpanded('task-1')).toBe(false)
-    act(() =>
+    act(() => {
       result.current.expandAll([
         { id: 'parent', subtaskIds: ['child'] },
         { id: 'child', subtaskIds: [] }
       ] as never)
-    )
+    })
     expect(result.current.expandedIds).toEqual(new Set(['parent']))
-    act(() => result.current.collapseAll())
+    act(() => {
+      result.current.collapseAll()
+    })
     expect(result.current.expandedIds).toEqual(new Set())
 
     localStorage.setItem('expandedTasks-b', JSON.stringify(['other']))
@@ -523,7 +557,9 @@ describe('state and settings hooks', () => {
 
   it('manages storage usage success and failure states', async () => {
     const { result } = renderHook(() => useStorageUsage())
-    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
     expect(result.current.data?.used).toBe(512)
 
     window.api.syncOps.getStorageBreakdown = vi
@@ -543,7 +579,9 @@ describe('state and settings hooks', () => {
     })
 
     const journal = renderHook(() => useJournalSettings())
-    await waitFor(() => expect(journal.result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(journal.result.current.isLoading).toBe(false)
+    })
     await act(async () => {
       await journal.result.current.setDefaultTemplate('daily')
     })
@@ -554,7 +592,9 @@ describe('state and settings hooks', () => {
     expect(journal.result.current.settings.showStatsFooter).toBe(true)
 
     const keyboard = renderHook(() => useKeyboardSettings())
-    await waitFor(() => expect(keyboard.result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(keyboard.result.current.isLoading).toBe(false)
+    })
     await act(async () => {
       await keyboard.result.current.updateSettings({ globalCapture: 'Mod+K' })
       await keyboard.result.current.resetToDefaults()
@@ -571,7 +611,9 @@ describe('state and settings hooks', () => {
     })
 
     const editor = renderHook(() => useEditorSettings())
-    await waitFor(() => expect(editor.result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(editor.result.current.isLoading).toBe(false)
+    })
     expect(editor.result.current.settings.width).toBe('wide')
     await act(async () => {
       await editor.result.current.updateSettings({ width: 'narrow' })
@@ -590,7 +632,9 @@ describe('state and settings hooks', () => {
     expect(editor.result.current.error).toBe('editor failed')
 
     const calendar = renderHook(() => useCalendarPreferences())
-    await waitFor(() => expect(calendar.result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(calendar.result.current.isLoading).toBe(false)
+    })
     expect(calendar.result.current.settings.defaultView).toBe('week')
     await act(async () => {
       await calendar.result.current.updateSettings({ dayCellClickBehavior: 'calendar' })
@@ -617,63 +661,100 @@ describe('state and settings hooks', () => {
 
     const filters = renderHook(() => useGraphFilters(GRAPH_VIEW_STATE_DEFAULTS))
     expect(filters.result.current.isFiltered).toBe(false)
-    act(() => filters.result.current.dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: 'note' }))
+    act(() => {
+      filters.result.current.dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: 'note' })
+    })
     expect(filters.result.current.filterState.showNotes).toBe(false)
-    act(() => filters.result.current.dispatch({ type: 'TOGGLE_ORPHANS' }))
-    act(() => filters.result.current.dispatch({ type: 'TOGGLE_CANVAS_EDGES' }))
+    act(() => {
+      filters.result.current.dispatch({ type: 'TOGGLE_ORPHANS' })
+    })
+    act(() => {
+      filters.result.current.dispatch({ type: 'TOGGLE_CANVAS_EDGES' })
+    })
     expect(filters.result.current.filterState.showCanvasEdges).toBe(false)
-    act(() => filters.result.current.dispatch({ type: 'SET_SELECTED_TAGS', tags: ['work'] }))
-    act(() =>
+    act(() => {
+      filters.result.current.dispatch({ type: 'SET_SELECTED_TAGS', tags: ['work'] })
+    })
+    act(() => {
       filters.result.current.dispatch({ type: 'SET_FOCUS_NODE', nodeId: 'note-1', depth: 3 })
-    )
-    act(() => filters.result.current.dispatch({ type: 'SET_FOCUS_DEPTH', depth: 4 }))
-    act(() => filters.result.current.dispatch({ type: 'SET_SEARCH_QUERY', query: 'alpha' }))
+    })
+    act(() => {
+      filters.result.current.dispatch({ type: 'SET_FOCUS_DEPTH', depth: 4 })
+    })
+    act(() => {
+      filters.result.current.dispatch({ type: 'SET_SEARCH_QUERY', query: 'alpha' })
+    })
     expect(filters.result.current.isFiltered).toBe(true)
-    act(() => filters.result.current.dispatch({ type: 'CLEAR_FOCUS' }))
-    act(() => filters.result.current.dispatch({ type: 'RESET_FILTERS' }))
+    act(() => {
+      filters.result.current.dispatch({ type: 'CLEAR_FOCUS' })
+    })
+    act(() => {
+      filters.result.current.dispatch({ type: 'RESET_FILTERS' })
+    })
     expect(filters.result.current.isFiltered).toBe(false)
 
     const graph = renderHook(() => useGraphData(), { wrapper })
-    await waitFor(() => expect(graph.result.current.data?.nodes).toEqual([{ id: 'note-1' }]))
+    await waitFor(() => {
+      expect(graph.result.current.data?.nodes).toEqual([{ id: 'note-1' }])
+    })
     const local = renderHook(({ noteId }) => useLocalGraphData(noteId), {
       initialProps: { noteId: undefined as string | undefined },
       wrapper
     })
     expect(window.api.graph.getLocal).not.toHaveBeenCalled()
     local.rerender({ noteId: 'note-1' })
-    await waitFor(() => expect(local.result.current.data?.nodes).toEqual([{ id: 'local-1' }]))
+    await waitFor(() => {
+      expect(local.result.current.data?.nodes).toEqual([{ id: 'local-1' }])
+    })
 
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-    renderHook(() => useGraphReactivity(), { wrapper })
+    renderHook(
+      () => {
+        useGraphReactivity()
+      },
+      { wrapper }
+    )
     act(() => {
       mocks.notesListeners.created()
       mocks.taskListeners.updated()
     })
     // The graph refetch is debounced so one save cannot fan out into several.
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ['graph'] })
-    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] }))
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] })
+    })
     // Canvas arrows are graph edges, so a canvas save refreshes the graph too.
     invalidate.mockClear()
-    act(() => mocks.canvasListeners.updated())
-    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] }))
+    act(() => {
+      mocks.canvasListeners.updated()
+    })
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['graph'] })
+    })
 
     const graphSettings = renderHook(() => useGraphSettings(), { wrapper })
-    await waitFor(() => expect(graphSettings.result.current.settings.layout).toBe('force'))
-    act(() => graphSettings.result.current.updateSettings({ physicsEnabled: false }))
-    await waitFor(() =>
+    await waitFor(() => {
+      expect(graphSettings.result.current.settings.layout).toBe('force')
+    })
+    act(() => {
+      graphSettings.result.current.updateSettings({ physicsEnabled: false })
+    })
+    await waitFor(() => {
       expect(queryClient.getQueryData(['settings', 'graph'])).toMatchObject({
         physicsEnabled: false
       })
-    )
+    })
 
     const dayContext = renderHook(() => useDayContext('2026-05-10'), { wrapper })
-    await waitFor(() => expect(dayContext.result.current.tasks).toHaveLength(1))
-    act(() =>
+    await waitFor(() => {
+      expect(dayContext.result.current.tasks).toHaveLength(1)
+    })
+    act(() => {
       mocks.taskListeners.apiUpdated({
         task: { dueDate: '2026-05-10' },
         changes: {}
       })
-    )
+    })
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ['journal', 'dayContext', '2026-05-10']
     })
@@ -728,11 +809,18 @@ describe('DOM and cache hooks', () => {
   it('subscribes folder-view events and invalidates all folder caches', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-    const { unmount } = renderHook(() => useFolderViewEvents(), {
-      wrapper: queryWrapper(queryClient)
-    })
+    const { unmount } = renderHook(
+      () => {
+        useFolderViewEvents()
+      },
+      {
+        wrapper: queryWrapper(queryClient)
+      }
+    )
 
-    act(() => mocks.notesListeners.created())
+    act(() => {
+      mocks.notesListeners.created()
+    })
     expect(invalidate).toHaveBeenCalled()
     unmount()
     expect(mocks.unsubscribe).toHaveBeenCalled()

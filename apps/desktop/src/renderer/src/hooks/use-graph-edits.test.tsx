@@ -71,7 +71,9 @@ describe('useGraphEdits', () => {
     mocks.propertiesGet.mockResolvedValue(props({ status: 'draft', related: [B], extra: 1 }))
     await act(async () => {
       lastUndo()()
-      await vi.waitFor(() => expect(mocks.propertiesSet).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => {
+        expect(mocks.propertiesSet).toHaveBeenCalledTimes(2)
+      })
     })
     expect(mocks.propertiesSet).toHaveBeenLastCalledWith('note-a', {
       status: 'draft',
@@ -118,7 +120,9 @@ describe('useGraphEdits', () => {
     mocks.propertiesGet.mockResolvedValue(props({ related: [], source: ['memry://note/c'] }))
     await act(async () => {
       lastUndo()()
-      await vi.waitFor(() => expect(mocks.propertiesSet).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => {
+        expect(mocks.propertiesSet).toHaveBeenCalledTimes(2)
+      })
     })
     expect(mocks.propertiesSet).toHaveBeenLastCalledWith('note-a', {
       related: [B],
@@ -148,7 +152,9 @@ describe('useGraphEdits', () => {
     })
     await act(async () => {
       lastUndo()()
-      await vi.waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => {
+        expect(mocks.updateNote).toHaveBeenCalledTimes(2)
+      })
     })
     expect(mocks.updateNote).toHaveBeenLastCalledWith({
       id: 'note-a',
@@ -188,7 +194,9 @@ describe('useGraphEdits', () => {
     mocks.propertiesGet.mockRejectedValueOnce(new Error('undo read failed'))
     await act(async () => {
       lastUndo()()
-      await vi.waitFor(() => expect(mocks.toast.error).toHaveBeenLastCalledWith('undo read failed'))
+      await vi.waitFor(() => {
+        expect(mocks.toast.error).toHaveBeenLastCalledWith('undo read failed')
+      })
     })
     expect(mocks.propertiesSet).toHaveBeenCalledTimes(1)
   })
@@ -201,7 +209,9 @@ describe('useGraphEdits', () => {
     mocks.propertiesGet.mockResolvedValueOnce(props({ related: [] }))
     await act(async () => {
       lastUndo()()
-      await vi.waitFor(() => expect(mocks.propertiesGet).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => {
+        expect(mocks.propertiesGet).toHaveBeenCalledTimes(2)
+      })
     })
     expect(mocks.propertiesSet).toHaveBeenCalledTimes(1)
 
@@ -210,7 +220,9 @@ describe('useGraphEdits', () => {
     mocks.notesGet.mockResolvedValueOnce({ id: 'note-a', title: 'Alpha', headerTags: [] })
     await act(async () => {
       lastUndo()()
-      await vi.waitFor(() => expect(mocks.notesGet).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => {
+        expect(mocks.notesGet).toHaveBeenCalledTimes(2)
+      })
     })
     expect(mocks.updateNote).toHaveBeenCalledTimes(1)
   })

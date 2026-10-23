@@ -82,7 +82,13 @@ function Host(): React.JSX.Element {
         <input aria-label="editor" />
         {overlay}
       </div>
-      <button onClick={() => openCreate('Ada Lovelace', { x: 12, y: 34 })}>open menu</button>
+      <button
+        onClick={() => {
+          openCreate('Ada Lovelace', { x: 12, y: 34 })
+        }}
+      >
+        open menu
+      </button>
       <p>outside</p>
     </div>
   )
@@ -145,13 +151,13 @@ describe('mention create menu', () => {
 
     await userEvent.keyboard('{Enter}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.notes.create).toHaveBeenCalledWith({
         title: 'Ada Lovelace',
         content: '',
         tags: ['person']
       })
-    )
+    })
     expect(editor.insertInlineContent).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -175,9 +181,9 @@ describe('mention create menu', () => {
     expect(option(/Plain note/)).toHaveAttribute('aria-selected', 'true')
     await userEvent.keyboard('{ArrowDown}{ArrowDown}{Tab}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.notes.create).toHaveBeenCalledWith(expect.objectContaining({ tags: ['company'] }))
-    )
+    })
   })
 
   it('creates an untagged note when the user picks Plain note', async () => {
@@ -185,9 +191,9 @@ describe('mention create menu', () => {
 
     fireEvent.mouseDown(option(/Plain note/))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.notes.create).toHaveBeenCalledWith({ title: 'Ada Lovelace', content: '' })
-    )
+    })
     expect(editor.insertInlineContent).toHaveBeenCalledWith(
       [expect.objectContaining({ type: 'wikiLink' }), ' '],
       { updateSelection: true }
@@ -204,13 +210,13 @@ describe('mention create menu', () => {
 
     fireEvent.mouseDown(option(/Book/))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.notes.create).toHaveBeenCalledWith({
         title: 'Ada Lovelace',
         content: '',
         tags: ['book']
       })
-    )
+    })
     expect(api.tags.editSchema).toHaveBeenCalledWith({ kind: 'add-preset', preset: 'book' })
     expect(await screen.findByTestId('quick-fields-card')).toBeInTheDocument()
   })
@@ -252,7 +258,9 @@ describe('mention create menu', () => {
 
     await userEvent.keyboard('{Enter}')
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk full'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('disk full')
+    })
     expect(editor.insertInlineContent).not.toHaveBeenCalled()
   })
 
@@ -266,9 +274,9 @@ describe('mention create menu', () => {
     const input = screen.getByPlaceholderText('Add job title')
     await userEvent.type(input, '  Mathematician {Enter}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.properties.merge).toHaveBeenCalledWith('new-1', { 'Job title': 'Mathematician' })
-    )
+    })
     expect(screen.queryByTestId('quick-fields-card')).not.toBeInTheDocument()
     expect(editor.focus).toHaveBeenCalled()
   })
@@ -281,7 +289,9 @@ describe('mention create menu', () => {
 
     await userEvent.keyboard('{Enter}')
 
-    await waitFor(() => expect(api.notes.create).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(api.notes.create).toHaveBeenCalled()
+    })
     expect(screen.queryByTestId('quick-fields-card')).not.toBeInTheDocument()
   })
 })

@@ -13,7 +13,8 @@
  *    minted, which outlive the userData dir (see keychain-cleanup.ts)
  */
 
-import { _electron as electron, ElectronApplication, Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
+import { _electron as electron } from '@playwright/test'
 import { spawnSync } from 'child_process'
 import { createRequire } from 'node:module'
 import * as fs from 'fs'
@@ -126,7 +127,11 @@ export async function destroyElectronApp(
   const graceful = app.close().catch(() => {})
   const timedOut = await Promise.race([
     graceful.then(() => false),
-    new Promise<boolean>((resolve) => setTimeout(() => resolve(true), GRACEFUL_CLOSE_MS))
+    new Promise<boolean>((resolve) =>
+      setTimeout(() => {
+        resolve(true)
+      }, GRACEFUL_CLOSE_MS)
+    )
   ])
   if (timedOut && child && !child.killed) {
     try {
@@ -193,7 +198,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     ...(opts.deviceId ? { MEMRY_DEVICE: opts.deviceId } : {}),
     ...(opts.syncServerUrl ? { SYNC_SERVER_URL: opts.syncServerUrl } : {}),
     ...(isCI && { ELECTRON_DISABLE_SANDBOX: '1' }),
-    ...(opts.extraEnv ?? {})
+    ...opts.extraEnv
   }
   delete env.ELECTRON_RUN_AS_NODE
 

@@ -34,7 +34,9 @@ vi.mock('@/components/ui/switch', () => ({
       id={id}
       type="checkbox"
       checked={checked}
-      onChange={(event) => onCheckedChange(event.target.checked)}
+      onChange={(event) => {
+        onCheckedChange(event.target.checked)
+      }}
     />
   )
 }))

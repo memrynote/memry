@@ -133,7 +133,9 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalled()
+    })
 
     const tr = blockNoteMocks.removeAndInsertBlocks.mock.calls[0][0]
     expect(editor.transact).toHaveBeenCalled()
@@ -166,7 +168,9 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(undoManager.clear).toHaveBeenCalledWith(true, true))
+    await waitFor(() => {
+      expect(undoManager.clear).toHaveBeenCalledWith(true, true)
+    })
     expect(undoManager.stopCapturing).toHaveBeenCalled()
   })
 
@@ -209,10 +213,12 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(fetchLinkPreview).toHaveBeenCalledWith('https://example.com'))
-    await waitFor(() =>
+    await waitFor(() => {
+      expect(fetchLinkPreview).toHaveBeenCalledWith('https://example.com')
+    })
+    await waitFor(() => {
       expect(editor.updateBlock).toHaveBeenCalledWith(nestedMention, expect.anything())
-    )
+    })
   })
 
   it('does not promote the wiki link the caret is inside, and promotes the others', async () => {
@@ -220,7 +226,9 @@ describe('useEditorSync', () => {
     const { result } = renderHook(() =>
       useEditorSync({ editor, initialContent: '', contentType: 'markdown' })
     )
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     editor.replaceBlocks(
       [],
@@ -272,7 +280,9 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalled()
+    })
     await act(async () => {
       await Promise.resolve()
     })
@@ -314,7 +324,9 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalled()
+    })
 
     const [, , nextBlocks] = blockNoteMocks.removeAndInsertBlocks.mock.calls[0]
     expect(collectIds(nextBlocks)).not.toContain('')
@@ -369,7 +381,9 @@ describe('useEditorSync', () => {
       })
     )
 
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
     // Loading reports the tag the body ALREADY had, flagged as the baseline —
     // opening a note must not write to it (#1454).
     expect(onInlineTagsChange).toHaveBeenCalledWith(['Focus'], 'load')
@@ -427,7 +441,9 @@ describe('useEditorSync', () => {
         onMarkdownChange
       })
     )
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     act(() => {
       result.current.handleChange()
@@ -490,7 +506,9 @@ describe('useEditorSync', () => {
     )
 
     // #when it is opened
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     // #then the only report is the baseline, and it carries the tag the file
     // already had — nothing for the owner to persist
@@ -529,7 +547,9 @@ describe('useEditorSync', () => {
     )
 
     // #then
-    await waitFor(() => expect(onInlineTagsChange).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(onInlineTagsChange).toHaveBeenCalled()
+    })
     expect(onInlineTagsChange.mock.calls).toEqual([[['hashtag'], 'load']])
     expect(result.current.prevInlineTagsRef.current).toEqual(['hashtag'])
   })
@@ -550,7 +570,9 @@ describe('useEditorSync', () => {
       { initialProps: { initialContent: 'Body', externalContentRevision: 0 } }
     )
 
-    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(1)
+    })
 
     editor.tryParseMarkdownToBlocks.mockResolvedValue([
       {
@@ -563,7 +585,9 @@ describe('useEditorSync', () => {
     ])
     rerender({ initialContent: 'Edited elsewhere', externalContentRevision: 1 })
 
-    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(2)
+    })
     expect(editor.document).toEqual([
       {
         id: 'paragraph-2',
@@ -592,7 +616,9 @@ describe('useEditorSync', () => {
       { initialProps: { externalContentRevision: 0 } }
     )
 
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     rerender({ externalContentRevision: 1 })
     await act(async () => {
@@ -635,7 +661,9 @@ describe('useEditorSync', () => {
       return sync
     })
 
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     // Type, then close the tab inside the 150ms debounce window.
     act(() => {
@@ -643,7 +671,9 @@ describe('useEditorSync', () => {
     })
     unmount()
 
-    await waitFor(() => expect(onMarkdownChange).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(onMarkdownChange).toHaveBeenCalledTimes(1)
+    })
     expect(onMarkdownChange.mock.calls[0][0]).toContain('Typed just before closing')
     expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1)
     expect(onMarkdownChange.mock.invocationCallOrder[0]).toBeLessThan(
@@ -674,7 +704,9 @@ describe('useEditorSync', () => {
         onMarkdownChange
       })
     )
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     act(() => {
       result.current.handleChange()
@@ -717,7 +749,9 @@ describe('useEditorSync', () => {
       { initialProps: { yjsFragment: undefined as unknown } }
     )
 
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isContentReadyRef.current).toBe(true)
+    })
 
     act(() => {
       result.current.handleChange()

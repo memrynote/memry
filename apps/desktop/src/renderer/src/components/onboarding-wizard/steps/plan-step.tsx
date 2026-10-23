@@ -93,10 +93,12 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
     }
   }
 
-  const setPlan = (next: PlanId): void =>
+  const setPlan = (next: PlanId): void => {
     dispatch({ type: 'update', patch: { plan: { plan: next, cadence } } })
-  const setCadence = (next: PlanCadence): void =>
+  }
+  const setCadence = (next: PlanCadence): void => {
     dispatch({ type: 'update', patch: { plan: { plan, cadence: next } } })
+  }
 
   if (waiting) {
     const cadenceKey =
@@ -118,7 +120,13 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
                 {t(`${K}.billedFor`, { email })}
               </span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setWaiting(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setWaiting(false)
+              }}
+            >
               {t(`${K}.changePlan`)}
             </Button>
           </div>
@@ -132,7 +140,13 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
         </div>
         <div className="flex flex-col items-center gap-3.5 pt-6">
           <ContinueButton label={t(`${K}.reopen`)} onClick={() => void checkout()} />
-          <QuietLink onClick={() => finish(null)}>{t(`${K}.continueWithout`)}</QuietLink>
+          <QuietLink
+            onClick={() => {
+              finish(null)
+            }}
+          >
+            {t(`${K}.continueWithout`)}
+          </QuietLink>
           <p className="max-w-[400px] text-center text-xs leading-[17px] text-text-tertiary">
             {t(`${K}.alreadyPaid`)}
           </p>
@@ -155,7 +169,9 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
             type="button"
             role="radio"
             aria-checked={cadence === option}
-            onClick={() => setCadence(option)}
+            onClick={() => {
+              setCadence(option)
+            }}
             className={cn(
               'flex h-[26px] items-center gap-1.5 rounded-md px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               cadence === option ? 'bg-surface-active text-foreground' : 'text-text-secondary'
@@ -186,7 +202,9 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
               key={id}
               kind="radio"
               selected={plan === id}
-              onSelect={() => setPlan(id)}
+              onSelect={() => {
+                setPlan(id)
+              }}
               title={t(`${K}.${id}`)}
               badge={BADGE[id] && t(`${K}.${BADGE[id]}`)}
               description={t(`${K}.${id}Hint`)}
@@ -222,7 +240,13 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
           <Lock className="size-3" />
           {t(`${K}.secure`)}
         </p>
-        <QuietLink onClick={() => finish(null)}>{t(`${K}.notNow`, { device })}</QuietLink>
+        <QuietLink
+          onClick={() => {
+            finish(null)
+          }}
+        >
+          {t(`${K}.notNow`, { device })}
+        </QuietLink>
       </div>
     </>
   )

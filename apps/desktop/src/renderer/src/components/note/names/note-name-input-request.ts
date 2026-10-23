@@ -9,5 +9,7 @@ export function onNoteNameInputRequest(noteId: string, open: () => void): () => 
     if ((event as CustomEvent<string>).detail === noteId) open()
   }
   window.addEventListener(EVENT, listener)
-  return () => window.removeEventListener(EVENT, listener)
+  return () => {
+    window.removeEventListener(EVENT, listener)
+  }
 }

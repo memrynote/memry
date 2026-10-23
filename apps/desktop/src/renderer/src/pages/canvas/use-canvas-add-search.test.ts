@@ -51,7 +51,9 @@ describe('useCanvasAddSearch', () => {
     const { result, rerender } = renderHook(({ open }) => useCanvasAddSearch(open, ''), {
       initialProps: { open: true }
     })
-    await waitFor(() => expect(result.current.projects).toEqual([{ id: 'p-old', name: 'Old' }]))
+    await waitFor(() => {
+      expect(result.current.projects).toEqual([{ id: 'p-old', name: 'Old' }])
+    })
 
     rerender({ open: false })
     mocks.listProjects.mockResolvedValueOnce({
@@ -62,12 +64,12 @@ describe('useCanvasAddSearch', () => {
     })
     rerender({ open: true })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.projects).toEqual([
         { id: 'p-old', name: 'Old' },
         { id: 'p-new', name: 'New' }
       ])
-    )
+    })
   })
 
   it('does not query anything while closed', async () => {
@@ -75,7 +77,9 @@ describe('useCanvasAddSearch', () => {
     renderHook(() => useCanvasAddSearch(false, 'abc'))
 
     // #then — neither source is hit
-    await waitFor(() => expect(mocks.searchEvents).not.toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mocks.searchEvents).not.toHaveBeenCalled()
+    })
     expect(mocks.quick).not.toHaveBeenCalled()
   })
 
@@ -84,7 +88,9 @@ describe('useCanvasAddSearch', () => {
     const { result } = renderHook(() => useCanvasAddSearch(true, '   '))
 
     // #then — no calls, both lists empty
-    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
     expect(mocks.quick).not.toHaveBeenCalled()
     expect(mocks.searchEvents).not.toHaveBeenCalled()
     expect(result.current.results).toEqual([])
@@ -96,7 +102,9 @@ describe('useCanvasAddSearch', () => {
     const { result } = renderHook(() => useCanvasAddSearch(true, 'alpha'))
 
     // #then — every source runs and its results land
-    await waitFor(() => expect(result.current.results).toEqual([NOTE_ROW, TASK_ROW]))
+    await waitFor(() => {
+      expect(result.current.results).toEqual([NOTE_ROW, TASK_ROW])
+    })
     expect(result.current.files).toEqual([FILE_ROW])
     expect(result.current.events).toEqual([{ id: 'e1' }])
     // Notes and files are separate calls so each gets its own result cap (#874).
@@ -112,7 +120,9 @@ describe('useCanvasAddSearch', () => {
 
     // #then — both sources receive the trimmed query, not the raw one, and the
     // trimming does not cost the note file-type filter (#887)
-    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
     expect(mocks.quick).toHaveBeenCalledWith('alpha', ['markdown'])
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alpha' })
   })
@@ -122,13 +132,17 @@ describe('useCanvasAddSearch', () => {
     const { rerender } = renderHook(({ q }) => useCanvasAddSearch(true, q), {
       initialProps: { q: 'alpha' }
     })
-    await waitFor(() => expect(mocks.searchEvents).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
+    })
 
     // #when — the query changes and settles
     rerender({ q: 'alphabet' })
 
     // #then — events are fetched again for the new query
-    await waitFor(() => expect(mocks.searchEvents).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mocks.searchEvents).toHaveBeenCalledTimes(2)
+    })
     expect(mocks.searchEvents).toHaveBeenLastCalledWith({ query: 'alphabet' })
   })
 
@@ -143,7 +157,9 @@ describe('useCanvasAddSearch', () => {
     rerender({ q: 'alp' })
 
     // #then — one round of calls, for the last query only
-    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mocks.quick).toHaveBeenCalledTimes(2)
+    })
     expect(mocks.quick).toHaveBeenCalledWith('alp', ['markdown'])
     expect(mocks.searchEvents).toHaveBeenCalledTimes(1)
     expect(mocks.searchEvents).toHaveBeenCalledWith({ query: 'alp' })
@@ -194,7 +210,9 @@ describe('useCanvasAddSearch', () => {
     const { result, rerender } = renderHook(({ q }) => useCanvasAddSearch(true, q), {
       initialProps: { q: 'stale' }
     })
-    await waitFor(() => expect(mocks.quick).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mocks.quick).toHaveBeenCalledTimes(2)
+    })
     rerender({ q: 'fresh' })
 
     // #then — releasing the stale response while the newer query is still
@@ -215,7 +233,9 @@ describe('useCanvasAddSearch', () => {
     const { result } = renderHook(() => useCanvasAddSearch(true, 'alpha'))
 
     // #then — one source failing does not blank the other
-    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
     expect(result.current.results).toEqual([])
     expect(result.current.files).toEqual([])
     expect(result.current.events).toEqual([{ id: 'e1' }])
@@ -229,7 +249,9 @@ describe('useCanvasAddSearch', () => {
     const { result } = renderHook(() => useCanvasAddSearch(true, 'alpha'))
 
     // #then — the reverse direction holds too
-    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
     expect(result.current.events).toEqual([])
     expect(result.current.results).toEqual([NOTE_ROW, TASK_ROW])
   })

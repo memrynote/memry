@@ -301,7 +301,9 @@ export function FolderNoteShortcutsGroup({
             void save([...entries, next])
           }}
           onFolderChange={setDraftFolder}
-          onRemove={() => setDraftFolder(null)}
+          onRemove={() => {
+            setDraftFolder(null)
+          }}
         />
       )}
       {entries.length === 0 && draftFolder === null && (

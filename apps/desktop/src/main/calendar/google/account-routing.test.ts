@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
+import type { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { createTestDataDb, type TestDatabaseResult, type TestDb } from '@tests/utils/test-db'

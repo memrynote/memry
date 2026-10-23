@@ -90,7 +90,9 @@ export const AccessibleTab = ({
       aria-controls={`tabpanel-${tab.id}`}
       aria-label={buildLabel()}
       tabIndex={isActive ? 0 : -1}
-      onClick={() => setActiveTab(tab.id, groupId)}
+      onClick={() => {
+        setActiveTab(tab.id, groupId)
+      }}
       onKeyDown={handleKeyDown}
       data-tab-id={tab.id}
       className={cn(

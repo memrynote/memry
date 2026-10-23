@@ -129,7 +129,9 @@ export function GraphControlPanel({
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [filterState.searchQuery, dispatch])
 
   return (
@@ -137,7 +139,9 @@ export function GraphControlPanel({
       {/* Gear toggle — always visible */}
       <button
         type="button"
-        onClick={() => setIsOpen((v) => !v)}
+        onClick={() => {
+          setIsOpen((v) => !v)
+        }}
         className="absolute end-3 top-3 z-50 flex size-8 items-center justify-center rounded-md border border-border bg-popover/95 backdrop-blur-sm shadow-card transition-colors hover:bg-accent"
         title={isOpen ? t('control.hide-settings') : t('control.show-settings')}
       >
@@ -159,7 +163,9 @@ export function GraphControlPanel({
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0"
-                onClick={() => dispatch({ type: 'RESET_FILTERS' })}
+                onClick={() => {
+                  dispatch({ type: 'RESET_FILTERS' })
+                }}
                 title={t('control.reset-filters')}
                 aria-label={t('control.reset-filters')}
               >
@@ -180,7 +186,9 @@ export function GraphControlPanel({
                 variant="ghost"
                 size="sm"
                 className="h-5 w-5 p-0 ms-auto shrink-0"
-                onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
+                onClick={() => {
+                  dispatch({ type: 'CLEAR_FOCUS' })
+                }}
                 aria-label={t('control.clear-focus')}
               >
                 <X className="size-3 text-muted-foreground" />
@@ -198,14 +206,18 @@ export function GraphControlPanel({
                   placeholder={t('search.placeholder')}
                   className="h-8 ps-8 pe-8 text-xs bg-background border-border"
                   value={filterState.searchQuery}
-                  onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
+                  onChange={(e) => {
+                    dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })
+                  }}
                 />
                 {filterState.searchQuery && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="absolute end-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
-                    onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
+                    onClick={() => {
+                      dispatch({ type: 'SET_SEARCH_QUERY', query: '' })
+                    }}
                     aria-label={t('search.clear')}
                   >
                     <X className="size-3 text-muted-foreground" />
@@ -250,7 +262,9 @@ export function GraphControlPanel({
                 </div>
                 <Switch
                   checked={filterState.showCanvasEdges}
-                  onCheckedChange={() => dispatch({ type: 'TOGGLE_CANVAS_EDGES' })}
+                  onCheckedChange={() => {
+                    dispatch({ type: 'TOGGLE_CANVAS_EDGES' })
+                  }}
                   aria-label={t('filter.canvas-edges')}
                 />
               </div>
@@ -264,7 +278,9 @@ export function GraphControlPanel({
                 <FilterSwitch
                   label={t('control.color-by-category')}
                   checked={colorBy === 'tag-category'}
-                  onCheckedChange={(v) => onColorByChange(v ? 'tag-category' : 'type')}
+                  onCheckedChange={(v) => {
+                    onColorByChange(v ? 'tag-category' : 'type')
+                  }}
                 />
                 {categories.length === 0 ? (
                   <p className="text-[11px] leading-relaxed text-muted-foreground">
@@ -294,7 +310,9 @@ export function GraphControlPanel({
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 shrink-0 p-0"
-                            onClick={() => onToggleCategory(category.id)}
+                            onClick={() => {
+                              onToggleCategory(category.id)
+                            }}
                             disabled={!collapsed && category.count === 0}
                             aria-pressed={collapsed}
                             aria-label={actionLabel}
@@ -333,19 +351,25 @@ export function GraphControlPanel({
               <FilterSwitch
                 label={t('control.show-labels')}
                 checked={settings.showLabels}
-                onCheckedChange={(v) => updateSettings({ showLabels: v })}
+                onCheckedChange={(v) => {
+                  updateSettings({ showLabels: v })
+                }}
               />
               <FilterSwitch
                 label={t('control.live-motion')}
                 checked={settings.animateLayout}
-                onCheckedChange={(v) => updateSettings({ animateLayout: v })}
+                onCheckedChange={(v) => {
+                  updateSettings({ animateLayout: v })
+                }}
               />
               {onRelayout && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7 w-full justify-start gap-2 text-xs"
-                  onClick={() => setConfirmRelayout(true)}
+                  onClick={() => {
+                    setConfirmRelayout(true)
+                  }}
                 >
                   <RotateCcw className="size-3.5 text-muted-foreground" />
                   {t('control.relayout')}

@@ -3,8 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { getSetting } from '@main/database/queries/settings'
-import { setSetting } from '@main/database/queries/settings'
+import { getSetting, setSetting } from '@main/database/queries/settings'
 import {
   GENERAL_SETTINGS_DEFAULTS,
   EDITOR_SETTINGS_DEFAULTS

@@ -43,8 +43,12 @@ function withTimeoutSignal(
   timeoutMs: number
 ): { signal: AbortSignal; cancel: () => void } {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(new Error('sync request timed out')), timeoutMs)
-  const onOuterAbort = () => controller.abort(outer?.reason)
+  const timer = setTimeout(() => {
+    controller.abort(new Error('sync request timed out'))
+  }, timeoutMs)
+  const onOuterAbort = () => {
+    controller.abort(outer?.reason)
+  }
   if (outer) {
     if (outer.aborted) controller.abort(outer.reason)
     else outer.addEventListener('abort', onOuterAbort, { once: true })

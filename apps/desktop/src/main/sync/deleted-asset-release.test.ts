@@ -107,7 +107,11 @@ async function canvasWithImage(title: string, bytes: string) {
 }
 
 async function deleteCanvasHere(id: string): Promise<void> {
-  expect(await deleteCanvas(db, vaultPath, id, async (abs) => fs.rmSync(abs))).toBe(true)
+  expect(
+    await deleteCanvas(db, vaultPath, id, async (abs) => {
+      fs.rmSync(abs)
+    })
+  ).toBe(true)
   recordDeletedItemAssets(db, 'canvas', id, now)
 }
 
@@ -275,7 +279,11 @@ describe('deleted canvas assets', () => {
     const deleted = await canvasWithImage('Old', 'shared')
     const live = await canvasWithImage('Live', 'shared')
     // Deleted on a peer: no release record here, only the tombstone.
-    expect(await deleteCanvas(db, vaultPath, deleted.id, async (abs) => fs.rmSync(abs))).toBe(true)
+    expect(
+      await deleteCanvas(db, vaultPath, deleted.id, async (abs) => {
+        fs.rmSync(abs)
+      })
+    ).toBe(true)
 
     const emptyScene = JSON.stringify({ type: 'excalidraw', files: {} })
     advance(10)

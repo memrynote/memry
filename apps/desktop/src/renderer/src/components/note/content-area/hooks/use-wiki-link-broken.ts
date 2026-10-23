@@ -195,7 +195,9 @@ export function useWikiLinkBroken(
       repaintRef.current = null
       if (timer) clearTimeout(timer)
       tiptap.off?.('update', scheduleRefresh)
-      unsubscribes.forEach((unsubscribe) => unsubscribe())
+      unsubscribes.forEach((unsubscribe) => {
+        unsubscribe()
+      })
     }
   }, [editor])
 }

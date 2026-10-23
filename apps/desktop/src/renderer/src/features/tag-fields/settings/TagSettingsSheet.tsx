@@ -57,7 +57,9 @@ export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React
       if (event.key === 'Escape' && !event.defaultPrevented) onClose()
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
   }, [onClose])
 
   const fieldCount = resolved?.effectiveFields.length ?? 0
@@ -148,7 +150,9 @@ export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React
           variant="ghost"
           size="sm"
           className="h-7 gap-1.5 px-2 text-xs text-destructive hover:text-destructive"
-          onClick={() => setDeleteOpen(true)}
+          onClick={() => {
+            setDeleteOpen(true)
+          }}
         >
           <Trash2 className="size-3.5" />
           {t('tagFields.settings.delete.button')}

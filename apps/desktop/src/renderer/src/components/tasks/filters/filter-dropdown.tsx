@@ -4,9 +4,14 @@ import { useState, useCallback, useMemo } from 'react'
 import { ChevronRight } from '@/lib/icons'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
-import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
+import type {
+  TaskFilters,
+  Project,
+  Status,
+  DueDateFilterType,
+  SavedFilter
+} from '@/data/tasks-data'
 import type { Priority, Task } from '@/data/task-model'
-import type { SavedFilter } from '@/data/tasks-data'
 
 import { PriorityPanel } from './filter-panels/priority-panel'
 import { StatusPanel } from './filter-panels/status-panel'
@@ -311,7 +316,9 @@ export const FilterDropdown = ({
             onSearchChange={setSearchQuery}
             selectedPriorities={filters.priorities}
             onTogglePriority={togglePriority}
-            onClose={() => handleOpenChange(false)}
+            onClose={() => {
+              handleOpenChange(false)
+            }}
             onGoBack={goBack}
             tasks={tasks}
           />
@@ -334,7 +341,11 @@ export const FilterDropdown = ({
             selectedStatusIds={filters.statusIds}
             onToggleStatus={toggleStatus}
             onGoBack={
-              statusesProp.length === 0 ? () => navigateTo('status-project-picker') : goBack
+              statusesProp.length === 0
+                ? () => {
+                    navigateTo('status-project-picker')
+                  }
+                : goBack
             }
             tasks={tasks}
           />
@@ -380,7 +391,9 @@ export const FilterDropdown = ({
             onSearchChange={setSearchQuery}
             selectedTags={filters.tags}
             onToggleTag={toggleTag}
-            onClose={() => handleOpenChange(false)}
+            onClose={() => {
+              handleOpenChange(false)
+            }}
             onGoBack={goBack}
             tasks={tasks}
           />

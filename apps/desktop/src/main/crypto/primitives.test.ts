@@ -104,7 +104,9 @@ describe('secureCleanup', () => {
   it('handles being called with no arguments without throwing', () => {
     // #given no buffers
     // #when/then
-    expect(() => secureCleanup()).not.toThrow()
+    expect(() => {
+      secureCleanup()
+    }).not.toThrow()
   })
 
   it('zeros an empty buffer without throwing', () => {
@@ -112,7 +114,9 @@ describe('secureCleanup', () => {
     const empty = new Uint8Array()
 
     // #when/then
-    expect(() => secureCleanup(empty)).not.toThrow()
+    expect(() => {
+      secureCleanup(empty)
+    }).not.toThrow()
     expect(empty).toHaveLength(0)
   })
 })

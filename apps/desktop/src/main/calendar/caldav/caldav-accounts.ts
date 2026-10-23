@@ -131,7 +131,7 @@ function readAuthFailures(db: DataDb): Record<string, true> {
 }
 
 export function hasCaldavAuthFailure(db: DataDb, accountId: string): boolean {
-  return readAuthFailures(db)[accountId] === true
+  return readAuthFailures(db)[accountId]
 }
 
 export function setCaldavAuthFailure(db: DataDb, accountId: string, failed: boolean): void {

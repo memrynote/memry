@@ -124,8 +124,12 @@ export function ObjectRelationPicker({
               type="button"
               role="option"
               aria-selected={index === active}
-              onMouseEnter={() => setActive(index)}
-              onClick={() => onSelect(uri)}
+              onMouseEnter={() => {
+                setActive(index)
+              }}
+              onClick={() => {
+                onSelect(uri)
+              }}
               className={`flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 text-start ${index === active ? 'bg-accent' : ''}`}
             >
               {look && <ObjectAvatar look={look} title={match.title} size={24} />}
@@ -147,7 +151,9 @@ export function ObjectRelationPicker({
         <div className="my-1 h-px bg-border" />
         <button
           type="button"
-          onMouseEnter={() => setActive(matches.length)}
+          onMouseEnter={() => {
+            setActive(matches.length)
+          }}
           onClick={() => void create()}
           className={`flex w-full items-center gap-2 rounded-[5px] px-2 py-1.5 text-start ${active === matches.length ? 'bg-accent' : ''}`}
         >

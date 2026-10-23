@@ -15,8 +15,9 @@ export function DownloadPill({ location }: { location: string }) {
   const os = useDetectedOS()
   const platform = platformForOS(os)
   const label = platform ? `Download for ${osLabel(os)}` : 'Download'
-  const track = () =>
+  const track = () => {
     trackLandingEvent('landing_download_click', `download:${platform ?? 'all'}:${location}`)
+  }
 
   const className =
     'group/pill inline-flex min-h-[58px] items-center justify-center gap-[22px] rounded-[18px] border-2 border-white/85 bg-terracotta py-[5px] ps-[21px] pe-1.5 shadow-[0_0_0_5px_rgb(255_255_255/0.58)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50'
@@ -53,8 +54,9 @@ function DownloadButton({
   const os = useDetectedOS()
   const platform = platformForOS(os)
   const label = platform ? `Download for ${osLabel(os)}` : 'Download'
-  const track = () =>
+  const track = () => {
     trackLandingEvent('landing_download_click', `download:${platform ?? 'all'}:${location}`)
+  }
 
   return (
     <Button size={size} className={cn('rounded-full px-8', className)} asChild>
@@ -98,9 +100,9 @@ export function DownloadCTA({
       >
         <Link
           to="/download"
-          onClick={() =>
+          onClick={() => {
             trackLandingEvent('landing_nav_click', `download:all-platforms:${location}`)
-          }
+          }}
         >
           All platforms
           <ArrowRight className="h-4 w-4" />

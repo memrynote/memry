@@ -190,11 +190,15 @@ describe('the keys plugin across a portal remount', () => {
     const { editor, view } = mountTestEditor([para('above'), portal()])
     const attachedNow = (): boolean => portalKeysPluginKey.get(view.state) !== undefined
 
-    const first = renderHook(() => usePortalKeysPlugin(editor))
+    const first = renderHook(() => {
+      usePortalKeysPlugin(editor)
+    })
     expect(attachedNow()).toBe(true)
 
     first.unmount()
-    const second = renderHook(() => usePortalKeysPlugin(editor))
+    const second = renderHook(() => {
+      usePortalKeysPlugin(editor)
+    })
     await tick()
     expect(attachedNow()).toBe(true)
 

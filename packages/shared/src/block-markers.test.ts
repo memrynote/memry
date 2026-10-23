@@ -131,7 +131,9 @@ describe('applyTableLayout', () => {
   })
 
   it('does nothing to a block that is not a table', () => {
-    expect(() => applyTableLayout([{ type: 'text' }], { columnWidths: [120] })).not.toThrow()
+    expect(() => {
+      applyTableLayout([{ type: 'text' }], { columnWidths: [120] })
+    }).not.toThrow()
   })
 })
 

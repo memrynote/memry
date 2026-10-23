@@ -121,14 +121,22 @@ export function SnoozePicker({
     <>
       <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger asChild>{trigger || defaultTrigger}</DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuContent
+          align="end"
+          className="w-56"
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+        >
           {/* Preset Options */}
           {snoozePresets.map((preset) => {
             const time = preset.getTime()
             return (
               <DropdownMenuItem
                 key={preset.id}
-                onClick={() => handlePresetSelect(preset)}
+                onClick={() => {
+                  handlePresetSelect(preset)
+                }}
                 className="flex items-center gap-2"
               >
                 {getPresetIcon(preset.id)}
@@ -164,9 +172,15 @@ export function SnoozePicker({
         <div
           className="fixed inset-0 z-[9999] bg-black/50 pointer-events-auto"
           aria-hidden="true"
-          onClick={() => setShowCustomDialog(false)}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => {
+            setShowCustomDialog(false)
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation()
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+          }}
         />
       )}
 
@@ -174,7 +188,9 @@ export function SnoozePicker({
       {showCustomDialog ? (
         <SnoozeCustomDialog
           key="custom-snooze-dialog"
-          onClose={() => setShowCustomDialog(false)}
+          onClose={() => {
+            setShowCustomDialog(false)
+          }}
           onSnooze={onSnooze}
           clockFormat={clockFormat}
         />
@@ -245,9 +261,15 @@ function SnoozeCustomDialog({
         // snooze button, being last, is the first thing to go. Cap the dialog,
         // give the tall part a scrollbar and keep the action out of it.
         className="sm:max-w-[400px] z-[10000] grid-rows-[auto_1fr] max-h-[85vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation()
+        }}
+        onMouseDown={(e) => {
+          e.stopPropagation()
+        }}
         onKeyDown={(e) => {
           // Stop propagation for all keys except Escape to prevent background shortcuts
           if (e.key !== 'Escape') {
@@ -267,7 +289,9 @@ function SnoozeCustomDialog({
             {/* Calendar - properly sized with larger cells */}
             <DatePickerCalendar
               selected={selectedDate}
-              onSelect={(d) => setSelectedDate(d)}
+              onSelect={(d) => {
+                setSelectedDate(d)
+              }}
               disabled={(date) => {
                 const today = new Date()
                 today.setHours(0, 0, 0, 0)
@@ -284,7 +308,9 @@ function SnoozeCustomDialog({
               <Input
                 type="time"
                 value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
+                onChange={(e) => {
+                  setSelectedTime(e.target.value)
+                }}
                 className="flex-1"
               />
             </div>

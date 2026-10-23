@@ -309,7 +309,11 @@ describe('crash marker', () => {
 
     // #when installing and clearing
     // #then neither throws
-    expect(() => installCrashMarker('session-1')).not.toThrow()
-    expect(() => clearCrashMarker()).not.toThrow()
+    expect(() => {
+      installCrashMarker('session-1')
+    }).not.toThrow()
+    expect(() => {
+      clearCrashMarker()
+    }).not.toThrow()
   })
 })

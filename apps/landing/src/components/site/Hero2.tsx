@@ -260,7 +260,9 @@ export function Hero2() {
             {!isMobile && (
               <Link
                 to="/pricing"
-                onClick={() => trackLandingEvent('landing_nav_click', 'pricing:hero')}
+                onClick={() => {
+                  trackLandingEvent('landing_nav_click', 'pricing:hero')
+                }}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-4 text-[14px] font-medium leading-[18px] text-ink transition-colors duration-200 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
               >
                 See pricing
@@ -343,7 +345,12 @@ export function Hero2() {
         </motion.div>
       </div>
 
-      <HeroDemoDialog open={demoOpen} onClose={() => setDemoOpen(false)} />
+      <HeroDemoDialog
+        open={demoOpen}
+        onClose={() => {
+          setDemoOpen(false)
+        }}
+      />
     </section>
   )
 }

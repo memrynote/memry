@@ -3,7 +3,7 @@ import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import type Graph from 'graphology'
-import type { GraphDataResponse } from '@memry/contracts/graph-api'
+import type { GraphDataResponse, GraphSettings, GraphViewState } from '@memry/contracts/graph-api'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import {
   buildGraphologyGraph,
@@ -38,7 +38,6 @@ import {
 } from './physics-layout'
 import { GraphPinMarkers } from './graph-pin-markers'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
-import type { GraphSettings, GraphViewState } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
 import { useNoteMutations } from '@/hooks/use-notes-query'
 import { useGraphEdits, type GraphEdits } from '@/hooks/use-graph-edits'
@@ -409,7 +408,9 @@ export function GraphCanvas({
     []
   )
 
-  const handleCloseContextMenu = useCallback(() => setContextMenu(null), [])
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
 
   const canStartLink = useCallback((nodeId: string) => isEditableGraphNode(graph, nodeId), [graph])
 

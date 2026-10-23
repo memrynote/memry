@@ -29,7 +29,9 @@ export const stickyApi = {
   peek: (open: boolean): Promise<void> => invoke(StickyChannels.invoke.PEEK, { open }),
   resize: (height: number): Promise<void> => invoke(StickyChannels.invoke.RESIZE, { height }),
   onDraftsChanged: (callback: () => void): (() => void) =>
-    subscribe<unknown>(StickyChannels.events.DRAFTS_CHANGED, () => callback()),
+    subscribe<unknown>(StickyChannels.events.DRAFTS_CHANGED, () => {
+      callback()
+    }),
   onOpenTargetRequested: (callback: (target: StickyOpenTargetInput) => void): (() => void) =>
     subscribe<StickyOpenTargetInput>(StickyChannels.events.OPEN_TARGET_REQUESTED, callback)
 }

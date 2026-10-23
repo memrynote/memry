@@ -17,7 +17,9 @@ export function useProjectQuickCreate(onCreated: (projectId: string) => void): P
   const tasks = useTasksOptional()
   const [isOpen, setIsOpen] = useState(false)
 
-  const openCreate = useCallback(() => setIsOpen(true), [])
+  const openCreate = useCallback(() => {
+    setIsOpen(true)
+  }, [])
 
   const handleSave = useCallback(
     async (project: Project): Promise<void> => {
@@ -38,7 +40,9 @@ export function useProjectQuickCreate(onCreated: (projectId: string) => void): P
     // Modal closes immediately after onSave; handleSave contains the rejection.
     <ProjectModal
       isOpen={isOpen}
-      onClose={() => setIsOpen(false)}
+      onClose={() => {
+        setIsOpen(false)
+      }}
       onSave={(p) => void handleSave(p)}
     />
   ) : null

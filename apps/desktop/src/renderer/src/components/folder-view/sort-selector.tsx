@@ -170,7 +170,9 @@ export function SortSelector({
               <Search className="absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                }}
                 placeholder={tPhaseF('phaseF.componentsFolderViewSortSelector.searchProperties')}
                 className="h-8 ps-8 text-sm"
               />
@@ -190,7 +192,9 @@ export function SortSelector({
                     name={col.displayName}
                     icon={getColumnIcon(col.id)}
                     isSelected={primary?.property === col.id}
-                    onClick={() => handleSelectProperty(col.id)}
+                    onClick={() => {
+                      handleSelectProperty(col.id)
+                    }}
                   />
                 ))}
               </div>
@@ -207,7 +211,9 @@ export function SortSelector({
                     name={capitalizeFirst(prop.name)}
                     icon={getColumnIcon(prop.name)}
                     isSelected={primary?.property === prop.name}
-                    onClick={() => handleSelectProperty(prop.name)}
+                    onClick={() => {
+                      handleSelectProperty(prop.name)
+                    }}
                   />
                 ))}
               </div>

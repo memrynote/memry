@@ -176,7 +176,7 @@ export async function pushSourceToProvider(
     ownershipMode: 'memry_managed',
     writebackMode: 'broad',
     remoteVersion: remote.etag,
-    lastLocalSnapshot: { ...finalLocalEvent, ...(input.snapshotExtras?.(remote) ?? {}) },
+    lastLocalSnapshot: { ...finalLocalEvent, ...input.snapshotExtras?.(remote) },
     archivedAt: null,
     clock: existingBinding?.clock,
     syncedAt: now,
@@ -279,7 +279,7 @@ function updateBindingRemoteVersion(
       ...(snapshotExtras
         ? {
             lastLocalSnapshot: {
-              ...(existing.lastLocalSnapshot ?? {}),
+              ...existing.lastLocalSnapshot,
               ...snapshotExtras
             }
           }

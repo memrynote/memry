@@ -67,7 +67,13 @@ vi.mock('@/components/calendar/event-project-field', () => ({
     value: string | null
     onChange: (id: string | null) => void
   }) => (
-    <button type="button" data-value={value ?? ''} onClick={() => onChange('p1')}>
+    <button
+      type="button"
+      data-value={value ?? ''}
+      onClick={() => {
+        onChange('p1')
+      }}
+    >
       stub-pick-project
     </button>
   )
@@ -120,20 +126,22 @@ describe('CalendarPage · create with a project selected', () => {
 
     // The draft owns the create-mode selection, so it has to come back down as
     // `value` — otherwise the picker keeps reading "No project" after a pick.
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByText('stub-pick-project')).toHaveAttribute('data-value', 'p1')
-    )
+    })
 
     await user.click(screen.getByTestId('event-edit-save'))
 
-    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
-    await waitFor(() =>
+    await waitFor(() => {
+      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
       expect(mockLinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'calendar_event',
         itemId: 'event-new'
       })
-    )
+    })
   })
 
   it('does not link when no project was selected', async () => {
@@ -144,7 +152,9 @@ describe('CalendarPage · create with a project selected', () => {
     await user.type(screen.getByPlaceholderText('New Event'), 'Kickoff')
     await user.click(screen.getByTestId('event-edit-save'))
 
-    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
+    })
     expect(mockLinkProjectItem).not.toHaveBeenCalled()
   })
 
@@ -158,10 +168,16 @@ describe('CalendarPage · create with a project selected', () => {
     await user.click(screen.getByText('stub-pick-project'))
     await user.click(screen.getByTestId('event-edit-save'))
 
-    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockLinkProjectItem).toHaveBeenCalled()
+    })
     // The popover closes on a successful create even though the link failed.
-    await waitFor(() => expect(screen.queryByTestId('event-edit-popover')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.queryByTestId('event-edit-popover')).not.toBeInTheDocument()
+    })
     // The failure must not be swallowed silently — it has to surface to the user.
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('link failed'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('link failed')
+    })
   })
 })

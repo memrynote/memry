@@ -161,7 +161,9 @@ function parseClipboardCellImages(html: string, noteId: string | undefined): Cel
   const doc = new DOMParser().parseFromString(html, 'text/html')
   // Word and Google Docs ship a stylesheet inside the fragment; its rules are
   // `textContent` and would read as "there is text here" forever.
-  doc.querySelectorAll('style, script, title').forEach((element) => element.remove())
+  doc.querySelectorAll('style, script, title').forEach((element) => {
+    element.remove()
+  })
 
   const elements = Array.from(doc.querySelectorAll('img'))
   if (elements.length === 0) return null

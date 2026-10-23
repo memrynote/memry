@@ -119,7 +119,7 @@ describe('planJournalWrite', () => {
     expect(noStart.kind === 'update' && noStart.content).toContain(
       '- [[Deep Work]]: 3 highlights\n\n<!-- readwise-day:end'
     )
-    const noEnd = planJournalWrite(`${section.split('\n\n<!-- readwise-day:end')[0]}`, day, [DEEP])
+    const noEnd = planJournalWrite(section.split('\n\n<!-- readwise-day:end')[0], day, [DEEP])
     expect(noEnd).toEqual({
       kind: 'update',
       content: `${section.split('\n\n<!-- readwise-day:end')[0]}\n\n- [[Deep Work]]: 3 highlights`

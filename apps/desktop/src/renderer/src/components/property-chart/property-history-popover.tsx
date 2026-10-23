@@ -137,7 +137,9 @@ export function PropertyHistoryButton({
         <HistoryBody
           property={property}
           propertyType={propertyType}
-          onDone={() => setOpen(false)}
+          onDone={() => {
+            setOpen(false)
+          }}
         />
       </PopoverContent>
     </Popover>

@@ -5,9 +5,10 @@ import os from 'os'
 import {
   VaultPreferencesSchema,
   VAULT_PREFERENCES_DEFAULTS,
-  type VaultPreferences
+  type VaultPreferences,
+  readPreferences,
+  writePreferences
 } from './vault-preferences'
-import { readPreferences, writePreferences } from './vault-preferences'
 
 const MEMRY_DIR = '.memry'
 

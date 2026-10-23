@@ -16,13 +16,19 @@ export function useDialogState<D extends string>(): DialogState<D> {
   const [current, setCurrent] = useState<D | null>(null)
   return useMemo(
     () => ({
-      show: (dialog) => setCurrent(dialog),
-      close: () => setCurrent(null),
+      show: (dialog) => {
+        setCurrent(dialog)
+      },
+      close: () => {
+        setCurrent(null)
+      },
       is: (dialog) => current === dialog,
       // A dialog closing late must not close the one that replaced it.
       bind: (dialog) => ({
         open: current === dialog,
-        onOpenChange: (open) => setCurrent((now) => (open ? dialog : now === dialog ? null : now))
+        onOpenChange: (open) => {
+          setCurrent((now) => (open ? dialog : now === dialog ? null : now))
+        }
       })
     }),
     [current]

@@ -92,7 +92,9 @@ export const SidebarSection = ({
     }
 
     window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [storageKey])
 
   const handleOpenChange = (open: boolean): void => {
@@ -195,7 +197,9 @@ export const SidebarSection = ({
                 !actionsAlwaysVisible &&
                   'opacity-0 group-hover/section:opacity-100 group-focus-within/section:opacity-100'
               )}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
             >
               {actions}
             </div>

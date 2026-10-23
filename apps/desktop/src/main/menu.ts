@@ -130,7 +130,9 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
     id: command,
     label,
     ...(accelerator ? { accelerator, registerAccelerator: false } : {}),
-    click: () => sendMenuCommand(command)
+    click: () => {
+      sendMenuCommand(command)
+    }
   })
 
   // Never derive user-facing names from app.name: it resolves to the package
@@ -188,14 +190,18 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
           accelerator: shortcut('tabs.navBack'),
           visible: false,
           acceleratorWorksWhenHidden: true,
-          click: () => sendNavigationToFocusedWindow('back')
+          click: () => {
+            sendNavigationToFocusedWindow('back')
+          }
         },
         {
           label: t('navigation.forward'),
           accelerator: shortcut('tabs.navForward'),
           visible: false,
           acceleratorWorksWhenHidden: true,
-          click: () => sendNavigationToFocusedWindow('forward')
+          click: () => {
+            sendNavigationToFocusedWindow('forward')
+          }
         },
         cmd('nav.search', t('file.openQuickly')),
         cmd('nav.commands', t('file.commandPalette')),
@@ -386,7 +392,9 @@ export function buildEditableTextContextMenu(
         ...(suggestions.length > 0
           ? suggestions.map((suggestion) => ({
               label: suggestion,
-              click: () => webContents.replaceMisspelling(suggestion)
+              click: () => {
+                webContents.replaceMisspelling(suggestion)
+              }
             }))
           : [{ label: t('edit.noSuggestions'), enabled: false }]),
         { type: 'separator' },

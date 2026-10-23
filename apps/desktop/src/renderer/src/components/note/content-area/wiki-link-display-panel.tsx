@@ -89,13 +89,17 @@ export function WikiLinkDisplayPanel({
         <SwitchRow
           label={t('wikiLinkMenu.showCover')}
           checked={current.cover}
-          onCheckedChange={(cover) => apply({ cover })}
+          onCheckedChange={(cover) => {
+            apply({ cover })
+          }}
         />
       )}
       <SwitchRow
         label={t('wikiLinkMenu.showPreview')}
         checked={current.preview}
-        onCheckedChange={(preview) => apply({ preview })}
+        onCheckedChange={(preview) => {
+          apply({ preview })
+        }}
       />
     </div>
   )

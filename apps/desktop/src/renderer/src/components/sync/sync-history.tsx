@@ -114,7 +114,9 @@ export function SyncHistoryPanel(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <Select
             value={filter.type}
-            onValueChange={(v) => setFilter({ type: v as HistoryTypeFilter })}
+            onValueChange={(v) => {
+              setFilter({ type: v as HistoryTypeFilter })
+            }}
           >
             <SelectTrigger
               className="h-7 w-[120px] text-xs"
@@ -139,7 +141,9 @@ export function SyncHistoryPanel(): React.JSX.Element {
           </Select>
           <Select
             value={filter.period}
-            onValueChange={(v) => setFilter({ period: v as HistoryPeriodFilter })}
+            onValueChange={(v) => {
+              setFilter({ period: v as HistoryPeriodFilter })
+            }}
           >
             <SelectTrigger
               className="h-7 w-[110px] text-xs"

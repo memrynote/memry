@@ -19,10 +19,18 @@ import type { AvailableUpdate, UpdaterBackend, UpdaterHost } from './updater-bac
  */
 const libraryLogger = createLogger('ElectronUpdater')
 const updaterLibraryLogger = {
-  info: (message?: unknown) => logMessage('info', message),
-  warn: (message?: unknown) => logMessage('warn', message),
-  error: (message?: unknown) => logMessage('error', message),
-  debug: (message?: unknown) => logMessage('debug', message)
+  info: (message?: unknown) => {
+    logMessage('info', message)
+  },
+  warn: (message?: unknown) => {
+    logMessage('warn', message)
+  },
+  error: (message?: unknown) => {
+    logMessage('error', message)
+  },
+  debug: (message?: unknown) => {
+    logMessage('debug', message)
+  }
 }
 
 function logMessage(level: 'info' | 'warn' | 'error' | 'debug', message?: unknown): void {
@@ -90,8 +98,12 @@ export function createElectronUpdaterBackend(
     // verified (or the hand-off declined), so "Restart to install" never appears
     // before everything the hand-off needs exists.
     void handoff
-      .prepare(info, (percent) => host.onDownloadProgress(percent))
-      .then(() => host.onDownloaded(toAvailableUpdate(info)))
+      .prepare(info, (percent) => {
+        host.onDownloadProgress(percent)
+      })
+      .then(() => {
+        host.onDownloaded(toAvailableUpdate(info))
+      })
   })
 
   autoUpdater.on('error', (error) => {

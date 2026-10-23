@@ -292,7 +292,14 @@ vi.mock('@/components/ui/picker', async () => {
   const Picker = ({ children }: { children: ReactNode }) => {
     const [open, setOpen] = React.useState(false)
     return (
-      <PickerCtx.Provider value={{ open, toggle: () => setOpen((value) => !value) }}>
+      <PickerCtx.Provider
+        value={{
+          open,
+          toggle: () => {
+            setOpen((value) => !value)
+          }
+        }}
+      >
         {children}
       </PickerCtx.Provider>
     )
@@ -363,11 +370,15 @@ describe('AppSidebar', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
     // The collapsed canvases header can only show `(n)` if the count reaches it.
-    await waitFor(() => expect(screen.getByText('sectionLabel total 3')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('sectionLabel total 3')).toBeInTheDocument()
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'newCanvas' }))
 
-    await waitFor(() => expect(mocks.createCanvas).toHaveBeenCalledWith({ folder: 'Work' }))
+    await waitFor(() => {
+      expect(mocks.createCanvas).toHaveBeenCalledWith({ folder: 'Work' })
+    })
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'canvas',
@@ -517,7 +528,9 @@ describe('AppSidebar', () => {
     }
     try {
       render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
-      await waitFor(() => expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled()
+      })
       mocks.importFiles.mockResolvedValue({ imported: 1, failed: 0, errors: [] })
 
       await act(async () => {
@@ -561,7 +574,9 @@ describe('AppSidebar', () => {
 
       fireEvent.click(notesFirst)
       expect(setSidebarNotesFirst).toHaveBeenCalledWith(true)
-      await waitFor(() => expect(notesFirst).toHaveAttribute('aria-pressed', 'true'))
+      await waitFor(() => {
+        expect(notesFirst).toHaveAttribute('aria-pressed', 'true')
+      })
     } finally {
       window.api.settings = realSettings
     }

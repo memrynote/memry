@@ -51,7 +51,9 @@ export function fillWikiLinkCard(chip: HTMLElement, content: WikiLinkCardContent
     image.alt = ''
     image.loading = 'lazy'
     // A cover that will not load leaves the card without one, not a broken image.
-    image.addEventListener('error', () => image.remove())
+    image.addEventListener('error', () => {
+      image.remove()
+    })
     image.src = content.cover.url
     cover.append(image)
   }

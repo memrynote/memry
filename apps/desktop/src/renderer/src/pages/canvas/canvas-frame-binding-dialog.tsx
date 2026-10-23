@@ -125,7 +125,9 @@ export function CanvasFrameBindingDialog({
           <Command.Item
             value={NEW_TAG_VALUE}
             data-testid="canvas-frame-new-tag"
-            onSelect={() => pick({ kind: 'tag', tag: typedTag })}
+            onSelect={() => {
+              pick({ kind: 'tag', tag: typedTag })
+            }}
             className={itemClass}
           >
             <Hash className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
@@ -146,7 +148,9 @@ export function CanvasFrameBindingDialog({
                   key={tag}
                   value={`tag:${tag}`}
                   data-testid={`canvas-frame-tag-${tag}`}
-                  onSelect={() => pick(binding)}
+                  onSelect={() => {
+                    pick(binding)
+                  }}
                   className={itemClass}
                 >
                   <Hash className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
@@ -175,7 +179,9 @@ export function CanvasFrameBindingDialog({
                   key={value}
                   value={`prop:${property.name}:${value}`}
                   data-testid={`canvas-frame-prop-${property.name}-${value}`}
-                  onSelect={() => pick(binding)}
+                  onSelect={() => {
+                    pick(binding)
+                  }}
                   className={itemClass}
                 >
                   <Tag className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />

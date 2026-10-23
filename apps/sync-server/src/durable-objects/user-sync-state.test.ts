@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { MockWebSocket } from '../__mocks__/cloudflare-workers'
 import { ErrorCodes } from '../lib/errors'
-import { isVersionBelow } from './user-sync-state'
+import { isVersionBelow, UserSyncState } from './user-sync-state'
 
 const hoisted = vi.hoisted(() => ({
   verifyAccessTokenMock: vi.fn(async () => ({
@@ -15,8 +15,6 @@ const hoisted = vi.hoisted(() => ({
 vi.mock('../lib/jwt-verify', () => ({
   verifyAccessToken: hoisted.verifyAccessTokenMock
 }))
-
-import { UserSyncState } from './user-sync-state'
 
 function createMockDB(revoked_at: number | null = null, revokedDeviceIds: string[] = []) {
   return {

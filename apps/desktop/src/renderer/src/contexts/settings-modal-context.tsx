@@ -88,9 +88,23 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
 
   // Owns `nav.settings` (⌘, and File → Preferences), and one command per section.
   const sectionImpls = Object.fromEntries(
-    SETTINGS_SECTIONS.map((section) => [settingsCommandId(section), { run: () => open(section) }])
+    SETTINGS_SECTIONS.map((section) => [
+      settingsCommandId(section),
+      {
+        run: () => {
+          open(section)
+        }
+      }
+    ])
   ) as Record<SettingsCommandId, { run: () => void }>
-  useAppCommands('settings', { 'nav.settings': { run: () => open() }, ...sectionImpls })
+  useAppCommands('settings', {
+    'nav.settings': {
+      run: () => {
+        open()
+      }
+    },
+    ...sectionImpls
+  })
 
   const value = useMemo<SettingsModalContextValue>(
     () => ({

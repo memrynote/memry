@@ -146,7 +146,9 @@ function setupDb() {
   const tx = { delete: mocks.dbDelete }
   const db = {
     delete: mocks.dbDelete,
-    transaction: mocks.transaction.mockImplementation((fn: (txArg: typeof tx) => void) => fn(tx))
+    transaction: mocks.transaction.mockImplementation((fn: (txArg: typeof tx) => void) => {
+      fn(tx)
+    })
   }
   mocks.getDatabase.mockReturnValue(db)
   return db

@@ -410,7 +410,9 @@ describe('local-mutations', () => {
     expect(inboxService.enqueueDelete).not.toHaveBeenCalled()
     expect(filterService.enqueueDelete).not.toHaveBeenCalled()
     expect(removePendingNoteSyncItems('note-1')).toBe(0)
-    expect(() => syncSettingsFieldUpdate('general.locale', 'tr')).not.toThrow()
+    expect(() => {
+      syncSettingsFieldUpdate('general.locale', 'tr')
+    }).not.toThrow()
   })
 
   it('falls back to the offline clock bump when the note sync service is down', () => {

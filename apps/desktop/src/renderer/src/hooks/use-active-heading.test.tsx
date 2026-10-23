@@ -8,7 +8,9 @@ let rafCallbacks: FrameRequestCallback[] = []
 function flushRaf(): void {
   const callbacks = [...rafCallbacks]
   rafCallbacks = []
-  callbacks.forEach((callback) => callback(0))
+  callbacks.forEach((callback) => {
+    callback(0)
+  })
 }
 
 /** A scroll container that is nowhere near its bottom. */

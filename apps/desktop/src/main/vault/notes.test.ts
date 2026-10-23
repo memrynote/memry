@@ -2263,7 +2263,9 @@ describe('notes operations', () => {
       expect(shell.showItemInFolder).toHaveBeenCalledWith(absolutePath)
 
       await expect(notes.openExternal('missing-note')).rejects.toThrow('Note not found')
-      expect(() => notes.revealInFinder('missing-note')).toThrow('Note not found')
+      expect(() => {
+        notes.revealInFinder('missing-note')
+      }).toThrow('Note not found')
     })
 
     it('reveals a folder itself, not its parent (#2205)', async () => {

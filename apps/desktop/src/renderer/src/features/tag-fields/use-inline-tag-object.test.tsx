@@ -101,7 +101,13 @@ function Host({
         {'#'}
         {tagName}
       </span>
-      <button onClick={() => setHandled(onTagClick(tagName, pillRef.current!))}>click pill</button>
+      <button
+        onClick={() => {
+          setHandled(onTagClick(tagName, pillRef.current!))
+        }}
+      >
+        click pill
+      </button>
       <output data-testid="handled">{String(handled)}</output>
       {overlay}
     </div>
@@ -185,12 +191,12 @@ describe('inline #tag popover', () => {
 
     await userEvent.keyboard('{Enter}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.notes.update).toHaveBeenCalledWith({
         id: 'plain-note',
         headerTags: { add: ['person'] }
       })
-    )
+    })
     expect(toast.success).toHaveBeenCalledWith("Added #person to this note's tags")
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(screen.getByTestId('pill')).not.toHaveClass('inline-hash-tag--active')
@@ -203,7 +209,9 @@ describe('inline #tag popover', () => {
 
     await userEvent.keyboard('{Enter}')
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('note is locked'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('note is locked')
+    })
     expect(toast.success).not.toHaveBeenCalled()
   })
 

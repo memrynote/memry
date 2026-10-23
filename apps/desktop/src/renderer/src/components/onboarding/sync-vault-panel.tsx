@@ -175,7 +175,9 @@ function AccountVaultChooser({
             vault={vault}
             checked={vault.vaultUuid === selected}
             disabled={opening}
-            onSelect={() => setSelected(vault.vaultUuid)}
+            onSelect={() => {
+              setSelected(vault.vaultUuid)
+            }}
           />
         ))}
       </div>

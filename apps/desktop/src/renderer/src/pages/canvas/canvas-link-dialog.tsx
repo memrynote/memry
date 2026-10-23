@@ -206,7 +206,9 @@ export function CanvasLinkDialog({
                     key={key}
                     value={key}
                     data-testid={`canvas-link-item-${key}`}
-                    onSelect={() => select(candidate)}
+                    onSelect={() => {
+                      select(candidate)
+                    }}
                     className="flex cursor-pointer items-start gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
                   >
                     <span className="mt-0.5 flex shrink-0 items-start">

@@ -35,7 +35,7 @@ export function InboxWidgetFooter({ config, size }: WidgetComponentProps): React
       <button
         type="button"
         data-testid="inbox-open"
-        onClick={() =>
+        onClick={() => {
           openTab({
             type: 'inbox',
             title: t('home.widget.inbox'),
@@ -46,7 +46,7 @@ export function InboxWidgetFooter({ config, size }: WidgetComponentProps): React
             isDeleted: false,
             isPreview: false
           })
-        }
+        }}
         className="inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--tint)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
       >
         {t('home.widget.openInbox')}

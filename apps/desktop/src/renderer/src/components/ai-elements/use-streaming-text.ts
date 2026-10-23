@@ -42,7 +42,9 @@ export function useStreamingText(text: string): { shown: string; typing: boolean
       if (positionRef.current < target) frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+    }
   }, [target, reducedMotion])
 
   if (reducedMotion) return { shown: text, typing: false }

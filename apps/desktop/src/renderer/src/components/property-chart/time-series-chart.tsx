@@ -297,12 +297,14 @@ export function TimeSeriesChart({
           role="img"
           aria-label={ariaLabel}
           className={openable ? 'cursor-pointer' : undefined}
-          onPointerMove={(event) =>
+          onPointerMove={(event) => {
             setHover(
               geometry.indexAt(event.clientX - event.currentTarget.getBoundingClientRect().left)
             )
-          }
-          onPointerLeave={() => setHover(null)}
+          }}
+          onPointerLeave={() => {
+            setHover(null)
+          }}
           onClick={() => {
             if (openable && hovered) onOpenDay?.(hovered)
           }}

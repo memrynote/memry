@@ -153,7 +153,9 @@ export function CreateVaultForm({
               setParent(path)
               setError(null)
             }}
-            onError={(message) => setError({ kind: 'other', message })}
+            onError={(message) => {
+              setError({ kind: 'other', message })
+            }}
           />
           {target && !nameError && <TargetPreview target={target} />}
           {error?.kind === 'other' && (
@@ -196,7 +198,9 @@ function NameField({
         placeholder={t(`${KEY}.namePlaceholder`)}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
         className={cn(error && 'border-destructive focus-visible:ring-destructive')}
       />
       {error && (
@@ -205,7 +209,9 @@ function NameField({
           {existingTarget && (
             <button
               type="button"
-              onClick={() => onOpenExisting(existingTarget)}
+              onClick={() => {
+                onOpenExisting(existingTarget)
+              }}
               className="underline underline-offset-2 hover:text-foreground"
             >
               {t(`${KEY}.openInstead`)}

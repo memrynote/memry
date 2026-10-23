@@ -109,7 +109,9 @@ export function CalendarBasicConnectForm({
         <CalendarFieldRow label={t('calendar.providers.basic.serverLabel')}>
           <Input
             value={serverUrl}
-            onChange={(event) => setServerUrl(event.target.value)}
+            onChange={(event) => {
+              setServerUrl(event.target.value)
+            }}
             placeholder={t('calendar.providers.basic.serverPlaceholder')}
             aria-label={t('calendar.providers.basic.serverLabel')}
             spellCheck={false}
@@ -121,7 +123,9 @@ export function CalendarBasicConnectForm({
       <CalendarFieldRow label={t('calendar.providers.basic.usernameLabel')}>
         <Input
           value={username}
-          onChange={(event) => setUsername(event.target.value)}
+          onChange={(event) => {
+            setUsername(event.target.value)
+          }}
           aria-label={t('calendar.providers.basic.usernameLabel')}
           spellCheck={false}
           autoComplete="username"
@@ -132,7 +136,9 @@ export function CalendarBasicConnectForm({
         <Input
           type="password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+          }}
           aria-label={t('calendar.providers.basic.passwordLabel')}
           autoComplete="current-password"
           className={CALENDAR_FIELD_INPUT}

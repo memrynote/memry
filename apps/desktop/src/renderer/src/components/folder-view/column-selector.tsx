@@ -378,7 +378,9 @@ export function ColumnSelector({
               <Input
                 placeholder={tPhaseF('phaseF.componentsFolderViewColumnSelector.searchColumns')}
                 value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => {
+                  handleSearchChange(e.target.value)
+                }}
                 className="h-8 ps-8 text-sm"
               />
             </div>
@@ -408,11 +410,17 @@ export function ColumnSelector({
                         label={col.label}
                         subtitle={col.subtitle}
                         checked={isColumnVisible(col.id)}
-                        onCheckedChange={(checked) => toggleColumn(col.id, checked)}
+                        onCheckedChange={(checked) => {
+                          toggleColumn(col.id, checked)
+                        }}
                         columnType={col.type}
                         summaryConfig={summaries[col.id]}
                         onSummaryChange={
-                          onSummaryChange ? (config) => onSummaryChange(col.id, config) : undefined
+                          onSummaryChange
+                            ? (config) => {
+                                onSummaryChange(col.id, config)
+                              }
+                            : undefined
                         }
                       />
                     ))}
@@ -430,12 +438,22 @@ export function ColumnSelector({
                           key={formula.id}
                           formula={formula}
                           checked={isColumnVisible(`formula.${formula.id}`)}
-                          onCheckedChange={(checked) =>
+                          onCheckedChange={(checked) => {
                             toggleColumn(`formula.${formula.id}`, checked)
+                          }}
+                          onEdit={
+                            canManageFormulas
+                              ? () => {
+                                  handleEditFormula(formula)
+                                }
+                              : undefined
                           }
-                          onEdit={canManageFormulas ? () => handleEditFormula(formula) : undefined}
                           onDelete={
-                            canManageFormulas ? () => setFormulaToDelete(formula.id) : undefined
+                            canManageFormulas
+                              ? () => {
+                                  setFormulaToDelete(formula.id)
+                                }
+                              : undefined
                           }
                         />
                       ))
@@ -486,7 +504,12 @@ export function ColumnSelector({
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={Boolean(formulaToDelete)} onOpenChange={() => setFormulaToDelete(null)}>
+      <AlertDialog
+        open={Boolean(formulaToDelete)}
+        onOpenChange={() => {
+          setFormulaToDelete(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -595,7 +618,9 @@ function ColumnItem({
         <Checkbox
           id={`col-${id}`}
           checked={checked}
-          onCheckedChange={(checked) => onCheckedChange(checked === true)}
+          onCheckedChange={(checked) => {
+            onCheckedChange(checked === true)
+          }}
           className="shrink-0"
         />
       )}
@@ -695,7 +720,9 @@ function FormulaItem({
       <Checkbox
         id={`col-formula-${formula.id}`}
         checked={checked}
-        onCheckedChange={(checked) => onCheckedChange(checked === true)}
+        onCheckedChange={(checked) => {
+          onCheckedChange(checked === true)
+        }}
       />
       <label htmlFor={`col-formula-${formula.id}`} className="flex-1 min-w-0 cursor-pointer">
         <span className="text-sm truncate block" title={formula.id}>

@@ -98,7 +98,12 @@ function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {
     ...overrides
   }
   const { rerender } = render(<CanvasAddCardDialog {...props} />)
-  return { ...props, rerender: () => rerender(<CanvasAddCardDialog {...props} />) }
+  return {
+    ...props,
+    rerender: () => {
+      rerender(<CanvasAddCardDialog {...props} />)
+    }
+  }
 }
 
 describe('CanvasAddCardDialog', () => {
@@ -129,7 +134,9 @@ describe('CanvasAddCardDialog', () => {
     }
     setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'a' } })
-    await waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+    })
     expect(screen.getByText('Ship it')).toBeInTheDocument()
     expect(screen.getByText('Standup')).toBeInTheDocument()
   })
@@ -149,9 +156,9 @@ describe('CanvasAddCardDialog', () => {
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'la' } })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('canvas-add-item-project:p1')).toBeInTheDocument()
-    )
+    })
     expect(screen.queryByTestId('canvas-add-item-project:p2')).not.toBeInTheDocument()
     expect(screen.queryByTestId('canvas-add-item-project:p3')).not.toBeInTheDocument()
     expect(screen.queryByTestId('canvas-add-item-note:f1')).not.toBeInTheDocument()
@@ -169,7 +176,9 @@ describe('CanvasAddCardDialog', () => {
       mocks.sources = sources
       setup()
       fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'a' } })
-      await waitFor(() => expect(screen.getByText(anchor)).toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.getByText(anchor)).toBeInTheDocument()
+      })
     }
 
     it("shows a note's own icon, its path and when it was created", async () => {
@@ -255,7 +264,9 @@ describe('CanvasAddCardDialog', () => {
     mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
-    await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument()
+    })
     fireEvent.click(screen.getByTestId('canvas-add-item-task:t1'))
     expect(props.onPick).toHaveBeenCalledWith('task', 't1')
     expect(props.onReveal).not.toHaveBeenCalled()
@@ -265,7 +276,9 @@ describe('CanvasAddCardDialog', () => {
     mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup({ onCanvasKeys: new Set(['task:t1']) })
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
-    await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument()
+    })
     expect(screen.getByText('addOnCanvas')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('canvas-add-item-task:t1'))
     expect(props.onReveal).toHaveBeenCalledWith('task', 't1')
@@ -276,7 +289,9 @@ describe('CanvasAddCardDialog', () => {
     mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'groceries' } })
-    await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument()
+    })
     fireEvent.click(screen.getByTestId('canvas-add-create-note'))
     expect(props.onCreateNote).toHaveBeenCalledWith('groceries')
   })
@@ -296,7 +311,9 @@ describe('CanvasAddCardDialog', () => {
     mocks.sources = { results: [taskResult('t1', 'Ship it')], events: [], loading: false }
     setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'ship' } })
-    await waitFor(() => expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-add-item-task:t1')).toBeInTheDocument()
+    })
     expect(screen.queryByTestId('canvas-add-empty')).not.toBeInTheDocument()
   })
 
@@ -351,7 +368,9 @@ describe('CanvasAddCardDialog', () => {
       loading: false
     }
     props.rerender()
-    await waitFor(() => expect(screen.getByTestId('canvas-add-item-note:n1')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-add-item-note:n1')).toBeInTheDocument()
+    })
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
     expect(props.onPick).toHaveBeenCalledWith('note', 'n1')
     expect(props.onCreateNote).not.toHaveBeenCalled()
@@ -366,12 +385,12 @@ describe('CanvasAddCardDialog', () => {
     mocks.sources = { results: [], events: [eventItem('e1', 'Standup')], loading: false }
     const props = setup()
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'stand' } })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('canvas-add-item-calendar_event:e1')).toHaveAttribute(
         'data-selected',
         'true'
       )
-    )
+    })
 
     fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: '' } })
     fireEvent.keyDown(screen.getByTestId('canvas-add-input'), { key: 'Enter' })
@@ -405,7 +424,9 @@ describe('CanvasAddCardDialog', () => {
       fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
       fireEvent.click(await screen.findByTestId('canvas-add-bulk-tag-research'))
 
-      await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('bulkEmpty'))
+      await waitFor(() => {
+        expect(mocks.toast).toHaveBeenCalledWith('bulkEmpty')
+      })
       expect(await screen.findByTestId('canvas-add-bulk-tag-research')).toBeInTheDocument()
       expect(props.onAddAll).not.toHaveBeenCalled()
     })
@@ -416,7 +437,9 @@ describe('CanvasAddCardDialog', () => {
       fireEvent.click(screen.getByTestId('canvas-add-bulk-folder'))
       fireEvent.click(await screen.findByTestId('canvas-add-bulk-folder-Projects'))
 
-      await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('disk gone'))
+      await waitFor(() => {
+        expect(mocks.toast.error).toHaveBeenCalledWith('disk gone')
+      })
       expect(await screen.findByTestId('canvas-add-bulk-folder-Projects')).toBeInTheDocument()
     })
 
@@ -467,14 +490,16 @@ describe('CanvasAddCardDialog', () => {
       fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
       // The tag list filters on the same input.
       fireEvent.change(screen.getByTestId('canvas-add-input'), { target: { value: 'resea' } })
-      await waitFor(() =>
+      await waitFor(() => {
         expect(screen.getByTestId('canvas-add-bulk-tag-research')).toBeInTheDocument()
-      )
+      })
       expect(screen.queryByTestId('canvas-add-bulk-tag-reading')).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('canvas-add-bulk-tag-research'))
 
-      await waitFor(() => expect(props.onAddAll).toHaveBeenCalledWith(notes(3)))
+      await waitFor(() => {
+        expect(props.onAddAll).toHaveBeenCalledWith(notes(3))
+      })
       expect(mocks.loadScope).toHaveBeenCalledWith({ kind: 'tag', tag: 'research' })
       expect(props.onOpenChange).toHaveBeenCalledWith(false)
     })
@@ -516,7 +541,9 @@ describe('CanvasAddCardDialog', () => {
       fireEvent.click(screen.getByTestId('canvas-add-bulk-tag'))
       fireEvent.click(await screen.findByTestId('canvas-add-bulk-tag-research'))
 
-      await waitFor(() => expect(props.onAddAll).toHaveBeenCalledWith(refs))
+      await waitFor(() => {
+        expect(props.onAddAll).toHaveBeenCalledWith(refs)
+      })
       expect(screen.queryByTestId('canvas-add-bulk-confirm')).not.toBeInTheDocument()
     })
 

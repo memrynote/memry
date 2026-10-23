@@ -40,10 +40,14 @@ describe('useSidebarTreeViewOptions', () => {
 
     const { result, unmount } = renderHook(() => useSidebarTreeViewOptions())
 
-    await waitFor(() => expect(result.current.notesFirst).toBe(false))
+    await waitFor(() => {
+      expect(result.current.notesFirst).toBe(false)
+    })
     expect(result.current.showFiles).toBe(true)
     expect(result.current.error).toBeNull()
-    expect(() => unmount()).not.toThrow()
+    expect(() => {
+      unmount()
+    }).not.toThrow()
   })
 
   it('loads both stored flags', async () => {
@@ -54,7 +58,9 @@ describe('useSidebarTreeViewOptions', () => {
 
     const { result } = renderHook(() => useSidebarTreeViewOptions())
 
-    await waitFor(() => expect(result.current.notesFirst).toBe(true))
+    await waitFor(() => {
+      expect(result.current.notesFirst).toBe(true)
+    })
     expect(result.current.showFiles).toBe(false)
   })
 
@@ -67,7 +73,9 @@ describe('useSidebarTreeViewOptions', () => {
 
     const { result } = renderHook(() => useSidebarTreeViewOptions())
 
-    await waitFor(() => expect(getSidebarNotesFirst).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(getSidebarNotesFirst).toHaveBeenCalled()
+    })
     expect(result.current.notesFirst).toBe(false)
     expect(result.current.showFiles).toBe(true)
   })
@@ -84,16 +92,22 @@ describe('useSidebarTreeViewOptions', () => {
     const { result, unmount } = renderHook(() => useSidebarTreeViewOptions())
 
     // The stored values still load; only live updates are lost.
-    await waitFor(() => expect(result.current.notesFirst).toBe(true))
+    await waitFor(() => {
+      expect(result.current.notesFirst).toBe(true)
+    })
     expect(result.current.showFiles).toBe(false)
-    expect(() => unmount()).not.toThrow()
+    expect(() => {
+      unmount()
+    }).not.toThrow()
   })
 
   // A change synced in or made in another window. `false` must land too.
   it('follows settings changes for its own keys only, false included', async () => {
     // One subscription per flag, like the preload fans each change out to all.
     const listeners: SettingsListener[] = []
-    const listener: SettingsListener = (event) => listeners.forEach((l) => l(event))
+    const listener: SettingsListener = (event) => {
+      listeners.forEach((l) => l(event))
+    }
     withApi(
       {
         getSidebarNotesFirst: vi.fn(() => Promise.resolve(false)),
@@ -106,18 +120,30 @@ describe('useSidebarTreeViewOptions', () => {
     )
 
     const { result } = renderHook(() => useSidebarTreeViewOptions())
-    await waitFor(() => expect(window.api.onSettingsChanged).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.onSettingsChanged).toHaveBeenCalled()
+    })
 
-    act(() => listener({ key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY, value: true }))
-    act(() => listener({ key: SIDEBAR_SHOW_FILES_SETTINGS_KEY, value: false }))
+    act(() => {
+      listener({ key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY, value: true })
+    })
+    act(() => {
+      listener({ key: SIDEBAR_SHOW_FILES_SETTINGS_KEY, value: false })
+    })
     expect(result.current.notesFirst).toBe(true)
     expect(result.current.showFiles).toBe(false)
 
-    act(() => listener({ key: 'sidebar.navCollapsed', value: false }))
-    act(() => listener({ key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY, value: 'yes' }))
+    act(() => {
+      listener({ key: 'sidebar.navCollapsed', value: false })
+    })
+    act(() => {
+      listener({ key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY, value: 'yes' })
+    })
     expect(result.current.notesFirst).toBe(true)
 
-    act(() => listener({ key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY, value: false }))
+    act(() => {
+      listener({ key: SIDEBAR_NOTES_FIRST_SETTINGS_KEY, value: false })
+    })
     expect(result.current.notesFirst).toBe(false)
   })
 
@@ -132,14 +158,22 @@ describe('useSidebarTreeViewOptions', () => {
     })
 
     const { result } = renderHook(() => useSidebarTreeViewOptions())
-    await waitFor(() => expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled()
+    })
 
-    act(() => result.current.setNotesFirst(true))
+    act(() => {
+      result.current.setNotesFirst(true)
+    })
     expect(result.current.notesFirst).toBe(true)
-    act(() => result.current.setShowFiles(false))
+    act(() => {
+      result.current.setShowFiles(false)
+    })
     expect(result.current.showFiles).toBe(false)
 
-    await waitFor(() => expect(setSidebarShowFiles).toHaveBeenCalledWith(false))
+    await waitFor(() => {
+      expect(setSidebarShowFiles).toHaveBeenCalledWith(false)
+    })
     expect(setSidebarNotesFirst).toHaveBeenCalledWith(true)
     expect(result.current.error).toBeNull()
   })
@@ -153,17 +187,23 @@ describe('useSidebarTreeViewOptions', () => {
     })
 
     const { result } = renderHook(() => useSidebarTreeViewOptions())
-    await waitFor(() => expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled()
+    })
 
     await act(async () => {
       result.current.setNotesFirst(true)
     })
-    await waitFor(() => expect(result.current.notesFirst).toBe(false))
+    await waitFor(() => {
+      expect(result.current.notesFirst).toBe(false)
+    })
     expect(result.current.error).toBe('disk is read-only')
 
     await act(async () => {
       result.current.setShowFiles(false)
     })
-    await waitFor(() => expect(result.current.showFiles).toBe(true))
+    await waitFor(() => {
+      expect(result.current.showFiles).toBe(true)
+    })
   })
 })

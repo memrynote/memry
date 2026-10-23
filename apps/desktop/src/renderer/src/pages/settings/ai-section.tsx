@@ -238,8 +238,12 @@ export function AISettings({
 
   useEffect(() => {
     if (voiceModelFocusRequestId === null) return
-    const timeout = window.setTimeout(() => setVoiceModelFocusRequestId(null), 2700)
-    return () => window.clearTimeout(timeout)
+    const timeout = window.setTimeout(() => {
+      setVoiceModelFocusRequestId(null)
+    }, 2700)
+    return () => {
+      window.clearTimeout(timeout)
+    }
   }, [voiceModelFocusRequestId])
 
   const handleToggleEnabled = useCallback(
@@ -451,12 +455,16 @@ export function AISettings({
         {settings.enabled && (
           <SummarizeLongNotesRow
             checked={settings.summarizeLongNotes}
-            onSaved={(summarizeLongNotes) =>
+            onSaved={(summarizeLongNotes) => {
               setSettings((prev) => ({ ...prev, summarizeLongNotes }))
-            }
+            }}
             agent={settings.summarizeAgent}
-            onAgentSaved={(summarizeAgent) => setSettings((prev) => ({ ...prev, summarizeAgent }))}
-            onOpenAgents={() => setTab('agents')}
+            onAgentSaved={(summarizeAgent) => {
+              setSettings((prev) => ({ ...prev, summarizeAgent }))
+            }}
+            onOpenAgents={() => {
+              setTab('agents')
+            }}
             refreshKey={tab}
           />
         )}
@@ -475,7 +483,12 @@ export function AISettings({
       </SettingsGroup>
 
       {settings.enabled && (
-        <Tabs value={tab} onValueChange={(value) => setTab(value as AISettingsTab)}>
+        <Tabs
+          value={tab}
+          onValueChange={(value) => {
+            setTab(value as AISettingsTab)
+          }}
+        >
           <TabsList className={AI_TABS_LIST}>
             <TabsTrigger value="models" className={AI_TAB}>
               {t('ai.tabs.models')}
@@ -719,7 +732,9 @@ export function AISettings({
                     <Input
                       type={showVoiceApiKey ? 'text' : 'password'}
                       value={voiceApiKey}
-                      onChange={(event) => setVoiceApiKey(event.target.value)}
+                      onChange={(event) => {
+                        setVoiceApiKey(event.target.value)
+                      }}
                       placeholder={
                         hasVoiceApiKey ? t('ai.voice.replaceKey') : t('ai.voice.enterKey')
                       }
@@ -728,7 +743,9 @@ export function AISettings({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setShowVoiceApiKey((visible) => !visible)}
+                      onClick={() => {
+                        setShowVoiceApiKey((visible) => !visible)
+                      }}
                       tabIndex={-1}
                       className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                     >

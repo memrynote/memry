@@ -60,7 +60,9 @@ describe('sidebar section contrast', () => {
 
   it('never swaps the header to a colour below AA on hover', () => {
     // The sidebar paints `bg-sidebar`; the header has no background of its own.
-    expect(() => assertSmallTextContrast(headerButton().className, ['--sidebar'])).not.toThrow()
+    expect(() => {
+      assertSmallTextContrast(headerButton().className, ['--sidebar'])
+    }).not.toThrow()
   })
 
   it('holds the collapsed item count to AA too', () => {
@@ -69,7 +71,9 @@ describe('sidebar section contrast', () => {
     renderSection({ defaultExpanded: false, totalCount: 7 })
     const count = screen.getByText('(7)')
 
-    expect(() => assertSmallTextContrast(count.className, ['--sidebar'])).not.toThrow()
+    expect(() => {
+      assertSmallTextContrast(count.className, ['--sidebar'])
+    }).not.toThrow()
     expect(count.className.split(/\s+/)).toContain('text-sidebar-section-heading')
   })
 })

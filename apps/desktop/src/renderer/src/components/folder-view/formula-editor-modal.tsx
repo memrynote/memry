@@ -381,7 +381,9 @@ export function FormulaEditorModal({
             <Input
               id="formula-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+              }}
               onKeyDown={handleNameKeyDown}
               placeholder={tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.namePlaceholder')}
               className={cn(nameError && name && 'border-destructive')}
@@ -524,7 +526,12 @@ export function FormulaEditorModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              handleOpenChange(false)
+            }}
+          >
             {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.cancel')}
           </Button>
           <Button onClick={() => void handleSave()} disabled={!canSave}>

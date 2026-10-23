@@ -50,7 +50,9 @@ export function ColorPicker({
                 <button
                   key={colorName}
                   type="button"
-                  onClick={() => onSelectColor(colorName)}
+                  onClick={() => {
+                    onSelectColor(colorName)
+                  }}
                   aria-label={t('tagsRow.colorAria', { color: colorName })}
                   aria-pressed={isSelected}
                   className={cn(

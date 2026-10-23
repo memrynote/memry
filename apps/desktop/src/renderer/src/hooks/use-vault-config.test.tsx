@@ -32,12 +32,18 @@ describe('useVaultConfig', () => {
     })
 
     const { result, queryClient } = renderConfig()
-    await waitFor(() => expect(result.current?.journalFolder).toBe('Daily'))
+    await waitFor(() => {
+      expect(result.current?.journalFolder).toBe('Daily')
+    })
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
 
-    act(() => push({ ...config, journalFolder: 'Diary', journalShowInSidebar: true }))
+    act(() => {
+      push({ ...config, journalFolder: 'Diary', journalShowInSidebar: true })
+    })
 
-    await waitFor(() => expect(result.current?.journalFolder).toBe('Diary'))
+    await waitFor(() => {
+      expect(result.current?.journalFolder).toBe('Diary')
+    })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: notesKeys.folders() })
   })
 
@@ -50,12 +56,22 @@ describe('useVaultConfig', () => {
     })
 
     renderConfig()
-    await waitFor(() => expect(window.api.vault.getConfig).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(window.api.vault.getConfig).toHaveBeenCalledTimes(1)
+    })
 
-    act(() => status({ path: '/vault/a' }))
-    await waitFor(() => expect(window.api.vault.getConfig).toHaveBeenCalledTimes(2))
-    act(() => status({ path: '/vault/a' }))
-    act(() => status({ path: '/vault/a' }))
+    act(() => {
+      status({ path: '/vault/a' })
+    })
+    await waitFor(() => {
+      expect(window.api.vault.getConfig).toHaveBeenCalledTimes(2)
+    })
+    act(() => {
+      status({ path: '/vault/a' })
+    })
+    act(() => {
+      status({ path: '/vault/a' })
+    })
     expect(window.api.vault.getConfig).toHaveBeenCalledTimes(2)
   })
 })

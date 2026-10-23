@@ -33,7 +33,9 @@ export function OutgoingLinksSection({
     <section className="flex flex-col gap-1" aria-label={t('outgoingLinks.sectionAria')}>
       <button
         type="button"
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => {
+          setIsCollapsed(!isCollapsed)
+        }}
         className={cn(
           'flex items-center gap-1.5 self-start rounded',
           'cursor-pointer hover:opacity-80 transition-opacity',
@@ -69,7 +71,9 @@ export function OutgoingLinksSection({
                 <li key={key}>
                   <button
                     type="button"
-                    onClick={() => onLinkClick(link.targetTitle)}
+                    onClick={() => {
+                      onLinkClick(link.targetTitle)
+                    }}
                     className={cn(
                       'flex w-full min-w-0 items-center gap-1.5 px-1.5 py-1',
                       'rounded text-start cursor-pointer',
@@ -111,7 +115,9 @@ export function OutgoingLinksSection({
           {remainingCount > 0 && (
             <button
               type="button"
-              onClick={() => setVisibleCount((prev) => prev + initialCount)}
+              onClick={() => {
+                setVisibleCount((prev) => prev + initialCount)
+              }}
               className={cn(
                 'w-full py-1.5 mt-0.5 rounded',
                 'text-[11px] text-text-tertiary hover:text-muted-foreground',

@@ -35,7 +35,9 @@ describe('callout-types-store (#3207)', () => {
     mocks.rows.clear()
     vi.clearAllMocks()
   })
-  afterEach(() => setCalloutTypeDefinitions([]))
+  afterEach(() => {
+    setCalloutTypeDefinitions([])
+  })
 
   it('reads no types from an absent or corrupt row', () => {
     expect(readCalloutTypes(db)).toEqual([])

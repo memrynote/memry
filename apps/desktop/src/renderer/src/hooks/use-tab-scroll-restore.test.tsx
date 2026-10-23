@@ -217,7 +217,9 @@ describe('useTabScrollRestore', () => {
 
   it('throttles saves instead of dispatching per scroll event', () => {
     const scroller = makeScroller(1000)
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.userScrollTo(120)
     scroller.userScrollTo(250)
@@ -230,9 +232,9 @@ describe('useTabScrollRestore', () => {
 
   it('saves the offset from the ref, not from the DOM, at teardown', () => {
     const scroller = makeScroller(1000)
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
 
     scroller.userScrollTo(250)
     // What the old mechanism saw: by cleanup time the container has been emptied
@@ -247,9 +249,9 @@ describe('useTabScrollRestore', () => {
 
   it('keeps the user offset when a content collapse clamps the scroller', () => {
     const scroller = makeScroller(1000)
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
 
     scroller.userScrollTo(250)
     // Switching to an already-cached note: the scroller survives, but the page
@@ -264,7 +266,9 @@ describe('useTabScrollRestore', () => {
 
   it('does not commit a content-collapse clamp as the live offset', () => {
     const scroller = makeScroller(1000)
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.userScrollTo(250)
     scroller.collapseContentTo(0)
@@ -277,7 +281,9 @@ describe('useTabScrollRestore', () => {
 
   it('still saves a genuine user scroll back to the top', () => {
     const scroller = makeScroller(1000)
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.userScrollTo(250)
     vi.advanceTimersByTime(500)
@@ -293,7 +299,9 @@ describe('useTabScrollRestore', () => {
 
   it('does not re-dispatch an offset already in tab state', () => {
     const scroller = makeScroller(1000)
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.userScrollTo(250)
     vi.advanceTimersByTime(500)
@@ -307,9 +315,9 @@ describe('useTabScrollRestore', () => {
 
   it('writes nothing at teardown for a tab that was never scrolled', () => {
     const scroller = makeScroller(1000)
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
 
     unmount()
 
@@ -320,9 +328,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-old' }))
 
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
 
     unmount()
 
@@ -332,9 +340,9 @@ describe('useTabScrollRestore', () => {
 
   it('flushes under the previous tab identity when the tab changes', () => {
     const scroller = makeScroller(1000)
-    const { rerender } = renderHook(() =>
+    const { rerender } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
 
     scroller.userScrollTo(310)
     mocks.identity.current = { tabId: 'tab-b', groupId: 'group-1', entityId: 'note-2' }
@@ -346,9 +354,9 @@ describe('useTabScrollRestore', () => {
   it('does nothing without a tab identity', () => {
     mocks.identity.current = null
     const scroller = makeScroller(1000)
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
 
     scroller.userScrollTo(120)
     vi.advanceTimersByTime(500)
@@ -361,9 +369,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
 
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element, enabled: false })
-    )
+    })
 
     expect(scroller.element.scrollTop).toBe(0)
     unmount()
@@ -378,7 +386,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     expect(scroller.element.scrollTop).toBe(400)
     // Target reached on the first pass — nothing left to observe.
@@ -389,7 +399,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-old' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     expect(scroller.element.scrollTop).toBe(0)
     expect(TestResizeObserver.live).toHaveLength(0)
@@ -401,7 +413,9 @@ describe('useTabScrollRestore', () => {
     scroller.element.scrollTop = 300
     mocks.getTab.mockReturnValue(tabWith({ offset: 0, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     expect(scroller.element.scrollTop).toBe(0)
   })
@@ -411,7 +425,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     expect(scroller.element.scrollTop).toBe(0)
     expect(TestResizeObserver.live).toHaveLength(1)
@@ -427,7 +443,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
     expect(TestResizeObserver.live).toHaveLength(1)
 
     // RESTORE_SETTLE_MS with no growth: the target is provably unreachable.
@@ -444,7 +462,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     // Lazy chunk + note fetch: nothing for well over a second.
     vi.advanceTimersByTime(1500)
@@ -463,7 +483,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 5000, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     // Growth every second keeps resetting the settle window; RESTORE_MAX_MS is
     // the only thing that can end this.
@@ -485,9 +507,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element })
-    )
+    })
     expect(scroller.element.scrollTop).toBe(0)
 
     unmount()
@@ -499,7 +521,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))
     scroller.setMaxScroll(1000)
@@ -512,7 +536,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown' }))
     scroller.setMaxScroll(1000)
@@ -525,7 +551,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
     expect(scroller.element.scrollTop).toBe(0)
 
     // Content arrives and the user immediately scrolls somewhere else.
@@ -540,7 +568,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     scroller.element.dispatchEvent(new Event('wheel'))
     scroller.setMaxScroll(1000)
@@ -556,9 +586,9 @@ describe('useTabScrollRestore', () => {
 
   it('stamps the scroller key into every save', () => {
     const scroller = makeScroller(1000)
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-list' })
-    )
+    })
 
     scroller.userScrollTo(250)
     vi.advanceTimersByTime(500)
@@ -570,9 +600,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1', key: 'inbox-list' }))
 
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-insights' })
-    )
+    })
 
     expect(scroller.element.scrollTop).toBe(0)
   })
@@ -581,9 +611,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1', key: 'inbox-list' }))
 
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-list' })
-    )
+    })
 
     expect(scroller.element.scrollTop).toBe(400)
   })
@@ -592,9 +622,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(1000)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1', key: 'inbox-list' }))
 
-    const { unmount } = renderHook(() =>
+    const { unmount } = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-insights' })
-    )
+    })
     unmount()
 
     // Merely opening the insights pane must not wipe the list pane's offset.
@@ -615,31 +645,31 @@ describe('useTabScrollRestore', () => {
     )
 
     const list = makeScroller(1000)
-    const listVisit = renderHook(() =>
+    const listVisit = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => list.element, key: 'inbox-list' })
-    )
+    })
     list.userScrollTo(250)
     listVisit.unmount()
 
     // The second pane the user scrolls is the one that used to overwrite the
     // tab's only record and take the list's 250 with it.
     const archived = makeScroller(1000)
-    const archivedVisit = renderHook(() =>
+    const archivedVisit = renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => archived.element, key: 'inbox-archived' })
-    )
+    })
     archived.userScrollTo(700)
     archivedVisit.unmount()
 
     const listAgain = makeScroller(1000)
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => listAgain.element, key: 'inbox-list' })
-    )
+    })
     expect(listAgain.element.scrollTop).toBe(250)
 
     const archivedAgain = makeScroller(1000)
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => archivedAgain.element, key: 'inbox-archived' })
-    )
+    })
     expect(archivedAgain.element.scrollTop).toBe(700)
   })
 
@@ -653,9 +683,9 @@ describe('useTabScrollRestore', () => {
       tabWithLegacyRecord({ offset: 400, entityId: 'note-1', key: 'inbox-list' })
     )
 
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-list' })
-    )
+    })
 
     expect(scroller.element.scrollTop).toBe(400)
   })
@@ -664,13 +694,15 @@ describe('useTabScrollRestore', () => {
     mocks.getTab.mockReturnValue(tabWithLegacyRecord({ offset: 400, entityId: 'note-1' }))
 
     const keyed = makeScroller(1000)
-    renderHook(() =>
+    renderHook(() => {
       useTabScrollRestore({ getScrollElement: () => keyed.element, key: 'inbox-list' })
-    )
+    })
     expect(keyed.element.scrollTop).toBe(0)
 
     const unkeyed = makeScroller(1000)
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => unkeyed.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => unkeyed.element })
+    })
     expect(unkeyed.element.scrollTop).toBe(400)
   })
 
@@ -683,7 +715,9 @@ describe('useTabScrollRestore', () => {
     const { virtualizer, calls } = makeVirtualizer(scroller, 1400)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer })
+    })
 
     expect(calls).toEqual([400])
     expect(scroller.element.scrollTop).toBe(400)
@@ -694,7 +728,9 @@ describe('useTabScrollRestore', () => {
     const { virtualizer, setTotalSize, calls } = makeVirtualizer(scroller, 1400)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer })
+    })
 
     // The write stuck, but the total size is still an estimate: the row now
     // under 400px is not the row the user left.
@@ -717,7 +753,9 @@ describe('useTabScrollRestore', () => {
     const { virtualizer, setTotalSize } = makeVirtualizer(scroller, 0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer })
+    })
 
     vi.advanceTimersByTime(2000)
     expect(TestResizeObserver.live).toHaveLength(0)
@@ -734,7 +772,9 @@ describe('useTabScrollRestore', () => {
     const { virtualizer, calls } = makeVirtualizer(scroller, 1400)
     mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer })
+    })
     expect(calls).toEqual([400])
 
     scroller.userScrollTo(120)
@@ -748,7 +788,9 @@ describe('useTabScrollRestore', () => {
     const scroller = makeScroller(200)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
-    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+    renderHook(() => {
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    })
 
     // Partial restore: the write clamped to 200 and the browser echoes a scroll
     // event carrying that same value. That is ours, not the user's.

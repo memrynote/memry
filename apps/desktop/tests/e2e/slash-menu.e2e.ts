@@ -37,7 +37,9 @@ const menu = (page: Page) => page.locator('.memry-slash-menu')
 test.describe('Slash menu', () => {
   test.beforeEach(async ({ page }) => {
     await ready(page)
-    await page.evaluate(() => localStorage.removeItem('memry:slash-menu-recent'))
+    await page.evaluate(() => {
+      localStorage.removeItem('memry:slash-menu-recent')
+    })
   })
 
   test('lists the long tail at rest and shows the selected row in the action bar', async ({

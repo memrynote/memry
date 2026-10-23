@@ -522,7 +522,9 @@ describe('viewer components', () => {
     })
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.viewOptions'))
     await user.click(await screen.findByText('phaseF.componentsViewersPdfViewer.fitToWidth'))
-    await waitFor(() => expect(screen.getByText(/scale 1.419/)).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText(/scale 1.419/)).toBeInTheDocument()
+    })
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.hideThumbnails'))
     expect(
       screen.getByTitle('phaseF.componentsViewersPdfViewer.showThumbnails')

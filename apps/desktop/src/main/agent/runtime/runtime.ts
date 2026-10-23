@@ -372,7 +372,9 @@ export class AgentRuntime {
   private async reapSubprocess(sub: TrackedSubprocess): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined
     const timedOut = new Promise<false>((resolve) => {
-      timer = setTimeout(() => resolve(false), KILL_REAP_BUDGET_MS)
+      timer = setTimeout(() => {
+        resolve(false)
+      }, KILL_REAP_BUDGET_MS)
     })
     try {
       if (await Promise.race([sub.waitExit().then(() => true), timedOut])) {
@@ -453,10 +455,9 @@ export class AgentRuntime {
 
   private waitForApproval(input: PendingApprovalSnapshot): Promise<ApprovalOutcome> {
     return new Promise((resolve) => {
-      const timer = setTimeout(
-        () => this.expireApproval(input.toolCallId),
-        this.deps.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS
-      )
+      const timer = setTimeout(() => {
+        this.expireApproval(input.toolCallId)
+      }, this.deps.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS)
       // An unanswered prompt must not be the reason the process refuses to exit.
       timer.unref?.()
       this.pending.set(input.toolCallId, { ...input, resolve, timer })

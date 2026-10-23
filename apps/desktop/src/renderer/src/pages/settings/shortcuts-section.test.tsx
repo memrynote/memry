@@ -256,9 +256,9 @@ describe('ShortcutsSettings', () => {
       key: 'X',
       modifiers: { meta: true, shift: undefined, alt: undefined }
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to save global capture shortcut')
-    )
+    })
   })
 
   it('shows the conflict on the row and keeps the working binding when another app owns the combo', async () => {
@@ -376,11 +376,11 @@ describe('ShortcutsSettings', () => {
 
       fireEvent.keyDown(window, { key: '9', ctrlKey: true, altKey: true })
 
-      await waitFor(() =>
+      await waitFor(() => {
         expect(updateSettings).toHaveBeenCalledWith({
           folderNoteShortcuts: [{ folder: 'Work/Meetings', binding: chord }]
         })
-      )
+      })
     })
 
     it('refuses a chord another shortcut holds, editor keys included', async () => {

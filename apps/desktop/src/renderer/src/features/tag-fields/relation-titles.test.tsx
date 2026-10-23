@@ -97,7 +97,9 @@ describe('RelationTitles', () => {
     ])
     renderTitles(<RelationTitles uris={['memry://task/t1']} />)
 
-    await waitFor(() => expect(screen.getByText('Send agenda')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Send agenda')).toBeInTheDocument()
+    })
     expect(document.querySelector('[data-object-avatar]')).toBeNull()
   })
 })

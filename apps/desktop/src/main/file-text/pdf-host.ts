@@ -127,7 +127,9 @@ async function call<T>(script: string): Promise<T> {
           inFlight.delete(fail)
           resolve(value)
         },
-        (error: unknown) => fail(toError(error))
+        (error: unknown) => {
+          fail(toError(error))
+        }
       )
     } catch (error) {
       fail(toError(error))

@@ -253,7 +253,7 @@ vi.mock('@/contexts/drag-context', () => ({
     <div data-testid="drag-provider">
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           onDragEnd(
             {
               // Mirrors what SortableProjectItem actually emits: a typed drag,
@@ -269,13 +269,13 @@ vi.mock('@/contexts/drag-context', () => ({
             },
             { isDragging: false }
           )
-        }
+        }}
       >
         project drag
       </button>
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           onDragEnd(
             {
               active: { id: 'task-1', data: { current: { type: 'task' } } },
@@ -283,7 +283,7 @@ vi.mock('@/contexts/drag-context', () => ({
             },
             { isDragging: true }
           )
-        }
+        }}
       >
         task drag
       </button>
@@ -616,12 +616,16 @@ describe('App', () => {
       queryFn: async () => answer
     })
     const unsubscribe = observer.subscribe(() => {})
-    await waitFor(() => expect(clientA.getQueryState(rowsKey)?.fetchStatus).toBe('idle'))
+    await waitFor(() => {
+      expect(clientA.getQueryState(rowsKey)?.fetchStatus).toBe('idle')
+    })
     expect(clientA.getQueryData(rowsKey)).toBeUndefined()
 
     answer = 'vault-a-rows'
     act(() => endVaultSwitch(false))
-    await waitFor(() => expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows'))
+    await waitFor(() => {
+      expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
+    })
     unsubscribe()
   })
 
@@ -735,14 +739,14 @@ describe('App', () => {
 
     expect(pressMod('n')).toBe(false)
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(createNote).toHaveBeenCalledWith({
         title: 'New note',
         content: '',
         folder: 'Projects'
       })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(openTab).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'note',
@@ -751,9 +755,11 @@ describe('App', () => {
         }),
         expect.anything()
       )
-    )
+    })
     expect(isNewNoteTitlePending('note-1')).toBe(true)
-    await waitFor(() => expect(revealed).toEqual(['note-1']))
+    await waitFor(() => {
+      expect(revealed).toEqual(['note-1'])
+    })
     window.removeEventListener('reveal-in-sidebar', onReveal)
   })
 
@@ -786,7 +792,9 @@ describe('App', () => {
     // A failed switch leaves the vault open, and the commands work again.
     act(() => endVaultSwitch(false))
     pressMod('n')
-    await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(createNote).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('keeps one updater subscription and does not re-render the tree per progress tick', async () => {

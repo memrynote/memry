@@ -26,7 +26,9 @@ function createStorage(): Storage {
     get length() {
       return entries.size
     },
-    clear: () => entries.clear(),
+    clear: () => {
+      entries.clear()
+    },
     getItem: (key: string) => entries.get(key) ?? null,
     key: (index: number) => [...entries.keys()][index] ?? null,
     removeItem: (key: string) => void entries.delete(key),
@@ -105,7 +107,9 @@ describe('cacheStartupLocale', () => {
       }
     })
 
-    expect(() => cacheStartupLocale('fr')).not.toThrow()
+    expect(() => {
+      cacheStartupLocale('fr')
+    }).not.toThrow()
   })
 })
 
@@ -115,7 +119,9 @@ describe('refreshStartupLocaleCache', () => {
     mocks.invoke.mockResolvedValue('he')
 
     refreshStartupLocaleCache()
-    await vi.waitFor(() => expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('he'))
+    await vi.waitFor(() => {
+      expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('he')
+    })
   })
 
   it('leaves the cache alone when the authority cannot be read', async () => {
@@ -123,7 +129,9 @@ describe('refreshStartupLocaleCache', () => {
     mocks.invoke.mockRejectedValue(new Error('offline'))
 
     refreshStartupLocaleCache()
-    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalled()
+    })
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('tr')
   })
 })

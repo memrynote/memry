@@ -33,7 +33,9 @@ export const SubtaskDraftRow = ({
   // focus with it as it closes, after this row has mounted.
   useEffect(() => {
     const frame = requestAnimationFrame(() => inputRef.current?.focus())
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+    }
   }, [parent.id])
   if (!tree) return null
 
@@ -87,7 +89,9 @@ export const SubtaskDraftRow = ({
       <input
         ref={inputRef}
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => {
+          setTitle(e.target.value)
+        }}
         onKeyDown={handleKeyDown}
         // ⇥ and ⇧⇥ unmount this row while it has focus; the blur that follows
         // must not close the draft they just moved.

@@ -105,7 +105,13 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
   }, [t, refreshNonce])
 
   // A run starting, moving on or ending changes the banner.
-  useEffect(() => window.api.onReadwiseStatusChanged(() => setRefreshNonce((n) => n + 1)), [])
+  useEffect(
+    () =>
+      window.api.onReadwiseStatusChanged(() => {
+        setRefreshNonce((n) => n + 1)
+      }),
+    []
+  )
 
   // Wrapped in queueMicrotask for the same reason as the OneNote panel: the
   // parent state update happens asynchronously.
@@ -256,7 +262,14 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           )}
         </div>
         <div className="flex items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={() => openExternal(TOKEN_URL)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              openExternal(TOKEN_URL)
+            }}
+          >
             {t('import.dialog.readwise.getToken')}
           </Button>
           <Button type="submit" size="sm" disabled={disabled || isConnecting || !token.trim()}>
@@ -290,7 +303,9 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           busy={isSyncing}
           onRetry={() => void syncNow()}
           onCancel={() => void cancelSync()}
-          onPasteNew={() => setReconnecting(true)}
+          onPasteNew={() => {
+            setReconnecting(true)
+          }}
         />
         {reconnecting && (
           <ReadwiseReconnectForm

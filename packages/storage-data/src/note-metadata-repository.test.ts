@@ -305,7 +305,9 @@ describe('note-metadata-repository', () => {
     })
 
     it('is a no-op for missing id', () => {
-      expect(() => deleteNoteMetadata(db, 'missing')).not.toThrow()
+      expect(() => {
+        deleteNoteMetadata(db, 'missing')
+      }).not.toThrow()
     })
   })
 

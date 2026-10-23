@@ -92,7 +92,9 @@ export function TagPanel({
             <button
               key={def.tag}
               type="button"
-              onClick={() => onToggleTag(def.tag)}
+              onClick={() => {
+                onToggleTag(def.tag)
+              }}
               className={cn(
                 'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
                 checked ? 'bg-accent' : 'hover:bg-accent'

@@ -44,8 +44,12 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
         compact ? 'gap-1.5' : 'gap-2',
         className
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        setIsHovered(true)
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false)
+      }}
     >
       {/* Close button - Red */}
       <button

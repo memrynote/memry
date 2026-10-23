@@ -225,12 +225,18 @@ describe('validateFileSize', () => {
   })
 
   it('T395: does not throw for valid size', () => {
-    expect(() => validateFileSize(1024)).not.toThrow()
-    expect(() => validateFileSize(MAX_FILE_SIZE)).not.toThrow()
+    expect(() => {
+      validateFileSize(1024)
+    }).not.toThrow()
+    expect(() => {
+      validateFileSize(MAX_FILE_SIZE)
+    }).not.toThrow()
   })
 
   it('T395: throws AttachmentError for oversized file', () => {
-    expect(() => validateFileSize(MAX_FILE_SIZE + 1)).toThrow(AttachmentError)
+    expect(() => {
+      validateFileSize(MAX_FILE_SIZE + 1)
+    }).toThrow(AttachmentError)
   })
 })
 

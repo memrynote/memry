@@ -219,11 +219,12 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
 
   const closed = block.props.fold === 'closed'
   // Toggling rewrites the `> [!type]-` / `+` marker in the note (#3206).
-  const toggleFold = () =>
+  const toggleFold = () => {
     calloutEditor.updateBlock(block, {
       type: 'callout',
       props: { fold: closed ? 'open' : 'closed' }
     })
+  }
 
   return (
     <div
@@ -267,12 +268,12 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
             return (
               <DropdownMenuItem
                 key={value}
-                onClick={() =>
+                onClick={() => {
                   calloutEditor.updateBlock(block, {
                     type: 'callout',
                     props: { type: value }
                   })
-                }
+                }}
               >
                 <ItemIcon className={cn('h-4 w-4', color)} />
                 {labels[value]}
@@ -285,12 +286,12 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
             return (
               <DropdownMenuItem
                 key={definition.name}
-                onClick={() =>
+                onClick={() => {
                   calloutEditor.updateBlock(block, {
                     type: 'callout',
                     props: { type: definition.name }
                   })
-                }
+                }}
               >
                 <ItemIcon className="h-4 w-4" style={{ color: definition.color }} />
                 {definition.label}

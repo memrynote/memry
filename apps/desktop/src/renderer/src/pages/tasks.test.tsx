@@ -335,22 +335,52 @@ vi.mock('@/components/tasks/tasks-tab-bar', () => ({
     savedFilters: unknown[]
   }) => (
     <div>
-      <button type="button" onClick={() => onTabChange('today')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTabChange('today')
+        }}
+      >
         Today tab
       </button>
-      <button type="button" onClick={() => onProjectChange(projects[0]?.id ?? null)}>
+      <button
+        type="button"
+        onClick={() => {
+          onProjectChange(projects[0]?.id ?? null)
+        }}
+      >
         Pick project
       </button>
-      <button type="button" onClick={() => onProjectEdit(projects[0])}>
+      <button
+        type="button"
+        onClick={() => {
+          onProjectEdit(projects[0])
+        }}
+      >
         Edit project
       </button>
-      <button type="button" onClick={() => onDefaultProjectChange(projects[0]?.id ?? null)}>
+      <button
+        type="button"
+        onClick={() => {
+          onDefaultProjectChange(projects[0]?.id ?? null)
+        }}
+      >
         Make project default
       </button>
-      <button type="button" onClick={() => onApplySavedFilter(savedFilters[0])}>
+      <button
+        type="button"
+        onClick={() => {
+          onApplySavedFilter(savedFilters[0])
+        }}
+      >
         Apply starred filter
       </button>
-      <button type="button" onClick={() => onUnstarSavedFilter('saved-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onUnstarSavedFilter('saved-1')
+        }}
+      >
         Unstar filter
       </button>
     </div>
@@ -376,24 +406,31 @@ vi.mock('@/components/capture-bar', () => ({
     <div>
       <button
         type="button"
-        onClick={() => onSubmit('Quick task', { dueDate: null, priority: 'high', projectId: null })}
+        onClick={() => {
+          onSubmit('Quick task', { dueDate: null, priority: 'high', projectId: null })
+        }}
       >
         Quick add
       </button>
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           onSubmit('Status task', {
             dueDate: null,
             priority: 'none',
             projectId: 'project-1',
             statusId: 'p-done'
           })
-        }
+        }}
       >
         Quick add status
       </button>
-      <button type="button" onClick={() => onOpenDetail('Draft title')}>
+      <button
+        type="button"
+        onClick={() => {
+          onOpenDetail('Draft title')
+        }}
+      >
         Open add modal
       </button>
     </div>
@@ -420,19 +457,44 @@ vi.mock('@/components/tasks/task-list', () => ({
       {tasks.map((item) => (
         <div key={item.id}>{item.title}</div>
       ))}
-      <button type="button" onClick={() => onToggleComplete(tasks[0].id)}>
+      <button
+        type="button"
+        onClick={() => {
+          onToggleComplete(tasks[0].id)
+        }}
+      >
         Toggle task
       </button>
-      <button type="button" onClick={() => onUpdateTask(tasks[0].id, { title: 'Changed' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onUpdateTask(tasks[0].id, { title: 'Changed' })
+        }}
+      >
         Update task
       </button>
-      <button type="button" onClick={() => onTaskClick(tasks[0].id)}>
+      <button
+        type="button"
+        onClick={() => {
+          onTaskClick(tasks[0].id)
+        }}
+      >
         Open task
       </button>
-      <button type="button" onClick={() => onNoteClick('note-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onNoteClick('note-1')
+        }}
+      >
         Open linked note
       </button>
-      <button type="button" onClick={() => onQuickAdd('Inline task')}>
+      <button
+        type="button"
+        onClick={() => {
+          onQuickAdd('Inline task')
+        }}
+      >
         Inline add
       </button>
     </div>
@@ -441,7 +503,12 @@ vi.mock('@/components/tasks/task-list', () => ({
 
 vi.mock('@/components/tasks/kanban', () => ({
   KanbanBoard: ({ onQuickAdd }: { onQuickAdd: (title: string, columnId: string) => void }) => (
-    <button type="button" onClick={() => onQuickAdd('Kanban task', 'p-done')}>
+    <button
+      type="button"
+      onClick={() => {
+        onQuickAdd('Kanban task', 'p-done')
+      }}
+    >
       Kanban quick add
     </button>
   )
@@ -466,13 +533,28 @@ vi.mock('@/components/tasks/task-detail-drawer', () => ({
         <button type="button" onClick={onClose}>
           Close drawer
         </button>
-        <button type="button" onClick={() => onToggleComplete('task-1')}>
+        <button
+          type="button"
+          onClick={() => {
+            onToggleComplete('task-1')
+          }}
+        >
           Toggle drawer task
         </button>
-        <button type="button" onClick={() => onNoteClick('note-1')}>
+        <button
+          type="button"
+          onClick={() => {
+            onNoteClick('note-1')
+          }}
+        >
           Drawer linked note
         </button>
-        <button type="button" onClick={() => onDeleteTask('task-1')}>
+        <button
+          type="button"
+          onClick={() => {
+            onDeleteTask('task-1')
+          }}
+        >
           Delete drawer task
         </button>
       </div>
@@ -494,7 +576,12 @@ vi.mock('@/components/tasks/add-task-modal', () => ({
     isOpen ? (
       <div>
         <span>{prefillTitle}</span>
-        <button type="button" onClick={() => onAddTask(task)}>
+        <button
+          type="button"
+          onClick={() => {
+            onAddTask(task)
+          }}
+        >
           Save modal task
         </button>
         <button type="button" onClick={onClose}>
@@ -518,7 +605,12 @@ vi.mock('@/components/tasks/project-modal', () => ({
   }) =>
     isOpen ? (
       <div>
-        <button type="button" onClick={() => onSave(project)}>
+        <button
+          type="button"
+          onClick={() => {
+            onSave(project)
+          }}
+        >
           Save project
         </button>
         <button type="button" onClick={onClose}>
@@ -565,19 +657,39 @@ vi.mock('@/components/tasks/filters', () => ({
   }) => (
     <div>
       {children}
-      <button type="button" onClick={() => onUpdateFilters({ priority: ['high'] })}>
+      <button
+        type="button"
+        onClick={() => {
+          onUpdateFilters({ priority: ['high'] })
+        }}
+      >
         Update filters
       </button>
       <button type="button" onClick={onClearFilters}>
         Clear filters
       </button>
-      <button type="button" onClick={() => onSaveFilter('High only')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSaveFilter('High only')
+        }}
+      >
         Save filter
       </button>
-      <button type="button" onClick={() => onApplySavedFilter(mocks.savedFilters[0])}>
+      <button
+        type="button"
+        onClick={() => {
+          onApplySavedFilter(mocks.savedFilters[0])
+        }}
+      >
         Apply filter
       </button>
-      <button type="button" onClick={() => onDeleteSavedFilter('saved-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onDeleteSavedFilter('saved-1')
+        }}
+      >
         Delete filter
       </button>
     </div>
@@ -588,7 +700,12 @@ vi.mock('@/components/tasks/filters', () => ({
     </button>
   ),
   GroupByDropdown: ({ onChange }: { onChange: (sort: unknown) => void }) => (
-    <button type="button" onClick={() => onChange({ field: 'priority', direction: 'asc' })}>
+    <button
+      type="button"
+      onClick={() => {
+        onChange({ field: 'priority', direction: 'asc' })
+      }}
+    >
       Group by
     </button>
   )
@@ -621,31 +738,76 @@ vi.mock('@/components/tasks/bulk-actions', () => ({
       <button type="button" onClick={onComplete}>
         Bulk complete
       </button>
-      <button type="button" onClick={() => onChangePriority('urgent')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangePriority('urgent')
+        }}
+      >
         Bulk priority
       </button>
-      <button type="button" onClick={() => onChangeDueDate('tomorrow')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeDueDate('tomorrow')
+        }}
+      >
         Bulk due date
       </button>
-      <button type="button" onClick={() => onChangeDueDate('today')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeDueDate('today')
+        }}
+      >
         Bulk today
       </button>
-      <button type="button" onClick={() => onChangeDueDate('pick-date')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeDueDate('pick-date')
+        }}
+      >
         Bulk pick date
       </button>
-      <button type="button" onClick={() => onChangeDueDate('remove')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeDueDate('remove')
+        }}
+      >
         Bulk remove due date
       </button>
-      <button type="button" onClick={() => onChangeDueDate('next-week')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeDueDate('next-week')
+        }}
+      >
         Bulk next week
       </button>
-      <button type="button" onClick={() => onChangeDueDate('next-month')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeDueDate('next-month')
+        }}
+      >
         Bulk next month
       </button>
-      <button type="button" onClick={() => onMoveToProject('project-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onMoveToProject('project-1')
+        }}
+      >
         Bulk move
       </button>
-      <button type="button" onClick={() => onChangeStatus('p-done')}>
+      <button
+        type="button"
+        onClick={() => {
+          onChangeStatus('p-done')
+        }}
+      >
         Bulk status
       </button>
       <button type="button" onClick={onArchive}>
@@ -689,7 +851,12 @@ vi.mock('@/components/tasks/bulk-actions', () => ({
   }) =>
     open ? (
       <div>
-        <button type="button" onClick={() => onConfirm(new Date('2026-05-10'), null)}>
+        <button
+          type="button"
+          onClick={() => {
+            onConfirm(new Date('2026-05-10'), null)
+          }}
+        >
           Pick bulk due date
         </button>
         <button type="button" onClick={onClose}>
@@ -897,7 +1064,9 @@ describe('TasksPage', () => {
     expect(mocks.addTask).toHaveBeenCalledWith(task)
     expect(mocks.updateTask).toHaveBeenCalledWith('task-1', { title: 'Subtask update' })
     expect(mocks.deleteTask).toHaveBeenCalledWith('task-1')
-    await waitFor(() => expect(mocks.taskReorder).toHaveBeenCalledWith(['task-1'], { 'task-1': 1 }))
+    await waitFor(() => {
+      expect(mocks.taskReorder).toHaveBeenCalledWith(['task-1'], { 'task-1': 1 })
+    })
 
     act(() => {
       mocks.saveFilterShortcut.onSave()

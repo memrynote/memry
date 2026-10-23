@@ -90,7 +90,9 @@ export function IosScreenshotCarousel() {
             <button
               key={direction}
               type="button"
-              onClick={() => scrollByCard(direction)}
+              onClick={() => {
+                scrollByCard(direction)
+              }}
               aria-label={direction === 1 ? 'Next screenshot' : 'Previous screenshot'}
               className="grid size-10 place-items-center rounded-full border border-ink/[0.13] bg-card text-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50"
             >

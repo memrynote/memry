@@ -225,7 +225,9 @@ export function WhiteboardBlockRenderer({ block }: { block: WhiteboardNode }): R
           variant={editing ? 'secondary' : 'ghost'}
           size="sm"
           className="h-7 px-2"
-          onClick={() => (editing ? void finishEditing() : setEditing(true))}
+          onClick={() => {
+            editing ? void finishEditing() : setEditing(true)
+          }}
         >
           {editing ? <Check /> : <Pencil />}
           {editing ? t('editor.whiteboard.done') : t('editor.whiteboard.edit')}
@@ -349,7 +351,9 @@ function WhiteboardFrame({ children }: { children: React.ReactNode }): React.JSX
       className="whiteboard-block my-2 w-full"
       contentEditable={false}
       data-marquee-ignore=""
-      onKeyDown={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        event.stopPropagation()
+      }}
     >
       {children}
     </div>

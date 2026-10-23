@@ -65,7 +65,9 @@ describe('useAllTags', () => {
   it('combines note and inbox tags, preserving source and search ordering', async () => {
     const { result } = renderHook(() => useAllTags(), { wrapper: createWrapper() })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     expect(result.current.tags).toEqual([
       { name: 'Work', count: 7, color: '#111111', source: 'both' },
@@ -97,13 +99,17 @@ describe('useAllTags', () => {
 
   it('refetches notes on tag events and both sources through refetch', async () => {
     const { result } = renderHook(() => useAllTags(), { wrapper: createWrapper() })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     mocks.notesGetTags.mockResolvedValueOnce([{ tag: 'updated', count: 9 }])
     await act(async () => {
       mocks.tagListeners[0]()
     })
-    await waitFor(() => expect(result.current.tags[0].name).toBe('updated'))
+    await waitFor(() => {
+      expect(result.current.tags[0].name).toBe('updated')
+    })
 
     await act(async () => {
       result.current.refetch()
@@ -116,7 +122,9 @@ describe('useAllTags', () => {
     const { result, rerender, unmount } = renderHook(() => useAllTags(), {
       wrapper: createWrapper()
     })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     // The sole consumer (tag-autocomplete) re-renders on every keystroke.
     for (let i = 0; i < 10; i += 1) {
@@ -134,7 +142,9 @@ describe('useAllTags', () => {
     await act(async () => {
       mocks.tagListeners[mocks.tagListeners.length - 1]()
     })
-    await waitFor(() => expect(result.current.tags[0].name).toBe('after-rerenders'))
+    await waitFor(() => {
+      expect(result.current.tags[0].name).toBe('after-rerenders')
+    })
 
     unmount()
     expect(mocks.tagUnsubscribes.filter((fn) => fn.mock.calls.length > 0)).toHaveLength(1)
@@ -146,7 +156,9 @@ describe('useAllTags', () => {
 
     const { result } = renderHook(() => useAllTags(), { wrapper: createWrapper() })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.error).toEqual(new Error('notes failed'))
     expect(result.current.searchTags('x')).toEqual([])
     expect(result.current.getPopularTags()).toEqual([])

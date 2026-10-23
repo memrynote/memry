@@ -103,12 +103,16 @@ export function useGraphViews(): UseGraphViewsResult {
   )
 
   const deleteView = useCallback(
-    (id: string) => mutate({ views: views.filter((view) => view.id !== id) }),
+    (id: string) => {
+      mutate({ views: views.filter((view) => view.id !== id) })
+    },
     [mutate, views]
   )
 
   const rememberState = useCallback(
-    (state: GraphViewState) => mutate({ lastState: state }),
+    (state: GraphViewState) => {
+      mutate({ lastState: state })
+    },
     [mutate]
   )
 

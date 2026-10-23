@@ -56,7 +56,7 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
   if (isLoading) return <LinkedHerePending />
   if (groups.length === 0) return null
 
-  const openNote = (item: LinkedNoteItem): void =>
+  const openNote = (item: LinkedNoteItem): void => {
     openTab({
       type: 'note',
       title: item.title,
@@ -68,6 +68,7 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
       isPreview: false,
       isDeleted: false
     })
+  }
 
   return (
     <section
@@ -90,7 +91,13 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
               label={t('tagObjects.linkedHere.mentionedIn')}
               total={group.total}
               meta={t('tagObjects.linkedHere.inTheText')}
-              onCount={group.total > NEWEST ? () => setMentionsExpanded((v) => !v) : undefined}
+              onCount={
+                group.total > NEWEST
+                  ? () => {
+                      setMentionsExpanded((v) => !v)
+                    }
+                  : undefined
+              }
             >
               {items.map((item) => (
                 <LinkedRow
@@ -98,7 +105,9 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
                   icon={<FileText className="size-3.5 text-muted-foreground" />}
                   title={item.title}
                   end={item.snippet ?? shortDate(item.date)}
-                  onClick={() => openNote(item)}
+                  onClick={() => {
+                    openNote(item)
+                  }}
                 />
               ))}
             </LinkedGroup>
@@ -120,7 +129,9 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
               meta={t('tagObjects.linkedHere.asField', { field: group.field })}
               onCount={
                 group.sourceTag
-                  ? () => openTagTable(openTab, group.sourceTag, group.filter)
+                  ? () => {
+                      openTagTable(openTab, group.sourceTag, group.filter)
+                    }
                   : undefined
               }
             >
@@ -130,7 +141,9 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
                   icon={icon}
                   title={item.title}
                   end={shortDate(item.date)}
-                  onClick={() => openNote(item)}
+                  onClick={() => {
+                    openNote(item)
+                  }}
                 />
               ))}
             </LinkedGroup>
@@ -140,7 +153,13 @@ export function LinkedHereSection({ noteId }: { noteId: string }): React.JSX.Ele
           <TaskFieldGroup
             key={`task-${group.tag}-${group.field}`}
             group={group}
-            onCount={group.tag ? () => openTagTable(openTab, group.tag, group.filter) : undefined}
+            onCount={
+              group.tag
+                ? () => {
+                    openTagTable(openTab, group.tag, group.filter)
+                  }
+                : undefined
+            }
             onOpen={openTaskDetail}
           />
         )
@@ -176,7 +195,9 @@ function TaskFieldGroup({
           end={
             item.dueDate ? t('tagObjects.linkedHere.due', { date: shortDate(item.dueDate) }) : ''
           }
-          onClick={() => onOpen(item.taskId)}
+          onClick={() => {
+            onOpen(item.taskId)
+          }}
         />
       ))}
     </LinkedGroup>

@@ -93,10 +93,14 @@ describe('coverage hooks around note editing', () => {
       usePasteLinkMenu({ editorContainerRef: refFor(container), onSelect })
     )
 
-    act(() => paste(container, 'not a url'))
+    act(() => {
+      paste(container, 'not a url')
+    })
     expect(result.current.state.isOpen).toBe(false)
 
-    act(() => paste(container, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'))
+    act(() => {
+      paste(container, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    })
     expect(result.current.state).toMatchObject({
       isOpen: true,
       url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
@@ -116,14 +120,20 @@ describe('coverage hooks around note editing', () => {
     expect(onSelect).toHaveBeenCalledWith('embed', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     expect(result.current.state.isOpen).toBe(false)
 
-    act(() => paste(container, 'https://memry.test/page'))
+    act(() => {
+      paste(container, 'https://memry.test/page')
+    })
     expect(result.current.state.options).toEqual(['mention', 'bookmark', 'url'])
 
-    act(() => result.current.handleSelect('url'))
+    act(() => {
+      result.current.handleSelect('url')
+    })
     expect(onSelect).toHaveBeenLastCalledWith('url', 'https://memry.test/page')
     expect(result.current.state.isOpen).toBe(false)
 
-    act(() => paste(container, 'https://memry.test/second'))
+    act(() => {
+      paste(container, 'https://memry.test/second')
+    })
     const menu = document.createElement('button')
     menu.dataset.inlineChoiceMenu = 'true'
     document.body.append(menu)
@@ -133,7 +143,9 @@ describe('coverage hooks around note editing', () => {
     act(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })))
     expect(result.current.state.isOpen).toBe(false)
 
-    act(() => paste(container, 'https://memry.test/escape'))
+    act(() => {
+      paste(container, 'https://memry.test/escape')
+    })
     act(() => {
       container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
@@ -199,7 +211,9 @@ describe('coverage hooks around note editing', () => {
       expect.objectContaining({ type: 'tag', entityId: 'work', color: 'green' })
     )
 
-    act(() => result.current.handleTagSuggestionSelect('workflow', 'purple', 12))
+    act(() => {
+      result.current.handleTagSuggestionSelect('workflow', 'purple', 12)
+    })
     expect(hashTagNodeType.create).toHaveBeenCalledWith({
       tag: 'workflow',
       color: 'purple',
@@ -250,17 +264,23 @@ describe('coverage hooks around note editing', () => {
     ])
 
     act(() => result.current.handlePropertyChange('Status', 'Done'))
-    await waitFor(() => expect(updateProperty).toHaveBeenCalledWith('Status', 'Done'))
+    await waitFor(() => {
+      expect(updateProperty).toHaveBeenCalledWith('Status', 'Done')
+    })
 
     await act(async () => {
       result.current.handleAddProperty({ name: 'Status', type: 'status' })
       await vi.dynamicImportSettled()
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.ensurePropertyDefinition).toHaveBeenCalledWith('Status', 'status')
-    )
-    await waitFor(() => expect(addProperty).toHaveBeenCalledWith('Status', null, 'status'))
-    await waitFor(() => expect(result.current.newlyAddedPropertyId).toBe('Status 2'))
+    })
+    await waitFor(() => {
+      expect(addProperty).toHaveBeenCalledWith('Status', null, 'status')
+    })
+    await waitFor(() => {
+      expect(result.current.newlyAddedPropertyId).toBe('Status 2')
+    })
 
     act(() => vi.advanceTimersByTime(2000))
     expect(result.current.newlyAddedPropertyId).toBeNull()
@@ -268,9 +288,15 @@ describe('coverage hooks around note editing', () => {
     act(() => result.current.handleDeleteProperty('Status'))
     act(() => result.current.handlePropertyNameChange('Status', 'Stage'))
     act(() => result.current.handlePropertyOrderChange(['Stage']))
-    await waitFor(() => expect(removeProperty).toHaveBeenCalledWith('Status'))
-    await waitFor(() => expect(renameProperty).toHaveBeenCalledWith('Status', 'Stage'))
-    await waitFor(() => expect(reorderProperties).toHaveBeenCalledWith(['Stage']))
+    await waitFor(() => {
+      expect(removeProperty).toHaveBeenCalledWith('Status')
+    })
+    await waitFor(() => {
+      expect(renameProperty).toHaveBeenCalledWith('Status', 'Stage')
+    })
+    await waitFor(() => {
+      expect(reorderProperties).toHaveBeenCalledWith(['Stage'])
+    })
 
     rerender({ allow: false })
     act(() => result.current.handlePropertyChange('Status', 'Blocked'))
@@ -280,7 +306,9 @@ describe('coverage hooks around note editing', () => {
     updateProperty.mockRejectedValueOnce(new Error('write failed'))
     rerender({ allow: true })
     act(() => result.current.handlePropertyChange('Status', 'Error'))
-    await waitFor(() => expect(onError).toHaveBeenCalledWith('update', expect.any(Error)))
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('update', expect.any(Error))
+    })
   })
 
   // The seam downstream of AddPropertyPopup's `onAddProperty`. What leaves here
@@ -308,7 +336,9 @@ describe('coverage hooks around note editing', () => {
       await vi.dynamicImportSettled()
     })
 
-    await waitFor(() => expect(addProperty).toHaveBeenCalledWith('father', [], undefined))
+    await waitFor(() => {
+      expect(addProperty).toHaveBeenCalledWith('father', [], undefined)
+    })
     expect(mocks.ensurePropertyDefinition).not.toHaveBeenCalled()
   })
 
@@ -327,23 +357,31 @@ describe('coverage hooks around note editing', () => {
     })
 
     act(() => vi.runOnlyPendingTimers())
-    await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
+    await waitFor(() => {
+      expect(result.current.suggestions).toHaveLength(1)
+    })
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
     expect(api.folderView.getFolderSuggestions).toHaveBeenCalledTimes(1)
 
     rerender({ noteId: null })
     act(() => vi.runOnlyPendingTimers())
-    await waitFor(() => expect(result.current.suggestions).toEqual([]))
+    await waitFor(() => {
+      expect(result.current.suggestions).toEqual([])
+    })
 
     rerender({ noteId: 'note-1' })
     act(() => vi.runOnlyPendingTimers())
-    await waitFor(() => expect(result.current.suggestions).toHaveLength(1))
+    await waitFor(() => {
+      expect(result.current.suggestions).toHaveLength(1)
+    })
     expect(api.folderView.getFolderSuggestions).toHaveBeenCalledTimes(1)
 
     api.folderView.getFolderSuggestions.mockRejectedValueOnce(new Error('offline'))
     act(() => result.current.refetch())
-    await waitFor(() => expect(result.current.error).toEqual(expect.any(Error)))
+    await waitFor(() => {
+      expect(result.current.error).toEqual(expect.any(Error))
+    })
     expect(result.current.suggestions).toEqual([])
     expect(mocks.logError).toHaveBeenCalledWith('Error fetching suggestions:', expect.any(Error))
 

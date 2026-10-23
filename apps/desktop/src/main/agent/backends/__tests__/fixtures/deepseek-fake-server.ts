@@ -154,7 +154,9 @@ export async function startFakeDeepSeek(input: FakeDeepSeekOptions = {}): Promis
         res.write(chunk({}, 'stop'))
       }
       res.end('data: [DONE]\n\n')
-    })().catch((error: unknown) => send(res, 500, { error: { message: String(error) } }))
+    })().catch((error: unknown) => {
+      send(res, 500, { error: { message: String(error) } })
+    })
   })
 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -165,7 +167,10 @@ export async function startFakeDeepSeek(input: FakeDeepSeekOptions = {}): Promis
     close: () =>
       new Promise((resolve, reject) => {
         server.closeAllConnections()
-        server.close((error) => (error ? reject(error) : resolve()))
+        server.close((error) => {
+          if (error) reject(error)
+          else resolve()
+        })
       })
   }
 }

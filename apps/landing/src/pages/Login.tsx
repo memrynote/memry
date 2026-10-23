@@ -179,7 +179,9 @@ export function LoginPage() {
                 <Button
                   variant="outline"
                   className="mt-8 inline-flex w-full items-center justify-center gap-2"
-                  onClick={() => continueWithGoogle(next)}
+                  onClick={() => {
+                    continueWithGoogle(next)
+                  }}
                 >
                   <GoogleIcon />
                   Continue with Google
@@ -215,7 +217,9 @@ export function LoginPage() {
                         placeholder="Enter your email address"
                         aria-label="Email address"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value)
+                        }}
                       />
                       <Button type="submit" className="w-full" disabled={busy || !email}>
                         {busy ? 'Sending…' : 'Continue with email'}
@@ -242,7 +246,9 @@ export function LoginPage() {
                         aria-label="6-digit code"
                         className="text-center font-mono-accent tracking-[0.4em]"
                         value={code}
-                        onChange={(e) => setCode(e.target.value)}
+                        onChange={(e) => {
+                          setCode(e.target.value)
+                        }}
                       />
                       <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
                         {busy ? 'Verifying…' : 'Verify & sign in'}

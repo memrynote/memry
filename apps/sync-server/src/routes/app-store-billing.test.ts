@@ -65,7 +65,9 @@ beforeEach(() => {
   }
 })
 
-afterEach(() => sqlite.close())
+afterEach(() => {
+  sqlite.close()
+})
 
 const env = () => ({
   DB: sqlite.db,
@@ -146,7 +148,8 @@ async function postNotification(
 
 const entitlement = (userId = USER_ID) =>
   sqlite.raw.prepare('SELECT * FROM sync_entitlements WHERE user_id = ?').get(userId) as
-    Record<string, unknown> | undefined
+    | Record<string, unknown>
+    | undefined
 
 const grantCount = () =>
   (sqlite.raw.prepare('SELECT COUNT(*) AS n FROM app_store_grants').get() as { n: number }).n

@@ -389,7 +389,9 @@ describe('cold renderer component smoke coverage', () => {
         </TabContextMenu>
       )
       fireEvent.contextMenu(screen.getByRole('button', { name: `tab menu ${id}` }))
-      await waitFor(() => expect(window.api.showContextMenu).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(window.api.showContextMenu).toHaveBeenCalled()
+      })
     }
     expect(mocks.closeTab).toHaveBeenCalledWith('tab-2', 'group-1')
     expect(mocks.closeOtherTabs).toHaveBeenCalledWith('tab-2', 'group-1')

@@ -45,9 +45,7 @@ import {
   updateTagIcon,
   getNoteTags,
   noteIdsWithTag,
-  findTagDefinition
-} from '../tags/store'
-import {
+  findTagDefinition,
   getAllTagsWithCounts,
   mergeTagInNotes,
   mergeTagInTasks,
@@ -245,7 +243,9 @@ export function registerTagsHandlers(): void {
             indexDb,
             dataDb,
             { from: input.oldName, to: input.newName, runId: input.runId ?? generateId() },
-            (event) => broadcastToAllWindows(TagSchemaChannels.events.PROGRESS, event)
+            (event) => {
+              broadcastToAllWindows(TagSchemaChannels.events.PROGRESS, event)
+            }
           )
         } catch (error) {
           if (!(error instanceof TagRenameInProgressError)) throw error

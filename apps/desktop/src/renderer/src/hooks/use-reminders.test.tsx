@@ -5,7 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import {
   useReminders,
@@ -176,7 +177,9 @@ describe('useReminders', () => {
 
       const emitCreated = lastSubscriber(window.api.onReminderCreated)
 
-      expect(() => emitCreated({ id: 'rem-remote' })).not.toThrow()
+      expect(() => {
+        emitCreated({ id: 'rem-remote' })
+      }).not.toThrow()
 
       await waitFor(() => {
         expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
@@ -188,7 +191,9 @@ describe('useReminders', () => {
 
       const emitUpdated = lastSubscriber(window.api.onReminderUpdated)
 
-      expect(() => emitUpdated({ id: 'rem-remote' })).not.toThrow()
+      expect(() => {
+        emitUpdated({ id: 'rem-remote' })
+      }).not.toThrow()
 
       await waitFor(() => {
         expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
@@ -200,7 +205,9 @@ describe('useReminders', () => {
 
       const emitDeleted = lastSubscriber(window.api.onReminderDeleted)
 
-      expect(() => emitDeleted({ id: 'rem-remote' })).not.toThrow()
+      expect(() => {
+        emitDeleted({ id: 'rem-remote' })
+      }).not.toThrow()
 
       await waitFor(() => {
         expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)

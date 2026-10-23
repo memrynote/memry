@@ -11,7 +11,8 @@ import {
 import { type JSONValue, stepCountIs, streamText, wrapLanguageModel } from 'ai'
 
 import type { BackendEvent } from '../cli/types'
-import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
+import type { AgentToolBridge } from './tool-bridge'
+import { createAiSdkToolSet } from './tool-bridge'
 import {
   errorMessage,
   type LocalProbe,
@@ -298,7 +299,9 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       }),
       stderr: textToStream(() => stderr),
       pid: nextLocalRunPid--,
-      kill: () => controller.abort(),
+      kill: () => {
+        controller.abort()
+      },
       waitExit: async () => exitCode,
       cleanup: async () => {}
     }

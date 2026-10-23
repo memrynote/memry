@@ -49,13 +49,13 @@ describe('AddEventToProjectDialog', () => {
 
     fireEvent.click(screen.getByText('Launch'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockLinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'calendar_event',
         itemId: 'e1'
       })
-    )
+    })
   })
 
   it('closes the dialog after a successful link', async () => {
@@ -67,7 +67,9 @@ describe('AddEventToProjectDialog', () => {
 
     fireEvent.click(await screen.findByText('Launch'))
 
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    await waitFor(() => {
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
   })
 
   it('filters out archived projects', async () => {

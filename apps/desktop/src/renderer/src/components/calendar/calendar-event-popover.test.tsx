@@ -56,11 +56,21 @@ vi.mock('@/components/tasks/date-picker-content', () => ({
     onTimeChange?: (time: string | null) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onSelect(new Date(2026, 4, 12))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelect(new Date(2026, 4, 12))
+        }}
+      >
         pick date
       </button>
       {onTimeChange && (
-        <button type="button" onClick={() => onTimeChange('14:30')}>
+        <button
+          type="button"
+          onClick={() => {
+            onTimeChange('14:30')
+          }}
+        >
           pick time
         </button>
       )}
@@ -82,7 +92,13 @@ vi.mock('./calendar-picker', () => ({
   }) => (
     <div>
       <span>{defaultOptionLabel}</span>
-      <button type="button" disabled={disabled} onClick={() => onChange(value ? null : 'home')}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          onChange(value ? null : 'home')
+        }}
+      >
         choose calendar
       </button>
     </div>
@@ -266,7 +282,9 @@ describe('CalendarEventPopover', () => {
     )
 
     fireEvent.keyDown(screen.getByPlaceholderText('form.new-event-placeholder'), { key: 'Enter' })
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
 
     fireEvent.click(screen.getAllByText('pick date')[1])
     expect(onDraftChange).toHaveBeenCalledWith({ ...baseDraft, endAt: '2026-05-12T10:00' })
@@ -278,7 +296,9 @@ describe('CalendarEventPopover', () => {
     expect(onSave).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByTestId('event-edit-save'))
-    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('falls back for invalid date values and ignores save attempts while saving', () => {

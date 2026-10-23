@@ -122,7 +122,9 @@ function subscribeToUndoStack(listener: () => void): () => void {
 
 function notifyListeners() {
   refreshSnapshot()
-  globalUndoListeners.forEach((listener) => listener())
+  globalUndoListeners.forEach((listener) => {
+    listener()
+  })
 }
 
 /**
@@ -296,7 +298,9 @@ export const useUndoKeyboardShortcut = (): void => {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [t])
 }
 

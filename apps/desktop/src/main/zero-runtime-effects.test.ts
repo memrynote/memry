@@ -101,7 +101,9 @@ vi.mock('./sync/crdt-provider', () => ({
     updateMeta: mocks.updateMeta,
     setNoteLocalOnly: vi.fn(),
     purge: mocks.purge,
-    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue()
+    withDocLoaded: async (_id: string, enqueue: () => void) => {
+      enqueue()
+    }
   })
 }))
 
@@ -151,7 +153,7 @@ vi.mock('@memry/sync-core', () => {
     withIncrementedClock: (payload: string, deviceId: string) => {
       const parsed = JSON.parse(payload)
       parsed.clock = {
-        ...(parsed.clock ?? {}),
+        ...parsed.clock,
         [deviceId]: ((parsed.clock ?? {})[deviceId] ?? 0) + 1
       }
       return JSON.stringify(parsed)
@@ -183,7 +185,9 @@ function createDb(existing: Record<string, unknown> | null = null) {
     delete: vi.fn(() => ({
       where: vi.fn(() => ({ run }))
     })),
-    transaction: vi.fn((fn: (tx: unknown) => void) => fn(db))
+    transaction: vi.fn((fn: (tx: unknown) => void) => {
+      fn(db)
+    })
   }
   return db
 }

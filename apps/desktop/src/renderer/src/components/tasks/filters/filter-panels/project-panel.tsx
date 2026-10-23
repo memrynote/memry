@@ -66,7 +66,9 @@ export function ProjectPanel({
             <button
               key={project.id}
               type="button"
-              onClick={() => onToggleProject(project.id)}
+              onClick={() => {
+                onToggleProject(project.id)
+              }}
               className={cn(
                 'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
                 selected ? 'bg-accent' : 'hover:bg-accent'

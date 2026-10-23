@@ -93,7 +93,9 @@ describe('FoldSurface', () => {
   it('shows no level control for a note too short to fold', async () => {
     serve(layers({ status: 'short', totalWords: 90 }))
     render(<Host wordCount={90} />)
-    await waitFor(() => expect(window.api.noteFold.get).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.noteFold.get).toHaveBeenCalled()
+    })
     expect(screen.queryByTestId('note-fold-control')).toBeNull()
     expect(screen.queryByTestId('note-fold-overlay')).toBeNull()
   })
@@ -117,7 +119,9 @@ describe('FoldSurface', () => {
     expect(screen.getByTestId('editor')).toBeInTheDocument()
 
     fireEvent.keyDown(document.body, { key: 'Escape' })
-    await waitFor(() => expect(screen.queryByTestId('note-fold-overlay')).toBeNull())
+    await waitFor(() => {
+      expect(screen.queryByTestId('note-fold-overlay')).toBeNull()
+    })
     expect(screen.getByTestId('editor')).toBeVisible()
   })
 
@@ -129,9 +133,9 @@ describe('FoldSurface', () => {
     expect(screen.getByText('Opened to Full · click again to fold')).toBeInTheDocument()
 
     fireEvent.keyDown(document.body, { key: 'Escape' })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.queryByText('Opened to Full · click again to fold')).toBeNull()
-    )
+    })
     expect(screen.getByTestId('note-fold-overlay')).toBeInTheDocument()
   })
 
@@ -142,7 +146,9 @@ describe('FoldSurface', () => {
     const overlay = await screen.findByTestId('note-fold-overlay')
 
     fireEvent.keyDown(overlay, { key: 'a' })
-    await waitFor(() => expect(screen.queryByTestId('note-fold-overlay')).toBeNull())
+    await waitFor(() => {
+      expect(screen.queryByTestId('note-fold-overlay')).toBeNull()
+    })
   })
 
   it('shows Brief for a level still being written, then switches when it arrives', async () => {
@@ -158,9 +164,9 @@ describe('FoldSurface', () => {
 
     serve(layers())
     notify({ noteId: 'note-1' })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('note-fold-body')).toHaveAttribute('data-fold-level', 'key')
-    )
+    })
   })
 
   it('steps one level per ctrl+scroll gesture and leaves plain scrolling alone', async () => {
@@ -211,7 +217,9 @@ describe('FoldSurface', () => {
     onScreen('p3', 90)
 
     fireEvent.keyDown(overlay, { key: 'x' })
-    await waitFor(() => expect(editor.calls).toEqual(['cursor:b2:end', 'insert:x']))
+    await waitFor(() => {
+      expect(editor.calls).toEqual(['cursor:b2:end', 'insert:x'])
+    })
   })
 
   it("types the character at the note's end rather than losing it when nothing is in view", async () => {
@@ -220,7 +228,9 @@ describe('FoldSurface', () => {
     render(<TypingHost editor={editor} />)
     await chooseLevel('brief')
     fireEvent.keyDown(await screen.findByTestId('note-fold-overlay'), { key: 'y' })
-    await waitFor(() => expect(editor.calls).toEqual(['cursor:b3:end', 'insert:y']))
+    await waitFor(() => {
+      expect(editor.calls).toEqual(['cursor:b3:end', 'insert:y'])
+    })
   })
 
   it('types at the paragraph the reader last opened', async () => {
@@ -230,6 +240,8 @@ describe('FoldSurface', () => {
     await chooseLevel('takeaway')
     await userEvent.click(await screen.findByText('Pro stays at $8'))
     fireEvent.keyDown(screen.getByTestId('note-fold-overlay'), { key: 'z' })
-    await waitFor(() => expect(editor.calls).toEqual(['cursor:b2:end', 'insert:z']))
+    await waitFor(() => {
+      expect(editor.calls).toEqual(['cursor:b2:end', 'insert:z'])
+    })
   })
 })

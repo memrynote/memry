@@ -56,7 +56,9 @@ export function StatusEditor({
       open={isOpen}
       onOpenChange={setIsOpen}
       value={value}
-      onValueChange={(val) => onChange(val === value ? null : val)}
+      onValueChange={(val) => {
+        onChange(val === value ? null : val)
+      }}
     >
       <Picker.Trigger variant="inline" asChild>
         <span>
@@ -119,7 +121,9 @@ export function StatusEditor({
                       type="text"
                       aria-label={t('properties.optionName')}
                       value={newOptionName}
-                      onChange={(e) => setNewOptionName(e.target.value)}
+                      onChange={(e) => {
+                        setNewOptionName(e.target.value)
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault()

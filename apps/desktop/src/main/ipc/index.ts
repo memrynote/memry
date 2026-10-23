@@ -161,7 +161,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
 
   // Register sync handlers
   registerSyncHandlers()
-  checkSyncIntegrity().catch((err) => ipcLog.error('Sync integrity check failed', err))
+  checkSyncIntegrity().catch((err) => {
+    ipcLog.error('Sync integrity check failed', err)
+  })
 
   // Register crypto handlers
   registerCryptoHandlers()

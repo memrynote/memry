@@ -223,7 +223,9 @@ export const useSubtaskManagement = ({
       if (result.success && result.updatedTasks && result.newTasks) {
         // T038: Use database-aware callback if available
         if (onAddTask) {
-          result.newTasks.forEach((task) => onAddTask(task))
+          result.newTasks.forEach((task) => {
+            onAddTask(task)
+          })
         } else {
           onTasksChange(result.updatedTasks)
         }

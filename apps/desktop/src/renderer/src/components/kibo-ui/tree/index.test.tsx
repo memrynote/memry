@@ -80,7 +80,12 @@ vi.mock('@/components/icon-picker', () => ({
   }) =>
     isOpen ? (
       <div role="listbox" aria-label={`icon-picker-${currentIcon ?? 'none'}`}>
-        <button type="button" onClick={() => onSelect('Star')}>
+        <button
+          type="button"
+          onClick={() => {
+            onSelect('Star')
+          }}
+        >
           choose Star
         </button>
         <button type="button" onClick={onClose}>
@@ -97,16 +102,36 @@ function Controls() {
       <span data-testid="selected">{tree.selectedIds.join(',')}</span>
       <span data-testid="focused">{tree.focusedId ?? 'none'}</span>
       <span data-testid="root-icon">{tree.getEffectiveIcon('root') ?? 'none'}</span>
-      <button type="button" onClick={() => tree.expandAll()}>
+      <button
+        type="button"
+        onClick={() => {
+          tree.expandAll()
+        }}
+      >
         expand all
       </button>
-      <button type="button" onClick={() => tree.collapseAll()}>
+      <button
+        type="button"
+        onClick={() => {
+          tree.collapseAll()
+        }}
+      >
         collapse all
       </button>
-      <button type="button" onClick={() => tree.expandNodes(['root'])}>
+      <button
+        type="button"
+        onClick={() => {
+          tree.expandNodes(['root'])
+        }}
+      >
         expand root
       </button>
-      <button type="button" onClick={() => tree.setNodeIcon('missing', 'Star')}>
+      <button
+        type="button"
+        onClick={() => {
+          tree.setNodeIcon('missing', 'Star')
+        }}
+      >
         set missing
       </button>
     </div>

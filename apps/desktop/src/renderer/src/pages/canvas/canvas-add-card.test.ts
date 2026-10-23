@@ -253,7 +253,7 @@ describe('candidatesFromEvents (#869)', () => {
     // #then — nothing is dropped or reordered client-side
     expect(out.map((c) => c.entityId)).toEqual(['e1', 'e2'])
     expect(out.every((c) => c.entityType === 'calendar_event')).toBe(true)
-    expect(out.every((c) => c.onCanvas === false)).toBe(true)
+    expect(out.every((c) => !c.onCanvas)).toBe(true)
   })
 
   it('carries the raw start so the row can format it, all-day flag included', () => {

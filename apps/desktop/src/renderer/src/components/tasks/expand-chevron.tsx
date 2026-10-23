@@ -33,7 +33,9 @@ export const ExpandChevron = ({
     e.stopPropagation()
     setIsAnimating(true)
     onClick()
-    setTimeout(() => setIsAnimating(false), 200)
+    setTimeout(() => {
+      setIsAnimating(false)
+    }, 200)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
@@ -42,7 +44,9 @@ export const ExpandChevron = ({
       e.stopPropagation()
       setIsAnimating(true)
       onClick()
-      setTimeout(() => setIsAnimating(false), 200)
+      setTimeout(() => {
+        setIsAnimating(false)
+      }, 200)
     }
   }
 

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
-import { fireEvent } from '@testing-library/react'
+import { renderHook, fireEvent } from '@testing-library/react'
 
 import { useSaveFilterShortcut } from './use-save-filter-shortcut'
 
@@ -11,7 +10,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('calls onSave when Cmd+S is pressed and filters are active', () => {
     const onSave = vi.fn()
-    renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: true }))
+    renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: true })
+    })
 
     fireEvent.keyDown(document, { key: 's', metaKey: true })
     expect(onSave).toHaveBeenCalledTimes(1)
@@ -19,7 +20,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('calls onSave when Ctrl+S is pressed and filters are active', () => {
     const onSave = vi.fn()
-    renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: true }))
+    renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: true })
+    })
 
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
     expect(onSave).toHaveBeenCalledTimes(1)
@@ -27,7 +30,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('does NOT call onSave when filters are not active', () => {
     const onSave = vi.fn()
-    renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: false }))
+    renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: false })
+    })
 
     fireEvent.keyDown(document, { key: 's', metaKey: true })
     expect(onSave).not.toHaveBeenCalled()
@@ -35,7 +40,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('does NOT call onSave when just S is pressed (no modifier)', () => {
     const onSave = vi.fn()
-    renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: true }))
+    renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: true })
+    })
 
     fireEvent.keyDown(document, { key: 's' })
     expect(onSave).not.toHaveBeenCalled()
@@ -43,7 +50,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('prevents default browser save behavior', () => {
     const onSave = vi.fn()
-    renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: true }))
+    renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: true })
+    })
 
     const event = new KeyboardEvent('keydown', {
       key: 's',
@@ -59,7 +68,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('cleans up listener on unmount', () => {
     const onSave = vi.fn()
-    const { unmount } = renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: true }))
+    const { unmount } = renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: true })
+    })
 
     unmount()
     fireEvent.keyDown(document, { key: 's', metaKey: true })
@@ -68,7 +79,9 @@ describe('useSaveFilterShortcut', () => {
 
   it('does NOT fire when disabled is true', () => {
     const onSave = vi.fn()
-    renderHook(() => useSaveFilterShortcut({ onSave, hasActiveFilters: true, disabled: true }))
+    renderHook(() => {
+      useSaveFilterShortcut({ onSave, hasActiveFilters: true, disabled: true })
+    })
 
     fireEvent.keyDown(document, { key: 's', metaKey: true })
     expect(onSave).not.toHaveBeenCalled()

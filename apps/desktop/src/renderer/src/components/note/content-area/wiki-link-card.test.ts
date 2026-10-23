@@ -113,9 +113,9 @@ describe('renderWikiLinkWithCard', () => {
     )
 
     const { dom } = renderWikiLinkWithCard(props({ size: 'medium', preview: true, cover: true }))
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(dom.querySelector('.wiki-link-card-preview')?.textContent).toBe('Spice and sand')
-    )
+    })
 
     expect(dom.querySelector('.wiki-link-card-icon')?.textContent).toBe('📚')
     expect(
@@ -132,14 +132,16 @@ describe('renderWikiLinkWithCard', () => {
     )
 
     const { dom } = renderWikiLinkWithCard(props({ preview: true }))
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(dom.querySelector('.wiki-link-card-preview')?.textContent).toBe('Body text')
-    )
+    })
   })
 
   it('leaves the card with its title alone when the note cannot be found', async () => {
     const { dom } = renderWikiLinkWithCard(props({ size: 'small', preview: true }))
-    await vi.waitFor(() => expect(mocks.previewByTitle).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.previewByTitle).toHaveBeenCalled()
+    })
 
     expect(dom.querySelector('.wiki-link-card-preview')?.textContent).toBe('')
     expect(dom.querySelector('.wiki-link-card-title')?.textContent).toBe(target)

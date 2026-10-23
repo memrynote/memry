@@ -111,7 +111,7 @@ export function listNoteMetadata(
   const { folder, journalOnly = false, sortBy = 'modified', sortOrder = 'desc' } = options
   const limit = options.limit ?? 100
   const offset = options.offset ?? 0
-  const conditions: SQL<unknown>[] = []
+  const conditions: SQL[] = []
 
   if (journalOnly) {
     conditions.push(like(noteMetadata.path, 'journal/%'))

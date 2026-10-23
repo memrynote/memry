@@ -408,7 +408,7 @@ describe('pruneUpdatesBeforeSnapshotBatch', () => {
       USER_ID,
       VAULT_ID,
       outcomes
-        .filter((outcome) => outcome.accepted === true)
+        .filter((outcome) => outcome.accepted)
         .map((outcome) => ({ noteId: outcome.noteId, sequenceNum: outcome.sequenceNum }))
     )
 

@@ -98,7 +98,9 @@ async function runChild(storeDir: string | null = STORE_DIR): Promise<number | u
   await import('./crdt-preflight-child')
   // Every path must terminate: the parent only has a 10s timeout to fall back
   // on, and a child that neither exits nor crashes stalls CRDT startup.
-  await vi.waitFor(() => expect(exitSpy).toHaveBeenCalled())
+  await vi.waitFor(() => {
+    expect(exitSpy).toHaveBeenCalled()
+  })
   return exitSpy.mock.calls[0]?.[0]
 }
 
@@ -258,7 +260,8 @@ describe('crdt-preflight-child', () => {
       mockRequire.resolve = (id: string) =>
         id === 'classic-level/package.json' ? `${packageRoot}/package.json` : yLeveldbEntry
       const loadModule = mockRequire.getMockImplementation() as
-        ((id: string) => unknown) | undefined
+        | ((id: string) => unknown)
+        | undefined
       mockRequire.mockImplementation((id: string) => {
         if (id === 'classic-level/package.json') return { version: '1.4.1' }
         if (id === 'node-gyp-build') {

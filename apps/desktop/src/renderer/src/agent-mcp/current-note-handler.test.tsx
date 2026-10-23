@@ -53,8 +53,12 @@ describe('useAgentMcpCurrentNoteResponder', () => {
     } as Tab)
     mocks.extractMarkdownFromActiveEditor.mockResolvedValue('# Today')
 
-    renderHook(() => useAgentMcpCurrentNoteResponder())
-    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+    renderHook(() => {
+      useAgentMcpCurrentNoteResponder()
+    })
+    await waitFor(() => {
+      expect(window.api.onMainInvoke).toHaveBeenCalled()
+    })
 
     await onMainInvokeCallback?.({
       requestId: 'request-1',
@@ -73,8 +77,12 @@ describe('useAgentMcpCurrentNoteResponder', () => {
   it('responds null when the active tab is not a note', async () => {
     mocks.useActiveTab.mockReturnValue({ type: 'journal', title: 'Journal' } as Tab)
 
-    renderHook(() => useAgentMcpCurrentNoteResponder())
-    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+    renderHook(() => {
+      useAgentMcpCurrentNoteResponder()
+    })
+    await waitFor(() => {
+      expect(window.api.onMainInvoke).toHaveBeenCalled()
+    })
 
     await onMainInvokeCallback?.({
       requestId: 'request-2',

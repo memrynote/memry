@@ -26,7 +26,9 @@ export function useFolderNoteShortcutsRuntime(): void {
           toast.error(t('shortcuts.folderNotes.missingToast', { folder }), {
             action: {
               label: t('shortcuts.folderNotes.missingToastAction'),
-              onClick: () => openSettings('shortcuts')
+              onClick: () => {
+                openSettings('shortcuts')
+              }
             }
           })
           return

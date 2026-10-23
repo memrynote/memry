@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { sidebarTreeExpandedKey } from './sidebar-tree-expanded-key'
 
 describe('sidebarTreeExpandedKey', () => {
-  afterEach(() => localStorage.clear())
+  afterEach(() => {
+    localStorage.clear()
+  })
 
   it('gives each vault its own key', () => {
     expect(sidebarTreeExpandedKey('/vaults/work')).toBe('sidebar-tree-expanded:/vaults/work')

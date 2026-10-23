@@ -84,7 +84,9 @@ function subscribeToNoteChanges(fill: Fill): void {
   subscribed = true
   const schedule = (): void => {
     if (refreshTimer) clearTimeout(refreshTimer)
-    refreshTimer = setTimeout(() => refreshAll(fill), REFRESH_DEBOUNCE_MS)
+    refreshTimer = setTimeout(() => {
+      refreshAll(fill)
+    }, REFRESH_DEBOUNCE_MS)
   }
   // Held for the life of the window: cards exist in every note, and the
   // subscription costs one debounced timer.

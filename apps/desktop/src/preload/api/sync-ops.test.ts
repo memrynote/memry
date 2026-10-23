@@ -101,9 +101,9 @@ describe('onCrdtStateChanged note routing', () => {
     const noteA = vi.fn()
     const off = onCrdtStateChanged('note-a', noteA)
 
-    expect(() =>
+    expect(() => {
       broadcast({ noteId: 'note-unknown', update: update('x'), origin: 'local' })
-    ).not.toThrow()
+    }).not.toThrow()
     expect(noteA).not.toHaveBeenCalled()
 
     off()
@@ -131,13 +131,15 @@ describe('onCrdtStateChanged note routing', () => {
   it('tolerates a subscriber that unsubscribes itself mid-dispatch', () => {
     const other = vi.fn()
     let offSelf = (): void => {}
-    const selfClosing = vi.fn(() => offSelf())
+    const selfClosing = vi.fn(() => {
+      offSelf()
+    })
     offSelf = onCrdtStateChanged('note-a', selfClosing)
     const offOther = onCrdtStateChanged('note-a', other)
 
-    expect(() =>
+    expect(() => {
       broadcast({ noteId: 'note-a', update: update('a'), origin: 'local' })
-    ).not.toThrow()
+    }).not.toThrow()
     expect(other).toHaveBeenCalledTimes(1)
 
     offOther()

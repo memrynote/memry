@@ -196,7 +196,9 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     }
   }, [projectId, reloadToken])
 
-  const refresh = useCallback(() => setReloadToken((token) => token + 1), [])
+  const refresh = useCallback(() => {
+    setReloadToken((token) => token + 1)
+  }, [])
 
   // The overview note reports its new id the moment it creates or clears one.
   // Applying it locally keeps the rail from showing the "create" affordance

@@ -151,8 +151,12 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
     if (!stored?.attachmentId) return
     window.api.homePages
       .materializeCover(board.id)
-      .then(() => setLoadAttempt((n) => n + 1))
-      .catch((err: unknown) => logger.warn('Board cover download failed', err))
+      .then(() => {
+        setLoadAttempt((n) => n + 1)
+      })
+      .catch((err: unknown) => {
+        logger.warn('Board cover download failed', err)
+      })
   }, [board.id, stored?.attachmentId])
 
   return (
@@ -167,16 +171,18 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
           framing={framing}
           credit={stored?.credit ?? null}
           creditUrl={stored?.creditUrl ?? null}
-          onChange={(event) => onPickerAnchorChange(coverPickerAnchorFrom(event))}
+          onChange={(event) => {
+            onPickerAnchorChange(coverPickerAnchorFrom(event))
+          }}
           onRemove={() => {
-            window.api.homePages
-              .removeCover(board.id)
-              .catch((err: unknown) => fail('Failed to remove the board cover', err))
+            window.api.homePages.removeCover(board.id).catch((err: unknown) => {
+              fail('Failed to remove the board cover', err)
+            })
           }}
           onFramingChange={(changes) => {
-            window.api.homePages
-              .setCoverFraming(board.id, changes)
-              .catch((err: unknown) => fail('Failed to save the board cover position', err))
+            window.api.homePages.setCoverFraming(board.id, changes).catch((err: unknown) => {
+              fail('Failed to save the board cover position', err)
+            })
           }}
           repositioning={repositioning}
           onRepositioningChange={setRepositioning}
@@ -196,7 +202,9 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
               .then((result) => {
                 if (!result.ok) throw new Error()
               })
-              .catch((err: unknown) => fail('Failed to set the board cover', err))
+              .catch((err: unknown) => {
+                fail('Failed to set the board cover', err)
+              })
           }
           setRepositioning(reposition)
         }}

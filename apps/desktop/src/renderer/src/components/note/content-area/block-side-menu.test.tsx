@@ -161,7 +161,9 @@ describe('BlockSideMenuController copy item', () => {
 
     await userEvent.click(screen.getByRole('menuitem', { name: 'Copy' }))
 
-    await vi.waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => {
+      expect(toastError).toHaveBeenCalledTimes(1)
+    })
   })
 })
 
@@ -176,7 +178,9 @@ describe('BlockSideMenuController checkbox and task crossings', () => {
     actions.toCheckbox.mockReset()
     state.editor = {
       schema: { blockSchema: { paragraph: {}, checkListItem: {} } },
-      transact: (fn: () => void) => fn(),
+      transact: (fn: () => void) => {
+        fn()
+      },
       updateBlock,
       getBlock: vi.fn()
     }

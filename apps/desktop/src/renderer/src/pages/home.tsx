@@ -164,7 +164,9 @@ export default function HomePage(): React.JSX.Element {
           onSelectBoard={setActiveBoardId}
           onCreateBoard={() => void createBoard(t('home.board.newName'))}
           onDeleteBoard={(id) => void deleteBoard(id)}
-          onManageBoards={() => setManagerOpen(true)}
+          onManageBoards={() => {
+            setManagerOpen(true)
+          }}
           showAddWidget={!isLoading && !!localActive}
           galleryOpen={galleryOpen}
           onGalleryOpenChange={setGalleryOpen}

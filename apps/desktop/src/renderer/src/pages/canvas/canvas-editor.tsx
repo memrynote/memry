@@ -301,7 +301,7 @@ export const CanvasEditor = ({
     const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
     return {
       elements: parsed.elements ?? [],
-      appState: { ...(parsed.appState ?? {}), ...(viewport ? viewportAppState(viewport) : {}) },
+      appState: { ...parsed.appState, ...(viewport ? viewportAppState(viewport) : {}) },
       files: parsed.files,
       // `scrollToContent` runs AFTER the appState restore and would undo it, so
       // it stays the fallback for a tab that has no camera of its own yet.
@@ -335,7 +335,13 @@ export const CanvasEditor = ({
   // back, sync resumed — is what makes it worth trying again. Subscribed
   // directly rather than through useSync so a sync tick does not re-render
   // this editor.
-  useEffect(() => window.api.onSyncStatusChanged(() => retryCanvasAssetUploads()), [])
+  useEffect(
+    () =>
+      window.api.onSyncStatusChanged(() => {
+        retryCanvasAssetUploads()
+      }),
+    []
+  )
 
   // §5.6: a save whose scene is too large to sync is kept locally but never
   // pushed; surface it so the divergence is never silent.
@@ -596,7 +602,9 @@ export const CanvasEditor = ({
     relabel()
     const observer = new MutationObserver(relabel)
     observer.observe(wrapper, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [corrupt, t])
 
   // Agent MCP writes to THIS canvas must reach this live instance rather than a
@@ -968,7 +976,9 @@ export const CanvasEditor = ({
                 viewMode ? null : (
                   <button
                     type="button"
-                    onClick={() => setLayoutOpen(true)}
+                    onClick={() => {
+                      setLayoutOpen(true)
+                    }}
                     data-testid="canvas-layout-by-property"
                     className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
                   >
@@ -994,7 +1004,9 @@ export const CanvasEditor = ({
             {embedded ? null : (
               <CanvasCommandOwner
                 openAddCardRef={openAddCardRef}
-                openLayout={() => setLayoutOpen(true)}
+                openLayout={() => {
+                  setLayoutOpen(true)
+                }}
                 openLinkPicker={openLinkPicker}
               />
             )}
@@ -1003,7 +1015,9 @@ export const CanvasEditor = ({
         <CanvasLinkDialog
           open={linkPickerOpen}
           onOpenChange={setLinkPickerOpen}
-          onPick={(href) => applyLink(href)}
+          onPick={(href) => {
+            applyLink(href)
+          }}
         />
       </div>
     </InsideCanvasSurfaceContext.Provider>

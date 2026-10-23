@@ -103,16 +103,17 @@ vi.mock('@excalidraw/excalidraw', () => ({
     mocks.excalidrawProps = props
     // The real Excalidraw passes (elements, appState, files); the editor reads
     // appState from it, so the fake has to hand one over too.
-    mocks.onChange = () =>
-      (props.onChange as unknown as (e: unknown[], a: unknown, f: unknown) => void)(
+    mocks.onChange = () => {
+      ;(props.onChange as unknown as (e: unknown[], a: unknown, f: unknown) => void)(
         mocks.api.elements,
         {
           showHyperlinkPopup: mocks.api.showHyperlinkPopup,
           isLoading: mocks.api.isLoading,
-          ...(mocks.api.viewport ?? {})
+          ...mocks.api.viewport
         },
         {}
       )
+    }
     // The real Excalidraw hands out its imperative API on mount — long before
     // initialData is applied. A child effect still runs before the parent's
     // persistence effect, so the ordering under test is preserved (calling it

@@ -321,7 +321,9 @@ function ValueInput({
         value={typeof value === 'string' && value ? [value] : []}
         target={relationTarget}
         many={false}
-        onSave={(next) => onChange(next?.[0] ?? '')}
+        onSave={(next) => {
+          onChange(next?.[0] ?? '')
+        }}
       />
     )
   }
@@ -344,7 +346,9 @@ function ValueInput({
         <Input
           type="number"
           value={(value as number) ?? ''}
-          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
+          onChange={(e) => {
+            onChange(e.target.value ? Number(e.target.value) : '')
+          }}
           className="h-[26px] flex-1 min-w-0 rounded-md border-border bg-transparent px-2 text-[11.5px] text-foreground [font-variant-numeric:tabular-nums]"
           placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
         />
@@ -366,7 +370,9 @@ function ValueInput({
         <Input
           type="text"
           value={stringifyUnknown(value)}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value)
+          }}
           className="h-[26px] flex-1 min-w-0 rounded-md border-border bg-transparent px-2 text-[11.5px] text-foreground"
           placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
         />

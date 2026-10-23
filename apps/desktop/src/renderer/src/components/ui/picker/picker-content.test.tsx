@@ -199,7 +199,9 @@ describe('PickerContent keyboard navigation', () => {
 
   it('still runs a call site handler, and lets it preempt the navigation', () => {
     // `inline-priority-popover` binds digit shortcuts on `Picker.Content`.
-    const onKeyDown = vi.fn((e: React.KeyboardEvent) => e.preventDefault())
+    const onKeyDown = vi.fn((e: React.KeyboardEvent) => {
+      e.preventDefault()
+    })
     const { content, rows } = renderNavigable(vi.fn(), { onKeyDown })
     rows[0].focus()
 

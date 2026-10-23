@@ -408,7 +408,7 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
   // `open`, summary as inline content, body as children.
   return {
     type: 'toggleListItem' as const,
-    props: { ...(colors ?? {}), open: segment.open },
+    props: { ...colors, open: segment.open },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
   } as unknown as Block

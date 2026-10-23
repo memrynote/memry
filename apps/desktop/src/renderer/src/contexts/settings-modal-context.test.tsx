@@ -17,21 +17,27 @@ describe('settings modal targets', () => {
   it('opens Vault focused on the activity log for vault:activity', () => {
     const { result } = renderHook(() => useSettingsModal(), { wrapper })
 
-    act(() => result.current.open('vault:activity'))
+    act(() => {
+      result.current.open('vault:activity')
+    })
 
     expect(result.current.isOpen).toBe(true)
     expect(result.current.activeSection).toBe('vault')
     expect(result.current.focusTarget).toBe('vault-activity')
     const firstRequest = result.current.focusRequestId
 
-    act(() => result.current.open('vault:activity'))
+    act(() => {
+      result.current.open('vault:activity')
+    })
     expect(result.current.focusRequestId).toBeGreaterThan(firstRequest)
   })
 
   it('opens Import focused on the Readwise panel for import:readwise', () => {
     const { result } = renderHook(() => useSettingsModal(), { wrapper })
 
-    act(() => result.current.open('import:readwise'))
+    act(() => {
+      result.current.open('import:readwise')
+    })
 
     expect(result.current.activeSection).toBe('import')
     expect(result.current.focusTarget).toBe('readwise-import')
@@ -40,7 +46,9 @@ describe('settings modal targets', () => {
   it('opens a plain section with no focus target', () => {
     const { result } = renderHook(() => useSettingsModal(), { wrapper })
 
-    act(() => result.current.open('vault'))
+    act(() => {
+      result.current.open('vault')
+    })
 
     expect(result.current.activeSection).toBe('vault')
     expect(result.current.focusTarget).toBeNull()
@@ -112,7 +120,9 @@ describe('nav.settings', () => {
   it('leaves ⌘, alone once the provider is gone', () => {
     const { unmount } = mount()
     unmount()
-    const dispatcher = renderHook(() => useCommandDispatcher())
+    const dispatcher = renderHook(() => {
+      useCommandDispatcher()
+    })
 
     const notConsumed = fireEvent.keyDown(window, {
       key: ',',

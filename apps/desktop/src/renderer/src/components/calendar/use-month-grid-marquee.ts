@@ -58,7 +58,9 @@ export function useMonthGridMarquee({
   const anchorDateRef = useRef<string | null>(null)
   const hasMovedRef = useRef(false)
 
-  const clearSelection = useCallback(() => setSelection(null), [])
+  const clearSelection = useCallback(() => {
+    setSelection(null)
+  }, [])
 
   const buildSelection = useCallback(
     (start: string, end: string): MonthGridSelection => {

@@ -58,7 +58,9 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
 
   useEffect(() => {
     const t = setTimeout(generateQr, 0)
-    return () => clearTimeout(t)
+    return () => {
+      clearTimeout(t)
+    }
   }, [generateQr])
 
   return (
@@ -150,12 +152,18 @@ function QrReady({
 
   useEffect(() => {
     if (!copied) return
-    const t = setTimeout(() => setCopied(false), 2000)
-    return () => clearTimeout(t)
+    const t = setTimeout(() => {
+      setCopied(false)
+    }, 2000)
+    return () => {
+      clearTimeout(t)
+    }
   }, [copied])
 
   const handleCopy = useCallback(() => {
-    void navigator.clipboard.writeText(session.qrData).then(() => setCopied(true))
+    void navigator.clipboard.writeText(session.qrData).then(() => {
+      setCopied(true)
+    })
   }, [session.qrData])
 
   if (isExpired) {

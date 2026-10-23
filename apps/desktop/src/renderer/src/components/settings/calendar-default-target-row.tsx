@@ -34,7 +34,9 @@ export function CalendarDefaultTargetRow({
         const current = listed.calendars.find((calendar) => calendar.id === listed.currentDefaultId)
         setValue(current?.id ?? NOT_DEFAULT)
       })
-      .catch((cause: unknown) => log.warn('Could not list calendars for the default target', cause))
+      .catch((cause: unknown) => {
+        log.warn('Could not list calendars for the default target', cause)
+      })
     return () => {
       cancelled = true
     }

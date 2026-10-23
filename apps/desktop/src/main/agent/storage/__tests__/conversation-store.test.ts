@@ -161,12 +161,12 @@ describe('Conversation store', () => {
     const conversation = store.create({ vaultId: 'v', title: 'X', backend: 'claude_cli' })
     store.softDelete(conversation.id)
 
-    expect(() => store.addToTrustList(conversation.id, 'vault_create_note')).toThrow(
-      `Conversation ${conversation.id} not found`
-    )
-    expect(() => store.removeFromTrustList(conversation.id, 'vault_create_note')).toThrow(
-      `Conversation ${conversation.id} not found`
-    )
+    expect(() => {
+      store.addToTrustList(conversation.id, 'vault_create_note')
+    }).toThrow(`Conversation ${conversation.id} not found`)
+    expect(() => {
+      store.removeFromTrustList(conversation.id, 'vault_create_note')
+    }).toThrow(`Conversation ${conversation.id} not found`)
     expect(store.getById(conversation.id, { includeDeleted: true })?.trustList).toEqual([])
   })
 

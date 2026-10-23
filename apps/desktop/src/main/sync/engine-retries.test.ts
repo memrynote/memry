@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { EventEmitter } from 'events'
+import type { EventEmitter } from 'events'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { NetworkError } from './http-client'
 import { SYNC_STATE_KEYS } from './engine/sync-context'

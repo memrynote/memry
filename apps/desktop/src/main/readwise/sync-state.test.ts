@@ -109,7 +109,9 @@ describe('readwise last run', () => {
     result = createTestDataDb()
     db = asClientDb(result.db)
   })
-  afterEach(() => result.close())
+  afterEach(() => {
+    result.close()
+  })
 
   it('round-trips, drops an unreadable value, and clears with the run state', () => {
     expect(getLastRun(db)).toBeNull()

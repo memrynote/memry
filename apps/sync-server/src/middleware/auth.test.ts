@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AppError, ErrorCodes } from '../lib/errors'
+import type { AppError } from '../lib/errors'
+import { ErrorCodes } from '../lib/errors'
 
 const hoisted = vi.hoisted(() => ({
   importSpkiMock: vi.fn(async () => ({ key: 'public' })),

@@ -33,7 +33,9 @@ export function StickyInput({
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value)
+        }}
         placeholder={placeholder}
         disabled={disabled}
         rows={3}

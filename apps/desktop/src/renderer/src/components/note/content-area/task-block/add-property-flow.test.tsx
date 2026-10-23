@@ -84,7 +84,9 @@ const runFrames = (count: number): void => {
   for (let i = 0; i < count; i++) {
     const due = frames
     frames = []
-    act(() => due.forEach((callback) => callback(performance.now())))
+    act(() => {
+      due.forEach((callback) => callback(performance.now()))
+    })
   }
 }
 
@@ -132,7 +134,9 @@ describe('adding a property from the + menu', () => {
     render(<TaskBlockRenderer block={block} editor={editor} />)
 
     const row = screen.getByRole('group', { name: 'Ship the beta' })
-    act(() => row.focus())
+    act(() => {
+      row.focus()
+    })
     fireEvent.keyDown(row, { key: 'd' })
     runFrames(4)
 

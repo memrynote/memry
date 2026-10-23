@@ -93,7 +93,7 @@ export function NoteSimilarNotes({
         toast.success(t('similarNotes.addedToCanvas', values), {
           action: {
             label: t('similarNotes.openCanvas'),
-            onClick: () =>
+            onClick: () => {
               openTab({
                 type: 'canvas',
                 title: canvas.title,
@@ -105,6 +105,7 @@ export function NoteSimilarNotes({
                 isPreview: false,
                 isDeleted: false
               })
+            }
           }
         })
       } catch (err) {
@@ -116,7 +117,7 @@ export function NoteSimilarNotes({
   )
 
   const handleOpen = useCallback(
-    (similar: SimilarNoteItem) =>
+    (similar: SimilarNoteItem) => {
       openLinked({
         type: 'note',
         title: similar.title,
@@ -127,7 +128,8 @@ export function NoteSimilarNotes({
         isModified: false,
         isPreview: false,
         isDeleted: false
-      }),
+      })
+    },
     [openLinked]
   )
 

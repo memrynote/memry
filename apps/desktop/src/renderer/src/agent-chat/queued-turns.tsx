@@ -32,8 +32,9 @@ export function QueuedTurns({
 
   if (turns.length === 0) return null
 
-  const setDraft = (id: string, text: string | null): void =>
+  const setDraft = (id: string, text: string | null): void => {
     setDrafts(({ [id]: _previous, ...rest }) => (text === null ? rest : { ...rest, [id]: text }))
+  }
   const saveEdit = (id: string): void => {
     const text = drafts[id]?.trimEnd()
     if (!text?.trim()) return
@@ -65,7 +66,9 @@ export function QueuedTurns({
                     autoFocus
                     aria-label={t('agentChat.composer.queue.editLabel')}
                     value={draft}
-                    onChange={(event) => setDraft(turn.id, event.target.value)}
+                    onChange={(event) => {
+                      setDraft(turn.id, event.target.value)
+                    }}
                     onKeyDown={(event) => {
                       if (
                         event.key === 'Enter' &&
@@ -88,7 +91,9 @@ export function QueuedTurns({
                       type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => cancelEdit(turn.id)}
+                      onClick={() => {
+                        cancelEdit(turn.id)
+                      }}
                     >
                       {t('agentChat.composer.queue.cancel')}
                     </Button>
@@ -97,7 +102,9 @@ export function QueuedTurns({
                       size="sm"
                       variant="secondary"
                       disabled={!draft.trim()}
-                      onClick={() => saveEdit(turn.id)}
+                      onClick={() => {
+                        saveEdit(turn.id)
+                      }}
                     >
                       {t('agentChat.composer.queue.save')}
                     </Button>

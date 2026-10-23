@@ -8,9 +8,8 @@
  */
 
 import type Database from 'better-sqlite3'
-import type { AppleNotesCheckUnlockResult } from '@memry/contracts/import-channels'
+import type { AppleNotesCheckUnlockResult, ImportMessage } from '@memry/contracts/import-channels'
 import { IMPORT_MESSAGE_CODES } from '@memry/importers/messages'
-import type { ImportMessage } from '@memry/contracts/import-channels'
 import { createNoteDecryptor, type LockedNoteCrypto, type NoteDecryptor } from './decrypt-note'
 import { LOCKED_NOTES_FROM_WHERE, hasColumn, loadPrimaryKeys, openNoteStore } from './note-store'
 

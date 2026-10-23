@@ -45,9 +45,10 @@ import {
   getJournalPropertyRows,
   getNoteTags,
   getAllTags,
-  calculateActivityLevel as calculateActivityLevelFromCharCount
+  calculateActivityLevel as calculateActivityLevelFromCharCount,
+  getTasksByDueDate,
+  countOverdueTasksBeforeDate
 } from '../journal/store'
-import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { enqueueJournalDelete } from '../journal/runtime-effects'

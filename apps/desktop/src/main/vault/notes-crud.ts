@@ -324,7 +324,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   const frontmatter: NoteFrontmatter = {}
   if (mergedTags.length > 0) frontmatter.tags = mergedTags
 
-  const properties = { ...templateProperties, ...(input.properties ?? {}) }
+  const properties = { ...templateProperties, ...input.properties }
   if (Object.keys(properties).length > 0) {
     Object.assign(frontmatter, writePropertiesToRoot(frontmatter, properties))
   }

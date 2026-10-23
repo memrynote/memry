@@ -93,7 +93,9 @@ function BoardRow({
           aria-label={t('home.board.nameLabel')}
           value={draft}
           autoFocus
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            onDraftChange(event.target.value)
+          }}
           onBlur={onCommitRename}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
@@ -250,7 +252,9 @@ export function BoardManagerDialog({
                     setDraft(board.name)
                   }}
                   onCommitRename={commitRename}
-                  onDelete={() => onDelete(board.id)}
+                  onDelete={() => {
+                    onDelete(board.id)
+                  }}
                 />
               ))}
             </ul>

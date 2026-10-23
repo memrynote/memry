@@ -80,7 +80,9 @@ export function CalendarToolbar({
                 key={option}
                 type="button"
                 aria-pressed={isActive}
-                onClick={() => onViewChange(option)}
+                onClick={() => {
+                  onViewChange(option)
+                }}
                 className={cn(
                   'relative rounded-full px-2.5 py-1 text-xs font-medium',
                   'transition-colors duration-150 ease-out active:scale-[0.97] @xl:px-3',

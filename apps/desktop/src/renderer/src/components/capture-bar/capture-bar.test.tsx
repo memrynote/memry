@@ -55,7 +55,9 @@ vi.mock('@/components/voice-recorder', () => ({
         <div data-testid="voice-recorder">
           <button
             type="button"
-            onClick={() => onRecordingComplete(new Blob(['audio'], { type: 'audio/webm' }), 12)}
+            onClick={() => {
+              onRecordingComplete(new Blob(['audio'], { type: 'audio/webm' }), 12)
+            }}
           >
             complete voice
           </button>
@@ -470,7 +472,9 @@ describe('CaptureBar — capabilities', () => {
     expect(screen.queryByTestId('voice-recorder')).not.toBeInTheDocument()
 
     await user.click(mic)
-    await waitFor(() => expect(mocks.recorderStart).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.recorderStart).toHaveBeenCalledTimes(1)
+    })
     expect(screen.getByTestId('voice-recorder')).toBeInTheDocument()
   })
 
@@ -748,7 +752,9 @@ describe('CaptureBar — [[ note picker', () => {
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
     await user.type(field(), OPEN_PICKER)
-    await waitFor(() => expect(options()).toHaveLength(3))
+    await waitFor(() => {
+      expect(options()).toHaveLength(3)
+    })
     expect(options().map((option) => option.textContent)).toEqual([
       'Roadmap',
       'Q1 Goals',
@@ -756,7 +762,9 @@ describe('CaptureBar — [[ note picker', () => {
     ])
 
     await user.type(field(), 'Q1')
-    await waitFor(() => expect(options()).toHaveLength(1))
+    await waitFor(() => {
+      expect(options()).toHaveLength(1)
+    })
     expect(options()[0]).toHaveTextContent('Q1 Goals')
   })
 
@@ -776,7 +784,9 @@ describe('CaptureBar — [[ note picker', () => {
     renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
 
     await user.type(field(), OPEN_PICKER)
-    await waitFor(() => expect(options()).toHaveLength(3))
+    await waitFor(() => {
+      expect(options()).toHaveLength(3)
+    })
     await user.keyboard('{Enter}')
 
     // Enter selected the note rather than submitting the task.
@@ -789,7 +799,9 @@ describe('CaptureBar — [[ note picker', () => {
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
     await user.type(field(), OPEN_PICKER)
-    await waitFor(() => expect(options()).toHaveLength(3))
+    await waitFor(() => {
+      expect(options()).toHaveLength(3)
+    })
 
     await user.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}')
     expect(options()[1]).toHaveAttribute('aria-selected', 'true')
@@ -804,7 +816,9 @@ describe('CaptureBar — [[ note picker', () => {
     renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
 
     await user.type(field(), OPEN_PICKER)
-    await waitFor(() => expect(options()).toHaveLength(3))
+    await waitFor(() => {
+      expect(options()).toHaveLength(3)
+    })
     await user.keyboard('{Enter}')
     await user.keyboard('{Enter}')
 
@@ -821,7 +835,9 @@ describe('CaptureBar — [[ note picker', () => {
     // The picker's fetch is what loads the pool; typing straight through it
     // never selects anything.
     await user.type(field(), OPEN_PICKER)
-    await waitFor(() => expect(options()).toHaveLength(3))
+    await waitFor(() => {
+      expect(options()).toHaveLength(3)
+    })
     await user.type(field(), 'hiring plan]]')
     await user.keyboard('{Enter}')
 
@@ -845,7 +861,9 @@ describe('CaptureBar — [[ note picker', () => {
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
     await user.type(field(), OPEN_PICKER)
-    await waitFor(() => expect(options()).toHaveLength(3))
+    await waitFor(() => {
+      expect(options()).toHaveLength(3)
+    })
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()

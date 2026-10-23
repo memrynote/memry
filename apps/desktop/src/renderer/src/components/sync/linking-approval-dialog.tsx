@@ -98,7 +98,9 @@ export function LinkingApprovalDialog({
       .catch((err: unknown) => {
         setError(extractErrorMessage(err, t('linkingApproval.failedToApprove')))
       })
-      .finally(() => setIsApproving(false))
+      .finally(() => {
+        setIsApproving(false)
+      })
   }, [event, onApprove, t])
 
   return (

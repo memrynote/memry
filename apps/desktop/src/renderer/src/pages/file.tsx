@@ -139,15 +139,27 @@ function FileActionsMenu({ run }: { run: (id: FileCommandId) => void }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={() => run('file.addToProject')}>
+        <DropdownMenuItem
+          onClick={() => {
+            run('file.addToProject')
+          }}
+        >
           <FolderPlus className="me-2 h-4 w-4" />
           {tTasks('addToProject.menuLabel')}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run('file.openExternal')}>
+        <DropdownMenuItem
+          onClick={() => {
+            run('file.openExternal')
+          }}
+        >
           <ExternalLink className="me-2 h-4 w-4" />
           {fileActions.openInDefaultApp}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run('file.revealInFinder')}>
+        <DropdownMenuItem
+          onClick={() => {
+            run('file.revealInFinder')
+          }}
+        >
           <Download className="me-2 h-4 w-4" />
           {fileActions.revealInFolder}
         </DropdownMenuItem>
@@ -180,7 +192,9 @@ function FileInfoBar({ file, run }: { file: FileMetadata; run: (id: FileCommandI
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => run('file.addToProject')}
+            onClick={() => {
+              run('file.addToProject')
+            }}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
             title={tTasks('addToProject.menuLabel')}
           >
@@ -190,7 +204,9 @@ function FileInfoBar({ file, run }: { file: FileMetadata; run: (id: FileCommandI
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => run('file.openExternal')}
+            onClick={() => {
+              run('file.openExternal')
+            }}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
             title={fileActions.openInDefaultApp}
           >
@@ -200,7 +216,9 @@ function FileInfoBar({ file, run }: { file: FileMetadata; run: (id: FileCommandI
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => run('file.revealInFinder')}
+            onClick={() => {
+              run('file.revealInFinder')
+            }}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
             title={fileActions.revealInFolder}
           >
@@ -287,7 +305,9 @@ export function FilePage({ fileId }: FilePageProps) {
 
   const { runCommand } = useFileCommands({
     fileId: file?.id ?? null,
-    openAddToProject: () => setAddToProjectOpen(true)
+    openAddToProject: () => {
+      setAddToProjectOpen(true)
+    }
   })
 
   // Handle no file ID

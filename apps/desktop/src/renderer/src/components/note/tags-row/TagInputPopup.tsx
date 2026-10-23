@@ -2,7 +2,8 @@ import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useCallback, useMemo } from 'react'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
-import { TagChip, Tag } from './TagChip'
+import type { Tag } from './TagChip'
+import { TagChip } from './TagChip'
 import { defaultTagColorName } from './tag-colors'
 import { useT } from '@memry/i18n/renderer'
 import { CornerDownLeft, List, Plus } from '@/lib/icons'
@@ -181,7 +182,13 @@ export function TagInputPopup({
             <Picker.Section label={t('tagsRow.recent')}>
               <div className="flex flex-wrap gap-1.5 px-2 pb-1">
                 {filteredRecentTags.slice(0, 8).map((tag) => (
-                  <TagChip key={tag.id} tag={tag} onClick={() => handleTagClick(tag)} />
+                  <TagChip
+                    key={tag.id}
+                    tag={tag}
+                    onClick={() => {
+                      handleTagClick(tag)
+                    }}
+                  />
                 ))}
               </div>
             </Picker.Section>
@@ -196,7 +203,9 @@ export function TagInputPopup({
                   resolved={row.resolved}
                   bodyEmpty={fieldHints?.bodyEmpty ?? false}
                   active={index === activeIndex}
-                  onPick={() => handleTagClick(row.tag)}
+                  onPick={() => {
+                    handleTagClick(row.tag)
+                  }}
                 />
               ))}
             </div>
@@ -210,7 +219,9 @@ export function TagInputPopup({
                     key={tag.id}
                     tag={tag}
                     isFocused={index + fieldRows.length === activeIndex}
-                    onClick={() => handleTagClick(tag)}
+                    onClick={() => {
+                      handleTagClick(tag)
+                    }}
                   />
                 ))}
               </div>
@@ -268,7 +279,12 @@ function SuggestedTags({
       <div className="flex flex-wrap gap-1.5 px-2 pb-1" data-testid="suggested-tags">
         {tags.map(({ tag, support }) => (
           <span key={tag.id} title={t('suggestedTags.support', { count: support })}>
-            <TagChip tag={tag} onClick={() => onPick(tag)} />
+            <TagChip
+              tag={tag}
+              onClick={() => {
+                onPick(tag)
+              }}
+            />
           </span>
         ))}
       </div>

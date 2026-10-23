@@ -46,7 +46,9 @@ export function CalendarTaskPopoverMoveRow({
           type="button"
           className={MOVE_BUTTON_CLASS}
           title={formatTarget(opts.laterToday)}
-          onClick={() => onSnooze(opts.laterToday!)}
+          onClick={() => {
+            onSnooze(opts.laterToday!)
+          }}
         >
           {t('task-popover.later')}
         </button>
@@ -55,7 +57,9 @@ export function CalendarTaskPopoverMoveRow({
         type="button"
         className={MOVE_BUTTON_CLASS}
         title={formatTarget(opts.tomorrow)}
-        onClick={() => onSnooze(opts.tomorrow)}
+        onClick={() => {
+          onSnooze(opts.tomorrow)
+        }}
       >
         {t('task-popover.tomorrow')}
       </button>
@@ -63,7 +67,9 @@ export function CalendarTaskPopoverMoveRow({
         type="button"
         className={MOVE_BUTTON_CLASS}
         title={formatTarget(opts.nextWeek)}
-        onClick={() => onSnooze(opts.nextWeek)}
+        onClick={() => {
+          onSnooze(opts.nextWeek)
+        }}
       >
         {t('task-popover.next-week')}
       </button>

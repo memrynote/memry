@@ -185,7 +185,9 @@ export function BacklinksSection({
               {(Object.keys(sortLabels) as BacklinkSortOption[]).map((option) => (
                 <DropdownMenuItem
                   key={option}
-                  onClick={() => handleSortChange(option)}
+                  onClick={() => {
+                    handleSortChange(option)
+                  }}
                   className={cn(sortBy === option && 'bg-surface-active')}
                 >
                   {sortLabels[option]}

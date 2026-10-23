@@ -166,7 +166,9 @@ describe('database client', () => {
     closeAllDatabases()
 
     // #when / #then
-    expect(() => releaseDatabaseMemory()).not.toThrow()
+    expect(() => {
+      releaseDatabaseMemory()
+    }).not.toThrow()
     expect(loggerWarnMock).not.toHaveBeenCalled()
   })
 

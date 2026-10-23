@@ -21,7 +21,11 @@ function setup(defaultDisplay?: 'embed' | 'link') {
 const openMenu = async (result: ReturnType<typeof setup>['result']) => {
   await act(async () => {
     result.current.open('pdf-1')
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => {
+        resolve(null)
+      })
+    )
   })
 }
 
@@ -39,7 +43,9 @@ describe('usePdfDisplayMenu', () => {
     await openMenu(result)
     expect(result.current.state?.selectedIndex).toBe(1)
 
-    act(() => result.current.select('embed'))
+    act(() => {
+      result.current.select('embed')
+    })
     expect(editor.updateBlock).toHaveBeenCalledWith('pdf-1', {
       props: { url: 'a.pdf', display: 'embed' }
     })

@@ -52,8 +52,18 @@ export function useNoteNames(
     [noteId, title, t]
   )
 
-  const add = useCallback((name: string) => edit({ add: [name], remove: [] }), [edit])
-  const remove = useCallback((name: string) => edit({ add: [], remove: [name] }), [edit])
+  const add = useCallback(
+    (name: string) => {
+      edit({ add: [name], remove: [] })
+    },
+    [edit]
+  )
+  const remove = useCallback(
+    (name: string) => {
+      edit({ add: [], remove: [name] })
+    },
+    [edit]
+  )
   const rename = useCallback(
     (from: string, to: string) => {
       if (nameKey(from) === nameKey(to) && from.trim() === to.trim()) return

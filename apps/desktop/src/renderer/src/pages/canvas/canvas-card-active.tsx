@@ -44,7 +44,9 @@ export const CanvasCardActive = ({
     },
     [onDeactivate]
   )
-  const onKeyUp = useCallback((e: React.KeyboardEvent): void => e.stopPropagation(), [])
+  const onKeyUp = useCallback((e: React.KeyboardEvent): void => {
+    e.stopPropagation()
+  }, [])
 
   return (
     <div

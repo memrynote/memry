@@ -58,7 +58,9 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
             <PropertyRow
               key={slot.field.name}
               property={slotProperty(slot)}
-              onValueChange={(next) => write(slot.field.name, slot.value, next)}
+              onValueChange={(next) => {
+                write(slot.field.name, slot.value, next)
+              }}
               relationTarget={slot.field.relation?.target}
               relationMany={slot.field.relation?.many}
               compact
@@ -72,13 +74,17 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
             <PropertyRow
               key={name}
               property={{ id: name, name, type: inferType(value), value, isCustom: false }}
-              onValueChange={(next) => write(name, value, next)}
+              onValueChange={(next) => {
+                write(name, value, next)
+              }}
               compact
               renderAction={(hovered) => (
                 <button
                   type="button"
                   aria-label={t('tagFields.tasks.clearValue', { name })}
-                  onClick={() => onFieldsChange({ [name]: null })}
+                  onClick={() => {
+                    onFieldsChange({ [name]: null })
+                  }}
                   className={
                     'ms-1 flex h-6 w-6 items-center justify-center rounded text-text-tertiary ' +
                     'transition-opacity hover:bg-surface hover:text-foreground focus-visible:opacity-100 ' +

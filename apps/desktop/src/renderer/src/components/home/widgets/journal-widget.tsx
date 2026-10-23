@@ -123,7 +123,9 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
           <button
             key={day.iso}
             type="button"
-            onClick={() => openJournal(day.iso)}
+            onClick={() => {
+              openJournal(day.iso)
+            }}
             aria-label={day.iso}
             className="group/day flex flex-1 flex-col items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
           >
@@ -160,7 +162,9 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
             <button
               key={date}
               type="button"
-              onClick={() => openJournal(date)}
+              onClick={() => {
+                openJournal(date)
+              }}
               className="-mx-2 flex flex-col gap-1 border-t px-2 py-2.5 text-start hover:bg-muted/40 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
             >
               <span className="flex items-center gap-1.5">
@@ -199,7 +203,9 @@ export function JournalWidget({ size }: WidgetComponentProps): React.JSX.Element
               type="button"
               data-testid="journal-upcoming-day"
               data-date={day.iso}
-              onClick={() => openJournal(day.iso)}
+              onClick={() => {
+                openJournal(day.iso)
+              }}
               className="-mx-2 flex items-baseline gap-2 rounded px-2 py-1 text-start hover:bg-muted/40 active:bg-muted/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
             >
               <span

@@ -240,9 +240,9 @@ describe('revealAttachmentInFinder', () => {
   })
 
   it('throws instead of revealing a file that is not on disk', () => {
-    expect(() =>
+    expect(() => {
       revealAttachmentInFinder(NOTE_ID, '../attachments/n1/k3f9x2-late.pdf')
-    ).toThrowError(expect.objectContaining({ code: NoteErrorCode.NOT_FOUND }))
+    }).toThrowError(expect.objectContaining({ code: NoteErrorCode.NOT_FOUND }))
     expect(showItemInFolder).not.toHaveBeenCalled()
   })
 })

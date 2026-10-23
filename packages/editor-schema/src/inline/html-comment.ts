@@ -25,8 +25,11 @@
  * `findUnrepresentableNodes` and keeps the file as it is.
  */
 
-import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
-import type { CustomInlineContentImplementation } from '@blocknote/core'
+import {
+  createInlineContentSpec,
+  type InlineContentSpec,
+  type CustomInlineContentImplementation
+} from '@blocknote/core'
 import { encodeHtmlCommentToken } from '@memry/shared/html-comments'
 import {
   listLinkBreakTokens,

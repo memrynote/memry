@@ -107,9 +107,9 @@ describe('offline clock helpers', () => {
     })
 
     it('#given the task does not exist #then no-ops without logging', () => {
-      expect(() =>
+      expect(() => {
         incrementTaskClocksOffline(asClientDb(testDb.db), 'missing', ['title'])
-      ).not.toThrow()
+      }).not.toThrow()
       expect(logMocks.debug).not.toHaveBeenCalled()
       expect(logMocks.info).not.toHaveBeenCalled()
     })
@@ -142,7 +142,9 @@ describe('offline clock helpers', () => {
     })
 
     it('#given the template does not exist #then no-ops without throwing', () => {
-      expect(() => incrementTemplateClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(() => {
+        incrementTemplateClockOffline(asClientDb(testDb.db), 'missing')
+      }).not.toThrow()
       expect(testDb.db.select().from(templates).all()).toHaveLength(0)
     })
   })
@@ -174,7 +176,9 @@ describe('offline clock helpers', () => {
     })
 
     it('#given the board does not exist #then no-ops without throwing', () => {
-      expect(() => incrementHomePageClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(() => {
+        incrementHomePageClockOffline(asClientDb(testDb.db), 'missing')
+      }).not.toThrow()
       expect(testDb.db.select().from(homePages).all()).toHaveLength(0)
     })
   })
@@ -204,7 +208,9 @@ describe('offline clock helpers', () => {
     })
 
     it('#given the bookmark does not exist #then no-ops without throwing', () => {
-      expect(() => incrementBookmarkClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(() => {
+        incrementBookmarkClockOffline(asClientDb(testDb.db), 'missing')
+      }).not.toThrow()
       expect(testDb.db.select().from(bookmarks).all()).toHaveLength(0)
     })
   })
@@ -232,7 +238,9 @@ describe('offline clock helpers', () => {
     })
 
     it('#given the reminder does not exist #then no-ops without throwing', () => {
-      expect(() => incrementReminderClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(() => {
+        incrementReminderClockOffline(asClientDb(testDb.db), 'missing')
+      }).not.toThrow()
       expect(testDb.db.select().from(reminders).all()).toHaveLength(0)
     })
 
@@ -342,7 +350,9 @@ describe('offline clock helpers', () => {
     it('#given the note does not exist #then no-ops without throwing', () => {
       registerDevice('device-A')
 
-      expect(() => incrementNoteClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(() => {
+        incrementNoteClockOffline(asClientDb(testDb.db), 'missing')
+      }).not.toThrow()
       expect(testDb.db.select().from(noteMetadata).all()).toHaveLength(0)
     })
   })

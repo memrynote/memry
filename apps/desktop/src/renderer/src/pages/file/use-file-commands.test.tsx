@@ -41,7 +41,9 @@ describe('file commands', () => {
   it('runs the actions the info bar and the PDF menu run once the file has loaded', async () => {
     const openAddToProject = vi.fn()
     render(mount({ fileId: 'file-1', openAddToProject }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
 
     await runCommand('file.addToProject', 'palette')
     await runCommand('file.openExternal', 'palette')
@@ -53,7 +55,9 @@ describe('file commands', () => {
 
   it('offers nothing before the file metadata loads', async () => {
     render(mount({ fileId: null, openAddToProject: vi.fn() }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
 
     await expect(runCommand('file.openExternal', 'palette')).resolves.toBe('unavailable')
     expect(mocks.openExternal).not.toHaveBeenCalled()

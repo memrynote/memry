@@ -226,7 +226,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
           typeof throttled.line.fields?.repeatCount === 'number'
             ? throttled.line.fields.repeatCount
             : 1
-        throttled.line.fields = { ...(throttled.line.fields ?? {}), repeatCount: priorCount + 1 }
+        throttled.line.fields = { ...throttled.line.fields, repeatCount: priorCount + 1 }
         return
       }
 
@@ -279,7 +279,9 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
       ;(log.transports as unknown as MutableTransports).logShip = null
       logShipInstance = null
     },
-    ingestForwarded: (record, workerName) => handleRecord(record, 'worker', workerName),
+    ingestForwarded: (record, workerName) => {
+      handleRecord(record, 'worker', workerName)
+    },
     recentLines: () => snapshotRing()
   }
 

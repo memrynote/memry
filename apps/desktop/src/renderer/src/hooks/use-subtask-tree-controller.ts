@@ -85,10 +85,11 @@ export function useSubtaskTreeController({
       contextIds,
       draftParentId,
       openDraft: setDraftParentId,
-      closeDraft: (parentId?: string) =>
+      closeDraft: (parentId?: string) => {
         setDraftParentId((current) =>
           parentId === undefined || current === parentId ? null : current
-        ),
+        )
+      },
       canAddUnder,
       addSubtask,
       canMoveUnder,
@@ -116,5 +117,11 @@ export function useSubtaskTreeController({
     ]
   )
 
-  return { value, moveUnderTaskId, closeMoveUnder: () => setMoveUnderTaskId(null) }
+  return {
+    value,
+    moveUnderTaskId,
+    closeMoveUnder: () => {
+      setMoveUnderTaskId(null)
+    }
+  }
 }

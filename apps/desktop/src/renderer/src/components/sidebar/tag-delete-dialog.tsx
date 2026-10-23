@@ -45,7 +45,9 @@ export function TagDeleteDialog({
   }
 
   const handleConfirm = (): void => {
-    React.startTransition(() => deleteAction())
+    React.startTransition(() => {
+      deleteAction()
+    })
   }
 
   return (
@@ -63,7 +65,13 @@ export function TagDeleteDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              handleOpenChange(false)
+            }}
+            disabled={isPending}
+          >
             {tPhaseF('phaseF.componentsSidebarTagDeleteDialog.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>

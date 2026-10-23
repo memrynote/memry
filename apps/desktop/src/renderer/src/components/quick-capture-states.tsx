@@ -10,7 +10,9 @@ export function CaptureSuccess({ onAutoClose }: CaptureSuccessProps): React.JSX.
   const { t: tPhaseF } = useT('inbox')
   useEffect(() => {
     const timer = setTimeout(onAutoClose, 1000)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [onAutoClose])
 
   return (

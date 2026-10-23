@@ -33,7 +33,9 @@ export const AddSubtaskButton = ({
     <button
       type="button"
       onClick={handleClick}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => {
+        e.stopPropagation()
+      }}
       aria-label={t('subtaskTree.addSubtask')}
       title={t('subtaskTree.addSubtask')}
       data-testid="add-subtask-button"

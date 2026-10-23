@@ -125,7 +125,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setShowSnoozedItems(true)
       setCurrentView('inbox')
     }, 0)
-    return () => window.clearTimeout(focusTimer)
+    return () => {
+      window.clearTimeout(focusTimer)
+    }
   }, [focusInboxItemId, focusToken, setCurrentView, setShowSnoozedItems])
 
   const itemCountsByType = useMemo(() => {
@@ -206,8 +208,12 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // Deferred setState matches the focus-item effect above and avoids a cascade render.
   useEffect(() => {
     if (!focusCaptureSignal) return
-    const timer = window.setTimeout(() => setCurrentView('inbox'), 0)
-    return () => window.clearTimeout(timer)
+    const timer = window.setTimeout(() => {
+      setCurrentView('inbox')
+    }, 0)
+    return () => {
+      window.clearTimeout(timer)
+    }
   }, [focusCaptureSignal, setCurrentView])
 
   return (
@@ -259,7 +265,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 ref={archivedSearchRef}
                 type="text"
                 value={archivedSearchQuery}
-                onChange={(e) => setArchivedSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setArchivedSearchQuery(e.target.value)
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') closeArchivedSearch()
                 }}
@@ -307,7 +315,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               )}
               <button
                 type="button"
-                onClick={() => setShowSnoozedItems(!showSnoozedItems)}
+                onClick={() => {
+                  setShowSnoozedItems(!showSnoozedItems)
+                }}
                 title={
                   showSnoozedItems
                     ? t('view.snoozed.hide')
@@ -403,7 +413,9 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     <Picker.Footer className="py-1.5 px-1">
                       <button
                         type="button"
-                        onClick={() => setSelectedTypeFilter(NO_TYPES)}
+                        onClick={() => {
+                          setSelectedTypeFilter(NO_TYPES)
+                        }}
                         className="flex w-full items-center rounded-[5px] py-1.5 px-2 text-[13px] text-muted-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
                       >
                         {t('view.filter.clearAll')}

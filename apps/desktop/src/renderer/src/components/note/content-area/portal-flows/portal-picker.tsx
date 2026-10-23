@@ -81,9 +81,13 @@ export function PortalPicker({
   useEffect(() => {
     const root = editor.domElement
     if (!root) return
-    const listener = (event: KeyboardEvent): void => handleKeyDown(event)
+    const listener = (event: KeyboardEvent): void => {
+      handleKeyDown(event)
+    }
     root.addEventListener('keydown', listener, true)
-    return () => root.removeEventListener('keydown', listener, true)
+    return () => {
+      root.removeEventListener('keydown', listener, true)
+    }
   }, [editor])
 
   if (items.length === 0) {
@@ -129,7 +133,9 @@ export function PortalPicker({
         aria-selected={isSelected}
         tabIndex={-1}
         className={cn(ROW_CLASS, isSelected && 'bg-accent')}
-        onMouseDown={(event) => event.preventDefault()}
+        onMouseDown={(event) => {
+          event.preventDefault()
+        }}
         onClick={() => onItemClick?.(item)}
       >
         {item.kind === 'note' ? (

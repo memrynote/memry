@@ -105,10 +105,14 @@ describe('ReadwiseImportPanel', () => {
     fireEvent.change(input, { target: { value: 'tok-123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Connect' }))
 
-    await waitFor(() => expect(connect).toHaveBeenCalledWith({ token: 'tok-123' }))
+    await waitFor(() => {
+      expect(connect).toHaveBeenCalledWith({ token: 'tok-123' })
+    })
     await screen.findByText('Where notes go')
     expect(screen.queryByLabelText('Access token')).not.toBeInTheDocument()
-    await waitFor(() => expect(states[states.length - 1].ready).toBe(true))
+    await waitFor(() => {
+      expect(states[states.length - 1].ready).toBe(true)
+    })
   })
 
   it('names the pulling device and takes over with the token pasted again (D8)', async () => {
@@ -129,7 +133,9 @@ describe('ReadwiseImportPanel', () => {
     fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'tok-9' } })
     fireEvent.click(button)
 
-    await waitFor(() => expect(takeOver).toHaveBeenCalledWith({ token: 'tok-9' }))
+    await waitFor(() => {
+      expect(takeOver).toHaveBeenCalledWith({ token: 'tok-9' })
+    })
     await screen.findByText('Where notes go')
   })
 
@@ -176,9 +182,9 @@ describe('ReadwiseImportPanel', () => {
     expect(screen.getAllByRole('switch')).toHaveLength(8)
 
     fireEvent.click(supplementals)
-    await waitFor(() =>
+    await waitFor(() => {
       expect(setOptions).toHaveBeenCalledWith({ categories: { supplementals: true } })
-    )
+    })
   })
 
   it('groups the two Reader switches, both off, and saves each', async () => {
@@ -194,9 +200,13 @@ describe('ReadwiseImportPanel', () => {
     expect(fullText).not.toBeChecked()
 
     fireEvent.click(documents)
-    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true }))
+    await waitFor(() => {
+      expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true })
+    })
     fireEvent.click(fullText)
-    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerFullText: true }))
+    await waitFor(() => {
+      expect(setOptions).toHaveBeenCalledWith({ readerFullText: true })
+    })
   })
 
   it('lists the journal switch, off, and saves it (#3476)', async () => {
@@ -215,7 +225,9 @@ describe('ReadwiseImportPanel', () => {
     expect(journal).not.toBeChecked()
 
     fireEvent.click(journal)
-    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ journalHighlights: true }))
+    await waitFor(() => {
+      expect(setOptions).toHaveBeenCalledWith({ journalHighlights: true })
+    })
   })
 
   it('saves the folder layout', async () => {
@@ -223,7 +235,9 @@ describe('ReadwiseImportPanel', () => {
     renderPanel()
 
     fireEvent.click(await screen.findByRole('radio', { name: 'One folder' }))
-    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ folderLayout: 'flat' }))
+    await waitFor(() => {
+      expect(setOptions).toHaveBeenCalledWith({ folderLayout: 'flat' })
+    })
   })
 
   it('disconnects and returns to the connect form', async () => {
@@ -232,7 +246,9 @@ describe('ReadwiseImportPanel', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect' }))
 
-    await waitFor(() => expect(disconnect).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(disconnect).toHaveBeenCalled()
+    })
     await screen.findByLabelText('Access token')
   })
 
@@ -242,13 +258,13 @@ describe('ReadwiseImportPanel', () => {
     renderPanel((state) => states.push(state))
 
     expect(await screen.findByRole('button', { name: 'Sync now' })).toBeEnabled()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(states[states.length - 1]).toEqual({
         ready: true,
         options: {},
         confirmLabel: undefined
       })
-    )
+    })
   })
 
   describe('first import preview', () => {
@@ -299,13 +315,13 @@ describe('ReadwiseImportPanel', () => {
         screen.getByText('Off: Supplementals. 505 books will import.', { exact: false })
       ).toBeInTheDocument()
       expect(screen.getByRole('switch', { name: 'Supplementals' })).not.toBeChecked()
-      await waitFor(() =>
+      await waitFor(() => {
         expect(states[states.length - 1]).toEqual({
           ready: true,
           options: {},
           confirmLabel: 'Import 505 books'
         })
-      )
+      })
     })
 
     it('a category switch changes what Import will bring in', async () => {
@@ -321,10 +337,12 @@ describe('ReadwiseImportPanel', () => {
 
       fireEvent.click(await screen.findByRole('switch', { name: 'Tweets' }))
 
-      await waitFor(() =>
+      await waitFor(() => {
         expect(setOptions).toHaveBeenCalledWith({ categories: { tweets: false } })
-      )
-      await waitFor(() => expect(states[states.length - 1].confirmLabel).toBe('Import 447 books'))
+      })
+      await waitFor(() => {
+        expect(states[states.length - 1].confirmLabel).toBe('Import 447 books')
+      })
       expect(preview).toHaveBeenCalledTimes(1)
     })
 
@@ -340,7 +358,9 @@ describe('ReadwiseImportPanel', () => {
       ).toBeInTheDocument()
 
       fireEvent.click(journal)
-      await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ journalHighlights: true }))
+      await waitFor(() => {
+        expect(setOptions).toHaveBeenCalledWith({ journalHighlights: true })
+      })
     })
 
     it('counts saved Reader documents only with the switch on, and the label says notes', async () => {
@@ -371,10 +391,16 @@ describe('ReadwiseImportPanel', () => {
       })
       fireEvent.click(readerSwitch)
 
-      await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true }))
-      await waitFor(() => expect(preview).toHaveBeenCalledTimes(2))
+      await waitFor(() => {
+        expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true })
+      })
+      await waitFor(() => {
+        expect(preview).toHaveBeenCalledTimes(2)
+      })
       expect(await screen.findByText('8')).toBeInTheDocument()
-      await waitFor(() => expect(states[states.length - 1].confirmLabel).toBe('Import 513 notes'))
+      await waitFor(() => {
+        expect(states[states.length - 1].confirmLabel).toBe('Import 513 notes')
+      })
     })
 
     it('is not ready until the counts arrive, and stops the preview on unmount', async () => {
@@ -383,7 +409,9 @@ describe('ReadwiseImportPanel', () => {
       const { unmount } = renderPanel((state) => states.push(state))
 
       await screen.findByText('Reading your Readwise library…')
-      await waitFor(() => expect(states.length).toBeGreaterThan(0))
+      await waitFor(() => {
+        expect(states.length).toBeGreaterThan(0)
+      })
       expect(states[states.length - 1].ready).toBe(false)
       unmount()
       expect(cancel).toHaveBeenCalledWith({ importId: preview.mock.calls[0][0].importId })
@@ -402,13 +430,13 @@ describe('ReadwiseImportPanel', () => {
       renderPanel((state) => states.push(state))
 
       await screen.findByText(/has no highlights yet/)
-      await waitFor(() =>
+      await waitFor(() => {
         expect(states[states.length - 1]).toEqual({
           ready: true,
           options: {},
           confirmLabel: 'Import'
         })
-      )
+      })
     })
 
     it('shows a token problem from the preview and retries on request', async () => {
@@ -459,7 +487,9 @@ describe('ReadwiseImportPanel', () => {
     renderPanel()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }))
-    await waitFor(() => expect(syncNow).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(syncNow).toHaveBeenCalled()
+    })
 
     syncNow.mockResolvedValue({ success: false, error: 'sync refused' })
     fireEvent.click(screen.getByRole('button', { name: 'Sync now' }))
@@ -484,7 +514,9 @@ describe('ReadwiseImportPanel', () => {
     const input = await screen.findByLabelText('Access token')
     fireEvent.change(input, { target: { value: 'tok-1' } })
     fireEvent.submit(input.closest('form')!)
-    await waitFor(() => expect(connect).toHaveBeenCalledWith({ token: 'tok-1' }))
+    await waitFor(() => {
+      expect(connect).toHaveBeenCalledWith({ token: 'tok-1' })
+    })
   })
 
   it('lists a saved root folder that is not among the vault folders, and changes cadence', async () => {
@@ -551,7 +583,9 @@ describe('ReadwiseImportPanel', () => {
       expect(el).toHaveTextContent('Writing books, 3 of 12')
       expect(screen.getByRole('button', { name: 'Sync now' })).toBeDisabled()
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-      await waitFor(() => expect(cancel).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(cancel).toHaveBeenCalled()
+      })
     })
 
     it('says it waits for memry sync before the first pull', async () => {
@@ -573,7 +607,9 @@ describe('ReadwiseImportPanel', () => {
         ...connectedStatus,
         syncing: { stage: 'reading', planned: null, done: 0 }
       })
-      statusListeners.forEach((listener) => listener())
+      statusListeners.forEach((listener) => {
+        listener()
+      })
       expect(await screen.findByText('Reading your library…')).toBeInTheDocument()
     })
 
@@ -594,7 +630,9 @@ describe('ReadwiseImportPanel', () => {
       expect(el).toHaveTextContent(title)
       expect(el).toHaveAttribute('role', 'alert')
       fireEvent.click(screen.getByRole('button', { name: 'Retry now' }))
-      await waitFor(() => expect(syncNow).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(syncNow).toHaveBeenCalled()
+      })
     })
 
     it('a transient error says when the next try is, a fixable one does not', async () => {
@@ -639,9 +677,13 @@ describe('ReadwiseImportPanel', () => {
       fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'fresh' } })
       fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }))
 
-      await waitFor(() => expect(connect).toHaveBeenCalledWith({ token: 'fresh' }))
+      await waitFor(() => {
+        expect(connect).toHaveBeenCalledWith({ token: 'fresh' })
+      })
       expect(disconnect).not.toHaveBeenCalled()
-      await waitFor(() => expect(screen.queryByLabelText('Access token')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.queryByLabelText('Access token')).not.toBeInTheDocument()
+      })
     })
 
     it('keeps the new-token form and its error when Readwise refuses the token', async () => {
@@ -689,8 +731,12 @@ describe('ReadwiseImportPanel', () => {
       ).toBeInTheDocument()
 
       fireEvent.click(screen.getAllByRole('button', { name: 'Restore' })[0])
-      await waitFor(() => expect(restoreBook).toHaveBeenCalledWith({ readwiseBookId: 1 }))
-      await waitFor(() => expect(screen.queryByText('Deep Work')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(restoreBook).toHaveBeenCalledWith({ readwiseBookId: 1 })
+      })
+      await waitFor(() => {
+        expect(screen.queryByText('Deep Work')).not.toBeInTheDocument()
+      })
       expect(screen.getByText('Smart Notes')).toBeInTheDocument()
     })
 

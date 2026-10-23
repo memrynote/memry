@@ -40,7 +40,9 @@ export function SettingsView() {
       else close()
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [activeSection, setActiveSection, close])
 
   return (
@@ -63,11 +65,15 @@ export function SettingsView() {
 function useExpandSidebarWhileMounted(): void {
   const { open, setOpen } = useSidebar()
   const [wasCollapsed] = useState(!open)
-  const setSidebarOpen = useEffectEvent((value: boolean) => setOpen(value))
+  const setSidebarOpen = useEffectEvent((value: boolean) => {
+    setOpen(value)
+  })
 
   useEffect(() => {
     if (!wasCollapsed) return
     setSidebarOpen(true)
-    return () => setSidebarOpen(false)
+    return () => {
+      setSidebarOpen(false)
+    }
   }, [wasCollapsed])
 }

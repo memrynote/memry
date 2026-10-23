@@ -83,7 +83,9 @@ export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
           >
             <DemoVideo />
           </motion.div>
@@ -107,7 +109,9 @@ function DemoVideo() {
     })
   }, [])
 
-  const track = (name: LandingEventName) => trackLandingEvent(name, TARGET)
+  const track = (name: LandingEventName) => {
+    trackLandingEvent(name, TARGET)
+  }
 
   return (
     <video
@@ -119,12 +123,18 @@ function DemoVideo() {
       preload="auto"
       aria-label="MemryNote product demo, narrated"
       className="block aspect-video w-full"
-      onPlay={() => track(reached.current.size ? 'landing_demo_resume' : 'landing_demo_start')}
+      onPlay={() => {
+        track(reached.current.size ? 'landing_demo_resume' : 'landing_demo_start')
+      }}
       onPause={(e) => {
         if (!e.currentTarget.ended) track('landing_demo_pause')
       }}
-      onEnded={() => track('landing_demo_complete')}
-      onVolumeChange={(e) => track(e.currentTarget.muted ? 'landing_demo_mute' : 'landing_demo_unmute')}
+      onEnded={() => {
+        track('landing_demo_complete')
+      }}
+      onVolumeChange={(e) => {
+        track(e.currentTarget.muted ? 'landing_demo_mute' : 'landing_demo_unmute')
+      }}
       onTimeUpdate={(e) => {
         const { currentTime, duration } = e.currentTarget
         reached.current.add(0)

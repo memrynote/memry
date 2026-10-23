@@ -79,7 +79,9 @@ describe('forward Delete at the end of the document', () => {
     const editor = await mountEditorWithMarkdown('Hello')
     placeCaretAtEndOfBlock(editor, editor.document.length - 1)
 
-    expect(() => pressDelete(editor)).not.toThrow()
+    expect(() => {
+      pressDelete(editor)
+    }).not.toThrow()
   })
 
   it('leaves the document untouched when there is nothing to merge', async () => {

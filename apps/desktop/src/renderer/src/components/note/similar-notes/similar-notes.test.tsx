@@ -74,7 +74,9 @@ describe('SimilarNotesSection', () => {
     render(<SimilarNotesSection notes={[similar]} onOpen={vi.fn()} onAddToCanvas={onAddToCanvas} />)
 
     await user.click(screen.getByRole('button', { name: 'similarNotes.addToCanvasAria:Title a' }))
-    await waitFor(() => expect(screen.getByText('Board')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Board')).toBeInTheDocument()
+    })
     expect(screen.queryByText('Whiteboard in a note')).not.toBeInTheDocument()
     expect(screen.queryByText('Broken')).not.toBeInTheDocument()
 

@@ -197,7 +197,13 @@ export function ReportIncidentDialog({
 
         <DialogFooter>
           {phase === 'sent' || phase === 'previewError' ? (
-            <Button onClick={() => onOpenChange(false)}>{tCommon('button.close')}</Button>
+            <Button
+              onClick={() => {
+                onOpenChange(false)
+              }}
+            >
+              {tCommon('button.close')}
+            </Button>
           ) : (
             <>
               <Button variant="outline" onClick={handleNotNow} disabled={phase === 'sending'}>

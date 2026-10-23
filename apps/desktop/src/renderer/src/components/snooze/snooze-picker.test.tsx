@@ -17,7 +17,12 @@ vi.mock('@/hooks/use-general-settings', () => ({
 
 vi.mock('@/components/tasks/date-picker-calendar', () => ({
   DatePickerCalendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
-    <button type="button" onClick={() => onSelect(new Date('2026-05-11T00:00:00.000Z'))}>
+    <button
+      type="button"
+      onClick={() => {
+        onSelect(new Date('2026-05-11T00:00:00.000Z'))
+      }}
+    >
       Select May 11
     </button>
   )

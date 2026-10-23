@@ -98,7 +98,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.priority')}
-            onClick={() => onUpdateFilters({ priorities: [] })}
+            onClick={() => {
+              onUpdateFilters({ priorities: [] })
+            }}
           />
         </PillWrapper>
       )
@@ -134,7 +136,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.tags')}
-            onClick={() => onUpdateFilters({ tags: [] })}
+            onClick={() => {
+              onUpdateFilters({ tags: [] })
+            }}
           />
         </PillWrapper>
       )
@@ -171,7 +175,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.status')}
-            onClick={() => onUpdateFilters({ statusIds: [] })}
+            onClick={() => {
+              onUpdateFilters({ statusIds: [] })
+            }}
           />
         </PillWrapper>
       )
@@ -203,7 +209,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.project')}
-            onClick={() => onUpdateFilters({ projectIds: [] })}
+            onClick={() => {
+              onUpdateFilters({ projectIds: [] })
+            }}
           />
         </PillWrapper>
       )
@@ -236,7 +244,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.location')}
-            onClick={() => onUpdateFilters({ folderPaths: [], noteIds: [] })}
+            onClick={() => {
+              onUpdateFilters({ folderPaths: [], noteIds: [] })
+            }}
           />
         </PillWrapper>
       )
@@ -288,9 +298,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.dueDate')}
-            onClick={() =>
+            onClick={() => {
               onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
-            }
+            }}
           />
         </PillWrapper>
       )
@@ -316,7 +326,9 @@ export const ActiveFiltersBar = ({
           </span>
           <RemoveButton
             label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.search')}
-            onClick={() => onUpdateFilters({ search: '' })}
+            onClick={() => {
+              onUpdateFilters({ search: '' })
+            }}
           />
         </PillWrapper>
       )

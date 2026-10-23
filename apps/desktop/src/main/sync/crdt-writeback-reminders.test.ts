@@ -78,8 +78,12 @@ vi.mock('../vault/note-sync', () => ({ syncNoteToCache: vi.fn(), deleteNoteFromC
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: () => [] }))
 vi.mock('../projections', () => ({ flushProjectionEvents: vi.fn(async () => {}) }))
 vi.mock('./local-mutations', () => ({
-  enqueueLocalSyncCreate: (_type: string, id: string) => mocks.reminderSync!.enqueueCreate(id),
-  enqueueLocalSyncUpdate: (_type: string, id: string) => mocks.reminderSync!.enqueueUpdate(id),
+  enqueueLocalSyncCreate: (_type: string, id: string) => {
+    mocks.reminderSync!.enqueueCreate(id)
+  },
+  enqueueLocalSyncUpdate: (_type: string, id: string) => {
+    mocks.reminderSync!.enqueueUpdate(id)
+  },
   enqueueLocalSyncDelete: vi.fn()
 }))
 

@@ -53,16 +53,16 @@ export function registerGraphHandlers(): void {
 
   ipcMain.handle(
     GraphChannels.invoke.SAVE_LAYOUT,
-    createValidatedHandler(SaveGraphLayoutRequestSchema, (input): void =>
+    createValidatedHandler(SaveGraphLayoutRequestSchema, (input): void => {
       saveGraphLayout(getIndexDatabase(), input.viewKey, input.layout)
-    )
+    })
   )
 
   ipcMain.handle(
     GraphChannels.invoke.CLEAR_LAYOUT,
-    createValidatedHandler(GraphLayoutViewKeySchema, (viewKey): void =>
+    createValidatedHandler(GraphLayoutViewKeySchema, (viewKey): void => {
       clearGraphLayout(getIndexDatabase(), viewKey)
-    )
+    })
   )
 }
 

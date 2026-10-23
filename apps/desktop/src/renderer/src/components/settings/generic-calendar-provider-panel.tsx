@@ -223,7 +223,9 @@ export function GenericCalendarProviderPanel({
           accounts={accounts}
           busy={busy}
           reconnectAccountId={reconnectAccountId}
-          onDisconnect={(accountId) => disconnectMutation.mutate(accountId)}
+          onDisconnect={(accountId) => {
+            disconnectMutation.mutate(accountId)
+          }}
           onReconnect={setReconnectAccountId}
           onConnected={onConnected}
           renderConnectForm={renderConnectForm}
@@ -238,8 +240,12 @@ export function GenericCalendarProviderPanel({
           note={calendarNote}
           selectionPending={selectionMutation.isPending}
           retryPending={retryMutation.isPending}
-          onSelect={(input) => selectionMutation.mutate(input)}
-          onRetry={(sourceId) => retryMutation.mutate(sourceId)}
+          onSelect={(input) => {
+            selectionMutation.mutate(input)
+          }}
+          onRetry={(sourceId) => {
+            retryMutation.mutate(sourceId)
+          }}
         />
       )}
 
@@ -249,7 +255,9 @@ export function GenericCalendarProviderPanel({
           description={t('calendar.providers.push.description')}
           checked={pushEnabled}
           disabled={pushMutation.isPending}
-          onCheckedChange={(checked) => pushMutation.mutate(checked)}
+          onCheckedChange={(checked) => {
+            pushMutation.mutate(checked)
+          }}
           data-testid={`calendar-provider-push-${id}`}
         />
       )}
@@ -264,7 +272,9 @@ export function GenericCalendarProviderPanel({
             type="button"
             className={CALENDAR_QUIET_BUTTON}
             disabled={busy}
-            onClick={() => refreshMutation.mutate()}
+            onClick={() => {
+              refreshMutation.mutate()
+            }}
           >
             {t('calendar.providers.syncNow')}
           </button>
@@ -273,7 +283,9 @@ export function GenericCalendarProviderPanel({
               type="button"
               className={CALENDAR_QUIET_BUTTON}
               data-testid={`calendar-provider-add-account-${id}`}
-              onClick={() => setShowConnectForm((open) => !open)}
+              onClick={() => {
+                setShowConnectForm((open) => !open)
+              }}
             >
               {t('calendar.providers.addAccount')}
             </button>
@@ -282,7 +294,9 @@ export function GenericCalendarProviderPanel({
               type="button"
               className={CALENDAR_DESTRUCTIVE_BUTTON}
               disabled={busy}
-              onClick={() => disconnectMutation.mutate(undefined)}
+              onClick={() => {
+                disconnectMutation.mutate(undefined)
+              }}
             >
               {t('calendar.providers.disconnect')}
             </button>
@@ -363,7 +377,9 @@ function ProviderAccountList({
               type="button"
               className={CALENDAR_DESTRUCTIVE_BUTTON}
               disabled={busy}
-              onClick={() => onDisconnect(account.accountId)}
+              onClick={() => {
+                onDisconnect(account.accountId)
+              }}
             >
               {t('calendar.providers.disconnect')}
             </button>
@@ -380,7 +396,9 @@ function ProviderAccountList({
                 <button
                   type="button"
                   className={`${CALENDAR_BORDERED_BUTTON} w-fit`}
-                  onClick={() => onReconnect(account.accountId)}
+                  onClick={() => {
+                    onReconnect(account.accountId)
+                  }}
                 >
                   {t('calendar.providers.reconnect')}
                 </button>
@@ -427,14 +445,18 @@ function ProviderCalendarList({
           color={source.color}
           checked={source.isSelected}
           disabled={selectionPending}
-          onCheckedChange={(checked) => onSelect({ id: source.id, isSelected: checked })}
+          onCheckedChange={(checked) => {
+            onSelect({ id: source.id, isSelected: checked })
+          }}
           trailing={
             source.syncStatus === 'error' ? (
               <button
                 type="button"
                 className={CALENDAR_QUIET_BUTTON}
                 disabled={retryPending}
-                onClick={() => onRetry(source.id)}
+                onClick={() => {
+                  onRetry(source.id)
+                }}
               >
                 {t('calendar.providers.retry')}
               </button>

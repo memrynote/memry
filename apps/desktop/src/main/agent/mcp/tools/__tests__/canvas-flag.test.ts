@@ -13,7 +13,9 @@ describe('assertSpatialCanvasEnabled', () => {
     mocks.getFeaturesSettings.mockReturnValue({ spatialCanvas: true })
     const { assertSpatialCanvasEnabled } = await import('../canvas-flag')
 
-    expect(() => assertSpatialCanvasEnabled()).not.toThrow()
+    expect(() => {
+      assertSpatialCanvasEnabled()
+    }).not.toThrow()
   })
 
   it('throws an actionable PERMISSION_DENIED when the flag is off', async () => {

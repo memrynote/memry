@@ -52,14 +52,14 @@ import {
   GRAPH_SETTINGS_DEFAULTS,
   GRAPH_VIEWS_SETTINGS_DEFAULTS,
   parseGraphViewsSettings,
-  type GraphViewsSettings
+  type GraphViewsSettings,
+  type GraphSettings
 } from '@memry/contracts/graph-api'
 import {
   MAX_SAVED_TAG_SEARCHES,
   parseTagSearches,
   type TagSearch
 } from '@memry/contracts/tag-searches-api'
-import type { GraphSettings } from '@memry/contracts/graph-api'
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '../settings/settings-store'
@@ -1720,7 +1720,11 @@ function saveStickyShortcut(binding: ShortcutBinding | null): StickyShortcutResu
 }
 
 function applyStickyBinding(binding: ShortcutBinding | null): GlobalCaptureStatus {
-  return registerConfiguredShortcut(stickyShortcut, binding, { onFire: () => showStickyWindow() })
+  return registerConfiguredShortcut(stickyShortcut, binding, {
+    onFire: () => {
+      showStickyWindow()
+    }
+  })
 }
 
 function releaseConfiguredShortcut(shortcut: ConfiguredShortcut): void {

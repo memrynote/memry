@@ -47,13 +47,13 @@ describe('UnlinkedMentionsSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'title' }))
 
     fireEvent.click(await screen.findByRole('button', { name: 'Link roadmap' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(service.linkMention).toHaveBeenCalledWith({
         sourceId: 'src',
         targetId: 'target',
         ordinal: 1
       })
-    )
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Standup' }))
     expect(onOpen).toHaveBeenCalledWith('src', 'Standup')

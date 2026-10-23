@@ -5,7 +5,12 @@ const smoothTo = async ({ page, sleep }, y, steps = 30) => {
   for (let i = 1; i <= steps; i++) {
     const k = i / steps
     const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2
-    await page.evaluate((v) => scrollTo(0, v), from + (y - from) * e)
+    await page.evaluate(
+      (v) => {
+        scrollTo(0, v)
+      },
+      from + (y - from) * e
+    )
     await sleep(16)
   }
 }

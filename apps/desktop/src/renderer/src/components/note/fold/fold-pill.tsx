@@ -46,8 +46,12 @@ export function FoldPill(props: FoldPillProps) {
   const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!copied) return
-    const timer = setTimeout(() => setCopied(false), 1500)
-    return () => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      setCopied(false)
+    }, 1500)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [copied])
 
   return (
@@ -77,7 +81,9 @@ export function FoldPill(props: FoldPillProps) {
               type="button"
               aria-pressed={active}
               disabled={availability === 'unavailable'}
-              onClick={() => onSelectLevel(entry)}
+              onClick={() => {
+                onSelectLevel(entry)
+              }}
               data-testid={`note-fold-level-${entry}`}
               className={cn(
                 'flex h-6 items-center gap-1.5 rounded-full px-2.5 outline-none transition-colors',
@@ -101,8 +107,12 @@ export function FoldPill(props: FoldPillProps) {
           title={copied ? t('fold.pill.copied') : t('fold.pill.copy')}
           onClick={() =>
             void onCopy()
-              .then(() => setCopied(true))
-              .catch((error: unknown) => log.error('Failed to copy the folded view', error))
+              .then(() => {
+                setCopied(true)
+              })
+              .catch((error: unknown) => {
+                log.error('Failed to copy the folded view', error)
+              })
           }
           data-testid="note-fold-copy"
           className="flex size-6 items-center justify-center rounded-full text-text-secondary outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"

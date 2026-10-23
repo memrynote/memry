@@ -4,7 +4,9 @@ const mocks = vi.hoisted(() => ({
   initForNote: vi.fn(async () => ({}) as never),
   setNoteLocalOnly: vi.fn(),
   purge: vi.fn(async () => undefined),
-  withDocLoaded: vi.fn(async (_id: string, enqueue: () => void) => enqueue()),
+  withDocLoaded: vi.fn(async (_id: string, enqueue: () => void) => {
+    enqueue()
+  }),
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn(),
@@ -114,7 +116,9 @@ describe('syncNoteDelete', () => {
     // network origin, and written back — and with no index row left, write-back
     // re-creates the note in the default folder.
     await syncNoteDelete('note-1')
-    await vi.waitFor(() => expect(mocks.purge).toHaveBeenCalledWith('note-1'))
+    await vi.waitFor(() => {
+      expect(mocks.purge).toHaveBeenCalledWith('note-1')
+    })
   })
 
   it('enqueues the tombstone with the doc loaded, before the doc is purged', async () => {

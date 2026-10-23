@@ -327,9 +327,13 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath) => this.debouncedChange?.(filePath))
-      .on('unlink', (filePath) => void this.handleFileDelete(filePath))
-      .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
-      .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
+      .on('unlink', (filePath) => this.handleFileDelete(filePath))
+      .on('addDir', (dirPath) => {
+        this.handleDirAdd(dirPath)
+      })
+      .on('unlinkDir', (dirPath) => {
+        this.handleDirUnlink(dirPath)
+      })
       .on('ready', () => {
         this.isReady = true
       })
@@ -344,7 +348,9 @@ export class VaultWatcher {
       if (this.isReady) {
         resolve()
       } else {
-        this.watcher?.once('ready', () => resolve())
+        this.watcher?.once('ready', () => {
+          resolve()
+        })
       }
     })
   }
@@ -400,7 +406,10 @@ export class VaultWatcher {
     const generation = this.generation
     const poll = (): void => {
       this.vaultReturnPoll = setTimeout(() => {
-        if (!isVaultReachable(options.vaultPath)) return poll()
+        if (!isVaultReachable(options.vaultPath)) {
+          poll()
+          return
+        }
         this.vaultReturnPoll = null
         void this.resumeAfterReturn(options, generation)
       }, VAULT_RETURN_POLL_MS)

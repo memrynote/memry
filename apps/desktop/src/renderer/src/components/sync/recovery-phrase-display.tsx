@@ -54,7 +54,9 @@ export function RecoveryPhraseDisplay({
       setCopied(true)
 
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
-      copiedTimerRef.current = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS)
+      copiedTimerRef.current = setTimeout(() => {
+        setCopied(false)
+      }, COPIED_FEEDBACK_MS)
 
       if (clipboardClearTimerRef.current) clearTimeout(clipboardClearTimerRef.current)
       clipboardClearTimerRef.current = setTimeout(() => {
@@ -114,9 +116,9 @@ export function RecoveryPhraseDisplay({
         </Button>
         <Button
           variant="outline"
-          onClick={() =>
+          onClick={() => {
             downloadPhrase(words, t('setup.recovery.fileTitle'), t('setup.recovery.warning'))
-          }
+          }}
           className="h-[38px] gap-1.5 px-4 text-sm font-medium"
         >
           <Download className="size-3.5" />

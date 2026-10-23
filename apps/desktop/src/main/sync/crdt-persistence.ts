@@ -434,16 +434,16 @@ async function probePersistence(persistence: CrdtPersistence): Promise<void> {
       process.removeListener('uncaughtException', onUncaught)
       fn()
     }
-    const onUncaught = (err: Error): void => settle(() => reject(err))
-    const timer = setTimeout(
-      () =>
-        settle(() =>
-          reject(
-            new Error(`CRDT persistence probe timed out after ${PERSISTENCE_PROBE_TIMEOUT_MS}ms`)
-          )
-        ),
-      PERSISTENCE_PROBE_TIMEOUT_MS
-    )
+    const onUncaught = (err: Error): void => {
+      settle(() => reject(err))
+    }
+    const timer = setTimeout(() => {
+      settle(() =>
+        reject(
+          new Error(`CRDT persistence probe timed out after ${PERSISTENCE_PROBE_TIMEOUT_MS}ms`)
+        )
+      )
+    }, PERSISTENCE_PROBE_TIMEOUT_MS)
     process.prependListener('uncaughtException', onUncaught)
 
     Promise.resolve()
@@ -454,8 +454,12 @@ async function probePersistence(persistence: CrdtPersistence): Promise<void> {
         await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
       })
       .then(
-        () => settle(resolve),
-        (err) => settle(() => reject(err instanceof Error ? err : new Error(String(err))))
+        () => {
+          settle(resolve)
+        },
+        (err) => {
+          settle(() => reject(err instanceof Error ? err : new Error(String(err))))
+        }
       )
   })
 }

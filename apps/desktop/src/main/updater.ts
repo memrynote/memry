@@ -340,7 +340,7 @@ const host: UpdaterHost = {
     // `isInApplicationsFolder()` guard is what keeps this from telling a
     // correctly installed user to move an app that is already in place; it is
     // macOS-only, so `?.()` leaves every other platform on the raw message.
-    const readOnlyVolume = isReadOnlyVolumeError(error) && app.isInApplicationsFolder?.() === false
+    const readOnlyVolume = isReadOnlyVolumeError(error) && !app.isInApplicationsFolder?.()
     setState({
       status: 'error',
       error: readOnlyVolume ? getMainI18n().t('system:error.updateReadOnlyVolume') : message
@@ -706,7 +706,7 @@ function getCurrentDisplayVersion(): string {
 }
 
 function isUpdateSupported(): boolean {
-  return app.isPackaged === true
+  return app.isPackaged
 }
 
 function broadcastState(): void {

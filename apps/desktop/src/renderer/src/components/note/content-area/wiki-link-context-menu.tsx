@@ -15,7 +15,12 @@ import { WikiLinkDisplayPanel } from './wiki-link-display-panel'
 import { useT } from '@memry/i18n/renderer'
 
 export type WikiLinkMenuAction =
-  'open' | 'openInNewTab' | 'openToTheSide' | 'edit' | 'copy' | 'unlink'
+  | 'open'
+  | 'openInNewTab'
+  | 'openToTheSide'
+  | 'edit'
+  | 'copy'
+  | 'unlink'
 
 /** A right-click on a wiki-link chip, captured when the menu opened. */
 export interface WikiLinkMenuTarget {
@@ -84,7 +89,13 @@ export function WikiLinkContextMenu({
 
   const editing = editable ? EDITING : EDITING.filter((action) => action === 'copy')
   const item = (action: WikiLinkMenuAction) => (
-    <DropdownMenuItem key={action} data-action={action} onSelect={() => onAction(action)}>
+    <DropdownMenuItem
+      key={action}
+      data-action={action}
+      onSelect={() => {
+        onAction(action)
+      }}
+    >
       {labels[action]}
     </DropdownMenuItem>
   )
@@ -112,7 +123,9 @@ export function WikiLinkContextMenu({
         aria-label={t('wikiLinkMenu.aria')}
         data-testid="wiki-link-context-menu"
         className="min-w-48"
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+        }}
       >
         {NAVIGATION.map(item)}
         <DropdownMenuSeparator />

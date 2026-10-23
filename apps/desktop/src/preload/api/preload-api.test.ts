@@ -170,9 +170,9 @@ describe('preload api wrappers', () => {
     const classList = {
       values: new Set<string>(),
       add: vi.fn((value: string) => classList.values.add(value)),
-      remove: vi.fn((...values: string[]) =>
+      remove: vi.fn((...values: string[]) => {
         values.forEach((value) => classList.values.delete(value))
-      )
+      })
     }
     const storage = new Map<string, string>()
     const originalWindow = globalThis.window

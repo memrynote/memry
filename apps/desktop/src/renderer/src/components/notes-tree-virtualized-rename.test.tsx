@@ -342,9 +342,9 @@ describe('sidebar folder rename across the virtualization threshold', () => {
 
     await clickRenameOnProjectsFolder()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.scrollToIndex).toHaveBeenCalledWith(expectedIndex, { align: 'center' })
-    )
+    })
   })
 
   it('above the threshold: the inline input commits the rename', async () => {
@@ -356,12 +356,16 @@ describe('sidebar folder rename across the virtualization threshold', () => {
     const input = screen.getByRole('textbox', { name: /rename/i })
     // The input focuses itself a frame after mounting; typing before that lands
     // its `select()` mid-word.
-    await waitFor(() => expect(input).toHaveFocus())
+    await waitFor(() => {
+      expect(input).toHaveFocus()
+    })
 
     const user = userEvent.setup()
     await user.clear(input)
     await user.type(input, 'Renamed{Enter}')
 
-    await waitFor(() => expect(mocks.renameFolder).toHaveBeenCalledWith('Projects', 'Renamed'))
+    await waitFor(() => {
+      expect(mocks.renameFolder).toHaveBeenCalledWith('Projects', 'Renamed')
+    })
   })
 })

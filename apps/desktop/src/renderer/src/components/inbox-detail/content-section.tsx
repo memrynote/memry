@@ -482,7 +482,9 @@ const VoicePreview = ({
     if (transcription) {
       await navigator.clipboard.writeText(transcription)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => {
+        setCopied(false)
+      }, 2000)
     }
   }
 
@@ -500,9 +502,15 @@ const VoicePreview = ({
         src={audioUrl ?? undefined}
         preload="metadata"
         aria-label={t('content.voiceMemo')}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onPlay={() => {
+          setIsPlaying(true)
+        }}
+        onPause={() => {
+          setIsPlaying(false)
+        }}
+        onEnded={() => {
+          setIsPlaying(false)
+        }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onError={handleAudioError}

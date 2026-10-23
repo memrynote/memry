@@ -91,7 +91,9 @@ describe('addPresetTag', () => {
 })
 
 describe('lastCreateTag', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+  })
   afterEach(() => vi.restoreAllMocks())
 
   it('remembers the last tag across reads and starts empty', () => {
@@ -110,7 +112,9 @@ describe('lastCreateTag', () => {
       throw new Error('quota')
     })
 
-    expect(() => lastCreateTag.set('company')).not.toThrow()
+    expect(() => {
+      lastCreateTag.set('company')
+    }).not.toThrow()
     expect(lastCreateTag.get()).toBeNull()
   })
 })

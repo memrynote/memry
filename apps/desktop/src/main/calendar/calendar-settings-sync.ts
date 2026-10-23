@@ -135,7 +135,7 @@ export function changedCalendarFields(
   }
   const leaves = groupLeaves(key)
   if (!leaves) return []
-  const previous = { ...groupDefaults(key), ...(parseObject(before) ?? {}) }
+  const previous = { ...groupDefaults(key), ...parseObject(before) }
   const next = parseObject(after) ?? {}
   const fields: SyncedField[] = []
   for (const leaf of leaves) {

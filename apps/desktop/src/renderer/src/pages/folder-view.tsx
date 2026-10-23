@@ -832,9 +832,15 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // ============================================================================
 
   // The header's buttons and the palette commands open these the same way.
-  const openSearch = (): void => setSearchOpen(true)
-  const openTagRename = (): void => setTagRenameOpen(true)
-  const openTagDelete = (): void => setTagDeleteOpen(true)
+  const openSearch = (): void => {
+    setSearchOpen(true)
+  }
+  const openTagRename = (): void => {
+    setTagRenameOpen(true)
+  }
+  const openTagDelete = (): void => {
+    setTagDeleteOpen(true)
+  }
   const { createNote: handleCreateNote } = useFolderViewCommands({
     scope,
     openSearch,
@@ -885,7 +891,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [notes, selectedRowIds]
   )
 
-  const handleClearSelection = useCallback(() => setSelectedRowIds(new Set()), [])
+  const handleClearSelection = useCallback(() => {
+    setSelectedRowIds(new Set())
+  }, [])
 
   const handleCopyLinks = useCallback(async () => {
     const ids = Array.from(selectedRowIds)
@@ -968,7 +976,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                     {crumbPath !== null && !isLast ? (
                       <button
                         type="button"
-                        onClick={() => handleBreadcrumbNav(crumbPath, crumb.label)}
+                        onClick={() => {
+                          handleBreadcrumbNav(crumbPath, crumb.label)
+                        }}
                         className="truncate font-medium text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {crumb.label}
@@ -1054,7 +1064,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               <Input
                 autoFocus
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                }}
                 onBlur={() => {
                   if (!searchQuery) setSearchOpen(false)
                 }}
@@ -1189,7 +1201,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               tag={fieldTag}
               notes={notes}
               partial={hasMore}
-              onEdit={() => tagFields.setSettingsOpen(true)}
+              onEdit={() => {
+                tagFields.setSettingsOpen(true)
+              }}
             />
           )}
 
@@ -1235,7 +1249,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         shown={notes.length}
         total={unfilteredCount}
         viewFilters={activeView?.filters as FilterExpression | undefined}
-        onClear={() => tagFields.setLinkedFilter(null)}
+        onClear={() => {
+          tagFields.setLinkedFilter(null)
+        }}
         updateFilters={updateFilters}
       />
 
@@ -1268,7 +1284,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               notes={notes}
               availableProperties={availableProperties}
               chart={chartState}
-              onChange={(patch) => setChartState(patchChart(chartState, patch))}
+              onChange={(patch) => {
+                setChartState(patchChart(chartState, patch))
+              }}
               onOpenNote={onRowOpen}
             />
           ) : viewType === 'list' ? (
@@ -1321,7 +1339,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagRemove={handleTagRemove}
               onSetIcon={rowActions.onSetIcon}
               tagMetaMap={tagMetaMap}
-              onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
+              onPropertyUpdate={(...args) => handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
               onDisplayNameChange={(...args) => void updateDisplayName(...args)}
@@ -1359,7 +1377,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagRemove={handleTagRemove}
               onSetIcon={rowActions.onSetIcon}
               tagMetaMap={tagMetaMap}
-              onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
+              onPropertyUpdate={(...args) => handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
               onDisplayNameChange={(...args) => void updateDisplayName(...args)}
@@ -1395,12 +1413,16 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                 selectedRows={selectedRows}
                 availableTags={tagNames}
                 tagMeta={tagMetaMap}
-                onMove={() => handleMoveRequest(selectedNoteIds)}
+                onMove={() => {
+                  handleMoveRequest(selectedNoteIds)
+                }}
                 onCopyLinks={() => void handleCopyLinks()}
                 onAddTag={(tag) => void handleBulkAddTag(tag)}
                 onSetIcon={(icon) => void setSelectionIcon(icon)}
                 onExport={() => void handleBulkExport()}
-                onDelete={() => handleDeleteRequest(selectedNoteIds)}
+                onDelete={() => {
+                  handleDeleteRequest(selectedNoteIds)
+                }}
                 onClear={handleClearSelection}
               />
             </div>
@@ -1454,7 +1476,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         <TagSettingsHost
           tag={scope.tag}
           open={tagFields.settingsOpen}
-          onClose={() => tagFields.setSettingsOpen(false)}
+          onClose={() => {
+            tagFields.setSettingsOpen(false)
+          }}
         />
       )}
 
@@ -1527,7 +1551,9 @@ function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): Re
     const resizeObserver = new ResizeObserver(calculateRows)
     resizeObserver.observe(container)
 
-    return () => resizeObserver.disconnect()
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [])
 
   return (

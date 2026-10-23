@@ -2143,7 +2143,9 @@ describe('Task Utils', () => {
         const groups = groupTasksByStatus([], statusList)
 
         expect(groups).toHaveLength(3)
-        groups.forEach((g: { tasks: Task[] }) => expect(g.tasks).toEqual([]))
+        groups.forEach((g: { tasks: Task[] }) => {
+          expect(g.tasks).toEqual([])
+        })
       })
 
       it('should handle empty statuses array', () => {

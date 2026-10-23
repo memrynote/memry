@@ -41,7 +41,9 @@ export function FolderEmojiChip({ icon, onIconChange }: FolderEmojiChipProps): R
       <PopoverTrigger asChild>
         <button
           type="button"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
           aria-label={t('phaseF.componentsFolderIconButton.setFolderIcon')}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border bg-muted transition-colors hover:bg-accent"
         >
@@ -60,13 +62,17 @@ export function FolderEmojiChip({ icon, onIconChange }: FolderEmojiChipProps): R
         align="start"
         sideOffset={6}
         className="w-auto border-0 bg-transparent p-0 shadow-none"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
       >
         <Suspense fallback={null}>
           <LazyEmojiPicker
             isOpen
             embedded
-            onClose={() => setOpen(false)}
+            onClose={() => {
+              setOpen(false)
+            }}
             onSelect={handleSelect}
             onRemove={handleRemove}
             hasEmoji={!!icon}

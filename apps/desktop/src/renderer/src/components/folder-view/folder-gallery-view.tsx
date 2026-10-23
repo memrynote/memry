@@ -93,7 +93,9 @@ function GalleryCardCover({ cover, note, vaultPath }: GalleryCardCoverProps): Re
       alt={t('cover.alt')}
       draggable={false}
       loading="lazy"
-      onError={() => setFailedSrc(src)}
+      onError={() => {
+        setFailedSrc(src)
+      }}
       data-testid="gallery-card-cover-image"
       className="h-[90px] w-full bg-muted object-cover"
     />
@@ -163,8 +165,12 @@ export function FolderGalleryView({
               const ref = refFromViewRow(note)
               startCanvasRowsDrag(e, ref ? [ref] : [])
             }}
-            onClick={() => onNoteOpen(note.id)}
-            onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
+            onClick={() => {
+              onNoteOpen(note.id)
+            }}
+            onMouseDown={(e) => {
+              handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
@@ -211,7 +217,13 @@ export function FolderGalleryView({
                     <TagChip
                       key={tag}
                       tag={toTagChip(tag, tagMetaMap.get(foldTag(tag)))}
-                      onClick={onTagClick ? () => onTagClick(tag) : undefined}
+                      onClick={
+                        onTagClick
+                          ? () => {
+                              onTagClick(tag)
+                            }
+                          : undefined
+                      }
                     />
                   ))}
                 </div>

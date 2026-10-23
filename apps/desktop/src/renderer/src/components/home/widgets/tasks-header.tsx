@@ -59,7 +59,9 @@ export function TasksHeaderFilter({
         {TASK_WIDGET_DATE_VIEWS.map((view) => (
           <DropdownMenuItem
             key={view}
-            onSelect={() => onChange({ ...config, dateRange: view, savedFilterId: undefined })}
+            onSelect={() => {
+              onChange({ ...config, dateRange: view, savedFilterId: undefined })
+            }}
           >
             {t(VIEW_LABEL_KEYS[view])}
           </DropdownMenuItem>
@@ -68,20 +70,22 @@ export function TasksHeaderFilter({
         {savedFilters.map((filter) => (
           <DropdownMenuItem
             key={filter.id}
-            onSelect={() => onChange({ ...config, savedFilterId: filter.id })}
+            onSelect={() => {
+              onChange({ ...config, savedFilterId: filter.id })
+            }}
           >
             {filter.name}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={() =>
+          onSelect={() => {
             onChange({
               ...config,
               dateRange: TASK_WIDGET_NO_DUE_VIEW,
               savedFilterId: undefined
             })
-          }
+          }}
         >
           {t(VIEW_LABEL_KEYS[TASK_WIDGET_NO_DUE_VIEW])}
         </DropdownMenuItem>

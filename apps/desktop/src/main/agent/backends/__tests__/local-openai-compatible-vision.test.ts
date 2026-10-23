@@ -72,7 +72,9 @@ function createProvider(
     requests.push(body)
     if (options.hangsOnImageProbe && !body.stream && carriesImage(body)) {
       return new Promise<Response>((_, reject) => {
-        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+        init?.signal?.addEventListener('abort', () => {
+          reject(init.signal?.reason)
+        })
       })
     }
     if (!options.takesImages && carriesImage(body)) {

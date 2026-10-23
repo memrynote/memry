@@ -277,12 +277,12 @@ function RowActionControl({
       return (
         <a
           href={href}
-          onClick={() =>
+          onClick={() => {
             trackLandingEvent(
               'landing_download_click',
               `download:${action.platform}:download-index`
             )
-          }
+          }}
           className={ACTION_CLASS}
         >
           Download
@@ -310,9 +310,9 @@ function RowActionControl({
           href={action.href}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() =>
+          onClick={() => {
             trackLandingEvent('landing_external_click', `download:${action.browser}:download-index`)
-          }
+          }}
           className={ACTION_CLASS}
         >
           Add
@@ -328,18 +328,18 @@ function RowActionControl({
           srLabel=" the Homebrew command"
           icon={<Copy className="size-3.5 shrink-0" aria-hidden />}
           className={ACTION_CLASS}
-          onSuccess={() =>
+          onSuccess={() => {
             trackLandingEvent('landing_download_click', 'download:brew:download-index')
-          }
+          }}
         />
       )
     case 'page':
       return (
         <Link
           to={action.href}
-          onClick={() =>
+          onClick={() => {
             trackLandingEvent('landing_nav_click', `download:${action.target}:download-index`)
-          }
+          }}
           className={ACTION_CLASS}
         >
           {action.label}
@@ -377,9 +377,9 @@ function ShareRowButton({
       srLabel={` the link for ${row.platform}, ${row.detail}`}
       icon={<Share className="size-3.5 shrink-0" aria-hidden />}
       className={ACTION_CLASS}
-      onSuccess={() =>
+      onSuccess={() => {
         trackLandingEvent('landing_download_share', `share:${target}:download-index`)
-      }
+      }}
     />
   )
 }

@@ -95,7 +95,9 @@ export const BulkActionDropdown = <T extends string | number = string>({
           return (
             <DropdownMenuItem
               key={String(option.value)}
-              onClick={() => onSelect(option.value)}
+              onClick={() => {
+                onSelect(option.value)
+              }}
               className="cursor-pointer"
             >
               {option.icon && (

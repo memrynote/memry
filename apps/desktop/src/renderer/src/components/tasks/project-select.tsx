@@ -22,7 +22,9 @@ export const ProjectSelect = ({
 }: ProjectSelectProps): React.JSX.Element => (
   <ProjectPicker
     value={value}
-    onChange={(id) => onChange(id ?? '')}
+    onChange={(id) => {
+      onChange(id ?? '')
+    }}
     projects={projects}
     triggerVariant="button"
     contentWidth="trigger"

@@ -111,7 +111,12 @@ export function VaultRecoveryDialog({
             <AlertDialogHeader className="sr-only">
               <AlertDialogTitle>{t('setup.startFresh.title')}</AlertDialogTitle>
             </AlertDialogHeader>
-            <StartFreshPanel onConfirm={onSignOut} onCancel={() => setPhase('input')} />
+            <StartFreshPanel
+              onConfirm={onSignOut}
+              onCancel={() => {
+                setPhase('input')
+              }}
+            />
           </>
         ) : (
           <>
@@ -124,7 +129,9 @@ export function VaultRecoveryDialog({
               onSubmit={(phrase) => void handleSubmit(phrase)}
               isLoading={isLoading}
               error={error}
-              onBack={() => setPhase('intro')}
+              onBack={() => {
+                setPhase('intro')
+              }}
             />
             {sessionExpired && (
               <AlertDialogFooter>
@@ -133,7 +140,11 @@ export function VaultRecoveryDialog({
                 </Button>
               </AlertDialogFooter>
             )}
-            <StartFreshTrigger onClick={() => setPhase('start-fresh')} />
+            <StartFreshTrigger
+              onClick={() => {
+                setPhase('start-fresh')
+              }}
+            />
           </>
         )}
       </AlertDialogContent>

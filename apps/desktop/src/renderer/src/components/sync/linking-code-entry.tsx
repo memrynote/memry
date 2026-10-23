@@ -70,7 +70,9 @@ export function LinkingCodeEntry({
           setError(msg)
           onError(msg)
         })
-        .finally(() => setIsLoading(false))
+        .finally(() => {
+          setIsLoading(false)
+        })
     },
     [code, parsed, onLinked, onError, t]
   )

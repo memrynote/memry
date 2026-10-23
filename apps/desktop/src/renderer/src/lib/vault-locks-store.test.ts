@@ -37,7 +37,9 @@ describe('vault-locks-store (#2606)', () => {
     const sibling = renderHook(() => useIsNoteLocked('note-out', 'Archive 2/out.md'))
     const ownLock = renderHook(() => useHasOwnNoteLock('note-in'))
 
-    await waitFor(() => expect(own.result.current).toBe(true))
+    await waitFor(() => {
+      expect(own.result.current).toBe(true)
+    })
     expect(list).toHaveBeenCalledTimes(1)
     expect(inFolder.result.current).toBe(true)
     expect(sibling.result.current).toBe(false)

@@ -25,7 +25,11 @@ import { attachmentUploadRedriver } from './attachment-upload-redriver'
 function deferredToken(): { resolve: (token: string) => void } {
   let resolve!: (token: string) => void
   mocks.getToken.mockReturnValueOnce(new Promise<string>((r) => (resolve = r)))
-  return { resolve: (token) => resolve(token) }
+  return {
+    resolve: (token) => {
+      resolve(token)
+    }
+  }
 }
 
 describe('attachmentUploadRedriver', () => {

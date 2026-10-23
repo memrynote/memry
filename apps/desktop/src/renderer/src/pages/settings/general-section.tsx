@@ -552,7 +552,9 @@ export function GeneralSettings() {
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => openIncidentReport({ source: 'settings' })}
+            onClick={() => {
+              openIncidentReport({ source: 'settings' })
+            }}
             className="h-auto py-1.25 px-2.5 text-xs/4"
           >
             {t('general.privacy.diagnostics.sendReport.button')}

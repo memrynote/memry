@@ -114,7 +114,12 @@ vi.mock('./graph-events', () => ({
         >
           unhover note
         </button>
-        <button type="button" onClick={() => onFocusNode('note-b')}>
+        <button
+          type="button"
+          onClick={() => {
+            onFocusNode('note-b')
+          }}
+        >
           focus note
         </button>
         <button type="button" onClick={() => onContextMenu?.({ nodeId: 'note-a', x: 1, y: 2 })}>
@@ -211,10 +216,20 @@ vi.mock('./graph-context-menu', () => ({
           {categoryAction.collapsed ? 'menu expand' : 'menu collapse'} {categoryAction.label}
         </button>
       )}
-      <button type="button" onClick={() => onFocusNode(menu.nodeId)}>
+      <button
+        type="button"
+        onClick={() => {
+          onFocusNode(menu.nodeId)
+        }}
+      >
         menu focus
       </button>
-      <button type="button" onClick={() => onOpenInTab(menu.nodeId)}>
+      <button
+        type="button"
+        onClick={() => {
+          onOpenInTab(menu.nodeId)
+        }}
+      >
         menu open
       </button>
       <button type="button" onClick={() => onCreateNote?.('Created from graph')}>
@@ -592,9 +607,9 @@ describe('GraphCanvas', () => {
 
     fireEvent.click(screen.getByText('context ghost'))
     fireEvent.click(screen.getByText('menu create'))
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(graphCanvasMocks.createNote).toHaveBeenCalledWith({ title: 'Created from graph' })
-    )
+    })
     expect(graphCanvasMocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'note',
@@ -1096,7 +1111,7 @@ describe('GraphCanvas', () => {
         />
       )
       return {
-        rerender: (updated) =>
+        rerender: (updated) => {
           rerender(
             <GraphCanvas
               data={updated}
@@ -1104,7 +1119,8 @@ describe('GraphCanvas', () => {
               graphSettings={graphSettings}
               onFocusNode={vi.fn()}
             />
-          ),
+          )
+        },
         unmount
       }
     }

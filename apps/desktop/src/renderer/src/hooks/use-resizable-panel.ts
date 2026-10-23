@@ -64,7 +64,9 @@ export function useResizablePanel({
       setWidth((w) => (w > cap ? cap : w))
     }
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+    }
   }, [maxPx])
 
   return { width, setWidth, isResizing, setIsResizing }

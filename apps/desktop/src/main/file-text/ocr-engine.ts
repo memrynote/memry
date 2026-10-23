@@ -104,7 +104,9 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
       if (child === spawned) stopOcr('OCR worker did not start in time')
     }, START_TIMEOUT_MS)
 
-    spawned.once('spawn', () => lowerProcessPriority(spawned.pid))
+    spawned.once('spawn', () => {
+      lowerProcessPriority(spawned.pid)
+    })
     spawned.on('message', (message: OcrWorkerToMainMessage) => {
       switch (message.type) {
         case 'ready':
@@ -116,10 +118,14 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
           return
         case 'recognized':
           consecutiveCrashes = 0
-          settle(message.requestId, (request) => request.resolve(message.text))
+          settle(message.requestId, (request) => {
+            request.resolve(message.text)
+          })
           return
         case 'failed':
-          settle(message.requestId, (request) => request.reject(new Error(message.error)))
+          settle(message.requestId, (request) => {
+            request.reject(new Error(message.error))
+          })
           return
       }
     })
@@ -158,7 +164,9 @@ export async function recognizeText(source: OcrImageSource): Promise<string> {
   const requestId = nextRequestId++
   return new Promise<string>((resolve, reject) => {
     const timer = setTimeout(() => {
-      settle(requestId, (request) => request.reject(new Error('OCR did not finish in time')))
+      settle(requestId, (request) => {
+        request.reject(new Error('OCR did not finish in time'))
+      })
       if (child === ready) stopOcr('OCR did not finish in time')
     }, RECOGNIZE_TIMEOUT_MS)
     pending.set(requestId, { resolve, reject, timer })

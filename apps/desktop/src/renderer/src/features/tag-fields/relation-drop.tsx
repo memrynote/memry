@@ -98,7 +98,9 @@ export function useRelationDrop({
       event.dataTransfer.dropEffect = 'link'
       setIsOver(true)
     },
-    onDragLeave: () => setIsOver(false),
+    onDragLeave: () => {
+      setIsOver(false)
+    },
     onDrop: (event) => {
       if (!accepts(event)) return
       event.preventDefault()

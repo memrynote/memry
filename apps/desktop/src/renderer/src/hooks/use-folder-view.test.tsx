@@ -205,7 +205,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     expect(window.api.folderView.folderExists).toHaveBeenCalledWith('Work')
     expect(window.api.folderView.listWithProperties).toHaveBeenCalledWith({
@@ -233,7 +235,9 @@ describe('useFolderView', () => {
       await result.current.loadMore()
     })
 
-    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2)
+    })
     expect(window.api.folderView.listWithProperties).toHaveBeenLastCalledWith({
       scope: workScope,
       properties: undefined,
@@ -247,7 +251,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     await act(async () => {
       await result.current.updateColumns([{ id: 'title' }, { id: 'wordCount', width: 160 }])
@@ -326,7 +332,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.notes).toEqual(firstPage)
 
     await act(async () => {
@@ -339,7 +347,9 @@ describe('useFolderView', () => {
       await Promise.resolve()
     })
 
-    await waitFor(() => expect(window.api.folderView.setView).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.folderView.setView).toHaveBeenCalled()
+    })
 
     await act(async () => {
       await result.current.updateDisplayName('status', 'Status')
@@ -367,7 +377,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     await act(async () => {
       await result.current.addView({ name: 'Added', type: 'table', columns: [{ id: 'title' }] })
@@ -404,7 +416,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     // Keystrokes rename the cache each time; one debounced write carries the
     // original on-disk name so main replaces the view instead of appending.
@@ -442,7 +456,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     await act(async () => {
       await result.current.updateSummaryConfig('title', undefined)
@@ -490,7 +506,9 @@ describe('useFolderView', () => {
     const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     const icons = (): Array<[string, string | null]> =>
       result.current.notes.map((note) => [note.id, note.emoji])
 
@@ -540,7 +558,9 @@ describe('useFolderView', () => {
     const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     let undo: Awaited<ReturnType<typeof result.current.updateNoteIcons>> = []
     await act(async () => {
@@ -570,7 +590,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.folderNotFound).toBe(true)
 
     await act(async () => {
@@ -593,11 +615,11 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(window.api.folderView.listWithProperties).toHaveBeenCalledWith(
         expect.objectContaining({ scope: { kind: 'tag', tag: 'araba' } })
       )
-    )
+    })
   })
 
   it('never calls folderExists for a tag scope', async () => {
@@ -605,7 +627,9 @@ describe('useFolderView', () => {
       wrapper: makeWrapper()
     })
 
-    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.folderView.listWithProperties).toHaveBeenCalled()
+    })
     expect(window.api.folderView.folderExists).not.toHaveBeenCalled()
   })
 
@@ -616,22 +640,32 @@ describe('useFolderView', () => {
     // Wait for the initial fetch to fully settle, not just for the mock to
     // have been invoked — invalidating a still-in-flight query is a no-op,
     // it just rides along with the fetch already underway.
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
 
-    act(() => emitTagNotesChanged({ tag: 'araba' }))
+    act(() => {
+      emitTagNotesChanged({ tag: 'araba' })
+    })
 
-    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('ignores a change to a different tag', async () => {
     const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
       wrapper: makeWrapper()
     })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
 
-    act(() => emitTagNotesChanged({ tag: 'bisiklet' }))
+    act(() => {
+      emitTagNotesChanged({ tag: 'bisiklet' })
+    })
     await act(async () => {
       await Promise.resolve()
     })
@@ -643,25 +677,37 @@ describe('useFolderView', () => {
     const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
       wrapper: makeWrapper()
     })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(1)
 
-    act(() => emitTagsChanged())
+    act(() => {
+      emitTagsChanged()
+    })
 
-    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(window.api.folderView.listWithProperties).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('rereads the views and columns on tags-changed, so a renamed field heads its column', async () => {
     const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'araba' } }), {
       wrapper: makeWrapper()
     })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(window.api.folderView.getViews).toHaveBeenCalledTimes(1)
     expect(window.api.folderView.getAvailableProperties).toHaveBeenCalledTimes(1)
 
-    act(() => emitTagsChanged())
+    act(() => {
+      emitTagsChanged()
+    })
 
-    await waitFor(() => expect(window.api.folderView.getViews).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(window.api.folderView.getViews).toHaveBeenCalledTimes(2)
+    })
     expect(window.api.folderView.getAvailableProperties).toHaveBeenCalledTimes(2)
   })
 
@@ -669,7 +715,9 @@ describe('useFolderView', () => {
     renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()
     })
-    await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.folderView.listWithProperties).toHaveBeenCalled()
+    })
 
     expect(mocks.onTagNotesChanged).not.toHaveBeenCalled()
   })

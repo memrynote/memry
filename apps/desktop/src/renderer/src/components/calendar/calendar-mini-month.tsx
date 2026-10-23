@@ -48,7 +48,9 @@ export function CalendarMiniMonth({
         <button
           type="button"
           className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
-          onClick={() => onMonthChange(addLocalMonths(anchorDate, -1))}
+          onClick={() => {
+            onMonthChange(addLocalMonths(anchorDate, -1))
+          }}
           aria-label={t('toolbar.previous-month')}
         >
           <ChevronLeft className="size-5" />
@@ -57,7 +59,9 @@ export function CalendarMiniMonth({
         <button
           type="button"
           className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
-          onClick={() => onMonthChange(addLocalMonths(anchorDate, 1))}
+          onClick={() => {
+            onMonthChange(addLocalMonths(anchorDate, 1))
+          }}
           aria-label={t('toolbar.next-month')}
         >
           <ChevronRight className="size-5" />
@@ -84,7 +88,9 @@ export function CalendarMiniMonth({
               key={day}
               type="button"
               className="relative flex flex-col items-center py-0.5"
-              onClick={() => onDateSelect(day)}
+              onClick={() => {
+                onDateSelect(day)
+              }}
             >
               <span
                 className={cn(

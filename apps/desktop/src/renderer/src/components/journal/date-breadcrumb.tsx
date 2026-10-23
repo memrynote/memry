@@ -202,14 +202,22 @@ export function DateBreadcrumb({
         {/* Breadcrumb segments */}
         <div className="flex items-center">
           {/* Year */}
-          <BreadcrumbSegment onClick={() => onYearClick(dateParts.year)}>
+          <BreadcrumbSegment
+            onClick={() => {
+              onYearClick(dateParts.year)
+            }}
+          >
             {dateParts.year}
           </BreadcrumbSegment>
 
           <BreadcrumbSeparator />
 
           {/* Month */}
-          <BreadcrumbSegment onClick={() => onMonthClick(dateParts.year, dateParts.monthIndex)}>
+          <BreadcrumbSegment
+            onClick={() => {
+              onMonthClick(dateParts.year, dateParts.monthIndex)
+            }}
+          >
             {dateParts.month}
           </BreadcrumbSegment>
 
@@ -255,7 +263,11 @@ export function DateBreadcrumb({
 
         <div className="flex items-center">
           {/* Year (clickable) */}
-          <BreadcrumbSegment onClick={() => onYearClick(viewState.year)}>
+          <BreadcrumbSegment
+            onClick={() => {
+              onYearClick(viewState.year)
+            }}
+          >
             {viewState.year}
           </BreadcrumbSegment>
 

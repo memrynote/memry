@@ -50,7 +50,8 @@ const mocks = vi.hoisted(() => ({
   handlePropertyNameChange: vi.fn(),
   handlePropertyOrderChange: vi.fn(),
   propertyOnBlocked: null as
-    ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void) | null,
+    | ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void)
+    | null,
   setPropertiesCollapsed: vi.fn(),
   togglePropertiesCollapsed: vi.fn(),
   toggleBookmark: vi.fn(),
@@ -86,7 +87,8 @@ const mocks = vi.hoisted(() => ({
   onRenamed: vi.fn(),
   deletedHandler: null as ((event: { id: string }) => void) | null,
   updatedHandler: null as
-    ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void) | null,
+    | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
+    | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
   findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
@@ -354,7 +356,9 @@ vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
               key={element.id}
               type="button"
               data-testid={`mind-map-box-${element.id}`}
-              onClick={() => onOpenLink(element.customData!.memryHref)}
+              onClick={() => {
+                onOpenLink(element.customData!.memryHref)
+              }}
             >
               {element.customData!.memryHref}
             </button>
@@ -451,12 +455,22 @@ vi.mock('@/components/note', () => ({
       <div ref={marqueeZoneRef} data-testid="marquee-zone" />
       <div data-testid="heading-count">{headings.length}</div>
       <div data-testid="word-count">{stats?.wordCount}</div>
-      <button type="button" onClick={() => onHeadingClick('heading-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onHeadingClick('heading-1')
+        }}
+      >
         Jump heading
       </button>
       {/* The outline panel stays visible in map mode, so it is reachable here
           in both modes — which is the point of the assertions that use it. */}
-      <button type="button" onClick={() => onHeadingClick('b-h1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onHeadingClick('b-h1')
+        }}
+      >
         Jump Alpha
       </button>
       {topBar}
@@ -529,46 +543,101 @@ vi.mock('@/components/note', () => ({
         {(mocks.editorBlocks as Array<{ id: string }>).map((block) => (
           <div key={block.id} data-id={block.id} />
         ))}
-        <button type="button" onClick={() => onMarkdownChange('# Changed')}>
+        <button
+          type="button"
+          onClick={() => {
+            onMarkdownChange('# Changed')
+          }}
+        >
           Change markdown
         </button>
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
             onHeadingsChange([{ id: 'heading-1', level: 1, text: 'Intro', position: 0 }])
-          }
+          }}
         >
           Change headings
         </button>
-        <button type="button" onClick={() => onLinkClick('https://memry.test')}>
+        <button
+          type="button"
+          onClick={() => {
+            onLinkClick('https://memry.test')
+          }}
+        >
           External link
         </button>
-        <button type="button" onClick={() => onInternalLinkClick('Existing Note')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInternalLinkClick('Existing Note')
+          }}
+        >
           Internal note link
         </button>
-        <button type="button" onClick={() => onInternalLinkClick('Diagram.pdf')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInternalLinkClick('Diagram.pdf')
+          }}
+        >
           Internal file link
         </button>
-        <button type="button" onClick={() => onInternalLinkClick('New Note')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInternalLinkClick('New Note')
+          }}
+        >
           Internal create link
         </button>
-        <button type="button" onClick={() => onInternalLinkClick('Missing.png')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInternalLinkClick('Missing.png')
+          }}
+        >
           Internal missing file
         </button>
-        <button type="button" onClick={() => onInternalLinkClick('Sprint Board')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInternalLinkClick('Sprint Board')
+          }}
+        >
           Internal canvas link
         </button>
         {/* What opening the note reports: the tags the body already carried. */}
-        <button type="button" onClick={() => onInlineTagsChange(['work'], 'load')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInlineTagsChange(['work'], 'load')
+          }}
+        >
           Load inline tags
         </button>
-        <button type="button" onClick={() => onInlineTagsChange(['Work'], 'load')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInlineTagsChange(['Work'], 'load')
+          }}
+        >
           Load cased inline tags
         </button>
-        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'], 'edit')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInlineTagsChange(['work', 'urgent'], 'edit')
+          }}
+        >
           Sync inline tags
         </button>
-        <button type="button" onClick={() => onInlineTagsChange([], 'edit')}>
+        <button
+          type="button"
+          onClick={() => {
+            onInlineTagsChange([], 'edit')
+          }}
+        >
           Clear inline tags
         </button>
       </div>
@@ -603,10 +672,20 @@ vi.mock('@/components/note/note-title', () => ({
         onBlur={() => onFreshEnd?.()}
         readOnly
       />
-      <button type="button" onClick={() => onTitleChange('Renamed Note')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTitleChange('Renamed Note')
+        }}
+      >
         {title}
       </button>
-      <button type="button" onClick={() => onTitleChange('   ')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTitleChange('   ')
+        }}
+      >
         Blank the title
       </button>
     </>
@@ -629,16 +708,36 @@ vi.mock('@/components/note/tags-row', () => ({
   }) => (
     <div>
       <span data-testid="tags-row">{tags.map((tag) => tag.name).join(',')}</span>
-      <button type="button" onClick={() => onAddTag('later')}>
+      <button
+        type="button"
+        onClick={() => {
+          onAddTag('later')
+        }}
+      >
         Add tag
       </button>
-      <button type="button" onClick={() => onCreateTag('urgent', 'red')}>
+      <button
+        type="button"
+        onClick={() => {
+          onCreateTag('urgent', 'red')
+        }}
+      >
         Create tag
       </button>
-      <button type="button" onClick={() => onRemoveTag('work')}>
+      <button
+        type="button"
+        onClick={() => {
+          onRemoveTag('work')
+        }}
+      >
         Remove tag
       </button>
-      <button type="button" onClick={() => onTagClick({ name: 'work', color: 'blue' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onTagClick({ name: 'work', color: 'blue' })
+        }}
+      >
         Open tag
       </button>
     </div>
@@ -661,10 +760,20 @@ vi.mock('@/components/note/info-section', () => ({
       <button type="button" onClick={onToggleExpand}>
         Toggle properties
       </button>
-      <button type="button" onClick={() => onAddProperty({ name: 'Mood', type: 'text' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onAddProperty({ name: 'Mood', type: 'text' })
+        }}
+      >
         Add property
       </button>
-      <button type="button" onClick={() => onPropertyChange('p1', 'Done')}>
+      <button
+        type="button"
+        onClick={() => {
+          onPropertyChange('p1', 'Done')
+        }}
+      >
         Change property
       </button>
     </div>
@@ -680,7 +789,12 @@ vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
 
 vi.mock('@/components/note/ghost-affordance-row', () => ({
   GhostAffordanceRow: ({ onAddProperty }: { onAddProperty: (property: unknown) => void }) => (
-    <button type="button" onClick={() => onAddProperty({ name: 'Ghost', type: 'text' })}>
+    <button
+      type="button"
+      onClick={() => {
+        onAddProperty({ name: 'Ghost', type: 'text' })
+      }}
+    >
       Ghost property
     </button>
   )
@@ -700,7 +814,9 @@ vi.mock('@/components/note/backlinks', async (importOriginal) => ({
     <div>
       <button
         type="button"
-        onClick={() => onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })}
+        onClick={() => {
+          onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })
+        }}
       >
         Open backlink
       </button>
@@ -723,7 +839,12 @@ vi.mock('@/components/tasks/hosted-task-detail-drawer', () => ({
 
 vi.mock('@/components/note/linked-tasks', () => ({
   LinkedTasksSection: ({ onTaskClick }: { onTaskClick: (id: string) => void }) => (
-    <button type="button" onClick={() => onTaskClick('task-1')}>
+    <button
+      type="button"
+      onClick={() => {
+        onTaskClick('task-1')
+      }}
+    >
       Open linked task
     </button>
   )
@@ -739,7 +860,12 @@ vi.mock('@/components/reminder', () => ({
   }) => (
     <div>
       {trigger}
-      <button type="button" onClick={() => onSelect(new Date('2026-05-10'))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelect(new Date('2026-05-10'))
+        }}
+      >
         Pick reminder
       </button>
     </div>
@@ -819,7 +945,12 @@ vi.mock('@/components/folder-view/move-to-folder-dialog', () => ({
     open ? (
       <div data-testid="move-dialog">
         <span>{`move:${noteIds.join(',')}:${currentFolder ?? ''}`}</span>
-        <button type="button" onClick={() => onMove('Work')}>
+        <button
+          type="button"
+          onClick={() => {
+            onMove('Work')
+          }}
+        >
           Confirm move
         </button>
       </div>
@@ -1018,7 +1149,7 @@ describe('NotePage', () => {
 
     fireEvent.click(await screen.findByText('Internal canvas link'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'canvas',
@@ -1028,7 +1159,7 @@ describe('NotePage', () => {
         }),
         expect.anything()
       )
-    )
+    })
   })
 
   it('renders empty, loading, and error states', async () => {
@@ -1054,10 +1185,14 @@ describe('NotePage', () => {
     const field = await screen.findByRole('textbox', { name: 'Note title field' })
     expect(field).toHaveAttribute('data-fresh', 'true')
     expect(field).toHaveAttribute('placeholder', 'New note')
-    await waitFor(() => expect(field).toHaveFocus())
+    await waitFor(() => {
+      expect(field).toHaveFocus()
+    })
     expect(isNewNoteTitlePending('note-1')).toBe(false)
 
-    act(() => field.blur())
+    act(() => {
+      field.blur()
+    })
     expect(field).toHaveAttribute('data-fresh', 'false')
     expect(field).toHaveAttribute('placeholder', 'editor.title.untitled')
   })
@@ -1083,11 +1218,11 @@ describe('NotePage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Test Note' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(toast.info).toHaveBeenCalledWith(
         'page.toast.duplicateTitle:{"title":"Renamed Note","folder":"notes/Work"}'
       )
-    )
+    })
   })
 
   it('saves title, tags, properties, backlinks, and linked task navigation', async () => {
@@ -1336,15 +1471,17 @@ describe('NotePage', () => {
     expect(screen.getByText('Export Test Note')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.fullWidth' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.notesUpdate).toHaveBeenCalledWith({
         id: 'note-1',
         frontmatter: { fullWidth: true }
       })
-    )
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.setLocalOnly' }))
-    await waitFor(() => expect(mocks.setLocalOnly).toHaveBeenCalledWith('note-1', true))
+    await waitFor(() => {
+      expect(mocks.setLocalOnly).toHaveBeenCalledWith('note-1', true)
+    })
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['notes', 'localOnlyCount'] })
 
     openSpy.mockRestore()
@@ -1354,53 +1491,57 @@ describe('NotePage', () => {
     renderWithProviders(<NotePage noteId="note-1" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Internal note link' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
         { reuseActiveTab: true }
       )
-    )
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Internal file link' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'file', entityId: 'file-1' }),
         { reuseActiveTab: true }
       )
-    )
+    })
 
     // Clicking a dead link now asks first (#1716); Create keeps the old path.
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
     fireEvent.click(await screen.findByText('wikiLinkCreateDialog.create'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'created-note' }),
         { reuseActiveTab: true }
       )
-    )
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Internal missing file' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('page.toast.fileNotFound:{"target":"Missing.png"}')
-    )
+    })
 
     // Cancel creates nothing.
     mocks.createNote.mockClear()
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
     fireEvent.click(await screen.findByText('button.cancel'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.queryByText('wikiLinkCreateDialog.create')).not.toBeInTheDocument()
-    )
+    })
     expect(mocks.createNote).not.toHaveBeenCalled()
 
     mocks.createNote.mockResolvedValueOnce({ success: false })
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
     fireEvent.click(await screen.findByText('wikiLinkCreateDialog.create'))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('page.toast.createLinkedFailed'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('page.toast.createLinkedFailed')
+    })
 
     mocks.resolveWikiLink.mockRejectedValueOnce(new Error('resolve failed'))
     fireEvent.click(screen.getByRole('button', { name: 'Internal note link' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('page.toast.openLinkedFailed'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('page.toast.openLinkedFailed')
+    })
   })
 
   it('opens an outgoing link through the wiki-link path, asking before creating a missing one', async () => {
@@ -1411,21 +1552,21 @@ describe('NotePage', () => {
     )
 
     fireEvent.click(outgoing.getByRole('button', { name: 'Existing Note' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
         { reuseActiveTab: true }
       )
-    )
+    })
 
     fireEvent.click(outgoing.getByRole('button', { name: 'New Note outgoingLinks.unresolved' }))
     fireEvent.click(await screen.findByText('wikiLinkCreateDialog.create'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'created-note' }),
         { reuseActiveTab: true }
       )
-    )
+    })
   })
 
   it('reacts to note events and find controls', async () => {
@@ -1507,7 +1648,12 @@ describe('NotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
     // handleMarkdownChange debounces the save by a real 1000ms before it stamps
     // lastSavedContent, which is what makes the echo recognisable.
-    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(mocks.updateNote).toHaveBeenCalled()
+      },
+      { timeout: 3000 }
+    )
     await act(async () => {
       await Promise.resolve()
     })
@@ -1630,7 +1776,9 @@ describe('NotePage', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: 'vaultLock.lockNote' }))
 
-      await waitFor(() => expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', true))
+      await waitFor(() => {
+        expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', true)
+      })
       expect(mocks.propertyCanEdit?.()).toBe(true)
     })
 
@@ -1641,8 +1789,12 @@ describe('NotePage', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: 'vaultLock.unlockNote' }))
 
-      await waitFor(() => expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', false))
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk is read-only'))
+      await waitFor(() => {
+        expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', false)
+      })
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('disk is read-only')
+      })
     })
 
     it('offers no lock toggle for a note locked only by its folder', async () => {
@@ -1670,20 +1822,26 @@ describe('NotePage', () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.copyPath' }))
 
-      await waitFor(() => expect(writeText).toHaveBeenCalledWith('notes/Test Note.md'))
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith('notes/Test Note.md')
+      })
       expect(toast.success).toHaveBeenCalledWith('page.toast.pathCopied')
     })
 
     it('reveals the note in the OS file manager', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'fileActions.revealInFinder' }))
-      await waitFor(() => expect(mocks.revealInFinder).toHaveBeenCalledWith('note-1'))
+      await waitFor(() => {
+        expect(mocks.revealInFinder).toHaveBeenCalledWith('note-1')
+      })
     })
 
     it('opens the note in the default app', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'fileActions.openInDefaultApp' }))
-      await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith('note-1'))
+      await waitFor(() => {
+        expect(mocks.openExternal).toHaveBeenCalledWith('note-1')
+      })
     })
 
     it('dispatches a reveal-in-sidebar event', async () => {
@@ -1711,9 +1869,9 @@ describe('NotePage', () => {
       expect(dialog).toHaveTextContent('move:note-1:notes')
 
       fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
-      await waitFor(() =>
+      await waitFor(() => {
         expect(mocks.moveNote).toHaveBeenCalledWith({ id: 'note-1', newFolder: 'Work' })
-      )
+      })
       expect(toast.success).toHaveBeenCalledWith('page.toast.moved')
     })
 
@@ -1729,7 +1887,9 @@ describe('NotePage', () => {
       expect(mocks.deleteNote).not.toHaveBeenCalled()
 
       fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
-      await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+      await waitFor(() => {
+        expect(mocks.deleteNote).toHaveBeenCalledWith('note-1')
+      })
       expect(mocks.closeTab).toHaveBeenCalledWith('/notes/note-1')
     })
 
@@ -1740,7 +1900,9 @@ describe('NotePage', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
       fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
 
-      await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+      await waitFor(() => {
+        expect(mocks.deleteNote).toHaveBeenCalledWith('note-1')
+      })
       expect(mocks.closeTab).not.toHaveBeenCalled()
       expect(toast.error).toHaveBeenCalledWith('nope')
     })
@@ -1752,7 +1914,9 @@ describe('NotePage', () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.copyPath' }))
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('clipboard blocked'))
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('clipboard blocked')
+      })
     })
 
     it('surfaces an error toast when reveal in Finder fails', async () => {
@@ -1760,7 +1924,9 @@ describe('NotePage', () => {
       renderWithProviders(<NotePage noteId="note-1" />)
 
       fireEvent.click(await screen.findByRole('button', { name: 'fileActions.revealInFinder' }))
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('reveal failed'))
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('reveal failed')
+      })
     })
 
     it('surfaces an error toast when open in default app fails', async () => {
@@ -1768,7 +1934,9 @@ describe('NotePage', () => {
       renderWithProviders(<NotePage noteId="note-1" />)
 
       fireEvent.click(await screen.findByRole('button', { name: 'fileActions.openInDefaultApp' }))
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('open failed'))
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('open failed')
+      })
     })
 
     it('surfaces an error toast when the move op reports failure', async () => {
@@ -1778,7 +1946,9 @@ describe('NotePage', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.moveToFolder' }))
       fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('move blocked'))
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('move blocked')
+      })
     })
 
     it('surfaces an error toast when delete throws', async () => {
@@ -1788,7 +1958,9 @@ describe('NotePage', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
       fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('delete crashed'))
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('delete crashed')
+      })
       expect(mocks.closeTab).not.toHaveBeenCalled()
     })
   })
@@ -1960,7 +2132,9 @@ describe('NotePage', () => {
       expect(screen.getByTestId('note-more-menu').outerHTML).toBe(menuBefore)
 
       fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+      })
       expect(screen.getByTestId('note-mind-map-toggle')).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByTestId('note-more-menu').outerHTML).toBe(menuBefore)
     })
@@ -1973,7 +2147,9 @@ describe('NotePage', () => {
 
       await openMap()
       fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+      })
 
       // The direct guarantee behind undo history, the cursor, the selection and
       // the CRDT binding: not "it re-rendered", but the identical object.
@@ -2001,7 +2177,9 @@ describe('NotePage', () => {
       expect(screen.getByTestId('editor-content')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-      await waitFor(() => expect(screen.getByTestId('note-body')).not.toHaveAttribute('inert'))
+      await waitFor(() => {
+        expect(screen.getByTestId('note-body')).not.toHaveAttribute('inert')
+      })
       expect(screen.getByTestId('note-body')).toBe(bodyBefore)
     })
 
@@ -2016,7 +2194,9 @@ describe('NotePage', () => {
       expect(await screen.findByTestId('note-mind-map')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-      await waitFor(() => expect(mocks.tabViewState.noteMindMap).toBe(false))
+      await waitFor(() => {
+        expect(mocks.tabViewState.noteMindMap).toBe(false)
+      })
     })
 
     it('projects every node into a real tree beside the drawing', async () => {
@@ -2104,7 +2284,9 @@ describe('NotePage', () => {
       expect(mocks.mindMapCopyVector).toHaveBeenCalledTimes(1)
 
       fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-      await waitFor(() => expect(screen.queryByTestId('mind-map-toolbar')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.queryByTestId('mind-map-toolbar')).not.toBeInTheDocument()
+      })
     })
 
     it('opens a note with no headings on the root alone, and keeps the toggle live', async () => {
@@ -2142,7 +2324,9 @@ describe('NotePage', () => {
     const expectLandedOnAlpha = async (scrolls: MockInstance): Promise<void> => {
       // Both halves: the map has to go, or the body it hid cannot be seen, and
       // the block has to be scrolled to, or the user is merely back at the top.
-      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+      })
       expect(scrolls).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
     }
 
@@ -2186,7 +2370,9 @@ describe('NotePage', () => {
       // The root is the title, which is not a block — so its link has no anchor.
       fireEvent.click(drawnBoxFor('memry://note/note-1'))
 
-      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      await waitFor(() => {
+        expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+      })
       expect(scrolls).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
     })
 
@@ -2277,12 +2463,12 @@ describe('NotePage', () => {
       // Straight through the page's own wiki-link path — the same resolver, the
       // same tab call, and so the same open-in-new-tab preference the user set.
       // No map-specific tab rule exists to drift from it.
-      await waitFor(() =>
+      await waitFor(() => {
         expect(mocks.openTab).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
           { reuseActiveTab: true }
         )
-      )
+      })
       expect(mocks.resolveWikiLink).toHaveBeenCalledWith('Existing Note')
       // The map is a view of THIS note; opening another one is not a reason to
       // put it away.
@@ -2296,12 +2482,12 @@ describe('NotePage', () => {
 
       fireEvent.keyDown(linkItems()[1], { key: 'Enter' })
 
-      await waitFor(() =>
+      await waitFor(() => {
         expect(mocks.openTab).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'file', entityId: 'file-1' }),
           { reuseActiveTab: true }
         )
-      )
+      })
     })
 
     it('opens the linked note from the drawing too', async () => {
@@ -2314,12 +2500,12 @@ describe('NotePage', () => {
       const nodeId = linkItems()[0].dataset.mindMapNode
       fireEvent.click(drawnBoxFor(`memry://note/note-1#^${nodeId}`))
 
-      await waitFor(() =>
+      await waitFor(() => {
         expect(mocks.openTab).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
           { reuseActiveTab: true }
         )
-      )
+      })
     })
 
     it('opens the task a task node stands for, not the block that mentions it', async () => {
@@ -2379,7 +2565,9 @@ describe('NotePage', () => {
         // bitmap hands back the box's deep link and nothing else.
         fireEvent.click(drawnBoxFor('memry://note/note-1#^mm-b-h1-more'))
 
-        await waitFor(() => expect(marker()).toBeNull())
+        await waitFor(() => {
+          expect(marker()).toBeNull()
+        })
         expect(treeItems()).toHaveLength(17)
         // In place: the map is still open. A fold is undone where it is, and
         // the one node kind that is not a place in the note does not navigate.
@@ -2397,10 +2585,14 @@ describe('NotePage', () => {
         renderWithProviders(<NotePage noteId="note-1" />)
         await openMap()
         fireEvent.click(drawnBoxFor('memry://note/note-1#^mm-b-h1-more'))
-        await waitFor(() => expect(marker()).toBeNull())
+        await waitFor(() => {
+          expect(marker()).toBeNull()
+        })
 
         fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-        await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+        await waitFor(() => {
+          expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+        })
         fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
         await screen.findByTestId('note-mind-map')
 
@@ -2415,7 +2607,9 @@ describe('NotePage', () => {
         expect(screen.getByTestId('note-mind-map-cap-notice')).toBeEmptyDOMElement()
 
         fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
-        await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+        await waitFor(() => {
+          expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+        })
 
         // A note far past the whole-map budget: wide, and three levels deep.
         mocks.editorBlocks = Array.from({ length: 12 }, (_, top) => [

@@ -21,7 +21,9 @@ describe('LargeNotesWarning', () => {
 
     const { container } = renderWithProviders(<LargeNotesWarning />)
 
-    await waitFor(() => expect(getLargeNotes).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(getLargeNotes).toHaveBeenCalled()
+    })
     expect(container).toBeEmptyDOMElement()
   })
 
@@ -75,7 +77,9 @@ describe('LargeNotesWarning', () => {
 
     const { container } = renderWithProviders(<LargeNotesWarning />)
 
-    await waitFor(() => expect(getLargeNotes).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(getLargeNotes).toHaveBeenCalled()
+    })
     expect(container).toBeEmptyDOMElement()
   })
 })

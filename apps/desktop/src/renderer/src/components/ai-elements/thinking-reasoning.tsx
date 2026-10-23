@@ -106,7 +106,9 @@ export function ThinkingReasoning({
     if (!content) return undefined
     const observer = new ResizeObserver(sync)
     observer.observe(content)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [sync])
 
   // Measured against the bottom as of the last sync: a scroll event, ours or

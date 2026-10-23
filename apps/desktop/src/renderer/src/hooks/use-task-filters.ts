@@ -104,7 +104,7 @@ const loadPersistedFilterState = (filterKey: string): PersistedFilterState | nul
  */
 export const readPersistedFilterState = (filterKey: string): TaskFilters => ({
   ...defaultFilters,
-  ...(loadPersistedFilterState(filterKey)?.filters ?? {})
+  ...loadPersistedFilterState(filterKey)?.filters
 })
 
 const loadPersistedSortState = (sortKey: string): PersistedSortState | null => {

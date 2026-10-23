@@ -111,7 +111,9 @@ export function GraphContextMenu({
         <LinkPicker
           graph={graph}
           sourceId={menu.nodeId}
-          onBack={() => setMode('main')}
+          onBack={() => {
+            setMode('main')
+          }}
           onPick={(targetId) => {
             onLinkTo(menu.nodeId, targetId)
             onClose()
@@ -121,7 +123,9 @@ export function GraphContextMenu({
         <TagPicker
           graph={graph}
           nodeTags={nodeTags}
-          onBack={() => setMode('main')}
+          onBack={() => {
+            setMode('main')
+          }}
           onPick={(tag) => {
             onAddTag(menu.nodeId, tag)
             onClose()
@@ -136,8 +140,20 @@ export function GraphContextMenu({
           onFocusNode={onFocusNode}
           onOpenInTab={onOpenInTab}
           onCreateNote={onCreateNote}
-          onStartLink={onLinkTo ? () => setMode('link') : undefined}
-          onStartTag={onAddTag ? () => setMode('tag') : undefined}
+          onStartLink={
+            onLinkTo
+              ? () => {
+                  setMode('link')
+                }
+              : undefined
+          }
+          onStartTag={
+            onAddTag
+              ? () => {
+                  setMode('tag')
+                }
+              : undefined
+          }
           onUnlink={onUnlink}
           onUnpin={onUnpin}
           onClose={onClose}
@@ -199,7 +215,13 @@ function MainMenu({
         </span>
       </div>
 
-      <button type="button" className={ITEM_CLASS} onClick={closing(() => onFocusNode(nodeId))}>
+      <button
+        type="button"
+        className={ITEM_CLASS}
+        onClick={closing(() => {
+          onFocusNode(nodeId)
+        })}
+      >
         <Focus className="size-3.5 text-muted-foreground" />
         {t('context-menu.focus-node')}
       </button>
@@ -208,7 +230,9 @@ function MainMenu({
         <button
           type="button"
           className={ITEM_CLASS}
-          onClick={closing(() => onToggleCategory(categoryAction.categoryId))}
+          onClick={closing(() => {
+            onToggleCategory(categoryAction.categoryId)
+          })}
         >
           {categoryAction.collapsed ? (
             <Expand className="size-3.5 text-muted-foreground" />
@@ -224,14 +248,26 @@ function MainMenu({
       )}
 
       {!isUnresolved && !isGroup && (
-        <button type="button" className={ITEM_CLASS} onClick={closing(() => onOpenInTab(nodeId))}>
+        <button
+          type="button"
+          className={ITEM_CLASS}
+          onClick={closing(() => {
+            onOpenInTab(nodeId)
+          })}
+        >
           <ExternalLink className="size-3.5 text-muted-foreground" />
           {t('context-menu.open-new-tab')}
         </button>
       )}
 
       {isUnresolved && onCreateNote && (
-        <button type="button" className={ITEM_CLASS} onClick={closing(() => onCreateNote(label))}>
+        <button
+          type="button"
+          className={ITEM_CLASS}
+          onClick={closing(() => {
+            onCreateNote(label)
+          })}
+        >
           <FilePlus className="size-3.5 text-muted-foreground" />
           {t('context-menu.create-note')}
         </button>
@@ -252,7 +288,13 @@ function MainMenu({
       )}
 
       {isPinned && onUnpin && (
-        <button type="button" className={ITEM_CLASS} onClick={closing(() => onUnpin(nodeId))}>
+        <button
+          type="button"
+          className={ITEM_CLASS}
+          onClick={closing(() => {
+            onUnpin(nodeId)
+          })}
+        >
           <Pin className="size-3.5 text-muted-foreground" />
           {t('context-menu.unpin')}
         </button>
@@ -272,7 +314,9 @@ function MainMenu({
       {onUnlink && (
         <RelationLinkList
           links={relationLinksOf(graph, nodeId)}
-          onUnlink={(link) => closing(() => onUnlink(link))()}
+          onUnlink={(link) => {
+            closing(() => onUnlink(link))()
+          }}
         />
       )}
     </>
@@ -298,7 +342,9 @@ function RelationLinkList({
             key={`${link.sourceId}-${link.targetId}`}
             type="button"
             className={ITEM_CLASS}
-            onClick={() => onUnlink(link)}
+            onClick={() => {
+              onUnlink(link)
+            }}
           >
             <Unlink className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">
@@ -348,7 +394,9 @@ function PickerShell({
           value={value}
           placeholder={placeholder}
           aria-label={placeholder}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value)
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()
@@ -408,7 +456,9 @@ function LinkPicker({
             key={candidate.id}
             type="button"
             className={ITEM_CLASS}
-            onClick={() => onPick(candidate.id)}
+            onClick={() => {
+              onPick(candidate.id)
+            }}
           >
             <span className="truncate">{candidate.label || t('context-menu.untitled')}</span>
           </button>
@@ -462,12 +512,25 @@ function TagPicker({
       }}
     >
       {suggestions.map((tag) => (
-        <button key={tag} type="button" className={ITEM_CLASS} onClick={() => onPick(tag)}>
+        <button
+          key={tag}
+          type="button"
+          className={ITEM_CLASS}
+          onClick={() => {
+            onPick(tag)
+          }}
+        >
           <span className="truncate">#{tag}</span>
         </button>
       ))}
       {showCreate && (
-        <button type="button" className={ITEM_CLASS} onClick={() => onPick(typed)}>
+        <button
+          type="button"
+          className={ITEM_CLASS}
+          onClick={() => {
+            onPick(typed)
+          }}
+        >
           <Tag className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate">{t('context-menu.create-tag', { tag: typed })}</span>
         </button>

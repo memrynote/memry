@@ -8,7 +8,7 @@ test.describe('Manual sync smoke', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `H5 Sync Smoke ${Date.now()}`
     const body = 'manual sync line 1\n\nmanual sync line 2'

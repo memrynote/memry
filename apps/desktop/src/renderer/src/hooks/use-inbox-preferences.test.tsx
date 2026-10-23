@@ -18,13 +18,17 @@ describe('useInboxPreferences', () => {
 
   it('loads settings', async () => {
     const { result } = renderHook(() => useInboxPreferences())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.settings.reviewReminderTime).toBe('18:00')
   })
 
   it('updates optimistically on success', async () => {
     const { result } = renderHook(() => useInboxPreferences())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     await act(async () => {
       await result.current.updateSettings({ reviewReminderTime: '06:30' })
     })

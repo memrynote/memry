@@ -34,7 +34,9 @@ export function GoogleCalendarConnectPrompt(): React.JSX.Element | null {
         variant="outline"
         size="sm"
         className="h-9 gap-1.5 rounded-lg px-3 text-xs font-medium"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true)
+        }}
       >
         <GoogleIcon />
         {t('connect-prompt.pill')}

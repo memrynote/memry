@@ -82,7 +82,9 @@ beforeEach(() => {
 describe('journal commands', () => {
   it('steps by the unit on screen', () => {
     const { rerender } = render(mount({ viewType: 'day' }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
     const label = (id: CommandId): string | undefined => available.find((c) => c.id === id)?.label
     expect(label('journal.next')).toBe('Next day')
     expect(label('journal.previous')).toBe('Previous day')
@@ -98,7 +100,9 @@ describe('journal commands', () => {
     const goNext = vi.fn()
     const goToday = vi.fn()
     const { rerender } = render(mount({ goNext, goToday }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
 
     await runCommand('journal.next', 'palette')
     await runCommand('journal.today', 'palette')
@@ -112,7 +116,9 @@ describe('journal commands', () => {
   it('only opens the confirm dialog for delete, and only for a day that has an entry', async () => {
     const dialog = dialogSpy()
     const { rerender } = render(mount({ dialog }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
 
     await runCommand('journal.delete', 'palette')
     expect(dialog.show).toHaveBeenCalledWith('delete')
@@ -124,7 +130,9 @@ describe('journal commands', () => {
 
   it('leaves the day-only commands out of month and year views', () => {
     render(mount({ viewType: 'month' }))
-    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
+    act(() => {
+      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
+    })
     expect(available.map((c) => c.id).sort()).toEqual([
       'journal.next',
       'journal.previous',

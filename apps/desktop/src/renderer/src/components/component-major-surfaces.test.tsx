@@ -86,23 +86,43 @@ vi.mock('@/components/inbox', () => ({
     onRetryTranscription: (id: string) => void
   }) => (
     <article data-item-id={item.id}>
-      <button type="button" onClick={() => onPreview(item.id)}>
+      <button
+        type="button"
+        onClick={() => {
+          onPreview(item.id)
+        }}
+      >
         {item.title}
       </button>
-      <button type="button" onClick={() => onArchive(item.id)}>
+      <button
+        type="button"
+        onClick={() => {
+          onArchive(item.id)
+        }}
+      >
         archive {item.id}
       </button>
       <button type="button" onClick={() => onSnooze?.(item.id, '2026-05-11T00:00:00.000Z')}>
         snooze {item.id}
       </button>
-      <button type="button" onClick={() => onRetryTranscription(item.id)}>
+      <button
+        type="button"
+        onClick={() => {
+          onRetryTranscription(item.id)
+        }}
+      >
         retry {item.id}
       </button>
       {isQuickFileActive && (
         <div>
           <span>quick file {item.id}</span>
           <span>query {quickFileQuery}</span>
-          <button type="button" onClick={() => onQuickFileQueryChange('work')}>
+          <button
+            type="button"
+            onClick={() => {
+              onQuickFileQueryChange('work')
+            }}
+          >
             query
           </button>
           <button type="button" onClick={onQuickFileArrowDown}>
@@ -117,7 +137,12 @@ vi.mock('@/components/inbox', () => ({
           <button type="button" onClick={onQuickFileCancel}>
             cancel
           </button>
-          <button type="button" onClick={() => onQuickFileFolderSelect(folders[1])}>
+          <button
+            type="button"
+            onClick={() => {
+              onQuickFileFolderSelect(folders[1])
+            }}
+          >
             choose folder
           </button>
         </div>
@@ -350,7 +375,9 @@ describe('ListView', () => {
     expect(screen.getByText('query work')).toBeInTheDocument()
     fireEvent.click(screen.getByText('down'))
     fireEvent.click(screen.getByText('up'))
-    await waitFor(() => expect(window.api.notes.getFolders).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.notes.getFolders).toHaveBeenCalled()
+    })
     fireEvent.click(screen.getByText('choose folder'))
     expect(onQuickFile).toHaveBeenCalledWith('two', 'Work')
 

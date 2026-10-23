@@ -7,8 +7,11 @@
  * already depend on, so parse/toExternalHTML live here. See hash-tag.ts.
  */
 
-import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
-import type { CustomInlineContentImplementation } from '@blocknote/core'
+import {
+  createInlineContentSpec,
+  type InlineContentSpec,
+  type CustomInlineContentImplementation
+} from '@blocknote/core'
 import {
   serializeDateMentionToken,
   type DateMentionDateFormat,

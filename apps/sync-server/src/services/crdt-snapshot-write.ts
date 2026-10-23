@@ -509,13 +509,13 @@ const writeSnapshots = async (
   }
 
   if (storageDelta !== 0) {
-    await adjustStorageUsed(db, userId, storageDelta).catch((error: unknown) =>
+    await adjustStorageUsed(db, userId, storageDelta).catch((error: unknown) => {
       logger.error('snapshot storage adjustment failed', {
         vaultId,
         storageDelta,
         error: error instanceof Error ? error.message : String(error)
       })
-    )
+    })
   }
   await refundReservation(db, userId, refundBytes, {
     operation: 'storeSnapshot',
@@ -524,13 +524,13 @@ const writeSnapshots = async (
   })
   // Replaced and refused objects go only after the commit that made them
   // unreachable; a failure leaves an orphan, never a row without bytes.
-  await deleteBlobs(storage, orphanKeys, userId).catch((error: unknown) =>
+  await deleteBlobs(storage, orphanKeys, userId).catch((error: unknown) => {
     logger.warn('snapshot object cleanup failed', {
       vaultId,
       count: orphanKeys.length,
       error: error instanceof Error ? error.message : String(error)
     })
-  )
+  })
 
   return results.map(
     (result) => result ?? { ok: false, error: new AppError(ErrorCodes.INTERNAL_ERROR, 'lost', 500) }

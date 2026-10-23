@@ -31,7 +31,9 @@ export function StickySettingsGroup(): React.JSX.Element {
     void window.api.settings
       .getStickySettings()
       .then(setSettings)
-      .catch((err) => log.error('Failed to load sticky settings', err))
+      .catch((err) => {
+        log.error('Failed to load sticky settings', err)
+      })
   }, [])
 
   const update = useCallback(

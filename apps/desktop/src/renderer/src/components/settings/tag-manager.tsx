@@ -184,7 +184,9 @@ export function TagManager() {
         <Input
           placeholder={t('tags.filterPlaceholder')}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+          }}
           className="ps-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
@@ -212,8 +214,12 @@ export function TagManager() {
                       ref={editInputRef}
                       autoFocus
                       value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => {
+                        setEditValue(e.target.value)
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.select()
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') void handleConfirmRename()
                         if (e.key === 'Escape') handleCancelRename()
@@ -239,21 +245,35 @@ export function TagManager() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleStartRename(tag.name)}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          handleStartRename(tag.name)
+                        }}
+                      >
                         <Pencil className="w-4 h-4 me-2" />
                         {t('tags.actions.rename')}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setColorTarget(tag.name)}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setColorTarget(tag.name)
+                        }}
+                      >
                         <Palette className="w-4 h-4 me-2" />
                         {t('tags.actions.changeColor')}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setMergeSource(tag.name)}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setMergeSource(tag.name)
+                        }}
+                      >
                         <Merge className="w-4 h-4 me-2" />
                         {t('tags.actions.mergeInto')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => setDeleteTarget({ name: tag.name, count: tag.count })}
+                        onClick={() => {
+                          setDeleteTarget({ name: tag.name, count: tag.count })
+                        }}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 me-2" />
@@ -325,7 +345,12 @@ export function TagManager() {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMergeSource(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMergeSource(null)
+              }}
+            >
               {tCommon('button.cancel')}
             </Button>
             <Button onClick={() => void handleConfirmMerge()} disabled={!mergeTarget}>

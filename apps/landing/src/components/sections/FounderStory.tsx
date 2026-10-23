@@ -52,7 +52,9 @@ export function FounderStory() {
                 <Link
                   to="/roadmap"
                   className="text-terracotta underline decoration-terracotta/40 underline-offset-4 transition-colors hover:decoration-terracotta"
-                  onClick={() => trackLandingEvent('landing_nav_click', 'founder:roadmap')}
+                  onClick={() => {
+                    trackLandingEvent('landing_nav_click', 'founder:roadmap')
+                  }}
                 >
                   roadmap is public
                 </Link>
@@ -67,7 +69,9 @@ export function FounderStory() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-terracotta hover:underline"
-                onClick={() => trackLandingEvent('landing_external_click', 'founder:twitter')}
+                onClick={() => {
+                  trackLandingEvent('landing_external_click', 'founder:twitter')
+                }}
               >
                 Follow me on 𝕏
               </a>
@@ -76,7 +80,9 @@ export function FounderStory() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-muted transition-colors hover:text-ink"
-                onClick={() => trackLandingEvent('landing_external_click', 'founder:github')}
+                onClick={() => {
+                  trackLandingEvent('landing_external_click', 'founder:github')
+                }}
               >
                 GitHub
               </a>

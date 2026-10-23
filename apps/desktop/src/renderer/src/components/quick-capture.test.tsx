@@ -76,7 +76,9 @@ vi.mock('./quick-capture-input', () => ({
         ref={textareaRef}
         aria-label="quick input"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
         onPaste={onPaste}
       />
       <span data-testid="detected-type">{detectedType}</span>
@@ -112,7 +114,9 @@ vi.mock('./voice-recorder', async () => {
           <div data-testid="voice-recorder">
             <button
               type="button"
-              onClick={() => onRecordingComplete(new Blob(['voice'], { type: 'audio/webm' }), 7)}
+              onClick={() => {
+                onRecordingComplete(new Blob(['voice'], { type: 'audio/webm' }), 7)
+              }}
             >
               complete recording
             </button>
@@ -253,14 +257,14 @@ describe('QuickCapture', () => {
     expect(screen.getByLabelText('quick input')).toHaveValue('Ship coverage\nwith focused tests')
 
     fireEvent.click(screen.getByText('submit'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.captureText).toHaveBeenCalledWith({
         content: 'Ship coverage\nwith focused tests',
         title: 'Ship coverage...',
         force: false,
         source: 'quick-capture'
       })
-    )
+    })
 
     fireEvent.click(await screen.findByText('captured'))
     expect(mocks.close).toHaveBeenCalled()
@@ -282,19 +286,21 @@ describe('QuickCapture', () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
-    await waitFor(() => expect(screen.getByTestId('link-preview')).toHaveTextContent('Preview'))
+    await waitFor(() => {
+      expect(screen.getByTestId('link-preview')).toHaveTextContent('Preview')
+    })
 
     fireEvent.click(screen.getByText('submit'))
     await screen.findByText(/duplicate Existing link/)
     fireEvent.click(screen.getByText('force'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.captureLink).toHaveBeenLastCalledWith({
         url: 'https://example.com',
         force: true,
         source: 'quick-capture'
       })
-    )
+    })
   })
 
   it('captures pasted images and dropped PDFs, and reports unsupported drops', async () => {
@@ -313,11 +319,11 @@ describe('QuickCapture', () => {
     expect(screen.getByTestId('file-image')).toHaveTextContent('clipboard-')
 
     fireEvent.click(screen.getByText('submit'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.captureImage).toHaveBeenCalledWith(
         expect.objectContaining({ filename: expect.stringContaining('clipboard-') })
       )
-    )
+    })
 
     unmount()
     const fresh = render(<QuickCapture />)
@@ -388,7 +394,9 @@ describe('QuickCapture', () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
-    await waitFor(() => expect(screen.queryByTestId('link-preview')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.queryByTestId('link-preview')).not.toBeInTheDocument()
+    })
 
     fireEvent.click(screen.getByText('submit'))
     expect(await screen.findByRole('alert')).toHaveTextContent('link failed')
@@ -431,22 +439,30 @@ describe('QuickCapture', () => {
         new CustomEvent('quick-capture:file-selected', { detail: selectedAudio })
       )
     })
-    await waitFor(() => expect(screen.getByTestId('detected-type')).toHaveTextContent('voice'))
+    await waitFor(() => {
+      expect(screen.getByTestId('detected-type')).toHaveTextContent('voice')
+    })
 
     await act(async () => {
       fireEvent.click(screen.getByText('submit'))
       await Promise.resolve()
     })
-    await waitFor(() => expect(mocks.ensureVoiceReady).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.ensureVoiceReady).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.openSettings).toHaveBeenCalledWith('ai:voice-local-model')
     expect(mocks.captureVoice).not.toHaveBeenCalled()
-    await waitFor(() => expect(screen.getByTestId('capture-flags')).toHaveTextContent('idle'))
+    await waitFor(() => {
+      expect(screen.getByTestId('capture-flags')).toHaveTextContent('idle')
+    })
 
     await act(async () => {
       fireEvent.click(screen.getByText('submit'))
       await Promise.resolve()
     })
-    await waitFor(() => expect(mocks.captureVoice).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.captureVoice).toHaveBeenCalledTimes(1)
+    })
     expect(await screen.findByRole('alert')).toHaveTextContent('audio failed')
 
     mocks.ensureVoiceReady.mockResolvedValue(true)
@@ -456,7 +472,9 @@ describe('QuickCapture', () => {
       dataTransfer: { files: [droppedAudio] }
     })
     fireEvent.click(screen.getByText('submit'))
-    await waitFor(() => expect(mocks.captureVoice).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mocks.captureVoice).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('records voice, captures social URLs, and closes on Escape', async () => {
@@ -465,7 +483,9 @@ describe('QuickCapture', () => {
     fireEvent.change(screen.getByLabelText('quick input'), {
       target: { value: 'https://x.com/kaan' }
     })
-    await waitFor(() => expect(screen.getByTestId('detected-type')).toHaveTextContent('social'))
+    await waitFor(() => {
+      expect(screen.getByTestId('detected-type')).toHaveTextContent('social')
+    })
     expect(screen.getByTestId('file-social')).toHaveTextContent('@kaan')
 
     await act(async () => {
@@ -474,11 +494,11 @@ describe('QuickCapture', () => {
     })
     await screen.findByTestId('voice-recorder')
     fireEvent.click(screen.getByText('complete recording'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.captureVoice).toHaveBeenCalledWith(
         expect.objectContaining({ duration: 7, format: 'webm', transcribe: true })
       )
-    )
+    })
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(mocks.close).toHaveBeenCalled()
@@ -488,7 +508,7 @@ describe('QuickCapture', () => {
     let onSettingsChanged: ((event: { key: string; value: unknown }) => void) | undefined
     const api = (window as any).api
     api.settings = {
-      ...(api.settings ?? {}),
+      ...api.settings,
       getAISettings: vi.fn().mockResolvedValue({ enabled: true })
     }
     api.onSettingsChanged = vi.fn((callback) => {
@@ -502,8 +522,12 @@ describe('QuickCapture', () => {
       </AISettingsProvider>
     )
 
-    await waitFor(() => expect(api.settings.getAISettings).toHaveBeenCalled())
-    await waitFor(() => expect(api.onSettingsChanged).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(api.settings.getAISettings).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(api.onSettingsChanged).toHaveBeenCalled()
+    })
     act(() => {
       onSettingsChanged?.({ key: 'ai', value: { enabled: true } })
     })
@@ -512,14 +536,18 @@ describe('QuickCapture', () => {
     fireEvent.drop(container.firstElementChild as Element, {
       dataTransfer: { files: [audio] }
     })
-    await waitFor(() => expect(screen.getByTestId('detected-type')).toHaveTextContent('voice'))
+    await waitFor(() => {
+      expect(screen.getByTestId('detected-type')).toHaveTextContent('voice')
+    })
 
     act(() => {
       onSettingsChanged?.({ key: 'ai', value: { enabled: false } })
     })
 
     fireEvent.click(screen.getByText('submit'))
-    await waitFor(() => expect(screen.getByTestId('capture-flags')).toHaveTextContent('idle'))
+    await waitFor(() => {
+      expect(screen.getByTestId('capture-flags')).toHaveTextContent('idle')
+    })
     expect(mocks.captureVoice).not.toHaveBeenCalled()
 
     fireEvent.drop(container.firstElementChild as Element, {

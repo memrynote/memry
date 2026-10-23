@@ -110,7 +110,9 @@ vi.mock('./calendar-quick-create-dialog', () => ({
       </span>
       <button
         type="button"
-        onClick={() => onSave({ title: 'Quick event', startAt, endAt, isAllDay })}
+        onClick={() => {
+          onSave({ title: 'Quick event', startAt, endAt, isAllDay })
+        }}
       >
         quick save
       </button>
@@ -243,14 +245,14 @@ describe('CalendarDayView', () => {
     expect(screen.getByTestId('quick-create-dialog')).toHaveTextContent('false')
 
     fireEvent.click(screen.getByText('quick save'))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(onQuickSave).toHaveBeenCalledWith({
         title: 'Quick event',
         startAt: '2026-05-14T11:00',
         endAt: '2026-05-14T12:00',
         isAllDay: false
       })
-    )
+    })
     expect(mocks.marquee.clearSelection).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByText('dismiss quick create'))

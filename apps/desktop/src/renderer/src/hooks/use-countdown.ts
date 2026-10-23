@@ -22,7 +22,9 @@ export function useCountdown(expiresAt: number): CountdownResult {
       if (left <= 0) clearInterval(interval)
     }, 1000)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [expiresAt])
 
   const minutes = Math.floor(secondsLeft / 60)

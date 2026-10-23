@@ -166,7 +166,9 @@ describe('useUndoKeyboardShortcut', () => {
   it('should add keydown event listener on mount', () => {
     const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function))
   })
@@ -174,7 +176,9 @@ describe('useUndoKeyboardShortcut', () => {
   it('should remove keydown event listener on unmount', () => {
     const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
 
-    const { unmount } = renderHook(() => useUndoKeyboardShortcut())
+    const { unmount } = renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
     unmount()
 
     expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function))
@@ -190,7 +194,9 @@ describe('useUndoKeyboardShortcut', () => {
       trackerResult.current.registerUndo('Test action', undoFn)
     })
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     const event = new KeyboardEvent('keydown', {
       key: 'z',
@@ -219,7 +225,9 @@ describe('useUndoKeyboardShortcut', () => {
       trackerResult.current.registerUndo('Test action', undoFn)
     })
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     const event = new KeyboardEvent('keydown', {
       key: 'z',
@@ -248,7 +256,9 @@ describe('useUndoKeyboardShortcut', () => {
       trackerResult.current.registerUndo('Test action', undoFn)
     })
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     // Create an input element as the target
     const input = document.createElement('input')
@@ -286,7 +296,9 @@ describe('useUndoKeyboardShortcut', () => {
       trackerResult.current.registerUndo('Test action', undoFn)
     })
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     const textarea = document.createElement('textarea')
     document.body.appendChild(textarea)
@@ -319,7 +331,9 @@ describe('useUndoKeyboardShortcut', () => {
       trackerResult.current.registerUndo('Test action', undoFn)
     })
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     // Create a mock target with isContentEditable property
     const mockTarget = {
@@ -353,7 +367,9 @@ describe('useUndoKeyboardShortcut', () => {
       trackerResult.current.registerUndo('Test action', undoFn)
     })
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     const event = new KeyboardEvent('keydown', {
       key: 'z',
@@ -579,7 +595,9 @@ describe('useUndoTracker subscription', () => {
     })
     expect(result.current.canUndo).toBe(true)
 
-    renderHook(() => useUndoKeyboardShortcut())
+    renderHook(() => {
+      useUndoKeyboardShortcut()
+    })
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true }))

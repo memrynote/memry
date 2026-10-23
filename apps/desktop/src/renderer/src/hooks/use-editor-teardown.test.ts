@@ -40,7 +40,9 @@ describe('useEditorTeardown', () => {
     const win = window as unknown as { ProseMirror?: unknown }
     win.ProseMirror = tiptap
 
-    const { unmount } = renderHook(() => useEditorTeardown(editor))
+    const { unmount } = renderHook(() => {
+      useEditorTeardown(editor)
+    })
     expect(tiptap.destroy).not.toHaveBeenCalled()
 
     unmount()
@@ -58,7 +60,9 @@ describe('useEditorTeardown', () => {
     const win = window as unknown as { ProseMirror?: unknown }
     win.ProseMirror = other.tiptap
 
-    const { unmount } = renderHook(() => useEditorTeardown(editor))
+    const { unmount } = renderHook(() => {
+      useEditorTeardown(editor)
+    })
     unmount()
     await settleTeardown()
 
@@ -72,9 +76,14 @@ describe('useEditorTeardown', () => {
     // StrictMode runs setup → cleanup → setup on the same fiber. `useMemo`
     // hands the same editor back, so destroying it here blanks every editing
     // surface for the rest of the session.
-    const { unmount } = renderHook(() => useEditorTeardown(editor, flush), {
-      wrapper: StrictMode
-    })
+    const { unmount } = renderHook(
+      () => {
+        useEditorTeardown(editor, flush)
+      },
+      {
+        wrapper: StrictMode
+      }
+    )
     await settleTeardown()
 
     expect(tiptap.destroy).not.toHaveBeenCalled()
@@ -91,9 +100,14 @@ describe('useEditorTeardown', () => {
     const first = createEditor()
     const second = createEditor()
 
-    const { rerender, unmount } = renderHook(({ editor }) => useEditorTeardown(editor), {
-      initialProps: { editor: first.editor as unknown }
-    })
+    const { rerender, unmount } = renderHook(
+      ({ editor }) => {
+        useEditorTeardown(editor)
+      },
+      {
+        initialProps: { editor: first.editor as unknown }
+      }
+    )
 
     rerender({ editor: second.editor as unknown })
     await settleTeardown()
@@ -121,7 +135,9 @@ describe('useEditorTeardown', () => {
         })
     )
 
-    const { unmount } = renderHook(() => useEditorTeardown(editor, flush))
+    const { unmount } = renderHook(() => {
+      useEditorTeardown(editor, flush)
+    })
     unmount()
     await settleTeardown()
 
@@ -129,21 +145,29 @@ describe('useEditorTeardown', () => {
     expect(tiptap.destroy).not.toHaveBeenCalled()
 
     resolveFlush!()
-    await vi.waitFor(() => expect(tiptap.destroy).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => {
+      expect(tiptap.destroy).toHaveBeenCalledTimes(1)
+    })
     order.push('destroy')
     expect(order).toEqual(['flush', 'destroy'])
 
     const rejecting = createEditor()
-    const { unmount: unmountRejecting } = renderHook(() =>
+    const { unmount: unmountRejecting } = renderHook(() => {
       useEditorTeardown(rejecting.editor, () => Promise.reject(new Error('save failed')))
-    )
+    })
     unmountRejecting()
-    await vi.waitFor(() => expect(rejecting.tiptap.destroy).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => {
+      expect(rejecting.tiptap.destroy).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('does nothing when there is no editor', () => {
-    const { unmount } = renderHook(() => useEditorTeardown(null))
-    expect(() => unmount()).not.toThrow()
+    const { unmount } = renderHook(() => {
+      useEditorTeardown(null)
+    })
+    expect(() => {
+      unmount()
+    }).not.toThrow()
   })
 
   describe('in a vault workspace kept mounted while hidden', () => {
@@ -156,7 +180,12 @@ describe('useEditorTeardown', () => {
           { value: lifecycle },
           createElement(Activity, { mode, children })
         )
-      const view = renderHook(() => useEditorTeardown(editor, beforeDestroy), { wrapper })
+      const view = renderHook(
+        () => {
+          useEditorTeardown(editor, beforeDestroy)
+        },
+        { wrapper }
+      )
       const setHidden = (hidden: boolean): void => {
         // VaultStack flags the workspace in its layout phase, before the hide runs cleanups.
         lifecycle.hidden = hidden

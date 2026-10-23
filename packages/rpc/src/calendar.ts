@@ -1,6 +1,6 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { CalendarChannels } from '../../contracts/src/ipc-channels.ts'
-import {
+import type {
   CreateCalendarEventSchema,
   UpdateCalendarEventSchema,
   ListCalendarEventsSchema,
@@ -21,7 +21,9 @@ import {
   UpdateIcsCalendarSchema,
   CalendarProviderRequestSchema,
   CheckProviderWriterCompatSchema,
-  DiscoverProviderCalendarsSchema,
+  DiscoverProviderCalendarsSchema
+} from '../../contracts/src/calendar-api.ts'
+import {
   type CalendarChangedEvent,
   type CalendarDeleteResponse,
   type CalendarEventListResponse,

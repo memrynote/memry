@@ -135,7 +135,9 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
       acceptAll()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+    }
   }, [reviewing, acceptAll])
 
   useEffect(() => clearSourceHighlight, [])
@@ -153,7 +155,9 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
           </span>
           <button
             type="button"
-            onClick={() => setPhase({ kind: 'idle' })}
+            onClick={() => {
+              setPhase({ kind: 'idle' })
+            }}
             className="rounded-md px-2 py-0.5 text-[12px] text-text-secondary hover:bg-muted"
           >
             {t('tagFields.fill.dismiss')}
@@ -188,7 +192,9 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
             <button
               type="button"
               aria-label={label}
-              onClick={() => start(group)}
+              onClick={() => {
+                start(group)
+              }}
               className="inline-flex size-6 items-center justify-center rounded-md text-text-secondary hover:bg-muted hover:text-foreground"
               data-testid="field-fill-action"
             >
@@ -214,7 +220,9 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
           proposal={proposal}
           busy={phase.busy}
           onAccept={() => void accept([proposal])}
-          onReject={() => reject(proposal)}
+          onReject={() => {
+            reject(proposal)
+          }}
         />
       )
     }
@@ -231,7 +239,9 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
         model={phase.model}
         local={phase.local}
         onAccept={() => void run(phase.group, phase.tag, true)}
-        onDecline={() => setPhase({ kind: 'idle' })}
+        onDecline={() => {
+          setPhase({ kind: 'idle' })
+        }}
       />
     )
   }

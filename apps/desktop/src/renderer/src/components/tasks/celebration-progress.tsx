@@ -55,7 +55,9 @@ export const CelebrationProgress = ({
     const timer = setTimeout(() => {
       setCelebrationState((prev) => ({ ...prev, show: false }))
     }, 3000)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [showCelebration])
 
   // Don't render if no subtasks

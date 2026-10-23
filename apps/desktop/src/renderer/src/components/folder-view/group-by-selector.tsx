@@ -219,7 +219,9 @@ export function GroupBySelector({
           <div className="p-2 border-b">
             <Input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+              }}
               placeholder={tPhaseF('phaseF.componentsFolderViewGroupBySelector.searchProperties')}
               className="h-8"
             />
@@ -239,7 +241,9 @@ export function GroupBySelector({
                     name={col.displayName}
                     type={col.type}
                     isSelected={groupBy?.property === col.id}
-                    onClick={() => handleSelectProperty(col.id)}
+                    onClick={() => {
+                      handleSelectProperty(col.id)
+                    }}
                   />
                 ))}
               </div>
@@ -259,7 +263,9 @@ export function GroupBySelector({
                     type={prop.type}
                     usageCount={prop.usageCount}
                     isSelected={groupBy?.property === prop.name}
-                    onClick={() => handleSelectProperty(prop.name)}
+                    onClick={() => {
+                      handleSelectProperty(prop.name)
+                    }}
                   />
                 ))}
               </div>

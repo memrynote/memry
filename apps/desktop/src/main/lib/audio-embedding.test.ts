@@ -30,14 +30,15 @@ function wav(options: {
   const float = options.format === 'float32'
   const bytes = float ? 4 : 2
   const data = new DataView(new ArrayBuffer(options.samples.length * bytes))
-  options.samples.forEach((value, i) =>
+  options.samples.forEach((value, i) => {
     float
       ? data.setFloat32(i * 4, value, true)
       : data.setInt16(i * 2, Math.round(value * 32767), true)
-  )
+  })
   const out = new DataView(new ArrayBuffer(44 + data.byteLength))
-  const tag = (at: number, text: string): void =>
-    [...text].forEach((c, i) => out.setUint8(at + i, c.charCodeAt(0)))
+  const tag = (at: number, text: string): void => {
+    ;[...text].forEach((c, i) => out.setUint8(at + i, c.charCodeAt(0)))
+  }
   tag(0, 'RIFF')
   out.setUint32(4, 36 + data.byteLength, true)
   tag(8, 'WAVE')

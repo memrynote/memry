@@ -27,11 +27,10 @@ vi.mock('../secrets/secret-storage', () => ({
 
 import { setReadwiseToken } from './secrets'
 import { setCursor, claimErrorToast } from './sync-state'
-import { clearRunFailure } from './run-status'
+import { clearRunFailure, classifyRunFailure } from './run-status'
 import { stopReadwiseScheduler } from './runtime-effects'
 import { connectReadwise, getReadwiseStatus, syncReadwiseNow } from './connection'
 import { ReadwiseError } from './client'
-import { classifyRunFailure } from './run-status'
 import { ReadwisePullGateError } from './pull-gate'
 
 beforeAll(async () => {

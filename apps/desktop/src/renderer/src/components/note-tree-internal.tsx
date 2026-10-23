@@ -22,7 +22,9 @@ export function TreeFolderIcon({
       {...props}
       isExpanded={isExpanded}
       hasChildren={hasChildren}
-      onToggleExpand={() => toggleExpanded(nodeId)}
+      onToggleExpand={() => {
+        toggleExpanded(nodeId)
+      }}
     />
   )
 }
@@ -66,7 +68,9 @@ export function RevealHandler({
       // Hold the request instead of dropping it: `noteMap` is a dependency, so
       // this effect re-runs the moment the note reaches the tree.
       const giveUp = setTimeout(onClear, REVEAL_WAIT_MS)
-      return () => clearTimeout(giveUp)
+      return () => {
+        clearTimeout(giveUp)
+      }
     }
 
     // Once per request, not once per render. Creating a note re-renders the
@@ -96,7 +100,9 @@ export function RevealHandler({
       onReveal(pendingRevealNoteId)
     }, 50)
 
-    return () => clearTimeout(revealTimeout)
+    return () => {
+      clearTimeout(revealTimeout)
+    }
   }, [pendingRevealNoteId, noteMap, expandNode, onReveal, onClear])
 
   return null
@@ -139,7 +145,9 @@ export function FolderRevealHandler() {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' })
           element.classList.add('bg-accent')
-          setTimeout(() => element.classList.remove('bg-accent'), 2000)
+          setTimeout(() => {
+            element.classList.remove('bg-accent')
+          }, 2000)
         }
       }, 100)
     }

@@ -16,7 +16,11 @@ import './index.css'
  */
 function afterFirstPaint(): Promise<void> {
   return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        resolve()
+      })
+    )
   })
 }
 

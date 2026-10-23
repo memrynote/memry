@@ -107,8 +107,12 @@ export function PortalHiddenBlocksPanel({
               'flex cursor-default flex-col rounded-[5px] px-2 py-1 text-start',
               row === activeRow && 'bg-surface-active'
             )}
-            onMouseMove={() => setActive(shown.indexOf(row))}
-            onClick={() => onPick(row)}
+            onMouseMove={() => {
+              setActive(shown.indexOf(row))
+            }}
+            onClick={() => {
+              onPick(row)
+            }}
           >
             <span className="truncate text-[11px] leading-4 text-text-tertiary">{row.path}</span>
             <span className="truncate text-[13px] leading-4 text-foreground">{row.text}</span>

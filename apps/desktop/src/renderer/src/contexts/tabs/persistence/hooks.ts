@@ -85,7 +85,9 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
       log.info('flushed tab state via registry')
     })
 
-    return () => unregisterPendingSave(FLUSH_REGISTRY_KEY)
+    return () => {
+      unregisterPendingSave(FLUSH_REGISTRY_KEY)
+    }
   }, [enabled, storageKey])
 
   // Debounced save
@@ -168,7 +170,9 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
   }, [enabled, storageKey])
 
   // Flush what is in hand when this subtree goes away.

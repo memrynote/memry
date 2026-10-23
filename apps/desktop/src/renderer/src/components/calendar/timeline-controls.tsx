@@ -48,7 +48,9 @@ function ZoomSegments({ zoom, onChange, variant }: ZoomSegmentsProps): React.JSX
             type="button"
             role="radio"
             aria-checked={isActive}
-            onClick={() => onChange(option)}
+            onClick={() => {
+              onChange(option)
+            }}
             className={cn(
               'rounded-md px-2 py-1 text-xs font-medium transition-colors duration-100 ease-out',
               'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
@@ -169,8 +171,9 @@ export function TimelineDisplayPopover({
   onChange: SettingsUpdate
 }): React.JSX.Element {
   const { t } = useT('calendar')
-  const patch = (update: Partial<TimelineSettings>): void =>
+  const patch = (update: Partial<TimelineSettings>): void => {
     onChange((current) => ({ ...current, ...update }))
+  }
 
   return (
     <Popover>
@@ -190,13 +193,21 @@ export function TimelineDisplayPopover({
       <PopoverContent align="end" className="w-72 p-1 pb-2">
         <SectionLabel>{t('timeline.zoom.label')}</SectionLabel>
         <div className="px-3 pt-0.5 pb-1.5">
-          <ZoomSegments zoom={settings.zoom} onChange={(zoom) => patch({ zoom })} variant="panel" />
+          <ZoomSegments
+            zoom={settings.zoom}
+            onChange={(zoom) => {
+              patch({ zoom })
+            }}
+            variant="panel"
+          />
         </div>
 
         <DisplayRow label={t('timeline.display.group-by')}>
           <TimelineGroupBySelect
             value={settings.groupBy}
-            onChange={(groupBy) => patch({ groupBy })}
+            onChange={(groupBy) => {
+              patch({ groupBy })
+            }}
           />
         </DisplayRow>
 
@@ -231,7 +242,9 @@ export function TimelineDisplayPopover({
             <Switch
               aria-label={t(labelKey)}
               checked={settings[key]}
-              onCheckedChange={(checked) => patch({ [key]: checked })}
+              onCheckedChange={(checked) => {
+                patch({ [key]: checked })
+              }}
             />
           </DisplayRow>
         ))}

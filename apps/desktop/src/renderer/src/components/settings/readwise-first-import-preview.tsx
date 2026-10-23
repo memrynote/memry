@@ -151,7 +151,13 @@ export function ReadwiseFirstImportPreview({
         <p role="alert" className="text-xs/4 text-destructive">
           {loaded.message}
         </p>
-        <Button variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setAttempt((n) => n + 1)
+          }}
+        >
           {t('import.dialog.readwise.preview.retry')}
         </Button>
       </div>
@@ -201,7 +207,9 @@ export function ReadwiseFirstImportPreview({
                   <span className="min-w-0 truncate text-xs/4 text-foreground">{label}</span>
                   <Switch
                     checked={enabled}
-                    onCheckedChange={(next) => onSetOptions({ categories: { [category]: next } })}
+                    onCheckedChange={(next) => {
+                      onSetOptions({ categories: { [category]: next } })
+                    }}
                     aria-label={label}
                     className={ACCENT_SWITCH}
                     disabled={disabled}
@@ -225,7 +233,9 @@ export function ReadwiseFirstImportPreview({
               </span>
               <Switch
                 checked={options.readerDocuments}
-                onCheckedChange={(next) => onSetOptions({ readerDocuments: next })}
+                onCheckedChange={(next) => {
+                  onSetOptions({ readerDocuments: next })
+                }}
                 aria-label={t('import.dialog.readwise.reader.documents.label')}
                 className={ACCENT_SWITCH}
                 disabled={disabled}
@@ -266,7 +276,9 @@ export function ReadwiseFirstImportPreview({
               </span>
               <Switch
                 checked={options.journalHighlights}
-                onCheckedChange={(next) => onSetOptions({ journalHighlights: next })}
+                onCheckedChange={(next) => {
+                  onSetOptions({ journalHighlights: next })
+                }}
                 aria-label={t('import.dialog.readwise.journal.highlights.label')}
                 className={ACCENT_SWITCH}
                 disabled={disabled}

@@ -44,7 +44,12 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   }) => (
     <div>
       <span data-testid="tag-autocomplete-tags">{tags.join(',')}</span>
-      <button type="button" onClick={() => onTagsChange([...tags, 'urgent'])}>
+      <button
+        type="button"
+        onClick={() => {
+          onTagsChange([...tags, 'urgent'])
+        }}
+      >
         {placeholder}
       </button>
     </div>

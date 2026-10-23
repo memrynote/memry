@@ -97,8 +97,12 @@ export function GraphEvents({
       document.body.style.cursor = 'pointer'
       onNodeRelease?.(drag.nodeId, drag.moved)
     }
-    const endDrag = (): void => endGesture(true)
-    const cancelDrag = (): void => endGesture(false)
+    const endDrag = (): void => {
+      endGesture(true)
+    }
+    const cancelDrag = (): void => {
+      endGesture(false)
+    }
 
     registerEvents({
       enterNode: ({ node, event }) => {

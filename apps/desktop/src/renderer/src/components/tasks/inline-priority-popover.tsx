@@ -64,7 +64,9 @@ export const InlinePriorityPopover = ({
   return (
     <Picker
       value={priority}
-      onValueChange={(v) => onPriorityChange(v as Priority)}
+      onValueChange={(v) => {
+        onPriorityChange(v as Priority)
+      }}
       open={open}
       onOpenChange={onOpenChange}
     >

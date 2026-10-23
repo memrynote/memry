@@ -76,7 +76,14 @@ async function expectPickerToStayOpen(page: Page): Promise<void> {
   await page.waitForTimeout(FOCUS_RESTORE_SETTLE_MS)
   // Two animation frames on top, so nothing scheduled by the unmount is pending.
   await page.evaluate(
-    () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+    () =>
+      new Promise<void>((r) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            r()
+          })
+        )
+      )
   )
 
   await expect(picker).toBeVisible()

@@ -114,10 +114,18 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     parse: parseShowDone
   })
 
-  const toggleRail = useCallback(() => setRailOpen((open) => !open), [setRailOpen])
-  const openEditor = useCallback(() => setIsEditing(true), [])
-  const focusCapture = useCallback(() => setCaptureFocusSignal((signal) => signal + 1), [])
-  const openFilePicker = useCallback(() => setImportSignal((signal) => signal + 1), [])
+  const toggleRail = useCallback(() => {
+    setRailOpen((open) => !open)
+  }, [setRailOpen])
+  const openEditor = useCallback(() => {
+    setIsEditing(true)
+  }, [])
+  const focusCapture = useCallback(() => {
+    setCaptureFocusSignal((signal) => signal + 1)
+  }, [])
+  const openFilePicker = useCallback(() => {
+    setImportSignal((signal) => signal + 1)
+  }, [])
 
   const handleOpenNote = useCallback(
     (noteId: string) => void openRelatedVaultItem(noteId, openTab),
@@ -125,7 +133,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   )
 
   const handleOpenEvent = useCallback(
-    (event: ProjectLinkedEvent) => openLinkedEvent(event, openTab, Date.now()),
+    (event: ProjectLinkedEvent) => {
+      openLinkedEvent(event, openTab, Date.now())
+    },
     [openTab]
   )
 
@@ -133,8 +143,12 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     (noteId: string, icon: string | null) => {
       void notesService
         .update({ id: noteId, emoji: icon })
-        .then(() => hub.refresh())
-        .catch((error) => log.error('Failed to set note icon', extractErrorMessage(error)))
+        .then(() => {
+          hub.refresh()
+        })
+        .catch((error) => {
+          log.error('Failed to set note icon', extractErrorMessage(error))
+        })
     },
     [hub]
   )
@@ -450,7 +464,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
 
       <ProjectModal
         isOpen={isEditing}
-        onClose={() => setIsEditing(false)}
+        onClose={() => {
+          setIsEditing(false)
+        }}
         onSave={(updated: Project) => {
           // updateProject rejects on failure (already logged + tracked there);
           // this surface has no failure toast, so just avoid an unhandled rejection.

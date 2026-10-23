@@ -49,7 +49,9 @@ export function usePortalUsageChips(
       editor,
       createPortalUsageChipPlugin({
         label: (count) => labelRef.current(count),
-        onOpen: (anchor, chip) => onOpenRef.current(anchor, chip)
+        onOpen: (anchor, chip) => {
+          onOpenRef.current(anchor, chip)
+        }
       })
     )
 
@@ -93,7 +95,9 @@ export function usePortalUsageChips(
     }
 
     schedule(true, 0)
-    const offChange = editor.onChange(() => schedule(false, DOC_DEBOUNCE_MS), true)
+    const offChange = editor.onChange(() => {
+      schedule(false, DOC_DEBOUNCE_MS)
+    }, true)
     let offUsage: (() => void) | undefined
     try {
       offUsage = onPortalUsageChanged((noteIds) => {

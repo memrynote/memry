@@ -48,7 +48,9 @@ describe('ItemProjectChips', () => {
 
     const { container } = render(<ItemProjectChips itemType="note" itemId="n1" />)
 
-    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    await waitFor(() => {
+      expect(container).toBeEmptyDOMElement()
+    })
   })
 
   it('calls onProjectClick with the project id when a chip is clicked', async () => {
@@ -68,7 +70,9 @@ describe('ItemProjectChips', () => {
 
     const { container } = render(<ItemProjectChips itemType="note" itemId="n1" />)
 
-    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    await waitFor(() => {
+      expect(container).toBeEmptyDOMElement()
+    })
   })
 
   it('refetches when a project update event fires', async () => {
@@ -82,7 +86,9 @@ describe('ItemProjectChips', () => {
     })
 
     const { container } = render(<ItemProjectChips itemType="note" itemId="n1" />)
-    await waitFor(() => expect(container).toBeEmptyDOMElement())
+    await waitFor(() => {
+      expect(container).toBeEmptyDOMElement()
+    })
 
     updateHandler?.()
 
@@ -102,14 +108,16 @@ describe('ItemProjectChips', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /remove from launch/i }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'file',
         itemId: 'f1'
       })
-    )
-    await waitFor(() => expect(screen.queryByText('Launch')).not.toBeInTheDocument())
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Launch')).not.toBeInTheDocument()
+    })
   })
 
   it('gives each chip its own remove control, naming the project it drops', async () => {
@@ -122,13 +130,13 @@ describe('ItemProjectChips', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /remove from finance/i }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p2',
         itemType: 'file',
         itemId: 'f1'
       })
-    )
+    })
   })
 
   it('renders the name as plain text where there is nowhere to navigate', async () => {
@@ -151,7 +159,9 @@ describe('ItemProjectChips', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /remove from launch/i }))
 
-    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('link is gone'))
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith('link is gone')
+    })
     expect(screen.getByText('Launch')).toBeInTheDocument()
   })
 })

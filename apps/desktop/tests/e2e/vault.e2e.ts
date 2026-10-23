@@ -177,7 +177,9 @@ This note was created externally for reindex testing.
       // The actual behavior depends on how errors are surfaced in UI
 
       const invalidPath = '/nonexistent/path/to/vault'
-      expect(() => fs.accessSync(invalidPath)).toThrow()
+      expect(() => {
+        fs.accessSync(invalidPath)
+      }).toThrow()
     })
 
     test('should detect corrupted vault configuration', async ({ testVaultPath }) => {

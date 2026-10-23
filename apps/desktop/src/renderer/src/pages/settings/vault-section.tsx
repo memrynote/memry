@@ -275,7 +275,9 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
                 variant="outline"
                 size="sm"
                 className="h-7 self-start px-3 text-xs/4"
-                onClick={() => setVaultToDownload(suggestedVault)}
+                onClick={() => {
+                  setVaultToDownload(suggestedVault)
+                }}
               >
                 {t('vault.accountVaults.unsyncedDownload')}
               </Button>

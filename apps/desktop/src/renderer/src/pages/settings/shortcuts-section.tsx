@@ -98,12 +98,16 @@ function ShortcutRow({
       stop()
       void onRebind(entry.id, newBinding)
     },
-    { onCancel: () => setConflict(null) }
+    {
+      onCancel: () => {
+        setConflict(null)
+      }
+    }
   )
   const { isCapturing, captureRef, cancel: stopCapture } = capture
 
   const startCapture = (): void => {
-    if (entry.rebindable === false) return
+    if (!entry.rebindable) return
     capture.start()
   }
 
@@ -543,7 +547,9 @@ export function ShortcutsSettings() {
           <Input
             placeholder={t('shortcuts.searchPlaceholder')}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+            }}
             className="h-7 ps-8 text-xs/4 rounded-md border-border bg-transparent shadow-none"
           />
         </div>

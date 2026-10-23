@@ -42,8 +42,12 @@ export function CalendarFooter(): React.JSX.Element {
 
   useEffect(() => {
     // ponytail: 60s tick keeps "Next:" fresh as events pass; matches the widget body
-    const id = setInterval(() => setNowMs(Date.now()), 60_000)
-    return () => clearInterval(id)
+    const id = setInterval(() => {
+      setNowMs(Date.now())
+    }, 60_000)
+    return () => {
+      clearInterval(id)
+    }
   }, [])
 
   const events = useMemo(
@@ -59,7 +63,7 @@ export function CalendarFooter(): React.JSX.Element {
       </span>
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           openTab({
             type: 'calendar',
             title: t('home.widget.calendar'),
@@ -70,7 +74,7 @@ export function CalendarFooter(): React.JSX.Element {
             isPreview: false,
             isDeleted: false
           })
-        }
+        }}
         className="inline-flex shrink-0 items-center gap-1 rounded text-[12px] font-semibold text-[var(--tint)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
       >
         {t('home.widget.openCalendar')}

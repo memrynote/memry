@@ -267,7 +267,9 @@ export const TasksPage = ({
     () => (storedDetailTaskId ? (tasks.find((t) => t.id === storedDetailTaskId) ?? null) : null),
     [storedDetailTaskId, tasks]
   )
-  const clearDetailTaskId = useCallback(() => setDetailTaskId(null), [setDetailTaskId])
+  const clearDetailTaskId = useCallback(() => {
+    setDetailTaskId(null)
+  }, [setDetailTaskId])
   const detailTaskId = useResolvedEntityId({
     id: storedDetailTaskId,
     exists: storedDetailTask !== null,
@@ -276,7 +278,9 @@ export const TasksPage = ({
   })
   const detailTask = detailTaskId === null ? null : storedDetailTask
 
-  const clearSelectedProjectId = useCallback(() => setStoredProjectId(null), [setStoredProjectId])
+  const clearSelectedProjectId = useCallback(() => {
+    setStoredProjectId(null)
+  }, [setStoredProjectId])
   const selectedProjectId = useResolvedEntityId({
     id: requestedProjectId,
     exists: projects.some((project) => project.id === requestedProjectId),
@@ -342,10 +346,9 @@ export const TasksPage = ({
     defaultValue: null,
     parse: parseNullableId
   })
-  const clearSavedFilterId = useCallback(
-    () => setActiveSavedFilterId(null),
-    [setActiveSavedFilterId]
-  )
+  const clearSavedFilterId = useCallback(() => {
+    setActiveSavedFilterId(null)
+  }, [setActiveSavedFilterId])
   // A saved filter deleted on another device leaves the toolbar highlighting a
   // filter that no longer exists.
   const activeSavedFilterId = useResolvedEntityId({
@@ -358,7 +361,9 @@ export const TasksPage = ({
   const starredFilters = useMemo(() => savedFilters.filter((f) => f.starred), [savedFilters])
 
   useSaveFilterShortcut({
-    onSave: () => setIsFilterDropdownOpen(true),
+    onSave: () => {
+      setIsFilterDropdownOpen(true)
+    },
     hasActiveFilters: filtersActive
   })
 
@@ -520,7 +525,9 @@ export const TasksPage = ({
   const { focusQuickAdd } = useTasksCommands({
     hasSelection,
     bulkComplete: bulkActions.bulkComplete,
-    openBulkDelete: () => setIsBulkDeleteDialogOpen(true)
+    openBulkDelete: () => {
+      setIsBulkDeleteDialogOpen(true)
+    }
   })
 
   // Toggle selection mode handler
@@ -719,7 +726,7 @@ export const TasksPage = ({
       return (
         activeElement instanceof HTMLInputElement ||
         activeElement instanceof HTMLTextAreaElement ||
-        (activeElement as HTMLElement)?.isContentEditable === true
+        (activeElement as HTMLElement)?.isContentEditable
       )
     }
 
@@ -757,7 +764,9 @@ export const TasksPage = ({
     }
 
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+    }
   }, [showFilterBar, clearFilters, hasSelection, selectAll, deselectAll, bulkActions, t])
 
   const _handleAddTask = (): void => {
@@ -1229,7 +1238,9 @@ export const TasksPage = ({
                   hasActiveFilters={filtersActive}
                   onDeleteSavedFilter={handleDeleteSavedFilter}
                   onApplySavedFilter={handleApplySavedFilter}
-                  onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
+                  onSaveFilter={(name) => {
+                    handleSaveFilter(name, filters, sort)
+                  }}
                   onToggleStarFilter={toggleStarFilter}
                   statuses={currentProjectStatuses}
                 >
@@ -1281,7 +1292,9 @@ export const TasksPage = ({
                     role="radio"
                     aria-checked={activeView === 'list'}
                     aria-label={t('page.viewMode.list')}
-                    onClick={() => setActiveView('list')}
+                    onClick={() => {
+                      setActiveView('list')
+                    }}
                     className={cn(
                       'relative flex items-center justify-center w-[26px] h-6 shrink-0',
                       'transition-colors duration-150 active:scale-[0.97]',
@@ -1323,7 +1336,9 @@ export const TasksPage = ({
                       role="radio"
                       aria-checked={activeView === 'kanban'}
                       aria-label={t('page.viewMode.kanban')}
-                      onClick={() => setActiveView('kanban')}
+                      onClick={() => {
+                        setActiveView('kanban')
+                      }}
                       className={cn(
                         'relative flex items-center justify-center w-[26px] h-6 shrink-0',
                         'transition-colors duration-150 active:scale-[0.97]',
@@ -1391,7 +1406,9 @@ export const TasksPage = ({
               noteIndex={noteIndex}
               onUpdateFilters={updateFiltersAndClearSaved}
               onClearFilters={clearFiltersAndClearSaved}
-              onSaveFilter={() => setIsFilterDropdownOpen(true)}
+              onSaveFilter={() => {
+                setIsFilterDropdownOpen(true)
+              }}
               isSaved={activeSavedFilterId !== null}
             />
           )}
@@ -1410,7 +1427,9 @@ export const TasksPage = ({
                 onArchive={(...args) => void bulkActions.bulkArchive(...args)}
                 onUnarchive={(...args) => void bulkActions.bulkUnarchive(...args)}
                 isArchivedScope={isArchivedScope}
-                onDelete={() => setIsBulkDeleteDialogOpen(true)}
+                onDelete={() => {
+                  setIsBulkDeleteDialogOpen(true)
+                }}
                 onCancel={deselectAll}
                 projects={projects}
                 statuses={currentProjectStatuses}
@@ -1602,7 +1621,9 @@ export const TasksPage = ({
       {/* Bulk Delete Dialog */}
       <BulkDeleteDialog
         open={isBulkDeleteDialogOpen}
-        onClose={() => setIsBulkDeleteDialogOpen(false)}
+        onClose={() => {
+          setIsBulkDeleteDialogOpen(false)
+        }}
         tasks={bulkActions.getSelectedTasks()}
         onConfirm={handleBulkDeleteConfirm}
       />
@@ -1610,7 +1631,9 @@ export const TasksPage = ({
       {/* Bulk Due Date Picker */}
       <BulkDueDatePicker
         open={isBulkDueDatePickerOpen}
-        onClose={() => setIsBulkDueDatePickerOpen(false)}
+        onClose={() => {
+          setIsBulkDueDatePickerOpen(false)
+        }}
         taskCount={selectedCount}
         onConfirm={handleBulkDueDateConfirm}
       />

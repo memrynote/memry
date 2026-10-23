@@ -223,7 +223,9 @@ export function Composer({
       promptEditorRef.current?.focus()
     }, 0)
 
-    return () => window.clearTimeout(focusTimer)
+    return () => {
+      window.clearTimeout(focusTimer)
+    }
   }, [conversationId])
 
   const selectedModelOptions = isCliProvider(selectedProvider)
@@ -687,13 +689,19 @@ export function Composer({
                 localConfigured={localConfigured}
                 localModelIds={localModelIds}
                 onOpenChange={handleSettingsMenuOpenChange}
-                onToggleWebSearch={() => setWebSearchEnabled((value) => !value)}
-                onToggleIncludeCurrentNote={() => setIncludeCurrentNote((value) => !value)}
+                onToggleWebSearch={() => {
+                  setWebSearchEnabled((value) => !value)
+                }}
+                onToggleIncludeCurrentNote={() => {
+                  setIncludeCurrentNote((value) => !value)
+                }}
                 onSelectAccessMode={setAccessMode}
                 onSelectReasoning={selectReasoning}
                 onSelectCliModel={selectCliModel}
                 onSelectLocalModel={selectLocalModel}
-                onOpenProviderSettings={() => openSettings('agent-providers')}
+                onOpenProviderSettings={() => {
+                  openSettings('agent-providers')
+                }}
               />
             </div>
             <div className="flex shrink-0 items-center gap-1.5">

@@ -206,7 +206,9 @@ function AttendeeList({ attendees }: { attendees: CalendarEventAttendeeRecord[] 
         <button
           type="button"
           className="w-fit text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-(--tint-ring)"
-          onClick={() => setExpanded((open) => !open)}
+          onClick={() => {
+            setExpanded((open) => !open)
+          }}
         >
           {expanded ? t('subscribedEvent.showLess') : t('subscribedEvent.showMore')}
         </button>

@@ -100,8 +100,12 @@ export function DayTimeline({
   const columnRef = useRef<HTMLDivElement>(null)
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 60_000)
-    return () => window.clearInterval(id)
+    const id = window.setInterval(() => {
+      setNow(new Date())
+    }, 60_000)
+    return () => {
+      window.clearInterval(id)
+    }
   }, [])
   const today = todayKey(now)
   const isToday = date === today

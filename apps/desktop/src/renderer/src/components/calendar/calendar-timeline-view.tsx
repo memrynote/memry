@@ -566,7 +566,9 @@ export function CalendarTimelineView({
                 <TimelineGroupBySelect
                   variant="header"
                   value={settings.groupBy}
-                  onChange={(groupBy) => onSettingsChange({ ...settings, groupBy })}
+                  onChange={(groupBy) => {
+                    onSettingsChange({ ...settings, groupBy })
+                  }}
                 />
               )
             }
@@ -601,14 +603,14 @@ export function CalendarTimelineView({
                       {...geometry}
                       group={group}
                       collapsed={isCollapsed}
-                      onToggle={() =>
+                      onToggle={() => {
                         setCollapsed((current) => {
                           const next = new Set(current)
                           if (next.has(group.key)) next.delete(group.key)
                           else next.add(group.key)
                           return next
                         })
-                      }
+                      }}
                     />
                     {!isCollapsed &&
                       shownRows(group).map((row) =>
@@ -621,26 +623,32 @@ export function CalendarTimelineView({
                             today={today}
                             isSelected={isRowSelected(row)}
                             subtasksOpen={!foldedParents.has(row.task.id)}
-                            onToggleSubtasks={() =>
+                            onToggleSubtasks={() => {
                               setFoldedParents((current) => {
                                 const next = new Set(current)
                                 if (next.has(row.task.id)) next.delete(row.task.id)
                                 else next.add(row.task.id)
                                 return next
                               })
-                            }
+                            }}
                             preview={
                               drag.preview?.taskId === row.task.id ? drag.preview.dates : null
                             }
                             formatDay={formatDay}
                             describe={describe}
-                            onSelect={() => select(row.key)}
-                            onOpen={() => openRow(row)}
+                            onSelect={() => {
+                              select(row.key)
+                            }}
+                            onOpen={() => {
+                              openRow(row)
+                            }}
                             onBarPointerDown={(event, edit) => {
                               select(row.key)
                               drag.startEdit(event, row.task, row.shape, edit)
                             }}
-                            onSchedulePointerDown={(event) => drag.startSchedule(event, row.task)}
+                            onSchedulePointerDown={(event) => {
+                              drag.startSchedule(event, row.task)
+                            }}
                             dayFromPointer={drag.dayFromPointer}
                           />
                         ) : (
@@ -651,8 +659,12 @@ export function CalendarTimelineView({
                             domId={rowDomId(row.key)}
                             isSelected={isRowSelected(row)}
                             formatDay={formatDay}
-                            onSelect={() => select(row.key)}
-                            onOpen={() => openRow(row)}
+                            onSelect={() => {
+                              select(row.key)
+                            }}
+                            onOpen={() => {
+                              openRow(row)
+                            }}
                           />
                         )
                       )}

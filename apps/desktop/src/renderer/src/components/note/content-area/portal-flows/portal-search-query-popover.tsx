@@ -64,7 +64,9 @@ export function PortalSearchQueryForm({
     initial ? draftFromTarget(initial) : EMPTY_SEARCH_DRAFT
   )
   const target = targetFromDraft(draft)
-  const set = (patch: Partial<PortalSearchDraft>): void => setDraft({ ...draft, ...patch })
+  const set = (patch: Partial<PortalSearchDraft>): void => {
+    setDraft({ ...draft, ...patch })
+  }
 
   const submit = (event: FormEvent): void => {
     event.preventDefault()
@@ -84,7 +86,9 @@ export function PortalSearchQueryForm({
           autoFocus
           value={draft.text}
           placeholder={t('portalFlows.searchQuery.textPlaceholder')}
-          onChange={(event) => set({ text: event.target.value })}
+          onChange={(event) => {
+            set({ text: event.target.value })
+          }}
         />
       </label>
       <label className="flex flex-col gap-1 px-2.5">
@@ -94,7 +98,9 @@ export function PortalSearchQueryForm({
         <Input
           value={draft.tag}
           placeholder={t('portalFlows.searchQuery.tagPlaceholder')}
-          onChange={(event) => set({ tag: event.target.value })}
+          onChange={(event) => {
+            set({ tag: event.target.value })
+          }}
         />
       </label>
       <label className="flex flex-col gap-1 px-2.5">
@@ -104,7 +110,9 @@ export function PortalSearchQueryForm({
         <Input
           inputMode="numeric"
           value={draft.limit}
-          onChange={(event) => set({ limit: event.target.value })}
+          onChange={(event) => {
+            set({ limit: event.target.value })
+          }}
         />
       </label>
       <div className="flex items-center gap-2 px-2.5 pb-1 pt-2">

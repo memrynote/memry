@@ -8,8 +8,7 @@ import { eq, ne } from 'drizzle-orm'
 import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
 import { stopSyncRuntime } from './runtime'
 import { markSyncIneligible } from '@memry/sync-client/sync-eligibility'
-import { resetTokenManagerState } from './token-manager'
-import { getValidAccessToken } from './token-manager'
+import { resetTokenManagerState, getValidAccessToken } from './token-manager'
 import { clearPendingSession, clearPendingLinkCompletion } from './linking-service'
 import { getCrdtProvider } from './crdt-provider'
 import { notPackSeedState } from './engine/pack-seeded-docs'
@@ -149,13 +148,15 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
   if (reason !== 'shutdown') {
     void getCrdtProvider()
       .initPersistence()
-      .catch((err) => log.warn('CRDT persistence re-init after session teardown failed', err))
+      .catch((err) => {
+        log.warn('CRDT persistence re-init after session teardown failed', err)
+      })
     // Google Calendar does not need a Memry session: restart the runner so a
     // still-connected account keeps polling, now without the push relay. After
     // a logout no account is left and the start is a no-op.
-    void startGoogleCalendarSyncRunner().catch((err) =>
+    void startGoogleCalendarSyncRunner().catch((err) => {
       log.warn('Google Calendar runner restart after session teardown failed', err)
-    )
+    })
   }
 
   log.info('Session teardown complete', { reason, keychainFailures: keychainFailures.length })

@@ -265,7 +265,9 @@ function PropertyManager() {
         <Input
           placeholder={t('properties.filterPlaceholder')}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+          }}
           className="ps-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
@@ -292,7 +294,9 @@ function PropertyManager() {
             <div key={def.name}>
               <div
                 className="flex items-center justify-between min-h-11 py-2 shrink-0 group cursor-pointer"
-                onClick={() => setExpandedDef(isExpanded ? null : def.name)}
+                onClick={() => {
+                  setExpandedDef(isExpanded ? null : def.name)
+                }}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   {isExpanded ? (
@@ -315,7 +319,9 @@ function PropertyManager() {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
                         aria-label={t('properties.v2.actionsAria', { name: def.name })}
                         className="p-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground transition-all"
                       >
@@ -324,7 +330,9 @@ function PropertyManager() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => setDeleteTarget(def.name)}
+                        onClick={() => {
+                          setDeleteTarget(def.name)
+                        }}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="w-4 h-4 me-2" />
@@ -384,14 +392,16 @@ function PropertyManager() {
                                 onConfirmEdit={() =>
                                   void handleRenameOption(def.name, opt.value, editValue)
                                 }
-                                onCancelEdit={() => setEditingOption(null)}
+                                onCancelEdit={() => {
+                                  setEditingOption(null)
+                                }}
                                 onRemove={() => void handleRemoveOption(def.name, opt.value)}
-                                onColorClick={() =>
+                                onColorClick={() => {
                                   setColorEdit({
                                     propertyName: def.name,
                                     optionValue: opt.value
                                   })
-                                }
+                                }}
                               />
                             ))}
                             {addingStatusOption?.propertyName === def.name &&
@@ -400,7 +410,9 @@ function PropertyManager() {
                                   <Input
                                     ref={addInputRef}
                                     value={newOptionName}
-                                    onChange={(e) => setNewOptionName(e.target.value)}
+                                    onChange={(e) => {
+                                      setNewOptionName(e.target.value)
+                                    }}
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter')
                                         void handleAddStatusOption(def.name, catKey)
@@ -436,11 +448,13 @@ function PropertyManager() {
                           onConfirmEdit={() =>
                             void handleRenameOption(def.name, opt.value, editValue)
                           }
-                          onCancelEdit={() => setEditingOption(null)}
+                          onCancelEdit={() => {
+                            setEditingOption(null)
+                          }}
                           onRemove={() => void handleRemoveOption(def.name, opt.value)}
-                          onColorClick={() =>
+                          onColorClick={() => {
                             setColorEdit({ propertyName: def.name, optionValue: opt.value })
-                          }
+                          }}
                         />
                       ))}
                   {def.type !== 'status' && (
@@ -450,7 +464,9 @@ function PropertyManager() {
                           <Input
                             ref={addInputRef}
                             value={newOptionName}
-                            onChange={(e) => setNewOptionName(e.target.value)}
+                            onChange={(e) => {
+                              setNewOptionName(e.target.value)
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') void handleAddOption(def.name)
                               if (e.key === 'Escape') setAddingOption(null)
@@ -586,12 +602,14 @@ function OptionRow({
         <Input
           ref={editInputRef}
           value={editValue}
-          onChange={(e) => onEditChange(e.target.value)}
+          onChange={(e) => {
+            onEditChange(e.target.value)
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') void onConfirmEdit()
+            if (e.key === 'Enter') onConfirmEdit()
             if (e.key === 'Escape') onCancelEdit()
           }}
-          onBlur={() => void onConfirmEdit()}
+          onBlur={() => onConfirmEdit()}
           className="h-6 text-[13px]/4 px-1.5 flex-1"
         />
       ) : (

@@ -26,7 +26,9 @@ export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [filterState.searchQuery, dispatch])
 
   return (
@@ -38,14 +40,18 @@ export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.
           placeholder={t('search.placeholder')}
           className="h-8 w-48 pl-8 pr-8 text-xs bg-popover/95 backdrop-blur-sm border-border"
           value={filterState.searchQuery}
-          onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
+          onChange={(e) => {
+            dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })
+          }}
         />
         {filterState.searchQuery && (
           <Button
             variant="ghost"
             size="sm"
             className="absolute right-1 h-5 w-5 p-0"
-            onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
+            onClick={() => {
+              dispatch({ type: 'SET_SEARCH_QUERY', query: '' })
+            }}
             aria-label={t('search.clear')}
           >
             <X className="size-3 text-muted-foreground" />

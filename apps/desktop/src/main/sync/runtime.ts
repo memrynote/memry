@@ -190,7 +190,9 @@ function reconcileHomeCoversNow(): void {
     .then(({ reconcileHomeCovers, requireVaultPath }) =>
       reconcileHomeCovers({ db: getDatabase(), vaultPath: requireVaultPath() })
     )
-    .catch((error: unknown) => log.warn('Home cover reconcile skipped', { error }))
+    .catch((error: unknown) => {
+      log.warn('Home cover reconcile skipped', { error })
+    })
 }
 
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
@@ -691,9 +693,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const noteBodyOutbox = new NoteBodyOutbox({
         queue,
         push: pushNoteBody,
-        recordPush: (noteId, event, pushed) =>
-          recordNoteBodyPush(noteId, event, Date.now(), db, pushed),
-        requestSnapshot: (noteId) => snapshotScheduler.request(noteId),
+        recordPush: (noteId, event, pushed) => {
+          recordNoteBodyPush(noteId, event, Date.now(), db, pushed)
+        },
+        requestSnapshot: (noteId) => {
+          snapshotScheduler.request(noteId)
+        },
         isSyncPaused
       })
 
@@ -705,9 +710,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
         authRetryDeps: crdtAuthRetryDeps,
         hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
-        onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onNotCovered: (noteId, refusal) => {
+          engine.recordSnapshotRefusal(noteId, refusal)
+        },
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
-        onStored: (noteId) => recordNoteBodyPush(noteId, 'snapshot', Date.now(), db),
+        onStored: (noteId) => {
+          recordNoteBodyPush(noteId, 'snapshot', Date.now(), db)
+        },
         onError: (noteId, err) => {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
@@ -744,7 +753,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           recordNoteBodyPush(noteId, 'snapshot', Date.now(), db)
           return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
         },
-        onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onNotCovered: (noteId, refusal) => {
+          engine.recordSnapshotRefusal(noteId, refusal)
+        },
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413
@@ -889,9 +900,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           })
         },
         prepareCanvasPush: (canvasId) => holdCanvasAssetsBeforePush(canvasId),
-        onSyncResumed: () => noteBodyOutbox.flushAll(),
+        onSyncResumed: () => {
+          noteBodyOutbox.flushAll()
+        },
         checkAccountKey: () => checkLocalKeyAgainstAccount(),
-        onDeviceKeyMismatch: () => handleDeviceKeyMismatch(),
+        onDeviceKeyMismatch: () => {
+          handleDeviceKeyMismatch()
+        },
         onVaultKeyMismatch: () => {
           // Only reached on a CONFIRMED mismatch ('transition' never escalates
           // — see checkAccountKey). Guard the rare race where a key-material
@@ -912,7 +927,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           )
           void import('./session-teardown')
             .then(({ teardownSession }) => teardownSession('integrity'))
-            .catch((err) => log.error('Key-mismatch sign-out failed', err))
+            .catch((err) => {
+              log.error('Key-mismatch sign-out failed', err)
+            })
         }
       })
 
@@ -923,13 +940,17 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
       noteBodyOutbox.start()
 
-      queue.setOnItemEnqueued(() => engine.requestPush())
+      queue.setOnItemEnqueued(() => {
+        engine.requestPush()
+      })
       crdtProvider.setSnapshotCoverage((noteId, heldRevision) =>
         engine.snapshotCoverage(noteId, heldRevision)
       )
       crdtProvider.setOweRemoteMerge((noteId, reason) => engine.oweCrdtPull(noteId, reason))
       crdtProvider.setRemoteMerge((noteId) => engine.mergeRemoteCrdtForNote(noteId))
-      crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
+      crdtProvider.setSnapshotDeferral((noteId) => {
+        snapshotScheduler.request(noteId)
+      })
       // A full-state row queued with no runtime (a note leaving local-only) may
       // owe bodies the feed skipped: flagged, it claims nothing until its own
       // flush pull merged, which clears the flag. No second pull is owed.
@@ -970,7 +991,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // start path when the pass is a no-op.
       void import('../notes/folder-config-effects')
         .then(({ backfillFolderConfigs }) => backfillFolderConfigs())
-        .catch((error: unknown) => log.warn('Folder config backfill skipped', { error }))
+        .catch((error: unknown) => {
+          log.warn('Folder config backfill skipped', { error })
+        })
 
       // Retry attachment uploads that failed or were interrupted in earlier
       // sessions — the durable outbox holds them across restarts. The interval

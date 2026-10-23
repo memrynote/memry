@@ -60,10 +60,20 @@ function Probe(): React.JSX.Element {
       <span data-testid="pane-tab-counts">
         {groupIds.map((groupId) => state.tabGroups[groupId].tabs.length).join(',')}
       </span>
-      <button type="button" onClick={() => openSidebarItem(NOTE_ITEM, { toTheSide: true })}>
+      <button
+        type="button"
+        onClick={() => {
+          openSidebarItem(NOTE_ITEM, { toTheSide: true })
+        }}
+      >
         open-to-the-side
       </button>
-      <button type="button" onClick={() => openSidebarItem(NOTE_ITEM)}>
+      <button
+        type="button"
+        onClick={() => {
+          openSidebarItem(NOTE_ITEM)
+        }}
+      >
         open-here
       </button>
       <button type="button" onClick={() => splitView('horizontal', originalGroupId)}>
@@ -95,7 +105,7 @@ function Probe(): React.JSX.Element {
       </button>
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           openTab(
             {
               type: 'note',
@@ -110,7 +120,7 @@ function Probe(): React.JSX.Element {
             },
             { background: true }
           )
-        }
+        }}
       >
         open-item-here-in-background
       </button>

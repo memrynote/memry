@@ -131,9 +131,24 @@ describe('parallelWithLimit', () => {
   describe('#given tasks #when results have correct indices', () => {
     it('#then result order matches task order regardless of completion order', async () => {
       const tasks = [
-        () => new Promise<string>((r) => setTimeout(() => r('slow'), 50)),
-        () => new Promise<string>((r) => setTimeout(() => r('fast'), 10)),
-        () => new Promise<string>((r) => setTimeout(() => r('medium'), 30))
+        () =>
+          new Promise<string>((r) =>
+            setTimeout(() => {
+              r('slow')
+            }, 50)
+          ),
+        () =>
+          new Promise<string>((r) =>
+            setTimeout(() => {
+              r('fast')
+            }, 10)
+          ),
+        () =>
+          new Promise<string>((r) =>
+            setTimeout(() => {
+              r('medium')
+            }, 30)
+          )
       ]
 
       const results = await parallelWithLimit(tasks, 3)

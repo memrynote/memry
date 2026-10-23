@@ -33,7 +33,7 @@ vi.mock('@/components/calendar/calendar-event-form', () => ({
   }) => (
     <div>
       <span data-testid="draft-title">{draft.title}</span>
-      <button data-testid="save" onClick={() => void onSave()} />
+      <button data-testid="save" onClick={() => onSave()} />
       <button data-testid="dismiss" onClick={onDismiss} />
     </div>
   )
@@ -114,7 +114,9 @@ describe('CanvasEventEditor', () => {
   it('renders the form once the event loads', async () => {
     mocks.getEvent.mockResolvedValue(makeEvent())
     render(<CanvasEventEditor eventId="ev1" onDone={vi.fn()} />)
-    await waitFor(() => expect(screen.getByTestId('draft-title')).toHaveTextContent('Standup'))
+    await waitFor(() => {
+      expect(screen.getByTestId('draft-title')).toHaveTextContent('Standup')
+    })
   })
 
   it('saves via calendarService.updateEvent and calls onDone', async () => {
@@ -122,9 +124,13 @@ describe('CanvasEventEditor', () => {
     mocks.updateEvent.mockResolvedValue({ success: true })
     const onDone = vi.fn()
     render(<CanvasEventEditor eventId="ev1" onDone={onDone} />)
-    await waitFor(() => expect(screen.getByTestId('save')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('save')).toBeInTheDocument()
+    })
     screen.getByTestId('save').click()
-    await waitFor(() => expect(mocks.updateEvent).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mocks.updateEvent).toHaveBeenCalled()
+    })
     const payload = mocks.updateEvent.mock.calls[0][0]
     expect(payload).toMatchObject({
       id: 'ev1',
@@ -132,14 +138,18 @@ describe('CanvasEventEditor', () => {
       isAllDay: false,
       color: 'blueberry'
     })
-    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(onDone).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('dismiss calls onDone without saving', async () => {
     mocks.getEvent.mockResolvedValue(makeEvent())
     const onDone = vi.fn()
     render(<CanvasEventEditor eventId="ev1" onDone={onDone} />)
-    await waitFor(() => expect(screen.getByTestId('dismiss')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByTestId('dismiss')).toBeInTheDocument()
+    })
     screen.getByTestId('dismiss').click()
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(mocks.updateEvent).not.toHaveBeenCalled()

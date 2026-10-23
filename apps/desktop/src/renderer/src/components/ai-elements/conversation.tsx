@@ -139,9 +139,13 @@ function useStickToBottom(scrollRef: RefObject<HTMLDivElement | null>, children:
     }
 
     applyScrollPolicy(element)
-    const observer = new ResizeObserver(() => applyScrollPolicy(element))
+    const observer = new ResizeObserver(() => {
+      applyScrollPolicy(element)
+    })
     for (const child of Array.from(element.children)) observer.observe(child)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [children, scrollRef])
 }
 

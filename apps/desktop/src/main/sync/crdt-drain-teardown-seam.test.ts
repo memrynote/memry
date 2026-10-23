@@ -611,7 +611,9 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
 
     // #when the runtime starts on the upgraded build
     await runtime.startSyncRuntime()
-    await vi.waitFor(() => expect(owedNotes()).toEqual([]))
+    await vi.waitFor(() => {
+      expect(owedNotes()).toEqual([])
+    })
 
     // #then the file is retired, the syncable note is merged and pushed as an
     // update, and the local-only note is neither merged nor pushed
@@ -716,7 +718,9 @@ describe('full-state flush liveness, stopSyncRuntime to the note-body outbox', (
     // #then both notes are merged and pushed. A liveness flag kept in module
     // state rather than per runtime would latch on the first teardown and
     // silently strand every backlog for the rest of the process.
-    await vi.waitFor(() => expect(owedNotes()).toEqual([]))
+    await vi.waitFor(() => {
+      expect(owedNotes()).toEqual([])
+    })
     expect(openedNotes()).toEqual(['note-a', 'note-b'])
     expect(pushedBodies()).toEqual(['note-a', 'note-b'])
 

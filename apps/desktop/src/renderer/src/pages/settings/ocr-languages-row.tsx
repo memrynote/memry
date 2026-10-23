@@ -42,7 +42,9 @@ function useOcrLanguages(): OcrLanguagesState | null {
       .then((next) => {
         if (live) setState(next)
       })
-      .catch((error: unknown) => log.error('Failed to read OCR languages', error))
+      .catch((error: unknown) => {
+        log.error('Failed to read OCR languages', error)
+      })
     const unsubscribe = window.api.onOcrLanguagesChanged(setState)
     return () => {
       live = false
@@ -134,8 +136,10 @@ export function OcrLanguagesRow() {
                 key={lang}
                 checked={selected.has(lang)}
                 disabled={lang === BUNDLED_OCR_LANGUAGE}
-                onSelect={(event) => event.preventDefault()}
-                onCheckedChange={(checked) => void choose(lang, checked === true)}
+                onSelect={(event) => {
+                  event.preventDefault()
+                }}
+                onCheckedChange={(checked) => void choose(lang, checked)}
               >
                 {LANGUAGE_NAMES[lang]}
               </DropdownMenuCheckboxItem>

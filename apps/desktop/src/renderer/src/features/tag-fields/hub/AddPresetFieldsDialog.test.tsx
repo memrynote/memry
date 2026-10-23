@@ -132,7 +132,9 @@ describe('AddPresetFieldsDialog', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add fields' }))
 
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
     expect(api.tags.editSchema).toHaveBeenCalledWith({ kind: 'add-preset', preset: 'company' })
     expect(toast.success).toHaveBeenCalledWith('Added Company fields to #company')
   })
@@ -150,7 +152,9 @@ describe('AddPresetFieldsDialog', () => {
     expect(add).toBeEnabled()
     await userEvent.click(add)
 
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
     expect(api.tags.editSchema).toHaveBeenCalledWith({
       kind: 'add-preset',
       preset: 'person',
@@ -170,13 +174,13 @@ describe('AddPresetFieldsDialog', () => {
 
     await userEvent.type(input, 'crew{Enter}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.tags.editSchema).toHaveBeenCalledWith({
         kind: 'add-preset',
         preset: 'person',
         tag: 'crew'
       })
-    )
+    })
     // The command result named no tag, so the toast uses the name the user typed.
     expect(toast.success).toHaveBeenCalledWith('Added Person fields to #crew')
   })
@@ -187,7 +191,9 @@ describe('AddPresetFieldsDialog', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add fields' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('schema is locked'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('schema is locked')
+    })
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Add fields' })).toBeEnabled()
   })

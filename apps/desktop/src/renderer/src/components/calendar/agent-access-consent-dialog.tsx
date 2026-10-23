@@ -59,9 +59,15 @@ export function AgentAccessConsentDialog({
           data-testid="agent-access-consent-dialog"
           data-provider={promptProvider}
           aria-label={copy.aria}
-          onEscapeKeyDown={(event) => event.preventDefault()}
-          onPointerDownOutside={(event) => event.preventDefault()}
-          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => {
+            event.preventDefault()
+          }}
+          onPointerDownOutside={(event) => {
+            event.preventDefault()
+          }}
+          onInteractOutside={(event) => {
+            event.preventDefault()
+          }}
           className={cn(
             // start-1/2 flips to right:50% in RTL, so the centering translate has
             // to flip with it — hence the rtl: override on translate-x.

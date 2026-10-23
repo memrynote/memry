@@ -89,13 +89,13 @@ describe('SortableProjectItem drop-to-link', () => {
       dataTransfer: noteDataTransfer('n1')
     })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.linkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'note',
         itemId: 'n1'
       })
-    )
+    })
     expect(mocks.toastSuccess).toHaveBeenCalled()
   })
 
@@ -107,12 +107,12 @@ describe('SortableProjectItem drop-to-link', () => {
       dataTransfer: noteDataTransfer('f1')
     })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.linkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'file',
         itemId: 'f1'
       })
-    )
+    })
   })
 })

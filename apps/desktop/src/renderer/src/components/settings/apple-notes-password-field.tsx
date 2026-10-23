@@ -100,7 +100,9 @@ export function AppleNotesPasswordField({
           disabled={disabled}
           placeholder={t('import.dialog.appleNotes.password.placeholder')}
           aria-label={t('import.dialog.appleNotes.password.label')}
-          onChange={(event) => edit(event.target.value)}
+          onChange={(event) => {
+            edit(event.target.value)
+          }}
         />
         <Button
           type="submit"

@@ -274,10 +274,14 @@ export const useChordShortcuts = (): boolean => {
 
   // Event listener for chord keys
   useEffect(() => {
-    const listener = (e: KeyboardEvent): void => handleKeyDownRef.current(e)
+    const listener = (e: KeyboardEvent): void => {
+      handleKeyDownRef.current(e)
+    }
 
     window.addEventListener('keydown', listener)
-    return () => window.removeEventListener('keydown', listener)
+    return () => {
+      window.removeEventListener('keydown', listener)
+    }
   }, [])
 
   return chord.isActive

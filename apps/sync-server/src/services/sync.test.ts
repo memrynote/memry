@@ -125,7 +125,8 @@ interface RecordedPushStatement {
 const createPushDb = (
   options: {
     existing?:
-      Array<Record<string, unknown>> | ((binds: unknown[]) => Array<Record<string, unknown>>)
+      | Array<Record<string, unknown>>
+      | ((binds: unknown[]) => Array<Record<string, unknown>>)
     lookupError?: unknown
     writeError?: unknown
   } = {}
@@ -214,7 +215,9 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).not.toThrow()
+    expect(() => {
+      validateEncryptedFields(item)
+    }).not.toThrow()
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for wrong dataNonce length (23 bytes)', () => {
@@ -224,7 +227,9 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
     try {
       validateEncryptedFields(item)
     } catch (e) {
@@ -239,7 +244,9 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
     try {
       validateEncryptedFields(item)
     } catch (e) {
@@ -254,7 +261,9 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
     try {
       validateEncryptedFields(item)
     } catch (e) {
@@ -269,7 +278,9 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
     try {
       validateEncryptedFields(item)
     } catch (e) {
@@ -287,7 +298,9 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
     try {
       mockedSafeBase64Decode
         .mockImplementationOnce(() => new Uint8Array(24))
@@ -308,7 +321,9 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem({ dataNonce: '!!!not-base64!!!' })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
     try {
       mockedSafeBase64Decode.mockImplementationOnce(() => {
         throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Malformed base64 input', 400)

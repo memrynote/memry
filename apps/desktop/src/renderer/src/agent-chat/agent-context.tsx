@@ -384,12 +384,7 @@ export function AgentProvider({
   useEffect(() => {
     for (const [conversationId, queue] of Object.entries(state.queuedTurns)) {
       const head = queue[0]
-      if (
-        !head ||
-        head.status !== 'queued' ||
-        head.editing ||
-        state.inFlight[conversationId] === true
-      ) {
+      if (!head || head.status !== 'queued' || head.editing || state.inFlight[conversationId]) {
         continue
       }
       dispatch({ type: 'start_queued_turn', conversationId, id: head.id })

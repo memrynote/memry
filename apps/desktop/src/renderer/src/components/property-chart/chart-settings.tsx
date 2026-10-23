@@ -183,9 +183,9 @@ function PropertyList({
             role="option"
             aria-selected={isSelected}
             // A new property brings its own suggested chart.
-            onClick={() =>
+            onClick={() => {
               onChange({ property: property.name, type: undefined, rangeDays: undefined })
-            }
+            }}
             className={cn(
               'flex h-8 items-center gap-2 rounded-[5px] px-2 text-start text-[13px] text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
               isSelected && 'bg-muted'
@@ -228,9 +228,9 @@ function ChartTypePicker({
           type="button"
           role="radio"
           aria-checked={option === type}
-          onClick={() =>
+          onClick={() => {
             onChange({ type: option === suggested ? undefined : option, rangeDays: undefined })
-          }
+          }}
           className={cn(
             'inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
             option === type
@@ -286,9 +286,9 @@ function DetailSettings({
         label={t('editor.chart.range')}
         value={rangeDays}
         options={ranges}
-        onChange={(days) =>
+        onChange={(days) => {
           onChange({ rangeDays: days === defaultRangeDays(type) ? undefined : days })
-        }
+        }}
         testId="chart-range"
       />
       {isNumber ? (
@@ -299,7 +299,9 @@ function DetailSettings({
             value,
             label: t(`editor.chart.aggregates.${value}`)
           }))}
-          onChange={(value) => onChange({ aggregate: value === 'average' ? undefined : value })}
+          onChange={(value) => {
+            onChange({ aggregate: value === 'average' ? undefined : value })
+          }}
           testId="chart-aggregate"
         />
       ) : null}
@@ -311,7 +313,9 @@ function DetailSettings({
             value,
             label: t(`editor.chart.missing.${value}`)
           }))}
-          onChange={(value) => onChange({ missing: value === 'gap' ? undefined : value })}
+          onChange={(value) => {
+            onChange({ missing: value === 'gap' ? undefined : value })
+          }}
           testId="chart-missing"
         />
       ) : null}
@@ -320,7 +324,9 @@ function DetailSettings({
           label={t('editor.chart.dateFrom.label')}
           value={chart.dateFrom ?? 'created'}
           options={dateFromOptions}
-          onChange={(value) => onChange({ dateFrom: value === 'created' ? undefined : value })}
+          onChange={(value) => {
+            onChange({ dateFrom: value === 'created' ? undefined : value })
+          }}
           testId="chart-date-from"
         />
       ) : null}

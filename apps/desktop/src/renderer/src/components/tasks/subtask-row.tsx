@@ -51,12 +51,18 @@ export const SubtaskRow = ({
       )}
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
     >
-      <div onClick={(e) => e.stopPropagation()}>
+      <div
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
+      >
         <InteractiveStatusIcon
           type={statusType}
           color={statusColor}
           isCompleted={isCompleted}
-          onClick={() => onToggleComplete(subtask.id)}
+          onClick={() => {
+            onToggleComplete(subtask.id)
+          }}
         />
       </div>
 

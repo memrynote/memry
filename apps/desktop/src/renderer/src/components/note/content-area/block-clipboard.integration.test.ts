@@ -62,8 +62,12 @@ beforeEach(() => {
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
+    reader.onload = () => {
+      resolve(String(reader.result))
+    }
+    reader.onerror = () => {
+      reject(reader.error)
+    }
     reader.readAsText(blob)
   })
 }

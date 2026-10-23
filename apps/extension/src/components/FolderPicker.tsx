@@ -36,7 +36,9 @@ export function FolderPicker({
       <select
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value)
+        }}
         className="min-w-0 flex-1 truncate rounded-md border border-transparent bg-transparent py-0.5 pe-1 text-[12.5px] text-foreground outline-none hover:border-border focus-visible:border-text-tertiary disabled:opacity-60"
       >
         <option value="">Inbox</option>

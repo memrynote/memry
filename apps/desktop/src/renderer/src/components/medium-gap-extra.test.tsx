@@ -180,7 +180,9 @@ describe('medium gap renderer surfaces', () => {
   const flushRaf = (): void => {
     const callbacks = [...rafCallbacks]
     rafCallbacks = []
-    callbacks.forEach((callback) => callback(0))
+    callbacks.forEach((callback) => {
+      callback(0)
+    })
   }
 
   it('clusters inbox items by type, domain, topic, and key', () => {

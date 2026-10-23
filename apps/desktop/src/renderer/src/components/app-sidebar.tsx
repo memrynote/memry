@@ -252,7 +252,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       visibleNav.slice(0, 9).map((item, i) => ({
         key: String(i + 1),
         modifiers: { meta: true },
-        action: () => navigateToPage(item.page),
+        action: () => {
+          navigateToPage(item.page)
+        },
         description: `Go to ${item.title}`,
         allowInInput: true,
         when: () => !document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')
@@ -717,7 +719,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         isModifierHeld={isModifierHeld}
         inboxCount={inboxCount}
         todayTasksCount={todayTasksCount}
-        onOpenJournalSettings={() => openSettings('journal')}
+        onOpenJournalSettings={() => {
+          openSettings('journal')
+        }}
         dock={dock}
         onReorder={handleRailReorder}
       />
@@ -746,12 +750,21 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
                 pages={vaultPages}
                 newItemActions={{
                   onNewNote: () => void runCommand('nav.newNote', 'ui'),
-                  onJournal: () => navigateToPage('journal'),
-                  onCalendar: () =>
-                    navigateToPage('calendar', { viewState: newItemViewState('calendar') }),
-                  onInbox: () => navigateToPage('inbox'),
-                  onTasks: () => navigateToPage('tasks'),
-                  onTags: () => navigateToPage('tags')
+                  onJournal: () => {
+                    navigateToPage('journal')
+                  },
+                  onCalendar: () => {
+                    navigateToPage('calendar', { viewState: newItemViewState('calendar') })
+                  },
+                  onInbox: () => {
+                    navigateToPage('inbox')
+                  },
+                  onTasks: () => {
+                    navigateToPage('tasks')
+                  },
+                  onTags: () => {
+                    navigateToPage('tags')
+                  }
                 }}
               />
               <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>

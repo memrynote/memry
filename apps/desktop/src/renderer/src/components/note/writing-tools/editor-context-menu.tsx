@@ -181,7 +181,9 @@ export function EditorContextMenu({
         data-testid="editor-context-menu"
         className="min-w-52"
         // Focus goes back to the editor, not to the invisible anchor.
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+        }}
       >
         {entries.map((entry) => {
           switch (entry.kind) {
@@ -198,7 +200,9 @@ export function EditorContextMenu({
                 <DropdownMenuItem
                   key={`spelling-${entry.suggestion}`}
                   className="font-medium"
-                  onSelect={() => onReplaceSpelling(entry.suggestion)}
+                  onSelect={() => {
+                    onReplaceSpelling(entry.suggestion)
+                  }}
                 >
                   {entry.suggestion}
                 </DropdownMenuItem>
@@ -209,7 +213,9 @@ export function EditorContextMenu({
                   key={entry.action}
                   disabled={entry.disabled}
                   data-action={entry.action}
-                  onSelect={() => onAction(entry.action)}
+                  onSelect={() => {
+                    onAction(entry.action)
+                  }}
                 >
                   {labels[entry.action]}
                   {entry.shortcut && (

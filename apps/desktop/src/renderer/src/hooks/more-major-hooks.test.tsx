@@ -177,11 +177,15 @@ describe('more major hooks coverage', () => {
     expect(densityClasses(result.current.density, 'roomy', 'tight')).toBe('tight')
     expect(DENSITY_CONFIG.compact.rowHeight).toBeLessThan(DENSITY_CONFIG.comfortable.rowHeight)
 
-    act(() => result.current.toggleDensity())
+    act(() => {
+      result.current.toggleDensity()
+    })
     expect(result.current.density).toBe('comfortable')
     expect(localStorage.getItem('memry-display-density')).toBe('comfortable')
 
-    act(() => result.current.setDensity('compact'))
+    act(() => {
+      result.current.setDensity('compact')
+    })
     expect(result.current.isComfortable).toBe(false)
   })
 
@@ -277,7 +281,12 @@ describe('more major hooks coverage', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
 
-    renderHook(() => useInboxNotifications(), { wrapper: queryWrapper(queryClient) })
+    renderHook(
+      () => {
+        useInboxNotifications()
+      },
+      { wrapper: queryWrapper(queryClient) }
+    )
     expect(mocks.requestPermission).toHaveBeenCalled()
 
     const callback = mocks.onInboxSnoozeDue.mock.calls[0][0] as (event: {
@@ -315,8 +324,18 @@ describe('more major hooks coverage', () => {
   it('tags snooze notifications by resurfaced item id so concurrent mounts collapse to one banner', () => {
     // Split view (or a second window) mounts the inbox page twice, and the
     // snooze-due event is delivered to every subscriber.
-    renderHook(() => useInboxNotifications(), { wrapper: queryWrapper() })
-    renderHook(() => useInboxNotifications(), { wrapper: queryWrapper() })
+    renderHook(
+      () => {
+        useInboxNotifications()
+      },
+      { wrapper: queryWrapper() }
+    )
+    renderHook(
+      () => {
+        useInboxNotifications()
+      },
+      { wrapper: queryWrapper() }
+    )
 
     type SnoozeCallback = (event: { items: Array<{ id: string; title: string }> }) => void
     const first = mocks.onInboxSnoozeDue.mock.calls[0][0] as SnoozeCallback
@@ -351,17 +370,23 @@ describe('more major hooks coverage', () => {
     const disabledProject = renderHook(() => useProject(null), { wrapper })
     expect(disabledProject.result.current.fetchStatus).toBe('idle')
     const project = renderHook(() => useProject('project-2'), { wrapper })
-    await waitFor(() => expect(project.result.current.data?.name).toBe('Home'))
+    await waitFor(() => {
+      expect(project.result.current.data?.name).toBe('Home')
+    })
 
     const month = renderHook(() => useMonthEntries(2026, 5), { wrapper })
-    await waitFor(() => expect(month.result.current.data).toHaveLength(1))
+    await waitFor(() => {
+      expect(month.result.current.data).toHaveLength(1)
+    })
     expect(mocks.invalidatePredicate('2026-05-12')).toBe(true)
     expect(mocks.invalidatePredicate('2026-06-01')).toBe(false)
     await act(async () => month.result.current.reload())
 
     mocks.getYearStats.mockRejectedValueOnce(new Error('stats failed'))
     const stats = renderHook(() => useYearStats(2026), { wrapper })
-    await waitFor(() => expect(stats.result.current.error).toBe('stats failed'))
+    await waitFor(() => {
+      expect(stats.result.current.error).toBe('stats failed')
+    })
     expect(mocks.invalidatePredicate('2026-12-31')).toBe(true)
     expect(mocks.invalidatePredicate('2025-12-31')).toBe(false)
     await act(async () => stats.result.current.reload())

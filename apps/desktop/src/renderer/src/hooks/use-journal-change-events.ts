@@ -45,10 +45,18 @@ export function useJournalChangeEvents(): void {
       void queryClient.invalidateQueries({ queryKey: journalKeys.propertyRows() })
     }
 
-    const unsubscribeCreated = onJournalEntryCreated((event) => invalidate(event.date))
-    const unsubscribeUpdated = onJournalEntryUpdated((event) => invalidate(event.date))
-    const unsubscribeDeleted = onJournalEntryDeleted((event) => invalidate(event.date))
-    const unsubscribeExternal = onJournalExternalChange((event) => invalidate(event.date))
+    const unsubscribeCreated = onJournalEntryCreated((event) => {
+      invalidate(event.date)
+    })
+    const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+      invalidate(event.date)
+    })
+    const unsubscribeDeleted = onJournalEntryDeleted((event) => {
+      invalidate(event.date)
+    })
+    const unsubscribeExternal = onJournalExternalChange((event) => {
+      invalidate(event.date)
+    })
 
     return () => {
       unsubscribeCreated()

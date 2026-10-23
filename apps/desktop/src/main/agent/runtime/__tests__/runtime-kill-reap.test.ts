@@ -69,7 +69,9 @@ async function startSigtermIgnoringChild(): Promise<ChildProcess> {
   const child = spawn(process.execPath, [childScript], { stdio: 'pipe' })
   children.push(child)
   await new Promise<void>((resolve, reject) => {
-    child.stdout?.once('data', () => resolve())
+    child.stdout?.once('data', () => {
+      resolve()
+    })
     child.once('error', reject)
   })
   return child
@@ -83,7 +85,9 @@ describe('AgentRuntime.killAll reaping', () => {
     // Subscribed eagerly, exactly as bootstrap.ts does: a listener attached
     // after the exit would never fire.
     const exitCodePromise = new Promise<number>((resolve) => {
-      child.once('exit', (code) => resolve(code ?? 0))
+      child.once('exit', (code) => {
+        resolve(code ?? 0)
+      })
     })
 
     agentRuntime.trackSubprocess('conversation-1', {

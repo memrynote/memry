@@ -437,22 +437,30 @@ const localSyncRegistry = createSyncAdapterRegistry([
   clockedRecordAdapter(
     'filter',
     () => getFilterSyncService(),
-    (db, itemId) => incrementFilterClockOffline(db, itemId)
+    (db, itemId) => {
+      incrementFilterClockOffline(db, itemId)
+    }
   ),
   clockedRecordAdapter(
     'template',
     () => getTemplateSyncService(),
-    (db, itemId) => incrementTemplateClockOffline(db, itemId)
+    (db, itemId) => {
+      incrementTemplateClockOffline(db, itemId)
+    }
   ),
   clockedRecordAdapter(
     'home_page',
     () => getHomePageSyncService(),
-    (db, itemId) => incrementHomePageClockOffline(db, itemId)
+    (db, itemId) => {
+      incrementHomePageClockOffline(db, itemId)
+    }
   ),
   clockedRecordAdapter(
     'custom_icon',
     () => getCustomIconSyncService(),
-    (db, itemId) => incrementCustomIconClockOffline(db, itemId)
+    (db, itemId) => {
+      incrementCustomIconClockOffline(db, itemId)
+    }
   ),
   {
     type: 'vault_lock',
@@ -484,7 +492,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
   clockedRecordAdapter(
     'sticky_draft',
     () => getStickyDraftSyncService(),
-    (db, itemId) => incrementStickyDraftClockOffline(db, itemId)
+    (db, itemId) => {
+      incrementStickyDraftClockOffline(db, itemId)
+    }
   ),
   {
     type: 'bookmark',
@@ -672,7 +682,11 @@ const localSyncRegistry = createSyncAdapterRegistry([
         const service = getJournalSyncService()
         enqueueDeleteOrDefer(
           'journal',
-          service && { enqueueDelete: (id: string) => service.enqueueDelete(id, date) },
+          service && {
+            enqueueDelete: (id: string) => {
+              service.enqueueDelete(id, date)
+            }
+          },
           itemId
         )
       }

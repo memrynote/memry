@@ -447,7 +447,7 @@ test.describe('Body CRDT coverage variants', () => {
         pageB,
         bootstrappedSyncPair
       }) => {
-        void bootstrappedSyncPair
+        bootstrappedSyncPair
 
         const title = `V${reconnectOrder}-${scenario.name}-${Date.now()}`
 
@@ -475,7 +475,7 @@ test.describe('Body CRDT coverage variants', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const singleWriterTitle = `V4 Receiver Open Single Writer ${Date.now()}`
     await runReceiverStateSingleWriterCase({
@@ -517,7 +517,7 @@ test.describe('Body CRDT coverage variants', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const singleWriterTitle = `V5 Receiver Closed Single Writer ${Date.now()}`
     await runReceiverStateSingleWriterCase({
@@ -578,7 +578,7 @@ test.describe('Body CRDT coverage variants', () => {
       !!process.env.CI,
       'sync engine cursor race on parallel reconnect push — see block comment'
     )
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const prefix = `V6 Two Notes Four Edits ${Date.now()}`
     const titleA = `${prefix} NoteA`

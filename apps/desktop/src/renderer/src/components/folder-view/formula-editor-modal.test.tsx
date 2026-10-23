@@ -63,7 +63,13 @@ vi.mock('@/components/ui/autocomplete-dropdown', () => ({
     visible ? (
       <div role="listbox">
         {suggestions.map((suggestion, index) => (
-          <button type="button" key={suggestion.label} onClick={() => onSelect(index)}>
+          <button
+            type="button"
+            key={suggestion.label}
+            onClick={() => {
+              onSelect(index)
+            }}
+          >
             {suggestion.label}
           </button>
         ))}

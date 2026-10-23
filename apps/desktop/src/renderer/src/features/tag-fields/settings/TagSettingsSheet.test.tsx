@@ -169,20 +169,20 @@ describe('TagSettingsSheet appearance', () => {
   it('shows the current colour and category', async () => {
     renderSheet()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('combobox', { name: 'Colour' })).toHaveTextContent('Rose')
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(screen.getByRole('combobox', { name: 'Category' })).toHaveTextContent('People')
-    )
+    })
   })
 
   it('shows No category for a tag outside every category', async () => {
     renderSheet('company')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('combobox', { name: 'Category' })).toHaveTextContent('No category')
-    )
+    })
   })
 
   it('changes the tag colour', async () => {
@@ -192,9 +192,9 @@ describe('TagSettingsSheet appearance', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Colour' }))
     await user.click(await screen.findByRole('option', { name: 'Sage' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(tagsApi.updateTagColor).toHaveBeenCalledWith({ tag: 'person', color: 'sage' })
-    )
+    })
   })
 
   it('reports why a colour change was refused', async () => {
@@ -205,7 +205,9 @@ describe('TagSettingsSheet appearance', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Colour' }))
     await user.click(await screen.findByRole('option', { name: 'Sage' }))
 
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Tag is locked'))
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('Tag is locked')
+    })
   })
 
   it('reports an icon change that fails with a thrown error', async () => {
@@ -217,10 +219,12 @@ describe('TagSettingsSheet appearance', () => {
     await user.click(await screen.findByRole('button', { name: 'Change icon' }))
     await user.click(await screen.findByRole('button', { name: 'Remove' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(tagsApi.updateTagIcon).toHaveBeenCalledWith({ tag: 'person', icon: null })
-    )
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('icon store offline'))
+    })
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('icon store offline')
+    })
   })
 
   it('moves the tag into another category, after the tags already there', async () => {
@@ -230,11 +234,11 @@ describe('TagSettingsSheet appearance', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Category' }))
     await user.click(await screen.findByRole('option', { name: 'Work' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(tagsApi.reorder).toHaveBeenCalledWith({
         tags: [{ tag: 'person', categoryId: 'cat-work', sortOrder: 1 }]
       })
-    )
+    })
   })
 
   it('takes the tag out of its category', async () => {
@@ -244,11 +248,11 @@ describe('TagSettingsSheet appearance', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Category' }))
     await user.click(await screen.findByRole('option', { name: 'No category' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(tagsApi.reorder).toHaveBeenCalledWith({
         tags: [{ tag: 'person', categoryId: null, sortOrder: 0 }]
       })
-    )
+    })
   })
 })
 
@@ -334,7 +338,9 @@ describe('TagSettingsSheet delete tag', () => {
     const dialog = await openDeleteDialog(user)
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
     expect(tagsApi.deleteTag).not.toHaveBeenCalled()
   })
 
@@ -346,9 +352,15 @@ describe('TagSettingsSheet delete tag', () => {
     await within(dialog).findByText(/will be removed from 9 notes/)
     await user.click(within(dialog).getByRole('button', { name: 'Delete tag' }))
 
-    await waitFor(() => expect(tagsApi.deleteTag).toHaveBeenCalledWith('person'))
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Deleted #person.'))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(tagsApi.deleteTag).toHaveBeenCalledWith('person')
+    })
+    await waitFor(() => {
+      expect(toastMock.success).toHaveBeenCalledWith('Deleted #person.')
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 
   it('keeps the dialog open and says why when the delete is refused', async () => {
@@ -360,7 +372,9 @@ describe('TagSettingsSheet delete tag', () => {
     await within(dialog).findByText(/will be removed from 9 notes/)
     await user.click(within(dialog).getByRole('button', { name: 'Delete tag' }))
 
-    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Tag is in use by a sync run'))
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('Tag is in use by a sync run')
+    })
     expect(toastMock.success).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })

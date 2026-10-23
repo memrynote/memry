@@ -269,7 +269,9 @@ describe('SyncProvider', () => {
       mockSyncOps.getVaultBinding.mockResolvedValue(needsDecision)
       const { result } = renderHook(() => useSync(), { wrapper })
 
-      await vi.waitFor(() => expect(result.current.vaultBinding).toEqual(needsDecision))
+      await vi.waitFor(() => {
+        expect(result.current.vaultBinding).toEqual(needsDecision)
+      })
       expect(screen.getByText('Sync this vault to your account?')).toBeTruthy()
       expect(screen.getByRole('button', { name: 'Merge into “Main”' })).toBeTruthy()
     })
@@ -280,7 +282,9 @@ describe('SyncProvider', () => {
         state: { status: 'local-only' }
       })
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of vaultBindingListeners) cb(needsDecision)
@@ -289,7 +293,9 @@ describe('SyncProvider', () => {
         screen.getByRole('button', { name: 'Keep on this device' }).click()
       })
 
-      await vi.waitFor(() => expect(result.current.vaultBinding).toEqual({ status: 'local-only' }))
+      await vi.waitFor(() => {
+        expect(result.current.vaultBinding).toEqual({ status: 'local-only' })
+      })
       expect(mockSyncOps.resolveVaultBinding).toHaveBeenCalledWith('local')
       expect(screen.queryByText('Sync this vault to your account?')).toBeNull()
     })
@@ -297,7 +303,9 @@ describe('SyncProvider', () => {
     it('#then keeps the current state and reports when main refuses', async () => {
       mockSyncOps.resolveVaultBinding.mockResolvedValue({ success: false, error: 'nope' })
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
       act(() => {
         for (const cb of vaultBindingListeners) cb(needsDecision)
       })
@@ -326,7 +334,9 @@ describe('SyncProvider', () => {
         ...(reason === 'unavailable' && { error: 'errors:sync.engineNotInitialized' })
       })
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       await act(async () => {
         await result.current.triggerSync()
@@ -339,7 +349,9 @@ describe('SyncProvider', () => {
     it('#then a signed-out answer offers the account settings', async () => {
       mockSyncOps.triggerSync.mockResolvedValueOnce({ success: false, reason: 'signed_out' })
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       await act(async () => {
         await result.current.triggerSync()
@@ -361,7 +373,9 @@ describe('SyncProvider', () => {
 
     it('#then a sync that delivered stays quiet', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       await act(async () => {
         await result.current.triggerSync()
@@ -375,7 +389,9 @@ describe('SyncProvider', () => {
   describe('#given upload progress event #when listening', () => {
     it('#then updates uploadProgress state', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of uploadProgressListeners) {
@@ -394,7 +410,9 @@ describe('SyncProvider', () => {
       // Nothing listened to this channel for 58 days, so a total attachment
       // upload outage was silent. Pin that it surfaces.
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of attachmentUploadFailedListeners) {
@@ -417,7 +435,9 @@ describe('SyncProvider', () => {
       // the file is over their plan limit. The generic "it stays on this device"
       // toast tells them nothing actionable, so this must not be what they see.
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of attachmentUploadFailedListeners) {
@@ -446,7 +466,9 @@ describe('SyncProvider', () => {
       // errorCategory. That must still produce the generic toast, not a crash
       // and not a silently-dropped failure.
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of attachmentUploadFailedListeners) {
@@ -468,7 +490,9 @@ describe('SyncProvider', () => {
   describe('#given download progress event #when listening', () => {
     it('#then updates downloadProgress state', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of downloadProgressListeners) {
@@ -485,7 +509,9 @@ describe('SyncProvider', () => {
   describe('#given status-changed event #when listening', () => {
     it('#then updates state from event data', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) {
@@ -500,7 +526,9 @@ describe('SyncProvider', () => {
 
     it('#then translates errors namespace payloads before storing them', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) {
@@ -521,7 +549,9 @@ describe('SyncProvider', () => {
   describe('#given global sync events #when listening', () => {
     it('#then uses errors namespace messages for storage quota toasts', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(syncStatusListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) {
@@ -539,7 +569,9 @@ describe('SyncProvider', () => {
       // A 413 from the body-limit middleware is a payload problem, not a quota
       // problem. Telling the user to free up space would never fix it.
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(syncStatusListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) {
@@ -556,7 +588,9 @@ describe('SyncProvider', () => {
     it('#then offers the vault activity log from the too-large toast', async () => {
       // The toast is gone in ten seconds; the activity log keeps the failure.
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(syncStatusListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) {
@@ -578,7 +612,9 @@ describe('SyncProvider', () => {
     it('#then names the note when the main process reports which one is too large', async () => {
       // "A note is too large" with no name leaves the user nothing to act on.
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(syncStatusListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) {
@@ -599,7 +635,9 @@ describe('SyncProvider', () => {
 
     it('#then translates session and device revoked state errors', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(sessionExpiredListeners.length).toBeGreaterThan(0)
+      })
 
       // #2612: an advisory keeps the session, so nothing may tell the user to
       // sign in again.
@@ -613,14 +651,16 @@ describe('SyncProvider', () => {
       act(() => {
         for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 2 })
       })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(result.current.state.error).toBe('This device has been removed from your account.')
-      )
+      })
     })
 
     it('#then prompts for re-auth instead of a toast when the refresh token is rejected', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(sessionExpiredListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of sessionExpiredListeners) cb({ reason: 'refresh_rejected' })
@@ -637,7 +677,9 @@ describe('SyncProvider', () => {
     // next sign-in always asked for the recovery phrase.
     it('#then signs in again from the re-auth prompt without deleting the device keys', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(sessionExpiredListeners.length).toBeGreaterThan(0)
+      })
       const opened = vi.fn()
       const unsubscribe = onOpenSettingsRequested(opened)
 
@@ -651,13 +693,17 @@ describe('SyncProvider', () => {
 
       expect(logoutMock).not.toHaveBeenCalled()
       expect(opened).toHaveBeenCalledWith('account')
-      await vi.waitFor(() => expect(screen.queryByText('Your session has ended')).toBeNull())
+      await vi.waitFor(() => {
+        expect(screen.queryByText('Your session has ended')).toBeNull()
+      })
       unsubscribe()
     })
 
     it('#then records queue clears, item activity, and initial sync progress', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(syncStatusListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 4 })
@@ -692,14 +738,18 @@ describe('SyncProvider', () => {
 
     it('#then handles linking lifecycle, key-rotation errors, and clear/dismiss actions', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(linkingRequestListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(linkingRequestListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of linkingRequestListeners) cb({ code: 'ABCD', deviceName: 'Laptop' })
       })
       expect(result.current.linkingRequest).toEqual({ code: 'ABCD', deviceName: 'Laptop' })
 
-      act(() => result.current.clearLinkingRequest())
+      act(() => {
+        result.current.clearLinkingRequest()
+      })
       expect(result.current.linkingRequest).toBeNull()
 
       act(() => {
@@ -713,14 +763,18 @@ describe('SyncProvider', () => {
       })
       expect(result.current.state.deviceRevoked).toEqual({ unsyncedCount: 7 })
 
-      act(() => result.current.dismissDeviceRevoked())
+      act(() => {
+        result.current.dismissDeviceRevoked()
+      })
       expect(result.current.state.deviceRevoked).toBeNull()
       expect(result.current.state.status).toBe('unknown')
     })
 
     it('#then surfaces command failures and ignores commands when signed out', async () => {
       const { result, rerender } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       mockSyncOps.triggerSync.mockRejectedValueOnce(new Error('trigger broke'))
       await act(async () => {
@@ -728,7 +782,9 @@ describe('SyncProvider', () => {
       })
       expect(result.current.state.error).toBe('trigger broke')
 
-      act(() => result.current.clearError())
+      act(() => {
+        result.current.clearError()
+      })
       expect(result.current.state.status).toBe('idle')
 
       mockSyncOps.pause.mockRejectedValueOnce(new Error('pause broke'))
@@ -768,13 +824,17 @@ describe('SyncProvider', () => {
 
     it('#then exposes device revoked export and sign-out actions through the dialog', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(deviceRevokedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(deviceRevokedListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 3 })
       })
 
-      await vi.waitFor(() => expect(document.body).toHaveTextContent('revoked:3'))
+      await vi.waitFor(() => {
+        expect(document.body).toHaveTextContent('revoked:3')
+      })
       screen.getByText('export').click()
       screen.getByText('sign out').click()
 
@@ -786,7 +846,9 @@ describe('SyncProvider', () => {
 
     it('#then uses errors namespace messages for security warning toasts', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(securityWarningListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(securityWarningListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of securityWarningListeners) cb({ permanent: false })
@@ -800,7 +862,9 @@ describe('SyncProvider', () => {
 
     it('#then uses errors namespace messages for certificate pin pause toasts', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(certificatePinFailedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(certificatePinFailedListeners.length).toBeGreaterThan(0)
+      })
 
       act(() => {
         for (const cb of certificatePinFailedListeners) cb()
@@ -879,7 +943,9 @@ describe('SyncProvider', () => {
 
     it('#then a vault switch resets so stale progress is never shown for the next vault', async () => {
       const { result } = await mountWithProgress()
-      await vi.waitFor(() => expect(vaultStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(vaultStatusListeners.length).toBeGreaterThan(0)
+      })
       act(() => {
         for (const cb of vaultStatusListeners) cb({ isOpen: true, path: '/vaults/a' })
       })
@@ -893,7 +959,9 @@ describe('SyncProvider', () => {
 
     it('#then vault status events that keep the same path reset nothing', async () => {
       const { result } = await mountWithProgress()
-      await vi.waitFor(() => expect(vaultStatusListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(vaultStatusListeners.length).toBeGreaterThan(0)
+      })
       act(() => {
         for (const cb of vaultStatusListeners) cb({ isOpen: true, path: '/vaults/a' })
       })
@@ -919,7 +987,9 @@ describe('SyncProvider', () => {
         () => ({ lastSyncAt: useSync().state.lastSyncAt, seedAllowed: useHomeSeedGate() }),
         { wrapper }
       )
-      await vi.waitFor(() => expect(itemSyncedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => {
+        expect(itemSyncedListeners.length).toBeGreaterThan(0)
+      })
       return rendered
     }
 

@@ -114,7 +114,9 @@ export function QuickFieldsCard({
             <RelationField
               field={field}
               value={(values[field.name] as string[] | undefined) ?? []}
-              onChange={(next) => setValues((prev) => ({ ...prev, [field.name]: next }))}
+              onChange={(next) => {
+                setValues((prev) => ({ ...prev, [field.name]: next }))
+              }}
               triggerRef={index === 0 ? firstRef : undefined}
             />
           ) : (
@@ -122,9 +124,9 @@ export function QuickFieldsCard({
               ref={index === 0 ? (el) => void (firstRef.current = el) : undefined}
               value={(values[field.name] as string | undefined) ?? ''}
               type={field.type === 'number' ? 'number' : 'text'}
-              onChange={(event) =>
+              onChange={(event) => {
                 setValues((prev) => ({ ...prev, [field.name]: event.target.value }))
-              }
+              }}
               placeholder={t('tagObjects.quickFields.add', { field: field.name.toLowerCase() })}
               className="h-8 min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 outline-none focus:border-foreground/40"
             />

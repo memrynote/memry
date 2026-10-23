@@ -87,7 +87,7 @@ function SaveNoteAsTemplateDialogActive({
       toast.success(t('saveNoteAsTemplate.success'), {
         action: {
           label: t('saveNoteAsTemplate.edit'),
-          onClick: () =>
+          onClick: () => {
             openTab({
               type: 'template-editor',
               title: template.name,
@@ -99,6 +99,7 @@ function SaveNoteAsTemplateDialogActive({
               isPreview: false,
               isDeleted: false
             })
+          }
         }
       })
       onClose()
@@ -126,8 +127,12 @@ function SaveNoteAsTemplateDialogActive({
               value={name}
               maxLength={MAX_TEMPLATE_NAME_LENGTH}
               aria-label={t('saveNoteAsTemplate.nameLabel')}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => setName(e.target.value)}
+              onFocus={(e) => {
+                e.currentTarget.select()
+              }}
+              onChange={(e) => {
+                setName(e.target.value)
+              }}
               onKeyDown={(e) => {
                 if (e.key !== 'Enter') return
                 e.preventDefault()

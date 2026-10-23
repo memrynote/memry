@@ -21,9 +21,9 @@
  */
 
 import { randomBytes } from 'crypto'
+import type { Dirent } from 'fs'
 import {
   closeSync,
-  Dirent,
   existsSync,
   fsyncSync,
   mkdirSync,
@@ -464,7 +464,9 @@ export function removeCanvasFolderDirIfEmpty(vaultPath: string, folder: string):
 
 export function deleteCanvasFileSync(absolutePath: string): void {
   try {
-    withTransientFsRetrySync(() => unlinkSync(absolutePath), 'deleteCanvasFile')
+    withTransientFsRetrySync(() => {
+      unlinkSync(absolutePath)
+    }, 'deleteCanvasFile')
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
       log.warn('Could not delete canvas file', { code: (err as NodeJS.ErrnoException).code })
@@ -626,7 +628,9 @@ export function renameCanvasFile(vaultPath: string, from: string, to: string): s
   const toAbs = resolveCanvasFile(vaultPath, to)
   try {
     mkdirSync(path.dirname(toAbs), { recursive: true })
-    withTransientFsRetrySync(() => renameSync(fromAbs, toAbs), 'renameCanvasFile')
+    withTransientFsRetrySync(() => {
+      renameSync(fromAbs, toAbs)
+    }, 'renameCanvasFile')
     return to
   } catch (err) {
     log.warn('Could not rename canvas file; keeping the previous path', {

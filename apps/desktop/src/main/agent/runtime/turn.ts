@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto'
 import {
   effectiveTurnPermissions,
   type AgentBackendOptions,
-  type AgentTurnPermissions
+  type AgentTurnPermissions,
+  type AgentSourceRef,
+  type AgentToolsOffReason
 } from '@memry/contracts/ipc-agent'
 
 import { toSafeToken } from '@memry/contracts/telemetry-api'
@@ -25,7 +27,6 @@ import { persistToolActivity } from './tool-activity'
 import { extractAgentSourceRefs } from '../source-refs'
 import { withoutImageBytes } from '../mcp/tool-image'
 import { mintTurnWriteGrant, revokeTurnWriteGrantsFor } from '../turn-grants'
-import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 
 const logger = createLogger('AgentRuntime:Turn')
 
@@ -440,7 +441,9 @@ async function killAbandonedChild(sub: BackendRunHandle): Promise<boolean> {
   // shutdown, so an unbounded wait here would trade the leak for a hang.
   let timer: ReturnType<typeof setTimeout> | undefined
   const timedOut = new Promise<false>((resolve) => {
-    timer = setTimeout(() => resolve(false), ABANDONED_KILL_GRACE_MS)
+    timer = setTimeout(() => {
+      resolve(false)
+    }, ABANDONED_KILL_GRACE_MS)
   })
   try {
     const exited = await Promise.race([sub.waitExit().then(() => true), timedOut])

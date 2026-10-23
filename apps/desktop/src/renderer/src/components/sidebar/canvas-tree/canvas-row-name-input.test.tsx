@@ -58,7 +58,9 @@ describe('CanvasRowNameInput', () => {
 
     const input = screen.getByLabelText('name')
     const elsewhere = screen.getByRole('button')
-    await waitFor(() => expect(input).toHaveFocus())
+    await waitFor(() => {
+      expect(input).toHaveFocus()
+    })
 
     elsewhere.focus()
     expect(input).not.toHaveFocus()

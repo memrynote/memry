@@ -122,11 +122,15 @@ describe('the Journal day panel and the Home board ask for one day', () => {
   // leave nothing to compare.
   it('requests the same window as the Home calendar widget', async () => {
     renderWith(<JournalDayPanel date={toLocalDateString(new Date())} />)
-    await waitFor(() => expect(requestedRanges).toHaveLength(1))
+    await waitFor(() => {
+      expect(requestedRanges).toHaveLength(1)
+    })
     cleanup()
 
     renderWith(<CalendarWidget config={{}} size="M" />)
-    await waitFor(() => expect(requestedRanges).toHaveLength(2))
+    await waitFor(() => {
+      expect(requestedRanges).toHaveLength(2)
+    })
 
     const [panel, widget] = requestedRanges
     expect(panel).toEqual(widget)
@@ -146,7 +150,9 @@ describe('the Journal day panel and the Home board ask for one day', () => {
     server.items = [event('e1', 'Tomorrow standup', todayLocalAt(24, 30))]
     renderWith(<JournalDayPanel date={toLocalDateString(new Date())} />)
 
-    await waitFor(() => expect(requestedRanges).toHaveLength(1))
+    await waitFor(() => {
+      expect(requestedRanges).toHaveLength(1)
+    })
     expect(screen.queryByText('Tomorrow standup')).not.toBeInTheDocument()
   })
 })

@@ -221,7 +221,9 @@ describe('day panel timeline', () => {
     vi.setSystemTime(new Date(2026, 4, 10, 13, 45))
     renderPanel(<JournalDayPanel date="2026-05-10" />)
     const scroller = screen.getByTestId('day-timeline-scroll')
-    await waitFor(() => expect(scroller.scrollTop).toBe(13.5 * TIMELINE_HOUR_HEIGHT))
+    await waitFor(() => {
+      expect(scroller.scrollTop).toBe(13.5 * TIMELINE_HOUR_HEIGHT)
+    })
     expect(screen.getByTestId('timeline-now')).toBeInTheDocument()
   })
 
@@ -271,7 +273,9 @@ describe('dropping onto the day panel', () => {
       active: { id: 'task-1', data: { current: {} }, rect: { current: { translated: null } } },
       over: { id: 'target', data: { current: overData }, rect: { top: 0 } }
     } as unknown as DragEndEvent
-    act(() => result.current.handleDragEnd(event, dragState))
+    act(() => {
+      result.current.handleDragEnd(event, dragState)
+    })
     return onUpdateTask
   }
 
@@ -355,14 +359,14 @@ describe('dropping a task block from a note onto the day panel', () => {
     const drop = nativeDrag('drop', scroller, at(14, 20), 'task-1')
 
     expect(drop.defaultPrevented).toBe(true)
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.update).toHaveBeenCalledWith({
         id: 'task-1',
         dueDate: '2026-05-12',
         dueTime: '14:30',
         durationMinutes: 30
       })
-    )
+    })
     expect(screen.queryByTestId('timeline-drop-preview')).not.toBeInTheDocument()
   })
 
@@ -371,13 +375,13 @@ describe('dropping a task block from a note onto the day panel', () => {
     renderInApp('2026-05-12')
     nativeDrag('drop', screen.getByTestId('day-timeline-scroll'), at(16, 0), 'task-1')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.update).toHaveBeenCalledWith({
         id: 'task-1',
         dueDate: '2026-05-12',
         dueTime: '16:00'
       })
-    )
+    })
   })
 
   it('sets the day and clears the time when dropped on the Unscheduled list', async () => {
@@ -386,13 +390,13 @@ describe('dropping a task block from a note onto the day panel', () => {
     const drop = nativeDrag('drop', await screen.findByTestId('day-panel-task-list'), 0, 'task-1')
 
     expect(drop.defaultPrevented).toBe(true)
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.update).toHaveBeenCalledWith({
         id: 'task-1',
         dueDate: '2026-05-12',
         dueTime: null
       })
-    )
+    })
   })
 
   it('ignores a dragged block that is not a task', async () => {

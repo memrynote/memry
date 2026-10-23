@@ -66,7 +66,9 @@ export function ProjectWidgetTabs({
             data-tab={key}
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
-            onClick={() => onChange(key)}
+            onClick={() => {
+              onChange(key)
+            }}
             className={cn(
               'flex h-6 items-center gap-1 rounded-[5px] px-2 transition-colors duration-150',
               'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]',

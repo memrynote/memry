@@ -180,7 +180,9 @@ const BulkFilePanelContent = ({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [selectedFolder, itemCount, handleFileItems])
 
   const handleFolderSelect = useCallback((folder: Folder): void => {

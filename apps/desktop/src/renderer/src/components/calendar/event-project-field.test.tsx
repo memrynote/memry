@@ -63,13 +63,24 @@ vi.mock('@/components/tasks/project-picker', () => ({
     allOptionLabel?: string
   }) => (
     <div data-testid="project-picker" data-value={value ?? ''}>
-      <button type="button" onClick={() => onChange(null)}>
+      <button
+        type="button"
+        onClick={() => {
+          onChange(null)
+        }}
+      >
         {allOptionLabel}
       </button>
       {projects
         .filter((project) => !project.isArchived)
         .map((project) => (
-          <button key={project.id} type="button" onClick={() => onChange(project.id)}>
+          <button
+            key={project.id}
+            type="button"
+            onClick={() => {
+              onChange(project.id)
+            }}
+          >
             {`pick-${project.name}`}
           </button>
         ))}
@@ -150,7 +161,9 @@ describe('EventProjectField · edit mode', () => {
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
 
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledWith('calendar_event', 'evt-1'))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledWith('calendar_event', 'evt-1')
+    })
     await waitFor(() =>
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p1')
     )
@@ -175,13 +188,13 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(screen.getByText('pick-Finance'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'calendar_event',
         itemId: 'evt-1'
       })
-    )
+    })
     expect(mockLinkProjectItem).toHaveBeenCalledWith({
       projectId: 'p2',
       itemType: 'calendar_event',
@@ -193,11 +206,15 @@ describe('EventProjectField · edit mode', () => {
     mockListForItem.mockResolvedValue([])
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalled()
+    })
 
     fireEvent.click(screen.getByText('pick-Launch'))
 
-    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
+    })
     expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
   })
 
@@ -211,13 +228,13 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(screen.getByText('No project'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'calendar_event',
         itemId: 'evt-1'
       })
-    )
+    })
     expect(mockLinkProjectItem).not.toHaveBeenCalled()
   })
 
@@ -226,11 +243,15 @@ describe('EventProjectField · edit mode', () => {
     mockListForItem.mockResolvedValue([])
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={onChange} />)
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalled()
+    })
 
     fireEvent.click(screen.getByText('pick-Launch'))
 
-    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockLinkProjectItem).toHaveBeenCalled()
+    })
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -248,7 +269,9 @@ describe('EventProjectField · edit mode', () => {
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
 
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalled()
+    })
     await waitFor(() =>
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
     )
@@ -259,7 +282,9 @@ describe('EventProjectField · edit mode', () => {
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
 
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalled()
+    })
     await waitFor(() =>
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
     )
@@ -270,12 +295,18 @@ describe('EventProjectField · edit mode', () => {
     mockLinkProjectItem.mockResolvedValue({ success: false, error: 'link failed' })
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(1)
+    })
 
     fireEvent.click(screen.getByText('pick-Launch'))
 
-    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('shows a toast when a link write rejects outright', async () => {
@@ -283,11 +314,15 @@ describe('EventProjectField · edit mode', () => {
     mockLinkProjectItem.mockRejectedValue(new Error('link failed'))
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(1)
+    })
 
     fireEvent.click(screen.getByText('pick-Launch'))
 
-    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalled()
+    })
   })
 
   it('ignores a selection made before the initial load resolves', async () => {
@@ -299,7 +334,9 @@ describe('EventProjectField · edit mode', () => {
     )
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalled()
+    })
 
     // Clicked while the initial load is still in flight — `links` is still
     // `[]`, so a naive read of `previousId` here would be wrong.
@@ -360,7 +397,9 @@ describe('EventProjectField · edit mode', () => {
     )
 
     fireEvent.click(screen.getByText('pick-Finance'))
-    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
+    })
 
     // Fired before the first selection's unlink settles — `links` still says
     // `p1` is current. Picking a THIRD project (neither the stale `p1` nor
@@ -371,13 +410,13 @@ describe('EventProjectField · edit mode', () => {
     fireEvent.click(screen.getByText('pick-Marketing'))
 
     resolveUnlink?.({ success: true })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockLinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p2',
         itemType: 'calendar_event',
         itemId: 'evt-1'
       })
-    )
+    })
     // The second click's selection (p3) was dropped entirely: only the first
     // click's unlink(p1)+link(p2) pair ever went out.
     expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
@@ -398,7 +437,9 @@ describe('EventProjectField · edit mode', () => {
     })
 
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(1)
+    })
 
     updateHandler?.()
 
@@ -433,7 +474,9 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(remove)
 
-    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
+    })
     expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
       projectId: 'p2',
       itemType: 'calendar_event',
@@ -454,7 +497,9 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(screen.getByText('pick-Finance'))
 
-    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
+    })
     expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
       projectId: 'p1',
       itemType: 'calendar_event',
@@ -485,7 +530,9 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(screen.getByText('pick-Marketing'))
 
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(2)
+    })
     await waitFor(() =>
       expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', 'p3')
     )
@@ -512,18 +559,20 @@ describe('EventProjectField · edit mode', () => {
     render(<EventProjectField mode="edit" eventId="evt-1" value={null} onChange={vi.fn()} />)
     // Wait on the load itself, not on how the link ends up rendered, so the
     // click below happens with `links` committed either way.
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(1)
+    })
     await act(async () => {})
 
     fireEvent.click(screen.getByText('pick-Launch'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockLinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'calendar_event',
         itemId: 'evt-1'
       })
-    )
+    })
     // The archived link was never on screen as a picker value, so the user
     // never chose to replace it. Only an explicit chip × may remove it.
     expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
@@ -558,7 +607,9 @@ describe('EventProjectField · edit mode', () => {
     expect(mockListForItem).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByText('pick-Finance'))
-    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
+    })
 
     // The broadcast the in-flight link itself publishes.
     updateHandler?.()
@@ -572,13 +623,17 @@ describe('EventProjectField · edit mode', () => {
     fireEvent.click(screen.getByText('pick-Marketing'))
 
     resolveLink?.({ success: true })
-    await waitFor(() => expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
+    })
     expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
     expect(mockLinkProjectItem).not.toHaveBeenCalledWith(
       expect.objectContaining({ projectId: 'p3' })
     )
     // Exactly one reload for the whole swap, not one per IPC call.
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('keeps a pickable link in the picker when an unpickable link is stored first', async () => {
@@ -599,13 +654,13 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(screen.getByText('pick-Finance'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUnlinkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'calendar_event',
         itemId: 'evt-1'
       })
-    )
+    })
     expect(mockUnlinkProjectItem).toHaveBeenCalledTimes(1)
   })
 
@@ -624,7 +679,9 @@ describe('EventProjectField · edit mode', () => {
 
     fireEvent.click(screen.getByText('pick-Finance'))
 
-    await waitFor(() => expect(mockToastError).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalled()
+    })
     expect(mockLinkProjectItem).toHaveBeenCalledWith({
       projectId: 'p2',
       itemType: 'calendar_event',
@@ -653,12 +710,16 @@ describe('EventProjectField · edit mode', () => {
     rerender(<EventProjectField mode="edit" eventId="evt-2" value={null} onChange={vi.fn()} />)
 
     expect(screen.getByTestId('project-picker')).toHaveAttribute('data-value', '')
-    await waitFor(() => expect(mockListForItem).toHaveBeenCalledWith('calendar_event', 'evt-2'))
+    await waitFor(() => {
+      expect(mockListForItem).toHaveBeenCalledWith('calendar_event', 'evt-2')
+    })
     await act(async () => {})
 
     fireEvent.click(screen.getByText('pick-Finance'))
 
-    await waitFor(() => expect(mockLinkProjectItem).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockLinkProjectItem).toHaveBeenCalledTimes(1)
+    })
     expect(mockUnlinkProjectItem).not.toHaveBeenCalled()
   })
 

@@ -73,7 +73,9 @@ export function ListTypeButtons() {
             isDisabled={!state.canToggle}
             isSelected={state.active.includes(type)}
             icon={<Icon size={16} />}
-            onClick={() => toggleListType(editor, type)}
+            onClick={() => {
+              toggleListType(editor, type)
+            }}
           />
         )
       })}

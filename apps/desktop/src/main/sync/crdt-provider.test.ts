@@ -27,10 +27,16 @@ const fsHooks = vi.hoisted(() => ({
 vi.mock('fs', async (importActual) => {
   const actual = await importActual<typeof import('fs')>()
   fsHooks.realRenameSync = actual.renameSync
-  const renameSync = (from: string, to: string): void =>
-    (fsHooks.renameSync ?? actual.renameSync)(from, to)
-  const cpSync = (from: string, to: string, options?: Parameters<typeof actual.cpSync>[2]): void =>
+  const renameSync = (from: string, to: string): void => {
+    ;(fsHooks.renameSync ?? actual.renameSync)(from, to)
+  }
+  const cpSync = (
+    from: string,
+    to: string,
+    options?: Parameters<typeof actual.cpSync>[2]
+  ): void => {
     fsHooks.cpSync ? fsHooks.cpSync(from, to) : actual.cpSync(from, to, options)
+  }
   return { ...actual, default: { ...actual, renameSync, cpSync }, renameSync, cpSync }
 })
 
@@ -714,8 +720,9 @@ describe('CrdtProvider', () => {
   // #2299 review round 2 (A-6, B-M2, B-L4): a doc that cannot vouch for
   // itself claims nothing; the push is the plain unclaimed one.
   describe('claims withheld when the doc cannot vouch for itself', () => {
-    const claimFifty = (): void =>
+    const claimFifty = (): void => {
       provider.setSnapshotCoverage(() => ({ unmerged: false, coversThrough: 50 }))
+    }
 
     it('claims for a doc loaded from the store', async () => {
       withPersistedDoc()
@@ -1340,7 +1347,9 @@ describe('CrdtProvider', () => {
       )
 
       const absorbing = provider.absorbForeignDoc('j2026-06-09', 'wxudm2oo4rci', 'from text', 7)
-      await vi.waitFor(() => expect(stored).toBeTypeOf('function'))
+      await vi.waitFor(() => {
+        expect(stored).toBeTypeOf('function')
+      })
       // A crash here leaves nothing folded: the day is untouched until the store lands.
       expect(queue.enqueue).not.toHaveBeenCalledWith('j2026-06-09', expect.anything())
       stored()
@@ -1692,7 +1701,9 @@ describe('CrdtProvider', () => {
     )
     const closePromise = provider.close('note-1')
     // close() reads the push base (#2299) before it encodes and pushes.
-    await vi.waitFor(() => expect(releaseClosePush).toBeDefined())
+    await vi.waitFor(() => {
+      expect(releaseClosePush).toBeDefined()
+    })
 
     mocks.compactYDoc.mockClear()
     await provider.compactDoc('note-1')
@@ -1833,10 +1844,12 @@ describe('CrdtProvider', () => {
     const owe = vi.fn(() => true)
     provider.setOweRemoteMerge(owe)
 
-    await vi.waitFor(() => expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction'))
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
+      expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
+    })
+    await vi.waitFor(() => {
       expect(store.setMeta).toHaveBeenLastCalledWith(expect.any(String), 'owedCompactions', [])
-    )
+    })
   })
 
   // #2421 round 2 ruling 5 (A N-5, B-4): the data DB of the vault the store
@@ -1857,11 +1870,11 @@ describe('CrdtProvider', () => {
       await expect(provider.compactDoc('note-1')).rejects.toThrow('CRDT_SNAPSHOT_NOT_COVERED')
 
       const store = mocks.persistenceInstances.at(-1)!
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(store.setMeta).toHaveBeenCalledWith(expect.any(String), 'owedCompactions', [
           'note-1'
         ])
-      )
+      })
       expect(listCrdtBodyDebts(asSyncDb(incoming.db))).toEqual([])
     } finally {
       incoming.close()
@@ -1877,7 +1890,11 @@ describe('CrdtProvider', () => {
     const store = mocks.persistenceInstances.at(-1)!
     let marker: unknown = ['note-0']
     const later = <T>(value: T): Promise<T> =>
-      new Promise((resolve) => setTimeout(() => resolve(value), 5))
+      new Promise((resolve) =>
+        setTimeout(() => {
+          resolve(value)
+        }, 5)
+      )
     store.getMeta.mockImplementation((_doc: string, key: string) =>
       later(key === 'owedCompactions' ? marker : undefined)
     )
@@ -1896,8 +1913,12 @@ describe('CrdtProvider', () => {
     const owed = new Set<string>()
     provider.setOweRemoteMerge((noteId) => (owed.add(noteId), true))
 
-    await vi.waitFor(() => expect(owed).toEqual(new Set(['note-0', 'note-1'])))
-    await vi.waitFor(() => expect(marker).toEqual([]))
+    await vi.waitFor(() => {
+      expect(owed).toEqual(new Set(['note-0', 'note-1']))
+    })
+    await vi.waitFor(() => {
+      expect(marker).toEqual([])
+    })
   })
 
   it('keeps the owed compactions in the store when the owe was not durable', async () => {
@@ -1909,7 +1930,9 @@ describe('CrdtProvider', () => {
 
     provider.setOweRemoteMerge(owe)
 
-    await vi.waitFor(() => expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction'))
+    await vi.waitFor(() => {
+      expect(owe).toHaveBeenCalledExactlyOnceWith('note-1', 'compaction')
+    })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(store.setMeta).not.toHaveBeenCalledWith(expect.any(String), 'owedCompactions', [])
   })
@@ -2512,7 +2535,9 @@ describe('CrdtProvider', () => {
       outbox.enableFullStateFlush((noteId) => signedOut.readSyncableState(noteId))
 
       // #then the note's full state reaches the server as an update
-      await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => {
+        expect(push).toHaveBeenCalledTimes(1)
+      })
       expect(push.mock.calls[0]![0]).toBe('note-1')
       const received = new Y.Doc()
       for (const update of push.mock.calls[0]![1]) Y.applyUpdate(received, update)
@@ -2520,7 +2545,9 @@ describe('CrdtProvider', () => {
       expect(pushSnapshot).not.toHaveBeenCalled()
 
       // #and the debt is settled
-      await vi.waitFor(() => expect(owedNotes()).toEqual([]))
+      await vi.waitFor(() => {
+        expect(owedNotes()).toEqual([])
+      })
       outbox.stop()
       await signedOut.destroy()
     })
@@ -3055,7 +3082,9 @@ describe('CrdtProvider persistence resilience', () => {
     expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBeGreaterThan(0)
 
     // Typing must not throw even though the store is dead.
-    expect(() => provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed'), 7)).not.toThrow()
+    expect(() => {
+      provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed'), 7)
+    }).not.toThrow()
     await provider.close('note-1')
   })
 
@@ -3506,7 +3535,9 @@ describe('CrdtProvider batched snapshot pushes', () => {
       return new Map(entries.map((e) => [e.noteId, true]))
     })
     const pushing = provider.pushSnapshotsForNotes(['note-1'])
-    await vi.waitFor(() => expect(pushBatch).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => {
+      expect(pushBatch).toHaveBeenCalledTimes(1)
+    })
 
     // #when an editor opens the same note before the request returns
     await provider.open('note-1', 7, { skipSeed: true })

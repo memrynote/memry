@@ -306,16 +306,36 @@ vi.mock('@/components/folder-view/column-selector', () => ({
     onSummaryChange: (summary: unknown) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onSearchChange('title')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSearchChange('title')
+        }}
+      >
         Search columns
       </button>
-      <button type="button" onClick={() => onColumnsChange([])}>
+      <button
+        type="button"
+        onClick={() => {
+          onColumnsChange([])
+        }}
+      >
         Change columns
       </button>
-      <button type="button" onClick={() => onFormulaAdd({ id: 'f1' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onFormulaAdd({ id: 'f1' })
+        }}
+      >
         Add formula
       </button>
-      <button type="button" onClick={() => onSummaryChange({ title: 'count' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onSummaryChange({ title: 'count' })
+        }}
+      >
         Change summary
       </button>
     </div>
@@ -332,7 +352,12 @@ vi.mock('@/components/folder-view/filter-builder', () => ({
   }) => (
     <div>
       {lockedCondition && <span data-testid="locked-condition">{lockedCondition.label}</span>}
-      <button type="button" onClick={() => onFiltersChange({ op: 'and', conditions: [] })}>
+      <button
+        type="button"
+        onClick={() => {
+          onFiltersChange({ op: 'and', conditions: [] })
+        }}
+      >
         Change filters
       </button>
     </div>
@@ -341,7 +366,12 @@ vi.mock('@/components/folder-view/filter-builder', () => ({
 
 vi.mock('@/components/folder-view/group-by-selector', () => ({
   GroupBySelector: ({ onGroupByChange }: { onGroupByChange: (groupBy: unknown) => void }) => (
-    <button type="button" onClick={() => onGroupByChange({ columnId: 'rating' })}>
+    <button
+      type="button"
+      onClick={() => {
+        onGroupByChange({ columnId: 'rating' })
+      }}
+    >
       Group folder
     </button>
   )
@@ -351,7 +381,9 @@ vi.mock('@/components/folder-view/sort-selector', () => ({
   SortSelector: ({ onSortingChange }: { onSortingChange: (order: unknown) => void }) => (
     <button
       type="button"
-      onClick={() => onSortingChange([{ property: 'title', direction: 'asc' }])}
+      onClick={() => {
+        onSortingChange([{ property: 'title', direction: 'asc' }])
+      }}
     >
       Sort header
     </button>
@@ -371,16 +403,31 @@ vi.mock('@/components/folder-view/view-switcher', () => ({
     onDeleteView: (id: string) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onViewChange(0)}>
+      <button
+        type="button"
+        onClick={() => {
+          onViewChange(0)
+        }}
+      >
         Pick view
       </button>
       <button type="button" onClick={onAddView}>
         Add view
       </button>
-      <button type="button" onClick={() => onSetViewAsDefault('default')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSetViewAsDefault('default')
+        }}
+      >
         Default view
       </button>
-      <button type="button" onClick={() => onDeleteView('default')}>
+      <button
+        type="button"
+        onClick={() => {
+          onDeleteView('default')
+        }}
+      >
         Delete view
       </button>
     </div>
@@ -421,55 +468,140 @@ vi.mock('@/components/folder-view/folder-table-view', () => ({
   }) => (
     <div>
       <span>{notes[0]?.title}</span>
-      <button type="button" onClick={() => onNoteOpen('note-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onNoteOpen('note-1')
+        }}
+      >
         Open note
       </button>
-      <button type="button" onClick={() => onNoteOpen('task-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onNoteOpen('task-1')
+        }}
+      >
         Open task row
       </button>
-      <button type="button" onClick={() => onNoteOpen('inbox-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onNoteOpen('inbox-1')
+        }}
+      >
         Open inbox row
       </button>
-      <button type="button" onClick={() => onOpenInNewTab('note-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onOpenInNewTab('note-1')
+        }}
+      >
         Open note new tab
       </button>
-      <button type="button" onClick={() => onFolderClick('/Child')}>
+      <button
+        type="button"
+        onClick={() => {
+          onFolderClick('/Child')
+        }}
+      >
         Open child folder
       </button>
-      <button type="button" onClick={() => onTagClick('work')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTagClick('work')
+        }}
+      >
         Open tag
       </button>
-      <button type="button" onClick={() => onTagRemove('note-1', 'work')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTagRemove('note-1', 'work')
+        }}
+      >
         Remove tag
       </button>
-      <button type="button" onClick={() => onTagRemove('task-1', 'work')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTagRemove('task-1', 'work')
+        }}
+      >
         Remove tag on task row
       </button>
-      <button type="button" onClick={() => onTagRemove('inbox-1', 'work')}>
+      <button
+        type="button"
+        onClick={() => {
+          onTagRemove('inbox-1', 'work')
+        }}
+      >
         Remove tag on inbox row
       </button>
-      <button type="button" onClick={() => onPropertyUpdate('note-1', 'rating', 5)}>
+      <button
+        type="button"
+        onClick={() => {
+          onPropertyUpdate('note-1', 'rating', 5)
+        }}
+      >
         Update property
       </button>
-      <button type="button" onClick={() => onSortingChange([{ id: 'title' }])}>
+      <button
+        type="button"
+        onClick={() => {
+          onSortingChange([{ id: 'title' }])
+        }}
+      >
         Sort folder
       </button>
-      <button type="button" onClick={() => onDisplayNameChange('title', 'Name')}>
+      <button
+        type="button"
+        onClick={() => {
+          onDisplayNameChange('title', 'Name')
+        }}
+      >
         Rename column
       </button>
-      <button type="button" onClick={() => onSelectionChange(new Set(['note-1']))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectionChange(new Set(['note-1']))
+        }}
+      >
         Select note
       </button>
-      <button type="button" onClick={() => onSelectionChange(new Set(['note-1', 'task-1']))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectionChange(new Set(['note-1', 'task-1']))
+        }}
+      >
         Select mixed rows
       </button>
-      <button type="button" onClick={() => onSelectionChange(new Set(['note-1', 'note-2']))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectionChange(new Set(['note-1', 'note-2']))
+        }}
+      >
         Select two notes
       </button>
-      <button type="button" onClick={() => onDelete(['note-1'])}>
+      <button
+        type="button"
+        onClick={() => {
+          onDelete(['note-1'])
+        }}
+      >
         Delete note
       </button>
-      <button type="button" onClick={() => onMoveToFolder(['note-1'])}>
+      <button
+        type="button"
+        onClick={() => {
+          onMoveToFolder(['note-1'])
+        }}
+      >
         Move note
       </button>
       <button type="button" onClick={onCreateNote}>
@@ -489,7 +621,12 @@ vi.mock('@/components/folder-view/grouped-table', () => ({
   }) => (
     <div>
       <span>Grouped {props.notes[0]?.title}</span>
-      <button type="button" onClick={() => props.onNoteOpen('note-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          props.onNoteOpen('note-1')
+        }}
+      >
         Open grouped note
       </button>
     </div>
@@ -499,7 +636,12 @@ vi.mock('@/components/folder-view/grouped-table', () => ({
 vi.mock('@/components/folder-view/move-to-folder-dialog', () => ({
   MoveToFolderDialog: ({ open, onMove }: { open: boolean; onMove: (folder: string) => void }) =>
     open ? (
-      <button type="button" onClick={() => onMove('Archive')}>
+      <button
+        type="button"
+        onClick={() => {
+          onMove('Archive')
+        }}
+      >
         Confirm move
       </button>
     ) : null
@@ -535,10 +677,20 @@ vi.mock('@/components/folder-view/bulk-action-bar', () => ({
       <button type="button" onClick={onMove}>
         Bulk move
       </button>
-      <button type="button" onClick={() => onAddTag('urgent')}>
+      <button
+        type="button"
+        onClick={() => {
+          onAddTag('urgent')
+        }}
+      >
         Bulk add tag
       </button>
-      <button type="button" onClick={() => onSetIcon('x')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSetIcon('x')
+        }}
+      >
         Bulk set icon
       </button>
       <button type="button" onClick={onClear}>
@@ -649,15 +801,15 @@ describe('FolderViewPage', () => {
     expect(mocks.updateNoteProperty).toHaveBeenCalledWith('note-1', 'rating', 5)
 
     fireEvent.click(screen.getByRole('button', { name: 'Create table note' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.createNote).toHaveBeenCalledWith({ title: 'New note', folder: 'Work/Plans' })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'new-note' }),
         { reuseActiveTab: true }
       )
-    )
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear table filters' }))
     expect(mocks.updateFilters).toHaveBeenCalledWith(undefined)
@@ -706,12 +858,16 @@ describe('FolderViewPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete note' }))
     fireEvent.click(screen.getByRole('button', { name: 'button.delete' }))
-    await waitFor(() => expect(mocks.removeNotesOptimistically).toHaveBeenCalledWith(['note-1']))
+    await waitFor(() => {
+      expect(mocks.removeNotesOptimistically).toHaveBeenCalledWith(['note-1'])
+    })
     expect(mocks.deleteNote).toHaveBeenCalledWith('note-1')
 
     fireEvent.click(screen.getByRole('button', { name: 'Move note' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm move' }))
-    await waitFor(() => expect(mocks.moveNote).toHaveBeenCalledWith('note-1', 'Archive'))
+    await waitFor(() => {
+      expect(mocks.moveNote).toHaveBeenCalledWith('note-1', 'Archive')
+    })
   })
 
   it('renders grouped, loading, error, and not-found states', async () => {
@@ -789,7 +945,9 @@ describe('FolderViewPage tag scope', () => {
 
     mocks.renamedHandler?.({ oldName: 'araba', newName: 'oto' })
 
-    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tab-1'))
+    await waitFor(() => {
+      expect(mocks.closeTab).toHaveBeenCalledWith('tab-1')
+    })
   })
 
   it('does not close the tab when a different tag is renamed', async () => {
@@ -807,7 +965,9 @@ describe('FolderViewPage tag scope', () => {
 
     mocks.deletedHandler?.({ tag: 'araba' })
 
-    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tab-1'))
+    await waitFor(() => {
+      expect(mocks.closeTab).toHaveBeenCalledWith('tab-1')
+    })
   })
 
   it('does not close the tab when a different tag is deleted', async () => {
@@ -824,9 +984,9 @@ describe('FolderViewPage tag scope', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create table note' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.createNote).toHaveBeenCalledWith(expect.objectContaining({ tags: ['araba'] }))
-    )
+    })
   })
 })
 
@@ -986,9 +1146,9 @@ describe('FolderViewPage tag mutations stay note-only', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk add tag' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-1', { add: ['urgent'] })
-    )
+    })
     expect(mocks.updateNoteHeaderTags).toHaveBeenCalledTimes(1)
     expect(mocks.updateNoteHeaderTags).not.toHaveBeenCalledWith('task-1', expect.anything())
     expect(mocks.updateNoteHeaderTags).not.toHaveBeenCalledWith('inbox-1', expect.anything())
@@ -1025,9 +1185,9 @@ describe('FolderViewPage tag mutations stay note-only', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk add tag' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-1', { add: ['urgent'] })
-    )
+    })
     expect(mocks.updateNoteHeaderTags).toHaveBeenCalledWith('note-2', { add: ['urgent'] })
     expect(mocks.updateNoteHeaderTags).toHaveBeenCalledTimes(2)
   })
@@ -1053,7 +1213,9 @@ describe('FolderViewPage bulk set icon', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk set icon' }))
 
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.updateNoteIcons.mock.calls).toEqual([[[{ noteId: 'note-2', emoji: 'x' }]]])
 
     const [message, options] = mocks.toastSuccess.mock.calls[0] as [
@@ -1074,7 +1236,9 @@ describe('FolderViewPage bulk set icon', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select mixed rows' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk set icon' }))
 
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.updateNoteIcons.mock.calls).toEqual([[[{ noteId: 'note-1', emoji: 'x' }]]])
   })
 
@@ -1088,7 +1252,9 @@ describe('FolderViewPage bulk set icon', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk set icon' }))
 
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.updateNoteIcons.mock.calls).toEqual([[[{ noteId: 'note-1', emoji: 'x' }]]])
   })
 })
@@ -1124,7 +1290,9 @@ describe('FolderViewPage stale selection after a filter change', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'button.delete' }))
 
-    await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+    await waitFor(() => {
+      expect(mocks.deleteNote).toHaveBeenCalledWith('note-1')
+    })
     expect(mocks.deleteNote).not.toHaveBeenCalledWith('task-1')
   })
 
@@ -1141,7 +1309,9 @@ describe('FolderViewPage stale selection after a filter change', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk move' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm move' }))
 
-    await waitFor(() => expect(mocks.moveNote).toHaveBeenCalledWith('note-1', 'Archive'))
+    await waitFor(() => {
+      expect(mocks.moveNote).toHaveBeenCalledWith('note-1', 'Archive')
+    })
     expect(mocks.moveNote).not.toHaveBeenCalledWith('task-1', 'Archive')
   })
 
@@ -1161,7 +1331,9 @@ describe('FolderViewPage stale selection after a filter change', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Bulk delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'button.delete' }))
 
-    await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
+    await waitFor(() => {
+      expect(mocks.deleteNote).toHaveBeenCalledWith('note-1')
+    })
     expect(mocks.deleteNote).toHaveBeenCalledWith('note-2')
   })
 })

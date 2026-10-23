@@ -25,12 +25,22 @@ vi.mock('@/features/tasks/use-task-queries', () => ({
 
 vi.mock('@/components/tasks/interactive-status-badge', () => ({
   InteractiveStatusBadge: ({ onStatusChange }: { onStatusChange: (id: string) => void }) => (
-    <button data-testid="status-badge" onClick={() => onStatusChange('done')} />
+    <button
+      data-testid="status-badge"
+      onClick={() => {
+        onStatusChange('done')
+      }}
+    />
   )
 }))
 vi.mock('@/components/tasks/interactive-priority-badge', () => ({
   InteractivePriorityBadge: ({ onPriorityChange }: { onPriorityChange: (p: string) => void }) => (
-    <button data-testid="priority-badge" onClick={() => onPriorityChange('high')} />
+    <button
+      data-testid="priority-badge"
+      onClick={() => {
+        onPriorityChange('high')
+      }}
+    />
   )
 }))
 vi.mock('@/components/tasks/interactive-due-date-badge', () => ({
@@ -42,14 +52,29 @@ vi.mock('@/components/tasks/interactive-due-date-badge', () => ({
     onTimeChange: (t: string | null) => void
   }) => (
     <>
-      <button data-testid="date-badge" onClick={() => onDateChange(new Date('2026-08-01'))} />
-      <button data-testid="time-badge" onClick={() => onTimeChange('09:00')} />
+      <button
+        data-testid="date-badge"
+        onClick={() => {
+          onDateChange(new Date('2026-08-01'))
+        }}
+      />
+      <button
+        data-testid="time-badge"
+        onClick={() => {
+          onTimeChange('09:00')
+        }}
+      />
     </>
   )
 }))
 vi.mock('@/components/tasks/task-description-editor', () => ({
   TaskDescriptionEditor: ({ onContentChange }: { onContentChange: (markdown: string) => void }) => (
-    <button data-testid="description-editor" onClick={() => onContentChange('new body')} />
+    <button
+      data-testid="description-editor"
+      onClick={() => {
+        onContentChange('new body')
+      }}
+    />
   )
 }))
 

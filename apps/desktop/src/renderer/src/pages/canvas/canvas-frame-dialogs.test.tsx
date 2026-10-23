@@ -98,7 +98,9 @@ describe('CanvasFrameBindingDialog', () => {
     fireEvent.change(screen.getByTestId('canvas-frame-binding-input'), {
       target: { value: '#Work/Q3' }
     })
-    await waitFor(() => expect(screen.queryByTestId('canvas-frame-tag-health')).toBeNull())
+    await waitFor(() => {
+      expect(screen.queryByTestId('canvas-frame-tag-health')).toBeNull()
+    })
     fireEvent.click(screen.getByTestId('canvas-frame-new-tag'))
     expect(props.onPick).toHaveBeenCalledWith({ kind: 'tag', tag: 'work/q3' })
   })

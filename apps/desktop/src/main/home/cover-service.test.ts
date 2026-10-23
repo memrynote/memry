@@ -71,9 +71,9 @@ describe('home board covers', () => {
     const file = path.join(vault.path, ...ref!.split('/'))
     expect(existsSync(file)).toBe(true)
 
-    await vi.waitFor(async () =>
+    await vi.waitFor(async () => {
       expect((await h.get(board.id))?.cover?.attachmentId).toBe(ATTACHMENT_ID)
-    )
+    })
     expect(io.uploadAttachment).toHaveBeenCalledWith(board.id, file)
     // Once for the cover, once more when its attachment id is known.
     expect(syncUpdate).toHaveBeenCalledTimes(2)
@@ -91,7 +91,9 @@ describe('home board covers', () => {
       source: { kind: 'upload', filename: 'sky.png', data: PNG }
     })
     const ref = result.ok ? result.page.cover!.ref : ''
-    await vi.waitFor(() => expect(io.uploadAttachment).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => {
+      expect(io.uploadAttachment).toHaveBeenCalledTimes(1)
+    })
     expect((await h.get(board.id))?.cover?.attachmentId).toBeUndefined()
 
     await h.materializeCover(board.id)

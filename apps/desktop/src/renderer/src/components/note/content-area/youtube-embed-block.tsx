@@ -26,7 +26,9 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) 
     <button
       type="button"
       className="relative aspect-video w-full overflow-hidden rounded-[10px] bg-muted cursor-pointer group"
-      onClick={() => setIsPlaying(true)}
+      onClick={() => {
+        setIsPlaying(true)
+      }}
     >
       <img
         src={getYouTubeThumbnailUrl(videoId)}

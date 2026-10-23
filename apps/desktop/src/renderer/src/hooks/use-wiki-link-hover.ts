@@ -166,7 +166,9 @@ export function useWikiLinkHover(
       onNoteDeleted(clearCache),
       onNoteUpdated(clearCache)
     ]
-    return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe())
+    }
   }, [])
 
   const handleCardMouseEnter = useCallback(() => {

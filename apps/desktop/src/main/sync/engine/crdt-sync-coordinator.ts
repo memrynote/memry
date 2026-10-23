@@ -424,7 +424,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       vaultKey,
       this.signerKeysFor([snapshotResult], () => signerPubKey)
     )
-    if (this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted) === false) {
+    if (!this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)) {
       return { since: 0, verified: true, dropped: true }
     }
     const baselineSequence = this.rememberAppliedSequence(noteId, snapshotResult.sequenceNum)
@@ -658,11 +658,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
           // Dropped by a closing doc: not in the doc, and not recorded (b-M3).
           if (
-            crdtProvider.applyRemoteUpdate(
+            !crdtProvider.applyRemoteUpdate(
               noteId,
               decryptedUpdates[next++],
               serverSecondsToMs(entry.createdAt)
-            ) === false
+            )
           ) {
             sawUnmerged = true
             skippedUpdate = true
@@ -1276,11 +1276,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             }
             // Dropped by a closing doc: not in the doc, and not recorded (b-M3).
             if (
-              crdtProvider.applyRemoteUpdate(
+              !crdtProvider.applyRemoteUpdate(
                 noteId,
                 decryptedUpdates[next++],
                 serverSecondsToMs(entry.createdAt)
-              ) === false
+              )
             ) {
               sawUnmerged.add(noteId)
               skippedUpdate.add(noteId)

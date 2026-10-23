@@ -88,7 +88,12 @@ vi.mock('./editors', async (importOriginal) => {
     }) => (
       <div>
         <span>relation-editor:{value.join(',')}</span>
-        <button type="button" onClick={() => onChange([])}>
+        <button
+          type="button"
+          onClick={() => {
+            onChange([])
+          }}
+        >
           clear-relation
         </button>
       </div>
@@ -105,7 +110,9 @@ vi.mock('./editors', async (importOriginal) => {
       <input
         aria-label="text-editor"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
         onBlur={onBlur}
       />
     ),
@@ -121,7 +128,9 @@ vi.mock('./editors', async (importOriginal) => {
       <input
         aria-label="number-editor"
         value={value ?? ''}
-        onChange={(event) => onChange(Number(event.target.value))}
+        onChange={(event) => {
+          onChange(Number(event.target.value))
+        }}
         onBlur={onBlur}
       />
     ),
@@ -136,7 +145,9 @@ vi.mock('./editors', async (importOriginal) => {
         aria-label="checkbox-editor"
         type="checkbox"
         checked={value}
-        onChange={(event) => onChange(event.target.checked)}
+        onChange={(event) => {
+          onChange(event.target.checked)
+        }}
       />
     ),
     DateEditor: ({
@@ -150,7 +161,9 @@ vi.mock('./editors', async (importOriginal) => {
     }) => (
       <button
         type="button"
-        onClick={() => onChange(new Date('2026-05-10T00:00:00Z'))}
+        onClick={() => {
+          onChange(new Date('2026-05-10T00:00:00Z'))
+        }}
         onBlur={onBlur}
       >
         date:{value?.toISOString() ?? 'none'}
@@ -168,7 +181,9 @@ vi.mock('./editors', async (importOriginal) => {
       <input
         aria-label="url-editor"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
         onBlur={onBlur}
       />
     ),
@@ -184,13 +199,28 @@ vi.mock('./editors', async (importOriginal) => {
       onRemoveOption: (value: string) => void
     }) => (
       <div>
-        <button type="button" onClick={() => onChange(options[0]?.value ?? 'high')}>
+        <button
+          type="button"
+          onClick={() => {
+            onChange(options[0]?.value ?? 'high')
+          }}
+        >
           select-editor
         </button>
-        <button type="button" onClick={() => onAddOption({ value: 'low', label: 'Low' })}>
+        <button
+          type="button"
+          onClick={() => {
+            onAddOption({ value: 'low', label: 'Low' })
+          }}
+        >
           add-option
         </button>
-        <button type="button" onClick={() => onRemoveOption('high')}>
+        <button
+          type="button"
+          onClick={() => {
+            onRemoveOption('high')
+          }}
+        >
           remove-option
         </button>
       </div>
@@ -206,10 +236,20 @@ vi.mock('./editors', async (importOriginal) => {
     }) => (
       <div>
         <span data-testid="multiselect-value">{JSON.stringify(value)}</span>
-        <button type="button" onClick={() => onChange(['high'])}>
+        <button
+          type="button"
+          onClick={() => {
+            onChange(['high'])
+          }}
+        >
           multiselect-editor
         </button>
-        <button type="button" onClick={() => onAddOption({ value: 'low', label: 'Low' })}>
+        <button
+          type="button"
+          onClick={() => {
+            onAddOption({ value: 'low', label: 'Low' })
+          }}
+        >
           add-multi
         </button>
       </div>
@@ -224,13 +264,28 @@ vi.mock('./editors', async (importOriginal) => {
       onRemoveOption: (value: string) => void
     }) => (
       <div>
-        <button type="button" onClick={() => onChange('todo')}>
+        <button
+          type="button"
+          onClick={() => {
+            onChange('todo')
+          }}
+        >
           status-editor
         </button>
-        <button type="button" onClick={() => onAddOption('todo', { value: 'next', label: 'Next' })}>
+        <button
+          type="button"
+          onClick={() => {
+            onAddOption('todo', { value: 'next', label: 'Next' })
+          }}
+        >
           add-status
         </button>
-        <button type="button" onClick={() => onRemoveOption('todo')}>
+        <button
+          type="button"
+          onClick={() => {
+            onRemoveOption('todo')
+          }}
+        >
           remove-status
         </button>
       </div>

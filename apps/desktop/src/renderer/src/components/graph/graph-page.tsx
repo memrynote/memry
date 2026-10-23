@@ -156,7 +156,9 @@ function GraphWorkspace({
       if (pendingStateRef.current) rememberState(pendingStateRef.current)
       pendingStateRef.current = null
     }, REMEMBER_STATE_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [viewState, rememberState])
   useEffect(
     () => () => {
@@ -220,7 +222,9 @@ function GraphWorkspace({
   )
 
   const handleUpdateView = useCallback(
-    (view: SavedGraphView) => updateView(view.id, viewState, graphSettings.layout),
+    (view: SavedGraphView) => {
+      updateView(view.id, viewState, graphSettings.layout)
+    },
     [updateView, viewState, graphSettings.layout]
   )
 

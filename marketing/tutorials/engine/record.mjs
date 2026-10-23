@@ -50,8 +50,12 @@ export async function record(dir, { page: given } = {}) {
       if (wait > 0) await sleep(wait * 1000)
       scene.end = rec.now()
     },
-    zoom: (x, y, z) => rec.mark('zoom', { x, y, z }),
-    unzoom: () => rec.mark('unzoom'),
+    zoom: (x, y, z) => {
+      rec.mark('zoom', { x, y, z })
+    },
+    unzoom: () => {
+      rec.mark('unzoom')
+    },
     async zoomOn(locator, z, { dx = 0, dy = 0 } = {}) {
       const c = await rec.center(locator)
       rec.mark('zoom', { x: c.x + dx, y: c.y + dy, z })

@@ -125,7 +125,9 @@ export class PullCoordinator {
       ledger: this.schemaInvalid,
       crdtSync: () => this.crdtSync,
       resolveDeviceKey: (id) => this.resolveDeviceKey(id),
-      onLegacySweepReset: () => this.onNoteBodyLegacySweepReset()
+      onLegacySweepReset: () => {
+        this.onNoteBodyLegacySweepReset()
+      }
     })
   }
 
@@ -646,7 +648,9 @@ export class PullCoordinator {
         runState.applied.recordDeferred(dec)
         runState.pulledCount++
         applied++
-        synced.push(() => this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp))
+        synced.push(() => {
+          this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+        })
       } catch (retryError) {
         failed++
         routeDeferredRetryFailure(dec, retryError, this.orphanedItems, this.schemaInvalid)
@@ -668,7 +672,9 @@ export class PullCoordinator {
       schemaInvalid: this.schemaInvalid,
       accessJwt: runState.accessJwt,
       vaultKey: runState.vaultKey,
-      applyItem: (item) => this.applyOrphan(item, runState)
+      applyItem: (item) => {
+        this.applyOrphan(item, runState)
+      }
     })
   }
 
@@ -681,7 +687,10 @@ export class PullCoordinator {
     // The requeue is what carries a merged row back to the server (#2180).
     // Not counted in `totalConflictsResolved`: that number is the pull's own
     // per-page tally, and a repair pass runs after the last page is logged.
-    if (result === 'schema_invalid') return this.schemaInvalid.record([dec], 'payload')
+    if (result === 'schema_invalid') {
+      this.schemaInvalid.record([dec], 'payload')
+      return
+    }
     if (result === 'conflict') reportConflict(this.ctx.deps, dec)
     this.queueBodyPull(runState, dec, itemOp)
     runState.applied.recordDeferred(dec)
@@ -964,9 +973,9 @@ export class PullCoordinator {
             // A skipped row changed nothing, and every ITEM_SYNCED makes the
             // renderer refetch (the task list re-queries per event).
             if (result !== 'skipped') {
-              pageApply.afterCommit(() =>
+              pageApply.afterCommit(() => {
                 this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
-              )
+              })
             }
           } catch (applyError) {
             log.error('Pull: failed to apply decrypted item — deferring for retry', {

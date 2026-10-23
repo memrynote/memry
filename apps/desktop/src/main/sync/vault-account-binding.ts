@@ -61,7 +61,8 @@ export interface BindingInputs {
 }
 
 export type BindingDecision =
-  { action: 'start'; bind: boolean } | { action: 'hold'; state: VaultBindingState }
+  | { action: 'start'; bind: boolean }
+  | { action: 'hold'; state: VaultBindingState }
 
 /**
  * Whether the open vault may sync with `userId`. Sync starts only when the
@@ -213,7 +214,9 @@ export function scheduleBindingRetry(start: () => Promise<unknown>): void {
   if (bindingRetryTimer) return
   bindingRetryTimer = setTimeout(() => {
     bindingRetryTimer = null
-    void start().catch((err) => log.warn('Sync retry after vault ownership check failed', err))
+    void start().catch((err) => {
+      log.warn('Sync retry after vault ownership check failed', err)
+    })
   }, BINDING_RETRY_MS)
   bindingRetryTimer.unref?.()
 }

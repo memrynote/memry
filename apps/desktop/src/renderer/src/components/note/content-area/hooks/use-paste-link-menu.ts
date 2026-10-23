@@ -34,7 +34,9 @@ interface UsePasteLinkMenuParams {
 export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkMenuParams) {
   const [state, setState] = useState<PasteLinkMenuState>(INITIAL_STATE)
 
-  const close = useCallback(() => setState(INITIAL_STATE), [])
+  const close = useCallback(() => {
+    setState(INITIAL_STATE)
+  }, [])
 
   const handleSelect = useCallback(
     (option: PasteLinkOption) => {

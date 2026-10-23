@@ -92,7 +92,9 @@ export function CalendarHeatmap({
           height={height}
           role="img"
           aria-label={ariaLabel}
-          onPointerLeave={() => setHover(null)}
+          onPointerLeave={() => {
+            setHover(null)
+          }}
         >
           {monthLabels.map(({ col, label }) => (
             <text
@@ -131,7 +133,9 @@ export function CalendarHeatmap({
                   hover === i ? 'stroke-foreground' : openable ? 'cursor-pointer' : undefined
                 }
                 strokeWidth={hover === i ? 1.5 : 0}
-                onPointerEnter={() => setHover(i)}
+                onPointerEnter={() => {
+                  setHover(i)
+                }}
                 onClick={openable ? () => onOpenDay?.(day) : undefined}
               />
             )

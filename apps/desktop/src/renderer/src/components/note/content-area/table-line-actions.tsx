@@ -62,10 +62,18 @@ export const TableLineActions: FC<{ cell: HTMLTableCellElement; axis: TableAxis 
         {count < total && (
           <Item onClick={remove}>{t('editor.table.lines.deleteRows', { count })}</Item>
         )}
-        <Item onClick={() => insert('before')}>
+        <Item
+          onClick={() => {
+            insert('before')
+          }}
+        >
           {t('editor.table.lines.addRowsAbove', { count })}
         </Item>
-        <Item onClick={() => insert('after')}>
+        <Item
+          onClick={() => {
+            insert('after')
+          }}
+        >
           {t('editor.table.lines.addRowsBelow', { count })}
         </Item>
       </>
@@ -79,10 +87,18 @@ export const TableLineActions: FC<{ cell: HTMLTableCellElement; axis: TableAxis 
       {count < total && (
         <Item onClick={remove}>{t('editor.table.lines.deleteColumns', { count })}</Item>
       )}
-      <Item onClick={() => insert(rtl ? 'after' : 'before')}>
+      <Item
+        onClick={() => {
+          insert(rtl ? 'after' : 'before')
+        }}
+      >
         {t('editor.table.lines.addColumnsLeft', { count })}
       </Item>
-      <Item onClick={() => insert(rtl ? 'before' : 'after')}>
+      <Item
+        onClick={() => {
+          insert(rtl ? 'before' : 'after')
+        }}
+      >
         {t('editor.table.lines.addColumnsRight', { count })}
       </Item>
     </>

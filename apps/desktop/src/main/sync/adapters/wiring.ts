@@ -46,7 +46,9 @@ export function createDesktopSyncAdapters(deps: DesktopAdapterWiringDeps): Deskt
     baseUrl: () => resolveSyncServerUrl(),
     online: {
       onStatusChanged: (cb) => {
-        const handler = ({ online }: { online: boolean }): void => cb(online)
+        const handler = ({ online }: { online: boolean }): void => {
+          cb(online)
+        }
         deps.network.on('status-changed', handler)
         return () => {
           deps.network.off('status-changed', handler)

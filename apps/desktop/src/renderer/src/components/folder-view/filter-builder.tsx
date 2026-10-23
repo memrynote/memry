@@ -545,8 +545,12 @@ export function FilterBuilder({
                 condition={condition}
                 availableProperties={propertyInfos}
                 tagSuggestions={tagSuggestions}
-                onChange={(updated) => handleUpdateCondition(condition.id, updated)}
-                onRemove={() => handleRemoveCondition(condition.id)}
+                onChange={(updated) => {
+                  handleUpdateCondition(condition.id, updated)
+                }}
+                onRemove={() => {
+                  handleRemoveCondition(condition.id)
+                }}
               />
             ))}
 
@@ -559,7 +563,9 @@ export function FilterBuilder({
                   </span>
                   <Select
                     value={group.logic}
-                    onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
+                    onValueChange={(v) => {
+                      handleGroupLogicChange(group.id, v as 'and' | 'or')
+                    }}
                   >
                     <SelectTrigger className="flex h-[22px] w-auto items-center justify-start gap-1 rounded-md border-0 bg-muted px-1.5 text-[11px] font-semibold text-foreground [&>svg:last-child]:h-2.5 [&>svg:last-child]:w-2.5">
                       <SelectValue />
@@ -576,7 +582,9 @@ export function FilterBuilder({
                   <div className="grow" />
                   <button
                     type="button"
-                    onClick={() => handleRemoveGroup(group.id)}
+                    onClick={() => {
+                      handleRemoveGroup(group.id)
+                    }}
                     aria-label={tPhaseF('phaseF.componentsFolderViewFilterBuilder.removeGroup')}
                     className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground"
                   >
@@ -590,16 +598,20 @@ export function FilterBuilder({
                     condition={condition}
                     availableProperties={propertyInfos}
                     tagSuggestions={tagSuggestions}
-                    onChange={(updated) =>
+                    onChange={(updated) => {
                       handleUpdateGroupCondition(group.id, condition.id, updated)
-                    }
-                    onRemove={() => handleRemoveGroupCondition(group.id, condition.id)}
+                    }}
+                    onRemove={() => {
+                      handleRemoveGroupCondition(group.id, condition.id)
+                    }}
                   />
                 ))}
 
                 <button
                   type="button"
-                  onClick={() => handleAddGroupCondition(group.id)}
+                  onClick={() => {
+                    handleAddGroupCondition(group.id)
+                  }}
                   className="flex items-center gap-1 text-[11.5px] font-medium text-[var(--tint)]"
                 >
                   <Plus className="h-3 w-3" />

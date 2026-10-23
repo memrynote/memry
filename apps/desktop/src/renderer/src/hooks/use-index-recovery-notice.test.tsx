@@ -27,7 +27,9 @@ describe('useIndexRecoveryNotice', () => {
   })
 
   it('says so, calmly, once the corrupt search index has been rebuilt', () => {
-    renderHook(() => useIndexRecoveryNotice())
+    renderHook(() => {
+      useIndexRecoveryNotice()
+    })
 
     // #when the main process reports it repaired the fts5 index by itself
     recoveredCb?.({ reason: 'fts_corrupt', filesIndexed: 42, duration: 1200 })
@@ -40,7 +42,9 @@ describe('useIndexRecoveryNotice', () => {
   })
 
   it('stays quiet while a brand-new vault builds its first index', () => {
-    renderHook(() => useIndexRecoveryNotice())
+    renderHook(() => {
+      useIndexRecoveryNotice()
+    })
 
     // 'missing' is the ordinary first-open case: nothing was damaged, so there
     // is nothing to reassure anyone about.
@@ -50,7 +54,9 @@ describe('useIndexRecoveryNotice', () => {
   })
 
   it('unsubscribes on unmount', () => {
-    const { unmount } = renderHook(() => useIndexRecoveryNotice())
+    const { unmount } = renderHook(() => {
+      useIndexRecoveryNotice()
+    })
     unmount()
 
     expect(unsubscribe).toHaveBeenCalledTimes(1)

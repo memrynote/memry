@@ -73,10 +73,14 @@ export function useCommandDispatcher(): void {
       }
       const capture = phase === 'capture'
       window.addEventListener('keydown', onKeyDown, { capture })
-      return () => window.removeEventListener('keydown', onKeyDown, { capture })
+      return () => {
+        window.removeEventListener('keydown', onKeyDown, { capture })
+      }
     }
 
     const stops = PHASES.map(listen)
-    return () => stops.forEach((stop) => stop())
+    return () => {
+      stops.forEach((stop) => stop())
+    }
   }, [])
 }

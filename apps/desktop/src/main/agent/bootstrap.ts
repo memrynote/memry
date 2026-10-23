@@ -160,7 +160,9 @@ export async function startAgent(): Promise<AgentHandle> {
       throw new Error('Claude subprocess stdio unavailable')
     }
     const exitCodePromise = new Promise<number>((resolve) => {
-      sub.proc.once('exit', (code) => resolve(code ?? 0))
+      sub.proc.once('exit', (code) => {
+        resolve(code ?? 0)
+      })
     })
 
     return {
@@ -217,7 +219,9 @@ export async function startAgent(): Promise<AgentHandle> {
       throw new Error('Codex subprocess stdio unavailable')
     }
     const exitCodePromise = new Promise<number>((resolve) => {
-      sub.proc.once('exit', (code) => resolve(code ?? 0))
+      sub.proc.once('exit', (code) => {
+        resolve(code ?? 0)
+      })
     })
 
     return {
@@ -273,7 +277,9 @@ export async function startAgent(): Promise<AgentHandle> {
       throw new Error('Antigravity subprocess stdio unavailable')
     }
     const exitCodePromise = new Promise<number>((resolve) => {
-      sub.proc.once('exit', (code) => resolve(code ?? 0))
+      sub.proc.once('exit', (code) => {
+        resolve(code ?? 0)
+      })
     })
 
     return {

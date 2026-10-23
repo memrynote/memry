@@ -188,7 +188,9 @@ export const SortableSubtaskList = ({
         collisionDetection={closestCenter}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => setProjection(undefined)}
+        onDragCancel={() => {
+          setProjection(undefined)
+        }}
         // The row spans its list, so keeping it inside its parent would pin the
         // sideways step at zero; `sidewaysStep` bounds it instead.
         modifiers={tree ? [sidewaysStep] : [verticalOnly, restrictToParentElement]}

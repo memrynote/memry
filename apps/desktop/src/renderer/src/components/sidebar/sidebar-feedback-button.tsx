@@ -123,23 +123,40 @@ export function SidebarFeedbackButton() {
           </DockButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="end" sideOffset={8} className="w-56">
-          <DropdownMenuItem onSelect={() => setOpen(true)}>
+          <DropdownMenuItem
+            onSelect={() => {
+              setOpen(true)
+            }}
+          >
             <MessageSquare aria-hidden="true" />
             {label}
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openExternal(BUG_URL)}>
+          <DropdownMenuItem
+            onSelect={() => {
+              openExternal(BUG_URL)
+            }}
+          >
             <Bug aria-hidden="true" />
             <span className="flex-1">{t('sidebarHelp.reportBug')}</span>
             <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openExternal(FEATURE_URL)}>
+          <DropdownMenuItem
+            onSelect={() => {
+              openExternal(FEATURE_URL)
+            }}
+          >
             <Lightbulb aria-hidden="true" />
             <span className="flex-1">{t('sidebarHelp.requestFeature')}</span>
             <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {COMMUNITY_ITEMS.map((item) => (
-            <DropdownMenuItem key={item.key} onSelect={() => openExternal(item.href)}>
+            <DropdownMenuItem
+              key={item.key}
+              onSelect={() => {
+                openExternal(item.href)
+              }}
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true" className="fill-current">
                 <path d={item.path} />
               </svg>
@@ -148,7 +165,11 @@ export function SidebarFeedbackButton() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => openExternal(REPO_URL)}>
+          <DropdownMenuItem
+            onSelect={() => {
+              openExternal(REPO_URL)
+            }}
+          >
             <Star aria-hidden="true" className="text-[var(--tint)]" />
             <span className="flex-1">{t('sidebarHelp.starOnGithub')}</span>
             <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
@@ -158,7 +179,9 @@ export function SidebarFeedbackButton() {
             <span>{t('sidebarHelp.version', { version: appVersion })}</span>
             <button
               type="button"
-              onClick={() => openExternal(RELEASES_URL)}
+              onClick={() => {
+                openExternal(RELEASES_URL)
+              }}
               className="rounded hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tint-ring)]"
             >
               {t('sidebarHelp.whatsNew')}
@@ -180,7 +203,9 @@ export function SidebarFeedbackButton() {
             <Textarea
               autoFocus
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value)
+              }}
               placeholder={t('phaseF.componentsAppSidebar.feedbackPlaceholder')}
               maxLength={5000}
               className="min-h-[120px] resize-none"
@@ -190,7 +215,9 @@ export function SidebarFeedbackButton() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                }}
                 aria-label={t('phaseF.componentsAppSidebar.feedbackEmailHint')}
                 placeholder={t('phaseF.componentsAppSidebar.feedbackEmailHint')}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"

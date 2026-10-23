@@ -5,9 +5,9 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useTabActions } from '@/contexts/tabs'
 import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
 import { isReorderable } from '@/components/sidebar/sidebar-list-sort'
-import { notesKeys, useNoteMutations } from '@/hooks/use-notes-query'
+import { notesKeys } from '@/hooks/use-notes-query'
 import type { Note } from '@memry/contracts/notes-api'
-import type { NoteListItem } from '@/hooks/use-notes-query'
+import type { NoteListItem, useNoteMutations } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
 import { notesService } from '@/services/notes-service'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
@@ -1129,7 +1129,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     })
   }, [deps.selectedIds, deps.noteMap])
 
-  const closeSelectionMoveDialog = useCallback(() => setSelectionMoveRequest(null), [])
+  const closeSelectionMoveDialog = useCallback(() => {
+    setSelectionMoveRequest(null)
+  }, [])
 
   const handleBookmarkSelection = useCallback(async () => {
     const { notes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)

@@ -459,24 +459,22 @@ function calendarRange(dataDb: DataDb, input: GetCalendarRangeInput): CalendarRa
     'event',
     memryEvents.map((event) => event.id)
   )
-  const eventItems = memryEvents.map(
-    (event): CalendarProjectionItem => ({
-      projectionId: `event:${event.id}`,
-      sourceType: 'event',
-      sourceId: event.id,
-      title: event.title,
-      descriptionPreview: descriptionPreview(event.description),
-      startAt: event.startAt,
-      endAt: event.endAt ?? null,
-      isAllDay: event.isAllDay,
-      timezone: event.timezone,
-      visualType: 'event',
-      editability: editableEvent,
-      source: nativeSource('Memry'),
-      binding: eventBindings.get(event.id) ?? null,
-      snoozeOffsetMinutes: null
-    })
-  )
+  const eventItems = memryEvents.map((event): CalendarProjectionItem => ({
+    projectionId: `event:${event.id}`,
+    sourceType: 'event',
+    sourceId: event.id,
+    title: event.title,
+    descriptionPreview: descriptionPreview(event.description),
+    startAt: event.startAt,
+    endAt: event.endAt ?? null,
+    isAllDay: event.isAllDay,
+    timezone: event.timezone,
+    visualType: 'event',
+    editability: editableEvent,
+    source: nativeSource('Memry'),
+    binding: eventBindings.get(event.id) ?? null,
+    snoozeOffsetMinutes: null
+  }))
 
   const taskRange = dueDateRange(input)
   const taskRows = taskRange
@@ -591,24 +589,22 @@ function calendarRange(dataDb: DataDb, input: GetCalendarRangeInput): CalendarRa
     'inbox_snooze',
     snoozedInboxRows.map((item) => item.id)
   )
-  const snoozeItems = snoozedInboxRows.map(
-    (item): CalendarProjectionItem => ({
-      projectionId: `inbox_snooze:${item.id}`,
-      sourceType: 'inbox_snooze',
-      sourceId: item.id,
-      title: item.title,
-      descriptionPreview: descriptionPreview(item.content),
-      startAt: item.snoozedUntil!,
-      endAt: null,
-      isAllDay: false,
-      timezone: localTimezone,
-      visualType: 'snooze',
-      editability: { ...editableInstant, canEditText: false },
-      source: nativeSource('Memry Inbox'),
-      binding: snoozeBindings.get(item.id) ?? null,
-      snoozeOffsetMinutes: null
-    })
-  )
+  const snoozeItems = snoozedInboxRows.map((item): CalendarProjectionItem => ({
+    projectionId: `inbox_snooze:${item.id}`,
+    sourceType: 'inbox_snooze',
+    sourceId: item.id,
+    title: item.title,
+    descriptionPreview: descriptionPreview(item.content),
+    startAt: item.snoozedUntil!,
+    endAt: null,
+    isAllDay: false,
+    timezone: localTimezone,
+    visualType: 'snooze',
+    editability: { ...editableInstant, canEditText: false },
+    source: nativeSource('Memry Inbox'),
+    binding: snoozeBindings.get(item.id) ?? null,
+    snoozeOffsetMinutes: null
+  }))
 
   const externalRows = dataDb
     .select({ event: calendarExternalEvents, source: calendarSources })
@@ -625,24 +621,22 @@ function calendarRange(dataDb: DataDb, input: GetCalendarRangeInput): CalendarRa
     )
     .orderBy(asc(calendarExternalEvents.startAt))
     .all()
-  const externalItems = externalRows.map(
-    ({ event, source }): CalendarProjectionItem => ({
-      projectionId: `external_event:${event.id}`,
-      sourceType: 'external_event',
-      sourceId: event.id,
-      title: event.title,
-      descriptionPreview: descriptionPreview(event.description),
-      startAt: event.startAt,
-      endAt: event.endAt ?? null,
-      isAllDay: event.isAllDay,
-      timezone: event.timezone ?? source.timezone ?? localTimezone,
-      visualType: 'external_event',
-      editability: editableEvent,
-      source: sourceMeta(source),
-      binding: null,
-      snoozeOffsetMinutes: null
-    })
-  )
+  const externalItems = externalRows.map(({ event, source }): CalendarProjectionItem => ({
+    projectionId: `external_event:${event.id}`,
+    sourceType: 'external_event',
+    sourceId: event.id,
+    title: event.title,
+    descriptionPreview: descriptionPreview(event.description),
+    startAt: event.startAt,
+    endAt: event.endAt ?? null,
+    isAllDay: event.isAllDay,
+    timezone: event.timezone ?? source.timezone ?? localTimezone,
+    visualType: 'external_event',
+    editability: editableEvent,
+    source: sourceMeta(source),
+    binding: null,
+    snoozeOffsetMinutes: null
+  }))
 
   return {
     items: sortProjectionItems([
@@ -850,7 +844,7 @@ export function createCalendarService(dataDb: DataDb): CalendarService {
             colorId: mirror.colorId ?? null,
             conferenceData: mirror.conferenceData ?? null,
             targetCalendarId: source.remoteId,
-            clock: { ...(mirror.clock ?? {}) },
+            clock: { ...mirror.clock },
             createdAt: time,
             modifiedAt: time
           })
@@ -868,7 +862,7 @@ export function createCalendarService(dataDb: DataDb): CalendarService {
             writebackMode: 'time_and_text',
             remoteVersion: mirror.remoteEtag,
             lastLocalSnapshot: null,
-            clock: { ...(mirror.clock ?? {}) },
+            clock: { ...mirror.clock },
             createdAt: time,
             modifiedAt: time
           })

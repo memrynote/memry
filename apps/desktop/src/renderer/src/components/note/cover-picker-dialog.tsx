@@ -529,10 +529,14 @@ export function CoverPickerDialog({
         aria-label={t('cover.picker.title')}
         onKeyDown={handleKeyDown}
         // The search input's own autoFocus is the intended landing spot.
-        onOpenAutoFocus={(event) => event.preventDefault()}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+        }}
         // A click outside that never takes focus leaves the picker open; focus
         // leaving and esc still close it.
-        onPointerDownOutside={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => {
+          event.preventDefault()
+        }}
       >
         <div className="flex items-center gap-2.5 border-b px-3.5">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -556,7 +560,9 @@ export function CoverPickerDialog({
               type="button"
               role="tab"
               aria-selected={entry.id === tab}
-              onClick={() => selectTab(entry.id)}
+              onClick={() => {
+                selectTab(entry.id)
+              }}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium',
                 'transition-colors duration-150 motion-reduce:transition-none',

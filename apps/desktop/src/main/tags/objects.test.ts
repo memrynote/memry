@@ -17,9 +17,12 @@ import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contra
 
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: (channel: string, handler: Parameters<typeof mockIpcMain.handle>[1]) =>
-      mockIpcMain.handle(channel, handler),
-    removeHandler: (channel: string) => mockIpcMain.removeHandler(channel)
+    handle: (channel: string, handler: Parameters<typeof mockIpcMain.handle>[1]) => {
+      mockIpcMain.handle(channel, handler)
+    },
+    removeHandler: (channel: string) => {
+      mockIpcMain.removeHandler(channel)
+    }
   }
 }))
 vi.mock('../database', () => ({

@@ -211,7 +211,9 @@ describe('useCanvasEntities', () => {
   it('ignores events for entities it does not hold', async () => {
     mocks.notesGet.mockResolvedValue({ title: 'A', emoji: null, content: '' })
     renderHook(() => useCanvasEntities([ref('note', 'n1')]))
-    await waitFor(() => expect(mocks.notesGet).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.notesGet).toHaveBeenCalledTimes(1)
+    })
 
     act(() => mocks.cb.noteUpdated?.({ id: 'other' }))
     // No extra fetch for an unheld entity.
@@ -226,14 +228,14 @@ describe('useCanvasEntities', () => {
       archivedAt: null
     })
     const { result } = renderHook(() => useCanvasEntities([ref('task', 't1')]))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('task', 't1'))).toMatchObject({ kind: 'task' })
-    )
+    })
 
     act(() => mocks.cb.taskDeleted?.({ id: 't1' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('task', 't1'))).toEqual({ status: 'dangling' })
-    )
+    })
   })
 
   it('loads a project with its task counts and a filed file with its metadata', async () => {
@@ -287,57 +289,57 @@ describe('useCanvasEntities', () => {
   it('follows a file through rename and move, then dangles it on delete', async () => {
     mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Brief', path: 'Docs/Brief.pdf' }))
     const { result } = renderHook(() => useCanvasEntities([ref('file', 'f1')]))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('file', 'f1'))).toMatchObject({ title: 'Brief' })
-    )
+    })
 
     mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Final', path: 'Docs/Final.pdf' }))
     act(() => mocks.cb.noteRenamed?.({ id: 'f1' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('file', 'f1'))).toMatchObject({ title: 'Final' })
-    )
+    })
 
     mocks.fileGet.mockResolvedValue(file({ id: 'f1', title: 'Final', path: 'Archive/Final.pdf' }))
     act(() => mocks.cb.noteMoved?.({ id: 'f1' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('file', 'f1'))).toMatchObject({
         path: 'Archive/Final.pdf'
       })
-    )
+    })
 
     act(() => mocks.cb.noteDeleted?.({ id: 'f1' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('file', 'f1'))).toEqual({ status: 'dangling' })
-    )
+    })
   })
 
   it('rereads project counts when a task changes, and dangles the project on delete', async () => {
     mocks.listProjects.mockResolvedValue({ projects: [project({ id: 'p1' })] })
     const { result } = renderHook(() => useCanvasEntities([ref('project', 'p1')]))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('project', 'p1'))).toMatchObject({ completedCount: 1 })
-    )
+    })
 
     mocks.listProjects.mockResolvedValue({
       projects: [project({ id: 'p1', completedCount: 2 })]
     })
     act(() => mocks.cb.taskCompleted?.({ id: 'some-task' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('project', 'p1'))).toMatchObject({ completedCount: 2 })
-    )
+    })
 
     mocks.listProjects.mockResolvedValue({
       projects: [project({ id: 'p1', name: 'Renamed', completedCount: 2 })]
     })
     act(() => mocks.cb.projectUpdated?.({ id: 'p1' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('project', 'p1'))).toMatchObject({ title: 'Renamed' })
-    )
+    })
 
     act(() => mocks.cb.projectDeleted?.({ id: 'p1' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.get(entityKey('project', 'p1'))).toEqual({ status: 'dangling' })
-    )
+    })
   })
 
   it('prunes entities whose cards scroll out of view', async () => {
@@ -345,9 +347,13 @@ describe('useCanvasEntities', () => {
     const { result, rerender } = renderHook(({ refs }) => useCanvasEntities(refs), {
       initialProps: { refs: [ref('note', 'n1')] }
     })
-    await waitFor(() => expect(result.current.has(entityKey('note', 'n1'))).toBe(true))
+    await waitFor(() => {
+      expect(result.current.has(entityKey('note', 'n1'))).toBe(true)
+    })
 
     rerender({ refs: [] })
-    await waitFor(() => expect(result.current.has(entityKey('note', 'n1'))).toBe(false))
+    await waitFor(() => {
+      expect(result.current.has(entityKey('note', 'n1'))).toBe(false)
+    })
   })
 })

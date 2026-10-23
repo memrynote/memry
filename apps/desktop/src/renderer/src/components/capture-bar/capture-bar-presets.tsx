@@ -44,7 +44,13 @@ import type { Project } from '@/data/tasks-data'
 import type { MergedPresets, TaskPresets } from './capture-presets'
 
 export type PresetsMenuView =
-  'root' | 'project' | 'status' | 'startDate' | 'repeat' | 'reminder' | 'tags'
+  | 'root'
+  | 'project'
+  | 'status'
+  | 'startDate'
+  | 'repeat'
+  | 'reminder'
+  | 'tags'
 
 /** Which surface is open: the date picker, a menu view, or nothing. */
 export type PresetsPanel = 'date' | PresetsMenuView
@@ -62,7 +68,9 @@ const isTextEntry = (target: EventTarget | null): boolean =>
   target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
 
 /** Keeps the capture field focused when a chip is pressed. */
-const keepFieldFocus = (e: React.MouseEvent): void => e.preventDefault()
+const keepFieldFocus = (e: React.MouseEvent): void => {
+  e.preventDefault()
+}
 
 export interface CapturePresetsProps {
   presets: TaskPresets
@@ -213,11 +221,17 @@ export const CapturePresets = ({
         root.querySelector<HTMLElement>('button')
       target?.focus()
     })
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+    }
   }, [panel])
 
-  const close = useCallback((): void => onPanelChange(null), [onPanelChange])
-  const back = useCallback((): void => onPanelChange('root'), [onPanelChange])
+  const close = useCallback((): void => {
+    onPanelChange(null)
+  }, [onPanelChange])
+  const back = useCallback((): void => {
+    onPanelChange('root')
+  }, [onPanelChange])
 
   const handleMenuKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -383,7 +397,9 @@ export const CapturePresets = ({
                     aria-pressed={active}
                     aria-label={`${label} (${index + 1})`}
                     title={`${label}  ${index + 1}`}
-                    onClick={() => onChange({ priority })}
+                    onClick={() => {
+                      onChange({ priority })
+                    }}
                     className={cn(
                       'flex h-7 flex-1 items-center justify-center rounded-[5px] outline-none transition-colors',
                       'hover:bg-accent focus-visible:bg-accent',
@@ -418,7 +434,9 @@ export const CapturePresets = ({
               }
               label={t('task.project')}
               value={effectiveProject?.name}
-              onSelect={() => onPanelChange('project')}
+              onSelect={() => {
+                onPanelChange('project')
+              }}
             />
             <MenuRow
               view="status"
@@ -430,21 +448,27 @@ export const CapturePresets = ({
               }
               label={t('task.status')}
               value={(pickedStatus ?? defaultStatus)?.name}
-              onSelect={() => onPanelChange('status')}
+              onSelect={() => {
+                onPanelChange('status')
+              }}
             />
             <MenuRow
               view="startDate"
               icon={<CalendarClock className="size-3.5" />}
               label={t('task.startDate')}
               value={presets.startDate ? formatDateShort(presets.startDate) : undefined}
-              onSelect={() => onPanelChange('startDate')}
+              onSelect={() => {
+                onPanelChange('startDate')
+              }}
             />
             <MenuRow
               view="repeat"
               icon={<Repeat className="size-3.5" />}
               label={t('task.repeat')}
               value={merged.repeat ? getRepeatDisplayText(merged.repeat, tCommon) : undefined}
-              onSelect={() => onPanelChange('repeat')}
+              onSelect={() => {
+                onPanelChange('repeat')
+              }}
             />
             <MenuRow
               view="reminder"
@@ -455,14 +479,18 @@ export const CapturePresets = ({
                   ? formatReminderDate(presets.reminderAt, clockFormat, true)
                   : undefined
               }
-              onSelect={() => onPanelChange('reminder')}
+              onSelect={() => {
+                onPanelChange('reminder')
+              }}
             />
             <MenuRow
               view="tags"
               icon={<Hash className="size-3.5" />}
               label={t('task.tags')}
               value={presets.tags.length > 0 ? presets.tags.join(', ') : undefined}
-              onSelect={() => onPanelChange('tags')}
+              onSelect={() => {
+                onPanelChange('tags')
+              }}
             />
             <MenuRow
               icon={<Link2 className="size-3.5" />}
@@ -635,7 +663,9 @@ export const CapturePresets = ({
             >
               <TagAutocomplete
                 tags={presets.tags}
-                onTagsChange={(tags) => onChange({ tags })}
+                onTagsChange={(tags) => {
+                  onChange({ tags })
+                }}
                 placeholder={t('quickAdd.presets.addTags')}
                 autoFocus
               />
@@ -669,7 +699,9 @@ export const CapturePresets = ({
               type="button"
               tabIndex={-1}
               onMouseDown={keepFieldFocus}
-              onClick={() => onPanelChange(chip.view)}
+              onClick={() => {
+                onPanelChange(chip.view)
+              }}
               className="flex min-w-0 items-center gap-1 ps-1.5 pe-1.5 group-hover/chip:pe-0.5"
             >
               <span className="flex shrink-0 items-center">{chip.icon}</span>
@@ -679,7 +711,9 @@ export const CapturePresets = ({
               type="button"
               tabIndex={-1}
               onMouseDown={keepFieldFocus}
-              onClick={() => onChange(chip.clear)}
+              onClick={() => {
+                onChange(chip.clear)
+              }}
               aria-label={t('quickAdd.presets.remove', { name: chip.label })}
               className="hidden pe-1 text-text-tertiary hover:text-foreground group-hover/chip:flex"
             >
@@ -698,7 +732,9 @@ export const CapturePresets = ({
                 type="button"
                 tabIndex={-1}
                 onMouseDown={keepFieldFocus}
-                onClick={() => onPanelChange(panel === 'date' ? null : 'date')}
+                onClick={() => {
+                  onPanelChange(panel === 'date' ? null : 'date')
+                }}
                 aria-label={t('quickAdd.presets.dueDate', { date: dueLabel })}
                 aria-expanded={panel === 'date'}
                 className={cn(
@@ -715,7 +751,9 @@ export const CapturePresets = ({
                 type="button"
                 tabIndex={-1}
                 onMouseDown={keepFieldFocus}
-                onClick={() => onPanelChange(view ? null : 'root')}
+                onClick={() => {
+                  onPanelChange(view ? null : 'root')
+                }}
                 aria-label={t('quickAdd.presets.menu')}
                 aria-haspopup="menu"
                 aria-expanded={view !== null}
@@ -740,7 +778,9 @@ export const CapturePresets = ({
           panel === 'date' ? 'w-auto' : 'w-[260px] p-1'
         )}
         onKeyDown={panel === 'date' ? undefined : handleMenuKeyDown}
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+        }}
         onCloseAutoFocus={(e) => {
           e.preventDefault()
           onReturnFocus()
@@ -756,7 +796,9 @@ export const CapturePresets = ({
             selected={merged.dueDate}
             showRemoveDate={Boolean(merged.dueDate)}
             time={merged.dueTime}
-            onTimeChange={(time) => onChange({ dueDate: merged.dueDate, dueTime: time })}
+            onTimeChange={(time) => {
+              onChange({ dueDate: merged.dueDate, dueTime: time })
+            }}
             onSelect={(date) => {
               onChange({ dueDate: date, dueTime: date ? merged.dueTime : null })
               close()

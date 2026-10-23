@@ -124,7 +124,9 @@ async function startChild(
           resolve(child.exitCode ?? 0)
           return
         }
-        child.once('exit', (code) => resolve(code ?? 0))
+        child.once('exit', (code) => {
+          resolve(code ?? 0)
+        })
       }),
     cleanup: async () => {},
     ...opts.overrides

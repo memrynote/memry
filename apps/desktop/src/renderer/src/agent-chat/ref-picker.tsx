@@ -249,8 +249,12 @@ export function RefPicker({
               'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm hover:bg-accent hover:text-accent-foreground',
               selected && 'bg-accent text-accent-foreground'
             )}
-            onMouseEnter={() => onSelectedIndexChange(index)}
-            onClick={() => onPick(toMentionAttachment(result))}
+            onMouseEnter={() => {
+              onSelectedIndexChange(index)
+            }}
+            onClick={() => {
+              onPick(toMentionAttachment(result))
+            }}
           >
             <MentionIcon icon={result.icon} className="size-4" />
             <span className="min-w-0 flex-1 truncate">{result.label}</span>

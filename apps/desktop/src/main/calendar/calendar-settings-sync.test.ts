@@ -1,11 +1,14 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { SettingsSyncManager } from '@memry/sync-client/settings-sync'
+import {
+  SettingsSyncManager,
+  getSettingsSyncManager,
+  resetSettingsSyncManager
+} from '@memry/sync-client/settings-sync'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { getSetting, setSetting as writeRaw } from '../database/queries/settings'
 import { deleteSetting, setSetting, setSettingWriteListener } from '../settings/settings-store'
-import { getSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import {
   applyMergedCalendarSettings,
   changedCalendarFields,
@@ -113,9 +116,9 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   it('pushes every writer of a calendar group through settings sync', () => {
     const { sync, enqueue } = manager(db)
-    setSettingWriteListener((_db, key, before, after) =>
+    setSettingWriteListener((_db, key, before, after) => {
       mirrorCalendarSettingWrite(sync, key, before, after)
-    )
+    })
     setSetting(
       db,
       'calendar.google',
@@ -192,9 +195,9 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   it('writes merged values into the local groups without echoing them back', () => {
     const { sync, enqueue } = manager(db)
-    setSettingWriteListener((_db, key, before, after) =>
+    setSettingWriteListener((_db, key, before, after) => {
       mirrorCalendarSettingWrite(sync, key, before, after)
-    )
+    })
     writeRaw(db, 'calendar', JSON.stringify({ dayCellClickBehavior: 'calendar' }))
     writeRaw(
       db,

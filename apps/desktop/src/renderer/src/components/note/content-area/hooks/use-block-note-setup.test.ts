@@ -170,7 +170,9 @@ describe('useBlockNoteSetup', () => {
       },
       { wrapper }
     )
-    await waitFor(() => expect(rendered).toBe(true))
+    await waitFor(() => {
+      expect(rendered).toBe(true)
+    })
 
     // A kept vault workspace is hidden: the cleanup unregisters the extension,
     // and the next render inside it (e.g. a context change above) must not
@@ -183,7 +185,9 @@ describe('useBlockNoteSetup', () => {
 
     mode = 'visible'
     rerender()
-    await waitFor(() => expect(rendered).toBe(true))
+    await waitFor(() => {
+      expect(rendered).toBe(true)
+    })
   })
 
   it('offers an editable editor to the editor commands and withdraws it on unmount', () => {

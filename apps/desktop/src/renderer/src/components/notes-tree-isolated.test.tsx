@@ -469,9 +469,9 @@ describe('NotesTree isolated coverage', () => {
     act(() => {
       window.dispatchEvent(new CustomEvent('reveal-in-sidebar', { detail: { entityId: 'root' } }))
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(localStorage.getItem('sidebar-section-collections-expanded')).toBe('true')
-    )
+    })
     fireEvent.click(screen.getByRole('button', { name: 'reveal pending' }))
     act(() => vi.advanceTimersByTime(100))
     expect(mocks.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
@@ -528,7 +528,9 @@ describe('NotesTree isolated coverage', () => {
     expect(openFolderView.tabIndex).toBeGreaterThanOrEqual(0)
     expect(isRevealed(reveal!)).toBe(false)
 
-    act(() => openFolderView.focus())
+    act(() => {
+      openFolderView.focus()
+    })
 
     expect(openFolderView).toHaveFocus()
     expect(isRevealed(reveal!)).toBe(true)

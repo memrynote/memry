@@ -558,7 +558,9 @@ function moveFolderDir(vaultPath: string, fromPath: string, toPath: string): () 
     mkdirSync(toAbs, { recursive: true })
     // Only ever removes the empty directory this call just made — `rmdirSync`
     // refuses a non-empty one, which is exactly the guard we want here.
-    return () => rmdirSync(toAbs)
+    return () => {
+      rmdirSync(toAbs)
+    }
   }
   try {
     mkdirSync(path.dirname(toAbs), { recursive: true })

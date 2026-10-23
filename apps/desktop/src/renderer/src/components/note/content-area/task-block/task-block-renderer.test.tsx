@@ -99,16 +99,36 @@ vi.mock('@/components/tasks/task-row', () => ({
       <span data-testid="open-property">{pickerControl?.open ?? ''}</span>
       {renderTitle()}
       {actions}
-      <button type="button" onClick={() => onToggleComplete(task.id)}>
+      <button
+        type="button"
+        onClick={() => {
+          onToggleComplete(task.id)
+        }}
+      >
         toggle
       </button>
-      <button type="button" onClick={() => onUpdateTask(task.id, { priority: 'urgent' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onUpdateTask(task.id, { priority: 'urgent' })
+        }}
+      >
         priority
       </button>
-      <button type="button" onClick={() => onUpdateTask(task.id, { statusId: 'done' })}>
+      <button
+        type="button"
+        onClick={() => {
+          onUpdateTask(task.id, { statusId: 'done' })
+        }}
+      >
         status
       </button>
-      <button type="button" onClick={() => onProjectChange('project-2')}>
+      <button
+        type="button"
+        onClick={() => {
+          onProjectChange('project-2')
+        }}
+      >
         project
       </button>
     </div>
@@ -665,7 +685,9 @@ describe('TaskBlockRenderer', () => {
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
     fireEvent.change(titleInput, { target: { value: 'Ship it !high' } })
-    act(() => titleInput.blur())
+    act(() => {
+      titleInput.blur()
+    })
     await act(async () => Promise.resolve())
 
     expect(mocks.update).toHaveBeenCalledTimes(2)

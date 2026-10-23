@@ -262,7 +262,9 @@ describe('GraphEvents', () => {
       const { onNodeRelease } = renderWithDrag()
       const overlay = document.createElement('div')
       document.body.appendChild(overlay)
-      overlay.addEventListener('pointerup', (event) => event.stopPropagation())
+      overlay.addEventListener('pointerup', (event) => {
+        event.stopPropagation()
+      })
 
       try {
         mocks.events.downNode({ node: 'note-1', event: { x: 5, y: 5 } })

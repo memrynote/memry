@@ -182,7 +182,9 @@ export function useVault() {
       setRecoveryInfo(event)
       // Auto-clear recovery info after 10 seconds
       clearTimeout(recoveryClearTimer)
-      recoveryClearTimer = setTimeout(() => setRecoveryInfo(null), 10000)
+      recoveryClearTimer = setTimeout(() => {
+        setRecoveryInfo(null)
+      }, 10000)
     })
 
     return () => {

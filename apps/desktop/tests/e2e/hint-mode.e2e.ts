@@ -81,7 +81,9 @@ async function cleanupInjected(page): Promise<void> {
     ({ testid, editorId, hostId }) => {
       document
         .querySelectorAll(`[data-testid^="${testid}"], #${editorId}, #${hostId}`)
-        .forEach((el) => el.remove())
+        .forEach((el) => {
+          el.remove()
+        })
       delete (window as any).__hintClicks
     },
     { testid: TARGET_TESTID, editorId: EDITOR_ID, hostId: HOST_BUTTON_ID }
@@ -448,7 +450,9 @@ test.describe('Hint Mode', () => {
     await page.evaluate(() => {
       document
         .querySelectorAll('[data-testid="hint-e2e-disabled"], [data-testid="hint-e2e-offscreen"]')
-        .forEach((el) => el.remove())
+        .forEach((el) => {
+          el.remove()
+        })
     })
     // Leave nothing typed, sequence length of `labels` was just for debug context.
     expect(labels.length).toBeGreaterThan(0)

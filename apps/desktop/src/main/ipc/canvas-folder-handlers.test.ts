@@ -120,7 +120,9 @@ describe('canvas folder handlers registration', () => {
     const handleMock = vi.mocked(ipcMain.handle)
     handleMock.mockClear()
 
-    expect(() => registerCanvasFolderHandlers()).not.toThrow()
+    expect(() => {
+      registerCanvasFolderHandlers()
+    }).not.toThrow()
 
     const registered = handleMock.mock.calls.map(([channel]) => channel)
     expect(registered.sort()).toEqual([...INVOKE_CHANNELS].sort())

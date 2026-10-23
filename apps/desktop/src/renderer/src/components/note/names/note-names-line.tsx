@@ -106,7 +106,9 @@ export function NoteNamesLine({ noteId, title, aliases, disabled }: NoteNamesLin
                 className={NAME_BUTTON}
                 disabled={disabled}
                 aria-label={t('names.editLabel', { name })}
-                onClick={() => open({ mode: 'edit', name }, name)}
+                onClick={() => {
+                  open({ mode: 'edit', name }, name)
+                }}
               >
                 {name}
               </button>
@@ -140,7 +142,9 @@ export function NoteNamesLine({ noteId, title, aliases, disabled }: NoteNamesLin
               )}
               aria-label={t('names.add')}
               title={t('names.add')}
-              onClick={() => open({ mode: 'add' }, '')}
+              onClick={() => {
+                open({ mode: 'add' }, '')
+              }}
             >
               <Plus className="size-3.5" aria-hidden />
             </button>
@@ -180,7 +184,9 @@ function NameInput({ value, label, placeholder, onChange, onKeyDown, onBlur }: N
       maxLength={MAX_NOTE_ALIAS_LENGTH}
       size={Math.max(value.length, placeholder?.length ?? 4, 4)}
       className="min-w-0 border-b border-border bg-transparent p-0 text-[13px] leading-5 text-foreground outline-none placeholder:text-text-tertiary focus:border-ring"
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event) => {
+        onChange(event.target.value)
+      }}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
     />

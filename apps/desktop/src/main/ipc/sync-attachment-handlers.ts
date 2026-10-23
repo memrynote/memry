@@ -491,7 +491,9 @@ export function registerAttachmentHandlers(): void {
       return { attachmentId: result.attachmentId }
     },
     () => getDatabase(),
-    (noteId, attachmentId) => recordUploadedAttachment(noteId, attachmentId)
+    (noteId, attachmentId) => {
+      recordUploadedAttachment(noteId, attachmentId)
+    }
   )
 
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
@@ -625,24 +627,32 @@ export function registerAttachmentHandlers(): void {
         // a result or release the claim — otherwise the attachment is never asked
         // for again for the life of the process.
         const token = await getValidAccessToken()
-        if (!token) return releaseDownloadAttempt(noteId, attachmentId)
+        if (!token) {
+          releaseDownloadAttempt(noteId, attachmentId)
+          return
+        }
 
         // On-demand-only mode: background downloads (pull fan-out and re-drive
         // both arrive through this event) are suppressed. Releasing the claim —
         // not recording an outcome — keeps the attachment requestable the moment
         // the toggle flips back or an explicit IPC download asks for it.
         if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
-          return releaseDownloadAttempt(noteId, attachmentId)
+          releaseDownloadAttempt(noteId, attachmentId)
+          return
         }
 
         // This device uploaded the file from where it lives (an embed from
         // outside the note's folder): a download would only duplicate it.
         if (intoDir && heldAtRecordedPath(noteId, attachmentId)) {
-          return markDownloadSucceeded(getDatabase(), noteId, attachmentId)
+          markDownloadSucceeded(getDatabase(), noteId, attachmentId)
+          return
         }
 
         const queue = getOrCreateDownloadQueue()
-        if (!queue) return releaseDownloadAttempt(noteId, attachmentId)
+        if (!queue) {
+          releaseDownloadAttempt(noteId, attachmentId)
+          return
+        }
         try {
           markWritebackIgnored(diskPath)
           // The eager path FEEDS THE QUEUE instead of firing a download directly:
@@ -695,7 +705,8 @@ export function registerAttachmentHandlers(): void {
             // Queue torn down (vault switch / runtime restart) before the item
             // ran. Not an outcome — release the claim so the next pull or
             // re-drive can ask again, and record no failure.
-            return releaseDownloadAttempt(noteId, attachmentId)
+            releaseDownloadAttempt(noteId, attachmentId)
+            return
           }
           const message = err instanceof Error ? err.message : 'Unknown error'
           // A 404 means the server does not have this attachment and never will:

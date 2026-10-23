@@ -906,7 +906,12 @@ describe('SyncEngine', () => {
 
       await engine.fullSync()
 
-      await vi.waitFor(() => expect(pushCallCount).toBe(3), { timeout: 200 })
+      await vi.waitFor(
+        () => {
+          expect(pushCallCount).toBe(3)
+        },
+        { timeout: 200 }
+      )
       await new Promise((r) => setTimeout(r, 1000))
       expect(pushCallCount).toBe(3)
 

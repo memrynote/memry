@@ -237,7 +237,9 @@ const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
     read: (line) => {
       const cellColors = parseTableCellColorsMarker(line)
       if (!cellColors) return null
-      return (block) => applyTableCellColors(block.content, cellColors)
+      return (block) => {
+        applyTableCellColors(block.content, cellColors)
+      }
     }
   },
   {
@@ -248,7 +250,9 @@ const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
     read: (line) => {
       const alignments = parseTableCellAlignmentsMarker(line)
       if (!alignments) return null
-      return (block) => applyTableCellAlignments(block.content, alignments)
+      return (block) => {
+        applyTableCellAlignments(block.content, alignments)
+      }
     }
   },
   {
@@ -269,7 +273,9 @@ const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
     read: (line) => {
       const layout = parseTableLayoutMarker(line)
       if (!layout) return null
-      return (block) => applyTableLayout(block.content, layout)
+      return (block) => {
+        applyTableLayout(block.content, layout)
+      }
     }
   },
   {
@@ -277,7 +283,9 @@ const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
     read: (line) => {
       const display = parseLinkCardMarker(line)
       if (!display) return null
-      return (block) => applyLinkCard(block, display)
+      return (block) => {
+        applyLinkCard(block, display)
+      }
     }
   }
 ]

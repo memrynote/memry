@@ -256,8 +256,9 @@ describe('Readwise Reader documents', () => {
     return { result, events }
   }
 
-  const readerOn = (fullText = false) =>
+  const readerOn = (fullText = false) => {
     settings.writeReadwiseOptions(db(), { readerDocuments: true, readerFullText: fullText })
+  }
   const listRequests = () => reader.requests.length
 
   /** Every markdown file in the vault outside `.memry`, as vault-relative paths. */

@@ -14,8 +14,12 @@ function set(next: boolean): void {
   for (const listener of listeners) listener()
 }
 
-export const startFirstRunWizard = (): void => set(true)
-export const finishFirstRunWizard = (): void => set(false)
+export const startFirstRunWizard = (): void => {
+  set(true)
+}
+export const finishFirstRunWizard = (): void => {
+  set(false)
+}
 
 export function useFirstRunWizardActive(): boolean {
   return useSyncExternalStore(

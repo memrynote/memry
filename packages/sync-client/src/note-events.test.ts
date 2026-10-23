@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 
-
 import { emitNoteUpdated } from './note-events'
 
 describe('emitNoteUpdated', () => {
@@ -126,9 +125,9 @@ describe('emitNoteUpdated', () => {
       throw new Error('destroyed window')
     })
 
-    expect(() =>
+    expect(() => {
       emitNoteUpdated(emit, { id: 'note-1', changes: { title: 'A' }, source: 'sync' })
-    ).toThrow('destroyed window')
+    }).toThrow('destroyed window')
   })
 
   it('performs no runtime validation — `changes` is enforced by the type, not a check', () => {

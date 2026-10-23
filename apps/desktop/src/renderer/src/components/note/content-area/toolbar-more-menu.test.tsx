@@ -22,7 +22,9 @@ const mocks = vi.hoisted(() => ({
     nestBlock: vi.fn(),
     unnestBlock: vi.fn(),
     focus: vi.fn(),
-    transact: vi.fn((fn: () => void) => fn()),
+    transact: vi.fn((fn: () => void) => {
+      fn()
+    }),
     updateBlock: vi.fn()
   }
 }))

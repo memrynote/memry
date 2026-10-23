@@ -263,7 +263,9 @@ export function ColumnHeader({
           <div
             {...(dragHandleProps.listeners as React.HTMLAttributes<HTMLDivElement>)}
             {...(dragHandleProps.attributes as React.HTMLAttributes<HTMLDivElement>)}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
             className={cn(
               'flex-shrink-0 cursor-grab active:cursor-grabbing',
               'opacity-0 group-hover:opacity-100 transition-opacity',
@@ -283,11 +285,17 @@ export function ColumnHeader({
             type="text"
             autoFocus
             value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => {
+              setEditValue(e.target.value)
+            }}
+            onFocus={(e) => {
+              e.currentTarget.select()
+            }}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
             aria-label={tPhaseF('phaseF.componentsFolderViewColumnHeader.editColumnName')}
             className={cn(
               'flex-1 min-w-0 px-1 py-0.5 -mx-1 -my-0.5',
@@ -313,7 +321,9 @@ export function ColumnHeader({
       <div
         onMouseDown={handleResize}
         onTouchStart={handleResize}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
         className={cn(
           'absolute end-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
           'opacity-0 group-hover:opacity-100 hover:bg-primary/50',

@@ -4,8 +4,11 @@
  * why main needs the spec at all.
  */
 
-import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
-import type { CustomInlineContentImplementation } from '@blocknote/core'
+import {
+  createInlineContentSpec,
+  type InlineContentSpec,
+  type CustomInlineContentImplementation
+} from '@blocknote/core'
 
 /**
  * Markdown persistence token for link mentions. A mention is serialized to

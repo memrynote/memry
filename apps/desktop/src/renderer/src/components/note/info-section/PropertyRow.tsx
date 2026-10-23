@@ -18,7 +18,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Property } from './types'
+import type { Property } from './types'
 import {
   TextEditor,
   NumberEditor,
@@ -317,7 +317,9 @@ function PropertyValueRenderer({
     return (
       <DateEditor
         value={dateValue}
-        onChange={(date) => onValueChange(date?.toISOString() ?? null)}
+        onChange={(date) => {
+          onValueChange(date?.toISOString() ?? null)
+        }}
         defaultOpen={autoOpen}
       />
     )
@@ -454,8 +456,12 @@ export function PropertyRow({
     <div
       ref={setNodeRef}
       style={style}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        setIsHovered(true)
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false)
+      }}
       className={cn(
         'flex items-center py-1.5',
         'transition-colors duration-150',
@@ -467,8 +473,12 @@ export function PropertyRow({
           'flex items-center rounded -ms-1 me-2 ps-1 pe-1 py-0.5 -my-0.5 transition-colors',
           isDragEnabled && !isEditingName && 'hover:bg-surface'
         )}
-        onMouseEnter={() => setIsNameHovered(true)}
-        onMouseLeave={() => setIsNameHovered(false)}
+        onMouseEnter={() => {
+          setIsNameHovered(true)
+        }}
+        onMouseLeave={() => {
+          setIsNameHovered(false)
+        }}
       >
         {/* Leading slot — property type icon at rest, crossfades to drag handle on hover */}
         <div className="relative flex h-4 w-5 shrink-0 items-center">
@@ -505,7 +515,9 @@ export function PropertyRow({
             ref={nameInputRef}
             type="text"
             value={editedName}
-            onChange={(e) => setEditedName(e.target.value)}
+            onChange={(e) => {
+              setEditedName(e.target.value)
+            }}
             onBlur={handleEndNameEdit}
             onKeyDown={handleNameKeyDown}
             className={cn(

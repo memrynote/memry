@@ -47,7 +47,9 @@ function FooterLink({ href, children }: { href: string; children: ReactNode }) {
         target="_blank"
         rel="noopener noreferrer"
         className={className}
-        onClick={() => trackLandingEvent('landing_external_click', footerTarget(children))}
+        onClick={() => {
+          trackLandingEvent('landing_external_click', footerTarget(children))
+        }}
       >
         {children}
       </a>
@@ -58,7 +60,9 @@ function FooterLink({ href, children }: { href: string; children: ReactNode }) {
     <Link
       to={href}
       className={className}
-      onClick={() => trackLandingEvent('landing_nav_click', footerTarget(children))}
+      onClick={() => {
+        trackLandingEvent('landing_nav_click', footerTarget(children))
+      }}
     >
       {children}
     </Link>
@@ -77,7 +81,9 @@ export function Footer() {
             <Link
               to="/"
               className="group inline-flex items-center gap-2"
-              onClick={() => trackLandingEvent('landing_nav_click', 'footer:logo')}
+              onClick={() => {
+                trackLandingEvent('landing_nav_click', 'footer:logo')
+              }}
             >
               <img src="/favicon.svg" alt="" className="h-6 w-6" />
               <span className="font-geist text-2xl font-medium tracking-tight text-ink-inverted transition-colors group-hover:text-terracotta">
@@ -144,7 +150,9 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-terracotta hover:underline"
-              onClick={() => trackLandingEvent('landing_external_click', 'footer:founder-twitter')}
+              onClick={() => {
+                trackLandingEvent('landing_external_click', 'footer:founder-twitter')
+              }}
             >
               @h4yfans
             </a>

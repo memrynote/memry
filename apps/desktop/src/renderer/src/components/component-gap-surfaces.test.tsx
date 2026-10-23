@@ -80,7 +80,9 @@ vi.mock('@/components/snooze/snooze-picker', () => ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => onSnooze('2026-05-11T10:00:00.000Z')}
+        onClick={() => {
+          onSnooze('2026-05-11T10:00:00.000Z')
+        }}
       >
         Custom snooze option
       </button>
@@ -210,27 +212,29 @@ describe('major renderer gap surfaces', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'archive' }))
-    await waitFor(() => expect(mocks.archive).toHaveBeenCalledWith('reminder-1'))
+    await waitFor(() => {
+      expect(mocks.archive).toHaveBeenCalledWith('reminder-1')
+    })
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       expect.stringContaining('Archived'),
       expect.objectContaining({ action: expect.objectContaining({ label: 'Undo' }) })
     )
 
     await user.click(screen.getByRole('button', { name: 'presetTomorrow' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.snooze).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'reminder-1' }))
-    )
+    })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Custom snooze option' })).not.toBeDisabled()
-    )
+    })
     await user.click(screen.getByRole('button', { name: 'Custom snooze option' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.snooze).toHaveBeenLastCalledWith({
         itemId: 'reminder-1',
         snoozeUntil: '2026-05-11T10:00:00.000Z'
       })
-    )
+    })
   })
 
   it('covers reminder missing metadata, journal navigation, and service failures', async () => {
@@ -264,9 +268,9 @@ describe('major renderer gap surfaces', () => {
 
     mocks.snooze.mockRejectedValueOnce(new Error('offline'))
     await user.click(screen.getByRole('button', { name: 'presetTomorrow' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.logError).toHaveBeenCalledWith('Failed to snooze reminder', expect.any(Error))
-    )
+    })
   })
 
   it('sorts, expands, and selects backlinks with loading and empty states', async () => {
@@ -341,13 +345,13 @@ describe('major renderer gap surfaces', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'export' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.exportPdf).toHaveBeenCalledWith({
         noteId: 'note-1',
         includeMetadata: true,
         pageSize: 'A4'
       })
-    )
+    })
     expect(mocks.toastSuccess).toHaveBeenCalledWith('phaseI.toasts.noteExportedSuccessfully', {
       description: '/tmp/note.pdf'
     })
@@ -361,9 +365,9 @@ describe('major renderer gap surfaces', () => {
     )
     await user.click(screen.getByRole('radio', { name: /html/ }))
     await user.click(screen.getByRole('button', { name: 'export' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.exportHtml).toHaveBeenCalledWith({ noteId: 'note-1', includeMetadata: true })
-    )
+    })
     htmlDialog.unmount()
 
     mocks.exportHtml.mockResolvedValueOnce({ success: false, error: 'No permission' })
@@ -372,9 +376,9 @@ describe('major renderer gap surfaces', () => {
     )
     await user.click(screen.getByRole('radio', { name: /html/ }))
     await user.click(screen.getByRole('button', { name: 'export' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith('failed', { description: 'No permission' })
-    )
+    })
     failedHtmlDialog.unmount()
 
     renderWithProviders(
@@ -397,18 +401,20 @@ describe('major renderer gap surfaces', () => {
       />
     )
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.replaceBlocks).toHaveBeenCalledWith(
         [{ type: 'paragraph', content: 'First title' }],
         [{ type: 'paragraph', content: 'Parsed' }]
       )
-    )
+    })
     expect(mocks.tryParseMarkdownToBlocks).toHaveBeenCalledWith('**Hello**')
     expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-theme', 'dark')
 
     fireEvent.click(screen.getByRole('button', { name: 'Change content' }))
     expect(onTitleChange).toHaveBeenCalledWith('First title')
-    await waitFor(() => expect(onContentChange).toHaveBeenCalledWith('Saved markdown'))
+    await waitFor(() => {
+      expect(onContentChange).toHaveBeenCalledWith('Saved markdown')
+    })
 
     fireEvent.mouseDown(screen.getByRole('region', { name: 'contentEditor' }))
     expect(mocks.editorFocus).toHaveBeenCalled()
@@ -419,9 +425,9 @@ describe('major renderer gap surfaces', () => {
 
     render(<InboxContentEditor initialContent="Plain text" editable={false} />)
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
-    )
+    })
     expect(mocks.replaceBlocks).not.toHaveBeenCalled()
   })
 })

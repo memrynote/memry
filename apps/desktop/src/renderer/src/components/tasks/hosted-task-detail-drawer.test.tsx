@@ -45,9 +45,9 @@ vi.mock('./task-detail-drawer', () => ({
     onDeleteParentTask: (id: string) => void
   }) => (
     <button
-      onClick={() =>
+      onClick={() => {
         task.subtaskIds.length > 0 ? onDeleteParentTask(task.id) : onDeleteTask(task.id)
-      }
+      }}
     >
       drawer-delete
     </button>

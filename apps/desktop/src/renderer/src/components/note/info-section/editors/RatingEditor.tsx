@@ -50,7 +50,9 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
       aria-valuenow={value}
       aria-label={t('properties.ratingAria')}
       className="flex items-center gap-0.5"
-      onMouseLeave={() => setHoverValue(null)}
+      onMouseLeave={() => {
+        setHoverValue(null)
+      }}
     >
       {Array.from({ length: maxRating }, (_, i) => {
         const rating = i + 1
@@ -60,9 +62,15 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
           <button
             key={rating}
             type="button"
-            onClick={() => handleClick(rating)}
-            onKeyDown={(e) => handleKeyDown(e, rating)}
-            onMouseEnter={() => setHoverValue(rating)}
+            onClick={() => {
+              handleClick(rating)
+            }}
+            onKeyDown={(e) => {
+              handleKeyDown(e, rating)
+            }}
+            onMouseEnter={() => {
+              setHoverValue(rating)
+            }}
             className={cn(
               'p-0 transition-opacity duration-100',
               'hover:opacity-80',

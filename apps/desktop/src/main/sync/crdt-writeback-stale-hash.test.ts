@@ -130,7 +130,12 @@ function findText(fragment: Y.XmlFragment, needle: string): Y.XmlText {
 
 async function settleWriteback(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 50))
-  await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+  await vi.waitFor(
+    () => {
+      expect(hasPendingWriteback(NOTE)).toBe(false)
+    },
+    { timeout: 5000 }
+  )
 }
 
 describe('write-back after the file changed while the app was closed (#2539)', () => {

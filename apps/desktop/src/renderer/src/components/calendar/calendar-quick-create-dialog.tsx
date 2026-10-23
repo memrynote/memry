@@ -149,7 +149,9 @@ export function CalendarQuickCreateDialog({
             ref={titleRef}
             placeholder={t('form.new-event-placeholder')}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+            }}
             onKeyDown={handleTitleKeyDown}
             disabled={isSubmitting}
             className="mb-2"

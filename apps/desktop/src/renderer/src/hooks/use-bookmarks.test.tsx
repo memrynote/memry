@@ -5,7 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import { useBookmarks, useIsBookmarked } from './use-bookmarks'
 import {
@@ -74,7 +75,9 @@ describe('useBookmarks', () => {
         hasMore: false
       })
       const { result } = renderHook(() => useBookmarks(), { wrapper })
-      await waitFor(() => expect(result.current.bookmarks).toHaveLength(1))
+      await waitFor(() => {
+        expect(result.current.bookmarks).toHaveLength(1)
+      })
 
       let finish: (value: unknown) => void = () => {}
       ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockReturnValue(

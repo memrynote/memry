@@ -68,7 +68,9 @@ describe('useMouseNavButtons', () => {
   })
 
   it('navigates back on side-button mousedown', () => {
-    renderHook(() => useMouseNavButtons())
+    renderHook(() => {
+      useMouseNavButtons()
+    })
 
     const event = dispatchMouseButton('mousedown', 3)
 
@@ -79,7 +81,9 @@ describe('useMouseNavButtons', () => {
 
   it('also catches side-button mouseup and auxclick fallbacks', () => {
     vi.useFakeTimers()
-    renderHook(() => useMouseNavButtons())
+    renderHook(() => {
+      useMouseNavButtons()
+    })
 
     const mouseUp = dispatchMouseButton('mouseup', 3)
     act(() => {
@@ -97,7 +101,9 @@ describe('useMouseNavButtons', () => {
     const editor = document.createElement('div')
     editor.contentEditable = 'true'
     document.body.append(editor)
-    renderHook(() => useMouseNavButtons())
+    renderHook(() => {
+      useMouseNavButtons()
+    })
 
     const backEvent = dispatchBrowserKey('BrowserBack', editor)
     const forwardEvent = dispatchBrowserKey('BrowserForward', editor)
@@ -114,7 +120,9 @@ describe('useMouseNavButtons', () => {
     const unsubscribe = vi.fn()
     const onAppNavigationCommand = setAppNavigationMock(appNavigationHandler, unsubscribe)
 
-    const { unmount } = renderHook(() => useMouseNavButtons())
+    const { unmount } = renderHook(() => {
+      useMouseNavButtons()
+    })
 
     expect(onAppNavigationCommand).toHaveBeenCalledTimes(1)
 
@@ -130,7 +138,9 @@ describe('useMouseNavButtons', () => {
 
   it('suppresses duplicate native and mouse fallback commands for the same click', () => {
     vi.useFakeTimers()
-    renderHook(() => useMouseNavButtons())
+    renderHook(() => {
+      useMouseNavButtons()
+    })
 
     act(() => {
       appNavigationHandler.current?.({ direction: 'back' })

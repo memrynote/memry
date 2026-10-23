@@ -103,7 +103,9 @@ describe('VaultPager', () => {
     vi.useFakeTimers()
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(WIDTH)
     // The vault chords reach the pager through the app's one command dispatcher.
-    renderHook(() => useCommandDispatcher())
+    renderHook(() => {
+      useCommandDispatcher()
+    })
   })
 
   afterEach(() => {
@@ -271,7 +273,9 @@ describe('VaultPager', () => {
   it('moves on an indicator request with the same transition', async () => {
     const { onSwitch } = renderPager()
 
-    act(() => requestVaultPage({ path: '/vaults/personal' }))
+    act(() => {
+      requestVaultPage({ path: '/vaults/personal' })
+    })
     await settle()
     expect(onSwitch).toHaveBeenCalledWith(vaults[0], 'prev', 'indicator')
   })
@@ -280,11 +284,15 @@ describe('VaultPager', () => {
     const onSwitch = vi.fn().mockResolvedValue(false)
     const { viewport } = renderPager(onSwitch)
 
-    act(() => requestVaultPage({ step: 1 }))
+    act(() => {
+      requestVaultPage({ step: 1 })
+    })
     await settle()
     expect(onSwitch).toHaveBeenCalledTimes(1)
 
-    act(() => requestVaultPage({ step: -1 }))
+    act(() => {
+      requestVaultPage({ step: -1 })
+    })
     await settle()
     expect(onSwitch).toHaveBeenLastCalledWith(vaults[0], 'prev', 'shortcut')
     expect(viewport.firstElementChild).toHaveStyle({ transform: '' })
@@ -332,12 +340,16 @@ describe('VaultPager', () => {
     })
     renderPager(onSwitch)
 
-    act(() => requestVaultPage({ step: 1 }))
+    act(() => {
+      requestVaultPage({ step: 1 })
+    })
     await settle()
 
     // Main is still between the two vaults once the page has landed.
     expect(getVaultSwitchFrame()).toContain('Q3 planning')
-    await act(async () => finish(true))
+    await act(async () => {
+      finish(true)
+    })
   })
 
   it('starts the switch as the settle begins and holds the reveal until it lands', async () => {
@@ -348,7 +360,9 @@ describe('VaultPager', () => {
     })
     renderPager(onSwitch)
 
-    act(() => requestVaultPage({ step: 1 }))
+    act(() => {
+      requestVaultPage({ step: 1 })
+    })
     // Called synchronously from the commit, before any settle frame resolved.
     expect(onSwitch).toHaveBeenCalledTimes(1)
     expect(heldAtStart).toBe(true)
@@ -423,7 +437,9 @@ describe('VaultPager', () => {
     )
     const view = render(tree('visible'))
 
-    act(() => requestVaultPage({ step: 1 }))
+    act(() => {
+      requestVaultPage({ step: 1 })
+    })
     await settle()
     expect(onSwitch).toHaveBeenCalledTimes(1)
     const track = screen.getByText('list').parentElement!
@@ -434,7 +450,9 @@ describe('VaultPager', () => {
     view.rerender(tree('visible'))
     expect(track.style.transform).toBe('')
 
-    act(() => requestVaultPage({ step: -1 }))
+    act(() => {
+      requestVaultPage({ step: -1 })
+    })
     await settle()
     expect(onSwitch).toHaveBeenLastCalledWith(vaults[0], 'prev', 'shortcut')
   })

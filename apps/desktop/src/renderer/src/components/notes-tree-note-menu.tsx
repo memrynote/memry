@@ -61,33 +61,57 @@ export function NoteContextMenuItems({
         <ShowTasksMenuItem location={{ noteId: note.id }} />
       )}
       <ContextMenuSeparator />
-      <ContextMenuItem onClick={() => onRename(note)}>
+      <ContextMenuItem
+        onClick={() => {
+          onRename(note)
+        }}
+      >
         <Pencil className="me-2 h-4 w-4" />
         {t('tree.actions.rename')}
       </ContextMenuItem>
       {!isJournal && (
         <>
-          <ContextMenuItem onClick={() => onApplyTemplate(note)}>
+          <ContextMenuItem
+            onClick={() => {
+              onApplyTemplate(note)
+            }}
+          >
             <LayoutTemplate className="me-2 h-4 w-4" />
             {t('tree.actions.applyTemplate')}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => onSaveAsTemplate(note)}>
+          <ContextMenuItem
+            onClick={() => {
+              onSaveAsTemplate(note)
+            }}
+          >
             <Save className="me-2 h-4 w-4" />
             {t('tree.actions.saveAsTemplate')}
           </ContextMenuItem>
           {(note.fileType ?? 'markdown') === 'markdown' && (
-            <ContextMenuItem onClick={() => onNewNoteFromNote(note)}>
+            <ContextMenuItem
+              onClick={() => {
+                onNewNoteFromNote(note)
+              }}
+            >
               <FilePlus className="me-2 h-4 w-4" />
               {t('newNoteFromNote.action')}
             </ContextMenuItem>
           )}
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => onSetIcon(note)}>
+          <ContextMenuItem
+            onClick={() => {
+              onSetIcon(note)
+            }}
+          >
             <Smile className="me-2 h-4 w-4" />
             {t('tree.actions.setIcon')}
           </ContextMenuItem>
           {note.emoji && (
-            <ContextMenuItem onClick={() => onRemoveIcon(note)}>
+            <ContextMenuItem
+              onClick={() => {
+                onRemoveIcon(note)
+              }}
+            >
               <X className="me-2 h-4 w-4" />
               {t('tree.actions.removeIcon')}
             </ContextMenuItem>
@@ -95,11 +119,19 @@ export function NoteContextMenuItems({
         </>
       )}
       <ContextMenuSeparator />
-      <ContextMenuItem onClick={() => onOpenExternal(note)}>
+      <ContextMenuItem
+        onClick={() => {
+          onOpenExternal(note)
+        }}
+      >
         <ExternalLink className="me-2 h-4 w-4" />
         {t('tree.actions.openExternal')}
       </ContextMenuItem>
-      <ContextMenuItem onClick={() => onRevealInFinder(note)}>
+      <ContextMenuItem
+        onClick={() => {
+          onRevealInFinder(note)
+        }}
+      >
         <FolderOpen className="me-2 h-4 w-4" />
         {fileActions.revealInFolder}
       </ContextMenuItem>
@@ -111,7 +143,12 @@ export function NoteContextMenuItems({
           <ContextMenuSeparator />
         </>
       )}
-      <ContextMenuItem variant="destructive" onClick={() => onDelete(note)}>
+      <ContextMenuItem
+        variant="destructive"
+        onClick={() => {
+          onDelete(note)
+        }}
+      >
         <Trash2 className="me-2 h-4 w-4" />
         {tCommon('button.delete')}
       </ContextMenuItem>

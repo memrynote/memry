@@ -129,8 +129,9 @@ function SidebarProvider({
     () => SIDEBAR_WIDTH_DEFAULT_PX
   )
   const setSidebarWidth = React.useCallback<React.Dispatch<React.SetStateAction<number>>>(
-    (action) =>
-      setLiveSidebarWidth(typeof action === 'function' ? action(getSidebarWidth()) : action),
+    (action) => {
+      setLiveSidebarWidth(typeof action === 'function' ? action(getSidebarWidth()) : action)
+    },
     []
   )
   const [isResizing, setIsResizing] = React.useState(false)
@@ -144,7 +145,7 @@ function SidebarProvider({
   }, [sidebarWidth, isResizing])
 
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
   // ⌘B is Bold in the note editor, so the command's spec stands down there.

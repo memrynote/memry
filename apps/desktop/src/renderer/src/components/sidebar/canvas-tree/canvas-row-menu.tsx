@@ -195,7 +195,9 @@ export function CanvasContextMenuBody({
                   <ContextMenuItem
                     key={item.id}
                     disabled={item.disabled}
-                    onClick={() => selectSubItem(item)}
+                    onClick={() => {
+                      selectSubItem(item)
+                    }}
                   >
                     <span style={{ paddingInlineStart: `${item.depth * CANVAS_ROW_INDENT_PX}px` }}>
                       {item.label}
@@ -259,7 +261,9 @@ export function CanvasDropdownMenuBody({
                   <DropdownMenuItem
                     key={item.id}
                     disabled={item.disabled}
-                    onClick={() => selectSubItem(item)}
+                    onClick={() => {
+                      selectSubItem(item)
+                    }}
                   >
                     <span style={{ paddingInlineStart: `${item.depth * CANVAS_ROW_INDENT_PX}px` }}>
                       {item.label}
@@ -328,7 +332,9 @@ export function CanvasRowActions({
           title={label}
           // The row's own click opens the canvas or toggles the folder; asking
           // for the menu is not asking for either.
-          onClick={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
           className={cn(
             'flex h-5 w-5 shrink-0 items-center justify-center rounded text-sidebar-muted',
             'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -354,7 +360,9 @@ export function CanvasRowActions({
       <DropdownMenuContent
         align="end"
         data-testid="canvas-row-actions-menu"
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation()
+        }}
         onCloseAutoFocus={declineFocusRestoreWhileNaming(isNaming)}
       >
         <CanvasDropdownMenuBody entries={entries} />

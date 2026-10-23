@@ -45,7 +45,9 @@ export function AddNameDialog({ name, onClose, onPick }: AddNameDialogProps) {
             }))
         )
       })
-      .catch((error: unknown) => log.error('Failed to list notes for the name picker', error))
+      .catch((error: unknown) => {
+        log.error('Failed to list notes for the name picker', error)
+      })
     return () => {
       cancelled = true
       setQuery('')
@@ -83,7 +85,9 @@ export function AddNameDialog({ name, onClose, onPick }: AddNameDialogProps) {
           <Command.Item
             key={note.id}
             value={note.id}
-            onSelect={() => onPick(note, linkTargetFor(note, shared))}
+            onSelect={() => {
+              onPick(note, linkTargetFor(note, shared))
+            }}
             className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
           >
             <FileText className="size-4 shrink-0 text-text-tertiary" aria-hidden />

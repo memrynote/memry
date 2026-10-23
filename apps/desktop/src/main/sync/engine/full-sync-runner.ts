@@ -216,8 +216,12 @@ export class FullSyncRunner {
 
   private wirePullTimers(): void {
     this.disposed = false
-    this.crdtSync.onDeferred = () => this.armDeferredPullTimer()
-    this.crdtSync.onRequeued = () => this.armRequeuedPullTimer()
+    this.crdtSync.onDeferred = () => {
+      this.armDeferredPullTimer()
+    }
+    this.crdtSync.onRequeued = () => {
+      this.armRequeuedPullTimer()
+    }
   }
 
   /**
@@ -762,8 +766,12 @@ export class FullSyncRunner {
         snapshots: applier,
         beginPage: () => beginPageApply(this.ctx.deps.db),
         getStateValue: (key) => this.stateManager.getStateValue(key),
-        setStateValue: (key, value) => this.stateManager.setStateValue(key, value),
-        emit: (channel, data) => this.ctx.deps.emitToRenderer(channel, data),
+        setStateValue: (key, value) => {
+          this.stateManager.setStateValue(key, value)
+        },
+        emit: (channel, data) => {
+          this.ctx.deps.emitToRenderer(channel, data)
+        },
         ...(this.ctx.abortController ? { signal: this.ctx.abortController.signal } : {}),
         pace: () => pacer.acquire()
       })

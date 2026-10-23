@@ -41,7 +41,9 @@ describe('image embeddings storage', () => {
       .run()
   })
 
-  afterEach(() => cleanupTestDatabase(db))
+  afterEach(() => {
+    cleanupTestDatabase(db)
+  })
 
   const image = (source: string, signature = '1:1') => ({
     noteId: 'n1',

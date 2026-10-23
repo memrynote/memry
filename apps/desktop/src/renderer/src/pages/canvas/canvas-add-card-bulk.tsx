@@ -225,7 +225,9 @@ export function useBulkAddFlow({
     pickMatches,
     pickLoading: pick.loading,
     firstValue: firstStepValue(step, pickMatches),
-    start: (source) => goTo({ kind: 'pick', source }),
+    start: (source) => {
+      goTo({ kind: 'pick', source })
+    },
     goBack,
     reset: () => {
       loadTokenRef.current += 1
@@ -254,7 +256,9 @@ export function CanvasBulkAddEntry({ flow }: { flow: BulkAddFlow }): React.JSX.E
       <Command.Item
         value={BULK_TAG_VALUE}
         data-testid="canvas-add-bulk-tag"
-        onSelect={() => flow.start('tag')}
+        onSelect={() => {
+          flow.start('tag')
+        }}
         className={ITEM_CLASS}
       >
         <Tag className="size-3.5 shrink-0" aria-hidden="true" />
@@ -263,7 +267,9 @@ export function CanvasBulkAddEntry({ flow }: { flow: BulkAddFlow }): React.JSX.E
       <Command.Item
         value={BULK_FOLDER_VALUE}
         data-testid="canvas-add-bulk-folder"
-        onSelect={() => flow.start('folder')}
+        onSelect={() => {
+          flow.start('folder')
+        }}
         className={ITEM_CLASS}
       >
         <Folder className="size-3.5 shrink-0" aria-hidden="true" />
@@ -292,7 +298,9 @@ function BulkPickList({ step, flow }: { step: PickStep; flow: BulkAddFlow }): Re
           key={item.key}
           value={`${step.source}:${item.key}`}
           data-testid={`canvas-add-bulk-${step.source}-${item.key}`}
-          onSelect={() => flow.pickScope(step.source, item)}
+          onSelect={() => {
+            flow.pickScope(step.source, item)
+          }}
           className={ITEM_CLASS}
         >
           <Icon className={ROW_ICON_CLASS} aria-hidden="true" />
@@ -317,7 +325,9 @@ function BulkViewList({ step, flow }: { step: ViewsStep; flow: BulkAddFlow }): R
           key={option.viewName ?? ''}
           value={`view:${index}`}
           data-testid={`canvas-add-bulk-view-${index}`}
-          onSelect={() => flow.proceed(step.label, option.refs, step)}
+          onSelect={() => {
+            flow.proceed(step.label, option.refs, step)
+          }}
           className={ITEM_CLASS}
         >
           {option.viewName === null ? (
@@ -353,7 +363,9 @@ function BulkConfirm({ step, flow }: { step: ConfirmStep; flow: BulkAddFlow }): 
       <Command.Item
         value={BULK_CONFIRM_VALUE}
         data-testid="canvas-add-bulk-confirm-add"
-        onSelect={() => flow.place(step.refs)}
+        onSelect={() => {
+          flow.place(step.refs)
+        }}
         className={ITEM_CLASS}
       >
         <Plus className="size-3.5 shrink-0" aria-hidden="true" />

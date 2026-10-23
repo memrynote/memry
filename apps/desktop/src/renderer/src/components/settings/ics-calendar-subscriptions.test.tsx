@@ -119,7 +119,9 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     )
 
     await user.click(screen.getByTestId(`ics-source-refresh-${FAILING_SOURCE.id}`))
-    await waitFor(() => expect(mockRefresh).toHaveBeenCalledWith({ sourceId: FAILING_SOURCE.id }))
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalledWith({ sourceId: FAILING_SOURCE.id })
+    })
   })
 
   it('warns before subscribing to a plain http link, and marks an http subscription', async () => {
@@ -171,12 +173,12 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     expect(screen.getByTestId(`ics-source-title-save-${FAILING_SOURCE.id}`)).toBeDisabled()
     await user.type(reopened, '  Family {Enter}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledWith({ sourceId: FAILING_SOURCE.id, title: 'Family' })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(screen.queryByTestId(`ics-source-title-input-${FAILING_SOURCE.id}`)).toBeNull()
-    )
+    })
   })
 
   it('recolours a subscription from the event colours', async () => {
@@ -194,9 +196,9 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Color: Grape' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledWith({ sourceId: FAILING_SOURCE.id, color: 'grape' })
-    )
+    })
   })
 
   it('confirms a new subscription with what it found', async () => {
@@ -216,11 +218,11 @@ describe('Subscribed calendars (Settings → Calendar)', () => {
     await user.type(screen.getByTestId('ics-subscribe-url'), 'webcal://example.com/feed.ics')
     await user.click(screen.getByTestId('ics-subscribe-submit'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(toastMock.success).toHaveBeenCalledWith(
         'Added Proton Personal: 12 events, May 10, 2026 to Nov 20, 2026.'
       )
-    )
+    })
     expect(screen.getByTestId('ics-subscribe-url')).toHaveValue('')
   })
 

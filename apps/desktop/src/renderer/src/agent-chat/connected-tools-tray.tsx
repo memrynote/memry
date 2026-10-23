@@ -74,7 +74,9 @@ export function ConnectedToolsTray(): React.JSX.Element | null {
             <button
               type="button"
               aria-label={t('agentChat.composer.connectTool', { tool: GOOGLE_CALENDAR_NAME })}
-              onClick={() => setConnectOpen(true)}
+              onClick={() => {
+                setConnectOpen(true)
+              }}
               className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <GoogleCalendarIcon className="size-3.5" />

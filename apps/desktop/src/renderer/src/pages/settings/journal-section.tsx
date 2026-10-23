@@ -201,7 +201,9 @@ export function JournalSettings() {
           <button
             type="button"
             aria-expanded={showPerDay}
-            onClick={() => setPerDayOverride(!showPerDay)}
+            onClick={() => {
+              setPerDayOverride(!showPerDay)
+            }}
             className="flex items-center gap-1 text-xs/4 text-muted-foreground hover:text-foreground transition-colors"
           >
             {showPerDay ? (
@@ -268,7 +270,9 @@ export function JournalSettings() {
         <SettingRow label={t('journal.folder.label')} description={t('journal.folder.description')}>
           <Input
             value={journalFolder}
-            onChange={(e) => setJournalFolder(e.target.value)}
+            onChange={(e) => {
+              setJournalFolder(e.target.value)
+            }}
             onBlur={handleJournalFolderBlur}
             placeholder={t('journal.folder.placeholder')}
             className="h-7 w-40 font-mono text-xs/4"
@@ -310,7 +314,9 @@ export function JournalSettings() {
             </TooltipProvider>
             <Input
               value={journalDateFormat}
-              onChange={(e) => setJournalDateFormat(e.target.value)}
+              onChange={(e) => {
+                setJournalDateFormat(e.target.value)
+              }}
               onBlur={() => void handleJournalDateFormatBlur()}
               placeholder={t('journal.dateFormat.placeholder')}
               className="h-7 w-40 font-mono text-xs/4"

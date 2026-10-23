@@ -247,7 +247,9 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         }
       }
       window.addEventListener('keydown', onKeyDown, true)
-      return () => window.removeEventListener('keydown', onKeyDown, true)
+      return () => {
+        window.removeEventListener('keydown', onKeyDown, true)
+      }
     }, [state, handleCancel, handleStop])
 
     const openSettings = useCallback(() => {

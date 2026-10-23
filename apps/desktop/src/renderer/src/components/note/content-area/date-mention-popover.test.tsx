@@ -32,7 +32,9 @@ vi.mock('@/components/tasks/date-picker-calendar', () => ({
     <button
       type="button"
       data-testid="calendar"
-      onClick={() => onSelect(new Date(2026, 6, 15, 0, 0, 0))}
+      onClick={() => {
+        onSelect(new Date(2026, 6, 15, 0, 0, 0))
+      }}
     >
       calendar
     </button>

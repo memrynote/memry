@@ -21,7 +21,9 @@ export function WidgetGallery({ onAdd }: WidgetGalleryProps): React.JSX.Element 
             key={def.type}
             data-testid="widget-gallery-item"
             data-widget-type={def.type}
-            onSelect={() => onAdd(def.type)}
+            onSelect={() => {
+              onAdd(def.type)
+            }}
           >
             {Icon && <Icon className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />}
             {t(def.titleKey)}

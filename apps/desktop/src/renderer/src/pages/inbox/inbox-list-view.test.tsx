@@ -170,22 +170,52 @@ vi.mock('@/components/list-view', () => ({
       {items.map((item) => (
         <span key={item.id}>{item.title}</span>
       ))}
-      <button type="button" onClick={() => onPreview('item-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onPreview('item-1')
+        }}
+      >
         Preview item
       </button>
-      <button type="button" onClick={() => onArchive('item-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onArchive('item-1')
+        }}
+      >
         Archive item
       </button>
-      <button type="button" onClick={() => onSnooze('item-1', '2026-05-11T10:00:00.000Z')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSnooze('item-1', '2026-05-11T10:00:00.000Z')
+        }}
+      >
         Snooze item
       </button>
-      <button type="button" onClick={() => onQuickFile('item-1', 'Inbox')}>
+      <button
+        type="button"
+        onClick={() => {
+          onQuickFile('item-1', 'Inbox')
+        }}
+      >
         Quick file item
       </button>
-      <button type="button" onClick={() => onSelectionChange(new Set(['item-1']))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectionChange(new Set(['item-1']))
+        }}
+      >
         Select item
       </button>
-      <button type="button" onClick={() => onFocusedItemChange('item-1')}>
+      <button
+        type="button"
+        onClick={() => {
+          onFocusedItemChange('item-1')
+        }}
+      >
         Focus item
       </button>
     </div>
@@ -217,13 +247,18 @@ vi.mock('@/components/inbox-detail', () => ({
         <span>Detail {item?.title}</span>
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
             onFile('item-1', 'Filed', ['work'], [{ kind: 'note', noteId: 'note-1' }], 'embed')
-          }
+          }}
         >
           Detail file
         </button>
-        <button type="button" onClick={() => onArchive('item-1')}>
+        <button
+          type="button"
+          onClick={() => {
+            onArchive('item-1')
+          }}
+        >
           Detail archive
         </button>
         <button type="button" onClick={onClose}>
@@ -265,7 +300,12 @@ vi.mock('@/components/bulk/bulk-action-bar', () => ({
         <button type="button" onClick={onArchiveAll}>
           Bulk archive all
         </button>
-        <button type="button" onClick={() => onSnoozeAll('2026-05-12T12:00:00.000Z')}>
+        <button
+          type="button"
+          onClick={() => {
+            onSnoozeAll('2026-05-12T12:00:00.000Z')
+          }}
+        >
           Bulk snooze all
         </button>
         {aiSuggestion ? (
@@ -294,7 +334,12 @@ vi.mock('@/components/bulk/bulk-file-panel', () => ({
   }) =>
     isOpen ? (
       <div>
-        <button type="button" onClick={() => onFile(['item-1'], 'Filed', ['work'])}>
+        <button
+          type="button"
+          onClick={() => {
+            onFile(['item-1'], 'Filed', ['work'])
+          }}
+        >
           Confirm bulk file
         </button>
         <button type="button" onClick={onClose}>
@@ -316,10 +361,20 @@ vi.mock('@/components/bulk/bulk-tag-popover', () => ({
   }) =>
     isOpen ? (
       <div>
-        <button type="button" onClick={() => onApplyTags(['later'])}>
+        <button
+          type="button"
+          onClick={() => {
+            onApplyTags(['later'])
+          }}
+        >
           Confirm bulk tag
         </button>
-        <button type="button" onClick={() => onOpenChange(false)}>
+        <button
+          type="button"
+          onClick={() => {
+            onOpenChange(false)
+          }}
+        >
           Close bulk tag
         </button>
       </div>
@@ -570,7 +625,9 @@ describe('InboxListView', () => {
       />
     )
 
-    await waitFor(() => expect(screen.getByText('Detail Saved Link')).toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.getByText('Detail Saved Link')).toBeInTheDocument()
+    })
   })
 
   it('uses keyboard callbacks for refresh, source URLs, archive focus, and bulk archive dialog', async () => {
@@ -669,19 +726,25 @@ describe('InboxListView', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Bulk file all' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm bulk file' }))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('toast.filedPartial'))
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('toast.filedPartial')
+    })
     view.unmount()
     ;({ inboxApi, view } = renderSelected())
     inboxApi.bulkFile.mockResolvedValueOnce({ success: false, processedCount: 0, errors: [] })
     fireEvent.click(screen.getByRole('button', { name: 'Bulk file all' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm bulk file' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('toast.failedFileItems'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('toast.failedFileItems')
+    })
     view.unmount()
     ;({ inboxApi, view } = renderSelected())
     inboxApi.bulkTag.mockResolvedValueOnce({ success: false, processedCount: 0, errors: [] })
     fireEvent.click(screen.getByRole('button', { name: 'Bulk tag all' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirm bulk tag' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('toast.failedApplyTags'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('toast.failedApplyTags')
+    })
     view.unmount()
     ;({ view } = renderSelected())
     mocks.bulkArchive.mockRejectedValueOnce(new Error('archive failed'))

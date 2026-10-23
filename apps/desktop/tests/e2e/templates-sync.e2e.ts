@@ -40,7 +40,7 @@ test.describe('Custom template sync', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     const name = `T1 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, '## Blockers')
@@ -53,7 +53,7 @@ test.describe('Custom template sync', () => {
   })
 
   test('T2: an edit on A propagates to B', async ({ pageA, pageB, bootstrappedSyncPair }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     const name = `T2 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, 'v1')
@@ -68,7 +68,7 @@ test.describe('Custom template sync', () => {
   })
 
   test('T3: a delete on A tombstones on B', async ({ pageA, pageB, bootstrappedSyncPair }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     const name = `T3 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, 'v1')
@@ -91,7 +91,7 @@ test.describe('Custom template sync', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     const name = `T4 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, 'base')
@@ -120,7 +120,7 @@ test.describe('Custom template sync', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     await syncBothAndWait(pageA, pageB)
 
     for (const page of [pageA, pageB]) {
@@ -135,7 +135,7 @@ legacyTest.describe('Legacy template migration', () => {
   legacyTest(
     'T5: a pre-sync template file on A is migrated and reaches B',
     async ({ pageA, pageB, bootstrappedSyncPair }) => {
-      void bootstrappedSyncPair
+      bootstrappedSyncPair
 
       // A's vault had the file on disk before launch; openVault should have
       // imported it with clock NULL, and seedUnclocked should have pushed it.

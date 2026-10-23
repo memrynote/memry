@@ -35,7 +35,9 @@ function start(): void {
   void api.vaultLocks
     .list()
     .then(publish)
-    .catch((error: unknown) => log.warn('Failed to load vault locks', error))
+    .catch((error: unknown) => {
+      log.warn('Failed to load vault locks', error)
+    })
 }
 
 function subscribe(listener: () => void): () => void {

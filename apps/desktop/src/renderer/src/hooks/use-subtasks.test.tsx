@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useSubtasks } from './use-subtasks'
 import {
@@ -40,7 +41,9 @@ describe('useSubtasks', () => {
     ;(window.api.tasks.getSubtasks as ReturnType<typeof vi.fn>).mockResolvedValue(subs)
 
     const { result } = renderHook(() => useSubtasks('t1'), { wrapper })
-    await waitFor(() => expect(result.current.data?.length).toBe(2))
+    await waitFor(() => {
+      expect(result.current.data?.length).toBe(2)
+    })
     expect(window.api.tasks.getSubtasks).toHaveBeenCalledWith('t1')
   })
 

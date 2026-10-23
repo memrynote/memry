@@ -33,13 +33,19 @@ describe('useIsMobile', () => {
     rerender(view('hidden'))
     setWidth(600)
     setWidth(1200)
-    act(() => rerender(view('visible')))
+    act(() => {
+      rerender(view('visible'))
+    })
 
     expect(screen.getByTestId('mobile')).toHaveTextContent('false')
 
     setWidth(600)
-    act(() => rerender(view('hidden')))
-    act(() => rerender(view('visible')))
+    act(() => {
+      rerender(view('hidden'))
+    })
+    act(() => {
+      rerender(view('visible'))
+    })
     expect(screen.getByTestId('mobile')).toHaveTextContent('true')
   })
 })

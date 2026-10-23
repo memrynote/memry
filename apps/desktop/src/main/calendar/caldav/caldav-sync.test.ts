@@ -8,7 +8,8 @@ import { FakeCaldavServer, vevent } from '@tests/utils/fake-caldav-server'
 import type { DataDb } from '../../database'
 import { ProviderAuthError } from '../provider/errors'
 import { caldavCalendarSourceId, hasCaldavLocalAuth } from './caldav-accounts'
-import { CaldavConnectError, connectCaldavAccount, disconnectCaldavAccount } from './caldav-connect'
+import type { CaldavConnectError } from './caldav-connect'
+import { connectCaldavAccount, disconnectCaldavAccount } from './caldav-connect'
 import { syncCaldavCalendarSource, syncCaldavNow } from './caldav-sync'
 
 vi.mock('keytar', () => ({

@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -91,14 +92,18 @@ describe('useJournalEntry dedicated hook', () => {
 
     const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
 
-    await waitFor(() => expect(window.api.journal.createEntry).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.journal.createEntry).toHaveBeenCalled()
+    })
     expect(window.api.journal.createEntry).toHaveBeenCalledWith({
       date: '2026-05-10',
       content: expect.stringContaining('2026/05/10'),
       tags: ['daily'],
       properties: { mood: 'focused' }
     })
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-10')
+    })
   })
 
   it('seeds {{random-line:Title}} with a line from the named note', async () => {
@@ -124,7 +129,9 @@ describe('useJournalEntry dedicated hook', () => {
 
     renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
 
-    await waitFor(() => expect(window.api.journal.createEntry).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(window.api.journal.createEntry).toHaveBeenCalled()
+    })
     expect(window.api.notes.resolveByTitle).toHaveBeenCalledWith('Affirmations')
     expect(window.api.journal.createEntry).toHaveBeenCalledWith(
       expect.objectContaining({ content: '> I am calm' })
@@ -137,7 +144,9 @@ describe('useJournalEntry dedicated hook', () => {
       initialProps: { date: '2026-05-10' }
     })
 
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-10')
+    })
 
     act(() => {
       result.current.updateContent('Pending old date')
@@ -148,7 +157,9 @@ describe('useJournalEntry dedicated hook', () => {
       content: 'Pending old date'
     })
 
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-11'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-11')
+    })
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error('ENOSPC write failed')
     )
@@ -158,24 +169,28 @@ describe('useJournalEntry dedicated hook', () => {
     await act(async () => {
       await vi.runOnlyPendingTimersAsync()
     })
-    await waitFor(() => expect(result.current.saveError).toBe('Unable to save: disk may be full'))
+    await waitFor(() => {
+      expect(result.current.saveError).toBe('Unable to save: disk may be full')
+    })
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       createMockJournalEntry({ date: '2026-05-11', content: 'Recovered' })
     )
     await act(async () => {
       await result.current.retrySave()
     })
-    await waitFor(() => expect(result.current.saveError).toBeNull())
+    await waitFor(() => {
+      expect(result.current.saveError).toBeNull()
+    })
 
     act(() => {
       result.current.updateTags(['tagged'])
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(window.api.journal.updateEntry).toHaveBeenCalledWith({
         date: '2026-05-11',
         tags: ['tagged']
       })
-    )
+    })
 
     act(() => {
       result.current.updateContent('Dirty before reload')
@@ -214,34 +229,52 @@ describe('useJournalEntry dedicated hook', () => {
 
   it('saves the body #tag changes made during a save, merged, on top of the tags-row list', async () => {
     const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-10')
+    })
     let finishFirstSave: () => void = () => {}
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockImplementationOnce(
       (input) =>
         new Promise((resolve) => {
-          finishFirstSave = () => resolve(createMockJournalEntry({ date: input.date }))
+          finishFirstSave = () => {
+            resolve(createMockJournalEntry({ date: input.date }))
+          }
         })
     )
 
-    act(() => result.current.updateTags(['row']))
-    await waitFor(() => expect(window.api.journal.updateEntry).toHaveBeenCalledTimes(1))
-    act(() => result.current.updateInlineTags({ add: ['car', 'bike'], remove: [] }))
-    act(() => result.current.updateInlineTags({ add: [], remove: ['bike', 'old'] }))
-    await act(async () => finishFirstSave())
-    await waitFor(() => expect(result.current.isSaving).toBe(false))
-    act(() => result.current.updateTags(['row', 'later']))
+    act(() => {
+      result.current.updateTags(['row'])
+    })
+    await waitFor(() => {
+      expect(window.api.journal.updateEntry).toHaveBeenCalledTimes(1)
+    })
+    act(() => {
+      result.current.updateInlineTags({ add: ['car', 'bike'], remove: [] })
+    })
+    act(() => {
+      result.current.updateInlineTags({ add: [], remove: ['bike', 'old'] })
+    })
+    await act(async () => {
+      finishFirstSave()
+    })
+    await waitFor(() => {
+      expect(result.current.isSaving).toBe(false)
+    })
+    act(() => {
+      result.current.updateTags(['row', 'later'])
+    })
 
     expect(window.api.journal.updateEntry).toHaveBeenNthCalledWith(1, {
       date: '2026-05-10',
       tags: ['row']
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(window.api.journal.updateEntry).toHaveBeenLastCalledWith({
         date: '2026-05-10',
         tags: ['row', 'later'],
         inlineTags: { add: ['car'], remove: ['bike', 'old'] }
       })
-    )
+    })
   })
 
   // The editor flushes its last debounced edit only after it has unmounted, and
@@ -253,11 +286,15 @@ describe('useJournalEntry dedicated hook', () => {
       wrapper,
       initialProps: { date: '2026-05-10' }
     })
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-10')
+    })
     const updateTenth = result.current.updateContent
 
     rerender({ date: '2026-05-11' })
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-11'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-11')
+    })
     updateEntry.mockClear()
 
     act(() => {
@@ -275,7 +312,9 @@ describe('useJournalEntry dedicated hook', () => {
   it('saves a late edit straight away once the journal has unmounted', async () => {
     const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
     const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-10')
+    })
     const updateTenth = result.current.updateContent
 
     unmount()
@@ -314,7 +353,9 @@ describe('useJournalEntry dedicated hook', () => {
     })
 
     const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
-    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    await waitFor(() => {
+      expect(result.current.loadedForDate).toBe('2026-05-10')
+    })
 
     const createdEntry = createMockJournalEntry({ date: '2026-05-10', content: 'created event' })
     act(() => {
@@ -363,7 +404,7 @@ describe('useJournalEntry dedicated hook', () => {
       </QueryClientProvider>
     )
 
-    const openVault = (path: string): void =>
+    const openVault = (path: string): void => {
       setCachedVaultStatus({
         isOpen: true,
         path,
@@ -371,6 +412,7 @@ describe('useJournalEntry dedicated hook', () => {
         indexProgress: 0,
         error: null
       })
+    }
 
     beforeEach(() => {
       lifecycle = createVaultWorkspaceLifecycle()
@@ -384,7 +426,9 @@ describe('useJournalEntry dedicated hook', () => {
       const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
         wrapper: vaultWrapper
       })
-      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+      await waitFor(() => {
+        expect(result.current.loadedForDate).toBe('2026-05-10')
+      })
 
       act(() => {
         result.current.updateContent('Typed in vault A')
@@ -406,7 +450,9 @@ describe('useJournalEntry dedicated hook', () => {
       const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
         wrapper: vaultWrapper
       })
-      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+      await waitFor(() => {
+        expect(result.current.loadedForDate).toBe('2026-05-10')
+      })
 
       act(() => {
         result.current.updateContent('Typed in vault A')
@@ -426,7 +472,9 @@ describe('useJournalEntry dedicated hook', () => {
       const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
         wrapper: vaultWrapper
       })
-      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+      await waitFor(() => {
+        expect(result.current.loadedForDate).toBe('2026-05-10')
+      })
 
       act(() => {
         result.current.updateContent('Closing the tab')
@@ -447,15 +495,18 @@ describe('useJournalEntry dedicated hook', () => {
       const { result } = renderHook(() => useJournalEntry('2026-05-10'), {
         wrapper: vaultWrapper
       })
-      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+      await waitFor(() => {
+        expect(result.current.loadedForDate).toBe('2026-05-10')
+      })
 
       let finishFirstSave: () => void = () => {}
       updateEntry.mockClear()
       updateEntry.mockImplementationOnce(
         (input: { date: string; content?: string }) =>
           new Promise((resolve) => {
-            finishFirstSave = () =>
+            finishFirstSave = () => {
               resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+            }
           })
       )
 

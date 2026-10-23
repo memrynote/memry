@@ -62,11 +62,15 @@ export async function mainToRendererInvoke<T>(
     // The window went away before answering (closed, or reloaded out from under
     // the request). No reply is ever coming, so drop the per-call listener now
     // instead of parking it on the shared ipcMain until the timeout fires.
-    const handleTargetDestroyed = (): void => settle(null)
+    const handleTargetDestroyed = (): void => {
+      settle(null)
+    }
 
     ipcMain.on(responseChannel, handleResponse)
     target.once('destroyed', handleTargetDestroyed)
-    const timeout = setTimeout(() => settle(null), timeoutMs)
+    const timeout = setTimeout(() => {
+      settle(null)
+    }, timeoutMs)
 
     try {
       const message: MainInvokePayload = { requestId, channel, payload }

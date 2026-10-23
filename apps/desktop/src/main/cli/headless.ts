@@ -16,7 +16,11 @@ interface HeadlessCliDeps {
 }
 
 export async function runHeadlessCli(args: string[], deps: HeadlessCliDeps = {}): Promise<void> {
-  const exit = deps.exit ?? ((code: number) => app.exit(code))
+  const exit =
+    deps.exit ??
+    ((code: number) => {
+      app.exit(code)
+    })
   const code = await runCommand(args, deps)
   exit(code)
 }

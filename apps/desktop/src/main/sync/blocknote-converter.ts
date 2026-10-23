@@ -1026,7 +1026,7 @@ async function parseToggleSegment(
   return {
     type: 'toggleListItem',
     id: crypto.randomUUID(),
-    props: { ...(colors ?? {}), open: segment.open },
+    props: { ...colors, open: segment.open },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
   } as unknown as Block

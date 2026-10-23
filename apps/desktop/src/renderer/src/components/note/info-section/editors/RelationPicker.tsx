@@ -73,7 +73,9 @@ function AnyRelationPicker({ onSelect }: { onSelect: (uri: string) => void }): R
             key={item.id}
             type="button"
             role="option"
-            onClick={() => onSelect(formatRelationUri(item.kind ?? kind, item.id))}
+            onClick={() => {
+              onSelect(formatRelationUri(item.kind ?? kind, item.id))
+            }}
             className="flex w-full items-center gap-2 rounded-[5px] px-2 py-1.5 text-start transition-colors hover:bg-accent focus:outline-none focus-visible:bg-accent"
           >
             <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

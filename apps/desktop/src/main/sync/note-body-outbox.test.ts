@@ -421,7 +421,9 @@ describe('NoteBodyOutbox', () => {
     const readFullState = vi.fn(
       (noteId: string) =>
         new Promise<Uint8Array>((resolve) => {
-          release = () => resolve(new Uint8Array([noteId === 'note-a' ? 1 : 2]))
+          release = () => {
+            resolve(new Uint8Array([noteId === 'note-a' ? 1 : 2]))
+          }
         })
     )
     const outbox = createOutbox(readFullState)

@@ -3,10 +3,9 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
-import { initializeFts } from '../../database/fts'
+import { initializeFts, getFtsCount } from '../../database/fts'
 import { initializeFtsTasks } from '../../database/fts-tasks'
 import { initializeFtsInbox, getFtsInboxCount } from '../../database/fts-inbox'
-import { getFtsCount } from '../../database/fts'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const getDatabase = vi.hoisted(() => vi.fn())

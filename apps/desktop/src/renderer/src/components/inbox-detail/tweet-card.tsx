@@ -84,7 +84,9 @@ function TweetUnavailable({ url }: { url: string | null }): React.JSX.Element {
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-xs font-medium text-[var(--accent-cyan)] hover:underline"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
         >
           <ExternalLink className="size-3" />
 
@@ -109,7 +111,9 @@ function TweetAvatar({ imageUrl, name }: { imageUrl?: string; name: string }): R
         src={imageUrl}
         alt={name}
         className="shrink-0 rounded-[18px] size-9 object-cover"
-        onError={() => setImgError(true)}
+        onError={() => {
+          setImgError(true)
+        }}
         loading="lazy"
       />
     )
@@ -273,7 +277,9 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-xs font-medium text-[var(--accent-cyan)] hover:underline"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
         >
           <ExternalLink className="size-3" />
 

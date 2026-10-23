@@ -36,7 +36,9 @@ export function ReadwiseJournalSection({
         >
           <Switch
             checked={options.journalHighlights}
-            onCheckedChange={(enabled) => onChange({ journalHighlights: enabled })}
+            onCheckedChange={(enabled) => {
+              onChange({ journalHighlights: enabled })
+            }}
             aria-label={t('import.dialog.readwise.journal.highlights.label')}
             className={ACCENT_SWITCH}
             disabled={disabled}

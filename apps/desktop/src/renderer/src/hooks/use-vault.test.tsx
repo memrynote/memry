@@ -82,23 +82,31 @@ describe('useVault', () => {
 
     const { result } = renderHook(() => useVault())
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.isOpen).toBe(true)
     expect(result.current.vaultPath).toBe('/vault')
     expect(result.current.config).toEqual({ journalFolder: 'Journal' })
 
-    act(() => statusHandler({ isOpen: false, path: '', error: 'closed' }))
+    act(() => {
+      statusHandler({ isOpen: false, path: '', error: 'closed' })
+    })
     expect(result.current.isOpen).toBe(false)
     expect(result.current.error).toBe('closed')
 
-    act(() => errorHandler('index failed'))
+    act(() => {
+      errorHandler('index failed')
+    })
     expect(result.current.error).toBe('index failed')
   })
 
   it('selects, switches, closes, updates config, reindexes, and clears error state', async () => {
     const api = vaultApi()
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     await act(async () => {
       await result.current.selectVault('/chosen')
@@ -116,7 +124,9 @@ describe('useVault', () => {
     })
     expect(result.current.error).toBe('cannot switch')
 
-    act(() => result.current.clearError())
+    act(() => {
+      result.current.clearError()
+    })
     expect(result.current.error).toBeNull()
 
     await act(async () => {
@@ -138,7 +148,9 @@ describe('useVault', () => {
     api.vault.getStatus.mockRejectedValueOnce(new Error('status unavailable'))
 
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     expect(result.current.error).toBe('status unavailable')
 
@@ -160,15 +172,23 @@ describe('useVault', () => {
     })
 
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
-    act(() => recoveredHandler({ recovered: 3 }))
+    act(() => {
+      recoveredHandler({ recovered: 3 })
+    })
     expect(result.current.recoveryInfo).toEqual({ recovered: 3 })
 
-    act(() => result.current.clearRecoveryInfo())
+    act(() => {
+      result.current.clearRecoveryInfo()
+    })
     expect(result.current.recoveryInfo).toBeNull()
 
-    act(() => recoveredHandler({ recovered: 5 }))
+    act(() => {
+      recoveredHandler({ recovered: 5 })
+    })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10000)
     })
@@ -197,46 +217,72 @@ describe('useVault during a vault switch', () => {
 
   it('holds the closed gap back while the switch runs', async () => {
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(result.current.vaultPath).toBe('/a')
+    })
 
-    act(() => beginVaultSwitch({ path: '/b', name: 'B' }, 'next'))
-    act(() => statusHandler({ isOpen: false, path: null }))
+    act(() => {
+      beginVaultSwitch({ path: '/b', name: 'B' }, 'next')
+    })
+    act(() => {
+      statusHandler({ isOpen: false, path: null })
+    })
     expect(result.current.vaultPath).toBe('/a')
     expect(result.current.isOpen).toBe(true)
 
-    act(() => statusHandler({ isOpen: true, path: '/b' }))
+    act(() => {
+      statusHandler({ isOpen: true, path: '/b' })
+    })
     expect(result.current.vaultPath).toBe('/b')
-    act(() => endVaultSwitch(true))
+    act(() => {
+      endVaultSwitch(true)
+    })
     expect(result.current.vaultPath).toBe('/b')
   })
 
   it('reveals the incoming vault only once the pager releases its hold', async () => {
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(result.current.vaultPath).toBe('/a')
+    })
 
     let release: () => void = () => {}
     act(() => {
       release = holdVaultReveal()
       beginVaultSwitch({ path: '/b', name: 'B' }, 'next')
     })
-    act(() => statusHandler({ isOpen: false, path: null }))
-    act(() => statusHandler({ isOpen: true, path: '/b' }))
+    act(() => {
+      statusHandler({ isOpen: false, path: null })
+    })
+    act(() => {
+      statusHandler({ isOpen: true, path: '/b' })
+    })
     // A fast switch finished while the settle is still playing.
     expect(result.current.vaultPath).toBe('/a')
 
-    act(() => release())
+    act(() => {
+      release()
+    })
     expect(result.current.vaultPath).toBe('/b')
   })
 
   it('surfaces the closed state when the switch fails', async () => {
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(result.current.vaultPath).toBe('/a')
+    })
 
-    act(() => beginVaultSwitch({ path: '/b', name: 'B' }, 'next'))
-    act(() => statusHandler({ isOpen: false, path: null }))
+    act(() => {
+      beginVaultSwitch({ path: '/b', name: 'B' }, 'next')
+    })
+    act(() => {
+      statusHandler({ isOpen: false, path: null })
+    })
     expect(result.current.isOpen).toBe(true)
 
-    act(() => endVaultSwitch(false))
+    act(() => {
+      endVaultSwitch(false)
+    })
     expect(result.current.isOpen).toBe(false)
   })
 
@@ -245,17 +291,25 @@ describe('useVault during a vault switch', () => {
       <VaultScopeProvider vaultPath="/a">{children}</VaultScopeProvider>
     )
     const { result } = renderHook(() => useVault(), { wrapper })
-    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(result.current.vaultPath).toBe('/a')
+    })
 
-    act(() => statusHandler({ isOpen: true, path: '/b' }))
+    act(() => {
+      statusHandler({ isOpen: true, path: '/b' })
+    })
     expect(result.current.vaultPath).toBe('/a')
   })
 
   it('draws the open vault on the first render of a workspace mounted mid-switch', async () => {
     // App's instance has already applied /b; the workspace for /b mounts next.
     const app = renderHook(() => useVault())
-    await waitFor(() => expect(app.result.current.vaultPath).toBe('/a'))
-    act(() => statusHandler({ isOpen: true, path: '/b' }))
+    await waitFor(() => {
+      expect(app.result.current.vaultPath).toBe('/a')
+    })
+    act(() => {
+      statusHandler({ isOpen: true, path: '/b' })
+    })
 
     const firstRenders: Array<string | null> = []
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -276,7 +330,9 @@ describe('useVault during a vault switch', () => {
 
   it("does not seed a workspace with another vault's status", async () => {
     const app = renderHook(() => useVault())
-    await waitFor(() => expect(app.result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(app.result.current.vaultPath).toBe('/a')
+    })
 
     const wrapper = ({ children }: { children: ReactNode }) => (
       <VaultScopeProvider vaultPath="/b">{children}</VaultScopeProvider>
@@ -289,9 +345,13 @@ describe('useVault during a vault switch', () => {
   it('refuses a second switch while one is pending and leaves it untouched', async () => {
     const api = vaultApi()
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(result.current.vaultPath).toBe('/a')
+    })
 
-    act(() => beginVaultSwitch({ path: '/b', name: 'B' }, 'next'))
+    act(() => {
+      beginVaultSwitch({ path: '/b', name: 'B' }, 'next')
+    })
     const before = getVaultSwitchState()
     let response: Awaited<ReturnType<typeof result.current.switchVault>> | undefined
     await act(async () => {
@@ -316,7 +376,9 @@ describe('useVault during a vault switch', () => {
     })
 
     const { result } = renderHook(() => useVault())
-    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await waitFor(() => {
+      expect(result.current.vaultPath).toBe('/a')
+    })
     await act(async () => {
       await result.current.switchVault('/b')
     })
@@ -329,7 +391,9 @@ describe('useVault during a vault switch', () => {
 describe('useVaultList', () => {
   it('seeds a later instance with the list an earlier one loaded', async () => {
     const first = renderHook(() => useVaultList())
-    await waitFor(() => expect(first.result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(first.result.current.isLoading).toBe(false)
+    })
 
     const { result } = renderHook(() => useVaultList())
 
@@ -341,7 +405,9 @@ describe('useVaultList', () => {
     const api = vaultApi()
     const { result } = renderHook(() => useVaultList())
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.vaults).toEqual([{ path: '/vault', name: 'Vault' }])
     expect(result.current.currentVault).toBe('/vault')
 

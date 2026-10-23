@@ -256,9 +256,15 @@ describe('#given telemetry itself misbehaves', () => {
     })
     beginBootstrap('vault_download')
 
-    expect(() => markBootstrapInteractive()).not.toThrow()
-    expect(() => markBootstrapFullText()).not.toThrow()
-    expect(() => recordBootstrapBytes('records', 1)).not.toThrow()
+    expect(() => {
+      markBootstrapInteractive()
+    }).not.toThrow()
+    expect(() => {
+      markBootstrapFullText()
+    }).not.toThrow()
+    expect(() => {
+      recordBootstrapBytes('records', 1)
+    }).not.toThrow()
   })
 })
 

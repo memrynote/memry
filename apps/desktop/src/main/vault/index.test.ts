@@ -526,7 +526,9 @@ describe('vault lifecycle', () => {
     // The refused switch must not end the running one's in-progress window.
     expect(isVaultSwitchInProgress()).toBe(true)
 
-    await vi.waitFor(() => expect(releaseWatcher).toBeTypeOf('function'))
+    await vi.waitFor(() => {
+      expect(releaseWatcher).toBeTypeOf('function')
+    })
     releaseWatcher()
     expect((await first).success).toBe(true)
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/b' }))
@@ -545,7 +547,9 @@ describe('vault lifecycle', () => {
 
     const first = selectVault({ path: '/vault/a' })
     const second = selectVault({ path: '/vault/b' })
-    await vi.waitFor(() => expect(releaseWatcher).toBeTypeOf('function'))
+    await vi.waitFor(() => {
+      expect(releaseWatcher).toBeTypeOf('function')
+    })
     // B waits for A to finish opening instead of opening over it.
     expect(events).toEqual(['open /vault/a/data.db'])
 
@@ -640,7 +644,9 @@ describe('vault lifecycle', () => {
       mocks.startProjectionRuntime.mock.invocationCallOrder[0]
     )
     // The backfill runs at the tail of the background index build.
-    await vi.waitFor(() => expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled()
+    })
     expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.indexVault.mock.invocationCallOrder[0]
     )
@@ -671,13 +677,13 @@ describe('vault lifecycle', () => {
     expect(mocks.migrateNestedPropertiesToRoot.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.startWatcher.mock.invocationCallOrder[0]
     )
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work', {
         shouldStop: expect.any(Function),
         forcePaths: ['notes/Mobile.md', 'notes/Other.md'],
         activity: 'scan'
       })
-    )
+    })
   })
 
   it('applies the backfill after an index reset and opens the vault even if it throws', async () => {
@@ -688,12 +694,16 @@ describe('vault lifecycle', () => {
 
     expect(result.success).toBe(true)
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/rebuild' }))
-    await vi.waitFor(() => expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled()
+    })
     expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.indexVault.mock.invocationCallOrder[0]
     )
     // The open survives the backfill throw: the indexing window still closes.
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    await vi.waitFor(() => {
+      expect(getStatus().isIndexing).toBe(false)
+    })
   })
 
   it('starts vault-scoped agent services only when lazy startup is requested', async () => {
@@ -736,12 +746,12 @@ describe('vault lifecycle', () => {
       shouldStop: expect.any(Function),
       activity: 'rebuild'
     })
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(mocks.sent).toContainEqual({
         channel: 'vault:index-recovered',
         payload: { reason: 'missing', filesIndexed: 3, duration: expect.any(Number) }
       })
-    )
+    })
   })
 
   it('opens without awaiting the index walk and finishes it in the background', async () => {
@@ -773,10 +783,14 @@ describe('vault lifecycle', () => {
     resolveIndex({ indexed: 10, skipped: 0, errors: 0, cancelled: false })
 
     // The indexing window closes in order: walk -> backfill -> status -> reconcile.
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    await vi.waitFor(() => {
+      expect(getStatus().isIndexing).toBe(false)
+    })
     expect(getStatus().indexProgress).toBe(100)
     expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled()
-    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.reconcileProjections).toHaveBeenCalled()
+    })
   })
 
   it('replays removals after locked files are restored and before the walk (#2606, #3013)', async () => {
@@ -797,7 +811,9 @@ describe('vault lifecycle', () => {
 
     // A file moved while closed pairs with its old path before the walk can
     // index the new path under a fresh id.
-    await vi.waitFor(() => expect(mocks.indexVault).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.indexVault).toHaveBeenCalled()
+    })
     expect(mocks.replayMissedRemovals.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.indexVault.mock.invocationCallOrder[0]
     )
@@ -809,7 +825,9 @@ describe('vault lifecycle', () => {
     await selectVault({ path: '/vault/empty-index' })
 
     // The first check ran against an empty index and skipped the locked notes.
-    await vi.waitFor(() => expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => {
+      expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(2)
+    })
     expect(mocks.indexVault.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.checkLockedFilesAtOpen.mock.invocationCallOrder[1]
     )
@@ -820,7 +838,9 @@ describe('vault lifecycle', () => {
 
     await selectVault({ path: '/vault/current-index' })
 
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    await vi.waitFor(() => {
+      expect(getStatus().isIndexing).toBe(false)
+    })
     expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
   })
 
@@ -829,14 +849,18 @@ describe('vault lifecycle', () => {
 
     await selectVault({ path: '/vault/locked-failed' })
 
-    await vi.waitFor(() => expect(mocks.replayMissedRemovals).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mocks.replayMissedRemovals).toHaveBeenCalled()
+    })
   })
 
   it('does not reset a current index and reports no recovery on a fast open', async () => {
     const result = await selectVault({ path: '/vault/fast' })
 
     expect(result.success).toBe(true)
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    await vi.waitFor(() => {
+      expect(getStatus().isIndexing).toBe(false)
+    })
     expect(mocks.resetIndexDatabase).not.toHaveBeenCalled()
     expect(mocks.rebuildIndex).not.toHaveBeenCalled()
     expect(mocks.sent.some((event) => event.channel === 'vault:index-recovered')).toBe(false)
@@ -919,7 +943,9 @@ describe('vault lifecycle', () => {
     expect(wiring?.gate()).toBe(true)
 
     resolveIndex({ indexed: 0, skipped: 5, errors: 0, cancelled: false })
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    await vi.waitFor(() => {
+      expect(getStatus().isIndexing).toBe(false)
+    })
 
     // Same closure, window closed: embeddings flow again.
     expect(wiring?.gate()).toBe(false)
@@ -1027,7 +1053,9 @@ describe('vault lifecycle', () => {
     expect(mocks.resetIndexDatabase).not.toHaveBeenCalled()
     expect(mocks.runIndexMigrations).toHaveBeenCalledWith('/vault/fts/index.db')
     // The repair runs in the background build, after the walk.
-    await vi.waitFor(() => expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search']))
+    await vi.waitFor(() => {
+      expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search'])
+    })
 
     // #then the user is told the repair happened
     expect(mocks.sent).toContainEqual({
@@ -1042,7 +1070,9 @@ describe('vault lifecycle', () => {
 
     await selectVault({ path: '/vault/fts-ok' })
     // Let the background build (which owns the repair decision) settle.
-    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    await vi.waitFor(() => {
+      expect(getStatus().isIndexing).toBe(false)
+    })
 
     // A transient read failure must not cost the user a rebuild.
     expect(mocks.rebuildProjections).not.toHaveBeenCalled()
@@ -1063,7 +1093,9 @@ describe('vault lifecycle', () => {
 
     await selectVault({ path: '/vault/reconcile-corrupt' })
     // The reconcile is deliberately backgrounded; let its continuation land.
-    await vi.waitFor(() => expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search']))
+    await vi.waitFor(() => {
+      expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search'])
+    })
 
     // The failure still reaches telemetry under its original action name.
     expect(mocks.trackMainError).toHaveBeenCalledWith(
@@ -1507,7 +1539,9 @@ describe('vault lifecycle', () => {
       mocks.startAgent.mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve({ shutdown: mocks.agentShutdown }), 500)
+            setTimeout(() => {
+              resolve({ shutdown: mocks.agentShutdown })
+            }, 500)
           })
       )
 

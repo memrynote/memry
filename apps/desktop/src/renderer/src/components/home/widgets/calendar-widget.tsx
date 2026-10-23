@@ -29,8 +29,12 @@ export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Elemen
 
   useEffect(() => {
     // ponytail: 60s tick; widget is glanceable, second-precision not needed
-    const id = setInterval(() => setNowMs(Date.now()), 60_000)
-    return () => clearInterval(id)
+    const id = setInterval(() => {
+      setNowMs(Date.now())
+    }, 60_000)
+    return () => {
+      clearInterval(id)
+    }
   }, [])
 
   const events = useMemo(() => toCalendarWidgetEvents(items, clockFormat), [items, clockFormat])

@@ -28,11 +28,17 @@ export function BillingSection() {
     api
       .authedJson<BillingStatus>('/auth/billing')
       .then(setBilling)
-      .catch(() => setBillingError('Could not load billing info.'))
+      .catch(() => {
+        setBillingError('Could not load billing info.')
+      })
     api
       .authedJson<{ invoices: InvoiceRow[] }>('/auth/billing/invoices')
-      .then((r) => setInvoices(r.invoices))
-      .catch(() => setInvoicesError('Could not load invoices. Try again later.'))
+      .then((r) => {
+        setInvoices(r.invoices)
+      })
+      .catch(() => {
+        setInvoicesError('Could not load invoices. Try again later.')
+      })
   }, [api])
 
   async function openPortal() {

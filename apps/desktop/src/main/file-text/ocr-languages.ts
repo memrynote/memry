@@ -131,9 +131,9 @@ function setStatus(lang: DownloadedLanguage, status: OcrLanguageStatus | null): 
 }
 
 export function setOcrLanguages(languages: OcrLanguage[]): OcrLanguagesState {
-  publish(() =>
+  publish(() => {
     setStoredOcrLanguages([...new Set<OcrLanguage>([BUNDLED_OCR_LANGUAGE, ...languages])])
-  )
+  })
   if (download && !selectedLanguages().includes(download.lang)) download.controller.abort()
   void syncOcrLanguages()
   return getOcrLanguagesState()
@@ -156,9 +156,9 @@ export function syncOcrLanguages(): Promise<void> {
   running = (async () => {
     do {
       rerun = false
-      await reconcile().catch((error: unknown) =>
+      await reconcile().catch((error: unknown) => {
         logger.warn('OCR language pass failed', { error: errorText(error) })
-      )
+      })
     } while (rerun)
   })().finally(() => {
     running = null

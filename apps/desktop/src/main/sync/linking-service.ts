@@ -734,7 +734,7 @@ export const approveDeviceLinking = async (
         encryptedMasterKey: encryptedMasterKeyB64,
         encryptedKeyNonce: encryptedKeyNonceB64,
         keyConfirm: keyConfirmB64,
-        ...(encryptedProviderAuth ?? {}),
+        ...encryptedProviderAuth,
         ...vaultTransfer
       },
       accessToken

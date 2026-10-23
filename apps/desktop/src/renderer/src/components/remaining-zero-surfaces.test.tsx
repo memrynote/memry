@@ -161,7 +161,12 @@ vi.mock('./split-view/split-pane', () => ({
     children: ReactNode
   }) => (
     <div>
-      <button type="button" onClick={() => onResize(0.65)}>
+      <button
+        type="button"
+        onClick={() => {
+          onResize(0.65)
+        }}
+      >
         split:{direction}:{ratio}
       </button>
       {children}
@@ -336,7 +341,9 @@ describe('remaining zero renderer surfaces', () => {
 
     const ref = { current: null as HTMLDivElement | null }
     const outside = vi.fn()
-    const { unmount } = renderHook(() => useClickOutside(ref, outside))
+    const { unmount } = renderHook(() => {
+      useClickOutside(ref, outside)
+    })
     const inside = document.createElement('div')
     document.body.appendChild(inside)
     ref.current = inside

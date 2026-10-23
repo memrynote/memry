@@ -121,7 +121,9 @@ const AuthorAvatar = ({
         src={avatarUrl}
         alt={authorName}
         className={cn(sizeClasses[size], 'rounded-full object-cover ring-2 ring-[var(--border)]')}
-        onError={() => setImageError(true)}
+        onError={() => {
+          setImageError(true)
+        }}
         loading="lazy"
       />
     )
@@ -373,7 +375,9 @@ const SocialPreview = ({
             getPlatformColor(platform),
             'hover:underline'
           )}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
         >
           <ExternalLink className="size-4" />
 

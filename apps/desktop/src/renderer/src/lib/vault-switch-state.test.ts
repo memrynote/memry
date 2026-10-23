@@ -10,7 +10,9 @@ import {
 const work = { path: '/vaults/work', name: 'Work', accentColor: '#2f6fed' }
 
 describe('vault switch state', () => {
-  afterEach(() => resetVaultSwitchState())
+  afterEach(() => {
+    resetVaultSwitchState()
+  })
 
   it('marks the closed-vault gap as a switch until it settles', () => {
     beginVaultSwitch(work, 'next')

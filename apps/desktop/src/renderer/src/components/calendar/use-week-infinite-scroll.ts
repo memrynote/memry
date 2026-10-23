@@ -83,13 +83,16 @@ export function useWeekInfiniteScroll({
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [])
 
   useEffect(() => {
     // `void` keeps the call out of the synchronous setter path so the
     // unnecessary-effect linter recognizes this as a side-effecting sync call
     // rather than a state pass-through.
+    // oxlint-disable-next-line typescript/no-meaningless-void-operator
     void virtualizer.measure()
     return () => {}
   }, [columnWidth, virtualizer])
@@ -130,7 +133,9 @@ export function useWeekInfiniteScroll({
       notifyVisibleDayStart(nextStart)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+    }
   }, [columnWidth, notifyVisibleDayStart])
 
   useEffect(() => {
@@ -143,7 +148,9 @@ export function useWeekInfiniteScroll({
       el.scrollLeft += event.deltaY
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+    }
   }, [])
 
   const scrollToDay = useCallback(

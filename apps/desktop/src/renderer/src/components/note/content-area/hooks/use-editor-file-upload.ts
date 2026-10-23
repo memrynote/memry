@@ -297,8 +297,12 @@ export function useEditorFileUpload({
         void handleNonImageDrop({
           ...e,
           dataTransfer,
-          preventDefault: () => e.preventDefault(),
-          stopPropagation: () => e.stopPropagation(),
+          preventDefault: () => {
+            e.preventDefault()
+          },
+          stopPropagation: () => {
+            e.stopPropagation()
+          },
           currentTarget: container
         } as unknown as React.DragEvent)
         return

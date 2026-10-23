@@ -76,7 +76,9 @@ const OptionItem = ({
     <button
       type="button"
       onClick={onClick}
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => {
+        e.preventDefault()
+      }}
       className={cn(
         'w-full flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
         isSelected ? 'bg-accent' : 'hover:bg-accent'
@@ -171,7 +173,9 @@ export const AutocompleteDropdown = ({
   useEffect(() => {
     if (isControlled) return
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [handleKeyDown, isControlled])
 
   // Don't render if no options
@@ -201,7 +205,9 @@ export const AutocompleteDropdown = ({
               option={option}
               isSelected={index === selectedIndex}
               showValue={type !== 'project' && type !== 'note'}
-              onClick={() => onSelect(option.value)}
+              onClick={() => {
+                onSelect(option.value)
+              }}
             />
           </div>
         ))}

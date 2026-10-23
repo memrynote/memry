@@ -102,7 +102,9 @@ describe('useMindMapNavigation', () => {
     const { close, view } = setup()
     const block = renderBlock('b-alpha')
 
-    act(() => view.result.current.navigateToBlock('b-alpha'))
+    act(() => {
+      view.result.current.navigateToBlock('b-alpha')
+    })
 
     expect(close).toHaveBeenCalledTimes(1)
     expect(scrolled).toEqual([{ target: block, options: { behavior: 'smooth', block: 'start' } }])
@@ -113,11 +115,15 @@ describe('useMindMapNavigation', () => {
 
     // The window the note page's own heading anchor was written for: the map
     // named a target, and the editor's render is still behind its placeholder.
-    act(() => view.result.current.navigateToBlock('b-alpha'))
+    act(() => {
+      view.result.current.navigateToBlock('b-alpha')
+    })
     expect(scrolled).toHaveLength(0)
 
     const block = renderBlock('b-alpha')
-    await waitFor(() => expect(scrolled.length).toBeGreaterThan(0))
+    await waitFor(() => {
+      expect(scrolled.length).toBeGreaterThan(0)
+    })
     expect(scrolled[0].target).toBe(block)
     // Never smooth from here: there is no starting position for an animation to
     // be relative to when the content has not arrived.
@@ -127,22 +133,34 @@ describe('useMindMapNavigation', () => {
   it('calls a pending wait off when a second navigation starts', async () => {
     const { view } = setup()
 
-    act(() => view.result.current.navigateToBlock('b-alpha'))
-    act(() => view.result.current.navigateToBlock('b-beta'))
+    act(() => {
+      view.result.current.navigateToBlock('b-alpha')
+    })
+    act(() => {
+      view.result.current.navigateToBlock('b-beta')
+    })
 
     const beta = renderBlock('b-beta')
-    await waitFor(() => expect(scrolled.length).toBeGreaterThan(0))
+    await waitFor(() => {
+      expect(scrolled.length).toBeGreaterThan(0)
+    })
 
     // Two waits racing would fight over the offset for the whole deadline.
     renderBlock('b-alpha')
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => {
+        resolve(null)
+      })
+    )
     for (const entry of scrolled) expect(entry.target).toBe(beta)
   })
 
   it('opens a fold marker in place, without closing the map or scrolling', () => {
     const { close, expandBranch, view } = setup()
 
-    act(() => view.result.current.activateNode(marker))
+    act(() => {
+      view.result.current.activateNode(marker)
+    })
 
     expect(expandBranch).toHaveBeenCalledWith(marker.id)
     // A fold is undone where it is: closing the map here would hide the branch
@@ -155,7 +173,9 @@ describe('useMindMapNavigation', () => {
   it('sends the root node to the top of the note', () => {
     const { close, view } = setup()
 
-    act(() => view.result.current.activateNode(root))
+    act(() => {
+      view.result.current.activateNode(root)
+    })
 
     expect(close).toHaveBeenCalledTimes(1)
     expect(scrolled[0].target).toBe(top)
@@ -165,23 +185,29 @@ describe('useMindMapNavigation', () => {
     const { view } = setup()
     const block = renderBlock('b-alpha')
 
-    act(() => view.result.current.activateNode(alpha))
+    act(() => {
+      view.result.current.activateNode(alpha)
+    })
     const fromMap = [...scrolled]
     scrolled = []
 
     // The outline's own entry point, called with the same heading. It only
     // diverges while a map is showing that block; with none, the two agree.
-    act(() => view.result.current.navigateFromOutline('b-alpha'))
+    act(() => {
+      view.result.current.navigateFromOutline('b-alpha')
+    })
 
     expect(fromMap).toEqual([{ target: block, options: { behavior: 'smooth', block: 'start' } }])
     expect(scrolled).toEqual(fromMap)
   })
 
-  it('moves the open map\'s camera on an outline click, and leaves the map open', () => {
+  it("moves the open map's camera on an outline click, and leaves the map open", () => {
     const { close, focusBlock, view } = setup({ canFocus: true })
     renderBlock('b-alpha')
 
-    act(() => view.result.current.navigateFromOutline('b-alpha'))
+    act(() => {
+      view.result.current.navigateFromOutline('b-alpha')
+    })
 
     expect(focusBlock).toHaveBeenCalledWith('b-alpha')
     // The panel sits over the picture on purpose: on a map too big to see at
@@ -195,7 +221,9 @@ describe('useMindMapNavigation', () => {
     const { close, focusBlock, view } = setup({ canFocus: false })
     const block = renderBlock('b-alpha')
 
-    act(() => view.result.current.navigateFromOutline('b-alpha'))
+    act(() => {
+      view.result.current.navigateFromOutline('b-alpha')
+    })
 
     // A heading folded behind a "+N more", or dropped at the node cap, has no
     // box to move to. The click still has to go somewhere.
@@ -208,7 +236,9 @@ describe('useMindMapNavigation', () => {
     const { close, focusBlock, view } = setup({ canFocus: true })
     const block = renderBlock('b-alpha')
 
-    act(() => view.result.current.activateNode(alpha))
+    act(() => {
+      view.result.current.activateNode(alpha)
+    })
 
     // The regression this split exists to prevent: a box on the map is a place
     // in the NOTE, so clicking it has to leave the map rather than re-centre on
@@ -221,7 +251,9 @@ describe('useMindMapNavigation', () => {
   it('hands a wiki-link node to the page, leaving the map where it was', () => {
     const { close, openNote, openTask, view } = setup()
 
-    act(() => view.result.current.activateNode(link))
+    act(() => {
+      view.result.current.activateNode(link)
+    })
 
     // The target as written — the page's own wiki-link handler resolves it, so
     // the map inherits the open-in-new-tab preference instead of inventing one.
@@ -236,7 +268,9 @@ describe('useMindMapNavigation', () => {
   it('hands a task node to the page, leaving the map where it was', () => {
     const { close, openNote, openTask, view } = setup()
 
-    act(() => view.result.current.activateNode(task))
+    act(() => {
+      view.result.current.activateNode(task)
+    })
 
     expect(openTask).toHaveBeenCalledWith('t-1')
     expect(openNote).not.toHaveBeenCalled()
@@ -248,7 +282,9 @@ describe('useMindMapNavigation', () => {
     const { view } = setup({ smooth: false })
     renderBlock('b-alpha')
 
-    act(() => view.result.current.navigateToBlock('b-alpha'))
+    act(() => {
+      view.result.current.navigateToBlock('b-alpha')
+    })
 
     expect(scrolled[0].options).toEqual({ behavior: 'auto', block: 'start' })
   })

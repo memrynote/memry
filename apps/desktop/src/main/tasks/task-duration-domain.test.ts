@@ -25,7 +25,9 @@ function noopPublisher(): TasksDomainPublisher {
 
 describe('task duration', () => {
   let t: TestDatabaseResult
-  afterEach(() => t?.close())
+  afterEach(() => {
+    t?.close()
+  })
 
   function setup() {
     t = createTestDataDb()

@@ -10,7 +10,11 @@ import { useNoteFileActions } from '@/hooks/use-note-file-actions'
 
 /** The journal page's modal surfaces: one is open at a time. */
 export type JournalDialog =
-  'export' | 'saveAsTemplate' | 'versionHistory' | 'attachments' | 'delete'
+  | 'export'
+  | 'saveAsTemplate'
+  | 'versionHistory'
+  | 'attachments'
+  | 'delete'
 
 export type JournalCommandId = CommandIdsOf<'journal'>
 
@@ -92,15 +96,25 @@ export function useJournalCommands(input: JournalCommandInput): {
       input.isLocalGraphOpen
         ? tNotes('editor.toolbar.hideLocalGraph')
         : tNotes('editor.toolbar.showLocalGraph'),
-      () => input.setIsLocalGraphOpen((open) => !open),
+      () => {
+        input.setIsLocalGraphOpen((open) => !open)
+      },
       hasEntry
     ),
     'journal.versionHistory': item(
       t('action.versionHistory'),
-      () => dialog.show('versionHistory'),
+      () => {
+        dialog.show('versionHistory')
+      },
       hasEntry
     ),
-    'journal.export': item(t('action.export'), () => dialog.show('export'), hasEntry),
+    'journal.export': item(
+      t('action.export'),
+      () => {
+        dialog.show('export')
+      },
+      hasEntry
+    ),
     'journal.insertTemplate': item(
       tNotes('editor.slashMenu.insertTemplate.title'),
       () => input.openTemplateInsertRef.current?.(),
@@ -108,7 +122,9 @@ export function useJournalCommands(input: JournalCommandInput): {
     ),
     'journal.saveAsTemplate': item(
       tNotes('editor.toolbar.saveAsTemplate'),
-      () => dialog.show('saveAsTemplate'),
+      () => {
+        dialog.show('saveAsTemplate')
+      },
       hasEntry
     ),
     'journal.toggleFullWidth': item(t('action.fullWidth'), input.toggleFullWidth),
@@ -121,7 +137,9 @@ export function useJournalCommands(input: JournalCommandInput): {
     ),
     'journal.addName': item(
       tNotes('names.addMenu'),
-      () => requestNoteNameInput(entryId ?? ''),
+      () => {
+        requestNoteNameInput(entryId ?? '')
+      },
       hasEntry && !isLocked
     ),
     'journal.copyPath': item(tNotes('editor.toolbar.copyPath'), files.copyPath, hasEntry),
@@ -129,7 +147,9 @@ export function useJournalCommands(input: JournalCommandInput): {
     'journal.openExternal': item(fileLabels.openInDefaultApp, files.openExternal, hasEntry),
     'journal.attachments': item(
       tNotes('editor.toolbar.attachments'),
-      () => dialog.show('attachments'),
+      () => {
+        dialog.show('attachments')
+      },
       hasEntry
     ),
     'journal.toggleLock': item(
@@ -141,7 +161,13 @@ export function useJournalCommands(input: JournalCommandInput): {
       input.isBookmarked ? t('action.removeBookmark') : t('action.addBookmark'),
       input.toggleBookmark
     ),
-    'journal.delete': item(t('action.deleteEntry'), () => dialog.show('delete'), hasEntry)
+    'journal.delete': item(
+      t('action.deleteEntry'),
+      () => {
+        dialog.show('delete')
+      },
+      hasEntry
+    )
   }
 
   useTabCommands('journal', commands)

@@ -214,7 +214,9 @@ export function normalizeUrl(url: string): string {
     const parsed = new URL(url)
 
     // Remove tracking parameters
-    TRACKING_PARAMS.forEach((param) => parsed.searchParams.delete(param))
+    TRACKING_PARAMS.forEach((param) => {
+      parsed.searchParams.delete(param)
+    })
 
     // Remove empty hash
     if (parsed.hash === '#') {

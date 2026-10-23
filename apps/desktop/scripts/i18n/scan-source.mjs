@@ -56,7 +56,7 @@ export function isIgnoredSourcePath(filePath, workspaceRoot = defaultWorkspaceRo
     rel.includes('/build/') ||
     rel.startsWith('apps/desktop/tests/') ||
     /\.(test|spec)\.tsx?$/.test(rel) ||
-    /\.d\.ts$/.test(rel)
+    rel.endsWith('.d.ts')
   )
 }
 

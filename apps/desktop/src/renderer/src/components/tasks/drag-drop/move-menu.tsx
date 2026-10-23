@@ -149,16 +149,32 @@ export const MoveMenu = ({
               {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.reschedule')}
             </DropdownMenuLabel>
 
-            <DropdownMenuItem onClick={() => handleDateChange(today)}>
+            <DropdownMenuItem
+              onClick={() => {
+                handleDateChange(today)
+              }}
+            >
               {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.today')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>
+            <DropdownMenuItem
+              onClick={() => {
+                handleDateChange(tomorrow)
+              }}
+            >
               {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.tomorrow')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(nextWeek)}>
+            <DropdownMenuItem
+              onClick={() => {
+                handleDateChange(nextWeek)
+              }}
+            >
               {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.nextWeek')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(null)}>
+            <DropdownMenuItem
+              onClick={() => {
+                handleDateChange(null)
+              }}
+            >
               {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.removeDate')}
             </DropdownMenuItem>
 
@@ -184,7 +200,9 @@ export const MoveMenu = ({
                     return (
                       <DropdownMenuItem
                         key={project.id}
-                        onClick={() => handleProjectChange(project.id)}
+                        onClick={() => {
+                          handleProjectChange(project.id)
+                        }}
                         disabled={isCurrent}
                       >
                         <ProjectIcon
@@ -235,7 +253,9 @@ export const MoveMenu = ({
                   return (
                     <DropdownMenuItem
                       key={status.id}
-                      onClick={() => handleStatusChange(status.id)}
+                      onClick={() => {
+                        handleStatusChange(status.id)
+                      }}
                       disabled={isCurrent}
                     >
                       <span
@@ -268,7 +288,11 @@ export const MoveMenu = ({
             </DropdownMenuLabel>
 
             {onMoveUp && (
-              <DropdownMenuItem onClick={() => handleReorder('up')}>
+              <DropdownMenuItem
+                onClick={() => {
+                  handleReorder('up')
+                }}
+              >
                 <ArrowUp className="size-4 me-2" />
                 Move up
                 <span className="ms-auto text-xs text-muted-foreground">Alt+↑</span>
@@ -276,7 +300,11 @@ export const MoveMenu = ({
             )}
 
             {onMoveDown && (
-              <DropdownMenuItem onClick={() => handleReorder('down')}>
+              <DropdownMenuItem
+                onClick={() => {
+                  handleReorder('down')
+                }}
+              >
                 <ArrowDown className="size-4 me-2" />
                 Move down
                 <span className="ms-auto text-xs text-muted-foreground">Alt+↓</span>
@@ -284,7 +312,11 @@ export const MoveMenu = ({
             )}
 
             {onMoveToTop && (
-              <DropdownMenuItem onClick={() => handleReorder('top')}>
+              <DropdownMenuItem
+                onClick={() => {
+                  handleReorder('top')
+                }}
+              >
                 <ChevronsUp className="size-4 me-2" />
                 Move to top
                 <span className="ms-auto text-xs text-muted-foreground">Alt+Shift+↑</span>
@@ -292,7 +324,11 @@ export const MoveMenu = ({
             )}
 
             {onMoveToBottom && (
-              <DropdownMenuItem onClick={() => handleReorder('bottom')}>
+              <DropdownMenuItem
+                onClick={() => {
+                  handleReorder('bottom')
+                }}
+              >
                 <ChevronsDown className="size-4 me-2" />
                 Move to bottom
                 <span className="ms-auto text-xs text-muted-foreground">Alt+Shift+↓</span>

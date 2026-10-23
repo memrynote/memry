@@ -6,5 +6,12 @@ interface CheckboxEditorProps {
 }
 
 export function CheckboxEditor({ value, onChange }: CheckboxEditorProps) {
-  return <Checkbox checked={value} onCheckedChange={(checked) => onChange(checked === true)} />
+  return (
+    <Checkbox
+      checked={value}
+      onCheckedChange={(checked) => {
+        onChange(checked === true)
+      }}
+    />
+  )
 }

@@ -107,7 +107,7 @@ const priorityOptions: BulkActionOption<Priority>[] = [
   { value: 'none', label: 'Remove priority', isSeparator: false }
 ]
 
-const dueDateOptions: BulkActionOption<string>[] = [
+const dueDateOptions: BulkActionOption[] = [
   { value: 'today', label: 'Today', icon: <Calendar className="size-4" /> },
   { value: 'tomorrow', label: 'Tomorrow', icon: <Calendar className="size-4" /> },
   { value: 'next-week', label: 'Next week', icon: <Calendar className="size-4" /> },
@@ -144,7 +144,7 @@ export const BulkActionToolbar = ({
 }: BulkActionToolbarProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
   // Build project options
-  const projectOptions: BulkActionOption<string>[] = projects
+  const projectOptions: BulkActionOption[] = projects
     .filter((p) => !p.isArchived)
     .map((project) => ({
       value: project.id,
@@ -153,7 +153,7 @@ export const BulkActionToolbar = ({
     }))
 
   // Build status options (for Kanban)
-  const statusOptions: BulkActionOption<string>[] = statuses.map((status) => ({
+  const statusOptions: BulkActionOption[] = statuses.map((status) => ({
     value: status.id,
     label: status.name,
     icon: <span className="size-2 rounded-full" style={{ backgroundColor: status.color }} />,

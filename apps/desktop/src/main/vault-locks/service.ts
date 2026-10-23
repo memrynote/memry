@@ -15,10 +15,9 @@ import {
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase, isDatabaseInitialized } from '../database'
-import { NoteError, NoteErrorCode } from '../lib/errors'
+import { NoteError, NoteErrorCode, OutsideVaultError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { readVaultFile } from '../lib/paths'
-import { OutsideVaultError } from '../lib/errors'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { atomicWrite } from '../vault/file-ops'
 import { folderExists } from '../vault/folders'
@@ -190,9 +189,9 @@ export function scheduleLockedFileReconcile(): void {
   if (reconcileTimer) return
   reconcileTimer = setTimeout(() => {
     reconcileTimer = null
-    void reconcileLockedFiles().catch((err) =>
+    void reconcileLockedFiles().catch((err) => {
       log.warn('Reconciling locked files failed', { error: err })
-    )
+    })
   }, 1000)
 }
 
@@ -228,14 +227,18 @@ function resumeFieldRenameAfterUnlock(): void {
   // Lazy: the rename pulls in the note writer, which imports this module back.
   void import('../tags/schema/field-rename')
     .then(({ resumeFieldRename }) => resumeFieldRename(getDatabase()))
-    .catch((err) => log.warn('Resuming a field rename after an unlock failed', { error: err }))
+    .catch((err) => {
+      log.warn('Resuming a field rename after an unlock failed', { error: err })
+    })
 }
 
 /** A lock record from another device landed: refresh, re-protect, tell the windows. */
 export function onRemoteVaultLockApplied(folderUnlocked?: string): void {
   invalidateVaultLocks()
   void reconcileLockedFiles(folderUnlocked)
-    .catch((err) => log.warn('Reconciling locked files after a remote lock failed', { error: err }))
+    .catch((err) => {
+      log.warn('Reconciling locked files after a remote lock failed', { error: err })
+    })
     .finally(() => broadcastLockState())
   resumeFieldRenameAfterUnlock()
 }

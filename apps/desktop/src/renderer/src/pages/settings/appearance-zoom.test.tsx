@@ -54,9 +54,9 @@ describe('Appearance zoom stepper', () => {
 
     expect(mocks.setZoomFactor).toHaveBeenCalledWith(1.1)
     expect(screen.getByText('110%')).toBeInTheDocument()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 1.1 })
-    )
+    })
   })
 
   it('#given the decrease button #then the interface shrinks one stop and the stop is saved', async () => {
@@ -66,9 +66,9 @@ describe('Appearance zoom stepper', () => {
 
     expect(mocks.setZoomFactor).toHaveBeenCalledWith(0.9)
     expect(screen.getByText('90%')).toBeInTheDocument()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 0.9 })
-    )
+    })
   })
 
   it('#given a burst of clicks #then only the value the user landed on is written', async () => {
@@ -79,9 +79,9 @@ describe('Appearance zoom stepper', () => {
     fireEvent.click(increaseButton())
 
     expect(screen.getByText('130%')).toBeInTheDocument()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 1.3 })
-    )
+    })
     expect(mocks.generalSettings.updateSettings).toHaveBeenCalledTimes(1)
   })
 
@@ -113,9 +113,9 @@ describe('Appearance zoom stepper', () => {
 
     expect(mocks.setZoomFactor).toHaveBeenCalledWith(1)
     expect(screen.getByText('100%')).toBeInTheDocument()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 1 })
-    )
+    })
   })
 
   it('#given the save fails #then the previewed zoom is rolled back and the failure is reported', async () => {
@@ -124,7 +124,9 @@ describe('Appearance zoom stepper', () => {
 
     fireEvent.click(increaseButton())
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update zoom level'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to update zoom level')
+    })
     // useThemeSync never re-runs for a value that never changed, so the row has
     // to hand the previous factor back to the frame itself.
     expect(mocks.setZoomFactor).toHaveBeenLastCalledWith(1)
@@ -138,9 +140,9 @@ describe('Appearance zoom stepper', () => {
 
     unmount()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ zoomFactor: 0.9 })
-    )
+    })
   })
 
   it('#given a stored factor off the zoom grid #then the row shows the nearest stop', () => {

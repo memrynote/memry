@@ -26,7 +26,9 @@ export function ProfileSection() {
   useEffect(() => {
     api
       .authedJson<BillingStatus>('/auth/billing')
-      .then((b) => setEmail(b.email ?? ''))
+      .then((b) => {
+        setEmail(b.email ?? '')
+      })
       .catch(() => {})
   }, [api])
 
@@ -126,7 +128,9 @@ export function ProfileSection() {
               type="email"
               placeholder="new@example.com"
               value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
+              onChange={(e) => {
+                setNewEmail(e.target.value)
+              }}
             />
             <Button variant="outline" disabled={!newEmail} onClick={requestEmailChange}>
               Change
@@ -138,7 +142,9 @@ export function ProfileSection() {
               inputMode="numeric"
               placeholder="123456"
               value={emailCode}
-              onChange={(e) => setEmailCode(e.target.value)}
+              onChange={(e) => {
+                setEmailCode(e.target.value)
+              }}
             />
             <Button disabled={emailCode.length !== 6} onClick={verifyEmailChange}>
               Confirm
@@ -172,12 +178,16 @@ export function ProfileSection() {
             inputMode="numeric"
             placeholder="Confirmation code"
             value={deleteCode}
-            onChange={(e) => setDeleteCode(e.target.value)}
+            onChange={(e) => {
+              setDeleteCode(e.target.value)
+            }}
           />
           <Input
             placeholder='Type "DELETE" to confirm'
             value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
+            onChange={(e) => {
+              setConfirmText(e.target.value)
+            }}
           />
           <Button
             className="bg-red-500 text-white hover:bg-red-600"

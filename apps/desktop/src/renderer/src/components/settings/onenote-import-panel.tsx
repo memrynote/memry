@@ -168,7 +168,9 @@ export function OneNoteImportPanel({ disabled, onStateChange }: OneNoteImportPan
       <div key={section.id} style={{ paddingInlineStart: `${depth * 16}px` }}>
         <LabeledCheckbox
           checked={selected.has(section.id)}
-          onCheckedChange={(checked) => toggleSection(section.id, checked)}
+          onCheckedChange={(checked) => {
+            toggleSection(section.id, checked)
+          }}
           label={section.displayName}
           disabled={disabled}
         />
@@ -245,7 +247,9 @@ export function OneNoteImportPanel({ disabled, onStateChange }: OneNoteImportPan
               variant="ghost"
               size="sm"
               disabled={disabled}
-              onClick={() => setSelected(allSelected ? new Set() : new Set(allSectionIds))}
+              onClick={() => {
+                setSelected(allSelected ? new Set() : new Set(allSectionIds))
+              }}
             >
               {allSelected
                 ? t('import.dialog.onenote.deselectAll')

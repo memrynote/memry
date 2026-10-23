@@ -34,8 +34,19 @@ export function ApplyTemplateConfirmDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
-          <Button onClick={() => onConfirm('full')}>{t('applyTemplateConfirm.full')}</Button>
-          <Button variant="outline" onClick={() => onConfirm('body')}>
+          <Button
+            onClick={() => {
+              onConfirm('full')
+            }}
+          >
+            {t('applyTemplateConfirm.full')}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              onConfirm('body')
+            }}
+          >
             {t('applyTemplateConfirm.body')}
           </Button>
           <Button variant="ghost" onClick={onCancel}>

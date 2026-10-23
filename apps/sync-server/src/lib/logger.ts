@@ -16,9 +16,17 @@ export function createLogger(scope: string): Logger {
   }
 
   return {
-    info: (msg, ctx) => log('info', console.info, msg, ctx),
-    warn: (msg, ctx) => log('warn', console.warn, msg, ctx),
-    error: (msg, ctx) => log('error', console.error, msg, ctx),
-    debug: (msg, ctx) => log('debug', console.debug, msg, ctx)
+    info: (msg, ctx) => {
+      log('info', console.info, msg, ctx)
+    },
+    warn: (msg, ctx) => {
+      log('warn', console.warn, msg, ctx)
+    },
+    error: (msg, ctx) => {
+      log('error', console.error, msg, ctx)
+    },
+    debug: (msg, ctx) => {
+      log('debug', console.debug, msg, ctx)
+    }
   }
 }

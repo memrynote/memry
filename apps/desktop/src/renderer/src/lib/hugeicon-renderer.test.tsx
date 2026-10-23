@@ -10,10 +10,14 @@ vi.mock('@hugeicons/core-free-icons', () => ({
 describe('HugeIconByName', () => {
   it('draws the new icon when a mounted icon is handed another name', async () => {
     const { container, rerender } = render(<HugeIconByName name="Building03Icon" />)
-    await waitFor(() => expect(container.querySelector('[data-icon=building]')).not.toBeNull())
+    await waitFor(() => {
+      expect(container.querySelector('[data-icon=building]')).not.toBeNull()
+    })
 
     rerender(<HugeIconByName name="UserIcon" />)
-    await waitFor(() => expect(container.querySelector('[data-icon=user]')).not.toBeNull())
+    await waitFor(() => {
+      expect(container.querySelector('[data-icon=user]')).not.toBeNull()
+    })
     expect(container.querySelector('[data-icon=building]')).toBeNull()
 
     rerender(<HugeIconByName name="Building03Icon" />)

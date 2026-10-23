@@ -284,7 +284,7 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
     await user.click(within(warning).getByRole('checkbox'))
     await user.click(within(form).getByRole('button', { name: 'Connect' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.connectProvider).toHaveBeenCalledWith({
         provider: 'writable-single',
         connection: {
@@ -295,7 +295,7 @@ describe('provider-aware Settings → Calendar shell (#1395)', () => {
           acknowledgeOutdatedDevices: true
         }
       })
-    )
+    })
   })
 })
 

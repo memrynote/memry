@@ -95,7 +95,9 @@ describe('yjs-doc-registry', () => {
     registry.release('n1', consumers[5])
     expect(registry.refCount('n1')).toBe(4)
     expect(destroy).not.toHaveBeenCalled()
-    ;[consumers[1], consumers[2], consumers[4], late].forEach((c) => registry.release('n1', c))
+    ;[consumers[1], consumers[2], consumers[4], late].forEach((c) => {
+      registry.release('n1', c)
+    })
     expect(registry.refCount('n1')).toBe(0)
     expect(destroy).toHaveBeenCalledTimes(1)
   })

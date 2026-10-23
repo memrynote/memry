@@ -21,7 +21,12 @@ export type VaultSwitchDirection = 'next' | 'prev'
  * vault list, or the Settings prompt to open the account's vault.
  */
 export type VaultSwitchSource =
-  'swipe' | 'shortcut' | 'indicator' | 'menu' | 'onboarding' | 'settings'
+  | 'swipe'
+  | 'shortcut'
+  | 'indicator'
+  | 'menu'
+  | 'onboarding'
+  | 'settings'
 
 export interface VaultSwitchTarget {
   path: string
@@ -201,7 +206,9 @@ export function useVaultPageRequest(onRequest: (request: VaultPageRequest) => vo
   }, [onRequest])
 
   useEffect(() => {
-    const listener = (request: VaultPageRequest): void => handlerRef.current(request)
+    const listener = (request: VaultPageRequest): void => {
+      handlerRef.current(request)
+    }
     pageListeners.add(listener)
     return () => {
       pageListeners.delete(listener)

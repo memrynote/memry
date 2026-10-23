@@ -70,7 +70,9 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
         {hasMentions ? (
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+              setIsExpanded(!isExpanded)
+            }}
             className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
             aria-expanded={isExpanded}
             aria-label={`${isExpanded ? t('backlinks.collapse') : t('backlinks.expand')} ${displayLabel}`}
@@ -104,7 +106,9 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
             <button
               type="button"
               key={mention.id}
-              onClick={() => onClick(noteId, mention)}
+              onClick={() => {
+                onClick(noteId, mention)
+              }}
               className={cn(
                 'block w-full text-start',
                 'rounded px-1.5 py-1',

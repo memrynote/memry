@@ -47,7 +47,9 @@ export function TagIconChip({ icon, color, onIconChange }: TagIconChipProps): Re
       <PopoverTrigger asChild>
         <button
           type="button"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
           aria-label={t('tags.actions.changeIcon')}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent"
         >
@@ -66,13 +68,17 @@ export function TagIconChip({ icon, color, onIconChange }: TagIconChipProps): Re
         // Same shift limiter as the sidebar picker (#1986).
         sticky="always"
         className="w-auto border-0 bg-transparent p-0 shadow-none"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
       >
         <Suspense fallback={null}>
           <LazyEmojiPicker
             isOpen
             embedded
-            onClose={() => setOpen(false)}
+            onClose={() => {
+              setOpen(false)
+            }}
             onSelect={handleSelect}
             onRemove={handleRemove}
             hasEmoji={!!icon}

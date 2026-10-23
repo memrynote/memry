@@ -73,7 +73,9 @@ function deleteR2Object(key) {
     })
     let stderr = ''
     child.stderr.on('data', (d) => (stderr += d))
-    child.on('close', (code) => resolve({ key, ok: code === 0, stderr }))
+    child.on('close', (code) => {
+      resolve({ key, ok: code === 0, stderr })
+    })
   })
 }
 
@@ -106,9 +108,9 @@ async function confirm() {
     return false
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout })
-  const answer = await new Promise((resolve) =>
+  const answer = await new Promise((resolve) => {
     rl.question(`Type "reset staging" to wipe ${DB_NAME} + ${BUCKET}: `, resolve)
-  )
+  })
   rl.close()
   return answer.trim() === 'reset staging'
 }

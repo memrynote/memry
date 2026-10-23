@@ -46,7 +46,9 @@ export const searchApi = {
 
 export const searchEvents = {
   onSearchIndexRebuildStarted: (callback: () => void): (() => void) =>
-    subscribe<void>(SearchChannels.events.INDEX_REBUILD_STARTED, () => callback()),
+    subscribe<void>(SearchChannels.events.INDEX_REBUILD_STARTED, () => {
+      callback()
+    }),
 
   onSearchIndexRebuildProgress: (
     callback: (progress: IndexRebuildProgress) => void
@@ -54,8 +56,12 @@ export const searchEvents = {
     subscribe<IndexRebuildProgress>(SearchChannels.events.INDEX_REBUILD_PROGRESS, callback),
 
   onSearchIndexRebuildCompleted: (callback: () => void): (() => void) =>
-    subscribe<void>(SearchChannels.events.INDEX_REBUILD_COMPLETED, () => callback()),
+    subscribe<void>(SearchChannels.events.INDEX_REBUILD_COMPLETED, () => {
+      callback()
+    }),
 
   onSearchIndexCorrupt: (callback: () => void): (() => void) =>
-    subscribe<void>(SearchChannels.events.INDEX_CORRUPT, () => callback())
+    subscribe<void>(SearchChannels.events.INDEX_CORRUPT, () => {
+      callback()
+    })
 }

@@ -101,10 +101,20 @@ vi.mock('@/components/tasks/date-picker-calendar', () => ({
       <span>activity:{activityData ? 'yes' : 'no'}</span>
       <span>dots:{dayDots ? dayDots.length : 0}</span>
       <span>hover:{hoveredEventColor ?? 'none'}</span>
-      <button type="button" onClick={() => onSelect(new Date(2026, 4, 11))}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelect(new Date(2026, 4, 11))
+        }}
+      >
         select panel date
       </button>
-      <button type="button" onClick={() => onSelect(undefined)}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelect(undefined)
+        }}
+      >
         clear panel date
       </button>
       <button type="button" onClick={onTodayClick}>
@@ -124,7 +134,12 @@ vi.mock('@/components/journal', () => ({
   }) => (
     <div data-testid="journal-day-panel">
       {date}
-      <button type="button" onClick={() => onHoverColor('#ff0000')}>
+      <button
+        type="button"
+        onClick={() => {
+          onHoverColor('#ff0000')
+        }}
+      >
         hover event
       </button>
     </div>

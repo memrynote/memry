@@ -125,7 +125,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
     const options = InboxJobListSchema.parse(input || {})
     const db = deps.requireDatabase()
 
-    const conditions: SQL<unknown>[] = []
+    const conditions: SQL[] = []
     if (options.itemIds?.length) {
       conditions.push(inArray(inboxJobs.itemId, options.itemIds))
     }

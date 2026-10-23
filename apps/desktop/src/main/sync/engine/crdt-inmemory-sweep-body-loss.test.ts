@@ -297,7 +297,12 @@ describe('CRDT sweep in in-memory mode (#2511)', () => {
     const coordinator = new CrdtSyncCoordinator(ctx, async () => new Uint8Array(32))
 
     await coordinator.pullCrdtForNotes([NOTE])
-    await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+    await vi.waitFor(
+      () => {
+        expect(hasPendingWriteback(NOTE)).toBe(false)
+      },
+      { timeout: 5000 }
+    )
 
     h.server.updates.push({
       sequenceNum: 7,
@@ -307,7 +312,12 @@ describe('CRDT sweep in in-memory mode (#2511)', () => {
     })
 
     await coordinator.pullCrdtForNotes([NOTE])
-    await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+    await vi.waitFor(
+      () => {
+        expect(hasPendingWriteback(NOTE)).toBe(false)
+      },
+      { timeout: 5000 }
+    )
 
     expect(h.files.get(FILE)).toBe(
       [
@@ -498,7 +508,9 @@ describe('CrdtProvider with no store (#2536)', () => {
       owedFullStates.clear()
     }
     const outbox = {
-      enqueue: (_noteId: string, update: Uint8Array) => pushUpdate(update),
+      enqueue: (_noteId: string, update: Uint8Array) => {
+        pushUpdate(update)
+      },
       enqueueFullState: (noteId: string) => owedFullStates.add(noteId),
       dropNote: () => {}
     } as unknown as NoteBodyOutbox
@@ -538,7 +550,12 @@ describe('CrdtProvider with no store (#2536)', () => {
     putNoteInVault(EXPECTED_BODY)
     const { provider, coordinator } = await startRuntime()
     await coordinator.pullCrdtForNotes([NOTE])
-    await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+    await vi.waitFor(
+      () => {
+        expect(hasPendingWriteback(NOTE)).toBe(false)
+      },
+      { timeout: 5000 }
+    )
 
     const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
       coordinator.pullCrdtForNote(id)
@@ -652,7 +669,12 @@ describe('CrdtProvider with no store (#2536)', () => {
     const { provider } = await startRuntime()
 
     await provider.pushSnapshotsForNotes([NOTE], { concurrency: 1 })
-    await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+    await vi.waitFor(
+      () => {
+        expect(hasPendingWriteback(NOTE)).toBe(false)
+      },
+      { timeout: 5000 }
+    )
 
     expect({
       server: await bodyAfterPull(),
@@ -698,7 +720,12 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
 
     async function fileBodyAfterWriteback(): Promise<string | undefined> {
-      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+      await vi.waitFor(
+        () => {
+          expect(hasPendingWriteback(NOTE)).toBe(false)
+        },
+        { timeout: 5000 }
+      )
       return h.files.get(FILE)?.split('---\n')[2]
     }
 
@@ -822,7 +849,9 @@ describe('CrdtProvider with no store (#2536)', () => {
       const { provider, coordinator, pushUpdate } = await startRuntime()
       const outbox = new NoteBodyOutbox({
         queue: new SyncQueueManager(testDb.db as unknown as DrizzleDb),
-        push: async (_noteId, updates) => updates.forEach(pushUpdate)
+        push: async (_noteId, updates) => {
+          updates.forEach(pushUpdate)
+        }
       })
       outbox.start()
       outbox.enableFullStateFlush((noteId) =>
@@ -837,7 +866,12 @@ describe('CrdtProvider with no store (#2536)', () => {
 
       putNoteInVault(EDITED_BODY)
       await feedExternalEditToCrdt(NOTE, EDITED_BODY)
-      await vi.waitFor(() => expect(outbox.getOutstandingCount()).toBe(0), { timeout: 5000 })
+      await vi.waitFor(
+        () => {
+          expect(outbox.getOutstandingCount()).toBe(0)
+        },
+        { timeout: 5000 }
+      )
       const afterFlush = { owed: owesFileBody(NOTE), versions: [...h.versions] }
       await coordinator.pullCrdtForNotes([NOTE])
       const file = await fileBodyAfterWriteback()
@@ -1201,7 +1235,12 @@ describe('CrdtProvider with no store (#2536)', () => {
     await feedExternalEditToCrdt(JOURNAL, body)
 
     await coordinator.pullCrdtForNotes([JOURNAL])
-    await vi.waitFor(() => expect(hasPendingWriteback(JOURNAL)).toBe(false), { timeout: 5000 })
+    await vi.waitFor(
+      () => {
+        expect(hasPendingWriteback(JOURNAL)).toBe(false)
+      },
+      { timeout: 5000 }
+    )
     const fileAfterPull = h.files.get('/vault/journal/2026-01-01.md')
     await flushFullStates()
 
@@ -1289,7 +1328,12 @@ describe('CrdtProvider with no store (#2536)', () => {
       const { provider, coordinator, flushFullStates } = await startRuntime({ store: true })
       if (entry === 'sweep') await coordinator.pullCrdtForNotes([NOTE])
       else await coordinator.pullCrdtForNote(NOTE)
-      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+      await vi.waitFor(
+        () => {
+          expect(hasPendingWriteback(NOTE)).toBe(false)
+        },
+        { timeout: 5000 }
+      )
       await flushFullStates()
       await provider.close(NOTE)
       return { serverBody, fileBefore }

@@ -17,7 +17,7 @@ describe('RecordSyncController', () => {
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const next = {
           ...local,
-          clock: { ...(local.clock ?? {}), [deviceId]: ((local.clock ?? {})[deviceId] ?? 0) + 1 }
+          clock: { ...local.clock, [deviceId]: ((local.clock ?? {})[deviceId] ?? 0) + 1 }
         }
         state.set(itemId, next)
         return next
@@ -184,7 +184,7 @@ describe('RecordSyncController', () => {
     const queue = { enqueue: vi.fn() }
     const buildDeletePayload = vi.fn(() => JSON.stringify({ tombstone: true }))
 
-    const controller = new RecordSyncController<{ id: string; localOnly?: boolean }, [], []>({
+    const controller = new RecordSyncController<{ id: string; localOnly?: boolean }, []>({
       type: 'task',
       queue,
       getDeviceId: () => 'device-A',

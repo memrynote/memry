@@ -46,7 +46,9 @@ export function StatusProjectPickerPanel({
           <button
             key={project.id}
             type="button"
-            onClick={() => onSelectProject(project.id)}
+            onClick={() => {
+              onSelectProject(project.id)
+            }}
             className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
           >
             <div

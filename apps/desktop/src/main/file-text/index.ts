@@ -27,7 +27,9 @@ export function startFileTextExtraction(vaultPath: string): void {
       stopOcr()
       closePdfHost()
     },
-    textChanged: (noteId) => publishProjectionEvent({ type: 'note.text-extracted', noteId })
+    textChanged: (noteId) => {
+      publishProjectionEvent({ type: 'note.text-extracted', noteId })
+    }
   })
   runner.start()
 }

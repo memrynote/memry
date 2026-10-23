@@ -73,7 +73,9 @@ describe('installWorkerLogForwarding', () => {
   it('no-ops and never installs a transport when process.parentPort is undefined', () => {
     setParentPort(undefined)
 
-    expect(() => installWorkerLogForwarding('Embeddings')).not.toThrow()
+    expect(() => {
+      installWorkerLogForwarding('Embeddings')
+    }).not.toThrow()
     expect((log.transports as unknown as Record<string, unknown>).forwardToMain).toBeUndefined()
   })
 
@@ -83,7 +85,9 @@ describe('installWorkerLogForwarding', () => {
 
     installWorkerLogForwarding('Embeddings')
 
-    expect(() => log.error('boom', new Error('inner'), () => {})).not.toThrow()
+    expect(() => {
+      log.error('boom', new Error('inner'), () => {})
+    }).not.toThrow()
 
     expect(port.postMessage).toHaveBeenCalledTimes(1)
     const [[posted]] = port.postMessage.mock.calls as [

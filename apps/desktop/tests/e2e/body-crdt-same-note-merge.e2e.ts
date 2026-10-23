@@ -213,7 +213,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M1 Same Note Different Blocks ${Date.now()}`
     const initialBody = 'shared top block\n\nshared bottom block'
@@ -246,7 +246,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M2 Same Block Different Positions ${Date.now()}`
     const initialBody = 'shared merge block'
@@ -275,7 +275,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M3 Same Position Insert ${Date.now()}`
     const initialBody = 'shared merge block'
@@ -303,7 +303,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M4 A Online B Offline ${Date.now()}`
     const initialBody = 'shared live merge block'
@@ -332,7 +332,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M5 A Offline B Online ${Date.now()}`
     const initialBody = 'shared live merge block'
@@ -361,7 +361,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M6 Both Online ${Date.now()}`
     const initialBody = 'shared live merge block'
@@ -390,7 +390,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M7 NoteB Cross Edit ${Date.now()}`
     const initialBody = 'noteB shared merge block'
@@ -419,7 +419,7 @@ test.describe('Body CRDT same-note merge propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `M8 NoteA Cross Edit ${Date.now()}`
     const initialBody = 'noteA shared merge block'

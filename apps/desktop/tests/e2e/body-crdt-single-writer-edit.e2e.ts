@@ -153,7 +153,7 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `E1 Offline Own Edit ${Date.now()}`
     const initialBody = 'shared note from A'
@@ -178,7 +178,7 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `E2 Offline Own Edit ${Date.now()}`
     const initialBody = 'shared note from B'
@@ -203,7 +203,7 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `E3 Offline Peer Edit ${Date.now()}`
     const initialBody = 'shared note from B'
@@ -228,7 +228,7 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `E4 Offline Peer Edit ${Date.now()}`
     const initialBody = 'shared note from A'
@@ -254,7 +254,7 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `E5 Receiver Offline ${Date.now()}`
     const initialBody = 'shared note from A'
@@ -282,7 +282,7 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const title = `E6 Receiver Offline ${Date.now()}`
     const initialBody = 'shared note from B'

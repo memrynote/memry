@@ -179,7 +179,9 @@ describe('UpdateInstallFailedDialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     // "Details" on the sidebar row is the way back in.
-    act(() => reopenInstallFailed())
+    act(() => {
+      reopenInstallFailed()
+    })
     view.rerender(<UpdateInstallFailedDialog />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })

@@ -73,7 +73,9 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
  */
 export async function syncNoteDelete(noteId: string): Promise<void> {
   // Loaded so the tombstone carries the doc's body vector (chapter 05 §5.8, #3037).
-  await getCrdtProvider().withDocLoaded(noteId, () => enqueueLocalSyncDelete('note', noteId))
+  await getCrdtProvider().withDocLoaded(noteId, () => {
+    enqueueLocalSyncDelete('note', noteId)
+  })
   recordLocalItemDelete('note', noteId)
   void getCrdtProvider()
     ?.purge(noteId)

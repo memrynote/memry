@@ -60,7 +60,9 @@ export function InboxSegmentControl({
               role="tab"
               aria-selected={isActive}
               tabIndex={isActive ? 0 : -1}
-              onClick={() => onChange(tab.id)}
+              onClick={() => {
+                onChange(tab.id)
+              }}
               className={cn(
                 'relative flex items-center py-1 px-2.5 transition-colors duration-150',
                 'focus-visible:outline-none active:scale-[0.97]',

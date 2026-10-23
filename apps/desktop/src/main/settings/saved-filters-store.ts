@@ -34,9 +34,9 @@ export function getSavedFilterById(db: SavedFiltersDb, id: string) {
 }
 
 export function deleteSavedFilter(db: SavedFiltersDb, id: string) {
-  return settingsQueries.deleteSavedFilter(db, id)
+  settingsQueries.deleteSavedFilter(db, id)
 }
 
 export function reorderSavedFilters(db: SavedFiltersDb, ids: string[], positions: number[]) {
-  return settingsQueries.reorderSavedFilters(db, ids, positions)
+  settingsQueries.reorderSavedFilters(db, ids, positions)
 }

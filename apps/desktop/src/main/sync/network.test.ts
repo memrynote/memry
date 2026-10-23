@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  NetworkMonitor,
-  NetworkMonitorDeps,
-  OFFLINE_POLL_INTERVAL_MS,
-  ONLINE_POLL_INTERVAL_MS
-} from './network'
+import type { NetworkMonitorDeps } from './network'
+import { NetworkMonitor, OFFLINE_POLL_INTERVAL_MS, ONLINE_POLL_INTERVAL_MS } from './network'
 
 interface MockDeps extends NetworkMonitorDeps {
   triggerResume: () => void
@@ -28,8 +24,12 @@ function createMockDeps(initialOnline = true): MockDeps {
       const i = suspendCallbacks.indexOf(cb)
       if (i >= 0) suspendCallbacks.splice(i, 1)
     },
-    triggerResume: () => resumeCallbacks.forEach((cb) => cb()),
-    triggerSuspend: () => suspendCallbacks.forEach((cb) => cb()),
+    triggerResume: () => {
+      resumeCallbacks.forEach((cb) => cb())
+    },
+    triggerSuspend: () => {
+      suspendCallbacks.forEach((cb) => cb())
+    },
     setOnline: (v: boolean) => {
       online = v
     }

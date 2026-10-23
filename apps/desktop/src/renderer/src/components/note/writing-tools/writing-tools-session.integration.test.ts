@@ -247,10 +247,11 @@ describe('WritingToolsSession (live Y.Doc binding)', () => {
   it('cycles on ↑/↓ whenever the caret is in or touching the alternative, until Esc releases it', () => {
     const ctx = setup('Start here. One small step.')
     addAlternative(ctx, 'small', 'giant')
-    const setCaret = (pos: number): void =>
+    const setCaret = (pos: number): void => {
       ctx.view.dispatch(
         ctx.view.state.tr.setSelection(TextSelection.create(ctx.view.state.doc, pos))
       )
+    }
     const press = (key: string, target: EventTarget = ctx.view.dom): KeyboardEvent => {
       const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
       target.dispatchEvent(event)

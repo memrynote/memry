@@ -127,9 +127,13 @@ export function TaskPrefetchProvider({
   )
 
   useEffect(() => {
-    const record = ({ task }: { task: Task }): void => taskParents.set(task.id, task.parentId)
+    const record = ({ task }: { task: Task }): void => {
+      taskParents.set(task.id, task.parentId)
+    }
     const unsubscribers = [onTaskCreated(record), onTaskUpdated(record), onTaskMoved(record)]
-    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe())
+    }
   }, [taskParents])
 
   // Clear the cache synchronously when the note changes, at render time rather

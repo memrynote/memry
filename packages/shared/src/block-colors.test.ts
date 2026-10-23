@@ -141,12 +141,12 @@ describe('applyTableCellColors', () => {
   it('skips keys naming a cell the table no longer has', () => {
     const content = tableContent([[{}, {}]])
 
-    expect(() =>
+    expect(() => {
       applyTableCellColors(content, {
         '9:9': { backgroundColor: 'red' },
         nonsense: { textColor: 'blue' }
       })
-    ).not.toThrow()
+    }).not.toThrow()
     expect(extractTableCellColors(content)).toBeNull()
   })
 })

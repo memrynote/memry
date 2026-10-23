@@ -68,7 +68,12 @@ const pickerProps = (
   id: TaskRowPickerId
 ): { open?: boolean; onOpenChange?: (open: boolean) => void } =>
   control
-    ? { open: control.open === id, onOpenChange: (open) => control.onOpenChange(id, open) }
+    ? {
+        open: control.open === id,
+        onOpenChange: (open) => {
+          control.onOpenChange(id, open)
+        }
+      }
     : {}
 
 // ============================================================================
@@ -178,11 +183,20 @@ export const TaskRow = ({
       aria-busy={!interactive || undefined}
     >
       {isSelectionMode && showSelection && (
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="shrink-0"
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+        >
           <SelectionCheckbox
             checked={isCheckedForSelection}
-            onChange={() => onToggleSelect?.(task.id)}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            onChange={() => {
+              onToggleSelect?.(task.id)
+            }}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation()
+            }}
             aria-label={`Select ${task.title}`}
           />
         </div>
@@ -193,7 +207,9 @@ export const TaskRow = ({
         statuses={project.statuses}
         isCompleted={isCompleted}
         onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
-        onToggleComplete={() => onToggleComplete(task.id)}
+        onToggleComplete={() => {
+          onToggleComplete(task.id)
+        }}
         disabled={!interactive}
         {...pickerProps(pickerControl, 'status')}
       />
@@ -237,7 +253,12 @@ export const TaskRow = ({
       )}
 
       {path ? null : showProjectBadge && onProjectChange && interactive ? (
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="shrink-0"
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+        >
           <InteractiveProjectBadge
             projectId={task.projectId}
             projects={projects}

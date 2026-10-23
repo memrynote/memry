@@ -80,7 +80,7 @@ export const reportLaunchTimeline = (reason: string): void => {
   fields.vaultOpenPending = marks.has('vault_open_start') && !marks.has('vault_open_ready')
 
   const shownMs = marks.get('window_shown') ?? 0
-  const slow = fields.fallback === true || shownMs >= SLOW_LAUNCH_MS
+  const slow = fields.fallback || shownMs >= SLOW_LAUNCH_MS
   if (slow) startupLog.warn('launch timeline', fields)
   else startupLog.info('launch timeline', fields)
 }

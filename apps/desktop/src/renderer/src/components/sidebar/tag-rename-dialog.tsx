@@ -82,7 +82,12 @@ export function TagRenameDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (!next ? close() : onOpenChange(next))}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        !next ? close() : onOpenChange(next)
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{tPhaseF('phaseF.componentsSidebarTagRenameDialog.renameTag')}</DialogTitle>

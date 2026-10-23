@@ -50,5 +50,7 @@ export function handleDeviceKeyMismatch(): void {
   // imports this module — a static import would close that cycle at load time.
   void import('./session-teardown')
     .then(({ teardownSession }) => teardownSession('integrity'))
-    .catch((err) => log.error('Device key mismatch sign-out failed', err))
+    .catch((err) => {
+      log.error('Device key mismatch sign-out failed', err)
+    })
 }

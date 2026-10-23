@@ -59,7 +59,11 @@ test.describe('Agent chat create-task flow', () => {
       fs.rmSync(testVaultPath, { recursive: true, force: true })
     }
     if (fakeLocalServer) {
-      await new Promise<void>((resolve) => fakeLocalServer?.close(() => resolve()))
+      await new Promise<void>((resolve) =>
+        fakeLocalServer?.close(() => {
+          resolve()
+        })
+      )
     }
     launched = null
     testVaultPath = ''
@@ -149,15 +153,18 @@ async function startFakeLocalOpenAiServer(): Promise<{ server: http.Server; base
     try {
       const url = new URL(request.url ?? '/', 'http://127.0.0.1')
       if (request.method === 'GET' && url.pathname === '/v1/models') {
-        return sendJson(response, { data: [{ id: 'fake-local' }] })
+        sendJson(response, { data: [{ id: 'fake-local' }] })
+        return
       }
 
       if (request.method === 'POST' && url.pathname === '/v1/chat/completions') {
         const body = await readJson(request)
         if (!body.stream) {
-          return sendJson(response, completionForProbe(body))
+          sendJson(response, completionForProbe(body))
+          return
         }
-        return sendStream(response, streamChunksFor(body))
+        sendStream(response, streamChunksFor(body))
+        return
       }
 
       response.writeHead(404)

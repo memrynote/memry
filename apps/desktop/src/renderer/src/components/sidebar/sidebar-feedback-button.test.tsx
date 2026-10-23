@@ -100,7 +100,9 @@ describe('SidebarFeedbackButton', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'feedbackSend' }))
 
-    await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.submit).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.submit).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'great app',
@@ -122,7 +124,9 @@ describe('SidebarFeedbackButton', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'feedbackSend' }))
 
-    await waitFor(() => expect(mocks.submit).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.submit).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.submit).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'hello', email: 'signed-in@example.com' })
     )
@@ -137,6 +141,8 @@ describe('SidebarFeedbackButton', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'feedbackSend' }))
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalled()
+    })
   })
 })

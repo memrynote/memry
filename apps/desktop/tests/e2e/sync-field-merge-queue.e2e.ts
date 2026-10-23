@@ -111,7 +111,7 @@ test.describe('Sync field merge and queue retry E2E', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
@@ -259,7 +259,7 @@ test.describe('Sync field merge and queue retry E2E', () => {
     syncBootstrap,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 

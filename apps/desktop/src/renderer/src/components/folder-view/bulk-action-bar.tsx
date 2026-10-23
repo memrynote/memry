@@ -204,9 +204,15 @@ export function BulkActionBar({
             <LazyEmojiPicker
               isOpen
               embedded
-              onClose={() => setIsIconPickerOpen(false)}
-              onSelect={(icon) => onSetIcon(icon)}
-              onRemove={() => onSetIcon(null)}
+              onClose={() => {
+                setIsIconPickerOpen(false)
+              }}
+              onSelect={(icon) => {
+                onSetIcon(icon)
+              }}
+              onRemove={() => {
+                onSetIcon(null)
+              }}
               hasEmoji={selectionHasIcon}
             />
           </Suspense>
@@ -292,7 +298,9 @@ function AddTagButton({
         <Input
           autoFocus
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value)
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()
@@ -310,7 +318,9 @@ function AddTagButton({
                 <button
                   key={tag}
                   type="button"
-                  onClick={() => apply(tag)}
+                  onClick={() => {
+                    apply(tag)
+                  }}
                   className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-start text-xs text-foreground transition-colors hover:bg-muted"
                 >
                   {icon ? (

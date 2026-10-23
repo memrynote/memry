@@ -143,9 +143,9 @@ describe('ProjectOverviewNote', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /overview note/i }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.setProjectHomeNote).toHaveBeenCalledWith({ projectId: 'p1', noteId: 'new-1' })
-    )
+    })
     expect(onHomeNoteChange).toHaveBeenCalledWith('new-1')
   })
 
@@ -219,9 +219,9 @@ describe('ProjectOverviewNote', () => {
 
     unmount()
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
-    )
+    })
     expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
   })
 

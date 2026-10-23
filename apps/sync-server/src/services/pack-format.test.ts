@@ -168,7 +168,9 @@ describe('openPack streaming assembly', () => {
   it('enforces strict plan order so offsets can never desync', async () => {
     const plans = [planOf(entry({ sortKey: 1 })), planOf(entry({ sortKey: 2 }))]
     const pack = openPack(plans)
-    expect(() => pack.skipEntry(plans[1])).toThrow(/plan order/)
+    expect(() => {
+      pack.skipEntry(plans[1])
+    }).toThrow(/plan order/)
     await expect(pack.finish()).rejects.toThrow(/no entries/)
   })
 })

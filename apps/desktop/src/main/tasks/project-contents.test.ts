@@ -22,7 +22,9 @@ describe('withoutMissingVaultItems', () => {
     })
   })
 
-  afterEach(() => dbs.closeAll())
+  afterEach(() => {
+    dbs.closeAll()
+  })
 
   const link = (id: string, fileType: 'markdown' | 'image', indexed: boolean): void => {
     const path = fileType === 'markdown' ? `${id}.md` : `${id}.png`

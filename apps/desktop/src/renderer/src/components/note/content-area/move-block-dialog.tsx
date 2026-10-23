@@ -120,7 +120,9 @@ export function MoveBlockDialog({
         <Input
           autoFocus
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+          }}
           onKeyDown={onKeyDown}
           placeholder={t('editor.blockMenu.moveDialog.searchPlaceholder')}
           data-test="move-block-search"
@@ -144,8 +146,12 @@ export function MoveBlockDialog({
                       ? 'bg-accent text-accent-foreground'
                       : 'hover:bg-accent/50'
                   )}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => commit(index)}
+                  onMouseEnter={() => {
+                    setActiveIndex(index)
+                  }}
+                  onClick={() => {
+                    commit(index)
+                  }}
                 >
                   <span className="truncate font-medium">{note.title}</span>
                   <span className="truncate text-xs text-muted-foreground">{note.path}</span>

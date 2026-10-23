@@ -114,12 +114,16 @@ export function HtmlPreview({
   useLayoutEffect(() => {
     const el = viewRef.current
     if (!el) return
-    const measure = () => setColumnWidth(el.clientWidth)
+    const measure = () => {
+      setColumnWidth(el.clientWidth)
+    }
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [])
 
   const widthLimit = columnWidth > 0 ? columnWidth : DEFAULT_HTML_WIDTH
@@ -181,10 +185,18 @@ export function HtmlPreview({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const step = e.shiftKey ? 100 : 20
     const resize: Record<string, () => void> = {
-      ArrowRight: () => onResize(clampHtmlWidth(cardWidth + step, widthLimit), height),
-      ArrowLeft: () => onResize(clampHtmlWidth(cardWidth - step, widthLimit), height),
-      ArrowDown: () => onResize(width, clampHtmlHeight(frameHeight + step)),
-      ArrowUp: () => onResize(width, clampHtmlHeight(frameHeight - step))
+      ArrowRight: () => {
+        onResize(clampHtmlWidth(cardWidth + step, widthLimit), height)
+      },
+      ArrowLeft: () => {
+        onResize(clampHtmlWidth(cardWidth - step, widthLimit), height)
+      },
+      ArrowDown: () => {
+        onResize(width, clampHtmlHeight(frameHeight + step))
+      },
+      ArrowUp: () => {
+        onResize(width, clampHtmlHeight(frameHeight - step))
+      }
     }
     const action = resize[e.key]
     if (!action) return
@@ -248,8 +260,12 @@ export function HtmlPreview({
                 type="button"
                 aria-label={alignLabels[value]}
                 aria-pressed={align === value}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => onAlign(value)}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                }}
+                onClick={() => {
+                  onAlign(value)
+                }}
                 className={cn(
                   'flex h-5 w-5 items-center justify-center rounded transition-colors',
                   align === value
@@ -271,13 +287,17 @@ export function HtmlPreview({
           aria-valuemin={MIN_HTML_WIDTH}
           aria-valuemax={widthLimit}
           aria-valuenow={cardWidth}
-          onPointerDown={(e) => handlePointerDown(e, 'end')}
+          onPointerDown={(e) => {
+            handlePointerDown(e, 'end')
+          }}
           className={cn(handleClass, '-end-1 cursor-nwse-resize border-e-2')}
         />
         <div
           {...handleProps}
           role="button"
-          onPointerDown={(e) => handlePointerDown(e, 'start')}
+          onPointerDown={(e) => {
+            handlePointerDown(e, 'start')
+          }}
           className={cn(handleClass, '-start-1 cursor-nesw-resize border-s-2')}
         />
       </div>

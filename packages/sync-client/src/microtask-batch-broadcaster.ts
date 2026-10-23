@@ -21,7 +21,9 @@ export class MicrotaskBatchBroadcaster {
 
     if (!this.flushScheduled.has(noteId)) {
       this.flushScheduled.add(noteId)
-      queueMicrotask(() => this.flush(noteId))
+      queueMicrotask(() => {
+        this.flush(noteId)
+      })
     }
   }
 

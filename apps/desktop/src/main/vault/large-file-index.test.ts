@@ -27,7 +27,7 @@ function bufferReader(bytes: Buffer): ByteReader {
 
 async function indexOf(text: string, options: Parameters<typeof scanLineIndex>[1] | null = null) {
   const bytes = Buffer.from(text, 'utf8')
-  return scanLineIndex(bufferReader(bytes), { fileBytes: bytes.length, ...(options ?? {}) })
+  return scanLineIndex(bufferReader(bytes), { fileBytes: bytes.length, ...options })
 }
 
 async function linesOf(

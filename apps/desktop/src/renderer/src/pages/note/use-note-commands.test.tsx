@@ -69,8 +69,9 @@ const inTab = (tabId: string, node: ReactNode): ReactNode => (
   </TabIdentityProvider>
 )
 
-const activate = (activeTabId: string): void =>
+const activate = (activeTabId: string): void => {
   act(() => publishActiveContext({ activeTabId, activeGroupId: 'group' }))
+}
 
 let available: ReadonlyArray<{ id: CommandId; label?: string }> = []
 function Probe(): null {

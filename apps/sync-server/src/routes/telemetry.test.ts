@@ -215,7 +215,9 @@ describe('POST /telemetry/logs', () => {
     expect(response.status).toBe(202)
     const body = (await response.json()) as { accepted: number }
     expect(body.accepted).toBe(1)
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled()
+    })
     const [url, init] = fetchMock.mock.calls[0]
     expect(String(url)).toBe('https://us.i.posthog.com/i/v1/logs')
     const parsedBody = JSON.parse((init as { body: string }).body)
@@ -362,7 +364,9 @@ describe('POST /telemetry/batch → PostHog', () => {
     expect(response.status).toBe(202)
     expect(((await response.json()) as { accepted: number }).accepted).toBe(2)
     // #then the capture batch has the real event but no tripwire, no $exception
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled()
+    })
     const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
     const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
     const names = body.batch.map((e: { event: string }) => e.event)

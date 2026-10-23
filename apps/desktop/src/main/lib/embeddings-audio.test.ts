@@ -58,7 +58,9 @@ const AUDIO = new Float32Array([0.1, 0.2, 0.3])
 async function nextRequest(): Promise<{ type: string; requestId: string }> {
   const before = worker?.postMessage.mock.calls.length ?? 0
   worker.simulateMessage({ type: 'ready' })
-  await vi.waitFor(() => expect(worker.postMessage.mock.calls.length).toBeGreaterThan(before))
+  await vi.waitFor(() => {
+    expect(worker.postMessage.mock.calls.length).toBeGreaterThan(before)
+  })
   return worker.postMessage.mock.calls.at(-1)?.[0]
 }
 
@@ -133,7 +135,9 @@ describe('audio embeddings', () => {
     expect(worker.postMessage.mock.calls.length).toBe(posted)
 
     const text = generateEmbedding('content long enough for embeddings')
-    await vi.waitFor(() => expect(worker.postMessage.mock.calls.length).toBe(posted + 1))
+    await vi.waitFor(() => {
+      expect(worker.postMessage.mock.calls.length).toBe(posted + 1)
+    })
     const textRequest = worker.postMessage.mock.calls.at(-1)?.[0]
     expect(textRequest.type).toBe('embed')
     worker.simulateMessage({

@@ -28,7 +28,9 @@ export function useBlockRefScroll(
         refValue.current ? findBlockRefBlockId(containerRef.current, refValue.current) : null,
       smooth: false,
       timeoutMs: RESTORE_MAX_MS,
-      onSettled: () => settled.current()
+      onSettled: () => {
+        settled.current()
+      }
     })
   }, [refKey, containerRef])
 }

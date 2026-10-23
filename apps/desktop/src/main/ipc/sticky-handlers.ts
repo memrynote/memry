@@ -44,22 +44,32 @@ export function registerStickyHandlers(): void {
   )
   ipcMain.handle(
     StickyChannels.invoke.OPEN_TARGET,
-    createValidatedHandler(StickyOpenTargetSchema, (input) => openStickyTargetInMainWindow(input))
+    createValidatedHandler(StickyOpenTargetSchema, (input) => {
+      openStickyTargetInMainWindow(input)
+    })
   )
   ipcMain.handle(StickyChannels.invoke.GET_SESSION, () => getStickyWindowSession())
-  ipcMain.handle(StickyChannels.invoke.TUCK, () => tuckStickyWindow())
+  ipcMain.handle(StickyChannels.invoke.TUCK, () => {
+    tuckStickyWindow()
+  })
   ipcMain.handle(
     StickyChannels.invoke.UNFOLD,
-    createValidatedHandler(StickyUnfoldSchema, (input) => showStickyWindow(input.draftId))
+    createValidatedHandler(StickyUnfoldSchema, (input) => {
+      showStickyWindow(input.draftId)
+    })
   )
   ipcMain.handle(
     StickyChannels.invoke.PEEK,
-    createValidatedHandler(StickyPeekSchema, (input) => setEdgeTabPeek(input.open))
+    createValidatedHandler(StickyPeekSchema, (input) => {
+      setEdgeTabPeek(input.open)
+    })
   )
 
   ipcMain.handle(
     StickyChannels.invoke.RESIZE,
-    createValidatedHandler(StickyResizeSchema, (input) => resizeStickyWindow(input.height))
+    createValidatedHandler(StickyResizeSchema, (input) => {
+      resizeStickyWindow(input.height)
+    })
   )
 }
 

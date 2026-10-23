@@ -118,8 +118,12 @@ export function RecoveryPhraseConfirm({
                 autoComplete="off"
                 spellCheck={false}
                 value={inputs[slotIndex]}
-                onChange={(e) => handleChange(slotIndex, e.target.value)}
-                onBlur={() => handleBlur(slotIndex)}
+                onChange={(e) => {
+                  handleChange(slotIndex, e.target.value)
+                }}
+                onBlur={() => {
+                  handleBlur(slotIndex)
+                }}
                 placeholder={t('setup.recovery.wordShort', { index: wordIndex + 1 })}
                 aria-label={t('setup.recovery.wordPlaceholder', { index: wordIndex + 1 })}
                 aria-invalid={showFeedback && !isCorrect}

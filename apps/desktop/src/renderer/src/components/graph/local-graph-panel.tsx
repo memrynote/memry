@@ -79,10 +79,9 @@ export function LocalGraphPanel({
     () => data?.nodes.find((node) => node.id === centerId)?.label ?? null,
     [data, centerId]
   )
-  const togglePin = useCallback(
-    () => setPinnedNoteId((current) => (current ? null : noteId)),
-    [setPinnedNoteId, noteId]
-  )
+  const togglePin = useCallback(() => {
+    setPinnedNoteId((current) => (current ? null : noteId))
+  }, [setPinnedNoteId, noteId])
   const pin = {
     pinned: pinnedNoteId !== null,
     // Only worth naming when the panel is showing a different note than the page.

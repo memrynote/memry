@@ -17,7 +17,7 @@ import {
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Property, NewProperty, PropertyType } from './types'
+import type { Property, NewProperty, PropertyType } from './types'
 import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
@@ -123,7 +123,9 @@ export const InfoSection = memo(function InfoSection({
         current.id === internalNewlyAdded.id ? { ...current, id: null } : current
       )
     }, 500)
-    return () => window.clearTimeout(clearHighlightTimer)
+    return () => {
+      window.clearTimeout(clearHighlightTimer)
+    }
   }, [internalNewlyAdded.id])
 
   const handleAddProperty = useCallback(

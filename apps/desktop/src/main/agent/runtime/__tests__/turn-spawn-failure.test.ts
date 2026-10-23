@@ -51,7 +51,9 @@ const claudeBackendOverMissingBinary = new ClaudeCliBackend({
       throw new Error('Claude subprocess stdio unavailable')
     }
     const exitCodePromise = new Promise<number>((resolve) => {
-      sub.proc.once('exit', (code) => resolve(code ?? 0))
+      sub.proc.once('exit', (code) => {
+        resolve(code ?? 0)
+      })
     })
 
     return {
@@ -102,7 +104,9 @@ describe('turn lock when the CLI binary cannot be spawned', () => {
     expect(messages.listByConversation('conversation-1').map((m) => m.status)).toEqual([
       'completed'
     ])
-    expect(() => runtime.acquireTurnLock('conversation-1')).not.toThrow()
+    expect(() => {
+      runtime.acquireTurnLock('conversation-1')
+    }).not.toThrow()
     runtime.releaseTurnLock('conversation-1')
 
     backend = createStubBackend()

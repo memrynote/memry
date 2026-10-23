@@ -21,7 +21,9 @@ const setNameMock = vi.fn()
 vi.mock('electron', () => ({
   app: {
     getPath: (key: string) => paths[key],
-    setPath: (key: string, value: string) => setPathMock(key, value),
+    setPath: (key: string, value: string) => {
+      setPathMock(key, value)
+    },
     setName: (name: string) => setNameMock(name),
     isReady: () => false
   },
@@ -104,7 +106,9 @@ describe('applyMemrynoteIdentity', () => {
     rmSync(base, { recursive: true, force: true })
   })
 
-  const run = (): void => applyMemrynoteIdentity({ legacyDir, newDir })
+  const run = (): void => {
+    applyMemrynoteIdentity({ legacyDir, newDir })
+  }
   const pinAt = (dir: string): { appName: string; flipped: boolean } =>
     JSON.parse(readFileSync(join(dir, IDENTITY_PIN_FILENAME), 'utf-8'))
 
@@ -285,14 +289,18 @@ describe('flipIdentityPin', () => {
     paths.userData = join(base, '@memry', 'desktop')
   })
 
-  afterEach(() => rmSync(base, { recursive: true, force: true }))
+  afterEach(() => {
+    rmSync(base, { recursive: true, force: true })
+  })
 
   it('flips to the other identity once, and never a second time', () => {
     const legacyDir = join(base, '@memry', 'desktop')
     const newDir = join(base, 'memrynote')
     mkdirSync(newDir, { recursive: true })
     writeFileSync(join(newDir, STORE), LOADED_STORE)
-    withPlatform('darwin', () => applyMemrynoteIdentity({ legacyDir, newDir }))
+    withPlatform('darwin', () => {
+      applyMemrynoteIdentity({ legacyDir, newDir })
+    })
     expect(getIdentityDecision()?.appName).toBe(MEMRYNOTE_APP_NAME)
 
     expect(flipIdentityPin()).toBe(true)

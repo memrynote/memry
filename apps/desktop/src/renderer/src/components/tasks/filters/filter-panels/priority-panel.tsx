@@ -93,7 +93,9 @@ export function PriorityPanel({
             <button
               key={p}
               type="button"
-              onClick={() => onTogglePriority(p)}
+              onClick={() => {
+                onTogglePriority(p)
+              }}
               className={cn(
                 'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
                 checked ? 'bg-accent' : 'hover:bg-accent'

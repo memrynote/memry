@@ -13,7 +13,8 @@ import { z } from 'zod'
 
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getDatabase, requireDatabase } from '../database'
+import type { getDatabase } from '../database'
+import { requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
@@ -194,7 +195,7 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
         }
       | null = null
 
-    if (parsed.transcribe !== false) {
+    if (parsed.transcribe) {
       try {
         transcriptionReadiness = await getVoiceRecordingReadiness()
       } catch (error) {
@@ -207,7 +208,7 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
       }
     }
 
-    const shouldTranscribe = parsed.transcribe !== false && transcriptionReadiness?.ready === true
+    const shouldTranscribe = parsed.transcribe && transcriptionReadiness?.ready === true
 
     // Store audio file
     const filename = `voice-memo.${parsed.format}`
@@ -241,7 +242,7 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     let transcriptionStatus: string | null = null
     let processingError: string | null = null
 
-    if (parsed.transcribe !== false) {
+    if (parsed.transcribe) {
       if (transcriptionReadiness?.ready) {
         transcriptionStatus = 'pending'
       } else {
@@ -312,7 +313,7 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
     if (shouldTranscribe && storageResult.path) {
       log.info(`Queueing transcription for voice memo ${id}`)
       queueInboxTranscriptionJob(id, storageResult.path)
-    } else if (parsed.transcribe !== false && storageResult.path && processingError) {
+    } else if (parsed.transcribe && storageResult.path && processingError) {
       markInboxJobFailed(
         id,
         'transcription',

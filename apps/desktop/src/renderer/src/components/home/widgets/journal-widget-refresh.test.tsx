@@ -95,7 +95,11 @@ function renderApp(): { showBoard: (visible: boolean) => void } {
     </QueryClientProvider>
   )
   const view = render(tree(true))
-  return { showBoard: (visible: boolean) => view.rerender(tree(visible)) }
+  return {
+    showBoard: (visible: boolean) => {
+      view.rerender(tree(visible))
+    }
+  }
 }
 
 function showsText(text: string): boolean {
@@ -133,7 +137,9 @@ describe('home journal widget stays current', () => {
 
   it('shows an entry created elsewhere while the board is open', async () => {
     renderApp()
-    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note')).toBe(true)
+    })
     const heatmapCallsAfterMount = mockGetHeatmap.mock.calls.length
 
     write(TODAY, 'Written on the journal tab')
@@ -148,7 +154,9 @@ describe('home journal widget stays current', () => {
 
   it('shows edited text for an entry it is already previewing', async () => {
     renderApp()
-    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note')).toBe(true)
+    })
     const entryCallsAfterMount = mockGetEntry.mock.calls.length
 
     write(YESTERDAY, 'Yesterday note, with more added')
@@ -161,7 +169,9 @@ describe('home journal widget stays current', () => {
 
   it('shows an entry created while the board tab was unmounted', async () => {
     const { showBoard } = renderApp()
-    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note')).toBe(true)
+    })
 
     showBoard(false)
     await settle()
@@ -171,13 +181,17 @@ describe('home journal widget stays current', () => {
     await settle()
 
     showBoard(true)
-    await waitFor(() => expect(showsText('Written while Home was in the background')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Written while Home was in the background')).toBe(true)
+    })
     expect(dayMarkedAsHavingAnEntry(TODAY)).toBe(true)
   })
 
   it('shows an edit that arrived from sync while the board tab was unmounted', async () => {
     const { showBoard } = renderApp()
-    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note')).toBe(true)
+    })
 
     showBoard(false)
     await settle()
@@ -187,12 +201,16 @@ describe('home journal widget stays current', () => {
     await settle()
 
     showBoard(true)
-    await waitFor(() => expect(showsText('Yesterday note, edited on another device')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note, edited on another device')).toBe(true)
+    })
   })
 
   it('drops an entry deleted while the board tab was unmounted', async () => {
     const { showBoard } = renderApp()
-    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note')).toBe(true)
+    })
 
     showBoard(false)
     await settle()
@@ -202,13 +220,17 @@ describe('home journal widget stays current', () => {
     await settle()
 
     showBoard(true)
-    await waitFor(() => expect(dayMarkedAsHavingAnEntry(YESTERDAY)).toBe(false))
+    await waitFor(() => {
+      expect(dayMarkedAsHavingAnEntry(YESTERDAY)).toBe(false)
+    })
     expect(showsText('Yesterday note')).toBe(false)
   })
 
   it('ignores a broadcast without a usable local date', async () => {
     renderApp()
-    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+    await waitFor(() => {
+      expect(showsText('Yesterday note')).toBe(true)
+    })
     const heatmapCallsAfterMount = mockGetHeatmap.mock.calls.length
 
     act(() => {

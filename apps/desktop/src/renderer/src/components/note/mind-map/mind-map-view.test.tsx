@@ -172,11 +172,15 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy as image' }))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Map copied as an image'))
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Map copied as an image')
+    })
     expect(mocks.copyImage).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy as vector' }))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Map copied as vector artwork'))
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Map copied as vector artwork')
+    })
     expect(mocks.copyVector).toHaveBeenCalledTimes(1)
   })
 
@@ -185,7 +189,9 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy as image' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Clipboard blocked'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Clipboard blocked')
+    })
     expect(toast.success).not.toHaveBeenCalled()
   })
 
@@ -194,7 +200,9 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy as vector' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to copy the map'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to copy the map')
+    })
   })
 
   it('says nothing about a limit the note never reaches', async () => {
@@ -244,7 +252,9 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.create).toHaveBeenCalledTimes(1)
+    })
 
     const input = mocks.create.mock.calls[0][0] as {
       title: string
@@ -270,7 +280,9 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.create).toHaveBeenCalledTimes(1)
+    })
     expect((mocks.create.mock.calls[0][0] as { title: string }).title).toBe('Test Note 3')
   })
 
@@ -278,12 +290,16 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.create).toHaveBeenCalledTimes(1)
+    })
 
     // As the vault looks once the first save has landed.
     mocks.list.mockResolvedValue({ canvases: [{ id: 'c1', title: 'Test Note', folder: null }] })
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(mocks.create).toHaveBeenCalledTimes(2)
+    })
 
     // Two creates, two names, and never an update: overwriting would destroy a
     // canvas the user may have spent an hour editing.
@@ -297,7 +313,9 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1)
+    })
 
     const elements = mocks.toCanvasScene.mock.calls[0][0] as Array<{
       type: string
@@ -313,13 +331,15 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Vault is read-only'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Vault is read-only')
+    })
     expect(toast.success).not.toHaveBeenCalled()
 
     // And the control comes back, so a transient failure is not a dead button.
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Save as canvas' })).not.toBeDisabled()
-    )
+    })
   })
 
   it('falls back to a translated message when a failed save carries none', async () => {
@@ -327,9 +347,9 @@ describe('MindMapView toolbar', () => {
     await renderMap()
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() =>
+    await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to save the map as a canvas')
-    )
+    })
     expect(mocks.create).not.toHaveBeenCalled()
   })
 
@@ -351,7 +371,9 @@ describe('MindMapView toolbar', () => {
     await screen.findByRole('toolbar')
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1)
+    })
 
     // Asked the same resolver a `[[…]]` in the note body goes through.
     expect(mocks.resolveWikiLink).toHaveBeenCalledWith('Roadmap')
@@ -383,7 +405,9 @@ describe('MindMapView toolbar', () => {
     await screen.findByRole('toolbar')
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1)
+    })
 
     const boxes = (mocks.toCanvasScene.mock.calls[0][0] as SavedElement[]).filter(
       (element) => element.type === 'rectangle'
@@ -418,7 +442,9 @@ describe('MindMapView toolbar', () => {
     await screen.findByRole('toolbar')
 
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
-    await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1)
+    })
 
     // The glyph's only condition is `element.link`, hover-gated by nothing. A
     // saved map keeps its href in `customData` for exactly that reason, and

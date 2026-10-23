@@ -156,7 +156,9 @@ export function AppleNotesFolderPanel({
     >
       <Checkbox
         checked={checked}
-        onCheckedChange={(value) => onChange(value === true)}
+        onCheckedChange={(value) => {
+          onChange(value === true)
+        }}
         disabled={disabled}
         className="border-muted-foreground/30"
       />
@@ -176,7 +178,9 @@ export function AppleNotesFolderPanel({
           node.title,
           countLabel(node),
           checked,
-          (next) => toggleFolder(node, next),
+          (next) => {
+            toggleFolder(node, next)
+          },
           depth
         )}
         {node.children.map((child) => renderFolder(child, depth + 1))}

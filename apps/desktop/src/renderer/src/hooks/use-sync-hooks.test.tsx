@@ -95,7 +95,9 @@ describe('sync hooks', () => {
     mocks.syncState.pendingCount = 3
     const { result, rerender } = renderHook(() => useSyncStatus(), { wrapper })
 
-    await waitFor(() => expect(result.current.localOnlyCount).toBe(2))
+    await waitFor(() => {
+      expect(result.current.localOnlyCount).toBe(2)
+    })
     expect(result.current.label).toBe('account.sync.statuses.changesPending{"count":3}')
     expect(result.current.dotColor).toBe('bg-amber-500')
     expect(result.current.hasIssues).toBe(false)
@@ -178,43 +180,59 @@ describe('sync hooks', () => {
 
     const { result, rerender } = renderHook(() => useSyncHistory())
 
-    await waitFor(() => expect(result.current.entries).toHaveLength(20))
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(20)
+    })
     expect(result.current.hasMore).toBe(true)
 
-    act(() => result.current.loadMore())
-    await waitFor(() => expect(result.current.entries).toHaveLength(21))
+    act(() => {
+      result.current.loadMore()
+    })
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(21)
+    })
 
-    act(() => result.current.loadMore())
-    await waitFor(() =>
+    act(() => {
+      result.current.loadMore()
+    })
+    await waitFor(() => {
       expect((window as any).api.syncOps.getHistory).toHaveBeenCalledWith({
         limit: 100,
         offset: 22
       })
-    )
-    await waitFor(() =>
+    })
+    await waitFor(() => {
       expect(result.current.entries.some((entry) => entry.id === 'history-23')).toBe(true)
-    )
+    })
 
-    act(() => result.current.setFilter({ type: 'error' }))
+    act(() => {
+      result.current.setFilter({ type: 'error' })
+    })
     expect(result.current.filter.type).toBe('error')
-    await waitFor(() =>
+    await waitFor(() => {
       expect(result.current.entries.map((entry) => entry.type)).toEqual(['error'])
-    )
+    })
 
-    act(() => result.current.setFilter({ period: 'today' }))
+    act(() => {
+      result.current.setFilter({ period: 'today' })
+    })
     expect(result.current.filter.period).toBe('today')
 
-    act(() => result.current.refresh())
-    await waitFor(() =>
+    act(() => {
+      result.current.refresh()
+    })
+    await waitFor(() => {
       expect((window as any).api.syncOps.getHistory).toHaveBeenLastCalledWith({
         limit: 100,
         offset: 0
       })
-    )
+    })
 
     mocks.syncState.lastSyncAt = Date.now()
     rerender()
-    await waitFor(() => expect((window as any).api.syncOps.getHistory).toHaveBeenCalledTimes(4))
+    await waitFor(() => {
+      expect((window as any).api.syncOps.getHistory).toHaveBeenCalledTimes(4)
+    })
   })
 
   it('keeps existing history data when history IPC fails', async () => {
@@ -223,10 +241,16 @@ describe('sync hooks', () => {
       .mockRejectedValueOnce(new Error('ipc failed'))
 
     const { result } = renderHook(() => useSyncHistory())
-    await waitFor(() => expect(result.current.entries).toHaveLength(1))
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(1)
+    })
 
-    act(() => result.current.refresh())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    act(() => {
+      result.current.refresh()
+    })
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.entries).toHaveLength(1)
   })
 })

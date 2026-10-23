@@ -297,7 +297,9 @@ describe('ContentSection', () => {
       />
     )
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('memry-file://voice.wav'))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('memry-file://voice.wav')
+    })
 
     const audio = container.querySelector('audio') as HTMLAudioElement
     Object.defineProperty(audio, 'duration', { configurable: true, value: 120 })
@@ -366,7 +368,9 @@ describe('ContentSection', () => {
       />
     )
 
-    await waitFor(() => expect(close).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(close).toHaveBeenCalledTimes(1)
+    })
 
     unmount()
     expect(close).toHaveBeenCalledTimes(1)
@@ -402,7 +406,9 @@ describe('ContentSection', () => {
       />
     )
 
-    await waitFor(() => expect(audioContextCtor).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(audioContextCtor).toHaveBeenCalledTimes(1)
+    })
 
     unmount()
     expect(close).toHaveBeenCalledTimes(1)
@@ -441,7 +447,9 @@ describe('ContentSection', () => {
       />
     )
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
 
     unmount()
     sendBytes(new ArrayBuffer(8))

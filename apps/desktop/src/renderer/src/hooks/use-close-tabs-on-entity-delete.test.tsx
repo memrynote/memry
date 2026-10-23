@@ -32,7 +32,9 @@ describe('useCloseTabsOnEntityDelete', () => {
   })
 
   it('closes the tabs of a canvas the moment its delete is announced', () => {
-    renderHook(() => useCloseTabsOnEntityDelete())
+    renderHook(() => {
+      useCloseTabsOnEntityDelete()
+    })
 
     act(() => mocks.deletedListener?.({ id: 'canvas-1' }))
 
@@ -42,7 +44,9 @@ describe('useCloseTabsOnEntityDelete', () => {
   it('closes one set of tabs per canvas a folder delete took with it', () => {
     // `ipc/canvas-folder-handlers` emits one `canvas:deleted` per canvas in the
     // deleted subtree; nothing else tells this hook those canvases are gone.
-    renderHook(() => useCloseTabsOnEntityDelete())
+    renderHook(() => {
+      useCloseTabsOnEntityDelete()
+    })
 
     act(() => {
       mocks.deletedListener?.({ id: 'canvas-1' })
@@ -53,7 +57,9 @@ describe('useCloseTabsOnEntityDelete', () => {
   })
 
   it('unsubscribes on unmount', () => {
-    const { unmount } = renderHook(() => useCloseTabsOnEntityDelete())
+    const { unmount } = renderHook(() => {
+      useCloseTabsOnEntityDelete()
+    })
 
     unmount()
 

@@ -55,7 +55,12 @@ export type WorkerExitPhase = 'starting' | 'in_flight' | 'idle_shutdown' | 'idle
  * every production crash report has arrived in.
  */
 export type WorkerRelease =
-  'live' | 'teardown' | 'start_timeout' | 'fatal_error' | 'exit' | 'graceful_stop'
+  | 'live'
+  | 'teardown'
+  | 'start_timeout'
+  | 'fatal_error'
+  | 'exit'
+  | 'graceful_stop'
 
 /** Whether the model was already on disk when this worker was forked. */
 export type ModelCacheState = 'present' | 'partial' | 'absent' | 'unknown'
@@ -729,7 +734,9 @@ class EmbeddingModelBridge {
 
     // Inference is background work: a vault-wide re-embed must not take the
     // machine's CPU away from the user. The pid exists once the process spawns.
-    child.once('spawn', () => lowerProcessPriority(child.pid))
+    child.once('spawn', () => {
+      lowerProcessPriority(child.pid)
+    })
     this.process = child
     // A fresh worker must never inherit a force-kill phase latched for a prior one.
     this.pendingExitPhase = null

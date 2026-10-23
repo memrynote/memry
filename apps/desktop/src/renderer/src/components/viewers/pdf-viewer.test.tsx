@@ -295,7 +295,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     render(<PdfViewer src="memry-file://spec.pdf" />)
 
     await screen.findByTestId('pdf-main-canvas')
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
+    })
     expect(mainCanvasScale()).toBeGreaterThan(1)
   })
 
@@ -305,7 +307,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     render(<PdfViewer src="memry-file://spec.pdf" />)
 
     await screen.findByTestId('pdf-main-canvas')
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_HEIGHT), 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_HEIGHT), 3)
+    })
   })
 
   it('stops auto-fitting once the user has chosen a zoom', async () => {
@@ -313,7 +317,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     render(<PdfViewer src="memry-file://spec.pdf" />)
 
     await screen.findByTestId('pdf-main-canvas')
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
+    })
 
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.zoomOut'))
     const chosen = mainCanvasScale()
@@ -321,7 +327,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
 
     // Rotating re-derives the fit; the zoom the user picked must survive it.
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.rotate'))
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(chosen, 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(chosen, 3)
+    })
   })
 
   it('refits on demand after a manual zoom', async () => {
@@ -333,7 +341,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     expect(mainCanvasScale()).not.toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
 
     await chooseViewOption(user, 'fitToWidth')
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
+    })
   })
 
   it('jumps to a page typed into the readout, and reverts one out of range', async () => {
@@ -362,7 +372,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     await screen.findByTestId('pdf-main-canvas')
     await chooseViewOption(user, 'twoPageOdd')
 
-    await waitFor(() => expect(mainPages()).toEqual([1, 2]))
+    await waitFor(() => {
+      expect(mainPages()).toEqual([1, 2])
+    })
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.nextPage'))
     expect(mainPages()).toEqual([3, 4])
     expect(pageField()).toHaveValue('3')
@@ -381,7 +393,9 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     await screen.findByTestId('pdf-main-canvas')
     await chooseViewOption(user, 'twoPageEven')
 
-    await waitFor(() => expect(mainPages()).toEqual([1]))
+    await waitFor(() => {
+      expect(mainPages()).toEqual([1])
+    })
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.nextPage'))
     expect(mainPages()).toEqual([2, 3])
   })
@@ -391,12 +405,16 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     render(<PdfViewer src="memry-file://spec.pdf" />)
 
     await screen.findByTestId('pdf-main-canvas')
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
+    })
 
     await chooseViewOption(user, 'twoPageOdd')
 
     const available = PAGE_VIEW_WIDTH - PAGE_VIEW_PADDING - SPREAD_GAP
-    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(available / (LETTER_WIDTH * 2), 3))
+    await waitFor(() => {
+      expect(mainCanvasScale()).toBeCloseTo(available / (LETTER_WIDTH * 2), 3)
+    })
   })
 
   it('fits down the pane height when asked to', async () => {
@@ -418,12 +436,12 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
 
       await chooseViewOption(user, 'fitToHeight')
 
-      await waitFor(() =>
+      await waitFor(() => {
         expect(mainCanvasScale()).toBeCloseTo(
           (PAGE_VIEW_HEIGHT - PAGE_VIEW_PADDING) / LETTER_HEIGHT,
           3
         )
-      )
+      })
     } finally {
       if (originalClientHeight) {
         Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight)

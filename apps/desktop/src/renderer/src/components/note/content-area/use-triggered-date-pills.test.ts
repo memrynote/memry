@@ -189,7 +189,9 @@ describe('useTriggeredDatePills', () => {
     container.appendChild(p1)
 
     const { rerender, unmount } = renderHook(
-      ({ ids }) => useTriggeredDatePills(containerRef, ids),
+      ({ ids }) => {
+        useTriggeredDatePills(containerRef, ids)
+      },
       { initialProps: { ids: new Set<string>() } }
     )
     expect(p1.hasAttribute('data-fired')).toBe(false)

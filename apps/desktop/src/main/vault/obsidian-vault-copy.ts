@@ -101,9 +101,9 @@ async function copyVault(source: string, target: string): Promise<void> {
   } catch (error) {
     await fs.promises
       .rm(partial, { recursive: true, force: true })
-      .catch((cleanupError: unknown) =>
+      .catch((cleanupError: unknown) => {
         log.warn('Could not remove a partial vault copy', { partial, cleanupError })
-      )
+      })
     throw error
   }
 }

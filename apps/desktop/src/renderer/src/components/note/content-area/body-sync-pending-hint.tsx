@@ -39,12 +39,16 @@ export function BodySyncPendingHint({ fragment }: { fragment: Y.XmlFragment }) {
     // the whole steady-state life of the editor.
     if (!initialSyncActive) return
 
-    const update = (): void => setIsEmpty(fragment.length === 0)
+    const update = (): void => {
+      setIsEmpty(fragment.length === 0)
+    }
     update()
     // Deep, not shallow: the batch apply can materialize nested structure in
     // one transaction, and a missed top-level-only event would strand the hint.
     fragment.observeDeep(update)
-    return () => fragment.unobserveDeep(update)
+    return () => {
+      fragment.unobserveDeep(update)
+    }
   }, [fragment, initialSyncActive])
 
   if (!initialSyncActive || !isEmpty) return null

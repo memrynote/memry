@@ -117,11 +117,15 @@ export function useReminderNotifications(): void {
         duration: 10000,
         action: {
           label: 'View',
-          onClick: () => navigateToTarget(reminder)
+          onClick: () => {
+            navigateToTarget(reminder)
+          }
         },
         cancel: {
           label: 'Dismiss',
-          onClick: () => dismissMutation.mutate(reminder.id)
+          onClick: () => {
+            dismissMutation.mutate(reminder.id)
+          }
         }
       })
     },

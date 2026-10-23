@@ -44,10 +44,14 @@ describe('useAgentAccessConsent (#1394)', () => {
       releaseGoogle({ agentReadEventsConsent: null })
     })
 
-    await waitFor(() => expect(getCalendarProviderSettings).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(getCalendarProviderSettings).toHaveBeenCalledTimes(2)
+    })
     const asked: string[] = []
     for (let step = 0; step < 3; step += 1) {
-      await waitFor(() => expect(result.current.promptProvider).not.toBeNull())
+      await waitFor(() => {
+        expect(result.current.promptProvider).not.toBeNull()
+      })
       asked.push(result.current.promptProvider as string)
       await act(async () => {
         await result.current.decide(false)

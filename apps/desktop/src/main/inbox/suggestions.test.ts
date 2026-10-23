@@ -425,7 +425,9 @@ describe('inbox suggestions', () => {
     })
     expect(hasEmbedding('missing')).toBe(false)
     expect(getEmbeddingCount()).toBe(0)
-    expect(() => deleteNoteEmbedding('missing')).not.toThrow()
+    expect(() => {
+      deleteNoteEmbedding('missing')
+    }).not.toThrow()
 
     mockIsModelLoaded.mockReturnValue(false)
     mockInitEmbeddingModel.mockResolvedValue(false)

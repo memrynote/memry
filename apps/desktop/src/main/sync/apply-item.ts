@@ -71,7 +71,10 @@ export class ItemApplier {
   ): ApplyItemResult {
     const itemEmits: Array<() => void> = []
     const emit: EmitToWindows = page
-      ? (channel, data) => itemEmits.push(() => this.emitToWindows(channel, data))
+      ? (channel, data) =>
+          itemEmits.push(() => {
+            this.emitToWindows(channel, data)
+          })
       : this.emitToWindows
     // Another device's edit applies to a locked note or folder (#2606): the
     // lock only stops edits made here. Async file work the handler starts

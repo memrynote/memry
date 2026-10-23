@@ -51,7 +51,9 @@ export function TagTableProvider({
             ? undefined
             : { [property]: groupValue }
         createObject({ title, tag: tag.key, properties })
-          .then((created) => onCreated(created.id, created.title, open))
+          .then((created) => {
+            onCreated(created.id, created.title, open)
+          })
           .catch((error: unknown) =>
             toast.error(extractErrorMessage(error, t('tagObjects.create.failed')))
           )
@@ -89,8 +91,12 @@ export function RelationPickerCell({
         <button
           type="button"
           data-testid="relation-picker-cell"
-          onClick={(event) => event.stopPropagation()}
-          onDoubleClick={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
+          onDoubleClick={(event) => {
+            event.stopPropagation()
+          }}
           className={cn(
             'flex min-h-6 w-full items-center rounded-md px-1 text-start',
             open && 'ring-1 ring-foreground/60'
@@ -107,7 +113,9 @@ export function RelationPickerCell({
         align="start"
         sideOffset={4}
         className="w-auto p-0"
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation()
+        }}
       >
         <ObjectRelationPicker
           targetTag={target}
@@ -271,7 +279,9 @@ export function MentionedInSection({
         offset: 0
       })
   })
-  const toggle = useCallback(() => setOpen((value) => !value), [])
+  const toggle = useCallback(() => {
+    setOpen((value) => !value)
+  }, [])
   const notes = data?.notes ?? []
   if (notes.length === 0) return null
   return (
@@ -293,7 +303,9 @@ export function MentionedInSection({
             <li key={note.id}>
               <button
                 type="button"
-                onClick={() => onOpen(note.id, note.title)}
+                onClick={() => {
+                  onOpen(note.id, note.title)
+                }}
                 className="flex h-8 w-full items-center gap-2 rounded-[5px] ps-6 text-start hover:bg-accent"
               >
                 <FileText className="size-3.5 text-muted-foreground" />

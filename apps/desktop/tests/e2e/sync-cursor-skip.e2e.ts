@@ -68,7 +68,7 @@ test.describe('Sync cursor skip (#2283)', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const projectId = await pageA.evaluate(async () => {

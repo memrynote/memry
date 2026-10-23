@@ -82,7 +82,9 @@ describe('InlineImage render', () => {
 
     // #when
     const dom = render('nodeView', RELATIVE, resolveFileUrl)
-    await vi.waitFor(() => expect(dom.getAttribute('src')).toBe(RESOLVED))
+    await vi.waitFor(() => {
+      expect(dom.getAttribute('src')).toBe(RESOLVED)
+    })
 
     // #then
     expect(resolveFileUrl).toHaveBeenCalledWith(RELATIVE)

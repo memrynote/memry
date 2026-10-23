@@ -167,7 +167,9 @@ export const KanbanColumn = ({
         {!isDoneColumn && onQuickAdd && !isDragging && (
           <button
             type="button"
-            onClick={() => setIsAddingTask(true)}
+            onClick={() => {
+              setIsAddingTask(true)
+            }}
             className="p-0.5 rounded text-text-tertiary hover:text-foreground hover:bg-accent/50 transition-colors"
             aria-label={`Add task to ${column.title}`}
           >
@@ -224,7 +226,9 @@ export const KanbanColumn = ({
         {hiddenCount > 0 && (
           <button
             type="button"
-            onClick={() => setShowAllDone(true)}
+            onClick={() => {
+              setShowAllDone(true)
+            }}
             className="mt-1 py-1.5 text-[11px] text-text-tertiary hover:text-foreground transition-colors text-center"
           >
             {hiddenCount} {tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.moreCompleted')}
@@ -234,7 +238,9 @@ export const KanbanColumn = ({
         {showAllDone && isDoneColumn && tasks.length > MAX_VISIBLE_DONE && (
           <button
             type="button"
-            onClick={() => setShowAllDone(false)}
+            onClick={() => {
+              setShowAllDone(false)
+            }}
             className="mt-0.5 py-1 text-[11px] text-text-tertiary hover:text-foreground transition-colors text-center"
           >
             {tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.showFewer')}
@@ -246,7 +252,9 @@ export const KanbanColumn = ({
             <input
               type="text"
               value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onChange={(e) => {
+                setNewTaskTitle(e.target.value)
+              }}
               onKeyDown={handleAddKeyDown}
               onBlur={handleAddSubmit}
               placeholder={tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.taskTitle')}

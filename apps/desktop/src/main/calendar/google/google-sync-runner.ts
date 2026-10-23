@@ -70,7 +70,9 @@ function trackSyncCompleted(source: string): void {
 
 function runPeriodicSync(): void {
   void syncGoogleCalendarNow()
-    .then(() => trackSyncCompleted('periodic'))
+    .then(() => {
+      trackSyncCompleted('periodic')
+    })
     .catch((error) => {
       log.warn('periodic Google Calendar sync failed', error)
       trackSyncFailed('google_periodic_sync', error)
@@ -91,7 +93,9 @@ export function triggerGoogleCalendarSyncNow(reason: string): void {
   }
   lastTriggerAt = now
   void syncGoogleCalendarNow()
-    .then(() => trackSyncCompleted(toSafeToken(reason, 'trigger')))
+    .then(() => {
+      trackSyncCompleted(toSafeToken(reason, 'trigger'))
+    })
     .catch((error) => {
       log.warn('on-demand Google Calendar sync failed', { reason, error })
       trackSyncFailed('google_trigger_sync', error)
@@ -155,7 +159,9 @@ async function runStart(): Promise<void> {
   if (generation !== startGeneration) return
 
   void syncGoogleCalendarNow()
-    .then(() => trackSyncCompleted('initial'))
+    .then(() => {
+      trackSyncCompleted('initial')
+    })
     .catch((error) => {
       log.warn('initial Google Calendar sync failed', error)
       trackSyncFailed('google_initial_sync', error)
@@ -163,7 +169,9 @@ async function runStart(): Promise<void> {
 
   syncInterval = setInterval(runPeriodicSync, currentPollIntervalMs)
 
-  resumeHandler = () => triggerGoogleCalendarSyncNow('system-resume')
+  resumeHandler = () => {
+    triggerGoogleCalendarSyncNow('system-resume')
+  }
   powerMonitor.on('resume', resumeHandler)
 
   await armPushIfSignedIn()
@@ -187,7 +195,9 @@ async function armPushIfSignedIn(): Promise<void> {
   if (!syncInterval || pushArmed) return
   pushArmed = true
   const pushRuntime = getOrInitGooglePushRuntime({
-    onActiveCountChange: (count) => reEvaluatePollCadence(count)
+    onActiveCountChange: (count) => {
+      reEvaluatePollCadence(count)
+    }
   })
   if (pushRuntime) {
     const db = requireDatabase()

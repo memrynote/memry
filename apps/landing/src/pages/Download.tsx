@@ -146,7 +146,9 @@ function DesktopLead({ os }: { os: DesktopOS }) {
       <Detected os={os} />
       <a
         href={downloadHref(platform)}
-        onClick={() => trackHeroDownload(platform)}
+        onClick={() => {
+          trackHeroDownload(platform)
+        }}
         className={PRIMARY_BUTTON}
       >
         <PlatformLogo os={os} />
@@ -159,7 +161,9 @@ function DesktopLead({ os }: { os: DesktopOS }) {
             {' · '}
             <a
               href={downloadHref(alternate.platform)}
-              onClick={() => trackHeroDownload(alternate.platform)}
+              onClick={() => {
+                trackHeroDownload(alternate.platform)
+              }}
               className={TEXT_LINK}
             >
               {alternate.label}
@@ -182,7 +186,9 @@ function PickComputer() {
             <a
               key={desktop}
               href={downloadHref(platform)}
-              onClick={() => trackHeroDownload(platform)}
+              onClick={() => {
+                trackHeroDownload(platform)
+              }}
               className={SECONDARY_BUTTON}
             >
               <PlatformLogo os={desktop} />
@@ -205,7 +211,9 @@ function IosLead() {
       <Detected os="ios" />
       <Link
         to="/ios-beta"
-        onClick={() => trackLandingEvent('landing_nav_click', 'download:ios-beta:download-hero')}
+        onClick={() => {
+          trackLandingEvent('landing_nav_click', 'download:ios-beta:download-hero')
+        }}
         className={PRIMARY_BUTTON}
       >
         Join the iPhone beta
@@ -227,7 +235,9 @@ function AndroidLead() {
       <SharePageButton className={PRIMARY_BUTTON} />
       <Link
         to="/roadmap"
-        onClick={() => trackLandingEvent('landing_nav_click', 'download:roadmap:download-hero')}
+        onClick={() => {
+          trackLandingEvent('landing_nav_click', 'download:roadmap:download-hero')
+        }}
         className={cn(TEXT_LINK, 'self-start text-[14px] leading-5')}
       >
         See the roadmap
@@ -248,7 +258,9 @@ function SharePageButton({ className }: { className: string }) {
       label="Send this page to your computer"
       icon={<Share className="size-4 shrink-0" aria-hidden />}
       className={className}
-      onSuccess={() => trackLandingEvent('landing_download_share', 'share:page:download-hero')}
+      onSuccess={() => {
+        trackLandingEvent('landing_download_share', 'share:page:download-hero')
+      }}
     />
   )
 }

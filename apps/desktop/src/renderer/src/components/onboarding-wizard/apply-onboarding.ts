@@ -52,7 +52,9 @@ function startImport(choice: ImportChoice, t: Translate): void {
 
 function markOnboarded(): void {
   // The wizard replaces the sidebar tour; the star card still gets its turn.
-  recordOnboarded().catch((error) => log.warn('Recording onboarding failed', error))
+  recordOnboarded().catch((error) => {
+    log.warn('Recording onboarding failed', error)
+  })
   try {
     if (localStorage.getItem(STAR_PROMPT_KEY) === null)
       localStorage.setItem(STAR_PROMPT_KEY, 'pending')

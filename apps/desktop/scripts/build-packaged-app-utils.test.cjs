@@ -23,7 +23,9 @@ test('resolveTargetArch falls back to the host arch when no arch flag is present
 })
 
 test('assertProductionSyncServerUrl accepts the production sync host', () => {
-  assert.doesNotThrow(() => assertProductionSyncServerUrl('https://sync.memrynote.com'))
+  assert.doesNotThrow(() => {
+    assertProductionSyncServerUrl('https://sync.memrynote.com')
+  })
 })
 
 test('assertProductionSyncServerUrl rejects missing, local, and staging sync hosts', () => {
@@ -33,11 +35,12 @@ test('assertProductionSyncServerUrl rejects missing, local, and staging sync hos
     'http://127.0.0.1:8787',
     'http://sync.memrynote.com'
   ]) {
-    assert.throws(() => assertProductionSyncServerUrl(url), /production SYNC_SERVER_URL/)
+    assert.throws(() => {
+      assertProductionSyncServerUrl(url)
+    }, /production SYNC_SERVER_URL/)
   }
 
-  assert.throws(
-    () => assertProductionSyncServerUrl('https://sync-staging.memrynote.com'),
-    /production SYNC_SERVER_URL/
-  )
+  assert.throws(() => {
+    assertProductionSyncServerUrl('https://sync-staging.memrynote.com')
+  }, /production SYNC_SERVER_URL/)
 })

@@ -109,8 +109,12 @@ export function TagChip({
         role="option"
         aria-selected={isSelected}
         onClick={onClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => {
+          setIsHovered(true)
+        }}
+        onMouseLeave={() => {
+          setIsHovered(false)
+        }}
         disabled={isSelected || disabled}
         className={pillClasses}
         style={pillStyle}
@@ -122,8 +126,12 @@ export function TagChip({
 
   return (
     <li
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        setIsHovered(true)
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false)
+      }}
       className={pillClasses}
       style={pillStyle}
     >

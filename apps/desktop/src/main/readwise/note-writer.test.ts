@@ -16,9 +16,9 @@ import {
   planNote,
   readSection,
   type NotePlan,
-  type PlanNoteOptions
+  type PlanNoteOptions,
+  type ReadwiseBook
 } from '@memry/importers/readwise'
-import type { ReadwiseBook } from '@memry/importers/readwise'
 import { readwiseLinks } from '@memry/db-schema/schema/readwise-links'
 import { book, highlight, COVER_URL } from '@memry/importers/readwise/fixtures'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'

@@ -52,7 +52,9 @@ function useActiveModule() {
     for (const node of panelRefs.current.values()) observer.observe(node)
 
     read()
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [])
 
   // One stable callback per module — a fresh closure each render would detach and

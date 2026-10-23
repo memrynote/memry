@@ -119,7 +119,9 @@ export function CanvasFolderRow({
       depth: 0,
       // Already at the root: a no-op write that would still bump `updatedAt`.
       disabled: currentParent === null,
-      onSelect: () => onMove(node, null)
+      onSelect: () => {
+        onMove(node, null)
+      }
     },
     ...folderOptions
       .filter((option) => canDrop(dragPayload, option.path))
@@ -128,7 +130,9 @@ export function CanvasFolderRow({
         label: option.name,
         depth: option.depth,
         disabled: isSameCanvasFolder(option.path, currentParent),
-        onSelect: () => onMove(node, option.path)
+        onSelect: () => {
+          onMove(node, option.path)
+        }
       }))
   ]
 
@@ -138,14 +142,18 @@ export function CanvasFolderRow({
       id: 'new-canvas',
       label: t('canvas.actions.newCanvasHere'),
       icon: FilePlus,
-      onSelect: () => onNewCanvas(node.path)
+      onSelect: () => {
+        onNewCanvas(node.path)
+      }
     },
     {
       kind: 'item',
       id: 'new-folder',
       label: t('canvas.actions.newFolder'),
       icon: FolderPlus,
-      onSelect: () => onNewFolder(node.path)
+      onSelect: () => {
+        onNewFolder(node.path)
+      }
     },
     { kind: 'separator', id: 'sep-icon' },
     {
@@ -153,7 +161,9 @@ export function CanvasFolderRow({
       id: 'set-icon',
       label: t('canvas.actions.setIcon'),
       icon: Smile,
-      onSelect: () => menus.setPickerOpen(true)
+      onSelect: () => {
+        menus.setPickerOpen(true)
+      }
     },
     ...(node.icon
       ? [
@@ -162,7 +172,9 @@ export function CanvasFolderRow({
             id: 'remove-icon',
             label: t('canvas.actions.removeIcon'),
             icon: X,
-            onSelect: () => onSetIcon(node, null)
+            onSelect: () => {
+              onSetIcon(node, null)
+            }
           }
         ]
       : []),
@@ -172,7 +184,9 @@ export function CanvasFolderRow({
       id: 'rename',
       label: t('canvas.actions.rename'),
       icon: Pencil,
-      onSelect: () => onRename(node)
+      onSelect: () => {
+        onRename(node)
+      }
     },
     // The ONLY keyboard path to moving a folder: drag and drop offers none.
     { kind: 'separator', id: 'sep-move' },
@@ -191,7 +205,9 @@ export function CanvasFolderRow({
       label: t('button.delete'),
       icon: Trash2,
       destructive: true,
-      onSelect: () => onDelete(node)
+      onSelect: () => {
+        onDelete(node)
+      }
     }
   ]
 
@@ -226,16 +242,24 @@ export function CanvasFolderRow({
           data-row-key={rowKey}
           className="flex items-center gap-1"
           style={{ paddingInlineStart: `${node.depth * CANVAS_ROW_INDENT_PX}px` }}
-          onClick={() => onToggle(node.path)}
+          onClick={() => {
+            onToggle(node.path)
+          }}
           onKeyDown={handleKeyDown}
           // A draggable ancestor swallows the pointer, so the user could not
           // select the text in the field they are typing into.
           draggable={!edit}
-          onDragStart={(event) => onDragStart(event, node)}
+          onDragStart={(event) => {
+            onDragStart(event, node)
+          }}
           onDragEnd={onDragEnd}
-          onDragOver={(event) => onDragOver(event, node)}
+          onDragOver={(event) => {
+            onDragOver(event, node)
+          }}
           onDragLeave={onDragLeave}
-          onDrop={(event) => onDrop(event, node)}
+          onDrop={(event) => {
+            onDrop(event, node)
+          }}
         >
           {/* Same "inside" indicator the notes tree draws, so the two trees feel
               identical. `SidebarMenuItem` is already `relative`. */}
@@ -251,7 +275,9 @@ export function CanvasFolderRow({
             icon={node.icon}
             isExpanded={isExpanded}
             hasChildren={node.children.length > 0}
-            onIconChange={(icon) => onSetIcon(node, icon)}
+            onIconChange={(icon) => {
+              onSetIcon(node, icon)
+            }}
             pickerOpen={menus.pickerOpen}
             onPickerOpenChange={menus.setPickerOpen}
           />

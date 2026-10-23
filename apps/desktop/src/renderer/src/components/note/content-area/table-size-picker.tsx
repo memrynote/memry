@@ -65,7 +65,9 @@ function OpenTableSizePicker({
         data-table-size-picker=""
         // Focus goes back to the editor from `onClose`/`onPick`; Radix handing
         // it to a trigger this popover does not have would drop it on <body>.
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+        }}
       >
         <div
           ref={gridRef}
@@ -93,11 +95,17 @@ function OpenTableSizePicker({
                     'size-4 cursor-pointer rounded-[3px] border transition-colors',
                     inside ? 'border-foreground/40 bg-accent' : 'border-border bg-background'
                   )}
-                  onPointerEnter={() => setSize(cell)}
+                  onPointerEnter={() => {
+                    setSize(cell)
+                  }}
                   // Keep focus on the grid so the keyboard keeps working after
                   // a hover.
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => onPick(cell)}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                  }}
+                  onClick={() => {
+                    onPick(cell)
+                  }}
                 />
               )
             })

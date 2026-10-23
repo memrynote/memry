@@ -73,14 +73,18 @@ export function WelcomeStep({ dispatch }: StepProps): React.JSX.Element {
         <ContinueButton
           label={t(`${K}.welcome.getStarted`)}
           brand
-          onClick={() => dispatch({ type: 'start', path: 'new' })}
+          onClick={() => {
+            dispatch({ type: 'start', path: 'new' })
+          }}
         />
         <span className={cn('flex items-center gap-1 text-[13px]', MUTED)}>
           {t(`${K}.welcome.alreadyUse`)}
           <Button
             variant="link"
             className="h-auto p-0 text-[13px] font-semibold text-foreground"
-            onClick={() => dispatch({ type: 'start', path: 'returning' })}
+            onClick={() => {
+              dispatch({ type: 'start', path: 'returning' })
+            }}
           >
             {t(`${K}.welcome.signIn`)}
           </Button>
@@ -169,11 +173,13 @@ export function ThemeStep({ state, dispatch }: StepProps): React.JSX.Element {
     applyColorTheme(document.documentElement, { colorTheme: settings.colorTheme })
   }
   // The Light card is the Warm theme, so it clears an editor theme; the others keep it.
-  const pick = (choice: ThemeChoice): void =>
+  const pick = (choice: ThemeChoice): void => {
     paint(choice, choice === 'light' ? null : state.draft.editorTheme)
+  }
   // An editor theme has no Warm side: on the Light card it shows its own light palette (White).
-  const pickEditorTheme = (editorTheme: string | null): void =>
+  const pickEditorTheme = (editorTheme: string | null): void => {
     paint(state.draft.theme === 'light' && editorTheme ? 'white' : state.draft.theme, editorTheme)
+  }
   return (
     <>
       <StepHeading title={t(`${K}.theme.title`)} body={t(`${K}.theme.body`)} />
@@ -192,9 +198,17 @@ export function ThemeStep({ state, dispatch }: StepProps): React.JSX.Element {
               role="radio"
               aria-checked={selected}
               data-wizard-option
-              onClick={() => pick(id)}
+              onClick={() => {
+                pick(id)
+              }}
               // A radio follows focus, so arrowing through the row picks as it goes.
-              onFocus={selected ? undefined : () => pick(id)}
+              onFocus={
+                selected
+                  ? undefined
+                  : () => {
+                      pick(id)
+                    }
+              }
               className="group flex w-[132px] flex-col items-center gap-2.5 rounded-[10px] focus-visible:outline-none"
             >
               <span
@@ -285,9 +299,15 @@ export function ModulesStep({
         role="checkbox"
         aria-checked={on}
         data-wizard-option
-        onClick={() => toggle(key)}
-        onFocus={() => onFocusModule(key)}
-        onMouseEnter={() => onFocusModule(key)}
+        onClick={() => {
+          toggle(key)
+        }}
+        onFocus={() => {
+          onFocusModule(key)
+        }}
+        onMouseEnter={() => {
+          onFocusModule(key)
+        }}
         className={cn(
           MODULE_ROW,
           'text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
@@ -342,7 +362,9 @@ export function ModulesStep({
 export function StorageStep({ state, dispatch }: StepProps): React.JSX.Element {
   const { t } = useT('common')
   const device = useDeviceLabel()
-  const pick = (storage: 'local' | 'sync'): void => dispatch({ type: 'update', patch: { storage } })
+  const pick = (storage: 'local' | 'sync'): void => {
+    dispatch({ type: 'update', patch: { storage } })
+  }
   return (
     <>
       <StepHeading title={t(`${K}.storage.title`)} body={t(`${K}.storage.body`)} />
@@ -355,7 +377,9 @@ export function StorageStep({ state, dispatch }: StepProps): React.JSX.Element {
           kind="radio"
           icon={<Lock />}
           selected={state.draft.storage === 'local'}
-          onSelect={() => pick('local')}
+          onSelect={() => {
+            pick('local')
+          }}
           title={t(`${K}.storage.local`, { device })}
           trailing={t(`${K}.storage.localPrice`)}
           description={t(`${K}.storage.localHint`)}
@@ -364,7 +388,9 @@ export function StorageStep({ state, dispatch }: StepProps): React.JSX.Element {
           kind="radio"
           icon={<Cloud />}
           selected={state.draft.storage === 'sync'}
-          onSelect={() => pick('sync')}
+          onSelect={() => {
+            pick('sync')
+          }}
           title={t(`${K}.storage.sync`)}
           trailing={t(`${K}.storage.syncPrice`)}
           description={t(`${K}.storage.syncHint`)}

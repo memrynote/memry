@@ -40,8 +40,18 @@ vi.mock('@/components/note/content-area', () => ({
     return (
       <div data-testid="content-area" data-editable={String(editable)}>
         <span data-testid="initial-content">{initialContent}</span>
-        <button data-testid="edit" onClick={() => onMarkdownChange('edited body')} />
-        <button data-testid="edit-again" onClick={() => onMarkdownChange('edited again')} />
+        <button
+          data-testid="edit"
+          onClick={() => {
+            onMarkdownChange('edited body')
+          }}
+        />
+        <button
+          data-testid="edit-again"
+          onClick={() => {
+            onMarkdownChange('edited again')
+          }}
+        />
       </div>
     )
   }

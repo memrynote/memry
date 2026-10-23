@@ -15,7 +15,9 @@ vi.mock('@memry/i18n/renderer', () => ({
 const item = { id: 'item-1', type: 'note' } as unknown as InboxItem
 
 describe('ConvertActions', () => {
-  beforeEach(() => resetMockApi())
+  beforeEach(() => {
+    resetMockApi()
+  })
 
   // Rows carry no visible labels (same rail as the task drawer); each row is
   // named by its tooltip instead.

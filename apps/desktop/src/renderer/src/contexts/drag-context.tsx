@@ -34,7 +34,14 @@ import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 
 export type DragSourceType = 'list' | 'kanban' | 'calendar'
 export type DropTargetType =
-  'task' | 'section' | 'column' | 'date' | 'project' | 'trash' | 'archive' | null
+  | 'task'
+  | 'section'
+  | 'column'
+  | 'date'
+  | 'project'
+  | 'trash'
+  | 'archive'
+  | null
 
 export interface DragState {
   isDragging: boolean
@@ -543,10 +550,9 @@ export const DragProvider = ({
       if (droppedId && event.over) {
         scheduleTimeout(() => {
           setDragStateInternal((prev) => ({ ...prev, lastDroppedId: droppedId }))
-          scheduleTimeout(
-            () => setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null })),
-            1100
-          )
+          scheduleTimeout(() => {
+            setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null }))
+          }, 1100)
         }, 200)
       }
     },

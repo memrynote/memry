@@ -51,7 +51,9 @@ export function RecoveryPhraseInput({
     const timer = setInterval(() => {
       setProgressStep((prev) => Math.min(prev + 1, PROGRESS_STEPS.length - 1))
     }, STEP_INTERVAL_MS)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+    }
   }, [isLoading])
 
   useEffect(() => {
@@ -158,8 +160,12 @@ export function RecoveryPhraseInput({
                 spellCheck={false}
                 aria-label={t('setup.recovery.wordAria', { index: index + 1, word })}
                 aria-invalid={showError}
-                onChange={(event) => change(index, event.target.value)}
-                onKeyDown={(event) => keyDown(index, event)}
+                onChange={(event) => {
+                  change(index, event.target.value)
+                }}
+                onKeyDown={(event) => {
+                  keyDown(index, event)
+                }}
                 onPaste={(event) => {
                   const text = event.clipboardData.getData('text')
                   if (toWords(text).length < 2) return

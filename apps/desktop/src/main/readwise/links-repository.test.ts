@@ -17,7 +17,9 @@ describe('readwise links repository', () => {
     result = createTestDataDb()
     db = asClientDb(result.db)
   })
-  afterEach(() => result.close())
+  afterEach(() => {
+    result.close()
+  })
 
   it('finds a link by book id and by Reader document id', () => {
     upsertLink(db, { readwiseBookId: 7, readerDocumentId: 'doc-1', noteId: 'n1' })

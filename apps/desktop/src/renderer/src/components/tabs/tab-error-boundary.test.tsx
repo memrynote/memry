@@ -46,7 +46,9 @@ describe('TabErrorBoundary diagnostic reporting', () => {
       </TabErrorBoundary>
     )
 
-    await waitFor(() => expect(sendReport).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(sendReport).toHaveBeenCalledTimes(1)
+    })
     expect(previewReport).toHaveBeenCalledWith(
       expect.objectContaining({ source: 'tab_error_boundary' })
     )

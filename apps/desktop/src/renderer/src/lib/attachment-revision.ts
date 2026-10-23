@@ -45,7 +45,9 @@ export function subscribeToAttachmentRevisions(listener: () => void): () => void
   // surfaces that render an editor during boot.
   if (!subscribed) {
     subscribed = true
-    window.api?.onAttachmentMaterialized?.(({ noteId }) => bumpAttachmentRevision(noteId))
+    window.api?.onAttachmentMaterialized?.(({ noteId }) => {
+      bumpAttachmentRevision(noteId)
+    })
   }
   return () => {
     listeners.delete(listener)

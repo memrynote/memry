@@ -37,7 +37,9 @@ function renderTypeablePicker(query: string) {
   return {
     props,
     unmount,
-    retype: (next: string) => rerender(<RefPicker {...props} query={next} />)
+    retype: (next: string) => {
+      rerender(<RefPicker {...props} query={next} />)
+    }
   }
 }
 
@@ -80,7 +82,7 @@ describe('RefPicker', () => {
     vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
     Object.assign(window.api, {
       calendar: {
-        ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
+        ...(window.api as unknown as { calendar?: Record<string, unknown> }).calendar,
         listEvents: mockCalendarListEvents
       }
     })

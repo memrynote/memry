@@ -224,10 +224,13 @@ describe('pullAuthority (D8)', () => {
     result = createTestDataDb()
     db = asClientDb(result.db)
   })
-  afterEach(() => result.close())
+  afterEach(() => {
+    result.close()
+  })
 
-  const claim = (deviceId: string | null) =>
+  const claim = (deviceId: string | null) => {
     setSetting(db, READWISE_SETTINGS_KEY, JSON.stringify({ syncDeviceId: deviceId }))
+  }
 
   it('waits for sync to decide, so a launch never starts before it knows', () => {
     expect(pullAuthority(db, env({ decided: false }))).toEqual({ state: 'wait' })

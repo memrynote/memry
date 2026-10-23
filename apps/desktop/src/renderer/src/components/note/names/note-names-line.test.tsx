@@ -26,7 +26,9 @@ function renderLine(aliases: string[]) {
 }
 
 async function openAddInput(): Promise<HTMLElement> {
-  act(() => requestNoteNameInput('note-ai'))
+  act(() => {
+    requestNoteNameInput('note-ai')
+  })
   return screen.findByRole('textbox', { name: 'Another name for this note' })
 }
 
@@ -89,7 +91,9 @@ describe('NoteNamesLine', () => {
 
     await userEvent.type(await openAddInput(), 'AGI{Enter}')
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalled()
+    })
     expect(screen.getByTestId('note-names')).toHaveTextContent(/^also AI$/)
   })
 

@@ -144,7 +144,9 @@ describe('use-inbox-queries', () => {
 
   function fire(name: string, event?: { id?: string }) {
     for (const cb of eventState.callbacks[name] ?? []) {
-      act(() => cb(event))
+      act(() => {
+        cb(event)
+      })
     }
   }
 

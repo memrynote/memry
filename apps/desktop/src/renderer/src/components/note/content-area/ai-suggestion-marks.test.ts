@@ -56,7 +56,9 @@ describe('aiSuggestionMarksExtension', () => {
     const ai = registerAI(editor)
 
     expect(editor.pmSchema.marks.insertion).toBeUndefined()
-    expect(() => ai.rejectChanges()).toThrow(/Failed to find insertion mark in schema/)
+    expect(() => {
+      ai.rejectChanges()
+    }).toThrow(/Failed to find insertion mark in schema/)
   })
 
   it('puts the insertion, deletion and modification marks in the schema at creation', () => {
@@ -97,13 +99,17 @@ describe('aiSuggestionMarksExtension', () => {
     const text = (): unknown => editor.document[0].content
 
     suggestInsertion()
-    expect(() => ai.rejectChanges()).not.toThrow()
+    expect(() => {
+      ai.rejectChanges()
+    }).not.toThrow()
     expect(text()).toEqual([{ type: 'text', text: 'kaan', styles: {} }])
     expect(ai.store.state.aiMenuState).toBe('closed')
     expect(editor.isEditable).toBe(true)
 
     suggestInsertion()
-    expect(() => ai.acceptChanges()).not.toThrow()
+    expect(() => {
+      ai.acceptChanges()
+    }).not.toThrow()
     expect(text()).toEqual([{ type: 'text', text: 'kaan was here', styles: {} }])
     let leftoverMarks = 0
     editor.prosemirrorState.doc.descendants((node) => {
@@ -121,6 +127,8 @@ describe('aiSuggestionMarksExtension', () => {
     const ai = registerAI(editor)
 
     expect(editor.pmSchema.marks.insertion).toBeDefined()
-    expect(() => ai.rejectChanges()).not.toThrow()
+    expect(() => {
+      ai.rejectChanges()
+    }).not.toThrow()
   })
 })

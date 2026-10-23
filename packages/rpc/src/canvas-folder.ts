@@ -1,11 +1,13 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { CanvasFolderChannels } from '../../contracts/src/ipc-channels.ts'
-import {
+import type {
   CanvasFolderCreateSchema,
   CanvasFolderDeleteSchema,
   CanvasFolderMoveSchema,
   CanvasFolderRenameSchema,
-  CanvasFolderSetIconSchema,
+  CanvasFolderSetIconSchema
+} from '../../contracts/src/canvas-folder-api.ts'
+import {
   type CanvasFolder,
   type CanvasFolderListResponse,
   type CanvasFolderMutationResponse,

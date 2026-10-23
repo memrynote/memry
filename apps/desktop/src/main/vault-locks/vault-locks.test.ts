@@ -138,7 +138,9 @@ describe('vault read-only locks (#2606)', () => {
     expect(result).toEqual({ notes: ['note-a'], folders: [] })
     expect(mocks.enqueueCreate).toHaveBeenCalledWith('note:note-a')
     expect(isNoteLocked('note-a')).toBe(true)
-    expect(() => assertNoteWritable('note-a')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
+    expect(() => {
+      assertNoteWritable('note-a')
+    }).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('# A\n')
     if (!isWindows) expect(isWritable(file)).toBe(false)
   })
@@ -154,7 +156,9 @@ describe('vault read-only locks (#2606)', () => {
     expect(data.db.select().from(vaultLocks).all()).toMatchObject([
       { id: 'note:note-a', locked: false }
     ])
-    expect(() => assertNoteWritable('note-a')).not.toThrow()
+    expect(() => {
+      assertNoteWritable('note-a')
+    }).not.toThrow()
     expect(getBaseline(asClientDb(data.db), 'note-a')).toBeUndefined()
     expect(isWritable(file)).toBe(true)
   })
@@ -168,24 +172,36 @@ describe('vault read-only locks (#2606)', () => {
     expect(getVaultLockState()).toEqual({ notes: [], folders: ['projects/plan'] })
     expect(isNoteLocked('note-in')).toBe(true)
     expect(isNoteLocked('note-out')).toBe(false)
-    expect(() => assertFolderWritable('projects/plan/deeper')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
-    expect(() => assertFolderWritable('projects')).not.toThrow()
-    expect(() => assertFolderTreeWritable('projects')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    expect(() => {
+      assertFolderWritable('projects/plan/deeper')
+    }).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    expect(() => {
+      assertFolderWritable('projects')
+    }).not.toThrow()
+    expect(() => {
+      assertFolderTreeWritable('projects')
+    }).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
   })
 
   it('a folder holding a locked note cannot be renamed, moved or deleted', async () => {
     addNote('note-a', 'archive/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
 
-    expect(() => assertFolderTreeWritable('archive')).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
-    expect(() => assertFolderTreeWritable('other')).not.toThrow()
+    expect(() => {
+      assertFolderTreeWritable('archive')
+    }).toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
+    expect(() => {
+      assertFolderTreeWritable('other')
+    }).not.toThrow()
   })
 
   it('remote applies and restores run inside the allowed scope', async () => {
     addNote('note-a', 'notes/a.md', 'a\n')
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
 
-    expect(() => runWithLockedWritesAllowed(() => assertNoteWritable('note-a'))).not.toThrow()
+    expect(() => {
+      runWithLockedWritesAllowed(() => assertNoteWritable('note-a'))
+    }).not.toThrow()
   })
 
   it('every vault write primitive refuses a locked file outside the allowed scope', async () => {
@@ -395,12 +411,12 @@ describe('vault read-only locks (#2606)', () => {
 
     onRemoteVaultLockApplied()
 
-    await vi.waitFor(() =>
+    await vi.waitFor(() => {
       expect(mocks.broadcast).toHaveBeenCalledWith('vault-locks:changed', {
         notes: ['note-a'],
         folders: []
       })
-    )
+    })
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('a\n')
     if (!isWindows) expect(isWritable(file)).toBe(false)
   })
@@ -447,7 +463,9 @@ describe('vault read-only locks (#2606)', () => {
 
     if (!isWindows) expect(isWritable(file)).toBe(false)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('remote\n')
-    expect(() => setFileReadOnlySync(path.join(vault, 'notes/missing.md'), true)).not.toThrow()
+    expect(() => {
+      setFileReadOnlySync(path.join(vault, 'notes/missing.md'), true)
+    }).not.toThrow()
   })
 
   it('a remote write that throws leaves the locked file read-only with its baseline', () => {
@@ -456,11 +474,11 @@ describe('vault read-only locks (#2606)', () => {
     setFileReadOnlySync(file, true)
     writeBaseline(asClientDb(data.db), 'note-a', 'a\n', 'hash-a')
 
-    expect(() =>
+    expect(() => {
       writeThroughLockSync(file, () => {
         throw new Error('ENOSPC')
       })
-    ).toThrow('ENOSPC')
+    }).toThrow('ENOSPC')
 
     if (!isWindows) expect(isWritable(file)).toBe(false)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('a\n')
@@ -563,7 +581,9 @@ describe('vault read-only locks (#2606)', () => {
       }
 
       await vi.waitFor(
-        () => expect([existing, added, firstOfNote].map(modeOf)).toEqual([0o444, 0o444, 0o444]),
+        () => {
+          expect([existing, added, firstOfNote].map(modeOf)).toEqual([0o444, 0o444, 0o444])
+        },
         { timeout: 5000 }
       )
       expect([unlocked, partial].map(modeOf)).toEqual([0o644, 0o644])
@@ -581,7 +601,12 @@ describe('vault read-only locks (#2606)', () => {
       fs.writeFileSync(added, 'bytes')
       fs.chmodSync(added, 0o644)
 
-      await vi.waitFor(() => expect(modeOf(added)).toBe(0o444), { timeout: 5000 })
+      await vi.waitFor(
+        () => {
+          expect(modeOf(added)).toBe(0o444)
+        },
+        { timeout: 5000 }
+      )
     }
   )
 

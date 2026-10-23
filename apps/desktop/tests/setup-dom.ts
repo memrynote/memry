@@ -4,9 +4,8 @@
  */
 
 import '@testing-library/jest-dom/vitest'
-import { vi } from 'vitest'
+import { vi, afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
 import i18next from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { IcuFormatter } from '@memry/i18n/shared'

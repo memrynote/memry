@@ -97,7 +97,9 @@ async function openReadySession(body: string): Promise<string> {
   mocks.buildLineIndex.mockResolvedValue(indexFor(body))
   const opened = await openLargeFileSession('note-1')
   const sessionId = opened.status === 'indexing' ? opened.sessionId : ''
-  await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+  await vi.waitFor(() => {
+    expect(indexEvents().at(-1)?.status).toBe('ready')
+  })
   return sessionId
 }
 
@@ -203,7 +205,9 @@ describe('large-file session', () => {
 
     // #when
     const opened = await openLargeFileSession('note-1')
-    await vi.waitFor(() => expect(indexEvents().some((e) => e.status === 'ready')).toBe(true))
+    await vi.waitFor(() => {
+      expect(indexEvents().some((e) => e.status === 'ready')).toBe(true)
+    })
 
     // #then — the wait is visible while it happens...
     expect(opened.status).toBe('indexing')
@@ -226,7 +230,9 @@ describe('large-file session', () => {
     const opened = await openLargeFileSession('note-1')
     expect(opened.status).toBe('indexing')
     const sessionId = opened.status === 'indexing' ? opened.sessionId : ''
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('ready')
+    })
     const page = await readLargeFileLines({ sessionId, startLine: 397, count: 5 })
 
     // #then — the window comes back and stops at the end of the file
@@ -262,7 +268,9 @@ describe('large-file session', () => {
       // #when
       const opened = await openLargeFileSession('note-1')
       const sessionId = opened.status === 'indexing' ? opened.sessionId : ''
-      await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+      await vi.waitFor(() => {
+        expect(indexEvents().at(-1)?.status).toBe('ready')
+      })
       const page = await readLargeFileLines({ sessionId, startLine: 10, count: 2 })
 
       // #then — opening and reading both still work, because neither path ever
@@ -280,7 +288,9 @@ describe('large-file session', () => {
     await writeVaultFile('log.md', body)
     mocks.buildLineIndex.mockResolvedValue(indexFor(body))
     const first = await openLargeFileSession('note-1')
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('ready')
+    })
 
     // #when the same note is opened again, as a tab switch does
     const second = await openLargeFileSession('note-1')
@@ -361,7 +371,9 @@ describe('large-file session', () => {
     await writeVaultFile('log.md', 'one\ntwo\n')
     mocks.buildLineIndex.mockResolvedValue(indexFor('one\ntwo\n'))
     await openLargeFileSession('note-1')
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('ready')
+    })
 
     await writeVaultFile('log.md', 'one\ntwo\nthree\nfour\n')
     mocks.buildLineIndex.mockResolvedValue(indexFor('one\ntwo\nthree\nfour\n'))
@@ -384,7 +396,9 @@ describe('large-file session', () => {
       const opened = await openLargeFileSession(`note-${i}`)
       if (opened.status === 'indexing') ids.push(opened.sessionId)
     }
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('ready')
+    })
 
     // #when the first session is read from
     const evicted = await readLargeFileLines({ sessionId: ids[0], startLine: 0, count: 1 })
@@ -472,7 +486,9 @@ describe('large-file session', () => {
     await openLargeFileSession('note-1')
 
     // #then
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('error'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('error')
+    })
   })
 
   it('refuses a cache path that resolves outside the vault', async () => {
@@ -502,7 +518,9 @@ describe('large-file session', () => {
     mocks.buildLineIndex.mockResolvedValue(indexFor(body))
     const opened = await openLargeFileSession('note-1')
     const sessionId = opened.status === 'indexing' ? opened.sessionId : ''
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('ready')
+    })
 
     // #when
     const page = await readLargeFileLines({
@@ -528,7 +546,9 @@ describe('large-file session', () => {
     mocks.buildLineIndex.mockResolvedValue(indexFor('one\ntwo\n'))
     const opened = await openLargeFileSession('note-1')
     const sessionId = opened.status === 'indexing' ? opened.sessionId : ''
-    await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+    await vi.waitFor(() => {
+      expect(indexEvents().at(-1)?.status).toBe('ready')
+    })
 
     // #when
     await closeLargeFileSession(sessionId)

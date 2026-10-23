@@ -5,10 +5,9 @@ import path from 'path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { vi } from 'vitest'
 import {
   convertUnmergedDebtMirror,
   crdtBodyDebtBackoffMs,
@@ -32,19 +31,24 @@ describe('crdt body debts (#2297)', () => {
   const db = () => asSyncDb(t.db)
   const state = (key: string) =>
     t.sqlite.prepare('SELECT value, updated_at AS at FROM sync_state WHERE key = ?').get(key) as
-      { value: string; at: number } | undefined
+      | { value: string; at: number }
+      | undefined
   const debt = (noteId: string) => listCrdtBodyDebts(db()).find((d) => d.noteId === noteId)
   const owe = (
     ids: string[],
     reason: Parameters<typeof oweCrdtBodyDebts>[2],
     options: Parameters<typeof oweCrdtBodyDebts>[3] = {}
-  ) => oweCrdtBodyDebts(db(), ids, reason, options)
+  ) => {
+    oweCrdtBodyDebts(db(), ids, reason, options)
+  }
 
   beforeEach(() => {
     t = createTestDataDb()
     log.error.mockClear()
   })
-  afterEach(() => t.close())
+  afterEach(() => {
+    t.close()
+  })
 
   it('owes a note once, keeping the first reason and the lower cursor, and NULL wins', () => {
     owe(['n1'], 'feed_owed', { lowestCursor: 40, now: 1_000 })
@@ -264,7 +268,9 @@ describe('crdt body debts (#2297)', () => {
   it('survives a missing table, logging once', () => {
     t.sqlite.exec('DROP TABLE crdt_body_debts')
     const store = crdtBodyDebtStore(db())
-    expect(() => store.owe(['n1'], 'record')).not.toThrow()
+    expect(() => {
+      store.owe(['n1'], 'record')
+    }).not.toThrow()
     expect(store.settle(['n1'], 0).size).toBe(0)
     expect(store.list()).toEqual([])
     expect(store.generation()).toBe(0)
@@ -405,7 +411,9 @@ describe('0060_crdt_body_debts migration', () => {
       .run()
     sqlite.exec(fs.readFileSync(path.join(migrationsDir, '0060_crdt_body_debts.sql'), 'utf8'))
     migrate(db, { migrationsFolder: migrationsDir })
-    expect(() => migrate(db, { migrationsFolder: makePre0060Folder() })).not.toThrow()
+    expect(() => {
+      migrate(db, { migrationsFolder: makePre0060Folder() })
+    }).not.toThrow()
     expect(sqlite.prepare('SELECT note_id FROM crdt_body_debts').all()).toEqual([{ note_id: 'n1' }])
     sqlite.close()
   })

@@ -109,7 +109,9 @@ export function SearchResultGroup({
       {!expanded && hidden > 0 && (
         <SearchRow
           value={showMoreValue(group.type)}
-          onSelect={() => onExpand(group.type)}
+          onSelect={() => {
+            onExpand(group.type)
+          }}
           icon={<ChevronDown />}
           muted
         >

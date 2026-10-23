@@ -78,7 +78,9 @@ export function NoteTreeDeleteDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => onConfirm(tasksChoice.taskIdsToDelete)}
+            onClick={() => {
+              onConfirm(tasksChoice.taskIdsToDelete)
+            }}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
@@ -175,7 +177,11 @@ export function NoteTreeJournalChangeDialog({ kind, onResolve }: NoteTreeJournal
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onResolve(true)}>
+          <AlertDialogAction
+            onClick={() => {
+              onResolve(true)
+            }}
+          >
             {t('tree.journalChange.confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>

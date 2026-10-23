@@ -6,7 +6,7 @@ test.describe('Account sync E2E', () => {
     syncBootstrap,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const before = await pageA.evaluate(async () => {
       return {
@@ -32,7 +32,7 @@ test.describe('Account sync E2E', () => {
     pageB,
     bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
 
     const [deviceA, deviceB] = await Promise.all([
       pageA.evaluate(async () => {

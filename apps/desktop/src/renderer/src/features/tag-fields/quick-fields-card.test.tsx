@@ -162,9 +162,9 @@ describe('QuickFieldsCard', () => {
     await userEvent.type(role, ' CTO ')
     await userEvent.type(screen.getByPlaceholderText('Add age'), '36{Enter}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.properties.merge).toHaveBeenCalledWith('n_ada', { Role: 'CTO', Age: 36 })
-    )
+    })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -194,7 +194,9 @@ describe('QuickFieldsCard', () => {
 
     await userEvent.type(screen.getByPlaceholderText('Add role'), 'CTO{Enter}')
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('vault locked'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('vault locked')
+    })
   })
 
   it('links a related object picked from the relation field and saves it', async () => {
@@ -212,11 +214,11 @@ describe('QuickFieldsCard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Done/ }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(api.properties.merge).toHaveBeenCalledWith('n_ada', {
         Employer: ['memry://note/n_acme']
       })
-    )
+    })
     expect(onClose).toHaveBeenCalled()
   })
 

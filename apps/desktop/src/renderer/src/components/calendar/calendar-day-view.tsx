@@ -149,8 +149,12 @@ export function CalendarDayView({
             data-testid="day-time-grid"
             className="relative flex-1"
             style={{ backgroundImage: GRID_LINE_BG }}
-            onMouseDown={(e) => handlers.onMouseDown(e, 0)}
-            onDoubleClick={(e) => handlers.onDoubleClick(e, 0)}
+            onMouseDown={(e) => {
+              handlers.onMouseDown(e, 0)
+            }}
+            onDoubleClick={(e) => {
+              handlers.onDoubleClick(e, 0)
+            }}
           >
             <CalendarTimedColumnDroppable date={anchorDate} hourHeight={HOUR_HEIGHT}>
               {assignLanes(timedItems).map(({ item, lane, laneCount }) => {
@@ -174,7 +178,13 @@ export function CalendarDayView({
                       left: `${leftPct}%`,
                       width: `${widthPct}%`
                     }}
-                    onMouseDown={movable ? (e) => startMove(e, item, 0) : undefined}
+                    onMouseDown={
+                      movable
+                        ? (e) => {
+                            startMove(e, item, 0)
+                          }
+                        : undefined
+                    }
                   >
                     <CalendarItemChip
                       item={item}
@@ -189,11 +199,15 @@ export function CalendarDayView({
                       <>
                         <div
                           className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
-                          onMouseDown={(e) => startResize(e, item, 0, 'start')}
+                          onMouseDown={(e) => {
+                            startResize(e, item, 0, 'start')
+                          }}
                         />
                         <div
                           className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
-                          onMouseDown={(e) => startResize(e, item, 0, 'end')}
+                          onMouseDown={(e) => {
+                            startResize(e, item, 0, 'end')
+                          }}
                         />
                       </>
                     )}

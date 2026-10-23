@@ -54,9 +54,9 @@ describe('file text extraction', () => {
       `)
       fileTextNoteChanged('img-1')
 
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(published).toContainEqual({ type: 'note.text-extracted', noteId: 'img-1' })
-      )
+      })
       await stopFileTextExtraction()
 
       expect(helpers).toEqual({ ocrStopped: 1, hostClosed: 1 })

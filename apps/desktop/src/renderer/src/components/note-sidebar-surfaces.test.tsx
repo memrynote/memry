@@ -252,7 +252,9 @@ describe('note and sidebar cold surfaces', () => {
     // Reported rather than lifted: nothing above this layout re-renders when
     // the reader scrolls past a heading, but the note page still has to know
     // which one they were on when they ask for the map.
-    await waitFor(() => expect(onActiveHeadingChange).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(onActiveHeadingChange).toHaveBeenCalled()
+    })
     const reported = onActiveHeadingChange.mock.calls.at(-1)?.[0]
     expect(headings.map((heading) => heading.id)).toContain(reported)
   })

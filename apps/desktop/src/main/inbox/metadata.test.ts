@@ -552,7 +552,10 @@ describe('URL Metadata Extraction', () => {
             fromWeb: vi.fn(() => ({
               pipe: vi.fn().mockReturnThis(),
               on: vi.fn((event, cb: () => void) => {
-                if (event === 'end') setTimeout(() => cb(), 0)
+                if (event === 'end')
+                  setTimeout(() => {
+                    cb()
+                  }, 0)
                 return { on: vi.fn() }
               })
             }))

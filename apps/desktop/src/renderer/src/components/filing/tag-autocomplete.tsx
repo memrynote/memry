@@ -215,14 +215,18 @@ export const TagAutocomplete = ({
       }
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+    }
   }, [])
 
   useEffect(() => {
     if (!autoFocus) return
 
     const focusTimeout = setTimeout(() => inputRef.current?.focus(), 100)
-    return () => clearTimeout(focusTimeout)
+    return () => {
+      clearTimeout(focusTimeout)
+    }
   }, [autoFocus])
 
   const addTag = useCallback(
@@ -328,8 +332,12 @@ export const TagAutocomplete = ({
             <button
               key={tag}
               type="button"
-              onClick={() => addTag(tag)}
-              onMouseEnter={() => setRequestedHighlightedIndex(idx)}
+              onClick={() => {
+                addTag(tag)
+              }}
+              onMouseEnter={() => {
+                setRequestedHighlightedIndex(idx)
+              }}
               className={cn(
                 'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-start transition-colors',
                 highlightedIndex === idx ? 'bg-[var(--tint)]/[0.03]' : 'hover:bg-foreground/[0.03]'
@@ -376,8 +384,12 @@ export const TagAutocomplete = ({
             <button
               key={tag.name}
               type="button"
-              onClick={() => addTag(tag.name)}
-              onMouseEnter={() => setRequestedHighlightedIndex(idx)}
+              onClick={() => {
+                addTag(tag.name)
+              }}
+              onMouseEnter={() => {
+                setRequestedHighlightedIndex(idx)
+              }}
               className={cn(
                 'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-start transition-colors',
                 highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
@@ -407,8 +419,12 @@ export const TagAutocomplete = ({
     return (
       <button
         type="button"
-        onClick={() => addTag(trimmedInput)}
-        onMouseEnter={() => setRequestedHighlightedIndex(idx)}
+        onClick={() => {
+          addTag(trimmedInput)
+        }}
+        onMouseEnter={() => {
+          setRequestedHighlightedIndex(idx)
+        }}
         className={cn(
           'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-start transition-colors',
           highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
@@ -444,7 +460,9 @@ export const TagAutocomplete = ({
       }}
       onBlur={() => {
         setIsFocused(false)
-        setTimeout(() => setIsDropdownOpen(false), 150)
+        setTimeout(() => {
+          setIsDropdownOpen(false)
+        }, 150)
       }}
       role="combobox"
       aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.addTags')}
@@ -504,7 +522,9 @@ export const TagAutocomplete = ({
                   tag={tag}
                   color={def?.color}
                   icon={def?.icon}
-                  onRemove={() => removeTag(tag)}
+                  onRemove={() => {
+                    removeTag(tag)
+                  }}
                   removeLabel={tPhaseF('phaseF.componentsFilingTagAutocomplete.removeTag', {
                     tag
                   })}

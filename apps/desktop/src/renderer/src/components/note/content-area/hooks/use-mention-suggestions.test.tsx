@@ -347,7 +347,9 @@ describe('useMentionSuggestions canvases', () => {
     const hook = renderHook(() =>
       useMentionSuggestions(editor, options({ editorContainerRef: { current: container } }))
     )
-    act(() => hook.result.current.handleMentionSelect(canvas))
+    act(() => {
+      hook.result.current.handleMentionSelect(canvas)
+    })
     return { ...hook, container }
   }
 
@@ -387,7 +389,9 @@ describe('useMentionSuggestions canvases', () => {
     expect(canvases.map((item) => item.title)).not.toContain('Unrelated')
     expect(result.current.mentionHasMore).toBe(true)
 
-    act(() => result.current.showMore())
+    act(() => {
+      result.current.showMore()
+    })
     await act(async () => {
       items = await result.current.getMentionItems('roadmap')
     })
@@ -423,7 +427,9 @@ describe('useMentionSuggestions canvases', () => {
     const editor = makeEditor({ id: 'b1', content: [] })
     const { result } = renderWithContainer(editor)
 
-    act(() => result.current.selectCanvasChoice('mention'))
+    act(() => {
+      result.current.selectCanvasChoice('mention')
+    })
 
     expect(editor.insertInlineContent).toHaveBeenCalledWith(wikiLink, { updateSelection: true })
     expect(editor.updateBlock).not.toHaveBeenCalled()
@@ -435,7 +441,9 @@ describe('useMentionSuggestions canvases', () => {
     const editor = makeEditor(block)
     const { result } = renderWithContainer(editor)
 
-    act(() => result.current.selectCanvasChoice('embed'))
+    act(() => {
+      result.current.selectCanvasChoice('embed')
+    })
 
     expect(editor.updateBlock).toHaveBeenCalledWith(block, {
       type: 'whiteboard',
@@ -452,7 +460,9 @@ describe('useMentionSuggestions canvases', () => {
     )
     const { result } = renderWithContainer(editor)
 
-    act(() => result.current.selectCanvasChoice('embed'))
+    act(() => {
+      result.current.selectCanvasChoice('embed')
+    })
 
     // #then a fresh paragraph goes right after the board and takes the caret
     expect(editor.insertBlocks).toHaveBeenCalledWith([{ type: 'paragraph' }], 'b1', 'after')
@@ -467,7 +477,9 @@ describe('useMentionSuggestions canvases', () => {
     const editor = makeEditor({ id: 'b1', content: [] }, following)
     const { result } = renderWithContainer(editor)
 
-    act(() => result.current.selectCanvasChoice('embed'))
+    act(() => {
+      result.current.selectCanvasChoice('embed')
+    })
 
     expect(editor.insertBlocks).not.toHaveBeenCalled()
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith(following, 'start')
@@ -478,7 +490,9 @@ describe('useMentionSuggestions canvases', () => {
     const editor = makeEditor(block)
     const { result } = renderWithContainer(editor)
 
-    act(() => result.current.selectCanvasChoice('embed'))
+    act(() => {
+      result.current.selectCanvasChoice('embed')
+    })
 
     expect(editor.updateBlock).not.toHaveBeenCalled()
     expect(editor.insertBlocks).toHaveBeenCalledWith(
@@ -493,7 +507,9 @@ describe('useMentionSuggestions canvases', () => {
     const editor = makeEditor(block)
     const { result } = renderWithContainer(editor)
 
-    act(() => result.current.selectCanvasChoice('embed'))
+    act(() => {
+      result.current.selectCanvasChoice('embed')
+    })
 
     expect(editor.updateBlock).not.toHaveBeenCalled()
     expect(editor.insertBlocks).toHaveBeenCalledWith(expect.any(Array), block, 'after')

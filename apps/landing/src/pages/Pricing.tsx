@@ -307,7 +307,9 @@ function TierGrid({
                 tier={tier}
                 cadence={cadence}
                 reduceMotion={reduceMotion ?? false}
-                onCheckout={() => onCheckout(tier)}
+                onCheckout={() => {
+                  onCheckout(tier)
+                }}
               />
             </motion.div>
           ))}
@@ -449,9 +451,9 @@ function TierCard({
           <Button variant="outline" size="lg" className={ctaClass} asChild>
             <Link
               to="/download"
-              onClick={() =>
+              onClick={() => {
                 trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, cadence))
-              }
+              }}
             >
               {tier.cta}
             </Link>
@@ -820,12 +822,12 @@ function LimitMatrix({
                             >
                               <Link
                                 to="/download"
-                                onClick={() =>
+                                onClick={() => {
                                   trackLandingEvent(
                                     'landing_pricing_cta_click',
                                     pricingTarget(tier.id, cadence)
                                   )
-                                }
+                                }}
                               >
                                 Get started
                               </Link>
@@ -835,7 +837,9 @@ function LimitMatrix({
                               variant={isRecommended ? 'default' : 'outline'}
                               size="sm"
                               disabled={!PURCHASES_ENABLED}
-                              onClick={() => onCheckout(tier)}
+                              onClick={() => {
+                                onCheckout(tier)
+                              }}
                               className={cn(
                                 'h-8 rounded-sm px-3 text-xs',
                                 !isRecommended && 'border-ink/20 bg-transparent'

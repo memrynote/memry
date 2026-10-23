@@ -80,7 +80,9 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
       if (direction !== 0) step(direction)
     }
     root.addEventListener('wheel', onWheel, { passive: false })
-    return () => root.removeEventListener('wheel', onWheel)
+    return () => {
+      root.removeEventListener('wheel', onWheel)
+    }
   }, [foldable, step])
 
   // Esc closes opened paragraphs first, then returns to Full.
@@ -96,7 +98,9 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
       dispatch({ type: 'escape' })
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [folded, inActiveTab, state, dispatch])
 
   // ⌘C over a fold with nothing selected copies what the reader sees, as Markdown the
@@ -112,7 +116,9 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
       event.preventDefault()
     }
     document.addEventListener('copy', onCopy)
-    return () => document.removeEventListener('copy', onCopy)
+    return () => {
+      document.removeEventListener('copy', onCopy)
+    }
   }, [folded, view, inActiveTab])
 
   // Folding takes focus off the editor so keys reach the overlay.

@@ -128,7 +128,9 @@ export function useTagSuggestions({
     }
 
     container.addEventListener('click', handleTagClick)
-    return () => container.removeEventListener('click', handleTagClick)
+    return () => {
+      container.removeEventListener('click', handleTagClick)
+    }
   }, [openSidebarItem, editorContainerRef])
 
   const handleTagSuggestionSelect = useCallback(

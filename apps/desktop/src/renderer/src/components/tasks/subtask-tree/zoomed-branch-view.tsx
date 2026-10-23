@@ -75,7 +75,9 @@ export const ZoomedBranchView = ({
       }
     }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+    }
   }, [task.parentId, onZoom])
 
   return (
@@ -90,7 +92,9 @@ export const ZoomedBranchView = ({
         >
           <button
             type="button"
-            onClick={() => onZoom(task.parentId)}
+            onClick={() => {
+              onZoom(task.parentId)
+            }}
             className="flex items-center rounded-sm p-0.5 text-text-tertiary hover:bg-muted hover:text-foreground"
             aria-label={t('subtaskTree.zoom.up')}
             title={t('subtaskTree.zoom.upShortcut')}
@@ -99,7 +103,9 @@ export const ZoomedBranchView = ({
           </button>
           <button
             type="button"
-            onClick={() => onZoom(null)}
+            onClick={() => {
+              onZoom(null)
+            }}
             className="rounded-sm px-1 hover:bg-muted hover:text-foreground"
           >
             {project.name}
@@ -111,7 +117,9 @@ export const ZoomedBranchView = ({
               </span>
               <button
                 type="button"
-                onClick={() => onZoom(ancestor.id)}
+                onClick={() => {
+                  onZoom(ancestor.id)
+                }}
                 className="max-w-[16rem] truncate rounded-sm px-1 hover:bg-muted hover:text-foreground"
               >
                 {ancestor.title}
@@ -127,11 +135,15 @@ export const ZoomedBranchView = ({
             }
             color={status?.color ?? 'var(--text-tertiary)'}
             isCompleted={isCompleted}
-            onClick={() => onToggleComplete(task.id)}
+            onClick={() => {
+              onToggleComplete(task.id)
+            }}
           />
           <button
             type="button"
-            onClick={() => onTaskClick(task.id)}
+            onClick={() => {
+              onTaskClick(task.id)
+            }}
             className={cn(
               'min-w-0 truncate text-start text-xl font-semibold tracking-tight text-foreground',
               isCompleted && 'text-text-tertiary line-through'
@@ -156,7 +168,9 @@ export const ZoomedBranchView = ({
         {tree && tree.draftParentId !== task.id && tree.canAddUnder(task.id) && (
           <button
             type="button"
-            onClick={() => tree.openDraft(task.id)}
+            onClick={() => {
+              tree.openDraft(task.id)
+            }}
             className="mt-1 flex items-center gap-2 rounded-sm py-1.5 ps-6 text-[13px] text-text-tertiary hover:bg-muted hover:text-foreground"
           >
             <Plus className="size-3.5" />

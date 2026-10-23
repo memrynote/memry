@@ -242,7 +242,9 @@ describe('CommandPalette opening results', () => {
     const { user } = renderPalette()
 
     await user.type(input(), 'road')
-    await waitFor(() => expect(selectedRow()).toHaveTextContent(item.title))
+    await waitFor(() => {
+      expect(selectedRow()).toHaveTextContent(item.title)
+    })
     await user.keyboard('{Enter}')
 
     expect(openTab).toHaveBeenCalledWith(expect.objectContaining(tab))
@@ -251,11 +253,11 @@ describe('CommandPalette opening results', () => {
       action: 'opened',
       objectType: item.type
     })
-    await waitFor(() =>
+    await waitFor(() => {
       expect(searchService.addReason).toHaveBeenCalledWith(
         expect.objectContaining({ itemId: item.id, searchQuery: 'road' })
       )
-    )
+    })
   })
 
   it('collapses a long group and reveals the rest on request', async () => {
@@ -263,7 +265,9 @@ describe('CommandPalette opening results', () => {
     const { user } = renderPalette()
 
     await user.type(input(), 'note')
-    await waitFor(() => expect(rowTitles()).toContain('Note 0Projects'))
+    await waitFor(() => {
+      expect(rowTitles()).toContain('Note 0Projects')
+    })
     expect(rowTitles()).not.toContain('Note 5Projects')
 
     await user.click(screen.getByRole('option', { name: /showMore.*"count":2/ }))
@@ -302,7 +306,9 @@ describe('CommandPalette opening results', () => {
     const { user } = renderPalette()
 
     await user.type(input(), 'road')
-    await waitFor(() => expect(selectedRow()).toHaveTextContent('Roadmap note'))
+    await waitFor(() => {
+      expect(selectedRow()).toHaveTextContent('Roadmap note')
+    })
     await user.keyboard('{Tab}')
 
     expect(selectedRow()).toHaveTextContent('Roadmap link')
@@ -314,13 +320,15 @@ describe('CommandPalette filters', () => {
     const { user } = renderPalette()
 
     await user.type(input(), '/task')
-    await waitFor(() => expect(selectedRow()).toHaveTextContent('searchPalette.types.task'))
+    await waitFor(() => {
+      expect(selectedRow()).toHaveTextContent('searchPalette.types.task')
+    })
     await user.keyboard('{Enter}{Backspace}')
     await user.type(input(), 'design')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(lastQuery()).toEqual(expect.objectContaining({ text: 'design', types: ['task'] }))
-    )
+    })
     expect(screen.getByRole('button', { name: /removeFilter/ })).toBeInTheDocument()
   })
 
@@ -342,7 +350,9 @@ describe('CommandPalette filters', () => {
     const { user } = renderPalette()
 
     await user.type(input(), '/today')
-    await waitFor(() => expect(selectedRow()).toHaveTextContent('searchPalette.dates.today'))
+    await waitFor(() => {
+      expect(selectedRow()).toHaveTextContent('searchPalette.dates.today')
+    })
     await user.keyboard('{Enter}{Backspace}')
     await user.type(input(), 'x')
 
@@ -350,12 +360,12 @@ describe('CommandPalette filters', () => {
     const { startAt, endAt } = localDayRange(
       `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     )
-    await waitFor(() =>
+    await waitFor(() => {
       expect(lastQuery()?.dateRange).toEqual({
         from: startAt,
         to: new Date(Date.parse(endAt) - 1).toISOString()
       })
-    )
+    })
   })
 
   it('adds a tag from the "#" picker', async () => {
@@ -370,9 +380,9 @@ describe('CommandPalette filters', () => {
     await user.type(input(), 'plan')
 
     expect(picker).not.toBeInTheDocument()
-    await waitFor(() =>
+    await waitFor(() => {
       expect(lastQuery()).toEqual(expect.objectContaining({ text: 'plan', tags: ['work'] }))
-    )
+    })
   })
 
   it('backs out of a menu with Escape before closing the palette', async () => {
@@ -399,7 +409,9 @@ describe('CommandPalette filters', () => {
 
     await user.keyboard('{Enter}')
 
-    await waitFor(() => expect(lastQuery()).toEqual(expect.objectContaining({ types: [] })))
+    await waitFor(() => {
+      expect(lastQuery()).toEqual(expect.objectContaining({ types: [] }))
+    })
   })
 })
 
@@ -498,7 +510,9 @@ describe('CommandPalette matches inside a note', () => {
     const { user } = renderPalette()
 
     await user.type(input(), 'kedi köpek')
-    await waitFor(() => expect(notesService.get).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(notesService.get).toHaveBeenCalled()
+    })
     expect(screen.getAllByRole('option')).toHaveLength(1)
     await user.click(screen.getByRole('option', { name: /Cats/ }))
 

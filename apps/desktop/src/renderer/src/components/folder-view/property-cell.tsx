@@ -478,7 +478,9 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
               return (
                 <DateEditor
                   value={dateValue}
-                  onChange={(date) => handleCommit(date?.toISOString() ?? null)}
+                  onChange={(date) => {
+                    handleCommit(date?.toISOString() ?? null)
+                  }}
                   onBlur={handleStopEditing}
                 />
               )
@@ -620,7 +622,9 @@ export const UrlCell = memo(function UrlCell({
         'inline-flex items-center gap-1 text-primary hover:underline truncate max-w-full',
         className
       )}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+      }}
       title={value}
     >
       <span className="truncate">{displayText}</span>
@@ -1086,7 +1090,13 @@ function MeasuredTagPill({
     >
       <TagChip
         tag={toTagChip(tag, meta)}
-        onClick={onTagClick ? () => onTagClick(tag) : undefined}
+        onClick={
+          onTagClick
+            ? () => {
+                onTagClick(tag)
+              }
+            : undefined
+        }
         onRemove={onTagRemove}
       />
     </span>
@@ -1141,7 +1151,9 @@ function useTagOverflow(
     recompute()
     const ro = new ResizeObserver(recompute)
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      ro.disconnect()
+    }
   }, [tagKey, count])
 
   return { containerRef, visible }
@@ -1186,7 +1198,9 @@ export const TagsCell = memo(function TagsCell({
           <HoverCardTrigger asChild>
             <button
               type="button"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
               className={cn(
                 'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium',
                 'bg-muted text-muted-foreground hover:bg-muted/80 focus:outline-none'

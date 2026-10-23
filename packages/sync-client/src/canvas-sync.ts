@@ -38,7 +38,7 @@ export function resetCanvasSyncService(): void {
  * clobbering good ink.
  */
 export class CanvasSyncService {
-  private controller: RecordSyncController<Record<string, unknown>, [], []>
+  private controller: RecordSyncController<Record<string, unknown>, []>
 
   constructor(private readonly deps: CanvasSyncDeps) {
     this.controller = new RecordSyncController({
@@ -49,7 +49,8 @@ export class CanvasSyncService {
       // tombstone row to build its delete payload.
       load: (id) =>
         deps.db.select().from(canvases).where(eq(canvases.id, id)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -61,7 +62,8 @@ export class CanvasSyncService {
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
           deps.db.select().from(canvases).where(eq(canvases.id, itemId)).get() as
-            Record<string, unknown> | undefined,
+            | Record<string, unknown>
+            | undefined,
           deviceId,
           (clock) => deps.db.update(canvases).set({ clock }).where(eq(canvases.id, itemId)).run()
         ),

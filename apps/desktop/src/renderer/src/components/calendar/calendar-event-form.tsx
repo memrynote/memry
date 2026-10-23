@@ -301,7 +301,9 @@ export function CalendarEventForm({
           ref={titleRef}
           placeholder={t('form.new-event-placeholder')}
           value={draft.title}
-          onChange={(e) => onDraftChange({ ...draft, title: e.target.value })}
+          onChange={(e) => {
+            onDraftChange({ ...draft, title: e.target.value })
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !isModEnter(e) && draft.title.trim()) {
               e.preventDefault()
@@ -320,7 +322,9 @@ export function CalendarEventForm({
             label={t('form.start')}
             value={draft.startAt}
             isAllDay={draft.isAllDay}
-            onChange={(next) => onDraftChange({ ...draft, startAt: next })}
+            onChange={(next) => {
+              onDraftChange({ ...draft, startAt: next })
+            }}
             clockFormat={clockFormat}
             locale={i18n.language}
             pickDateLabel={t('time.pick-a-date')}
@@ -332,7 +336,9 @@ export function CalendarEventForm({
             label={t('form.end')}
             value={endValue}
             isAllDay={draft.isAllDay}
-            onChange={(next) => onDraftChange({ ...draft, endAt: next })}
+            onChange={(next) => {
+              onDraftChange({ ...draft, endAt: next })
+            }}
             clockFormat={clockFormat}
             locale={i18n.language}
             pickDateLabel={t('time.pick-a-date')}
@@ -348,7 +354,9 @@ export function CalendarEventForm({
         <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted-foreground">
           <Checkbox
             checked={draft.isAllDay}
-            onCheckedChange={(checked) => handleAllDayToggle(checked === true)}
+            onCheckedChange={(checked) => {
+              handleAllDayToggle(checked === true)
+            }}
             aria-label={t('time.all-day')}
             className="size-3.5 rounded-[4px]"
           />
@@ -365,7 +373,9 @@ export function CalendarEventForm({
               mode={mode}
               eventId={eventId}
               value={draft.projectId}
-              onChange={(projectId) => onDraftChange({ ...draft, projectId })}
+              onChange={(projectId) => {
+                onDraftChange({ ...draft, projectId })
+              }}
               disabled={isSaving}
               hideLabel
             />
@@ -374,14 +384,18 @@ export function CalendarEventForm({
 
         <TargetCalendarField
           value={draft.targetCalendarId}
-          onChange={(next) => onDraftChange({ ...draft, targetCalendarId: next })}
+          onChange={(next) => {
+            onDraftChange({ ...draft, targetCalendarId: next })
+          }}
           disabled={isSaving}
         />
 
         <DetailRow icon={<Palette />}>
           <EventColorField
             value={draft.color}
-            onChange={(color) => onDraftChange({ ...draft, color })}
+            onChange={(color) => {
+              onDraftChange({ ...draft, color })
+            }}
             disabled={isSaving}
           />
         </DetailRow>
@@ -390,7 +404,9 @@ export function CalendarEventForm({
           <Textarea
             placeholder={t('form.notes-url-placeholder')}
             value={draft.description}
-            onChange={(e) => onDraftChange({ ...draft, description: e.target.value })}
+            onChange={(e) => {
+              onDraftChange({ ...draft, description: e.target.value })
+            }}
             disabled={isSaving}
             rows={2}
             className="min-h-0 resize-none border-0 bg-transparent p-0 text-[13px] shadow-none focus-visible:ring-0"
@@ -471,7 +487,9 @@ function EventColorField({ value, onChange, disabled }: EventColorFieldProps) {
           title={defaultLabel}
           aria-pressed={value === null}
           disabled={disabled}
-          onClick={() => onChange(null)}
+          onClick={() => {
+            onChange(null)
+          }}
         >
           {value === null && <Check className="size-3" />}
         </button>
@@ -488,7 +506,9 @@ function EventColorField({ value, onChange, disabled }: EventColorFieldProps) {
               title={label}
               aria-pressed={value === color}
               disabled={disabled}
-              onClick={() => onChange(color)}
+              onClick={() => {
+                onChange(color)
+              }}
             >
               {value === color && <Check className="size-3" />}
             </button>

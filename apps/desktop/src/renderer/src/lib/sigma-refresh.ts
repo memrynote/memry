@@ -57,6 +57,8 @@ export function useRepaintSigmaWhenContainerRegainsWidth(sigma: Sigma): void {
       hadWidth = hasWidth
     })
     observer.observe(container)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [sigma])
 }

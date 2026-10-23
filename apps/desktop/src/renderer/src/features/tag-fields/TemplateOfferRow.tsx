@@ -109,7 +109,9 @@ export function TemplateOffers({
             type="button"
             className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-muted hover:text-foreground"
             aria-label={t('tagFields.offer.dismiss')}
-            onClick={() => templateOffers.resolve(noteId, tag.key)}
+            onClick={() => {
+              templateOffers.resolve(noteId, tag.key)
+            }}
           >
             <X className="size-3" />
           </button>

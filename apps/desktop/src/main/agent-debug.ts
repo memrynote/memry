@@ -34,7 +34,7 @@ declare global {
 }
 
 function readOnlyAll(db: Database, sql: string, params: unknown[]): unknown[] {
-  const statement: Statement<unknown[]> = db.prepare(sql)
+  const statement: Statement = db.prepare(sql)
   if (!statement.readonly) {
     throw new Error('__memryDebug runs read-only SQL; mutate through the UI or test hooks')
   }

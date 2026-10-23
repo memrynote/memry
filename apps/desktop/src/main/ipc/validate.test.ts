@@ -513,7 +513,11 @@ describe('validated handler attribution', () => {
   })
 
   it('#given a non-function or empty channel #then labelling is a no-op', () => {
-    expect(() => setIpcHandlerChannel(undefined, 'notes:create')).not.toThrow()
-    expect(() => setIpcHandlerChannel(() => undefined, '')).not.toThrow()
+    expect(() => {
+      setIpcHandlerChannel(undefined, 'notes:create')
+    }).not.toThrow()
+    expect(() => {
+      setIpcHandlerChannel(() => undefined, '')
+    }).not.toThrow()
   })
 })

@@ -75,7 +75,9 @@ describe('MorphLine', () => {
     expect(outgoing).toHaveAttribute('aria-hidden', 'true')
     expect(outgoing).toHaveClass('pointer-events-none')
     expect(container.querySelector('[data-morph="in"]')).toHaveTextContent('new line')
-    await act(async () => finish())
+    await act(async () => {
+      finish()
+    })
     expect(container.querySelector('[data-morph]')).toBeNull()
     expect(container).toHaveTextContent('new line')
   })

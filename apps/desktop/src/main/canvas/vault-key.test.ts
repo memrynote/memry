@@ -84,6 +84,8 @@ describe('legacy vault key (migration only)', () => {
     await getLegacyCanvasVaultKey({} as never, 'vault-1')
     disposeCanvasVaultKey()
 
-    await vi.waitFor(() => expect(mocks.secureCleanup).toHaveBeenCalledWith(key))
+    await vi.waitFor(() => {
+      expect(mocks.secureCleanup).toHaveBeenCalledWith(key)
+    })
   })
 })

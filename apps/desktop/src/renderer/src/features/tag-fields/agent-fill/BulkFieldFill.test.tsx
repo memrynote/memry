@@ -78,7 +78,9 @@ beforeEach(() => {
 describe('bulk agent fill', () => {
   it('waits for every matching row to load so a run never skips unloaded notes', async () => {
     const { rerender } = renderWithProviders(<BulkFieldFill tag={person} notes={[ada]} partial />)
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalled()
+    })
     expect(screen.queryByTestId('bulk-field-fill')).not.toBeInTheDocument()
 
     rerender(<BulkFieldFill tag={person} notes={[ada, grace]} partial={false} />)
@@ -91,7 +93,9 @@ describe('bulk agent fill', () => {
     unmount()
 
     const noneEmpty = renderWithProviders(<BulkFieldFill tag={person} notes={[filledNote]} />)
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(2)
+    })
     expect(screen.queryByTestId('bulk-field-fill')).not.toBeInTheDocument()
     noneEmpty.unmount()
 
@@ -99,13 +103,17 @@ describe('bulk agent fill', () => {
     const checkboxOnly = renderWithProviders(
       <BulkFieldFill tag={makeTag([field('Active', { type: 'checkbox' })])} notes={[ada]} />
     )
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(3))
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(3)
+    })
     expect(screen.queryByTestId('bulk-field-fill')).not.toBeInTheDocument()
     checkboxOnly.unmount()
 
     tagsApi.getFillStatus.mockResolvedValue(status({ available: false }))
     renderWithProviders(<BulkFieldFill tag={person} notes={[ada]} />)
-    await waitFor(() => expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(4))
+    await waitFor(() => {
+      expect(tagsApi.getFillStatus).toHaveBeenCalledTimes(4)
+    })
     expect(screen.queryByTestId('bulk-field-fill')).not.toBeInTheDocument()
   })
 
@@ -155,14 +163,20 @@ describe('bulk agent fill', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Accept all' }))
 
-    await waitFor(() => expect(propertiesApi.merge).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(propertiesApi.merge).toHaveBeenCalledTimes(2)
+    })
     expect(propertiesApi.merge).toHaveBeenCalledWith('n_ada', {
       Company: 'Analytical Engines',
       Role: 'Countess'
     })
     expect(propertiesApi.merge).toHaveBeenCalledWith('n_grace', { Role: 'Admiral' })
-    await waitFor(() => expect(toast).toHaveBeenCalledWith('Filled 3 fields on 2 notes'))
-    await waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(0))
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith('Filled 3 fields on 2 notes')
+    })
+    await waitFor(() => {
+      expect(screen.queryAllByRole('row')).toHaveLength(0)
+    })
   })
 
   it('reviews one by one: accepts one note, skips another, writing only the accepted one', async () => {
@@ -183,12 +197,14 @@ describe('bulk agent fill', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Accept values for Ada Lovelace' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(propertiesApi.merge).toHaveBeenCalledWith('n_ada', { Company: 'Analytical Engines' })
-    )
+    })
     expect(propertiesApi.merge).toHaveBeenCalledTimes(1)
     expect(toast).not.toHaveBeenCalled()
-    await waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(0))
+    await waitFor(() => {
+      expect(screen.queryAllByRole('row')).toHaveLength(0)
+    })
   })
 
   it('keeps the unsaved rows and reports an error when a write fails', async () => {
@@ -205,7 +221,9 @@ describe('bulk agent fill', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Accept all' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('vault locked'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('vault locked')
+    })
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
     expect(screen.getByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Accept all' })).toBeEnabled()
@@ -231,7 +249,9 @@ describe('bulk agent fill', () => {
     renderWithProviders(<BulkFieldFill tag={person} notes={[ada, grace]} />)
     await openBulk()
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Could not suggest values. quota'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Could not suggest values. quota')
+    })
     expect(tagsApi.fillFields).toHaveBeenCalledTimes(1)
   })
 
@@ -240,7 +260,9 @@ describe('bulk agent fill', () => {
     renderWithProviders(<BulkFieldFill tag={person} notes={[ada, grace]} />)
     await openBulk()
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('ipc down'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('ipc down')
+    })
     expect(tagsApi.fillFields).toHaveBeenCalledTimes(1)
   })
 
@@ -265,7 +287,9 @@ describe('bulk agent fill', () => {
 
     await userEvent.keyboard('{Escape}')
 
-    await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
+    })
     expect(propertiesApi.merge).not.toHaveBeenCalled()
   })
 })
@@ -308,9 +332,9 @@ describe('bulk agent fill first-run disclosure', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Not now' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.queryByTestId('field-fill-disclosure')).not.toBeInTheDocument()
-    )
+    })
     expect(tagsApi.fillFields).not.toHaveBeenCalled()
   })
 })

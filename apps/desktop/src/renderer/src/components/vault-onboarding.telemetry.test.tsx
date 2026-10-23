@@ -1,6 +1,5 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent } from '@testing-library/react'
 
 // Hoist mutable state so factory functions close over the same references.
 const mockSelectVault = vi.fn()

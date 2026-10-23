@@ -126,7 +126,9 @@ export function JournalYearView({
             key={stat.month}
             stat={stat}
             isCurrent={isCurrentYear && stat.month === currentMonthIndex}
-            onClick={() => onMonthClick(stat.month)}
+            onClick={() => {
+              onMonthClick(stat.month)
+            }}
             monthShort={dateLabels.monthsShort[stat.month]}
             dayLabel={stat.entryCount === 1 ? t('count.day') : t('count.days')}
           />

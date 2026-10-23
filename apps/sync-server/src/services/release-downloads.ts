@@ -105,13 +105,13 @@ const platformOf = (name: string): string => {
   if (VELOPACK_FEED.test(base) || /\.(?:exe|msi|appx|nupkg)$/.test(base) || base.includes('win')) {
     return 'windows'
   }
-  if (/\.dmg$/.test(base) || base.includes('mac') || base.includes('darwin')) return 'macos'
+  if (base.endsWith('.dmg') || base.includes('mac') || base.includes('darwin')) return 'macos'
   if (/\.(?:deb|rpm|appimage|snap|tar\.gz|tar\.xz)$/.test(base) || base.includes('linux')) {
     return 'linux'
   }
   // electron-builder's macOS update artifact. A Windows zip is named `-win.zip` and
   // is already claimed above.
-  if (/\.zip$/.test(base)) return 'macos'
+  if (base.endsWith('.zip')) return 'macos'
   return 'unknown'
 }
 

@@ -119,7 +119,9 @@ export const ItemProjectChips = ({
             <button
               type="button"
               aria-label={t('itemProjects.openProject', { name: project.name })}
-              onClick={() => onProjectClick(project.id)}
+              onClick={() => {
+                onProjectClick(project.id)
+              }}
               className="inline-flex items-center gap-1.5 rounded-full ps-2 pe-1 py-0.5 transition-colors hover:bg-muted/70"
             >
               <ProjectChipLabel project={project} />

@@ -22,7 +22,12 @@ vi.mock('@/components/snooze', () => ({
   }) => (
     <div>
       {trigger}
-      <button type="button" onClick={() => onSnooze('2026-05-11T09:00:00.000Z')}>
+      <button
+        type="button"
+        onClick={() => {
+          onSnooze('2026-05-11T09:00:00.000Z')
+        }}
+      >
         choose snooze
       </button>
     </div>

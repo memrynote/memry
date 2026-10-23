@@ -137,7 +137,9 @@ describe('MoveToFolderDialog', () => {
     await user.type(await screen.findByPlaceholderText('searchFolders'), 'Research/New')
     await user.click(screen.getByRole('button', { name: 'createFolderNamed:Research/New' }))
 
-    await waitFor(() => expect(notesService.createFolder).toHaveBeenCalledWith('Research/New'))
+    await waitFor(() => {
+      expect(notesService.createFolder).toHaveBeenCalledWith('Research/New')
+    })
     expect(onMove).toHaveBeenCalledWith('Research/New')
     expect(onOpenChange).toHaveBeenCalledWith(false)
 

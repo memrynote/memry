@@ -81,7 +81,9 @@ const CanvasCardInner = ({
         type="button"
         data-canvas-redirect=""
         onClick={handleRedirect}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation()
+        }}
         className="pointer-events-auto absolute end-1.5 top-1.5 z-10 flex size-6 items-center justify-center rounded-md bg-background/70 text-text-secondary opacity-0 shadow-sm transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover/card:opacity-100"
         aria-label={t('canvas.card.open')}
       >
@@ -118,7 +120,9 @@ const CanvasCardInner = ({
           type="button"
           data-canvas-redirect=""
           onClick={handleRedirect}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            e.stopPropagation()
+          }}
           className="pointer-events-auto flex w-full shrink-0 items-center justify-center gap-1 border-t border-border bg-muted/60 px-2 py-1 text-[10px] font-medium text-text-secondary hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <ArrowUpRight className="size-3" aria-hidden="true" />

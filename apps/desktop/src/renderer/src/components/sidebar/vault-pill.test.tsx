@@ -43,7 +43,9 @@ describe('VaultPill', () => {
     cleanup()
     vi.mocked(requestVaultPage).mockClear()
     resetVaultSwitchState()
-    act(() => setVaultSwipeProgress(null, 0))
+    act(() => {
+      setVaultSwipeProgress(null, 0)
+    })
   })
 
   it('shows one accent icon per vault and switches on click', () => {
@@ -76,7 +78,9 @@ describe('VaultPill', () => {
   it('moves emphasis toward the target dot during a swipe', () => {
     render(<VaultPill vaults={vaults} activePath="/vaults/personal" />)
 
-    act(() => setVaultSwipeProgress('/vaults/work', 0.5))
+    act(() => {
+      setVaultSwipeProgress('/vaults/work', 0.5)
+    })
 
     expect(dot('/vaults/personal').style.opacity).toBe('0.675')
     expect(dot('/vaults/work').style.opacity).toBe('0.675')

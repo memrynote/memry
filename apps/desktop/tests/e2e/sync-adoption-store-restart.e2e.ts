@@ -57,7 +57,7 @@ test.describe('CRDT store after vault adoption (#2424)', () => {
     bootstrappedSyncPair,
     syncBootstrap
   }) => {
-    void bootstrappedSyncPair
+    bootstrappedSyncPair
     const body = 'merged before the restart'
 
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])

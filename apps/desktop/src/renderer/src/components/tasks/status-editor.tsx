@@ -121,7 +121,9 @@ const StatusTypeDropdown = ({
         {statusTypeOptions.map((option) => (
           <DropdownMenuItem
             key={option.value}
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              onChange(option.value)
+            }}
             className={cn(value === option.value && 'bg-accent')}
           >
             {option.label}

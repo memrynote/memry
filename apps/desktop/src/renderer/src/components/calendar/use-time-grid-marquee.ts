@@ -165,7 +165,9 @@ export function useTimeGridMarquee({
     lastClientY: number
   } | null>(null)
 
-  const clearSelection = useCallback(() => setSelection(null), [])
+  const clearSelection = useCallback(() => {
+    setSelection(null)
+  }, [])
 
   const stopDrag = useCallback(() => {
     if (dragState.current?.rafId != null) {

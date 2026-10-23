@@ -188,7 +188,9 @@ export function useFindInPage(
     let timeoutId: ReturnType<typeof setTimeout>
     const observer = new MutationObserver(() => {
       clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => rerunSearch(), 300)
+      timeoutId = setTimeout(() => {
+        rerunSearch()
+      }, 300)
     })
 
     observer.observe(container, {
@@ -293,7 +295,9 @@ export function useFindInPage(
     const container = containerRef.current
     if (!isOpen || !autoClose || !container) return
     container.addEventListener('pointerdown', close, { capture: true, once: true })
-    return () => container.removeEventListener('pointerdown', close, { capture: true })
+    return () => {
+      container.removeEventListener('pointerdown', close, { capture: true })
+    }
   }, [isOpen, autoClose, containerRef, close])
 
   // Cmd+F / Ctrl+F shortcut
@@ -317,7 +321,9 @@ export function useFindInPage(
     }
 
     window.addEventListener('keydown', handler, { capture: true })
-    return () => window.removeEventListener('keydown', handler, { capture: true })
+    return () => {
+      window.removeEventListener('keydown', handler, { capture: true })
+    }
   }, [enabled, isOpen, open])
 
   // Cleanup on unmount

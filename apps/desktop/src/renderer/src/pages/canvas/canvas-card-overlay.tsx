@@ -327,7 +327,9 @@ export const CanvasCardLayer = ({
       recompute()
     })
     observer.observe(clip)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [excalidrawAPI, recompute])
 
   const redirect = useCallback(
@@ -583,7 +585,9 @@ export const CanvasCardLayer = ({
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dropId, data: CANVAS_DROP_DATA })
   useEffect(() => {
     setDropRef(wrapperRef.current)
-    return () => setDropRef(null)
+    return () => {
+      setDropRef(null)
+    }
   }, [setDropRef, wrapperRef])
 
   // Optional: the canvas renders inside DragProvider in the app, but must not
@@ -599,7 +603,9 @@ export const CanvasCardLayer = ({
         entityFromDndData(event.active.data.current, String(event.active.id)) !== null
       )
     },
-    onDragCancel: () => setDragPlaceable(false),
+    onDragCancel: () => {
+      setDragPlaceable(false)
+    },
     onDragEnd: (event) => {
       setDragPlaceable(false)
       if (event.over?.id !== dropId) {
@@ -671,9 +677,9 @@ export const CanvasCardLayer = ({
       )
       // The reads are async, but the drop point is not — capture it here.
       if (items.length > 1) {
-        void Promise.all(items.map(resolveDroppedRef)).then((refs) =>
+        void Promise.all(items.map(resolveDroppedRef)).then((refs) => {
           placeBatch(refs, { x: scene.x, y: scene.y })
-        )
+        })
         return
       }
       void resolveDroppedRef(items[0]).then(async (ref) => {
@@ -813,7 +819,9 @@ export const CanvasCardLayer = ({
     if (!card || card.entityType !== 'note') return
     const noteId = card.entityId
     noteCardClaims.claim(noteId, activeCardId)
-    return () => noteCardClaims.release(noteId, activeCardId)
+    return () => {
+      noteCardClaims.release(noteId, activeCardId)
+    }
   }, [activeCardId])
 
   // A note tab becoming visible in another pane while a card is active would
@@ -928,7 +936,9 @@ export const CanvasCardLayer = ({
             <CanvasCardActive
               cardRef={card}
               state={entities.get(entityKey(card.entityType, card.entityId))}
-              onDeactivate={() => dispatchActive({ type: 'deactivate' })}
+              onDeactivate={() => {
+                dispatchActive({ type: 'deactivate' })
+              }}
             />
           ) : (
             <CanvasCard
@@ -1004,7 +1014,9 @@ export const CanvasCardLayer = ({
         onCanvasKeys={addDialog.keys}
         onCreateNote={(title) => void handleCreateNote(title)}
         onPick={(entityType, entityId) => void placeCard(entityType, entityId)}
-        onAddAll={(refs) => placeBatch(refs, null)}
+        onAddAll={(refs) => {
+          placeBatch(refs, null)
+        }}
         onReveal={handleReveal}
       />
     </>

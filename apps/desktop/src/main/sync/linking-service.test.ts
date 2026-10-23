@@ -780,7 +780,9 @@ describe('linking-service multi-vault choice', () => {
     const res = await completeLinkingQr('session-1')
 
     expect(res).toEqual({ success: true })
-    await vi.waitFor(() => expect(mockPersistKeysAndRegisterDevice).toHaveBeenCalled())
+    await vi.waitFor(() => {
+      expect(mockPersistKeysAndRegisterDevice).toHaveBeenCalled()
+    })
     expect(mockAdoptVaultLocally).not.toHaveBeenCalled()
     expect(mockCreateDormantVault).not.toHaveBeenCalled()
     expect(mockSelectVault).not.toHaveBeenCalled()

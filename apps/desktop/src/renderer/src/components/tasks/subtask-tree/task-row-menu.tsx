@@ -64,12 +64,20 @@ export const TaskRowMenu = ({
         <div className="contents">{children}</div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-60" data-testid="task-context-menu">
-        <ContextMenuItem onSelect={() => tree.openTask(task.id)}>
+        <ContextMenuItem
+          onSelect={() => {
+            tree.openTask(task.id)
+          }}
+        >
           <PanelRight />
           {t('subtaskTree.menu.open')}
           <ContextMenuShortcut>↵</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => tree.toggleComplete(task.id)}>
+        <ContextMenuItem
+          onSelect={() => {
+            tree.toggleComplete(task.id)
+          }}
+        >
           {isDone ? <RotateCcw /> : <CheckCircle2 />}
           {isDone ? t('subtaskTree.menu.reopen') : t('subtaskTree.menu.complete')}
         </ContextMenuItem>
@@ -88,13 +96,21 @@ export const TaskRowMenu = ({
           </ContextMenuItem>
         )}
         {hasChildren && (
-          <ContextMenuItem onSelect={() => tree.zoomInto(task.id)}>
+          <ContextMenuItem
+            onSelect={() => {
+              tree.zoomInto(task.id)
+            }}
+          >
             <ZoomIn />
             {t('subtaskTree.menu.zoom')}
             <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
           </ContextMenuItem>
         )}
-        <ContextMenuItem onSelect={() => tree.openMoveUnder(task.id)}>
+        <ContextMenuItem
+          onSelect={() => {
+            tree.openMoveUnder(task.id)
+          }}
+        >
           <Move />
           {t('subtaskTree.menu.moveUnder')}
           <ContextMenuShortcut>⇧M</ContextMenuShortcut>
@@ -111,13 +127,21 @@ export const TaskRowMenu = ({
           </ContextMenuItem>
         )}
         {task.parentId && grandparentId && (
-          <ContextMenuItem onSelect={() => tree.moveUnder(task.id, grandparentId)}>
+          <ContextMenuItem
+            onSelect={() => {
+              tree.moveUnder(task.id, grandparentId)
+            }}
+          >
             <ArrowLeft />
             {t('subtaskTree.menu.outdent')}
           </ContextMenuItem>
         )}
         {task.parentId && (
-          <ContextMenuItem onSelect={() => tree.moveUnder(task.id, null)}>
+          <ContextMenuItem
+            onSelect={() => {
+              tree.moveUnder(task.id, null)
+            }}
+          >
             <ArrowUp />
             {t('subtaskTree.menu.topLevel')}
           </ContextMenuItem>
@@ -125,7 +149,12 @@ export const TaskRowMenu = ({
 
         <ContextMenuSeparator />
 
-        <ContextMenuItem variant="destructive" onSelect={() => tree.deleteTask(task.id)}>
+        <ContextMenuItem
+          variant="destructive"
+          onSelect={() => {
+            tree.deleteTask(task.id)
+          }}
+        >
           <Trash2 />
           {t('subtaskTree.menu.delete')}
         </ContextMenuItem>

@@ -9,9 +9,13 @@
 import { sql } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setSetting } from '../database/queries/settings'
-import { planJournalDay, readDaySection, type JournalBook } from '@memry/importers/readwise'
+import {
+  planJournalDay,
+  readDaySection,
+  type JournalBook,
+  type ReadwiseBook
+} from '@memry/importers/readwise'
 import { book, highlight } from '@memry/importers/readwise/fixtures'
-import type { ReadwiseBook } from '@memry/importers/readwise'
 import * as Y from 'yjs'
 import { readwiseHighlights } from '@memry/db-schema/schema/readwise-highlights'
 import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
@@ -214,7 +218,9 @@ describe('Readwise journal highlights', () => {
     })
   }
 
-  const journalOn = () => settings.writeReadwiseOptions(db(), { journalHighlights: true })
+  const journalOn = () => {
+    settings.writeReadwiseOptions(db(), { journalHighlights: true })
+  }
   const entry = async (date: string) => (await journal.readJournalEntry(date))?.content ?? null
   const journalWrites = () =>
     vi.mocked(journalOwner.updateJournalEntry).mock.calls.length +

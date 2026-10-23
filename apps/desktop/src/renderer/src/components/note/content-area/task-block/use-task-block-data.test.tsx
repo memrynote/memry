@@ -57,7 +57,9 @@ describe('useTaskBlockData with batch prefetch', () => {
     })
 
     // #then the task resolves from the batch and no individual get fires
-    await waitFor(() => expect(result.current.task?.id).toBe('t1'))
+    await waitFor(() => {
+      expect(result.current.task?.id).toBe('t1')
+    })
     expect(mocks.getLinkedTasks).toHaveBeenCalledTimes(1)
     expect(mocks.getLinkedTasks).toHaveBeenCalledWith('note-1')
     expect(mocks.get).not.toHaveBeenCalled()
@@ -74,7 +76,9 @@ describe('useTaskBlockData with batch prefetch', () => {
     })
 
     // #then it fetches the single task individually
-    await waitFor(() => expect(result.current.task?.id).toBe('t9'))
+    await waitFor(() => {
+      expect(result.current.task?.id).toBe('t9')
+    })
     expect(mocks.get).toHaveBeenCalledTimes(1)
     expect(mocks.get).toHaveBeenCalledWith('t9')
   })

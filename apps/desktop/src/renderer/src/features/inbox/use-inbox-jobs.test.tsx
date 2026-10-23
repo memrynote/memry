@@ -61,10 +61,12 @@ describe('useInboxJobs', () => {
       wrapper: wrapper(queryClient)
     })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.getJobs).toHaveBeenCalledWith({ itemIds: ['item-a', 'item-b'] })
-    )
-    await waitFor(() => expect(result.current.jobs).toHaveLength(4))
+    })
+    await waitFor(() => {
+      expect(result.current.jobs).toHaveLength(4)
+    })
     expect(result.current.jobs).toHaveLength(4)
     expect(result.current.jobsByItemId['item-a']).toHaveLength(2)
     expect(result.current.activeCount).toBe(2)
@@ -99,7 +101,9 @@ describe('useInboxJobs', () => {
 
     const { result } = renderHook(() => useInboxJobs(), { wrapper: wrapper(queryClient) })
 
-    await waitFor(() => expect(result.current.error?.message).toBe('jobs failed'))
+    await waitFor(() => {
+      expect(result.current.error?.message).toBe('jobs failed')
+    })
     expect(mocks.getJobs).toHaveBeenCalledWith(undefined)
     expect(result.current.jobs).toEqual([])
     expect(result.current.jobsByItemId).toEqual({})

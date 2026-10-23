@@ -6,8 +6,7 @@
  * what made a brand-new note impossible to reveal.
  */
 
-import { render } from '@testing-library/react'
-import { act } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RevealHandler } from './note-tree-internal'

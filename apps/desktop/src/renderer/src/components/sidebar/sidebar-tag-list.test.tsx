@@ -178,7 +178,9 @@ vi.mock('@/components/ui/picker', () => {
         type="button"
         aria-label={ariaLabel}
         aria-expanded={open}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open)
+        }}
         {...rest}
       >
         {children}
@@ -308,7 +310,9 @@ describe('SidebarTagList', () => {
 
     fireEvent.click(screen.getByTestId('sidebar-sort-tags'))
     fireEvent.click(screen.getByRole('option', { name: 'sortModeNameAsc' }))
-    await waitFor(() => expect(storedModes.tags).toBe('name-asc'))
+    await waitFor(() => {
+      expect(storedModes.tags).toBe('name-asc')
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Search tags' }))
     const input = screen.getByPlaceholderText('filterTags')
@@ -376,7 +380,9 @@ describe('SidebarTagList', () => {
   it('carries an older per-device preference over to the synced setting once', async () => {
     localStorage.setItem('sidebar-tags-sort', 'alpha-desc')
     renderSidebarTagList()
-    await waitFor(() => expect(storedModes.tags).toBe('name-desc'))
+    await waitFor(() => {
+      expect(storedModes.tags).toBe('name-desc')
+    })
     // The legacy key survives: downgrading to a build that still reads it must
     // not find the preference gone.
     expect(localStorage.getItem('sidebar-tags-sort')).toBe('alpha-desc')

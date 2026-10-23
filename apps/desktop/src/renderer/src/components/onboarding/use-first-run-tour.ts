@@ -99,7 +99,9 @@ export function useFirstRunTour(): void {
       {
         element: '[data-slot="day-panel-inner"]',
         // Make sure the calendar (day) tab is showing for this step.
-        onHighlightStarted: () => clickTourTarget('[data-tour="rsb-day"]'),
+        onHighlightStarted: () => {
+          clickTourTarget('[data-tour="rsb-day"]')
+        },
         popover: {
           title: t('onboarding.dayPanel.title'),
           description: t('onboarding.dayPanel.body'),
@@ -111,8 +113,12 @@ export function useFirstRunTour(): void {
         element: '[data-tour="rsb-agent"]',
         // Open the Agent tab while this step is shown, then restore the calendar
         // (day) tab as the default resting state when leaving the step.
-        onHighlightStarted: () => clickTourTarget('[data-tour="rsb-agent"]'),
-        onDeselected: () => clickTourTarget('[data-tour="rsb-day"]'),
+        onHighlightStarted: () => {
+          clickTourTarget('[data-tour="rsb-agent"]')
+        },
+        onDeselected: () => {
+          clickTourTarget('[data-tour="rsb-day"]')
+        },
         popover: {
           title: t('onboarding.agentChat.title'),
           description: t('onboarding.agentChat.body'),
@@ -228,7 +234,9 @@ export function useFirstRunTour(): void {
             if (unmounted) return
             // Defer one frame so the just-opened Day Panel has mounted before we
             // test for each step's target element.
-            frame = requestAnimationFrame(() => drive(driver))
+            frame = requestAnimationFrame(() => {
+              drive(driver)
+            })
           },
           (err: unknown) => {
             log.warn('Could not load the tour; it will be offered next launch', err)

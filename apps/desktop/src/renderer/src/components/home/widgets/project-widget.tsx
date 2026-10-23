@@ -51,7 +51,9 @@ export function ProjectWidget({ config }: WidgetComponentProps): React.JSX.Eleme
   const handlers = useProjectWidgetHandlers({
     hub,
     // The widget has no All table, so a jump to it lands on Overview.
-    onGoToTab: (tab) => setActiveTab(tab === 'all' ? 'overview' : tab),
+    onGoToTab: (tab) => {
+      setActiveTab(tab === 'all' ? 'overview' : tab)
+    },
     onOpenProjectPage: openProjectPage
   })
 

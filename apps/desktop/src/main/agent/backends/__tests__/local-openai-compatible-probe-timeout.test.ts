@@ -18,7 +18,9 @@ const hangingToolProvider = vi.fn(async (url: string | URL, init?: RequestInit) 
     return new Response('data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n')
   }
   return new Promise<Response>((_, reject) => {
-    init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+    init?.signal?.addEventListener('abort', () => {
+      reject(init.signal?.reason)
+    })
   })
 }) as unknown as typeof fetch
 

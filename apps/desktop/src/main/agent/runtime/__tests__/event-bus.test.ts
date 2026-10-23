@@ -84,7 +84,9 @@ describe('broadcastAgentEvent', () => {
     setAgentStreamTarget(21, 'conversation-1')
     setAgentStreamTarget(22, 'conversation-1')
 
-    expect(() => broadcastAgentEvent(DELTA)).not.toThrow()
+    expect(() => {
+      broadcastAgentEvent(DELTA)
+    }).not.toThrow()
 
     expect(secondViewer.webContents.send).toHaveBeenCalledWith(
       AgentChannels.events.AGENT_EVENT,

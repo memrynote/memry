@@ -77,7 +77,9 @@ const DayOfWeekPicker = ({ selectedDays, onChange }: DayOfWeekPickerProps): Reac
           <button
             key={name}
             type="button"
-            onClick={() => handleToggleDay(index)}
+            onClick={() => {
+              handleToggleDay(index)
+            }}
             className={cn(
               'flex size-9 items-center justify-center rounded-full text-sm font-medium transition-colors',
               'border focus:outline-none',
@@ -133,13 +135,17 @@ const MonthlyRepeatOptions = ({
           type="radio"
           name="monthlyType"
           checked={monthlyType === 'dayOfMonth'}
-          onChange={() => onChange({ monthlyType: 'dayOfMonth' })}
+          onChange={() => {
+            onChange({ monthlyType: 'dayOfMonth' })
+          }}
           className="size-4 accent-primary"
         />
         <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.day')}</span>
         <Select
           value={dayOfMonth.toString()}
-          onValueChange={(val) => onChange({ dayOfMonth: parseInt(val, 10) })}
+          onValueChange={(val) => {
+            onChange({ dayOfMonth: parseInt(val, 10) })
+          }}
           disabled={monthlyType !== 'dayOfMonth'}
         >
           <SelectTrigger className="w-[80px] h-8">
@@ -164,13 +170,17 @@ const MonthlyRepeatOptions = ({
           type="radio"
           name="monthlyType"
           checked={monthlyType === 'weekPattern'}
-          onChange={() => onChange({ monthlyType: 'weekPattern' })}
+          onChange={() => {
+            onChange({ monthlyType: 'weekPattern' })
+          }}
           className="size-4 accent-primary"
         />
         <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.the')}</span>
         <Select
           value={weekOfMonth.toString()}
-          onValueChange={(val) => onChange({ weekOfMonth: parseInt(val, 10) })}
+          onValueChange={(val) => {
+            onChange({ weekOfMonth: parseInt(val, 10) })
+          }}
           disabled={monthlyType !== 'weekPattern'}
         >
           <SelectTrigger className="w-[100px] h-8">
@@ -186,7 +196,9 @@ const MonthlyRepeatOptions = ({
         </Select>
         <Select
           value={dayOfWeekForMonth.toString()}
-          onValueChange={(val) => onChange({ dayOfWeekForMonth: parseInt(val, 10) })}
+          onValueChange={(val) => {
+            onChange({ dayOfWeekForMonth: parseInt(val, 10) })
+          }}
           disabled={monthlyType !== 'weekPattern'}
         >
           <SelectTrigger className="w-[120px] h-8">
@@ -240,7 +252,9 @@ const RepeatEndOptions = ({
           type="radio"
           name="endType"
           checked={endType === 'never'}
-          onChange={() => onChange({ endType: 'never' })}
+          onChange={() => {
+            onChange({ endType: 'never' })
+          }}
           className="size-4 accent-primary"
         />
         <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.never')}</span>
@@ -252,7 +266,9 @@ const RepeatEndOptions = ({
           type="radio"
           name="endType"
           checked={endType === 'date'}
-          onChange={() => onChange({ endType: 'date' })}
+          onChange={() => {
+            onChange({ endType: 'date' })
+          }}
           className="size-4 accent-primary"
         />
         <span className="text-sm">
@@ -292,7 +308,9 @@ const RepeatEndOptions = ({
           type="radio"
           name="endType"
           checked={endType === 'count'}
-          onChange={() => onChange({ endType: 'count' })}
+          onChange={() => {
+            onChange({ endType: 'count' })
+          }}
           className="size-4 accent-primary"
         />
         <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.after')}</span>
@@ -301,7 +319,9 @@ const RepeatEndOptions = ({
           min={1}
           max={999}
           value={endCount}
-          onChange={(e) => onChange({ endCount: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+          onChange={(e) => {
+            onChange({ endCount: Math.max(1, parseInt(e.target.value, 10) || 1) })
+          }}
           disabled={endType !== 'count'}
           className="w-[70px] h-8"
         />
@@ -510,10 +530,17 @@ const CustomRepeatDialogInner = ({
             min={1}
             max={99}
             value={interval}
-            onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            onChange={(e) => {
+              setInterval(Math.max(1, parseInt(e.target.value, 10) || 1))
+            }}
             className="w-[60px] h-8"
           />
-          <Select value={frequency} onValueChange={(val) => setFrequency(val as RepeatFrequency)}>
+          <Select
+            value={frequency}
+            onValueChange={(val) => {
+              setFrequency(val as RepeatFrequency)
+            }}
+          >
             <SelectTrigger className="w-[100px] h-8">
               <SelectValue />
             </SelectTrigger>

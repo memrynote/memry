@@ -147,7 +147,7 @@ vi.mock('@memry/sync-client/tombstone-clocks', () => ({
     _itemId: string,
     current: Record<string, number> | null | undefined,
     deviceId: string
-  ) => ({ ...(current ?? {}), [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
+  ) => ({ ...current, [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
 }))
 
 vi.mock('@memry/storage-data', () => ({

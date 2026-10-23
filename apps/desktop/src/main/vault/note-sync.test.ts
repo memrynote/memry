@@ -31,7 +31,7 @@ function buildInput(overrides: Partial<NoteSyncInput> = {}): NoteSyncInput {
   // Memry-written files carry user keys only — no id/created/modified
   const frontmatter: NoteFrontmatter = {
     tags: [],
-    ...(overrides.frontmatter ?? {})
+    ...overrides.frontmatter
   }
 
   return {

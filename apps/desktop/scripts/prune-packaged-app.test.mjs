@@ -125,14 +125,13 @@ test('an unmapped platform-arch leaves every velopack binary in place', async ()
 test('a macOS bundle must carry the EventKit helper in Contents/MacOS', () => {
   const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-eventkit-placement-'))
   try {
-    assert.throws(
-      () => assertEventKitHelperPlacement(createContext(appOutDir, 'darwin', 'arm64')),
-      /missing the EventKit helper/
-    )
-    writeEventKitHelper(appOutDir)
-    assert.doesNotThrow(() =>
+    assert.throws(() => {
       assertEventKitHelperPlacement(createContext(appOutDir, 'darwin', 'arm64'))
-    )
+    }, /missing the EventKit helper/)
+    writeEventKitHelper(appOutDir)
+    assert.doesNotThrow(() => {
+      assertEventKitHelperPlacement(createContext(appOutDir, 'darwin', 'arm64'))
+    })
   } finally {
     fs.rmSync(appOutDir, { force: true, recursive: true })
   }
@@ -149,16 +148,15 @@ test(
     }
     try {
       writeEventKitHelper(appOutDir)
-      assert.doesNotThrow(() =>
+      assert.doesNotThrow(() => {
         assertMacCalendarUsageStrings(createContext(appOutDir, 'darwin', 'arm64'))
-      )
+      })
 
       // What a YAML list under mac.extendInfo produced: the keys nested under "0".
       writeInfoPlist(appOutDir, {}, usage)
-      assert.throws(
-        () => assertMacCalendarUsageStrings(createContext(appOutDir, 'darwin', 'arm64')),
-        /no top-level NSCalendarsFullAccessUsageDescription, NSCalendarsUsageDescription/
-      )
+      assert.throws(() => {
+        assertMacCalendarUsageStrings(createContext(appOutDir, 'darwin', 'arm64'))
+      }, /no top-level NSCalendarsFullAccessUsageDescription, NSCalendarsUsageDescription/)
     } finally {
       fs.rmSync(appOutDir, { force: true, recursive: true })
     }
@@ -170,14 +168,13 @@ for (const platform of ['win32', 'linux']) {
     const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-eventkit-placement-'))
     try {
       fs.mkdirSync(path.join(appOutDir, 'resources'), { recursive: true })
-      assert.doesNotThrow(() =>
+      assert.doesNotThrow(() => {
         assertEventKitHelperPlacement(createContext(appOutDir, platform, 'x64'))
-      )
+      })
       fs.writeFileSync(path.join(appOutDir, 'resources', 'memry-eventkit'), '')
-      assert.throws(
-        () => assertEventKitHelperPlacement(createContext(appOutDir, platform, 'x64')),
-        /must not contain the macOS EventKit helper/
-      )
+      assert.throws(() => {
+        assertEventKitHelperPlacement(createContext(appOutDir, platform, 'x64'))
+      }, /must not contain the macOS EventKit helper/)
     } finally {
       fs.rmSync(appOutDir, { force: true, recursive: true })
     }

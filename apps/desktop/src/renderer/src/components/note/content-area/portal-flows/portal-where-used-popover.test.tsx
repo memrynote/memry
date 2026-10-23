@@ -71,7 +71,9 @@ describe('PortalWhereUsedPopover', () => {
     const user = userEvent.setup()
     const { onOpenHost } = setup([portal, link])
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-where-used-row]'))
-    await waitFor(() => expect(document.activeElement).toBe(rows[0]))
+    await waitFor(() => {
+      expect(document.activeElement).toBe(rows[0])
+    })
 
     await user.keyboard('{Enter}')
     expect(onOpenHost).toHaveBeenLastCalledWith(portal, { beside: false })

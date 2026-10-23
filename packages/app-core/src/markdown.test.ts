@@ -42,7 +42,7 @@ test('snippet: strips markdown syntax to plain prose', () => {
 })
 
 test('snippet: collapses whitespace and caps length at 180 chars', () => {
-  const content = `${'word '.repeat(100)}`
+  const content = 'word '.repeat(100)
   const result = snippet(content)
   assert.ok(result.length <= 180)
   assert.ok(!/\s{2,}/.test(result))

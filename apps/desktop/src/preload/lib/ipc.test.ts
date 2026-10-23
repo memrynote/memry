@@ -134,7 +134,9 @@ describe('subscribe reference counting', () => {
     const handler = mocks.on.mock.calls[0][1] as (e: unknown, p: unknown) => void
 
     // #when the shared handler dispatches
-    expect(() => handler({}, { id: 'rem-1' })).not.toThrow()
+    expect(() => {
+      handler({}, { id: 'rem-1' })
+    }).not.toThrow()
 
     // #then every later listener still ran, and the failure was logged
     expect(boom).toHaveBeenCalledWith({ id: 'rem-1' })

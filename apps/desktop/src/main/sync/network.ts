@@ -88,8 +88,12 @@ export class NetworkMonitor extends SyncEventEmitter {
     this.polling = true
     this.schedulePoll()
 
-    this.resumeHandler = () => this.poll()
-    this.suspendHandler = () => this.applyStatus(false)
+    this.resumeHandler = () => {
+      this.poll()
+    }
+    this.suspendHandler = () => {
+      this.applyStatus(false)
+    }
 
     this.deps.onResume(this.resumeHandler)
     this.deps.onSuspend(this.suspendHandler)

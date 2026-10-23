@@ -66,8 +66,20 @@ vi.mock('@/components/ui/dialog', () => ({
     children: React.ReactNode
   }) => (
     <div>
-      <button onClick={() => onOpenChange(true)}>open recovery dialog</button>
-      <button onClick={() => onOpenChange(false)}>close recovery dialog</button>
+      <button
+        onClick={() => {
+          onOpenChange(true)
+        }}
+      >
+        open recovery dialog
+      </button>
+      <button
+        onClick={() => {
+          onOpenChange(false)
+        }}
+      >
+        close recovery dialog
+      </button>
       {open ? <div role="dialog">{children}</div> : null}
     </div>
   ),
@@ -90,7 +102,13 @@ vi.mock('@/components/ui/picker', () => {
     children: React.ReactNode
   }) => (
     <div data-value={value ?? ''} data-testid="picker-root">
-      <button onClick={() => onValueChange('work')}>select work from picker</button>
+      <button
+        onClick={() => {
+          onValueChange('work')
+        }}
+      >
+        select work from picker
+      </button>
       {children}
     </div>
   )
@@ -152,7 +170,12 @@ vi.mock('@emoji-mart/react', () => ({
     onEmojiSelect: (emoji: unknown) => void
     theme: string
   }) => (
-    <button data-theme={theme} onClick={() => onEmojiSelect({ native: 'rocket' })}>
+    <button
+      data-theme={theme}
+      onClick={() => {
+        onEmojiSelect({ native: 'rocket' })
+      }}
+    >
       emoji mart picker
     </button>
   )
@@ -165,7 +188,13 @@ vi.mock('@/components/note/note-title/use-click-outside', () => ({
 }))
 vi.mock('@/components/note/note-title/HugeIconGrid', () => ({
   HugeIconGrid: ({ onSelect }: { onSelect: (icon: string) => void }) => (
-    <button onClick={() => onSelect('calendar')}>huge icon grid</button>
+    <button
+      onClick={() => {
+        onSelect('calendar')
+      }}
+    >
+      huge icon grid
+    </button>
   )
 }))
 
@@ -247,7 +276,9 @@ describe('medium cold renderer surfaces', () => {
     window.api.syncLinking.completeLinkingQr = vi
       .fn()
       .mockResolvedValueOnce({ success: false, error: 'Expired session' })
-    await waitFor(() => expect(onError).toHaveBeenCalledWith('Expired session'))
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Expired session')
+    })
     await userEvent.click(screen.getByRole('button', { name: 'setup.linking.goBack' }))
     expect(onCancel).toHaveBeenCalled()
     failing.unmount()

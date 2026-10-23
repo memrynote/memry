@@ -43,7 +43,9 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
       getValue: () => value,
-      setValue: (newValue: string) => setValue(newValue),
+      setValue: (newValue: string) => {
+        setValue(newValue)
+      },
       isEmpty: () => value.trim() === ''
     }))
 
@@ -56,7 +58,9 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
         setParseResult(result)
       }, 150) // Small debounce for smoother UX
 
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+      }
     }, [value])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {

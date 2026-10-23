@@ -89,7 +89,9 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
             {hiddenCount > 0 && (
               <button
                 type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
+                onClick={() => {
+                  setIsExpanded(!isExpanded)
+                }}
                 className={cn(
                   'w-full py-2 px-3 mt-1',
                   'text-sm text-muted-foreground hover:text-foreground',

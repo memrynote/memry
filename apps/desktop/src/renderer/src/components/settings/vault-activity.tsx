@@ -234,7 +234,9 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
                 type="button"
                 className={QUIET_ACTION_CLASS}
                 disabled={!available || entries.length === 0}
-                onClick={() => setConfirmClear(true)}
+                onClick={() => {
+                  setConfirmClear(true)
+                }}
               >
                 {t('vault.activity.clear')}
               </button>

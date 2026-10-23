@@ -28,8 +28,12 @@ export function VaultSwitchContentCover() {
 
   useEffect(() => {
     if (!leavingTo) return
-    const timer = setTimeout(() => setShownFor(leavingTo), VAULT_SWITCH_COVER_DELAY_MS)
-    return () => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      setShownFor(leavingTo)
+    }, VAULT_SWITCH_COVER_DELAY_MS)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [leavingTo])
 
   if (!leavingTo || shownFor !== leavingTo) return null

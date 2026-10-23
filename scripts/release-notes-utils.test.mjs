@@ -94,15 +94,13 @@ describe('release notes helpers', () => {
   it('rejects publish when draft notes are not humanized for the resolved tag', () => {
     const body = `${buildHumanizedReleaseMarker('v2026-05-07')}\n\n## New Features`
 
-    assert.throws(
-      () =>
-        assertHumanizedReleaseNotesForPublish({
-          body,
-          draftTag: 'vnext',
-          expectedTag: 'v2026-05-08'
-        }),
-      /pnpm release:humanize -- --tag vnext/
-    )
+    assert.throws(() => {
+      assertHumanizedReleaseNotesForPublish({
+        body,
+        draftTag: 'vnext',
+        expectedTag: 'v2026-05-08'
+      })
+    }, /pnpm release:humanize -- --tag vnext/)
   })
 
   it('extracts the previous tag from an existing compare URL', () => {

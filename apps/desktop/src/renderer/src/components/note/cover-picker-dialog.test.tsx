@@ -148,13 +148,17 @@ describe('CoverPickerDialog tabs', () => {
     expect(panel()).toHaveAttribute('data-tab', 'washes')
     expect(screen.getAllByTestId('cover-picker-wash')).toHaveLength(12)
     expect(screen.getByTestId('cover-picker-upload')).toBeInTheDocument()
-    await waitFor(() => expect(listVaultAttachments).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(listVaultAttachments).toHaveBeenCalled()
+    })
   })
 
   it('switches to the vault image list and back, showing only images', async () => {
     const user = userEvent.setup()
     renderPicker()
-    await waitFor(() => expect(listVaultAttachments).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(listVaultAttachments).toHaveBeenCalled()
+    })
 
     await user.click(screen.getByRole('tab', { name: 'From note' }))
     expect(panel()).toHaveAttribute('data-tab', 'fromNote')
@@ -218,12 +222,12 @@ describe('CoverPickerDialog tabs', () => {
       NOTE_ID,
       'https://example.com/harbour.jpg'
     )
-    await waitFor(() =>
+    await waitFor(() => {
       expect(onApply).toHaveBeenCalledWith(
         { kind: 'image', ref: '../attachments/nte_9f2c1a/linked.jpg' },
         { reposition: false }
       )
-    )
+    })
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
@@ -275,17 +279,19 @@ describe('CoverPickerDialog apply', () => {
   it('asks for reposition on cmd-enter over a vault image', async () => {
     const user = userEvent.setup()
     const { onApply } = renderPicker()
-    await waitFor(() => expect(listVaultAttachments).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(listVaultAttachments).toHaveBeenCalled()
+    })
 
     await user.click(screen.getByRole('tab', { name: 'From note' }))
     await user.keyboard('{Meta>}{Enter}{/Meta}')
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(onApply).toHaveBeenCalledWith(
         { kind: 'image', ref: '../attachments/nte_other/beach.png' },
         { reposition: true }
       )
-    )
+    })
   })
 
   it('paints each wash tile with its own gradient', () => {
@@ -300,7 +306,9 @@ describe('CoverPickerDialog apply', () => {
     const user = userEvent.setup()
     listVaultAttachments.mockResolvedValue([])
     renderPicker()
-    await waitFor(() => expect(listVaultAttachments).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(listVaultAttachments).toHaveBeenCalled()
+    })
 
     await user.click(screen.getByRole('tab', { name: 'From note' }))
     expect(screen.getByTestId('cover-picker-empty')).toBeInTheDocument()
@@ -320,7 +328,9 @@ describe('CoverPickerDialog photos', () => {
     renderPicker()
 
     expect(panel()).toHaveAttribute('data-tab', 'washes')
-    await waitFor(() => expect(unsplashSearch).toHaveBeenCalledWith({ query: '' }))
+    await waitFor(() => {
+      expect(unsplashSearch).toHaveBeenCalledWith({ query: '' })
+    })
     expect(screen.getByRole('tab', { name: 'Unsplash' })).toBeInTheDocument()
     expect(realSearches()).toHaveLength(0)
   })
@@ -339,7 +349,9 @@ describe('CoverPickerDialog photos', () => {
     unsplashSearch.mockResolvedValue({ ok: false, reason: 'not-configured' })
     renderPicker()
 
-    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Unsplash' })).toBeNull())
+    await waitFor(() => {
+      expect(screen.queryByRole('tab', { name: 'Unsplash' })).toBeNull()
+    })
     expect(screen.getAllByRole('tab')).toHaveLength(COVER_PICKER_TABS.length - 1)
   })
 
@@ -374,7 +386,9 @@ describe('CoverPickerDialog photos', () => {
     fireEvent.change(screen.getByTestId('cover-picker-search'), { target: { value: 'su' } })
     await searchFor('sunset')
 
-    await waitFor(() => expect(searchesFor('sunset')).toHaveLength(1))
+    await waitFor(() => {
+      expect(searchesFor('sunset')).toHaveLength(1)
+    })
     expect(unsplashSearch).toHaveBeenCalledWith({ query: 'sunset', page: 1 })
 
     await searchFor('')
@@ -433,9 +447,9 @@ describe('CoverPickerDialog photos', () => {
 
     await user.click(await screen.findByTestId('cover-picker-photo'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(unsplashDownload).toHaveBeenCalledWith({ noteId: NOTE_ID, photo: UNSPLASH_PHOTO })
-    )
+    })
     expect(onApply).toHaveBeenCalledWith(
       { kind: 'image', ref: '../attachments/nte_9f2c1a/ph_1.jpg' },
       {
@@ -514,7 +528,9 @@ describe('CoverPickerDialog surface', () => {
       outside.focus()
     })
 
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
+    await waitFor(() => {
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
     outside.remove()
   })
 

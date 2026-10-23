@@ -82,7 +82,9 @@ describe('useYjsCollaboration', () => {
       initialProps: { noteId: 'note-1' as string | undefined }
     })
 
-    await waitFor(() => expect(result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true)
+    })
 
     expect(result.current.fragment).not.toBeNull()
     expect(result.current.provider?.isSynced).toBe(true)
@@ -93,8 +95,12 @@ describe('useYjsCollaboration', () => {
 
     rerender({ noteId: 'note-2' })
 
-    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-1' }))
-    await waitFor(() => expect(result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-1' })
+    })
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true)
+    })
     expect(result.current.provider?.noteId).toBe('note-2')
 
     unmount()
@@ -106,7 +112,9 @@ describe('useYjsCollaboration', () => {
       useYjsCollaboration({ noteId: 'note-signed-out' })
     )
 
-    await waitFor(() => expect(result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true)
+    })
     const fragment = result.current.fragment
     const doc = result.current.doc
     expect(fragment).not.toBeNull()
@@ -159,7 +167,9 @@ describe('useYjsCollaboration', () => {
     const { result, rerender } = renderHook(() => useYjsCollaboration({ noteId: 'note-kept' }), {
       wrapper
     })
-    await waitFor(() => expect(result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true)
+    })
     const doc = result.current.doc
     expect(mockOpenDoc).toHaveBeenCalledTimes(1)
 
@@ -194,7 +204,9 @@ describe('useYjsCollaboration', () => {
       await Promise.resolve()
     })
     disposeVaultWorkspace(lifecycle)
-    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-kept' }))
+    await waitFor(() => {
+      expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-kept' })
+    })
   })
 
   it('gives two vault workspaces their own doc for the same note id', async () => {
@@ -224,9 +236,13 @@ describe('useYjsCollaboration', () => {
       })
 
     const a = workspace('/a')
-    await waitFor(() => expect(a.result.current.collab.isReady).toBe(true))
+    await waitFor(() => {
+      expect(a.result.current.collab.isReady).toBe(true)
+    })
     const b = workspace('/b')
-    await waitFor(() => expect(b.result.current.collab.isReady).toBe(true))
+    await waitFor(() => {
+      expect(b.result.current.collab.isReady).toBe(true)
+    })
 
     const docA = a.result.current.collab.doc
     const docB = b.result.current.collab.doc
@@ -284,7 +300,9 @@ describe('useYjsCollaboration', () => {
     a.rerender()
     await flush()
     disposeVaultWorkspace(a.lifecycle)
-    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mockCloseDoc).toHaveBeenCalledTimes(1)
+    })
     expect(docBDestroyed).toBe(false)
     b.rerender()
     expect(b.result.current.collab.doc).toBe(docB)
@@ -304,7 +322,9 @@ describe('useYjsCollaboration', () => {
     const editorA = renderHook(() => useYjsCollaboration({ noteId: 'note-shared-id' }), {
       wrapper: inVault('/a')
     })
-    await waitFor(() => expect(editorA.result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(editorA.result.current.isReady).toBe(true)
+    })
 
     const queryA = renderHook(() => useLiveFragmentQuery(), { wrapper: inVault('/a') })
     const queryB = renderHook(() => useLiveFragmentQuery(), { wrapper: inVault('/b') })
@@ -314,14 +334,18 @@ describe('useYjsCollaboration', () => {
     expect(queryUnscoped.result.current('note-shared-id')).toBe(false)
 
     editorA.unmount()
-    await waitFor(() => expect(queryA.result.current('note-shared-id')).toBe(false))
+    await waitFor(() => {
+      expect(queryA.result.current('note-shared-id')).toBe(false)
+    })
   })
 
   it('keeps the doc through an immediate cleanup and setup, as StrictMode runs on reveal', async () => {
     const { result, rerender } = renderHook((props) => useYjsCollaboration(props), {
       initialProps: { noteId: 'note-strict', enabled: true }
     })
-    await waitFor(() => expect(result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true)
+    })
     const doc = result.current.doc
 
     // Toggling `enabled` off and on inside one act is the same cleanup + setup

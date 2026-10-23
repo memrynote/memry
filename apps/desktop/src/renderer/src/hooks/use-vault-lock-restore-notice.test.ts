@@ -19,7 +19,9 @@ describe('useVaultLockRestoreNotice (#2606)', () => {
       }
     })
 
-    const { unmount } = renderHook(() => useVaultLockRestoreNotice())
+    const { unmount } = renderHook(() => {
+      useVaultLockRestoreNotice()
+    })
     for (const listener of listeners)
       listener({ noteId: 'n1', path: 'Notes/plan.md', title: 'Plan' })
 

@@ -72,7 +72,9 @@ function Crumb({
       <TooltipTrigger asChild>
         <PortalToolbarButton
           disabled={disabled}
-          onClick={() => onInclude(ancestor)}
+          onClick={() => {
+            onInclude(ancestor)
+          }}
           className="max-w-[9rem]"
         >
           <span className="truncate">{ancestor.text}</span>
@@ -145,7 +147,11 @@ export function PortalToolbar({
           </span>
         ) : null}
         {hiddenSiblingCount > 0 && !compact ? (
-          <PortalToolbarButton onClick={(event) => onOpenHidden(event.currentTarget)}>
+          <PortalToolbarButton
+            onClick={(event) => {
+              onOpenHidden(event.currentTarget)
+            }}
+          >
             <EyeOff className="size-3 shrink-0" aria-hidden="true" />
             {t('portalBlock.hiddenCount', { count: hiddenSiblingCount })}
           </PortalToolbarButton>

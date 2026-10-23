@@ -50,9 +50,9 @@ describe('plan step', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(dispatch).toHaveBeenCalledWith({ type: 'update', patch: { paidPlan: 'pro' } })
-    )
+    })
     expect(dispatch).toHaveBeenCalledWith({ type: 'next' })
   })
 

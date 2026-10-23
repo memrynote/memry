@@ -268,7 +268,9 @@ export function useEventDrag({
       setDrag(null)
       return
     }
-    void Promise.resolve(onCommit(item, last.startAt, last.endAt)).finally(() => setDrag(null))
+    void Promise.resolve(onCommit(item, last.startAt, last.endAt)).finally(() => {
+      setDrag(null)
+    })
   }, [onCommit])
 
   useEffect(() => {

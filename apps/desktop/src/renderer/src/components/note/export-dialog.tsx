@@ -91,7 +91,9 @@ export function ExportDialog({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open, isExporting, onOpenChange])
 
   /**
@@ -212,7 +214,9 @@ export function ExportDialog({
             <Label className="text-sm font-medium">{t('exportDialog.format')}</Label>
             <RadioGroup
               value={format}
-              onValueChange={(value) => setFormat(value as ExportFormat)}
+              onValueChange={(value) => {
+                setFormat(value as ExportFormat)
+              }}
               className="grid grid-cols-2 gap-3"
               disabled={isExporting}
             >
@@ -278,7 +282,9 @@ export function ExportDialog({
               </Label>
               <Select
                 value={pageSize}
-                onValueChange={(value) => setPageSize(value as PageSize)}
+                onValueChange={(value) => {
+                  setPageSize(value as PageSize)
+                }}
                 disabled={isExporting}
               >
                 <SelectTrigger id="page-size" className="w-full">
@@ -306,7 +312,9 @@ export function ExportDialog({
               <Checkbox
                 id="include-metadata"
                 checked={includeMetadata}
-                onCheckedChange={(checked) => setIncludeMetadata(checked === true)}
+                onCheckedChange={(checked) => {
+                  setIncludeMetadata(checked === true)
+                }}
                 disabled={isExporting}
               />
               <Label
@@ -320,7 +328,13 @@ export function ExportDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isExporting}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              handleOpenChange(false)
+            }}
+            disabled={isExporting}
+          >
             {tCommon('button.cancel')}
           </Button>
           <Button onClick={() => void handleExport()} disabled={isExporting || exportSuccess}>

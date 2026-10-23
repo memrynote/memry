@@ -35,7 +35,9 @@ class MemryFileRangeTransport extends PDFDataRangeTransport {
         if (!response.ok) throw new Error(`memry-file answered ${response.status}`)
         this.onDataRange(begin, new Uint8Array(await response.arrayBuffer()))
       })
-      .catch(() => this.onFailure())
+      .catch(() => {
+        this.onFailure()
+      })
   }
 }
 
@@ -89,7 +91,9 @@ async function renderPage(
     // 'print': the display intent paces itself on requestAnimationFrame, and a
     // view that is never shown never gets a frame.
     await page.render({ canvas, viewport, intent: 'print' }).promise
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/png')
+    })
     if (!blob) throw new Error(`Page ${pageNumber} could not be encoded`)
     return {
       png: new Uint8Array(await blob.arrayBuffer()),

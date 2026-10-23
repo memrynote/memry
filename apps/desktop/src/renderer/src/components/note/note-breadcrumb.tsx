@@ -84,7 +84,9 @@ export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
           {i > 0 && <span className="text-xs text-text-secondary px-0.5">/</span>}
           <button
             type="button"
-            onClick={() => handleFolderClick(segment.folderPath, segment.label)}
+            onClick={() => {
+              handleFolderClick(segment.folderPath, segment.label)
+            }}
             className={CRUMB_CLASS}
           >
             {segment.label}

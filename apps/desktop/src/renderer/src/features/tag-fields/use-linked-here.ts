@@ -31,7 +31,9 @@ export function useLinkedHere(
     const offs = [onNoteUpdated(invalidate), onTagsChanged(invalidate), onTaskUpdated(invalidate)]
     return () => {
       if (timer) clearTimeout(timer)
-      offs.forEach((off) => off())
+      offs.forEach((off) => {
+        off()
+      })
     }
   }, [noteId, queryClient])
 

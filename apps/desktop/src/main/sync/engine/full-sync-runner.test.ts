@@ -13,11 +13,11 @@ import {
   crdtSweepChunkDelayMs,
   SYNC_STATE_KEYS,
   type CrdtPullCost,
-  type SyncContext
+  type SyncContext,
+  type SyncRunOutcome
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
-import type { SyncRunOutcome } from './sync-context'
 import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'
@@ -1058,7 +1058,9 @@ describe('FullSyncRunner', () => {
     beforeEach(() => {
       testDb = createTestDataDb()
     })
-    afterEach(() => testDb.close())
+    afterEach(() => {
+      testDb.close()
+    })
 
     const legacyDebt = (atMs: number) =>
       asSyncDb(testDb.db)
@@ -1109,7 +1111,9 @@ describe('FullSyncRunner', () => {
         throw new Error('database is locked')
       })
 
-      expect(() => h.runner.loadCrdtBodyDebts()).not.toThrow()
+      expect(() => {
+        h.runner.loadCrdtBodyDebts()
+      }).not.toThrow()
 
       expect(coordinator.hasUnmergedRemoteState('note-9')).toBe(true)
       expect(coordinator.pendingPullCount).toBe(1)
@@ -1153,7 +1157,9 @@ describe('FullSyncRunner', () => {
       })
       mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-3'])
 
-      expect(() => h.runner.loadCrdtBodyDebts()).not.toThrow()
+      expect(() => {
+        h.runner.loadCrdtBodyDebts()
+      }).not.toThrow()
 
       expect(debts()).toEqual([['note-3', 'legacy', null]])
       expect(mocks.log.error).toHaveBeenCalled()
@@ -1166,7 +1172,9 @@ describe('FullSyncRunner', () => {
       legacyDebt(Date.now() - 60_000)
       mocks.getAllSyncableNoteMetadataIds.mockReturnValue(['note-3'])
 
-      expect(() => h.runner.loadCrdtBodyDebts()).not.toThrow()
+      expect(() => {
+        h.runner.loadCrdtBodyDebts()
+      }).not.toThrow()
       expect(h.crdtSync.hydrateBodyDebts).toHaveBeenCalledOnce()
     })
   })
@@ -1410,7 +1418,9 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      await vi.waitFor(() => expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done'))
+      await vi.waitFor(() => {
+        expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done')
+      })
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(
         ['note-1', 'j2026-09-25'],
         expect.anything()
@@ -1430,7 +1440,9 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      await vi.waitFor(() => expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done'))
+      await vi.waitFor(() => {
+        expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done')
+      })
       h.runner.dispose()
     })
 
@@ -1445,7 +1457,9 @@ describe('FullSyncRunner', () => {
       })
 
       await h.runner.run()
-      await vi.waitFor(() => expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled())
+      await vi.waitFor(() => {
+        expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled()
+      })
       await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
@@ -1465,7 +1479,9 @@ describe('FullSyncRunner', () => {
       })
 
       await h.runner.run()
-      await vi.waitFor(() => expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled())
+      await vi.waitFor(() => {
+        expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled()
+      })
       await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(state.has(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe(false)
@@ -1486,7 +1502,9 @@ describe('FullSyncRunner', () => {
       })
 
       await h.runner.run()
-      await vi.waitFor(() => expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled())
+      await vi.waitFor(() => {
+        expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalled()
+      })
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('pending')
 
@@ -1494,7 +1512,9 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(mocks.getAllCrdtNoteIds).toHaveBeenCalled()
-      await vi.waitFor(() => expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done'))
+      await vi.waitFor(() => {
+        expect(state.get(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP)).toBe('done')
+      })
     })
 
     // #2297 review (B-8): a sweep over a partly pulled vault misses the notes

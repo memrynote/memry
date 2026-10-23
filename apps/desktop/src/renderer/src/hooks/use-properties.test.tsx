@@ -34,7 +34,9 @@ describe('useProperties', () => {
 
     const { result } = renderHook(() => useProperties('note-1'))
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     expect(api.properties.get).toHaveBeenCalledWith('note-1')
     expect(result.current.propertiesRecord).toEqual({ status: 'draft', priority: 2 })
@@ -61,7 +63,9 @@ describe('useProperties', () => {
     })
 
     const { result } = renderHook(() => useProperties('note-1'))
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(api.properties.get).toHaveBeenCalledTimes(1)
 
     // Echo of the hook's own state, another note, and a content-only update: no refetch.
@@ -97,7 +101,9 @@ describe('useProperties', () => {
   it('updates, adds, removes, renames, reorders, and skips no-op paths', async () => {
     const { result } = renderHook(() => useProperties('note-1'))
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     await act(async () => {
       await result.current.updateProperty('status', 'review')
@@ -144,7 +150,9 @@ describe('useProperties', () => {
     api.properties.set = vi.fn().mockResolvedValueOnce({ success: false, error: 'write failed' })
     const { result } = renderHook(() => useProperties('note-1'))
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
 
     await expect(
       act(async () => {

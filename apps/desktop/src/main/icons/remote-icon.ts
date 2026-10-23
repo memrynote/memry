@@ -151,7 +151,9 @@ async function readCapped(response: Response, limit: number): Promise<Buffer> {
 export async function downloadRemoteIcon(raw: string): Promise<RemoteIcon> {
   const url = parseIconUrl(raw)
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS)
+  const timeout = setTimeout(() => {
+    controller.abort()
+  }, DOWNLOAD_TIMEOUT_MS)
 
   let response: Response
   try {

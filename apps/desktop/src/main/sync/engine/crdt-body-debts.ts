@@ -133,7 +133,9 @@ export function crdtBodyDebtStore(db: DrizzleDb): CrdtBodyDebtStore {
   // The withheld ids of a handle without the table, for this session only.
   const sessionWithheld = new Set<string>()
   return {
-    owe: (noteIds, reason, options) => oweCrdtBodyDebts(db, noteIds, reason, options),
+    owe: (noteIds, reason, options) => {
+      oweCrdtBodyDebts(db, noteIds, reason, options)
+    },
     settle: (noteIds, generation) => settleCrdtBodyDebts(db, noteIds, generation),
     generation: () => currentCrdtBodyDebtGeneration(db),
     bumpGeneration: () => guarded(db, 0, () => ++generationCounter(db, db).value),
@@ -297,7 +299,9 @@ export function oweCrdtBodyDebts(
   options: OweCrdtBodyDebtOptions = {}
 ): void {
   if (noteIds.length === 0) return
-  guarded(db, undefined, () => db.transaction((tx) => oweInTx(db, tx, noteIds, reason, options)))
+  guarded(db, undefined, () => {
+    db.transaction((tx) => oweInTx(db, tx, noteIds, reason, options))
+  })
 }
 
 function oweInTx(

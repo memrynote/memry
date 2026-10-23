@@ -382,11 +382,14 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine(createMockDeps(getDb(), { ws }))
       vi.spyOn(engine, 'fullSync').mockResolvedValue()
       await engine.start()
-      const pull = vi
-        .spyOn(engine, 'pull')
-        .mockImplementation(
-          () => new Promise<boolean>((resolve) => setTimeout(() => resolve(true), PULL_DURATION_MS))
-        )
+      const pull = vi.spyOn(engine, 'pull').mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) =>
+            setTimeout(() => {
+              resolve(true)
+            }, PULL_DURATION_MS)
+          )
+      )
       return { engine, ws, pull }
     }
 

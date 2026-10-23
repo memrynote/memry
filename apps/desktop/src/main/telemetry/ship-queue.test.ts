@@ -207,7 +207,9 @@ describe('createShipQueue — crash durability', () => {
     // #when enqueuing
     // #then the in-memory queue still works; durability is the only loss
     q.setEnabled(true)
-    expect(() => q.enqueue(1)).not.toThrow()
+    expect(() => {
+      q.enqueue(1)
+    }).not.toThrow()
     expect(q.depth()).toBe(1)
   })
 })

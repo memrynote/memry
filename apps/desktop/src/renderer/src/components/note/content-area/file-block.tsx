@@ -173,12 +173,16 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
   useLayoutEffect(() => {
     const el = viewRef.current
     if (!el) return
-    const measure = () => setMaxWidth(el.clientWidth)
+    const measure = () => {
+      setMaxWidth(el.clientWidth)
+    }
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+    }
   }, [])
 
   // Width scales the whole embed (card + page) like an image. Height is an
@@ -476,8 +480,12 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
                   type="button"
                   aria-label={alignLabels[value]}
                   aria-pressed={align === value}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => onAlign(value)}
+                  onPointerDown={(e) => {
+                    e.stopPropagation()
+                  }}
+                  onClick={() => {
+                    onAlign(value)
+                  }}
                   className={cn(
                     'flex h-5 w-5 items-center justify-center rounded transition-colors',
                     align === value
@@ -512,7 +520,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
               aria-valuemin={MIN_PDF_WIDTH}
               aria-valuemax={maxWidth || undefined}
               aria-valuenow={Math.round(cardWidth)}
-              onPointerDown={(e) => handleResizePointerDown(e, 'end')}
+              onPointerDown={(e) => {
+                handleResizePointerDown(e, 'end')
+              }}
               onPointerMove={handleResizePointerMove}
               onPointerUp={handleResizePointerUp}
               onKeyDown={handleResizeKeyDown}
@@ -523,7 +533,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
               tabIndex={0}
               data-pdf-resize-handle
               aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.resizePdf')}
-              onPointerDown={(e) => handleResizePointerDown(e, 'start')}
+              onPointerDown={(e) => {
+                handleResizePointerDown(e, 'start')
+              }}
               onPointerMove={handleResizePointerMove}
               onPointerUp={handleResizePointerUp}
               onKeyDown={handleResizeKeyDown}
@@ -554,7 +566,9 @@ function SyncProgressOverlay({
   const Icon = direction === 'upload' ? Upload : Download
   const label =
     status === 'completed'
-      ? `${direction === 'upload' ? 'Uploaded' : 'Downloaded'}`
+      ? direction === 'upload'
+        ? 'Uploaded'
+        : 'Downloaded'
       : status === 'failed'
         ? 'Failed'
         : `${direction === 'upload' ? 'Uploading' : 'Downloading'}...`

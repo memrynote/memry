@@ -58,7 +58,9 @@ describe('CalendarTaskStatus', () => {
     renderStatus('todo', false)
     await pick('To Do', 'Doing')
 
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith({ id: 't1', statusId: 'doing' }))
+    await waitFor(() => {
+      expect(mocks.update).toHaveBeenCalledWith({ id: 't1', statusId: 'doing' })
+    })
     expect(mocks.complete).not.toHaveBeenCalled()
     expect(mocks.uncomplete).not.toHaveBeenCalled()
   })
@@ -67,9 +69,13 @@ describe('CalendarTaskStatus', () => {
     renderStatus('todo', false)
     await pick('To Do', 'Done')
 
-    await waitFor(() => expect(mocks.complete).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(mocks.complete).toHaveBeenCalledTimes(1)
+    })
     expect(mocks.update).toHaveBeenCalledWith({ id: 't1', statusId: 'done' })
-    await waitFor(() => expect(mocks.toast).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalled()
+    })
     const [, options] = mocks.toast.mock.calls[0] as [string, { action: { onClick: () => void } }]
     options.action.onClick()
     expect(mocks.uncomplete).toHaveBeenCalledWith('t1')
@@ -79,7 +85,9 @@ describe('CalendarTaskStatus', () => {
     renderStatus('done', true)
     await pick('Done', 'Doing')
 
-    await waitFor(() => expect(mocks.uncomplete).toHaveBeenCalledWith('t1'))
+    await waitFor(() => {
+      expect(mocks.uncomplete).toHaveBeenCalledWith('t1')
+    })
     expect(mocks.update).toHaveBeenCalledWith({ id: 't1', statusId: 'doing' })
     expect(mocks.complete).not.toHaveBeenCalled()
   })
@@ -89,6 +97,8 @@ describe('CalendarTaskStatus', () => {
     renderStatus('todo', false)
     await pick('To Do', 'Doing')
 
-    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('offline'))
+    await waitFor(() => {
+      expect(mocks.toast.error).toHaveBeenCalledWith('offline')
+    })
   })
 })

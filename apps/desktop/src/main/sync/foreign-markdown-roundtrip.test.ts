@@ -626,7 +626,7 @@ describe('foreign markdown round-trip, main pipeline', () => {
       '* Two items here',
       '    * Nested item',
       '',
-      `${'This is _em_ and __strong__ prose written elsewhere. '.repeat(40)}`,
+      'This is _em_ and __strong__ prose written elsewhere. '.repeat(40),
       '',
       '---',
       ''

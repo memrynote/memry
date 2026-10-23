@@ -81,7 +81,7 @@ describe('shortcut-catalog', () => {
       walk(rendererRoot)
       const corpus = sources.join('\n')
 
-      const unowned = SHORTCUT_ENTRIES.filter((entry) => entry.rebindable !== false)
+      const unowned = SHORTCUT_ENTRIES.filter((entry) => entry.rebindable)
         .map((entry) => entry.id)
         .filter(
           (id) =>

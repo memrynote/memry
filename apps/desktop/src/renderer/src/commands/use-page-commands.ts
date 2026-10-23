@@ -13,24 +13,63 @@ export function usePageCommands(): void {
   const { isEnabled } = useFeatureFlags()
 
   useAppCommands('pages', {
-    'go.home': { run: () => navigate('home') },
-    'go.inbox': { enabled: isEnabled('inbox'), run: () => navigate('inbox') },
-    'go.journal': { enabled: isEnabled('journal'), run: () => navigate('journal') },
-    'go.calendar': { enabled: isEnabled('calendar'), run: () => navigate('calendar') },
-    'go.tasks': { enabled: isEnabled('tasks'), run: () => navigate('tasks') },
-    'go.graph': { enabled: isEnabled('graph'), run: () => navigate('graph') },
-    'go.tags': { run: () => navigate('tags') },
+    'go.home': {
+      run: () => {
+        navigate('home')
+      }
+    },
+    'go.inbox': {
+      enabled: isEnabled('inbox'),
+      run: () => {
+        navigate('inbox')
+      }
+    },
+    'go.journal': {
+      enabled: isEnabled('journal'),
+      run: () => {
+        navigate('journal')
+      }
+    },
+    'go.calendar': {
+      enabled: isEnabled('calendar'),
+      run: () => {
+        navigate('calendar')
+      }
+    },
+    'go.tasks': {
+      enabled: isEnabled('tasks'),
+      run: () => {
+        navigate('tasks')
+      }
+    },
+    'go.graph': {
+      enabled: isEnabled('graph'),
+      run: () => {
+        navigate('graph')
+      }
+    },
+    'go.tags': {
+      run: () => {
+        navigate('tags')
+      }
+    },
     'create.task': {
       enabled: isEnabled('tasks'),
-      run: () => navigate('tasks', { viewState: newItemViewState('tasks') })
+      run: () => {
+        navigate('tasks', { viewState: newItemViewState('tasks') })
+      }
     },
     'create.calendarEvent': {
       enabled: isEnabled('calendar'),
-      run: () => navigate('calendar', { viewState: newItemViewState('calendar') })
+      run: () => {
+        navigate('calendar', { viewState: newItemViewState('calendar') })
+      }
     },
     'create.inboxItem': {
       enabled: isEnabled('inbox'),
-      run: () => navigate('inbox', { viewState: newItemViewState('inbox') })
+      run: () => {
+        navigate('inbox', { viewState: newItemViewState('inbox') })
+      }
     }
   })
 }

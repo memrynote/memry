@@ -28,7 +28,9 @@ function stubEditor(block: unknown) {
       dictionary: { toggle_blocks: { add_block_button: 'Add block' } },
       getBlock: () => block,
       onChange: () => () => {},
-      transact: (fn: () => void) => fn(),
+      transact: (fn: () => void) => {
+        fn()
+      },
       updateBlock: (_target: unknown, update: unknown) => {
         updates.push(update)
         return block

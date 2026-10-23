@@ -57,7 +57,9 @@ vi.mock('@/components/ui/select', () => ({
       <select
         aria-label="summary selector"
         value={value}
-        onChange={(event) => onValueChange(event.target.value)}
+        onChange={(event) => {
+          onValueChange(event.target.value)
+        }}
       >
         <option value="none">none</option>
         <option value="count">count</option>
@@ -200,18 +202,24 @@ describe('ColumnSelector', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /addFormula/ }))
     fireEvent.click(screen.getByRole('button', { name: 'save formula' }))
-    await waitFor(() => expect(onFormulaAdd).toHaveBeenCalledWith('createdFormula', '1 + 2'))
+    await waitFor(() => {
+      expect(onFormulaAdd).toHaveBeenCalledWith('createdFormula', '1 + 2')
+    })
 
     const formulaRow = screen.getByText('Score').closest('div')!
     fireEvent.click(within(formulaRow).getAllByRole('button')[0])
     expect(screen.getByText('formula editor Score')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'save formula' }))
-    await waitFor(() => expect(onFormulaEdit).toHaveBeenCalledWith('Score', 'priority * 2'))
+    await waitFor(() => {
+      expect(onFormulaEdit).toHaveBeenCalledWith('Score', 'priority * 2')
+    })
 
     fireEvent.click(within(formulaRow).getAllByRole('button')[1])
     fireEvent.click(screen.getByRole('button', { name: 'delete' }))
 
-    await waitFor(() => expect(onFormulaDelete).toHaveBeenCalledWith('Score'))
+    await waitFor(() => {
+      expect(onFormulaDelete).toHaveBeenCalledWith('Score')
+    })
     expect(onColumnsChange).toHaveBeenCalledWith([{ id: 'title', width: 250 }])
     expect(container).toHaveTextContent('formulas')
   })

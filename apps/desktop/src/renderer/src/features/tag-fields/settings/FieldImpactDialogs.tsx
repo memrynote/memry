@@ -95,7 +95,13 @@ export function RemoveFieldDialog({
       title={t('tagFields.settings.remove.title', { field, tag })}
       footer={
         <>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onOpenChange(false)
+            }}
+          >
             {t('tagFields.settings.cancel')}
           </Button>
           <Button variant="destructive" size="sm" disabled={busy} onClick={() => void remove()}>
@@ -207,7 +213,9 @@ export function RenameFieldDialog({
             variant="outline"
             size="sm"
             disabled={running}
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              onOpenChange(false)
+            }}
           >
             {t('tagFields.settings.cancel')}
           </Button>
@@ -222,7 +230,9 @@ export function RenameFieldDialog({
           autoFocus
           value={name}
           disabled={running}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && canRename) void rename()
           }}
@@ -310,7 +320,13 @@ export function DeleteTagDialog({
       title={t('tagFields.settings.delete.title', { tag })}
       footer={
         <>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onOpenChange(false)
+            }}
+          >
             {t('tagFields.settings.cancel')}
           </Button>
           <Button

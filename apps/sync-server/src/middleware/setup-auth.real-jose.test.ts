@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { SignJWT, exportSPKI, generateKeyPair } from 'jose'
 
-import { AppError, ErrorCodes } from '../lib/errors'
+import type { AppError } from '../lib/errors'
+import { ErrorCodes } from '../lib/errors'
 import { setupAuthMiddleware } from './setup-auth'
 
 /**

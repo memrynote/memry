@@ -707,7 +707,8 @@ describe('main index phase2 exports', () => {
     // A save in Settings -> Shortcuts rebuilds it.
     readKeyboardOverridesMock.mockReturnValue({})
     const onKeyboardOverridesChanged = setKeyboardOverridesListenerMock.mock.calls.at(-1)?.[0] as
-      (() => void) | undefined
+      | (() => void)
+      | undefined
     onKeyboardOverridesChanged?.()
     expect(buildAppMenuMock).toHaveBeenCalledTimes(2)
     expect(buildAppMenuMock).toHaveBeenLastCalledWith(expect.anything(), {})
@@ -922,7 +923,8 @@ describe('main index phase2 exports', () => {
     await flushReadyWork()
 
     const options = BrowserWindowMock.mock.calls[0]?.[0] as
-      { webPreferences?: { additionalArguments?: string[] } } | undefined
+      | { webPreferences?: { additionalArguments?: string[] } }
+      | undefined
     expect(readStartupVaultArg(options?.webPreferences?.additionalArguments ?? [])).toBe(
       '/vault/My Notes'
     )
@@ -1608,7 +1610,9 @@ describe('main index phase2 exports', () => {
       state: 'second-state'
     })
 
-    expect(() => openUrlHandler({ preventDefault }, 'not a valid url')).not.toThrow()
+    expect(() => {
+      openUrlHandler({ preventDefault }, 'not a valid url')
+    }).not.toThrow()
   })
 
   it('routes billing deep links through checkout and reconciliation handlers', async () => {
@@ -1914,7 +1918,9 @@ describe('main index phase2 exports', () => {
     const failLoadHandler = quickWindow.webContents.on.mock.calls.find(
       ([event]) => event === 'did-fail-load'
     )?.[1] as (_event: unknown, code: number, description: string) => void
-    expect(() => failLoadHandler({}, -3, 'aborted')).not.toThrow()
+    expect(() => {
+      failLoadHandler({}, -3, 'aborted')
+    }).not.toThrow()
   })
 
   it('routes quick capture settings to the main window before closing the capture window', async () => {

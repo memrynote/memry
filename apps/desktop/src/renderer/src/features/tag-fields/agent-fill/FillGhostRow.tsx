@@ -46,7 +46,9 @@ export function FillGhostRow({ field, proposal, onAccept, onReject, busy }: Fill
   const { t } = useT('notes')
   const rowRef = useRef<HTMLLIElement>(null)
   const Icon = PROPERTY_TYPE_ICONS[field.type]
-  const paint = () => highlightSource(rowRef.current, proposal.sourceText)
+  const paint = () => {
+    highlightSource(rowRef.current, proposal.sourceText)
+  }
   return (
     <li
       ref={rowRef}

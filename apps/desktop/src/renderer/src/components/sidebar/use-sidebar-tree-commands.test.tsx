@@ -23,7 +23,7 @@ const createProject = vi.fn()
 const onFoldersExpandedChange = vi.fn()
 
 const mount = (overrides: { isTreeVisible?: boolean; isCanvasEnabled?: boolean } = {}): void => {
-  renderHook(() =>
+  renderHook(() => {
     useSidebarTreeCommands({
       notesTreeRef: { current: tree },
       isTreeVisible: true,
@@ -33,7 +33,7 @@ const mount = (overrides: { isTreeVisible?: boolean; isCanvasEnabled?: boolean }
       onFoldersExpandedChange,
       ...overrides
     })
-  )
+  })
 }
 
 beforeEach(() => {

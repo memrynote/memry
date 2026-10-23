@@ -71,7 +71,12 @@ export const InteractivePriorityBadge = ({
   )
 
   return (
-    <Picker value={priority} onValueChange={(v) => onPriorityChange(v as Priority)}>
+    <Picker
+      value={priority}
+      onValueChange={(v) => {
+        onPriorityChange(v as Priority)
+      }}
+    >
       <Picker.Trigger asChild>
         <button
           type="button"

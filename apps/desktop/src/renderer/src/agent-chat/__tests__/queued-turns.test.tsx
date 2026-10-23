@@ -42,7 +42,9 @@ async function send(text: string): Promise<void> {
 }
 
 function endTurn(): void {
-  act(() => emit({ kind: 'turn_completed', conversationId: CONVERSATION_ID, turnId: 'turn' }))
+  act(() => {
+    emit({ kind: 'turn_completed', conversationId: CONVERSATION_ID, turnId: 'turn' })
+  })
 }
 
 function deferredSend(): (value: { ok: true; turnId: string }) => void {
@@ -52,7 +54,9 @@ function deferredSend(): (value: { ok: true; turnId: string }) => void {
       answer = resolve
     })
   )
-  return (value) => answer(value)
+  return (value) => {
+    answer(value)
+  }
 }
 
 function sentTexts(): string[] {
@@ -69,7 +73,9 @@ function queuedTexts(): string[] {
 
 async function startTurn(): Promise<void> {
   renderChat()
-  await waitFor(() => expect(screen.getByRole('textbox', { name: /do anything/i })).toBeVisible())
+  await waitFor(() => {
+    expect(screen.getByRole('textbox', { name: /do anything/i })).toBeVisible()
+  })
   await send('first')
   await screen.findByRole('button', { name: 'Stop' })
 }
@@ -134,12 +140,20 @@ describe('queued agent messages', () => {
     expect(sentTexts()).toEqual(['first'])
 
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
-    await waitFor(() => expect(queuedTexts()).toEqual(['third']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual(['third'])
+    })
 
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'third']))
-    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second', 'third'])
+    })
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual([])
+    })
   })
 
   it('sends the edited text and skips a removed message', async () => {
@@ -159,7 +173,9 @@ describe('queued agent messages', () => {
     expect(queuedTexts()).toEqual(['final one'])
 
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'final one']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'final one'])
+    })
   })
 
   it('retries a queued message while main still holds the finished turn', async () => {
@@ -175,10 +191,17 @@ describe('queued agent messages', () => {
 
     endTurn()
 
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']), {
-      timeout: 2000
+    await waitFor(
+      () => {
+        expect(sentTexts()).toEqual(['first', 'second', 'second'])
+      },
+      {
+        timeout: 2000
+      }
+    )
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual([])
     })
-    await waitFor(() => expect(queuedTexts()).toEqual([]))
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
@@ -197,8 +220,12 @@ describe('queued agent messages', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit queued message' })[0])
     await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
 
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']))
-    await waitFor(() => expect(queuedTexts()).toEqual(['third']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second', 'second'])
+    })
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual(['third'])
+    })
   })
 
   it('queues a new message behind one that was not sent', async () => {
@@ -241,14 +268,20 @@ describe('queued agent messages', () => {
       })
     )
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
 
-    act(() =>
+    act(() => {
       emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn-b', message: 'x' })
-    )
-    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+    })
+    await act(async () => {
+      answer({ ok: true, turnId: 'turn-b' })
+    })
 
-    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual([])
+    })
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
   })
 
@@ -262,14 +295,20 @@ describe('queued agent messages', () => {
       })
     )
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
 
-    act(() =>
+    act(() => {
       emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn-a', message: 'x' })
-    )
-    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+    })
+    await act(async () => {
+      answer({ ok: true, turnId: 'turn-b' })
+    })
 
-    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual([])
+    })
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
 
@@ -283,14 +322,24 @@ describe('queued agent messages', () => {
       })
     )
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
-    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
+    })
+    await act(async () => {
+      answer({ ok: true, turnId: 'turn-b' })
+    })
 
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
-    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual([])
+    })
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
   })
 
@@ -304,15 +353,23 @@ describe('queued agent messages', () => {
       })
     )
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
-    await act(async () => answer({ ok: false, error: 'Model is not installed' }))
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
+    })
+    await act(async () => {
+      answer({ ok: false, error: 'Model is not installed' })
+    })
     await screen.findByText('Not sent. Edit to send again, or remove it.')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Edit queued message' })[0])
     await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second', 'second'])
+    })
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100))
     })
@@ -338,7 +395,9 @@ describe('queued agent messages', () => {
     )
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'half typed edit']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'half typed edit'])
+    })
   })
 
   it('keeps Stop on a queued send that main answers late, without a second version', async () => {
@@ -351,14 +410,22 @@ describe('queued agent messages', () => {
       })
     )
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
+    })
 
     expect(screen.queryByRole('button', { name: 'Edit queued message' })).not.toBeInTheDocument()
 
-    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
+    await act(async () => {
+      answer({ ok: true, turnId: 'turn-b' })
+    })
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2)
+    })
     expect(sentTexts()).toEqual(['first', 'second'])
     expect(queuedTexts()).toEqual([])
   })
@@ -383,7 +450,9 @@ describe('queued agent messages', () => {
       if (action === 'cancel') await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     }
 
-    await waitFor(() => expect(document.activeElement).toBe(prompt))
+    await waitFor(() => {
+      expect(document.activeElement).toBe(prompt)
+    })
   })
 
   it('clears the previous turn error when a queued message goes out', async () => {
@@ -391,15 +460,19 @@ describe('queued agent messages', () => {
     await send('second')
     fireEvent.click(screen.getByRole('button', { name: 'Edit queued message' }))
 
-    act(() =>
+    act(() => {
       emit({ kind: 'turn_error', conversationId: CONVERSATION_ID, turnId: 'turn', message: 'boom' })
-    )
+    })
     expect(await screen.findByRole('alert')).toHaveTextContent('boom')
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Queued message text' }), '{Enter}')
 
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 
   it('sends the next queued message after Stop', async () => {
@@ -408,7 +481,9 @@ describe('queued agent messages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
 
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'after stop']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'after stop'])
+    })
     expect(window.api.agent.cancelTurn).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID })
   })
 
@@ -417,14 +492,22 @@ describe('queued agent messages', () => {
     await send('second')
     const answer = deferredSend()
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
+    })
     vi.mocked(window.api.agent.cancelTurn).mockRejectedValueOnce(new Error('IPC closed'))
 
-    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+    await act(async () => {
+      answer({ ok: true, turnId: 'turn-b' })
+    })
 
-    await waitFor(() => expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(2)
+    })
     expect(await screen.findByRole('alert')).toHaveTextContent('IPC closed')
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
     expect(queuedTexts()).toEqual([])
@@ -443,11 +526,19 @@ describe('queued agent messages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
     endTurn()
-    await waitFor(() => expect(sentTexts()).toEqual(['first', 'second']))
-    await act(async () => cancelled({ ok: true }))
-    await act(async () => answer({ ok: true, turnId: 'turn-b' }))
+    await waitFor(() => {
+      expect(sentTexts()).toEqual(['first', 'second'])
+    })
+    await act(async () => {
+      cancelled({ ok: true })
+    })
+    await act(async () => {
+      answer({ ok: true, turnId: 'turn-b' })
+    })
 
-    await waitFor(() => expect(queuedTexts()).toEqual([]))
+    await waitFor(() => {
+      expect(queuedTexts()).toEqual([])
+    })
     expect(window.api.agent.cancelTurn).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
   })
@@ -472,9 +563,11 @@ describe('queued agent messages', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Stop' }))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
-    )
-    await waitFor(() => expect(document.activeElement).toBe(prompt))
+    })
+    await waitFor(() => {
+      expect(document.activeElement).toBe(prompt)
+    })
   })
 })

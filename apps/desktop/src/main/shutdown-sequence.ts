@@ -205,7 +205,9 @@ export async function runShutdownSequence(
 
   let expiry: ReturnType<typeof setTimeout> | undefined
   const expired = new Promise<'timeout'>((resolve) => {
-    expiry = setTimeout(() => resolve('timeout'), budgetMs)
+    expiry = setTimeout(() => {
+      resolve('timeout')
+    }, budgetMs)
   })
 
   const winner = await Promise.race([settled, expired])
@@ -241,7 +243,9 @@ export async function runShutdownSequence(
 export async function completeWithin(work: Promise<unknown>, ms: number): Promise<boolean> {
   let expiry: ReturnType<typeof setTimeout> | undefined
   const expired = new Promise<false>((resolve) => {
-    expiry = setTimeout(() => resolve(false), ms)
+    expiry = setTimeout(() => {
+      resolve(false)
+    }, ms)
   })
   const finished = await Promise.race([work.then(() => true), expired])
   clearTimeout(expiry)

@@ -21,7 +21,9 @@ export const FileRow = ({ file, onOpen }: FileRowProps): React.JSX.Element => {
   return (
     <HubRow
       leading={<Icon className="size-4 text-muted-foreground" aria-hidden="true" />}
-      onOpen={() => onOpen(file.id)}
+      onOpen={() => {
+        onOpen(file.id)
+      }}
       openLabel={t('projectHub.rows.openFile', { title: file.title })}
       trailing={
         <>

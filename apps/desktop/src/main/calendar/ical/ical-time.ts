@@ -1,4 +1,4 @@
-import ICAL from 'ical.js'
+import type ICAL from 'ical.js'
 
 /**
  * Time handling shared by every iCalendar reader (ICS feeds, CalDAV).

@@ -736,7 +736,7 @@ export function useFolderView({
         const existingConfig = configResult.config
 
         const updatedSummaries = {
-          ...(existingConfig.summaries ?? {})
+          ...existingConfig.summaries
         }
         if (config) {
           updatedSummaries[columnId] = config
@@ -821,7 +821,7 @@ export function useFolderView({
                 properties: {
                   ...existingConfig.properties,
                   [columnId]: {
-                    ...(existingConfig.properties?.[columnId] || {}),
+                    ...existingConfig.properties?.[columnId],
                     displayName
                   }
                 }

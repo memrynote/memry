@@ -77,9 +77,9 @@ function TeaserCard({
     >
       <Link
         to="/pricing"
-        onClick={() =>
+        onClick={() => {
           trackLandingEvent('landing_pricing_cta_click', `pricing:${tier.id}:home-teaser`)
-        }
+        }}
         className={cn(
           'group relative flex h-full flex-col rounded-3xl border p-7 transition duration-300 hover:-translate-y-1 hover:shadow-card md:p-8',
           featured

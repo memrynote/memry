@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { FOLD_MIN_WORDS } from '@memry/contracts/note-fold'
-
-import { FoldLayersSchema } from '@memry/contracts/note-fold'
+import { FOLD_MIN_WORDS, FoldLayersSchema } from '@memry/contracts/note-fold'
 
 import { assemble, buildSections, chunkAiSchema, detectLanguage, isFoldable } from './engine'
 

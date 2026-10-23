@@ -1,5 +1,4 @@
-import type { Message } from '@memry/contracts/ipc-agent'
-import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
+import type { Message, AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 import { OctagonPauseIcon, WrenchIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'

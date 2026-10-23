@@ -262,9 +262,12 @@ export function GoogleCalendarConnection(): React.JSX.Element {
   const accountEmails = (status?.accounts ?? []).map((account) => account.email).join(', ')
   const pickerProps = {
     isUpdating: isPending,
-    onToggleSource: (sourceId: string, isSelected: boolean) =>
-      sourceMutation.mutate({ sourceId, isSelected }),
-    onRetrySource: (sourceId: string) => retryMutation.mutate(sourceId),
+    onToggleSource: (sourceId: string, isSelected: boolean) => {
+      sourceMutation.mutate({ sourceId, isSelected })
+    },
+    onRetrySource: (sourceId: string) => {
+      retryMutation.mutate(sourceId)
+    },
     retryingSourceId: retryMutation.isPending ? (retryMutation.variables ?? null) : null,
     defaultRemoteId: googleSettingsData?.defaultTargetCalendarId ?? null
   }
@@ -309,7 +312,9 @@ export function GoogleCalendarConnection(): React.JSX.Element {
               type="button"
               className={CALENDAR_BORDERED_BUTTON}
               disabled={isPending}
-              onClick={() => connectMutation.mutate()}
+              onClick={() => {
+                connectMutation.mutate()
+              }}
             >
               {t('calendar.google.connect')}
             </button>
@@ -355,7 +360,9 @@ export function GoogleCalendarConnection(): React.JSX.Element {
                     className={CALENDAR_DESTRUCTIVE_BUTTON}
                     data-testid={`calendar-account-disconnect-${account.accountId}`}
                     disabled={isPending}
-                    onClick={() => disconnectMutation.mutate(account.accountId)}
+                    onClick={() => {
+                      disconnectMutation.mutate(account.accountId)
+                    }}
                   >
                     {t('calendar.google.disconnect')}
                   </button>
@@ -375,14 +382,18 @@ export function GoogleCalendarConnection(): React.JSX.Element {
                 description={t('calendar.google.pushToGoogle.description')}
                 checked={pushEventsToGoogle}
                 disabled={pushSettingMutation.isPending || googleSettingsIsLoading}
-                onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
+                onCheckedChange={(checked) => {
+                  pushSettingMutation.mutate(checked)
+                }}
               />
               <CalendarSwitchRow
                 label={t('calendar.google.agentAccess.label')}
                 description={t('calendar.google.agentAccess.description')}
                 checked={agentReadEventsConsent}
                 disabled={agentAccessMutation.isPending || googleSettingsIsLoading}
-                onCheckedChange={(checked) => agentAccessMutation.mutate(checked)}
+                onCheckedChange={(checked) => {
+                  agentAccessMutation.mutate(checked)
+                }}
               />
             </div>
 
@@ -392,7 +403,9 @@ export function GoogleCalendarConnection(): React.JSX.Element {
                   type="button"
                   className={CALENDAR_BORDERED_BUTTON}
                   disabled={isPending}
-                  onClick={() => connectMutation.mutate()}
+                  onClick={() => {
+                    connectMutation.mutate()
+                  }}
                 >
                   {t('calendar.google.reconnect')}
                 </button>
@@ -401,7 +414,9 @@ export function GoogleCalendarConnection(): React.JSX.Element {
                   type="button"
                   className={CALENDAR_QUIET_BUTTON}
                   disabled={isPending}
-                  onClick={() => refreshMutation.mutate()}
+                  onClick={() => {
+                    refreshMutation.mutate()
+                  }}
                 >
                   {t('calendar.google.syncNow')}
                 </button>
@@ -411,7 +426,9 @@ export function GoogleCalendarConnection(): React.JSX.Element {
                 className={CALENDAR_QUIET_BUTTON}
                 data-testid="calendar-add-account"
                 disabled={isPending}
-                onClick={() => connectMutation.mutate()}
+                onClick={() => {
+                  connectMutation.mutate()
+                }}
               >
                 {t('calendar.google.addAccount')}
               </button>
@@ -424,7 +441,9 @@ export function GoogleCalendarConnection(): React.JSX.Element {
                   className={CALENDAR_DESTRUCTIVE_BUTTON}
                   data-testid="calendar-disconnect-all"
                   disabled={isPending}
-                  onClick={() => disconnectMutation.mutate(undefined)}
+                  onClick={() => {
+                    disconnectMutation.mutate(undefined)
+                  }}
                 >
                   {t('calendar.google.disconnect')}
                 </button>

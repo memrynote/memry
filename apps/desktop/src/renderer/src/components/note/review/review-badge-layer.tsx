@@ -162,7 +162,9 @@ export function ReviewBadgeLayer({
     }
 
     container.addEventListener('click', handleClick)
-    return () => container.removeEventListener('click', handleClick)
+    return () => {
+      container.removeEventListener('click', handleClick)
+    }
   }, [active, containerRef, marksById, openPanelForAnchor])
 
   // Dismiss the panel on outside press or Escape (no popover primitive).
@@ -251,7 +253,9 @@ export function ReviewBadgeLayer({
   useEffect(() => {
     if (!active) return
     syncInlineHoverClass(review.hoveredMarkId)
-    return () => syncInlineHoverClass(null)
+    return () => {
+      syncInlineHoverClass(null)
+    }
   }, [active, review.hoveredMarkId])
 
   // Adjust stale state during render instead of via effects: drop computed badge
@@ -316,8 +320,12 @@ export function ReviewBadgeLayer({
                 openPanelForAnchor(group.blockId, group.markIds, 'badge', event.currentTarget)
               }
             }}
-            onPointerEnter={() => setHoveredMark(group.markIds[0] ?? null)}
-            onPointerLeave={() => setHoveredMark(null)}
+            onPointerEnter={() => {
+              setHoveredMark(group.markIds[0] ?? null)
+            }}
+            onPointerLeave={() => {
+              setHoveredMark(null)
+            }}
           >
             <MessageCircle className="critic-review-badge-icon" aria-hidden="true" />
             <span className="critic-review-badge-count">{count}</span>

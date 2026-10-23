@@ -45,7 +45,9 @@ const LinkedNoteRow = ({ note, onRemove }: LinkedNoteRowProps): React.JSX.Elemen
       )}
       <button
         type="button"
-        onClick={() => onRemove(note.id)}
+        onClick={() => {
+          onRemove(note.id)
+        }}
         className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 transition-opacity hover:text-text-secondary focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
         aria-label={t('detail.removeLinkTo', { title: note.title })}
       >
@@ -77,7 +79,9 @@ const SearchResultItem = ({
   return (
     <button
       type="button"
-      onClick={() => onSelect(note)}
+      onClick={() => {
+        onSelect(note)
+      }}
       onMouseEnter={onMouseEnter}
       className={cn(
         'w-full flex items-center gap-2 px-3 py-2 mx-1 my-0.5 rounded-sm text-start',
@@ -183,7 +187,9 @@ export const LinkInput = ({
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
 
   const handleSelectNote = useCallback(
@@ -344,7 +350,9 @@ export const LinkInput = ({
                     aria-selected={index === highlightedIndex}
                     data-testid="link-input-create-note"
                     onClick={handleCreateNote}
-                    onMouseEnter={() => setHighlightedIndex(index)}
+                    onMouseEnter={() => {
+                      setHighlightedIndex(index)
+                    }}
                     className={cn(
                       'w-full flex items-center gap-2.5 px-3 py-2 text-start transition-colors',
                       index === highlightedIndex ? 'bg-muted/60' : 'hover:bg-muted/40'
@@ -361,7 +369,9 @@ export const LinkInput = ({
                     note={option.note}
                     isHighlighted={index === highlightedIndex}
                     onSelect={handleSelectNote}
-                    onMouseEnter={() => setHighlightedIndex(index)}
+                    onMouseEnter={() => {
+                      setHighlightedIndex(index)
+                    }}
                   />
                 )
               )

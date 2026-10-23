@@ -264,7 +264,9 @@ describe('cold renderer support surfaces', () => {
 
     const { result, unmount } = renderHook(() => useNoteEditorSettings())
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.settings.toolbarMode).toBe('sticky')
 
     act(() => {
@@ -298,7 +300,9 @@ describe('cold renderer support surfaces', () => {
     api.onSettingsChanged = vi.fn(() => vi.fn())
 
     const { result } = renderHook(() => useNoteEditorSettings())
-    await waitFor(() => expect(result.current.error).toBe('load failed'))
+    await waitFor(() => {
+      expect(result.current.error).toBe('load failed')
+    })
 
     await act(async () => {
       expect(await result.current.setToolbarMode('sticky')).toBe(false)

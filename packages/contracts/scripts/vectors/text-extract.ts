@@ -73,36 +73,41 @@ interface Spec {
 const SPECS: Spec[] = [
   {
     name: 'a plain paragraph document',
-    build: (f) => f.insert(0, [container(block('paragraph', 'One plain paragraph.'))]),
+    build: (f) => {
+      f.insert(0, [container(block('paragraph', 'One plain paragraph.'))])
+    },
     pins: 'the simplest possible document'
   },
   {
     name: 'headings at every level',
-    build: (f) =>
+    build: (f) => {
       f.insert(
         0,
         [1, 2, 3, 4, 5, 6].map((level) =>
           container(block('heading', `Level ${level}`, { level: String(level) }))
         )
-      ),
+      )
+    },
     pins: 'heading markers are KEPT, and the level is clamped to 1..6'
   },
   {
     name: 'an ordered list',
-    build: (f) =>
+    build: (f) => {
       f.insert(
         0,
         ['First', 'Second', 'Third'].map((t) => container(block('numberedListItem', t)))
-      ),
+      )
+    },
     pins: 'every ordered item takes the same `1. ` marker; numbering is not reconstructed'
   },
   {
     name: 'an unordered list',
-    build: (f) =>
+    build: (f) => {
       f.insert(
         0,
         ['Alpha', 'Beta'].map((t) => container(block('bulletListItem', t)))
-      ),
+      )
+    },
     pins: 'bullet markers are kept'
   },
   {
@@ -134,7 +139,9 @@ const SPECS: Spec[] = [
   },
   {
     name: 'a callout',
-    build: (f) => f.insert(0, [container(block('callout', 'Mind the gap.', { type: 'info' }))]),
+    build: (f) => {
+      f.insert(0, [container(block('callout', 'Mind the gap.', { type: 'info' }))])
+    },
     pins: 'the callout type is dropped; only its text survives'
   },
   {
@@ -150,10 +157,11 @@ const SPECS: Spec[] = [
   },
   {
     name: 'a code block',
-    build: (f) =>
+    build: (f) => {
       f.insert(0, [
         container(block('codeBlock', 'const x = 1\nconsole.log(x)', { language: 'ts' }))
-      ]),
+      ])
+    },
     pins: 'the language is dropped and no fence is emitted'
   },
   {
@@ -176,11 +184,12 @@ const SPECS: Spec[] = [
   },
   {
     name: 'a non-ASCII body',
-    build: (f) =>
+    build: (f) => {
       f.insert(0, [
         container(block('paragraph', 'Grüße, 世界 — «citation» 🙂')),
         container(block('heading', 'Überschrift', { level: '2' }))
-      ]),
+      ])
+    },
     pins: 'the walker is byte-transparent over UTF-8; combining marks and astral code points survive'
   }
 ]

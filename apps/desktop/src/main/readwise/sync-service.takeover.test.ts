@@ -439,7 +439,9 @@ describe('one pulling device', () => {
       expect(noteFiles()).toHaveLength(1)
       // The cursor never moved, so a later takeover back reads everything.
       expect(state.getCursor(db())).toBeNull()
-      await vi.waitFor(async () => expect(await secrets.getReadwiseToken(vault.path)).toBeNull())
+      await vi.waitFor(async () => {
+        expect(await secrets.getReadwiseToken(vault.path)).toBeNull()
+      })
       expect(state.getRetryList(db())).toEqual([])
     })
 

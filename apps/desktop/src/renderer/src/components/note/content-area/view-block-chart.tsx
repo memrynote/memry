@@ -86,9 +86,9 @@ export function JournalChartBody(props: ViewBlockBodyProps): React.JSX.Element {
         chart={chart}
         rows={data.rows}
         properties={data.properties}
-        onOpenDay={(day) =>
+        onOpenDay={(day) => {
           openSidebarItem(journalPageItem(t('editor.chart.sourceJournal'), day.day))
-        }
+        }}
       />
     )
   }
@@ -100,7 +100,9 @@ export function JournalChartBody(props: ViewBlockBodyProps): React.JSX.Element {
           source={definition.source}
           disabled={!editable}
           defaultOpen={sourceMenuOpen}
-          onChange={(source) => onChange(sourcePatch(source))}
+          onChange={(source) => {
+            onChange(sourcePatch(source))
+          }}
         />
         <ChartSettings
           chart={chart}
@@ -108,7 +110,9 @@ export function JournalChartBody(props: ViewBlockBodyProps): React.JSX.Element {
           needsDateFrom={false}
           disabled={!editable}
           defaultOpen={chartSettingsOpen}
-          onChange={(patch) => onChange({ chart: patchChart(definition.chart, patch) })}
+          onChange={(patch) => {
+            onChange({ chart: patchChart(definition.chart, patch) })
+          }}
         />
         <div className="grow" />
         <OpenSourceButton definition={definition} />

@@ -34,13 +34,13 @@ describe('AddFileToProjectDialog', () => {
 
     await userEvent.click(await screen.findByText('Launch'))
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mocks.linkProjectItem).toHaveBeenCalledWith({
         projectId: 'p1',
         itemType: 'file',
         itemId: 'f1'
       })
-    )
+    })
     expect(mocks.toastSuccess).toHaveBeenCalled()
   })
 })

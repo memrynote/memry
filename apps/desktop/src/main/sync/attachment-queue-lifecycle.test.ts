@@ -189,7 +189,9 @@ describe('attachment upload queue lifecycle', () => {
 
   describe('reset registry', () => {
     it('no-ops when no disposer is registered', () => {
-      expect(() => resetAttachmentQueue()).not.toThrow()
+      expect(() => {
+        resetAttachmentQueue()
+      }).not.toThrow()
     })
 
     it('invokes the registered disposer', () => {

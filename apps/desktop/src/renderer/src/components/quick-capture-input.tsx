@@ -88,7 +88,9 @@ export function QuickCaptureInput({
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value)
+        }}
         onKeyDown={handleKeyDown}
         onPaste={onPaste}
         placeholder={hasAttachment ? 'Add a note (optional)...' : 'Capture anything...'}

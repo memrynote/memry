@@ -132,8 +132,12 @@ export function PrivacyShowcase() {
             whileInView={RISE_ANIMATE}
             viewport={RISE_VIEWPORT}
             transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
+            onMouseEnter={() => {
+              setHovered(true)
+            }}
+            onMouseLeave={() => {
+              setHovered(false)
+            }}
           >
             <span className="mb-4 inline-block font-mono-accent text-[11px] uppercase tracking-[0.18em] text-terracotta">
               What our server stores

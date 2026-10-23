@@ -61,7 +61,9 @@ describe('sticky send', () => {
     }))
   })
 
-  afterEach(() => data.close())
+  afterEach(() => {
+    data.close()
+  })
 
   it('creates the note in the Sticky folder, then drops the draft and remembers the kind', async () => {
     const draft = saveStickyDraft({ content: 'Groceries\n- oat milk\n- bread', kind: 'note' })

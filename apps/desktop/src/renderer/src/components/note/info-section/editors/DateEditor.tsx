@@ -78,7 +78,9 @@ export function DateEditor({ value, onChange, onBlur, defaultOpen = false }: Dat
         <Input
           autoFocus
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value)
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()

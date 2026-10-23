@@ -30,14 +30,18 @@ describe('useFeatureFlags', () => {
 
   it('loads persisted flags', async () => {
     const { result } = renderHook(() => useFeatureFlags())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.isEnabled('inbox')).toBe(false)
     expect(result.current.isEnabled('tasks')).toBe(true)
   })
 
   it('setFlag persists and updates optimistically', async () => {
     const { result } = renderHook(() => useFeatureFlags())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     await act(async () => {
       await result.current.setFlag('tasks', false)
     })
@@ -47,7 +51,9 @@ describe('useFeatureFlags', () => {
 
   it('reacts to external settings:changed events', async () => {
     const { result } = renderHook(() => useFeatureFlags())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     act(() => settingsChangedListener?.({ key: 'features', value: { graph: false } }))
     expect(result.current.isEnabled('graph')).toBe(false)
   })
@@ -75,7 +81,9 @@ describe('useFeatureFlags', () => {
       })
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.isEnabled('graph')).toBe(false)
   })
 
@@ -103,7 +111,9 @@ describe('useFeatureFlags', () => {
       })
     })
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
     expect(result.current.isEnabled('tasks')).toBe(false)
   })
 })

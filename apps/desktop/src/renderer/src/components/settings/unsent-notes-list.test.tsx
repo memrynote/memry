@@ -21,7 +21,9 @@ describe('UnsentNotesList (#2647)', () => {
 
     const { container } = renderWithProviders(<UnsentNotesList />)
 
-    await waitFor(() => expect(getUnsentNotes).toHaveBeenCalled())
+    await waitFor(() => {
+      expect(getUnsentNotes).toHaveBeenCalled()
+    })
     expect(container).toBeEmptyDOMElement()
   })
 

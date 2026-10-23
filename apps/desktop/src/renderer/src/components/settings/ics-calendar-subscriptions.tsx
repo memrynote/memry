@@ -210,8 +210,12 @@ export function IcsCalendarSubscriptions(): React.JSX.Element {
                 }
                 isRefreshing={refreshMutation.isPending && refreshMutation.variables === source.id}
                 isBusy={removeMutation.isPending || updateMutation.isPending}
-                onRefresh={() => refreshMutation.mutate(source.id)}
-                onRemove={() => removeMutation.mutate(source.id)}
+                onRefresh={() => {
+                  refreshMutation.mutate(source.id)
+                }}
+                onRemove={() => {
+                  removeMutation.mutate(source.id)
+                }}
                 onUpdate={(input) => updateMutation.mutateAsync({ sourceId: source.id, ...input })}
               />
             )
@@ -231,7 +235,9 @@ export function IcsCalendarSubscriptions(): React.JSX.Element {
         >
           <Input
             value={url}
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event) => {
+              setUrl(event.target.value)
+            }}
             placeholder={t('calendar.subscriptions.urlPlaceholder')}
             aria-label={t('calendar.subscriptions.urlLabel')}
             aria-invalid={subscribeMutation.isError}
@@ -400,7 +406,9 @@ function IcsSubscriptionRow({
             >
               <Input
                 value={draftTitle}
-                onChange={(event) => setDraftTitle(event.target.value)}
+                onChange={(event) => {
+                  setDraftTitle(event.target.value)
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
                     event.preventDefault()
@@ -425,7 +433,9 @@ function IcsSubscriptionRow({
               <button
                 type="button"
                 className={CALENDAR_QUIET_BUTTON}
-                onClick={() => setDraftTitle(null)}
+                onClick={() => {
+                  setDraftTitle(null)
+                }}
               >
                 {t('calendar.subscriptions.cancel')}
               </button>
@@ -442,7 +452,9 @@ function IcsSubscriptionRow({
             type="button"
             className={CALENDAR_QUIET_BUTTON}
             disabled={isBusy}
-            onClick={() => setDraftTitle(source.title)}
+            onClick={() => {
+              setDraftTitle(source.title)
+            }}
             data-testid={`ics-source-rename-${source.id}`}
           >
             {t('calendar.subscriptions.rename')}

@@ -32,7 +32,9 @@ export function ReadwiseReaderSection({ options, disabled, onChange }: ReadwiseR
         >
           <Switch
             checked={options.readerDocuments}
-            onCheckedChange={(enabled) => onChange({ readerDocuments: enabled })}
+            onCheckedChange={(enabled) => {
+              onChange({ readerDocuments: enabled })
+            }}
             aria-label={t('import.dialog.readwise.reader.documents.label')}
             className={ACCENT_SWITCH}
             disabled={disabled}
@@ -44,7 +46,9 @@ export function ReadwiseReaderSection({ options, disabled, onChange }: ReadwiseR
         >
           <Switch
             checked={options.readerFullText}
-            onCheckedChange={(enabled) => onChange({ readerFullText: enabled })}
+            onCheckedChange={(enabled) => {
+              onChange({ readerFullText: enabled })
+            }}
             aria-label={t('import.dialog.readwise.reader.fullText.label')}
             className={ACCENT_SWITCH}
             disabled={disabled}

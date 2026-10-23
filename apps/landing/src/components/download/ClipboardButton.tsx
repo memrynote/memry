@@ -6,7 +6,8 @@ import { Check } from 'lucide-react'
  * Safari) and copies it everywhere else; `copy` always copies.
  */
 export type ClipboardIntent =
-  { kind: 'share'; title: string; url: string } | { kind: 'copy'; text: string }
+  | { kind: 'share'; title: string; url: string }
+  | { kind: 'copy'; text: string }
 
 type Status = 'idle' | 'copied' | 'failed'
 
@@ -41,7 +42,9 @@ export function ClipboardButton({
   const flash = (next: Exclude<Status, 'idle'>) => {
     setStatus(next)
     if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
-    resetTimer.current = window.setTimeout(() => setStatus('idle'), RESET_MS)
+    resetTimer.current = window.setTimeout(() => {
+      setStatus('idle')
+    }, RESET_MS)
   }
 
   const run = async () => {

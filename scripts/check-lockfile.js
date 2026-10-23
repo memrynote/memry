@@ -28,8 +28,12 @@ function run(command) {
   execSync(command, { cwd: repoRoot, stdio: ['ignore', 'inherit', 'inherit'] })
 }
 
-process.on('SIGINT', () => finish(130))
-process.on('SIGTERM', () => finish(143))
+process.on('SIGINT', () => {
+  finish(130)
+})
+process.on('SIGTERM', () => {
+  finish(143)
+})
 
 if (!fs.existsSync(lockfilePath)) {
   finish(1, '\n  pnpm-lock.yaml not found. Are you at the repo root?\n')

@@ -13,7 +13,9 @@ export function EditableTitle({
       value={value}
       disabled={disabled}
       rows={1}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        onChange(e.target.value)
+      }}
       onKeyDown={(e) => {
         // ponytail: title is a single logical value; block literal newlines, let it wrap visually
         if (e.key === 'Enter') e.preventDefault()

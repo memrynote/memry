@@ -244,7 +244,11 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openRenameDialog(device)}>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            openRenameDialog(device)
+                          }}
+                        >
                           <Pencil className="w-4 h-4 me-2" />
                           {t('devices.rename')}
                         </DropdownMenuItem>
@@ -252,7 +256,9 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                     </DropdownMenu>
                     <button
                       type="button"
-                      onClick={() => setRemoveTarget(device)}
+                      onClick={() => {
+                        setRemoveTarget(device)
+                      }}
                       className="text-xs text-destructive hover:text-destructive/80 transition-colors"
                     >
                       {t('devices.revoke')}
@@ -270,7 +276,9 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
             <button
               type="button"
               className="flex items-center justify-center gap-1.5 h-10 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setExpanded((prev) => !prev)}
+              onClick={() => {
+                setExpanded((prev) => !prev)
+              }}
               aria-expanded={expanded}
               aria-label={
                 expanded ? t('devices.showLess') : t('devices.showMoreAria', { count: hiddenCount })
@@ -337,7 +345,9 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
           </DialogHeader>
           <Input
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e) => {
+              setNewName(e.target.value)
+            }}
             maxLength={100}
             placeholder={t('devices.dialogs.namePlaceholder')}
             autoFocus
@@ -346,7 +356,13 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
             }}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameTarget(null)} disabled={busy}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenameTarget(null)
+              }}
+              disabled={busy}
+            >
               {tCommon('button.cancel')}
             </Button>
             <Button onClick={() => void handleRename()} disabled={busy || !newName.trim()}>

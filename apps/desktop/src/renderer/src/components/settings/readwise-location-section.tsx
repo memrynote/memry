@@ -52,7 +52,9 @@ export function ReadwiseLocationSection({
         >
           <Select
             value={options.rootFolder}
-            onValueChange={(rootFolder) => onChange({ rootFolder })}
+            onValueChange={(rootFolder) => {
+              onChange({ rootFolder })
+            }}
             disabled={disabled}
           >
             <SelectTrigger

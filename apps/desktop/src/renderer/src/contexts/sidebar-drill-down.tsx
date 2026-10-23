@@ -70,7 +70,9 @@ export function SidebarDrillDownProvider({ children }: SidebarDrillDownProviderP
       const timer = setTimeout(() => {
         setAnimationDirection(null)
       }, 200) // Match CSS transition duration
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+      }
     }
     return undefined
   }, [animationDirection])
@@ -103,7 +105,9 @@ export function SidebarDrillDownProvider({ children }: SidebarDrillDownProviderP
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [isAtMain, goBack])
 
   const value = useMemo<SidebarDrillDownContextValue>(

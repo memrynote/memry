@@ -45,7 +45,9 @@ describe('large-file index worker', () => {
     try {
       // #when
       await runWorker({ kind: 'index', absolutePath: path, fileBytes: body.length })
-      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('done'))
+      await vi.waitFor(() => {
+        expect(mocks.posted.at(-1)?.type).toBe('done')
+      })
 
       // #then — the shape the bridge unpacks. A protocol drift here degrades
       // silently into the in-process fallback for the life of the build.
@@ -66,7 +68,9 @@ describe('large-file index worker', () => {
     try {
       // #when
       await runWorker({ kind: 'search', absolutePath: path, query: 'beta', maxHits: 50 })
-      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('search-done'))
+      await vi.waitFor(() => {
+        expect(mocks.posted.at(-1)?.type).toBe('search-done')
+      })
 
       // #then — one entry carries both whole-file passes, so a search at 2 GB
       // runs where the scan does and never on the thread that draws the window
@@ -91,7 +95,9 @@ describe('large-file index worker', () => {
     try {
       // #when
       await runWorker({ kind: 'index', absolutePath: join(dir, 'gone.md'), fileBytes: 10 })
-      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('error'))
+      await vi.waitFor(() => {
+        expect(mocks.posted.at(-1)?.type).toBe('error')
+      })
 
       // #then — an unhandled rejection would leave the bridge waiting on a
       // thread that has already given up, and the viewer waiting on the bridge
@@ -113,7 +119,9 @@ describe('large-file index worker', () => {
         query: 'beta',
         maxHits: 50
       })
-      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('error'))
+      await vi.waitFor(() => {
+        expect(mocks.posted.at(-1)?.type).toBe('error')
+      })
 
       // #then — the bridge waits on a message; an unspoken failure is a hang
       expect(mocks.posted.at(-1)).toMatchObject({ type: 'error', message: expect.any(String) })

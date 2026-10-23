@@ -107,8 +107,12 @@ export function FolderListView({
               const ref = refFromViewRow(note)
               startCanvasRowsDrag(e, ref ? [ref] : [])
             }}
-            onClick={() => onNoteOpen(note.id)}
-            onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
+            onClick={() => {
+              onNoteOpen(note.id)
+            }}
+            onMouseDown={(e) => {
+              handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
@@ -134,7 +138,13 @@ export function FolderListView({
                 <TagChip
                   key={tag}
                   tag={toTagChip(tag, tagMetaMap.get(foldTag(tag)))}
-                  onClick={onTagClick ? () => onTagClick(tag) : undefined}
+                  onClick={
+                    onTagClick
+                      ? () => {
+                          onTagClick(tag)
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>

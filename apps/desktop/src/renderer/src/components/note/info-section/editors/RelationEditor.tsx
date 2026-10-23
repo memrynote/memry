@@ -146,7 +146,9 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
             {ref.exists ? (
               <button
                 type="button"
-                onClick={() => navigate(ref)}
+                onClick={() => {
+                  navigate(ref)
+                }}
                 title={ref.title}
                 className={cn(
                   'inline-flex min-w-0 items-center gap-1 rounded-[8px]',
@@ -165,7 +167,9 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
             )}
             <button
               type="button"
-              onClick={() => handleRemove(ref.uri)}
+              onClick={() => {
+                handleRemove(ref.uri)
+              }}
               aria-label={t('properties.relation.removeAria', { title: label })}
               className={cn(
                 'flex size-3.5 shrink-0 items-center justify-center rounded-full',

@@ -26,7 +26,9 @@ export function UnsentNotesList(): React.JSX.Element | null {
       .then((result) => {
         if (!cancelled) setData(result)
       })
-      .catch((err) => log.warn('Could not list notes with unsent changes', err))
+      .catch((err) => {
+        log.warn('Could not list notes with unsent changes', err)
+      })
     return () => {
       cancelled = true
     }
@@ -40,7 +42,9 @@ export function UnsentNotesList(): React.JSX.Element | null {
     <div data-testid="unsent-notes-list">
       <button
         type="button"
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          setExpanded(!expanded)
+        }}
         aria-expanded={expanded}
         className="flex w-full min-h-11 items-center gap-2 py-2.5 text-start"
       >

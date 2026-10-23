@@ -22,7 +22,9 @@ function Row({
         aria-label={label}
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          onChange(e.target.value)
+        }}
         placeholder="—"
         className="min-w-0 flex-1 bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-text-tertiary"
       />
@@ -39,38 +41,50 @@ export function PropertyRows({
   onChange: (next: Props) => void
   disabled?: boolean
 }) {
-  const set = (patch: Partial<Props>) => onChange({ ...properties, ...patch })
+  const set = (patch: Partial<Props>) => {
+    onChange({ ...properties, ...patch })
+  }
   return (
     <div className="flex flex-col">
       <Row
         label="source"
         value={properties.source}
         disabled={disabled}
-        onChange={(v) => set({ source: v })}
+        onChange={(v) => {
+          set({ source: v })
+        }}
       />
       <Row
         label="author"
         value={properties.author ?? ''}
         disabled={disabled}
-        onChange={(v) => set({ author: v })}
+        onChange={(v) => {
+          set({ author: v })
+        }}
       />
       <Row
         label="published"
         value={properties.published ?? ''}
         disabled={disabled}
-        onChange={(v) => set({ published: v })}
+        onChange={(v) => {
+          set({ published: v })
+        }}
       />
       <Row
         label="created"
         value={properties.created}
         disabled={disabled}
-        onChange={(v) => set({ created: v })}
+        onChange={(v) => {
+          set({ created: v })
+        }}
       />
       <Row
         label="description"
         value={properties.description ?? ''}
         disabled={disabled}
-        onChange={(v) => set({ description: v })}
+        onChange={(v) => {
+          set({ description: v })
+        }}
       />
     </div>
   )

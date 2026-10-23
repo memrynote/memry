@@ -29,6 +29,8 @@ function addTaskDragData(event: DragEvent): void {
 export function useTaskBlockDragData(): void {
   useEffect(() => {
     document.addEventListener('dragstart', addTaskDragData)
-    return () => document.removeEventListener('dragstart', addTaskDragData)
+    return () => {
+      document.removeEventListener('dragstart', addTaskDragData)
+    }
   }, [])
 }

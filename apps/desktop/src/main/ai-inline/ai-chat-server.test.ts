@@ -107,10 +107,14 @@ function postChunkedJson(port: number, fillerBytes: number): Promise<number | 'e
       },
       (res) => {
         res.resume()
-        res.on('end', () => resolve(res.statusCode ?? 0))
+        res.on('end', () => {
+          resolve(res.statusCode ?? 0)
+        })
       }
     )
-    req.on('error', () => resolve('errored'))
+    req.on('error', () => {
+      resolve('errored')
+    })
 
     const chunk = Buffer.alloc(1024 * 1024, 0x61)
     let written = 0
@@ -269,12 +273,16 @@ describe('AI inline chat server', () => {
     })
     const drained = response.text().catch(() => undefined)
 
-    await vi.waitFor(() => expect(capturedSignal).toBeDefined())
+    await vi.waitFor(() => {
+      expect(capturedSignal).toBeDefined()
+    })
     expect(capturedSignal?.aborted).toBe(false)
 
     controller.abort()
 
-    await vi.waitFor(() => expect(capturedSignal?.aborted).toBe(true))
+    await vi.waitFor(() => {
+      expect(capturedSignal?.aborted).toBe(true)
+    })
     await drained
   })
 

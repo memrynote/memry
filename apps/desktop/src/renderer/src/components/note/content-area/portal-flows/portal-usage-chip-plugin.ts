@@ -58,8 +58,12 @@ function renderChip(anchor: string, count: number, options: PortalUsageChipOptio
   chip.dataset.anchor = anchor
   chip.setAttribute('aria-label', options.label(count))
   chip.textContent = String(count)
-  chip.addEventListener('mousedown', (event) => event.preventDefault())
-  chip.addEventListener('click', () => options.onOpen(anchor, chip))
+  chip.addEventListener('mousedown', (event) => {
+    event.preventDefault()
+  })
+  chip.addEventListener('click', () => {
+    options.onOpen(anchor, chip)
+  })
   return chip
 }
 

@@ -89,7 +89,9 @@ describe('useAgentBodyReview', () => {
   it('loads the preview and accepts it unchanged as a plain allow', async () => {
     const { result } = renderHook(() => useAgentBodyReview(target))
 
-    await waitFor(() => expect(result.current?.candidate).toBe('Old\nAdded'))
+    await waitFor(() => {
+      expect(result.current?.candidate).toBe('Old\nAdded')
+    })
     expect(result.current?.title).toBe('Weekly plan')
     expect(result.current?.changeCount).toBe(1)
 
@@ -104,7 +106,9 @@ describe('useAgentBodyReview', () => {
 
   it('accepts an edited draft as a full replace of the note', async () => {
     const { result } = renderHook(() => useAgentBodyReview(target))
-    await waitFor(() => expect(result.current?.candidate).toBe('Old\nAdded'))
+    await waitFor(() => {
+      expect(result.current?.candidate).toBe('Old\nAdded')
+    })
 
     act(() => {
       result.current!.startEdit()
@@ -124,7 +128,9 @@ describe('useAgentBodyReview', () => {
 
   it('rejects as a deny', async () => {
     const { result } = renderHook(() => useAgentBodyReview(target))
-    await waitFor(() => expect(result.current?.candidate).not.toBeNull())
+    await waitFor(() => {
+      expect(result.current?.candidate).not.toBeNull()
+    })
 
     await act(() => result.current!.reject())
 
@@ -137,7 +143,9 @@ describe('useAgentBodyReview', () => {
 
   it('re-reads the preview when the note changes, and flags a draft left behind', async () => {
     const { result } = renderHook(() => useAgentBodyReview(target))
-    await waitFor(() => expect(result.current?.current).toBe('Old'))
+    await waitFor(() => {
+      expect(result.current?.current).toBe('Old')
+    })
 
     act(() => {
       result.current!.startEdit()
@@ -149,11 +157,15 @@ describe('useAgentBodyReview', () => {
       for (const listener of mocks.noteListeners) listener({ id: 'note-1' })
     })
 
-    await waitFor(() => expect(result.current?.current).toBe('Changed elsewhere'))
+    await waitFor(() => {
+      expect(result.current?.current).toBe('Changed elsewhere')
+    })
     expect(result.current?.baseChanged).toBe(true)
     expect(result.current?.draft).toBe('My draft')
 
-    act(() => result.current!.restartFromLatest())
+    act(() => {
+      result.current!.restartFromLatest()
+    })
 
     expect(result.current?.baseChanged).toBe(false)
     expect(result.current?.draft).toBeNull()

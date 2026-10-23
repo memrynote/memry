@@ -30,7 +30,8 @@ import {
   useNoteTasksChoice
 } from '@/components/note/delete-note-tasks'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
-import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
+import type { HeadingItem, HeadingInfo, Block } from '@/components/note'
+import { NoteLayout, ContentArea } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
@@ -39,7 +40,8 @@ import {
   clearNewNoteTitlePending,
   isNewNoteTitlePending
 } from '@/lib/new-note-title'
-import { TagsRow, Tag } from '@/components/note/tags-row'
+import type { Tag } from '@/components/note/tags-row'
+import { TagsRow } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { NoteNamesLine } from '@/components/note/names/note-names-line'
@@ -54,12 +56,11 @@ import { noteCoverImageTarget } from '@/components/note/cover-image-target'
 import { useVault } from '@/hooks/use-vault'
 import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import { useNoteCover } from '@/components/note/use-note-cover'
+import type { Backlink, Mention } from '@/components/note/backlinks'
 import {
   BacklinksSection,
   OutgoingLinksSection,
   UnlinkedMentionsSection,
-  Backlink,
-  Mention,
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
@@ -325,7 +326,9 @@ export function NotePage({ noteId }: NotePageProps) {
     clearNewNoteTitlePending(noteId)
     // Deferred past the tab switch and the editor mount, which focus on their own.
     const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+    }
   }, [isFreshTitle, hasNote, noteId])
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
   const [eventContentOverride, setEventContentOverride] = useState<{
@@ -525,7 +528,9 @@ export function NotePage({ noteId }: NotePageProps) {
       focusAtEndRef.current?.(event.clientY)
     }
     marqueeZoneEl.addEventListener('mousedown', handler)
-    return () => marqueeZoneEl.removeEventListener('mousedown', handler)
+    return () => {
+      marqueeZoneEl.removeEventListener('mousedown', handler)
+    }
   }, [marqueeZoneEl])
 
   const isActiveNote = activeTab?.entityId === noteId
@@ -1085,7 +1090,9 @@ export function NotePage({ noteId }: NotePageProps) {
     headerTags: note?.headerTags ?? [],
     values: propertyValues,
     canEdit: () => canEditTags('add'),
-    onFieldTagAdded: () => setPropertiesCollapsed(false)
+    onFieldTagAdded: () => {
+      setPropertiesCollapsed(false)
+    }
   })
   const { addTag: addHeaderTag, removeTag: removeHeaderTag } = headerTagActions
 
@@ -1136,7 +1143,9 @@ export function NotePage({ noteId }: NotePageProps) {
         if (!noteId || isDeleted) return
         updateNote
           .mutateAsync({ id: noteId, headerTags: { ...edit, source: 'inline' } })
-          .catch((err: unknown) => log.error('Failed to sync inline tags:', err))
+          .catch((err: unknown) => {
+            log.error('Failed to sync inline tags:', err)
+          })
       },
       [noteId, isDeleted, updateNote]
     )
@@ -1578,7 +1587,9 @@ export function NotePage({ noteId }: NotePageProps) {
       {!isLargeFile && (
         <WritingChrome
           mode={writingMode}
-          onSelectMode={(mode) => writingTools.setMode(mode)}
+          onSelectMode={(mode) => {
+            writingTools.setMode(mode)
+          }}
           alternativeCount={writingSnapshot.alternatives.length}
           overflowCount={writingSnapshot.overflow.length}
           fold={fold.control}
@@ -1874,7 +1885,9 @@ export function NotePage({ noteId }: NotePageProps) {
             framing={coverFraming}
             credit={coverCredit}
             creditUrl={coverCreditUrl}
-            onChange={(event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))}
+            onChange={(event) => {
+              setCoverPickerAnchor(coverPickerAnchorFrom(event))
+            }}
             onRemove={() => void removeCover()}
             onFramingChange={(changes) => void setCoverFraming(changes)}
             repositioning={isRepositioningCover}
@@ -1919,7 +1932,9 @@ export function NotePage({ noteId }: NotePageProps) {
             placeholder={isFreshTitle ? NEW_NOTE_TITLE : t('editor.title.untitled')}
             inputRef={titleInputRef}
             fresh={isFreshTitle}
-            onFreshEnd={() => setFreshTitleNoteId(null)}
+            onFreshEnd={() => {
+              setFreshTitleNoteId(null)
+            }}
           />
           <NoteNamesLine
             noteId={note.id}
@@ -1938,7 +1953,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onRemoveTag={(...args) => void handleRemoveTag(...args)}
-            onTagClick={(tag) =>
+            onTagClick={(tag) => {
               openSidebarItem({
                 type: 'tag',
                 title: tag.name,
@@ -1946,7 +1961,7 @@ export function NotePage({ noteId }: NotePageProps) {
                 entityId: tag.name,
                 color: tag.color
               })
-            }
+            }}
             hideWhenEmpty
             disabled={isLocked}
           />
@@ -1961,7 +1976,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     groups={fieldGroups.groups}
                     onFieldChange={handleSetFieldValue}
                     {...fieldFill}
-                    onOpenTag={(tag) =>
+                    onOpenTag={(tag) => {
                       openSidebarItem({
                         type: 'tag',
                         title: tag.name,
@@ -1969,7 +1984,7 @@ export function NotePage({ noteId }: NotePageProps) {
                         entityId: tag.name,
                         color: tag.color
                       })
-                    }
+                    }}
                     disabled={isDeleted || isLocked}
                   />
                 ) : undefined
@@ -2010,7 +2025,13 @@ export function NotePage({ noteId }: NotePageProps) {
             existingNames={properties.map((p) => p.name)}
             hideAddTag={headerTags.length > 0}
             onAddCover={cover ? undefined : setCoverPickerAnchor}
-            onAddName={note.aliases?.length ? undefined : () => requestNoteNameInput(note.id)}
+            onAddName={
+              note.aliases?.length
+                ? undefined
+                : () => {
+                    requestNoteNameInput(note.id)
+                  }
+            }
             disabled={isDeleted || isLocked}
           />
         </div>
@@ -2044,7 +2065,9 @@ export function NotePage({ noteId }: NotePageProps) {
             <EditorErrorBoundary
               noteId={noteId}
               onRecover={refetchNote}
-              onError={(error) => log.error('Editor error:', error)}
+              onError={(error) => {
+                log.error('Editor error:', error)
+              }}
             >
               {agentReview ? (
                 <AgentReviewSurface
@@ -2134,7 +2157,9 @@ export function NotePage({ noteId }: NotePageProps) {
           <div data-marquee-ignore>
             <LocalGraphPanel
               noteId={noteId}
-              onClose={() => setIsLocalGraphOpen(false)}
+              onClose={() => {
+                setIsLocalGraphOpen(false)
+              }}
               onOpenFullGraph={() => {
                 openTab({
                   type: 'graph',
@@ -2262,7 +2287,9 @@ export function NotePage({ noteId }: NotePageProps) {
       {/* Broken wiki-link create confirmation (#1716) */}
       <WikiLinkCreateDialog
         targetTitle={pendingWikiLinkCreate}
-        onClose={() => setPendingWikiLinkCreate(null)}
+        onClose={() => {
+          setPendingWikiLinkCreate(null)
+        }}
         onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
       />
 

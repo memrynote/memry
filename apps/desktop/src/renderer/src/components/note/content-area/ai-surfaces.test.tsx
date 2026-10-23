@@ -72,7 +72,9 @@ describe('AI editor command surfaces', () => {
     })
 
     command.onItemClick()
-    await waitFor(() => expect(invokeAI).toHaveBeenCalledOnce())
+    await waitFor(() => {
+      expect(invokeAI).toHaveBeenCalledOnce()
+    })
     expect(invokeAI).toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt: expect.stringContaining('Improve the selected text'),
@@ -89,7 +91,9 @@ describe('AI editor command surfaces', () => {
   it('uses add-only tools for continue-writing and action-item commands', async () => {
     const continueEditor = createEditor(false)
     continueWriting(continueEditor.editor as never).onItemClick()
-    await waitFor(() => expect(continueEditor.invokeAI).toHaveBeenCalledOnce())
+    await waitFor(() => {
+      expect(continueEditor.invokeAI).toHaveBeenCalledOnce()
+    })
     expect(continueEditor.invokeAI).toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt: expect.stringContaining('Continue writing'),
@@ -104,7 +108,9 @@ describe('AI editor command surfaces', () => {
 
     const actionEditor = createEditor()
     actionItems(actionEditor.editor as never).onItemClick()
-    await waitFor(() => expect(actionEditor.invokeAI).toHaveBeenCalledOnce())
+    await waitFor(() => {
+      expect(actionEditor.invokeAI).toHaveBeenCalledOnce()
+    })
     expect(actionEditor.invokeAI).toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt: expect.stringContaining('Extract action items'),
@@ -129,7 +135,9 @@ describe('AI editor command surfaces', () => {
     })
 
     command.onItemClick()
-    await waitFor(() => expect(invokeAI).toHaveBeenCalledOnce())
+    await waitFor(() => {
+      expect(invokeAI).toHaveBeenCalledOnce()
+    })
     expect(invokeAI).toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt:

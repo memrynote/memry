@@ -6,7 +6,9 @@ import { eq } from 'drizzle-orm'
 
 describe('project_links schema', () => {
   let t: TestDatabaseResult
-  afterEach(() => t?.close())
+  afterEach(() => {
+    t?.close()
+  })
 
   it('#then stores a link and cascades on project delete', () => {
     t = createTestDataDb()

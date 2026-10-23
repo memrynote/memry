@@ -323,7 +323,9 @@ function emitStatusChanged(): void {
   // closeVault() during graceful shutdown flips status to isOpen:false, and
   // nothing should react to it while the app is quitting/installing.
   if (isShuttingDown) return
-  statusListeners.forEach((listener) => listener(currentStatus))
+  statusListeners.forEach((listener) => {
+    listener(currentStatus)
+  })
   broadcastToAllWindows('vault:status-changed', currentStatus)
 }
 
@@ -561,9 +563,9 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     // empty or reset index it skipped every locked note. Re-run it now that
     // the walk has indexed them (#2978).
     if (result.indexed > 0) {
-      await checkLockedFilesAtOpen().catch((err) =>
+      await checkLockedFilesAtOpen().catch((err) => {
         logger.warn('Re-checking locked files after the index walk failed', err)
-      )
+      })
       if (isStale()) return
     }
 
@@ -730,7 +732,9 @@ async function openVault(vaultPath: string): Promise<void> {
   // set further down), and the ready broadcast has to name this vault.
   void getCrdtProvider()
     .initPersistence(vaultPath)
-    .catch((error) => logger.warn('CRDT persistence init failed (non-fatal):', error))
+    .catch((error) => {
+      logger.warn('CRDT persistence init failed (non-fatal):', error)
+    })
 
   // Create FTS5 virtual tables for tasks and inbox in data.db
   const dataDb = getDatabase()
@@ -920,9 +924,9 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Locked files edited or removed while the app was closed get their locked
   // text back, and every lock is re-applied on disk (#2606).
-  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err) =>
+  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err) => {
     logger.warn('Checking locked files at vault open failed', err)
-  )
+  })
 
   // Kick the file walk after isOpen so its tail (backfill, reconcile) runs
   // against an open vault, exactly like the old post-open reconcile call did.
@@ -1087,7 +1091,7 @@ export function getConfig(): VaultConfig {
     journalFolder: config.journalFolder,
     journalDateFormat: config.journalDateFormat,
     attachmentsFolder: config.attachmentsFolder,
-    journalShowInSidebar: config.journalShowInSidebar === true
+    journalShowInSidebar: config.journalShowInSidebar
   })
   syncJournalConfig(resolved)
   return resolved
@@ -1350,7 +1354,9 @@ async function stopVaultAgentServices(): Promise<void> {
         () => true
       ),
       new Promise<boolean>((resolve) => {
-        settleTimer = setTimeout(() => resolve(false), AGENT_STARTUP_TEARDOWN_WAIT_MS)
+        settleTimer = setTimeout(() => {
+          resolve(false)
+        }, AGENT_STARTUP_TEARDOWN_WAIT_MS)
       })
     ])
     clearTimeout(settleTimer)

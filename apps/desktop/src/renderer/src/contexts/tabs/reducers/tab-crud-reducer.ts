@@ -5,10 +5,10 @@ import {
   findExistingTab,
   findTabByEntityId,
   createDefaultTab,
-  getInsertIndexAfterPinned
+  getInsertIndexAfterPinned,
+  createInitialState
 } from '../helpers'
 import { removeGroupFromLayout } from '@/components/split-view/layout-helpers'
-import { createInitialState } from '../helpers'
 import {
   pruneHistory,
   pruneHistoryByEntity,

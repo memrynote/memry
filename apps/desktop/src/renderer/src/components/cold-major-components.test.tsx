@@ -243,7 +243,12 @@ vi.mock('@/components/ui/picker', async () => {
   Picker.Item = ({ value, label, icon }: { value: string; label: string; icon?: ReactNode }) => {
     const onValueChange = React.useContext(PickerContext)
     return (
-      <button type="button" onClick={() => onValueChange(value)}>
+      <button
+        type="button"
+        onClick={() => {
+          onValueChange(value)
+        }}
+      >
         {icon}
         {label}
       </button>
@@ -348,7 +353,12 @@ vi.mock('@/components/ui/select', async () => {
     SelectItem: ({ value, children }: { value: string; children: ReactNode }) => {
       const onValueChange = React.useContext(SelectContext)
       return (
-        <button type="button" onClick={() => onValueChange(value)}>
+        <button
+          type="button"
+          onClick={() => {
+            onValueChange(value)
+          }}
+        >
           {children}
         </button>
       )
@@ -360,7 +370,12 @@ vi.mock('@/components/ui/select', async () => {
 
 vi.mock('@/components/tasks/date-picker-calendar', () => ({
   DatePickerCalendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
-    <button type="button" onClick={() => onSelect(new Date(2026, 4, 10))}>
+    <button
+      type="button"
+      onClick={() => {
+        onSelect(new Date(2026, 4, 10))
+      }}
+    >
       pick date
     </button>
   )
@@ -420,7 +435,9 @@ vi.mock('@/components/ui/labeled-checkbox', () => ({
         type="checkbox"
         checked={checked}
         disabled={disabled}
-        onChange={(e) => onCheckedChange(e.currentTarget.checked)}
+        onChange={(e) => {
+          onCheckedChange(e.currentTarget.checked)
+        }}
       />
       {label}
     </label>
@@ -836,7 +853,9 @@ describe('cold major renderer components', () => {
 
     fireEvent.click(screen.getByLabelText('Remove Side from list'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))
-    await waitFor(() => expect(mocks.removeVault).toHaveBeenCalledWith('/vaults/Side'))
+    await waitFor(() => {
+      expect(mocks.removeVault).toHaveBeenCalledWith('/vaults/Side')
+    })
 
     mocks.authState = { status: 'anonymous', email: null }
     mocks.vaults = []
@@ -1003,7 +1022,9 @@ describe('cold major renderer components', () => {
     fireEvent.click(await screen.findByTitle('High'))
     fireEvent.change(screen.getByDisplayValue(''), { target: { value: '2026-05-12' } })
     fireEvent.click(screen.getByText('Create'))
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('created-task', 'Created task'))
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalledWith('created-task', 'Created task')
+    })
     expect(mocks.taskCreate).toHaveBeenCalledWith({
       projectId: 'inbox',
       title: 'Created task',
@@ -1032,17 +1053,21 @@ describe('cold major renderer components', () => {
     const block = renderHook(({ id }) => useTaskBlockData(id), {
       initialProps: { id: 'task-block' }
     })
-    await waitFor(() => expect(block.result.current.task?.title).toBe('Block task'))
+    await waitFor(() => {
+      expect(block.result.current.task?.title).toBe('Block task')
+    })
 
-    act(() =>
+    act(() => {
       mocks.taskListeners.updated({
         id: 'task-block',
         task: task({ id: 'task-block', title: 'Updated task' })
       })
-    )
+    })
     expect(block.result.current.task?.title).toBe('Updated task')
 
-    act(() => mocks.taskListeners.deleted({ id: 'task-block' }))
+    act(() => {
+      mocks.taskListeners.deleted({ id: 'task-block' })
+    })
     expect(block.result.current.isDeleted).toBe(true)
 
     const selectedIds = ['note-1', 'folder-Work']
@@ -1062,7 +1087,9 @@ describe('cold major renderer components', () => {
       })
     )
 
-    act(() => tree.result.current.handleBulkDelete())
+    act(() => {
+      tree.result.current.handleBulkDelete()
+    })
     expect(tree.result.current.notesToDelete).toHaveLength(1)
     expect(tree.result.current.foldersToDelete).toEqual(['Work'])
 
@@ -1085,7 +1112,9 @@ describe('cold major renderer components', () => {
         refreshFolders
       })
     )
-    act(() => failing.result.current.handleDeleteClick({ id: 'note-2', title: 'Bad' } as never))
+    act(() => {
+      failing.result.current.handleDeleteClick({ id: 'note-2', title: 'Bad' } as never)
+    })
     await act(async () => {
       await failing.result.current.handleDeleteConfirm()
     })
@@ -1110,7 +1139,9 @@ describe('cold major renderer components', () => {
     fireEvent.click(screen.getByText('+1 more'))
     expect(screen.getByText('Bookmarked task')).toBeInTheDocument()
     fireEvent.click(screen.getAllByText('phaseF.componentsSidebarSidebarBookmarkList.remove')[0])
-    await waitFor(() => expect(mocks.removeBookmark).toHaveBeenCalledWith('bookmark-1'))
+    await waitFor(() => {
+      expect(mocks.removeBookmark).toHaveBeenCalledWith('bookmark-1')
+    })
 
     mocks.bookmarksLoading = true
     rerender(

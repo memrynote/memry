@@ -87,8 +87,12 @@ const RegularTabComponent = ({
     [closeTab, tab.id, groupId]
   )
 
-  const handleMouseEnter = useCallback(() => setIsHovered(true), [])
-  const handleMouseLeave = useCallback(() => setIsHovered(false), [])
+  const handleMouseEnter = useCallback(() => {
+    setIsHovered(true)
+  }, [])
+  const handleMouseLeave = useCallback(() => {
+    setIsHovered(false)
+  }, [])
 
   return (
     <div

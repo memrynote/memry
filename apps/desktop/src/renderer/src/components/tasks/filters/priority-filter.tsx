@@ -142,7 +142,9 @@ export const PriorityFilter = ({
         </Picker.List>
         <Picker.Footer>
           <FilterFooter
-            onClear={() => onChange([])}
+            onClear={() => {
+              onChange([])
+            }}
             onApply={() => {}}
             clearLabel="Clear"
             applyLabel="Apply"

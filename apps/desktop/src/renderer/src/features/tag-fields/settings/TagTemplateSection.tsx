@@ -102,7 +102,9 @@ export function TagTemplateSection({
         {!missing && template && (
           <button
             type="button"
-            onClick={() => openEditor(template.id, template.name)}
+            onClick={() => {
+              openEditor(template.id, template.name)
+            }}
             className="flex items-center gap-1 text-xs text-text-secondary hover:text-foreground"
           >
             <ArrowUpRight className="size-3" />

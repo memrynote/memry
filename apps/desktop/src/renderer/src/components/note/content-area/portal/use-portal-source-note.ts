@@ -45,10 +45,18 @@ export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' 
         deletedRef.current = true
         setDeletedId(noteId)
       }),
-      onNoteCreated((event) => comesBack(event.note.id)),
-      onNoteUpdated((event) => comesBack(event.id)),
-      onNoteRenamed((event) => comesBack(event.id)),
-      onNoteMoved((event) => comesBack(event.id))
+      onNoteCreated((event) => {
+        comesBack(event.note.id)
+      }),
+      onNoteUpdated((event) => {
+        comesBack(event.id)
+      }),
+      onNoteRenamed((event) => {
+        comesBack(event.id)
+      }),
+      onNoteMoved((event) => {
+        comesBack(event.id)
+      })
     ]
     return () => {
       for (const unsubscribe of unsubscribers) unsubscribe()

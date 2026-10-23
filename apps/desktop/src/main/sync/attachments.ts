@@ -352,7 +352,9 @@ function hashFileInto(
     stream.on('data', (data) => {
       sodium.crypto_hash_sha256_update(hashState, data as Buffer)
     })
-    stream.on('end', () => resolve())
+    stream.on('end', () => {
+      resolve()
+    })
     stream.on('error', reject)
   })
 }
@@ -839,7 +841,9 @@ export class AttachmentSyncService {
             directState,
             {
               ...netOpts,
-              onWaitingNetwork: () => emit({ ...downloadProgress, phase: 'waiting_network' })
+              onWaitingNetwork: () => {
+                emit({ ...downloadProgress, phase: 'waiting_network' })
+              }
             }
           )
 

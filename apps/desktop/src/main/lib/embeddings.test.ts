@@ -377,7 +377,9 @@ describe('embeddings', () => {
         requestId,
         embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
       })
-      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+      await vi.waitFor(() => {
+        expect(getModelInfo().loaded).toBe(true)
+      })
 
       // #when the 30s idle timer fires and the worker dies mid-teardown (SIGSEGV)
       await vi.advanceTimersByTimeAsync(30_000)
@@ -416,7 +418,9 @@ describe('embeddings', () => {
         requestId,
         embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
       })
-      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+      await vi.waitFor(() => {
+        expect(getModelInfo().loaded).toBe(true)
+      })
 
       // #when the worker dies on its own AFTER delivering, but BEFORE the 30s idle
       // timer fires — not tearing down, nothing in flight
@@ -440,7 +444,9 @@ describe('embeddings', () => {
         requestId,
         embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
       })
-      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+      await vi.waitFor(() => {
+        expect(getModelInfo().loaded).toBe(true)
+      })
 
       await vi.advanceTimersByTimeAsync(30_000)
       // #when the worker exits(0) as designed — lifecycle, not a fault
@@ -457,7 +463,9 @@ describe('embeddings', () => {
         requestId,
         embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
       })
-      await vi.waitFor(() => expect(getModelInfo().loaded).toBe(true))
+      await vi.waitFor(() => {
+        expect(getModelInfo().loaded).toBe(true)
+      })
 
       // #given the worker ignores the graceful shutdown and wedges — the exact
       // onnxruntime-dispose failure mode this telemetry exists to catch

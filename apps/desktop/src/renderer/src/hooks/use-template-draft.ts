@@ -265,7 +265,9 @@ export function useTemplateDraft({
       void saveRef.current()
     }, autoSaveDelayMs)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [templateId, isDirty, current, autoSaveDelayMs])
 
   return {

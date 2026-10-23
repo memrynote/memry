@@ -172,11 +172,11 @@ describe('embedding worker', () => {
           softTokens: 280
         }
       })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'embed-result', requestId: 'i1' })
         )
-      )
+      })
 
       expect(processor).toHaveBeenCalledWith('title: none | text: Invoice <|image|>', 'raw-image')
       expect(processor.image_processor.max_soft_tokens).toBe(280)
@@ -189,11 +189,11 @@ describe('embedding worker', () => {
       await import('./embedding-worker')
 
       port.emit('message', { data: { type: 'embed', requestId: 't1', text: 'hello world text' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'embed-result', requestId: 't1' })
         )
-      )
+      })
 
       expect(mockProcessorLoad).not.toHaveBeenCalled()
       expect(mockModelLoad.mock.calls[0][1].config.vision_config).toBeNull()
@@ -212,23 +212,23 @@ describe('embedding worker', () => {
       await import('./embedding-worker')
 
       port.emit('message', { data: { type: 'load-model', requestId: 'l1' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'load-model-result',
           requestId: 'l1'
         })
-      )
+      })
 
       port.emit('message', {
         data: { type: 'embed-image', requestId: 'i1', image: new Uint8Array([1, 2, 3]) }
       })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'embed-result',
           requestId: 'i1',
           embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION).fill(1 / 16))
         })
-      )
+      })
 
       expect(mockModelLoad.mock.calls[1][1].config).toMatchObject({ audio_config: null })
       expect(mockModelLoad.mock.calls[1][1].config.vision_config).not.toBeNull()
@@ -242,11 +242,11 @@ describe('embedding worker', () => {
 
       // Text now runs on the vision-enabled model; nothing is loaded twice.
       port.emit('message', { data: { type: 'embed', requestId: 't2', text: 'hello world text' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'embed-result', requestId: 't2' })
         )
-      )
+      })
       expect(withVision).toHaveBeenCalledTimes(2)
       expect(mockModelLoad).toHaveBeenCalledTimes(2)
     })
@@ -259,30 +259,30 @@ describe('embedding worker', () => {
       await import('./embedding-worker')
 
       port.emit('message', { data: { type: 'load-model', requestId: 'l1' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'load-model-result',
           requestId: 'l1'
         })
-      )
+      })
       port.emit('message', {
         data: { type: 'embed-image', requestId: 'i1', image: new Uint8Array([1]) }
       })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'error',
           requestId: 'i1',
           error: 'network down'
         })
-      )
+      })
       expect(textOnly.dispose).not.toHaveBeenCalled()
 
       port.emit('message', { data: { type: 'embed', requestId: 't1', text: 'hello world text' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'embed-result', requestId: 't1' })
         )
-      )
+      })
     })
   })
 
@@ -311,22 +311,22 @@ describe('embedding worker', () => {
       await import('./embedding-worker')
 
       port.emit('message', { data: { type: 'load-model', requestId: 'l1' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'load-model-result',
           requestId: 'l1'
         })
-      )
+      })
       expect(mockModelLoad.mock.calls[0][1].config).toMatchObject({ audio_config: null })
 
       port.emit('message', { data: { type: 'embed-audio', requestId: 'a1', audio: clip } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'embed-result',
           requestId: 'a1',
           embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION).fill(1 / 16))
         })
-      )
+      })
 
       const config = mockModelLoad.mock.calls[1][1].config
       expect(config.audio_config).not.toBeNull()
@@ -339,11 +339,11 @@ describe('embedding worker', () => {
       )
 
       port.emit('message', { data: { type: 'embed-audio', requestId: 'a2', audio: clip } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith(
           expect.objectContaining({ type: 'embed-result', requestId: 'a2' })
         )
-      )
+      })
       expect(mockModelLoad).toHaveBeenCalledTimes(2)
     })
 
@@ -355,20 +355,20 @@ describe('embedding worker', () => {
       await import('./embedding-worker')
 
       port.emit('message', { data: { type: 'load-model', requestId: 'l1' } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'load-model-result',
           requestId: 'l1'
         })
-      )
+      })
       port.emit('message', { data: { type: 'embed-audio', requestId: 'a1', audio: clip } })
-      await vi.waitFor(() =>
+      await vi.waitFor(() => {
         expect(port.postMessage).toHaveBeenCalledWith({
           type: 'error',
           requestId: 'a1',
           error: 'network down'
         })
-      )
+      })
       expect(textOnly.dispose).not.toHaveBeenCalled()
     })
   })

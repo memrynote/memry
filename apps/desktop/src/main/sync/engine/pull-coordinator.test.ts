@@ -359,7 +359,9 @@ describe('#given a second changes page #when page one is still being applied', (
     // POST — the apply input fetch — is still blocked. Under the old ordering
     // the second GET could not start until pullChangesPage(page one) returned,
     // which this gate prevents.
-    await vi.waitFor(() => expect(getSpy).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => {
+      expect(getSpy).toHaveBeenCalledTimes(2)
+    })
 
     releasePageOnePull()
     releasePageTwoFetch()

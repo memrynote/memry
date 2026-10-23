@@ -93,19 +93,25 @@ export function UpdatePopover({
 
   const handleSkip = useCallback(() => {
     onClose()
-    void skipVersion(version).catch((err) => log.error('skip version failed', err))
+    void skipVersion(version).catch((err) => {
+      log.error('skip version failed', err)
+    })
   }, [skipVersion, version, onClose])
 
   const handleTurnOffAuto = useCallback(() => {
     onClose()
-    void setAutoDownload(false).catch((err) => log.error('set auto-download failed', err))
+    void setAutoDownload(false).catch((err) => {
+      log.error('set auto-download failed', err)
+    })
   }, [setAutoDownload, onClose])
 
   const handleCopyVersionInfo = useCallback(() => {
     onClose()
     void navigator.clipboard
       .writeText(`MemryNote ${state.currentVersion} → ${version}`)
-      .catch((err) => log.error('copy version info failed', err))
+      .catch((err) => {
+        log.error('copy version info failed', err)
+      })
   }, [state.currentVersion, version, onClose])
 
   const handleAllChanges = useCallback(() => {
@@ -127,7 +133,9 @@ export function UpdatePopover({
       onMouseLeave={onMouseLeave}
       // Opening must not yank the caret out of the editor. Tab still reaches
       // everything inside, because only the initial autofocus is suppressed.
-      onOpenAutoFocus={(event) => event.preventDefault()}
+      onOpenAutoFocus={(event) => {
+        event.preventDefault()
+      }}
     >
       <div className="p-3.5">
         <p className="text-[13px] font-semibold text-text-primary">

@@ -224,9 +224,9 @@ function SavedViewPicker({
           <DropdownMenuItem
             key={view.name}
             className="gap-2"
-            onSelect={() =>
+            onSelect={() => {
               onChange({ view: view.name, layout: undefined, order: undefined, filters: undefined })
-            }
+            }}
           >
             <span className="truncate">{getViewDisplayName(view.name)}</span>
             {view.name === selected ? (
@@ -260,7 +260,9 @@ function ViewBlockHeader({
         source={definition.source}
         disabled={!editable}
         defaultOpen={sourceMenuOpen}
-        onChange={(source) => onChange(sourcePatch(source))}
+        onChange={(source) => {
+          onChange(sourcePatch(source))
+        }}
       />
       {layout === 'chart' ? (
         <ChartSettings
@@ -269,7 +271,9 @@ function ViewBlockHeader({
           needsDateFrom
           disabled={!editable}
           defaultOpen={chartSettingsOpen}
-          onChange={(patch) => onChange({ chart: patchChart(definition.chart, patch) })}
+          onChange={(patch) => {
+            onChange({ chart: patchChart(definition.chart, patch) })
+          }}
         />
       ) : null}
       {views.length > 1 || definition.view ? (
@@ -288,15 +292,17 @@ function ViewBlockHeader({
             filters={definition.filters as FilterExpression | undefined}
             availableProperties={availableProperties}
             builtInColumns={builtInColumns}
-            onFiltersChange={(filters) =>
+            onFiltersChange={(filters) => {
               onChange({ filters: filters && !isFilterEmpty(filters) ? filters : undefined })
-            }
+            }}
             className="h-7"
           />
           <LayoutToggle
             value={layout}
             withChart
-            onChange={(next) => onChange({ layout: next })}
+            onChange={(next) => {
+              onChange({ layout: next })
+            }}
             className="h-7 [&>button]:h-6 [&>button]:w-6"
           />
         </>
@@ -512,9 +518,13 @@ function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void
   useEffect(() => {
     const frame = frameRef.current
     if (!frame) return
-    const claim = (event: MouseEvent): void => event.preventDefault()
+    const claim = (event: MouseEvent): void => {
+      event.preventDefault()
+    }
     frame.addEventListener('mousedown', claim)
-    return () => frame.removeEventListener('mousedown', claim)
+    return () => {
+      frame.removeEventListener('mousedown', claim)
+    }
   }, [frameRef])
 }
 
@@ -611,7 +621,9 @@ export function ViewBlockRenderer({
               source={null}
               disabled={!editable}
               defaultOpen={sourceMenuOpen}
-              onChange={(source) => write(sourcePatch(source))}
+              onChange={(source) => {
+                write(sourcePatch(source))
+              }}
             />
           </div>
         )}
@@ -693,7 +705,9 @@ export function getViewSlashMenuItem(
 ) {
   return {
     title: labels.title,
-    onItemClick: () => insertViewBlock(editor, STARTER_VIEW_DEFINITION, freshViewBlocks),
+    onItemClick: () => {
+      insertViewBlock(editor, STARTER_VIEW_DEFINITION, freshViewBlocks)
+    },
     aliases: ['view', 'query', 'base', 'database', 'saved view', 'embed view'],
     group: labels.group,
     subtext: labels.subtext
@@ -711,7 +725,9 @@ export function getChartSlashMenuItem(
 ) {
   return {
     title: labels.title,
-    onItemClick: () => insertViewBlock(editor, STARTER_CHART_DEFINITION, freshChartBlocks),
+    onItemClick: () => {
+      insertViewBlock(editor, STARTER_CHART_DEFINITION, freshChartBlocks)
+    },
     aliases: ['chart', 'graph', 'plot', 'heatmap', 'tracker', 'habit', 'trend'],
     group: labels.group,
     subtext: labels.subtext

@@ -69,7 +69,8 @@ export interface HomeCoverDeps {
 }
 
 export type SetHomeCoverResult =
-  { ok: true; row: HomePageRow } | { ok: false; reason: HomePageCoverFailure }
+  | { ok: true; row: HomePageRow }
+  | { ok: false; reason: HomePageCoverFailure }
 
 type FramingChanges = z.infer<typeof HomePageSetCoverFramingSchema>['changes']
 
@@ -122,9 +123,9 @@ async function pruneCoverFiles(vaultPath: string, boardId: string, keep: string 
     names
       .filter((name) => path.join(dir, name) !== keep)
       .map((name) =>
-        rm(path.join(dir, name), { force: true }).catch((error: unknown) =>
+        rm(path.join(dir, name), { force: true }).catch((error: unknown) => {
           log.warn('Could not delete an old board cover file', { boardId, error })
-        )
+        })
       )
   )
 }
@@ -270,8 +271,10 @@ export async function removeHomeCover(
 export async function deleteHomeCoverFiles(boardId: string): Promise<void> {
   const vaultPath = getVaultStatus().path
   if (!vaultPath || !isPlainSegment(boardId)) return
-  await rm(coverDir(vaultPath, boardId), { recursive: true, force: true }).catch((error: unknown) =>
-    log.warn('Could not delete a board cover folder', { boardId, error })
+  await rm(coverDir(vaultPath, boardId), { recursive: true, force: true }).catch(
+    (error: unknown) => {
+      log.warn('Could not delete a board cover folder', { boardId, error })
+    }
   )
 }
 

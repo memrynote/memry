@@ -197,7 +197,9 @@ export class WritingToolsSession {
       getGhosts: () => this.ghostRecords,
       describeAlternative: (id, shownText) => this.describeAlternative(id, shownText),
       formatHint: this.formatHint,
-      onViewUpdate: () => this.onViewUpdate()
+      onViewUpdate: () => {
+        this.onViewUpdate()
+      }
     })
     const unregister = registerEditorPlugin(editor, plugin)
 
@@ -413,7 +415,7 @@ export class WritingToolsSession {
     const anchors = anchorsForRange(view.state, from, from + text.length)
     this.updateAlternative(id, (record) => ({
       ...record,
-      ...(anchors ?? {}),
+      ...anchors,
       activeVariantId
     }))
     return true

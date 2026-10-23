@@ -47,7 +47,9 @@ export function UnlinkedMentionsSection({ noteId, onOpen }: UnlinkedMentionsSect
     <section className="flex flex-col gap-1" aria-label={t('unlinkedMentions.sectionAria')}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen)
+        }}
         className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
         aria-expanded={isOpen}
       >
@@ -101,7 +103,9 @@ function SourceMentions({
     <div role="group" aria-label={t('unlinkedMentions.fromAria', { title: source.sourceTitle })}>
       <button
         type="button"
-        onClick={() => onOpen(source.sourceId, source.sourceTitle)}
+        onClick={() => {
+          onOpen(source.sourceId, source.sourceTitle)
+        }}
         className="block max-w-full truncate px-1.5 py-1 text-start text-[13px]/4 font-medium text-text-bright hover:underline"
       >
         {source.sourceTitle}
@@ -122,7 +126,9 @@ function SourceMentions({
             <button
               type="button"
               disabled={pending !== null}
-              onClick={() => onLink(ordinal)}
+              onClick={() => {
+                onLink(ordinal)
+              }}
               className="flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] text-text-tertiary hover:text-muted-foreground hover:bg-surface-active/40 disabled:opacity-50"
               aria-label={t('unlinkedMentions.linkAria', {
                 text: context.snippet.slice(context.linkStart, context.linkEnd)

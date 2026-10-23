@@ -130,7 +130,10 @@ import {
   resolveLinkTargets,
   getNoteTags,
   getNoteProperties,
-  getAllTagDefinitions
+  getAllTagDefinitions,
+  getNotesInFolder,
+  reorderNotesInFolder,
+  getAllNotePositions
 } from '../notes/store'
 import { getIndexDatabase, getDatabase } from '../database'
 import { resolveWikiTarget } from '@memry/shared/wiki-target'
@@ -139,7 +142,6 @@ import {
   getPropertyDefinition,
   listPropertyDefinitions
 } from '@memry/storage-data'
-import { getNotesInFolder, reorderNotesInFolder, getAllNotePositions } from '../notes/store'
 import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
 import { deletePropertyDefinitionRecord } from '../vault/property-definition-store'
 import { trackMainEvent } from '../telemetry/track'

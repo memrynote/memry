@@ -21,7 +21,11 @@ export function ShowTasksMenuItem({ location }: ShowTasksMenuItemProps): React.J
 
   return (
     // Titled 'Tasks' like the other Tasks tabs the sidebar opens.
-    <ContextMenuItem onClick={() => openTab(tasksTabForLocation(location, 'Tasks'))}>
+    <ContextMenuItem
+      onClick={() => {
+        openTab(tasksTabForLocation(location, 'Tasks'))
+      }}
+    >
       <CheckSquare className="me-2 h-4 w-4" />
       {t('tree.actions.showTasks')}
     </ContextMenuItem>

@@ -679,7 +679,9 @@ describe('useWikiLinkSuggestions', () => {
       await act(async () => {
         await result.current.getWikiLinkItems('')
       })
-      mocks.linksChanged.forEach((callback) => callback())
+      mocks.linksChanged.forEach((callback) => {
+        callback()
+      })
       await act(async () => {
         await result.current.getWikiLinkItems('')
       })

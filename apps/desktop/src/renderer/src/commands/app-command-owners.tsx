@@ -24,7 +24,11 @@ export function AppCommandOwners(): null {
 
   useAppCommands('window', {
     'app.checkForUpdates': { run: () => runMenuUpdateCheck() },
-    'app.closeWindow': { run: () => window.api.windowClose() }
+    'app.closeWindow': {
+      run: () => {
+        window.api.windowClose()
+      }
+    }
   })
   useAppCommands('appearance', {
     'view.themeLight': { run: () => setTheme('light') },

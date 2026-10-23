@@ -340,7 +340,9 @@ function startChild(input: {
   // Created eagerly and reused, exactly like the production adapter in
   // bootstrap.ts, so waitExit() still resolves when it is called after exit.
   const exitCodePromise = new Promise<number>((resolve) => {
-    proc.once('exit', (code) => resolve(code ?? 0))
+    proc.once('exit', (code) => {
+      resolve(code ?? 0)
+    })
   })
 
   const started: StartedChild = {
@@ -375,7 +377,9 @@ function startChild(input: {
 function waitForExit(proc: ChildProcess, timeoutMs: number): Promise<void> {
   if (proc.exitCode !== null || proc.signalCode !== null) return Promise.resolve()
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('child did not exit in time')), timeoutMs)
+    const timer = setTimeout(() => {
+      reject(new Error('child did not exit in time'))
+    }, timeoutMs)
     proc.once('exit', () => {
       clearTimeout(timer)
       resolve()

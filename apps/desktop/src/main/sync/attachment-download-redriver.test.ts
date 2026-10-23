@@ -80,8 +80,9 @@ vi.mock('@memry/sync-client/attachment-download-state', () => ({
   shouldAttemptDownload: (...args: unknown[]) => mocks.shouldAttemptDownload(...args),
   markDownloadRequested: (...args: unknown[]) => mocks.markDownloadRequested(...args),
   releaseDownloadAttempt: (...args: unknown[]) => mocks.releaseDownloadAttempt(...args),
-  clearAttachmentDownloadFailure: (db: unknown, ownerId: string, attachmentId: string) =>
+  clearAttachmentDownloadFailure: (db: unknown, ownerId: string, attachmentId: string) => {
     mocks.clearAttachmentDownloadFailure(db, ownerId, attachmentId)
+  }
 }))
 
 vi.mock('./attachment-download-settings', () => ({

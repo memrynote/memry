@@ -95,7 +95,9 @@ export function InlineCreateRow({
           variant="ghost"
           size="sm"
           className={CHROMELESS_BUTTON}
-          onClick={() => setMode('category')}
+          onClick={() => {
+            setMode('category')
+          }}
         >
           <Tags className="me-1.5 h-3.5 w-3.5" />
           {t('tagsHub.newCategory')}
@@ -104,7 +106,9 @@ export function InlineCreateRow({
           variant="ghost"
           size="sm"
           className={CHROMELESS_BUTTON}
-          onClick={() => setMode('tag')}
+          onClick={() => {
+            setMode('tag')
+          }}
         >
           <Tag className="me-1.5 h-3.5 w-3.5" />
           {t('tagsHub.newTag')}
@@ -140,7 +144,9 @@ export function InlineCreateRow({
                         type="button"
                         aria-label={t('tagsRow.colorAria', { color: colorName })}
                         aria-pressed={color === colorName}
-                        onClick={() => setColor(colorName)}
+                        onClick={() => {
+                          setColor(colorName)
+                        }}
                         className={cn(
                           'h-6 w-6 rounded-full transition-transform hover:scale-110',
                           color === colorName &&
@@ -161,7 +167,9 @@ export function InlineCreateRow({
         <Input
           ref={focusNameInput}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value)
+          }}
           onKeyDown={handleKeyDown}
           placeholder={
             mode === 'category'

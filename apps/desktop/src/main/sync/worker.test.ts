@@ -66,7 +66,9 @@ vi.mock('../crypto/primitives', () => ({
 function captureNextPostMessage(): Promise<WorkerToMainMessage> {
   const baseline = mockPort.postMessage.mock.calls.length
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('No postMessage within 1s')), 1000)
+    const timeout = setTimeout(() => {
+      reject(new Error('No postMessage within 1s'))
+    }, 1000)
     const interval = setInterval(() => {
       if (mockPort.postMessage.mock.calls.length > baseline) {
         clearTimeout(timeout)

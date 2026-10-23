@@ -79,7 +79,9 @@ describe('0026_note_tags_in_header migration', () => {
     const sqlite = new Database(dbPath)
     seedTaggedNote(sqlite)
 
-    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0024Folder() })).not.toThrow()
+    expect(() => {
+      migrate(drizzle(sqlite), { migrationsFolder: makePre0024Folder() })
+    }).not.toThrow()
 
     expect(sqlite.prepare('SELECT tag, in_header FROM note_tags').all()).toEqual([
       { tag: 'work', in_header: null }

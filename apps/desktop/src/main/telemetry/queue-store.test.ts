@@ -158,8 +158,12 @@ describe('createQueueStore — incremental writes', () => {
 
     // #when items are recorded
     // #then durability is the only loss; nothing throws
-    expect(() => store.append(1, [1])).not.toThrow()
-    expect(() => store.save([1])).not.toThrow()
+    expect(() => {
+      store.append(1, [1])
+    }).not.toThrow()
+    expect(() => {
+      store.save([1])
+    }).not.toThrow()
   })
 
   it('keeps working when the disk fails mid-session, after the journal started', () => {
@@ -173,8 +177,12 @@ describe('createQueueStore — incremental writes', () => {
 
     // #when further items are recorded
     // #then nothing throws and the already-journalled items are still readable
-    expect(() => store.append(2, [1, 2])).not.toThrow()
-    expect(() => store.append(3, [1, 2, 3])).not.toThrow()
+    expect(() => {
+      store.append(2, [1, 2])
+    }).not.toThrow()
+    expect(() => {
+      store.append(3, [1, 2, 3])
+    }).not.toThrow()
     vi.restoreAllMocks()
     expect(createQueueStore<number>(filePath).load()).toEqual([1])
   })

@@ -253,7 +253,8 @@ export class CrdtProvider {
   private deferSnapshot: ((noteId: string) => void) | null = null
   /** Answers whether the owe is durable (#2421). */
   private oweRemoteMerge:
-    ((noteId: string, reason: 'local_only' | 'compaction') => boolean) | null = null
+    | ((noteId: string, reason: 'local_only' | 'compaction') => boolean)
+    | null = null
   /** See `setRemoteMerge`. */
   private mergeRemote: ((noteId: string) => Promise<boolean>) | null = null
   /**
@@ -440,7 +441,9 @@ export class CrdtProvider {
     if (!persistence) return Promise.resolve()
     const run = this.owedCompactions
       .then(() => fn(persistence))
-      .catch((err) => log.error(failure, { error: err }))
+      .catch((err) => {
+        log.error(failure, { error: err })
+      })
     this.owedCompactions = run
     return run
   }
@@ -821,7 +824,9 @@ export class CrdtProvider {
       merged = await Promise.race([
         mergeRemote(noteId),
         new Promise<boolean>((resolve) => {
-          timer = setTimeout(() => resolve(false), timeoutMs)
+          timer = setTimeout(() => {
+            resolve(false)
+          }, timeoutMs)
         })
       ])
     } catch (err) {
@@ -2137,14 +2142,20 @@ export class CrdtProvider {
 
   /** Owe the server this note's whole doc state: one full-state outbox row, pushed after a merge. */
   recordOwedFullState(noteId: string): void {
-    if (this.updateQueue) return this.updateQueue.enqueueFullState(noteId)
-    this.writeWithoutRuntime(noteId, (queue) =>
+    if (this.updateQueue) {
+      this.updateQueue.enqueueFullState(noteId)
+      return
+    }
+    this.writeWithoutRuntime(noteId, (queue) => {
       queue.enqueueNoteBody(noteId, NOTE_BODY_FULL_STATE_PAYLOAD)
-    )
+    })
   }
 
   private dropOwedBody(noteId: string): void {
-    if (this.updateQueue) return this.updateQueue.dropNote(noteId)
+    if (this.updateQueue) {
+      this.updateQueue.dropNote(noteId)
+      return
+    }
     this.writeWithoutRuntime(noteId, (queue) => queue.removeNoteBody(noteId))
   }
 
@@ -2227,7 +2238,9 @@ export class CrdtProvider {
     const now = Date.now()
     if (now - entry.lastSizeCheckAt < SIZE_CHECK_INTERVAL_MS) return
 
-    setImmediate(() => this.checkAndCompact(noteId))
+    setImmediate(() => {
+      this.checkAndCompact(noteId)
+    })
   }
 
   private checkAndCompact(noteId: string): void {

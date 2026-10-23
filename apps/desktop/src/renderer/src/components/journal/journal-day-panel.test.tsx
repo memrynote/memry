@@ -137,13 +137,13 @@ describe('JournalDayPanel', () => {
   it('uses projected calendar items for the schedule instead of placeholder events', async () => {
     renderPanel(<JournalDayPanel date="2026-04-14" />)
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(mockUseCalendarRange).toHaveBeenCalledWith(
         // Through the helper the panel uses, not literal instants: the window is the local
         // day, so its UTC form moves with the machine's zone (#1954).
         expect.objectContaining(localDayRange('2026-04-14'))
       )
-    )
+    })
 
     expect(screen.getByText('Customer call')).toBeInTheDocument()
     expect(screen.getByText('Medication reminder')).toBeInTheDocument()

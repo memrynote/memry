@@ -45,7 +45,9 @@ function useSyncedSidebarFlag({ key, fallback, load, save }: SyncedFlagSource): 
       (stored) => {
         if (!cancelled && typeof stored === 'boolean') setValueState(stored)
       },
-      (err: unknown) => log.error(`Failed to load ${key}`, err)
+      (err: unknown) => {
+        log.error(`Failed to load ${key}`, err)
+      }
     )
     return () => {
       cancelled = true

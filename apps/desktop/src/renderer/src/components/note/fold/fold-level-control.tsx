@@ -112,7 +112,9 @@ export function FoldLevelControl({
         <PopoverContent
           align="end"
           className="flex w-60 flex-col gap-2.5 p-3"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+          }}
           data-testid="note-fold-hint"
         >
           <div className="flex flex-col gap-0.5">

@@ -87,7 +87,9 @@ beforeEach(() => {
 describe('HomePage seed', () => {
   it('seeds a default board when none exist', async () => {
     render(<HomePage />)
-    await waitFor(() => expect(createBoard).toHaveBeenCalledWith('Home'))
+    await waitFor(() => {
+      expect(createBoard).toHaveBeenCalledWith('Home')
+    })
   })
 
   // Boards sync now: seeding before the first pull lands permanently adds a
@@ -108,7 +110,9 @@ describe('HomePage seed', () => {
     state.seedAllowed = true
     rerender(<HomePage />)
 
-    await waitFor(() => expect(createBoard).toHaveBeenCalledWith('Home'))
+    await waitFor(() => {
+      expect(createBoard).toHaveBeenCalledWith('Home')
+    })
   })
 
   it('never seeds when a board arrives from a remote pull first', async () => {
@@ -120,7 +124,9 @@ describe('HomePage seed', () => {
     state.seedAllowed = true
     rerender(<HomePage />)
 
-    await waitFor(() => expect(screen.queryByTestId('home-board-loading')).toBeNull())
+    await waitFor(() => {
+      expect(screen.queryByTestId('home-board-loading')).toBeNull()
+    })
     expect(createBoard).not.toHaveBeenCalled()
   })
 

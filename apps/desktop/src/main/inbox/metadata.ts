@@ -134,7 +134,9 @@ function rewriteUrlForFetch(url: string): string {
 
 async function fetchRedditMetadata(url: string): Promise<UrlMetadata | null> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, URL_FETCH_TIMEOUT)
 
   try {
     const jsonUrl = url.replace(/\/?(\?.*)?$/, '.json$1')
@@ -185,7 +187,9 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
 
   const fetchUrl = rewriteUrlForFetch(url)
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, URL_FETCH_TIMEOUT)
 
   try {
     const response = await chromiumFetch(fetchUrl, {
@@ -235,7 +239,9 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
 export async function fetchUrlHtml(url: string): Promise<string> {
   const fetchUrl = rewriteUrlForFetch(url)
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), URL_FETCH_TIMEOUT)
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, URL_FETCH_TIMEOUT)
 
   try {
     const response = await chromiumFetch(fetchUrl, {
@@ -308,7 +314,9 @@ function getImageExtension(imageUrl: string, contentType?: string | null): strin
  */
 export async function downloadImage(imageUrl: string, destDir: string): Promise<string | null> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), IMAGE_DOWNLOAD_TIMEOUT)
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, IMAGE_DOWNLOAD_TIMEOUT)
 
   try {
     const response = await chromiumFetch(imageUrl, {

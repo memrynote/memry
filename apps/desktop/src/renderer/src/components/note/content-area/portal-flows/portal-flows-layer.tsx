@@ -89,7 +89,9 @@ export function PortalFlowsLayer({
     (anchor: string, chip: HTMLElement) => {
       if (!noteId) return
       getPortalUsage(noteId, anchor)
-        .then((hosts) => setWhereUsed({ chip, anchor, hosts }))
+        .then((hosts) => {
+          setWhereUsed({ chip, anchor, hosts })
+        })
         .catch((err: unknown) => {
           log.error('Failed to load where a block is used', err)
           toast.error(extractErrorMessage(err, t('portalFlows.whereUsed.loadFailed')))
@@ -115,7 +117,9 @@ export function PortalFlowsLayer({
     if (!removeFromPortal) return
     const unregister = registerHideInPortal(editor, {
       canHide: () => true,
-      hide: (blockId) => removeFromPortal([blockId])
+      hide: (blockId) => {
+        removeFromPortal([blockId])
+      }
     })
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key.toLowerCase() !== hideInPortalShortcut.key) return
@@ -167,7 +171,9 @@ export function PortalFlowsLayer({
       noteId,
       requestBlockRemoval: (ids) => requestRef.current(ids),
       copyPortalToBlock: (id) => copyRef.current(id),
-      pickAnotherBlock: (id) => startReplaceRef.current(id),
+      pickAnotherBlock: (id) => {
+        startReplaceRef.current(id)
+      },
       openSearchCreate: () => {
         const blockId = editor.getTextCursorPosition().block.id
         const el = editor.domElement?.querySelector<HTMLElement>(
@@ -191,7 +197,9 @@ export function PortalFlowsLayer({
       <PortalSearchQueryPopover
         anchorEl={searchAnchor}
         onSubmit={submitSearch}
-        onClose={() => setSearchAnchor(null)}
+        onClose={() => {
+          setSearchAnchor(null)
+        }}
       />
       <PortalWhereUsedPopover
         anchorEl={whereUsed?.chip ?? null}
@@ -215,7 +223,9 @@ export function PortalFlowsLayer({
             { toTheSide: beside }
           )
         }}
-        onClose={() => setWhereUsed(null)}
+        onClose={() => {
+          setWhereUsed(null)
+        }}
       />
       {dialog}
     </>

@@ -131,8 +131,12 @@ export function TagValueInput({
               setHighlight(0)
               setIsOpen(true)
             }}
-            onFocus={() => setIsOpen(true)}
-            onBlur={() => setIsOpen(false)}
+            onFocus={() => {
+              setIsOpen(true)
+            }}
+            onBlur={() => {
+              setIsOpen(false)
+            }}
             onKeyDown={handleKeyDown}
             className="h-[26px] w-full min-w-0 rounded-md border-border bg-transparent px-2 text-[11.5px] text-foreground"
             placeholder={placeholder}
@@ -144,11 +148,17 @@ export function TagValueInput({
         align="start"
         sideOffset={4}
         // Typing is the interaction — the list must never take the caret.
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+        }}
         // Keep the input focused: blur would close the list before a click
         // lands, so the pick would never happen.
-        onMouseDown={(event) => event.preventDefault()}
+        onMouseDown={(event) => {
+          event.preventDefault()
+        }}
         className="max-h-56 w-[200px] overflow-y-auto p-1"
       >
         <ul
@@ -165,8 +175,12 @@ export function TagValueInput({
                   type="button"
                   role="option"
                   aria-selected={index === activeIndex}
-                  onClick={() => commit(tag)}
-                  onMouseEnter={() => setHighlight(index)}
+                  onClick={() => {
+                    commit(tag)
+                  }}
+                  onMouseEnter={() => {
+                    setHighlight(index)
+                  }}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-start outline-none',
                     index === activeIndex && 'bg-accent'

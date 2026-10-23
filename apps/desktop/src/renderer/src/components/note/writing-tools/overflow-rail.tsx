@@ -38,7 +38,9 @@ export function OverflowRail({ session, snapshot }: OverflowRailProps) {
       <div className="review-rail-inner writing-rail-panel">
         <input
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => {
+            setValue(event.target.value)
+          }}
           onKeyDown={handleKeyDown}
           placeholder={t('writingTools.overflow.addPlaceholder')}
           aria-label={t('writingTools.overflow.addPlaceholder')}
@@ -53,7 +55,9 @@ export function OverflowRail({ session, snapshot }: OverflowRailProps) {
                 key={item.id}
                 item={item}
                 render={() => session.renderOverflow(item)}
-                onDelete={() => session.removeOverflow(item.id)}
+                onDelete={() => {
+                  session.removeOverflow(item.id)
+                }}
               />
             ))}
           </ul>

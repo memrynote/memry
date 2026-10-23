@@ -90,7 +90,9 @@ const AudioProgress = memo(function AudioProgress({ audioRef, duration }: AudioP
     const audio = audioRef.current
     if (!audio) return
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime)
+    }
 
     audio.addEventListener('timeupdate', handleTimeUpdate)
     return () => {
@@ -189,8 +191,12 @@ export function AudioPlayer({
     const handleTimeUpdate = () => {
       livePositionRef.current = audio.currentTime
     }
-    const handleEnded = () => setIsPlaying(false)
-    const handleError = () => setError(true)
+    const handleEnded = () => {
+      setIsPlaying(false)
+    }
+    const handleError = () => {
+      setError(true)
+    }
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
     audio.addEventListener('timeupdate', handleTimeUpdate)
@@ -260,7 +266,9 @@ export function AudioPlayer({
     if (transcript) {
       await navigator.clipboard.writeText(transcript)
       setCopied(true)
-      scheduleTimeout(() => setCopied(false), 2000)
+      scheduleTimeout(() => {
+        setCopied(false)
+      }, 2000)
     }
   }
 

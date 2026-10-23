@@ -156,7 +156,9 @@ export function ComposerFileChips({
               <button
                 type="button"
                 aria-label={t('agentChat.composer.removeAttachment', { label: file.name })}
-                onClick={() => onRemove(file.id)}
+                onClick={() => {
+                  onRemove(file.id)
+                }}
                 className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <X className="size-3" aria-hidden="true" />
