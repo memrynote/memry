@@ -232,7 +232,9 @@ export class ReadwiseSyncService {
         cursor === null ||
         getFullPassPending(db) ||
         Number.isNaN(lastFullAt) ||
-        startedAt.getTime() - lastFullAt >= FULL_READ_INTERVAL_MS
+        // A clock set back leaves a time in the future: read, rather than wait for it.
+        startedAt.getTime() - lastFullAt >= FULL_READ_INTERVAL_MS ||
+        lastFullAt > startedAt.getTime()
       const cancelled = (): RunResult => ({ ...result, cancelled: true })
       const needsAttention = (error: unknown): void => {
         if (error instanceof ReadwiseError && error.code === 'invalid-token') {
@@ -333,7 +335,9 @@ export class ReadwiseSyncService {
           finish(await this.writeBook(fullBook, planOptions, observer, false), payload)
         }
         for (const gone of payloads.values()) {
-          // Gone from Readwise between the two reads: nothing to render.
+          // Missing from `ids=` after the export named it. Probably gone, and the
+          // next run's retry fetch drops it then. If it was a hiccup, it is read again.
+          addRetry(db, gone.user_book_id, 'Missing from the full fetch')
           log.info('A Readwise book vanished between the export and its full fetch', {
             bookId: gone.user_book_id
           })
@@ -352,6 +356,10 @@ export class ReadwiseSyncService {
         if (!gained) setFullPassPending(db, false)
       }
       setLastRun(db, { at: new Date().toISOString(), needsAttention: false })
+      return result
+    } finally {
+      this.running = false
+      // Also for a cancelled or failed run: the notes it wrote did change.
       const changedBooks = result.added + result.updated + result.appended
       if (changedBooks > 0 && observer.logActivity !== false) {
         recordActivity({
@@ -362,9 +370,6 @@ export class ReadwiseSyncService {
           counts: { imported: changedBooks, failed: result.failed }
         })
       }
-      return result
-    } finally {
-      this.running = false
     }
   }
 
@@ -396,13 +401,10 @@ export class ReadwiseSyncService {
       // The writer reports its own failures. This catches the mapper and the
       // retry bookkeeping, so one book still cannot stop the run.
       log.warn('A Readwise book could not be processed', { bookId: book.user_book_id, error })
-      return {
-        event: {
-          title,
-          result: 'failed',
-          reason: error instanceof Error ? error.message : String(error)
-        }
-      }
+      const reason = error instanceof Error ? error.message : String(error)
+      // The cursor moves on without this book, so it must be on the list.
+      addRetry(db, book.user_book_id, reason)
+      return { event: { title, result: 'failed', reason } }
     }
   }
 }

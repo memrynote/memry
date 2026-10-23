@@ -608,6 +608,19 @@ describe('Readwise incremental sync', () => {
   describe('the daily full read (book-level edits, issue S5)', () => {
     const DAY = 24 * 60 * 60 * 1000
 
+    it('reads the whole export when the clock was set back past the last full read', async () => {
+      twoBooks()
+      const service = new engine.ReadwiseSyncService({
+        now: () => new Date('2026-10-10T08:00:00Z')
+      })
+      await sync({ service })
+      cursorAt(9)
+      state.setLastFullRead(db(), '2030-01-01T00:00:00.000Z')
+      const before = mark()
+      await sync({ service })
+      expect(readwise.since(before).windowed).toHaveLength(0)
+    })
+
     it('reads the whole export again after a day, so a new document note arrives', async () => {
       twoBooks()
       let now = new Date('2026-10-10T08:00:00Z')
@@ -664,6 +677,65 @@ describe('Readwise incremental sync', () => {
       )
       expect(mocks.recordActivity.mock.calls[0][0].message).toBeUndefined()
     })
+  })
+
+  it('a book the engine itself cannot process goes on the retry list, since the cursor moves on', async () => {
+    twoBooks()
+    await sync()
+    edit(2, (b) => {
+      b.is_deleted = true
+      b.highlights = b.highlights.map((h) => ({ ...h, is_deleted: true, updated_at: t(6) }))
+    })
+    vi.spyOn(links, 'markLinkState').mockImplementationOnce(() => {
+      throw new Error('database is locked')
+    })
+
+    const { result } = await sync()
+
+    expect(result.failed).toBe(1)
+    expect(state.getRetryList(db())).toMatchObject([
+      { readwiseBookId: 2, reason: 'database is locked' }
+    ])
+  })
+
+  it('a book missing from the full fetch is put on the retry list', async () => {
+    twoBooks()
+    await sync()
+    edit(1, (b) => b.highlights.push(hl(14, 40, 5)))
+    const handle = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation(async (input, init) =>
+      new URL(String(input)).searchParams.has('ids')
+        ? new Response(JSON.stringify({ nextPageCursor: null, results: [] }), { status: 200 })
+        : handle(input, init)
+    )
+
+    await sync()
+
+    expect(state.getRetryList(db()).map((e) => e.readwiseBookId)).toEqual([1])
+  })
+
+  it('a run stopped after writing still leaves its activity line', async () => {
+    twoBooks()
+    await sync()
+    mocks.recordActivity.mockClear()
+    edit(1, (b) => b.highlights.push(hl(14, 40, 5)))
+    edit(2, (b) => b.highlights.push(hl(23, 30, 6)))
+    const controller = new AbortController()
+    const actual = vi.mocked(domain.updateNoteCommand).getMockImplementation()!
+    vi.mocked(domain.updateNoteCommand).mockImplementationOnce(async (input) => {
+      const written = await actual(input)
+      controller.abort()
+      return written
+    })
+
+    const { result } = await sync({ signal: controller.signal })
+
+    expect(result.cancelled).toBe(true)
+    expect(mocks.recordActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringMatching(/^Readwise: 1 book, \d+ highlights?$/)
+      })
+    )
   })
 
   describe('cursor (D7)', () => {
