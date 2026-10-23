@@ -60,6 +60,7 @@ export function useRelationSearch(query: string): RelationSearchState {
   useEffect(() => {
     const trimmed = query.trim()
     if (trimmed === '') {
+      // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
       setNotes([])
       setTasks([])
       setEvents([])

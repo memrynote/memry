@@ -79,6 +79,7 @@ const QuickFileDropdownItem = ({
         }
       }}
       tabIndex={0}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="option"
       aria-selected={isHighlighted}
     >
@@ -134,9 +135,10 @@ const QuickFileDropdown = ({
   return (
     <div
       className={cn(
-        'absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-20 overflow-hidden',
+        'absolute top-full inset-x-0 mt-1 bg-background border border-border rounded-md shadow-lg z-20 overflow-hidden',
         'animate-in fade-in-0 slide-in-from-top-2 duration-[var(--duration-fast)]'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="listbox"
       aria-label={tPhaseF('phaseF.componentsQuickFileDropdown.folderSuggestions')}
     >

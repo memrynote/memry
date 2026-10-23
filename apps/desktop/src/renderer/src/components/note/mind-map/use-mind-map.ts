@@ -183,12 +183,14 @@ export function useMindMap({
   // shape as the note is now, which is the only shape those ids still fit.
   useLayoutEffect(() => {
     if (!isOpen) {
+      // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
       setMap(null)
       setExpanded(NO_EXPANSION)
       return
     }
     setMap(build())
     // `editorRevision` is a rebuild trigger, not a value this reads.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [isOpen, build, editorRevision])
 
   const refresh = useCallback(() => {

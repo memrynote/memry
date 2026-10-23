@@ -101,6 +101,7 @@ export function CalendarPane({ p, locale }: { p: Translate; locale: string }): R
       <div className="flex border-b border-border ps-10">
         {DAYS.map((day, index) => (
           <span
+            // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
             key={index}
             className={cn(
               'flex h-[30px] grow basis-0 items-center justify-center gap-[5px]',
@@ -129,6 +130,7 @@ export function CalendarPane({ p, locale }: { p: Translate; locale: string }): R
         </span>
         {DAYS.map((_, index) => (
           <span
+            // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
             key={index}
             className={cn(
               'flex grow basis-0 flex-col gap-0.5 px-[3px] py-1',
@@ -143,6 +145,7 @@ export function CalendarPane({ p, locale }: { p: Translate; locale: string }): R
       <div className="relative flex h-[220px] shrink-0 overflow-hidden">
         {HOURS.map((_, index) => (
           <span
+            // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
             key={index}
             className="absolute inset-x-0 border-t border-border/60"
             style={{ top: 40 * (index + 1) }}
@@ -152,6 +155,7 @@ export function CalendarPane({ p, locale }: { p: Translate; locale: string }): R
         <span className="relative w-10 shrink-0 border-e border-border">
           {HOURS.map((hour, index) => (
             <span
+              // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
               key={index}
               className="absolute end-1.5 text-[9px] leading-3 text-text-tertiary"
               style={{ top: 40 * (index + 1) - 6 }}
@@ -162,6 +166,7 @@ export function CalendarPane({ p, locale }: { p: Translate; locale: string }): R
         </span>
         {DAYS.map((_, column) => (
           <span
+            // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
             key={column}
             className={cn('relative grow basis-0', column > 0 && 'border-s border-border')}
           >

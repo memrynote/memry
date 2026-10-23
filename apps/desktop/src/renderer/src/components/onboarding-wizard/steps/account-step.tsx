@@ -19,6 +19,7 @@ export function AccountStep({ state, dispatch }: StepProps): React.JSX.Element {
   const { status, wizardStep } = auth.state
   // A new account always shows its recovery phrase before it is authenticated.
   const createdAccount = useRef(false)
+  // oxlint-disable-next-line react/refs -- idempotent latch of a flag derived from this render's auth step; never reset
   if (wizardStep === 'recovery-display') createdAccount.current = true
   // Already signed in on arrival (an empty account starting a vault): nothing to decide.
   const signedInHere = useRef(status !== 'authenticated')
@@ -56,6 +57,7 @@ export function AccountStep({ state, dispatch }: StepProps): React.JSX.Element {
           : 'max-w-[420px]'
       )}
     >
+      {/* oxlint-disable-next-line react/refs -- set in an effect right before a dispatch that re-renders; display only */}
       {rerouted.current && status !== 'authenticated' && (
         <p className="pb-5 text-center text-[13px] leading-[19px] text-text-secondary">
           {t('onboardingWizard.account.existingAccount', { device })}

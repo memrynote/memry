@@ -116,6 +116,7 @@ export function MultiselectEditor({
               }}
             />
             <input
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
               autoFocus
               type="text"
               aria-label={t('properties.optionName')}

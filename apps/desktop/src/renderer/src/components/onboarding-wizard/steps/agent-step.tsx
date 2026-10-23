@@ -142,6 +142,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
               >
                 <button
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
                   role="radio"
                   aria-checked={selected}
                   data-wizard-option

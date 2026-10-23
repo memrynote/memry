@@ -291,9 +291,11 @@ export function TimeSeriesChart({
   return (
     <div ref={containerRef} dir="ltr" className="relative w-full" style={{ height }}>
       {width > 0 ? (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- pointer-only chart interaction; keyboard access exists via the data table/controls; handler only stops propagation or handles pointer for an enclosing widget; keyboard path is on the child control
         <svg
           width={width}
           height={height}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="img"
           aria-label={ariaLabel}
           className={openable ? 'cursor-pointer' : undefined}

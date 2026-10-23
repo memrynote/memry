@@ -152,6 +152,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
       <button
         key={meta.id}
         type="button"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="checkbox"
         aria-checked={!!choice}
         data-wizard-option
@@ -208,6 +209,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
                 <button
                   key={vault.path}
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
                   role="checkbox"
                   aria-checked={isChosen(`obsidian:${vault.path}`)}
                   data-wizard-option

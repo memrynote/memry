@@ -14,6 +14,7 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) 
         <iframe
           src={getYouTubeEmbedUrl(videoId)}
           className="size-full"
+          // oxlint-disable-next-line react/iframe-missing-sandbox -- YouTube player needs allow-scripts with allow-same-origin to run; origin is the fixed youtube embed host
           sandbox="allow-scripts allow-same-origin allow-presentation"
           allow="autoplay; encrypted-media"
           title={title || 'YouTube video'}

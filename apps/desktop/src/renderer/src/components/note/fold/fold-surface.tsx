@@ -164,6 +164,7 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
   return (
     <div ref={rootRef} className="relative flex min-h-0 flex-col" data-fold-level={level}>
       {surfaces.overlay && view && level !== 'full' && (
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- handler only stops propagation or handles pointer for an enclosing widget; keyboard path is on the child control
         <section
           ref={overlayRef}
           tabIndex={-1}

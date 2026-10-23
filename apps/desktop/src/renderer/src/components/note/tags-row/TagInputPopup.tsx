@@ -195,6 +195,7 @@ export function TagInputPopup({
           )}
 
           {fieldRows.length > 0 && (
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             <div className="flex flex-col gap-0.5 px-1 pb-1" role="listbox">
               {fieldRows.map((row, index) => (
                 <FieldTagRow
@@ -310,6 +311,7 @@ function FieldTagRow({
   return (
     <button
       type="button"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="option"
       aria-selected={active}
       onClick={onPick}

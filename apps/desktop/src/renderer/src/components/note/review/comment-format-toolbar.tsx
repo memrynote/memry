@@ -96,6 +96,7 @@ export function CommentFormatButtons({ editor }: { editor: Editor }): React.JSX.
   const { t } = useT('notes')
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer handler only stops propagation/handles pointer; keyboard path exists on a child control
     <div
       className="critic-comment-format-row"
       // The bubble sits outside the contenteditable, so a plain mousedown moves
@@ -138,6 +139,7 @@ export function CommentFormatToolbar({
   // The plugin captures `shouldShow` once, so the live value has to come
   // through a ref rather than the closure.
   const suppressedRef = useRef(suppressed)
+  // oxlint-disable-next-line react/refs -- latest-value ref: the editor plugin captures shouldShow once and reads it later
   suppressedRef.current = suppressed
 
   const elementRef = useRef<HTMLDivElement | null>(null)

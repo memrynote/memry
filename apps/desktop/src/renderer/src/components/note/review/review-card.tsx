@@ -209,6 +209,7 @@ function CommentBody({ mark }: { mark: CriticMarkupMark }): React.JSX.Element | 
   return (
     <p className="critic-review-body critic-review-text-collapsible">
       {parts.map((part, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
         <FormattedCommentPart key={`part-${index}`} marks={part.marks}>
           {part.kind === 'mention' ? (
             <CommentMentionLink mention={part.mention} />

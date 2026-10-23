@@ -208,6 +208,7 @@ export const InfoSection = memo(function InfoSection({
                     }
                     onDelete={property.isCustom ? handleDeleteProperty(property.id) : undefined}
                     disabled={disabled}
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
                     autoFocus={property.id === newlyAddedPropertyId}
                     isSortable={isSortable}
                     renderAction={

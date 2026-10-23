@@ -53,6 +53,7 @@ export function QuickCaptureInput({
     textarea.style.height = 'auto'
     const scrollHeight = Math.min(textarea.scrollHeight, MAX_TEXTAREA_HEIGHT)
     textarea.style.height = `${scrollHeight}px`
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [value, textareaRef])
 
   const handleKeyDown = useCallback(

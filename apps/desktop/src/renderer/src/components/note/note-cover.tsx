@@ -232,6 +232,7 @@ export const NoteCover = memo(function NoteCover({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer handler only stops propagation/handles pointer; keyboard path exists on a child control
     <div
       ref={bandRef}
       className={cn(
@@ -242,6 +243,7 @@ export const NoteCover = memo(function NoteCover({
       data-testid="note-cover"
       data-cover-kind={showWash ? 'wash' : 'image'}
       data-repositioning={isRepositioning || undefined}
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable region needed for keyboard scrolling/interaction
       tabIndex={isRepositioning ? 0 : undefined}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -327,6 +329,7 @@ export const NoteCover = memo(function NoteCover({
 
       {isRepositioning && (
         <div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="separator"
           aria-orientation="horizontal"
           aria-label={t('cover.resize')}
