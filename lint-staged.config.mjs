@@ -16,7 +16,7 @@ export default {
   '*.{ts,tsx,js,jsx,mjs,cjs,json,md,mdx,yml,yaml,css,html}': (files) => {
     const formatFiles = withoutGeneratedLockfiles(files)
     return formatFiles.length
-      ? `pnpm exec prettier --write --ignore-unknown ${quoteAll(formatFiles)}`
+      ? `pnpm exec oxfmt --no-error-on-unmatched-pattern ${quoteAll(formatFiles)}`
       : []
   }
 }

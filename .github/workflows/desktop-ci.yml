@@ -119,6 +119,9 @@ jobs:
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Test macOS update-manifest validator
         run: node --test scripts/validate-mac-update-manifest.test.mjs
 

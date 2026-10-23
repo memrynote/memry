@@ -15,7 +15,6 @@
     "url": "git+https://github.com/memrynote/memry.git"
   },
   "scripts": {
-    "format": "prettier --write .",
     "repair:links": "node ../../scripts/repair-package-links.js apps/desktop",
     "prelint": "pnpm repair:links",
     "lint": "node ../../scripts/lint-ratchet.mjs",
@@ -286,7 +285,6 @@
     "pako": "^2.1.0",
     "pdfjs-dist": "5.4.296",
     "postcss": "^8.5.15",
-    "prettier": "^3.9.6",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
     "react-complex-tree": "^2.6.1",

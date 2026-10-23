@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { format, resolveConfig } from 'prettier'
+import { format } from 'oxfmt'
 import { z } from 'zod'
 
 import { desktopArgsItemSchemas } from '@memry/contracts/agent-desktop-api-args'
@@ -458,10 +458,19 @@ export function nextAppVersion(explicit: string | undefined, committed: string |
   return committed.endsWith('+main') ? committed : `${committed}+main`
 }
 
-/** lint-staged runs prettier on both files, so the generator writes what prettier would. */
+/**
+ * lint-staged runs oxfmt on both files, so the generator writes what oxfmt would. The options
+ * repeat the root .oxfmtrc.jsonc, which the Node API does not read.
+ */
 async function formatLikeCommit(file: string, content: string): Promise<string> {
-  const options = await resolveConfig(file)
-  return format(content, { ...options, filepath: file })
+  const { code, errors } = await format(file, content, {
+    singleQuote: true,
+    semi: false,
+    printWidth: 100,
+    trailingComma: 'none'
+  })
+  if (errors.length > 0) throw new Error(`oxfmt failed on ${file}: ${errors[0].message}`)
+  return code
 }
 
 export async function renderReference(appVersion: string, examples = readExamples()) {
