@@ -1645,6 +1645,14 @@
         "connect": "Connect",
         "connecting": "Connecting…",
         "connectFailed": "Could not connect to Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise syncs on {device}.",
+          "syncsOnAnother": "Readwise syncs on another device.",
+          "explain": "Only one device pulls from Readwise, so the same highlight is never written twice. To pull from this device instead, paste your token again: it never travels between devices. The other device stops at its next book, and every note stays.",
+          "button": "Sync on this device instead",
+          "working": "Moving Readwise here…",
+          "failed": "Could not move Readwise to this device"
+        },
         "groups": {
           "location": "Where notes go",
           "categories": "What to bring in",

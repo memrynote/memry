@@ -31,6 +31,14 @@ describe('SyncedSettingsSchema', () => {
       expect(SyncedSettingsSchema.parse({ readwise }).readwise).toEqual(readwise)
     })
 
+    it('keeps the claim and a cleared claim, which is an explicit null (§13.4)', () => {
+      const claim = { syncDeviceId: 'device-a', syncDeviceName: 'Desk Mac' }
+      expect(SyncedSettingsSchema.parse({ readwise: claim }).readwise).toEqual(claim)
+      const cleared = { syncDeviceId: null, syncDeviceName: null }
+      expect(SyncedSettingsSchema.parse({ readwise: cleared }).readwise).toEqual(cleared)
+      expect(SyncedSettingsSchema.safeParse({ readwise: { syncDeviceId: 7 } }).success).toBe(false)
+    })
+
     it('keeps a layout and cadence value only a newer build knows', () => {
       const parsed = SyncedSettingsSchema.parse({
         readwise: { folderLayout: 'by-year', cadence: 'weekly' }

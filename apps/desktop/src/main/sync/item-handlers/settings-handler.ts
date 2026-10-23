@@ -35,6 +35,7 @@ import {
   SIDEBAR_SHOW_FILES_SETTINGS_KEY
 } from '../../settings/sidebar-tree-view-store'
 import { createLogger } from '../../lib/logger'
+import { releaseTokenIfClaimedElsewhere } from '../../readwise/release'
 import { applyMergedReadwiseSettings } from '../../readwise/settings'
 import { applyMergedCalendarSettings } from '../../calendar/calendar-settings-sync'
 import { applyTraySetting } from '../../tray'
@@ -157,6 +158,10 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
   if (merged.readwise) {
     try {
       applyMergedReadwiseSettings(getDatabase(), merged.readwise)
+      // Another device took Readwise over: this one gives up its token (D8).
+      void releaseTokenIfClaimedElsewhere().catch((err) =>
+        log.warn('Failed to release the Readwise token after a takeover:', err)
+      )
     } catch (err) {
       log.warn('Failed to propagate merged readwise settings:', err)
     }

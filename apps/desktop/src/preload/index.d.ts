@@ -73,6 +73,7 @@ import type {
   ReadwiseDeletedBook,
   ReadwiseRestoreBookInput,
   ReadwiseSetOptionsInput,
+  ReadwiseTakeOverInput,
   ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
@@ -2083,6 +2084,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
       refreshBook: (input: ReadwiseBookCommandInput) => Promise<{ success: true }>
       listDeleted: () => Promise<{ books: ReadwiseDeletedBook[] }>
       restoreBook: (input: ReadwiseRestoreBookInput) => Promise<{ success: true }>
+      takeOver: (input: ReadwiseTakeOverInput) => Promise<ReadwiseStatusResult>
     }
   }
   updater: {

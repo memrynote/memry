@@ -23,6 +23,7 @@ import {
   type ReadwiseDeletedBook,
   type ReadwiseRestoreBookInput,
   type ReadwiseSetOptionsInput,
+  type ReadwiseTakeOverInput,
   type ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import { invoke, subscribe } from '../lib/ipc'
@@ -71,7 +72,9 @@ export const importApi = {
     listDeleted: (): Promise<{ books: ReadwiseDeletedBook[] }> =>
       invoke<{ books: ReadwiseDeletedBook[] }>(ReadwiseImportChannels.invoke.LIST_DELETED),
     restoreBook: (input: ReadwiseRestoreBookInput): Promise<{ success: true }> =>
-      invoke<{ success: true }>(ReadwiseImportChannels.invoke.RESTORE_BOOK, input)
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.RESTORE_BOOK, input),
+    takeOver: (input: ReadwiseTakeOverInput): Promise<ReadwiseStatusResult> =>
+      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.TAKE_OVER, input)
   }
 }
 

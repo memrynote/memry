@@ -90,9 +90,31 @@ Changing the folder or the layout affects new books only. A note never moves aft
 
 These choices sync to your other devices, so a device that takes over keeps them. The token does not: you paste it again on that device.
 
+## Use Readwise on more than one device
+
+Readwise notes are ordinary notes, so they sync to your other devices like any note. If two devices also pulled from Readwise, they could both write the same new highlight within seconds of each other. A device that opens in the morning could also read Readwise before sync has delivered the notes the other device wrote, and create a second note for every new book. So only one device pulls from Readwise at a time. The others receive the notes through sync.
+
+- **Memry sync on.** The device where you connect Readwise becomes the one that pulls. Its name is saved with your synced settings. If another device already pulls, connecting is not offered there. Use **Sync on this device instead** (below).
+- **Memry sync off.** There is no other device to race, so this device pulls and nothing is claimed.
+- **Waiting for sync.** After Memry starts, the pulling device waits until sync has finished one pull before it reads Readwise. It then sees the notes and edits your other devices made, and it never creates a note that already exists.
+
+### Move Readwise to another device
+
+On a device that does not pull, the Readwise panel says **Readwise syncs on Desk Mac**, with the name of the pulling device, and offers **Sync on this device instead**.
+
+1. Paste your access token again. The token never travels between devices, so each device needs its own copy.
+2. Click **Sync on this device instead**. Memry waits until your other devices can see the change, then finishes. Memry sync must be on and caught up for this.
+3. The device that pulled before stops at its next book, deletes its copy of the token, and shows that Readwise now syncs elsewhere. Its notes stay.
+
+The first run on the new device reads your whole Readwise library once. It recognizes the notes that already exist by their `readwise_url` property, so it does not create them again. A section you have not edited comes out identical, so nothing is written to it. In a section you edited, only highlights newer than the last one in the note are added.
+
+::: warning A deleted note can come back once
+Memry remembers that you deleted a book's note on the device that pulled. That memory stays on that device. After you move Readwise, the new device does not know, so it brings that book back once. Delete the note again and it stays deleted.
+:::
+
 ## Disconnect
 
-Click **Disconnect** in the dialog. Memry deletes the token from this device and forgets where the last sync stopped. Every note stays, and there is no option to remove them. To connect again, paste a token.
+Click **Disconnect** in the dialog. Memry deletes the token from this device and forgets where the last sync stopped. Every note stays, and there is no option to remove them. If this device was the one that pulled, Readwise is free again, and the next device you connect becomes the new one. To connect again, paste a token.
 
 ## The row in Settings → Import
 

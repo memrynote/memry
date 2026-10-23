@@ -316,6 +316,18 @@ export class SyncQueueManager {
     return result?.count ?? 0
   }
 
+  /** True while a record row for this item waits to be pushed. */
+  hasPendingItem(itemId: string): boolean {
+    return (
+      this.db
+        .select({ id: syncQueue.id })
+        .from(syncQueue)
+        .where(and(isRecordRow, eq(syncQueue.itemId, itemId)))
+        .limit(1)
+        .get() !== undefined
+    )
+  }
+
   getRawPendingCount(): number {
     const result = this.db.get<{ cnt: number }>(
       sql`SELECT count(*) as cnt FROM sync_queue WHERE attempts < ${DEFAULT_MAX_ATTEMPTS} AND type != ${NOTE_BODY_QUEUE_TYPE}`

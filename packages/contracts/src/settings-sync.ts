@@ -187,11 +187,16 @@ export const SyncedSettingsSchema = z.object({
   // token never syncs. Values stay loose strings on purpose: a layout or
   // cadence only a newer build knows must ride along instead of failing the
   // whole settings payload, and readers fall back to the default. `catchall`
-  // keeps fields a newer build adds (`syncDeviceId`, ...). A build older than
-  // this strips the group on parse but echoes its clocks, so the merge keeps
-  // the value (§6.9.0 of docs/protocol/06).
+  // keeps fields a newer build adds. A build older than this strips the group
+  // on parse but echoes its clocks, so the merge keeps the value (§6.9.0 of
+  // docs/protocol/06). `syncDeviceId` names the one device that pulls from
+  // Readwise (D8) and `syncDeviceName` is its label for the other devices'
+  // panels. Both clear with an explicit `null`, never by removing the key
+  // (§13.4).
   readwise: z
     .object({
+      syncDeviceId: z.string().nullable().optional(),
+      syncDeviceName: z.string().nullable().optional(),
       rootFolder: z.string().optional(),
       folderLayout: z.string().optional(),
       categories: z

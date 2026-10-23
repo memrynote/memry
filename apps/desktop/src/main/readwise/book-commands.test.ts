@@ -6,6 +6,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  markSyncEligible,
+  markSyncIneligible,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
+import { insertThisDevice } from '@tests/utils/sync-device'
 import * as Y from 'yjs'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { planNote, readSection, type NotePlan } from '@memry/importers/readwise'
@@ -74,6 +80,7 @@ describe('Readwise book commands (D16)', () => {
   let readwise: ReadwiseStub
 
   beforeEach(async () => {
+    markSyncIneligible()
     vault = createTestVault('readwise-commands')
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
@@ -113,6 +120,7 @@ describe('Readwise book commands (D16)', () => {
   })
 
   afterEach(async () => {
+    resetSyncDecision()
     await stopProjectionRuntime()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
@@ -313,6 +321,8 @@ describe('Readwise book commands (D16)', () => {
       const noteId = await synced(source)
       links.markLinkState(db(), { readwiseBookId: 1 }, 'note-deleted')
       settings.setSetting(db(), 'readwise', JSON.stringify({ syncDeviceId: 'other-device' }))
+      insertThisDevice(db())
+      markSyncEligible()
       const before = readwise.requests.length
 
       await expect(commands.reimportBook(noteId)).rejects.toThrow(/another device/)

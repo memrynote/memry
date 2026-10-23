@@ -1,10 +1,14 @@
 import { isDeletedBookPlan, planNote, type PlanNoteOptions } from '@memry/importers/readwise'
 import { READWISE_CATEGORIES, type ReadwiseCategory } from '@memry/contracts/import-channels'
-import { getDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import { recordActivity } from '../vault/activity-log'
 import { createLogger } from '../lib/logger'
-import { exportBooks, exportPages, ReadwiseError, sleep, type ReadwiseBook } from './client'
+import { exportBooks, exportPages, ReadwiseError, type ReadwiseBook } from './client'
+import { awaitPullAuthority, claimLostToAnotherDevice } from './pull-gate'
+import { releaseTokenIfClaimedElsewhere } from './release'
+import { waitForVaultIndexBuild } from '../sync/vault-index-ready'
 import { markLinkState } from './links-repository'
+import { rebuildLinks } from './rebuild-links'
 import { upsertReadwiseNote, type UpsertOutcome } from './note-writer'
 import { readReadwiseOptions } from './settings'
 import {
@@ -123,11 +127,21 @@ export interface RunResult {
   failed: number
   /** Highlights in the books that changed, as the export reported them. */
   highlights: number
+  /** Another device took Readwise over, so this run stopped at the next book (D8). */
+  claimLost?: boolean
 }
 
 export interface SyncServiceDeps {
-  /** Resolves once memry sync is not in the middle of its launch pull (D8). */
-  waitForSync?: (signal: AbortSignal) => Promise<void>
+  /**
+   * Resolves once this device may pull (D8): sync has completed a pull since
+   * launch and the vault is indexed, so the notes other devices wrote are found
+   * by `readwise_url`. Rejects when another device pulls.
+   */
+  awaitReady?: (signal: AbortSignal) => Promise<void>
+  /** Re-read before each book: true once another device holds the claim (D8). */
+  claimLost?: () => boolean
+  /** Called when a run stopped because the claim moved. */
+  onClaimLost?: () => void
   now?: () => Date
 }
 
@@ -214,8 +228,9 @@ export class ReadwiseSyncService {
       failed: 0,
       highlights: 0
     }
+    let claimMoved = false
     try {
-      await this.deps.waitForSync?.(signal)
+      await this.deps.awaitReady?.(signal)
       const db = getDatabase()
       const startedAt = (this.deps.now ?? (() => new Date()))()
       const options = readReadwiseOptions(db)
@@ -235,7 +250,21 @@ export class ReadwiseSyncService {
         // A clock set back leaves a time in the future: read, rather than wait for it.
         startedAt.getTime() - lastFullAt >= FULL_READ_INTERVAL_MS ||
         lastFullAt > startedAt.getTime()
-      const cancelled = (): RunResult => ({ ...result, cancelled: true })
+      // The claim is re-read before each book, so a takeover stops this run at
+      // the next one (D8). The cursor stays put, and the other device's first
+      // run is a full export.
+      const stopped = (): boolean => {
+        if (signal.aborted) return true
+        if (this.deps.claimLost?.() !== true) return false
+        claimMoved = true
+        return true
+      }
+      const cancelled = (): RunResult => ({
+        ...result,
+        cancelled: true,
+        ...(claimMoved ? { claimLost: true } : {})
+      })
+      if (cursor === null) adoptExistingNotes(db)
       const needsAttention = (error: unknown): void => {
         if (error instanceof ReadwiseError && error.code === 'invalid-token') {
           setLastRun(db, { at: new Date().toISOString(), needsAttention: true })
@@ -298,11 +327,11 @@ export class ReadwiseSyncService {
       // The highlights each book brought, as the export reported them.
       const needFull: ReadwiseBook[] = []
       for (const book of retryBooks) {
-        if (signal.aborted) return cancelled()
+        if (stopped()) return cancelled()
         finish(await this.writeBook(book, planOptions, observer, false), book)
       }
       for (const book of changed) {
-        if (signal.aborted) return cancelled()
+        if (stopped()) return cancelled()
         const written = await this.writeBook(book, planOptions, observer, !full)
         if ('needsFull' in written) needFull.push(book)
         else finish(written, book)
@@ -328,7 +357,7 @@ export class ReadwiseSyncService {
           payloads.clear()
         }
         for (const fullBook of fullBooks) {
-          if (signal.aborted) return cancelled()
+          if (stopped()) return cancelled()
           const payload = payloads.get(fullBook.user_book_id)
           if (!payload) continue
           payloads.delete(fullBook.user_book_id)
@@ -359,6 +388,7 @@ export class ReadwiseSyncService {
       return result
     } finally {
       this.running = false
+      if (claimMoved) this.deps.onClaimLost?.()
       // Also for a cancelled or failed run: the notes it wrote did change.
       const changedBooks = result.added + result.updated + result.appended
       if (changedBooks > 0 && observer.logActivity !== false) {
@@ -432,28 +462,35 @@ function tally(result: RunResult, event: BookEvent, payload: ReadwiseBook): void
   }
 }
 
-let service: ReadwiseSyncService | null = null
-
-/** The process's run engine. The import dialog and (#1415) the scheduler share it, so runs never overlap. */
-export function getReadwiseSyncService(): ReadwiseSyncService {
-  service ??= new ReadwiseSyncService({ waitForSync: waitForMemrySync })
-  return service
+/**
+ * Refills the link cache from the notes' `readwise_url` before a full export
+ * (the first import, and a takeover's first run, D8). The writer also looks a
+ * book up by `readwise_url` when it has no link row, so a failure here costs
+ * only the `note-deleted` and `source-deleted` bookkeeping, never a duplicate.
+ */
+function adoptExistingNotes(db: ReturnType<typeof getDatabase>): void {
+  try {
+    rebuildLinks(db, getIndexDatabase())
+  } catch (error) {
+    log.warn('Could not rebuild the Readwise links from the notes', { error })
+  }
 }
 
-const SYNC_WAIT_POLL_MS = 500
-const SYNC_WAIT_MAX_MS = 60_000
+let service: ReadwiseSyncService | null = null
 
-/**
- * D8: notes another device just created arrive with memry sync's launch pull.
- * A run that started before them would not find the notes it should adopt.
- * Waits while that pull is in progress, up to a minute.
- */
-async function waitForMemrySync(signal: AbortSignal): Promise<void> {
-  // Lazy: the sync runtime pulls in the whole sync stack, which a Readwise run
-  // needs only for this one state read.
-  const { getSyncEngine } = await import('../sync/runtime')
-  for (let waited = 0; waited < SYNC_WAIT_MAX_MS; waited += SYNC_WAIT_POLL_MS) {
-    if (getSyncEngine()?.currentState !== 'syncing') return
-    await sleep(SYNC_WAIT_POLL_MS, signal)
-  }
+/** The process's run engine. The import dialog and (#1416) the scheduler share it, so runs never overlap. */
+export function getReadwiseSyncService(): ReadwiseSyncService {
+  service ??= new ReadwiseSyncService({
+    awaitReady: async (signal) => {
+      await awaitPullAuthority(signal)
+      await waitForVaultIndexBuild(signal)
+    },
+    claimLost: claimLostToAnotherDevice,
+    onClaimLost: () => {
+      void releaseTokenIfClaimedElsewhere().catch((error) =>
+        log.warn('Could not drop the Readwise token after a takeover', { error })
+      )
+    }
+  })
+  return service
 }

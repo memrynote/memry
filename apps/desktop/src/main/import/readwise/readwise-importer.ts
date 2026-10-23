@@ -5,10 +5,13 @@ import {
   type ImportPreviewGroup
 } from '@memry/contracts/import-channels'
 import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
+import { getDatabase } from '../../database'
 import { createLogger } from '../../lib/logger'
 import { getMainI18n } from '../../lib/main-i18n'
 import { ReadwiseError } from '../../readwise/client'
+import { readClaim } from '../../readwise/claim'
 import { describeReadwiseError } from '../../readwise/connection'
+import { ReadwisePullGateError } from '../../readwise/pull-gate'
 import { getReadwiseToken } from '../../readwise/secrets'
 import {
   countLibrary,
@@ -117,7 +120,7 @@ export const readwiseImporter: Importer = {
     let completed = 0
     try {
       ctx.setPhase('scanning')
-      await getReadwiseSyncService().run(token, {
+      const result = await getReadwiseSyncService().run(token, {
         signal: ctx.signal,
         // The runner writes the activity line for an import run.
         logActivity: false,
@@ -138,6 +141,11 @@ export const readwiseImporter: Importer = {
           ctx.reportProgress(++completed, total)
         }
       })
+      // Another device took Readwise over mid-run (D8): the dialog says so,
+      // instead of a summary that looks like a finished import.
+      if (result.claimLost) {
+        throw new ReadwisePullGateError('elsewhere', readClaim(getDatabase()).deviceName)
+      }
     } catch (error) {
       const message = describeReadwiseError(error)
       if (message === null) throw error

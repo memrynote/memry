@@ -385,7 +385,9 @@ export const ReadwiseImportChannels = {
     /** Link rows in state `note-deleted`, for the panel's Deleted books list (D16). */
     LIST_DELETED: 'import:readwise:list-deleted',
     /** Recreate the note of a deleted book (D16). */
-    RESTORE_BOOK: 'import:readwise:restore-book'
+    RESTORE_BOOK: 'import:readwise:restore-book',
+    /** Make this device the one that pulls from Readwise (D8). Asks for the token again. */
+    TAKE_OVER: 'import:readwise:take-over'
   }
 } as const
 
@@ -430,6 +432,10 @@ export const ReadwiseConnectSchema = z.object({
   token: z.string().trim().min(1)
 })
 export type ReadwiseConnectInput = z.infer<typeof ReadwiseConnectSchema>
+
+/** The token never travels between devices (D2), so a takeover takes it again. */
+export const ReadwiseTakeOverSchema = ReadwiseConnectSchema
+export type ReadwiseTakeOverInput = z.infer<typeof ReadwiseTakeOverSchema>
 
 /** A vault-relative folder path: no leading slash, no `.` or `..` segment. */
 export const ReadwiseRootFolderSchema = z

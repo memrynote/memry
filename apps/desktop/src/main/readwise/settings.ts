@@ -25,7 +25,7 @@ const log = createLogger('ReadwiseSettings')
  */
 export const READWISE_SETTINGS_KEY = 'readwise'
 
-function readStored(db: DataDb): Record<string, unknown> {
+export function readReadwiseGroup(db: DataDb): Record<string, unknown> {
   const raw = getSetting(db, READWISE_SETTINGS_KEY)
   if (raw === null) return {}
   try {
@@ -49,7 +49,7 @@ function oneOf<T extends string>(allowed: readonly T[], value: unknown, fallback
 
 /** Stored values over the defaults. A value only a newer build knows reads as the default. */
 export function readReadwiseOptions(db: DataDb): ReadwiseOptions {
-  const stored = readStored(db)
+  const stored = readReadwiseGroup(db)
   const defaults = READWISE_OPTIONS_DEFAULTS
   const storedCategories =
     typeof stored.categories === 'object' && stored.categories !== null
@@ -93,7 +93,7 @@ function flagCategoriesSwitchedOn(db: DataDb, before: ReadwiseOptions): void {
 
 /** Writes the changed fields, each under its own field clock. */
 export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInput): void {
-  const stored = readStored(db)
+  const stored = readReadwiseGroup(db)
   const next: Record<string, unknown> = { ...stored }
   const pushes: [string, unknown][] = []
 
@@ -135,7 +135,7 @@ export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInpu
  * local value, and fields this build does not model ride along.
  */
 export function applyMergedReadwiseSettings(db: DataDb, merged: Record<string, unknown>): void {
-  const stored = readStored(db)
+  const stored = readReadwiseGroup(db)
   const { categories: mergedCategories, ...rest } = merged
   const next: Record<string, unknown> = { ...stored, ...rest }
   if (typeof mergedCategories === 'object' && mergedCategories !== null) {

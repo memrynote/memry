@@ -12,7 +12,8 @@ import {
   ReadwiseConnectSchema,
   ReadwiseImportChannels,
   ReadwiseRestoreBookSchema,
-  ReadwiseSetOptionsSchema
+  ReadwiseSetOptionsSchema,
+  ReadwiseTakeOverSchema
 } from '@memry/contracts/import-channels'
 import type { ReadwiseDeletedBook, ReadwiseStatusResult } from '@memry/contracts/import-channels'
 import { registerCommand } from './lib/register-command'
@@ -21,7 +22,9 @@ import {
   connectReadwise,
   disconnectReadwise,
   getReadwiseStatus,
-  syncReadwiseNow
+  syncReadwiseNow,
+  takeOverReadwise,
+  withUserMessage
 } from '../readwise/connection'
 import {
   listDeletedBooks,
@@ -42,7 +45,7 @@ export function registerReadwiseImportHandlers(): void {
   registerCommand(
     ReadwiseImportChannels.invoke.CONNECT,
     ReadwiseConnectSchema,
-    (input): Promise<ReadwiseStatusResult> => connectReadwise(input.token),
+    (input): Promise<ReadwiseStatusResult> => withUserMessage(connectReadwise(input.token)),
     'errors:importer.readwiseConnectFailed'
   )
 
@@ -112,6 +115,13 @@ export function registerReadwiseImportHandlers(): void {
     },
     'errors:importer.readwiseBookCommandFailed'
   )
+
+  registerCommand(
+    ReadwiseImportChannels.invoke.TAKE_OVER,
+    ReadwiseTakeOverSchema,
+    (input): Promise<ReadwiseStatusResult> => withUserMessage(takeOverReadwise(input.token)),
+    'errors:importer.readwiseTakeOverFailed'
+  )
 }
 
 export function unregisterReadwiseImportHandlers(): void {
@@ -124,4 +134,5 @@ export function unregisterReadwiseImportHandlers(): void {
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.REFRESH_BOOK)
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.LIST_DELETED)
   ipcMain.removeHandler(ReadwiseImportChannels.invoke.RESTORE_BOOK)
+  ipcMain.removeHandler(ReadwiseImportChannels.invoke.TAKE_OVER)
 }
