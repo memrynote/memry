@@ -81,7 +81,6 @@ import {
   getTaskCounts,
   formatTaskSubtitle,
   // Today & Upcoming View Helpers (T086)
-  formatDateKey,
   getDayHeaderText,
   // Completed Tasks & Archive (T087)
   getCompletedTasks,
