@@ -135,6 +135,7 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
+import type { FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -725,6 +726,14 @@ export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
   detectSources: () => Promise<OnboardingSources>
   isMemryVault: (path: string) => Promise<boolean>
+}
+
+export interface NoteFoldClientAPI {
+  get(noteId: string): Promise<FoldLayers>
+  /** No noteId retries the last failed note; null when there is nothing to retry. */
+  retry(noteId?: string): Promise<FoldLayers | null>
+  getLastRun(): Promise<FoldLastRun>
+  onUpdated(callback: (event: { noteId: string }) => void): () => void
 }
 
 export interface OcrLanguagesClientAPI {
@@ -2047,6 +2056,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   customIcons: CustomIconsClientAPI
   vaultLocks: VaultLocksClientAPI
   sticky: StickyClientAPI
+  noteFold: NoteFoldClientAPI
   ocrLanguages: OcrLanguagesClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI

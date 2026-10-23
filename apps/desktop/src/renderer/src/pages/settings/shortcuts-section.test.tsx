@@ -350,7 +350,7 @@ describe('ShortcutsSettings', () => {
   })
 
   describe('new note in folder', () => {
-    const chord = { key: '1', modifiers: { meta: true, alt: true } }
+    const chord = { key: '9', modifiers: { meta: true, alt: true } }
 
     function withFolderShortcuts(
       folderNoteShortcuts: Array<{ folder: string; binding: typeof chord }>
@@ -374,7 +374,7 @@ describe('ShortcutsSettings', () => {
       const row = screen.getByTestId('folder-note-shortcut-row')
       expect(within(row).getByText('Press shortcut…')).toBeInTheDocument()
 
-      fireEvent.keyDown(window, { key: '1', ctrlKey: true, altKey: true })
+      fireEvent.keyDown(window, { key: '9', ctrlKey: true, altKey: true })
 
       await waitFor(() =>
         expect(updateSettings).toHaveBeenCalledWith({
@@ -408,7 +408,7 @@ describe('ShortcutsSettings', () => {
 
       const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
       await userEvent.click(within(newNoteRow).getByTitle('Click to rebind'))
-      fireEvent.keyDown(window, { key: '1', ctrlKey: true, altKey: true })
+      fireEvent.keyDown(window, { key: '9', ctrlKey: true, altKey: true })
 
       expect(within(newNoteRow).getByText('Conflicts with: New note in Work')).toBeInTheDocument()
       expect(updateSettings).not.toHaveBeenCalled()

@@ -23,6 +23,7 @@ import {
   listOpenAiCompatibleModels,
   testOpenAiCompatibleConnection
 } from './backends/local-provider-probe'
+import { setActiveBackends } from './backends/active-registry'
 import { createAgentBackendRegistry } from './backends/registry'
 import { AgentToolBridge } from './backends/tool-bridge'
 import type { AgyCliSpawnInput, ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
@@ -298,6 +299,8 @@ export async function startAgent(): Promise<AgentHandle> {
     local: localBackend
   })
 
+  setActiveBackends(backends)
+
   const runtime = new AgentRuntime({
     conversations,
     messages,
@@ -369,6 +372,7 @@ export async function startAgent(): Promise<AgentHandle> {
   return {
     shutdown: async () => {
       unregisterAgentHandlers()
+      setActiveBackends(null)
       await runtime.killAll()
       if (vaultKey) secureCleanup(vaultKey)
     }

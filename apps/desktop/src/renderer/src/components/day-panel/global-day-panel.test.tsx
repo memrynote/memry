@@ -89,7 +89,8 @@ function renderPanelWithAISettings(aiEnabled: boolean) {
   const api = window.api as typeof window.api
   vi.mocked(api.settings.getAISettings).mockResolvedValue({
     enabled: aiEnabled,
-    imageEmbeddings: true
+    imageEmbeddings: true,
+    summarizeLongNotes: false
   })
 
   return render(

@@ -86,7 +86,8 @@ describe('shortcut-catalog', () => {
         .filter(
           (id) =>
             !corpus.includes(`useShortcutBinding('${id}')`) &&
-            !corpus.includes(`useAppCommands('${COMMANDS[id].owner}'`)
+            !corpus.includes(`useAppCommands('${COMMANDS[id].owner}'`) &&
+            !corpus.includes(`useTabCommands('${COMMANDS[id].owner}'`)
         )
 
       expect(unowned).toEqual([])
@@ -233,7 +234,7 @@ describe('shortcut-catalog', () => {
     })
 
     describe('with folder new-note shortcuts', () => {
-      const chord: ShortcutBinding = { key: '1', modifiers: { meta: true, alt: true } }
+      const chord: ShortcutBinding = { key: '9', modifiers: { meta: true, alt: true } }
       const folderNoteShortcuts = [{ folder: 'Work', binding: chord }]
 
       it('flags a command that takes the chord of a folder shortcut', () => {

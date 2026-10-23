@@ -9,6 +9,7 @@ import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
 import { AgentProvidersSection } from './agent-providers-section'
+import { SummarizeLongNotesRow } from './summarize-long-notes-row'
 import { AgentMcpSection } from './agent-mcp-section'
 import { CommandLineSettings } from './command-line-section'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -181,9 +182,14 @@ export function AISettings({
   focusRequestId = 0
 }: AISettingsProps = {}) {
   const { t, i18n } = useT('settings')
-  const [settings, setSettings] = useState<{ enabled: boolean; imageEmbeddings: boolean }>({
+  const [settings, setSettings] = useState<{
+    enabled: boolean
+    imageEmbeddings: boolean
+    summarizeLongNotes: boolean
+  }>({
     enabled: false,
-    imageEmbeddings: true
+    imageEmbeddings: true,
+    summarizeLongNotes: false
   })
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
   const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>(
@@ -532,6 +538,14 @@ export function AISettings({
             className={ACCENT_SWITCH}
           />
         </SettingRow>
+        {settings.enabled && (
+          <SummarizeLongNotesRow
+            checked={settings.summarizeLongNotes}
+            onSaved={(summarizeLongNotes) =>
+              setSettings((prev) => ({ ...prev, summarizeLongNotes }))
+            }
+          />
+        )}
         {settings.enabled && (
           <SettingRow
             label={t('ai.imageSearch.label')}

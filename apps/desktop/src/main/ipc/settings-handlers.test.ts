@@ -334,7 +334,11 @@ describe('settings-handlers', () => {
     expect(getResult).toBeNull()
 
     const aiResult = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-    expect(aiResult).toEqual({ enabled: true, imageEmbeddings: true })
+    expect(aiResult).toEqual({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: false
+    })
   })
 
   it('gets and sets journal settings', async () => {
@@ -550,7 +554,11 @@ describe('settings-handlers', () => {
     registerSettingsHandlers()
     ;(settingsQueries.getSetting as Mock).mockReturnValue('false')
     const aiSettings = await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-    expect(aiSettings).toEqual({ enabled: false, imageEmbeddings: false })
+    expect(aiSettings).toEqual({
+      enabled: false,
+      imageEmbeddings: false,
+      summarizeLongNotes: false
+    })
 
     const setAi = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
     expect(setAi).toEqual({ success: true })
@@ -569,6 +577,25 @@ describe('settings-handlers', () => {
     expect(result).toEqual({ success: true })
     expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'ai.imageEmbeddings', 'false')
     expect(settingsQueries.setSetting).not.toHaveBeenCalledWith({}, 'ai.enabled', expect.anything())
+  })
+
+  it('stores summarize long notes under its own key and reads it only when exactly true', async () => {
+    registerSettingsHandlers()
+    const result = await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, {
+      summarizeLongNotes: true
+    })
+    expect(result).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'ai.summarizeLongNotes', 'true')
+    expect(settingsQueries.setSetting).not.toHaveBeenCalledWith({}, 'ai.enabled', expect.anything())
+
+    ;(settingsQueries.getSetting as Mock).mockReturnValue('true')
+    expect(await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)).toMatchObject({
+      summarizeLongNotes: true
+    })
+    ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+    expect(await invokeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)).toMatchObject({
+      summarizeLongNotes: false
+    })
   })
 
   it('gets and sets voice transcription settings', async () => {

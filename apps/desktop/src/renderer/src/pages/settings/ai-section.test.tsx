@@ -124,10 +124,30 @@ describe('AISettings', () => {
     render(<AISettings />)
     await waitFor(() => expect(screen.getByText('Search images by content')).toBeInTheDocument())
 
-    await userEvent.click(screen.getAllByRole('switch')[1])
+    await userEvent.click(screen.getAllByRole('switch')[2])
 
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ imageEmbeddings: false })
     expect(toast.success).toHaveBeenCalledWith('Image search disabled')
+  })
+
+  it('shows Summarize long notes only while AI is on and saves it on its own', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
+    const { unmount } = render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('Enable AI Features')).toBeInTheDocument())
+    expect(screen.queryByText('Summarize long notes')).not.toBeInTheDocument()
+    unmount()
+
+    api.settings.getAISettings = vi
+      .fn()
+      .mockResolvedValue({ enabled: true, imageEmbeddings: true, summarizeLongNotes: false })
+    render(<AISettings />)
+    const toggle = await screen.findByRole('switch', { name: 'Summarize long notes' })
+    expect(toggle).not.toBeChecked()
+
+    await userEvent.click(toggle)
+
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ summarizeLongNotes: true })
+    expect(toggle).toBeChecked()
   })
 
   it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {

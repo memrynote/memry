@@ -172,6 +172,8 @@ import {
   useWritingTools
 } from '@/components/note/writing-tools'
 import { useWordCountVisible } from '@/hooks/use-word-count-visible'
+import { FoldSurface } from '@/components/note/fold/fold-surface'
+import { useNoteFold } from '@/components/note/fold/use-note-fold'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 import { useT } from '@memry/i18n/renderer'
@@ -940,6 +942,13 @@ export function NotePage({ noteId }: NotePageProps) {
   )
   const agentReview = useAgentBodyReview(agentReviewTarget)
 
+  // Folding: a read-only level view over the editor (see components/note/fold/).
+  // A locked note, a large file, and an agent edit under review never fold.
+  const fold = useNoteFold(
+    isLargeFile || isLocked || agentReview ? null : noteId,
+    note?.wordCount ?? 0
+  )
+
   // Mind map. `onEditorReady` is composed rather than replaced so the map reads
   // the live block tree off the editor that stays mounted behind it, with no
   // new prop on the content area.
@@ -1546,6 +1555,7 @@ export function NotePage({ noteId }: NotePageProps) {
           wordCountVisible={wordCountVisible}
           wordCount={writingSnapshot.wordCount}
           onToggleWordCount={toggleWordCount}
+          fold={fold.control}
           disabled={isDeleted || Boolean(agentReview)}
         />
       )}
@@ -2034,62 +2044,64 @@ export function NotePage({ noteId }: NotePageProps) {
               {/* Hidden, never unmounted, while an agent edit is under review:
                 the editor keeps its Y.Doc binding and undo history, and comes
                 back exactly as it was once the review is settled. */}
-              <div
-                className={cn(agentReview && 'hidden')}
-                inert={Boolean(agentReview) || undefined}
-              >
-                {/* `externalUpdateCount` is deliberately NOT part of the key: an
+              <FoldSurface fold={fold}>
+                <div
+                  className={cn(agentReview && 'hidden')}
+                  inert={Boolean(agentReview) || undefined}
+                >
+                  {/* `externalUpdateCount` is deliberately NOT part of the key: an
                 update that did not originate here is handed to the live editor
                 via `externalContentRevision` instead of destroying and
                 rebuilding the editor for every remote change. `noteId` stays —
                 a different note in this tab is a genuinely different document. */}
-                <ContentArea
-                  key={noteId}
-                  noteId={noteId}
-                  editable={!isLocked}
-                  notePath={note.path}
-                  initialContent={review.editorInitialContent}
-                  contentType="markdown"
-                  externalContentRevision={externalUpdateCount}
-                  placeholder={t('editor.content.placeholder')}
-                  stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-                  onStickyToolbarChange={(sticky) =>
-                    void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
-                  }
-                  spellCheck={editorSettings.spellCheck}
-                  onContentChange={handleContentChange}
-                  onMarkdownChange={handleMarkdownChange}
-                  onHeadingsChange={handleHeadingsChange}
-                  onLinkClick={handleLinkClick}
-                  onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
-                  initialHighlight={initialHighlight}
-                  initialAnchorId={initialAnchorId}
-                  noteTags={note.tags}
-                  onInlineTagsChange={handleInlineTagsChange}
-                  tagColorMap={tagColorMap}
-                  tagIconMap={tagIconMap}
-                  focusAtEndRef={focusAtEndRef}
-                  openTemplateInsertRef={openTemplateInsertRef}
-                  marqueeZoneEl={marqueeZoneEl}
-                  writingTools={writingTools}
-                  review={{
-                    plainMarkdown: review.plainMarkdown,
-                    marks: review.marks,
-                    hoveredMarkId: review.hoveredMarkId,
-                    onEditorReady: handleEditorReadyWithAttachments,
-                    onAddComment: review.openCommentComposer,
-                    getMarkdownSourceOffsetForEditorOffset:
-                      review.getMarkdownSourceOffsetForEditorOffset,
-                    getEditorOffsetForMarkdownSourceOffset:
-                      review.getEditorOffsetForMarkdownSourceOffset,
-                    onPersistCurrentMarkdown: review.persistCurrentMarkdown,
-                    onPlainMarkdownChange: review.handlePlainMarkdownChange,
-                    onHoveredMarkChange: review.setHoveredMarkId,
-                    onMarkPositionsChange: review.setMarkPositions,
-                    onReplaceMarksFromYjs: review.replaceMarksFromYjs
-                  }}
-                />
-              </div>
+                  <ContentArea
+                    key={noteId}
+                    noteId={noteId}
+                    editable={!isLocked}
+                    notePath={note.path}
+                    initialContent={review.editorInitialContent}
+                    contentType="markdown"
+                    externalContentRevision={externalUpdateCount}
+                    placeholder={t('editor.content.placeholder')}
+                    stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                    onStickyToolbarChange={(sticky) =>
+                      void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
+                    }
+                    spellCheck={editorSettings.spellCheck}
+                    onContentChange={handleContentChange}
+                    onMarkdownChange={handleMarkdownChange}
+                    onHeadingsChange={handleHeadingsChange}
+                    onLinkClick={handleLinkClick}
+                    onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
+                    initialHighlight={initialHighlight}
+                    initialAnchorId={initialAnchorId}
+                    noteTags={note.tags}
+                    onInlineTagsChange={handleInlineTagsChange}
+                    tagColorMap={tagColorMap}
+                    tagIconMap={tagIconMap}
+                    focusAtEndRef={focusAtEndRef}
+                    openTemplateInsertRef={openTemplateInsertRef}
+                    marqueeZoneEl={marqueeZoneEl}
+                    writingTools={writingTools}
+                    review={{
+                      plainMarkdown: review.plainMarkdown,
+                      marks: review.marks,
+                      hoveredMarkId: review.hoveredMarkId,
+                      onEditorReady: handleEditorReadyWithAttachments,
+                      onAddComment: review.openCommentComposer,
+                      getMarkdownSourceOffsetForEditorOffset:
+                        review.getMarkdownSourceOffsetForEditorOffset,
+                      getEditorOffsetForMarkdownSourceOffset:
+                        review.getEditorOffsetForMarkdownSourceOffset,
+                      onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                      onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                      onHoveredMarkChange: review.setHoveredMarkId,
+                      onMarkPositionsChange: review.setMarkPositions,
+                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                    }}
+                  />
+                </div>
+              </FoldSurface>
             </EditorErrorBoundary>
           )}
           {agentReview ? null : (

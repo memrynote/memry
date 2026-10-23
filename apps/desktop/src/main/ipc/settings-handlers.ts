@@ -201,6 +201,7 @@ const SETTINGS_KEYS = {
   JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
   JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
   AI_ENABLED: 'ai.enabled',
+  AI_SUMMARIZE_LONG_NOTES: 'ai.summarizeLongNotes',
   // Tab settings
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton',
@@ -232,6 +233,8 @@ export interface JournalSettings {
 export interface AISettings {
   enabled: boolean
   imageEmbeddings: boolean
+  /** Local, off by default. Read by the note-fold service via `ai.summarizeLongNotes`. */
+  summarizeLongNotes: boolean
 }
 
 export interface AIModelStatus {
@@ -246,7 +249,8 @@ export interface AIModelStatus {
 /** Default AI settings values */
 const DEFAULT_AI_SETTINGS: AISettings = {
   enabled: true,
-  imageEmbeddings: true
+  imageEmbeddings: true,
+  summarizeLongNotes: false
 }
 
 export interface VoiceTranscriptionOpenAIKeyStatus {
@@ -891,7 +895,8 @@ export function registerSettingsHandlers(): void {
 
     return {
       enabled: enabledStr !== 'false', // Default to true
-      imageEmbeddings: getSetting(db, IMAGE_EMBEDDING_SETTING_KEY) !== 'false'
+      imageEmbeddings: getSetting(db, IMAGE_EMBEDDING_SETTING_KEY) !== 'false',
+      summarizeLongNotes: getSetting(db, SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES) === 'true'
     }
   })
 
@@ -915,6 +920,14 @@ export function registerSettingsHandlers(): void {
 
       if (settings.imageEmbeddings !== undefined) {
         setSetting(db, IMAGE_EMBEDDING_SETTING_KEY, settings.imageEmbeddings ? 'true' : 'false')
+      }
+
+      if (settings.summarizeLongNotes !== undefined) {
+        setSetting(
+          db,
+          SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES,
+          settings.summarizeLongNotes ? 'true' : 'false'
+        )
       }
 
       // Emit settings changed event

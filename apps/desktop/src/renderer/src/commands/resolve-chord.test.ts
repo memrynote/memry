@@ -65,6 +65,9 @@ describe('resolveChord: which command a keystroke means', () => {
       'tabs.closeAllTabs'
     ],
     ['⌘⌥W closes the split', { key: 'w', ctrlKey: true, altKey: true }, 'tabs.closeSplit'],
+    // Option+digit types a symbol on macOS; the chord matches the physical key.
+    ['⌘⌥2 folds to Brief', { key: '2', code: 'Digit2', ctrlKey: true, altKey: true }, 'fold.brief'],
+    ['⌘⌥5 folds to Topic', { key: '5', code: 'Digit5', ctrlKey: true, altKey: true }, 'fold.topic'],
     ['Ctrl+Tab is the next tab', { key: 'Tab', ctrlKey: true }, 'tabs.nextTab'],
     [
       'Ctrl+⇧Tab is the previous tab',

@@ -53,6 +53,7 @@ import { homePagesApi, homePagesEvents } from './api/home-pages'
 import { customIconsApi, customIconsEvents } from './api/custom-icons'
 import { vaultLocksApi, vaultLocksEvents } from './api/vault-locks'
 import { stickyApi } from './api/sticky'
+import { noteFoldApi } from './api/note-fold'
 import { ocrLanguagesApi, ocrLanguagesEvents } from './api/ocr-languages'
 import { onboardingApi } from './api/onboarding'
 
@@ -168,6 +169,7 @@ export const api = {
   customIcons: customIconsApi,
   vaultLocks: vaultLocksApi,
   sticky: stickyApi,
+  noteFold: noteFoldApi,
   ocrLanguages: ocrLanguagesApi,
   onboarding: onboardingApi,
 

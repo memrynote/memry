@@ -2160,5 +2160,54 @@
   },
   "details": {
     "add": "Add details"
+  },
+  "fold": {
+    "level": {
+      "full": "Full",
+      "brief": "Brief",
+      "key": "Key",
+      "takeaway": "Takeaway",
+      "topic": "Topic"
+    },
+    "menuDescription": {
+      "full": "Every word",
+      "brief": "Key sentences, as written",
+      "key": "Each point and its reason",
+      "takeaway": "One line per paragraph",
+      "topic": "A map of the sections"
+    },
+    "chrome": {
+      "menu": "Fold level",
+      "folded": "{level} · {words}",
+      "words": "{count, plural, one {# word} other {# words}}",
+      "writing": "Writing…",
+      "writtenBy": "Written by {agent}",
+      "retry": "Last run failed · Retry",
+      "retryAction": "Retry",
+      "unknownAgent": "AI"
+    },
+    "pill": {
+      "description": {
+        "full": "Every word",
+        "brief": "The author’s key sentences",
+        "key": "Written by {agent} from your sentences",
+        "takeaway": "Written by {agent}",
+        "topic": "A map of {count, plural, one {# section} other {# sections}}"
+      },
+      "opened": "{count, plural, one {# paragraph open} other {# paragraphs open}}",
+      "escape": "esc",
+      "fullText": "Full text",
+      "aria": "Folded view"
+    },
+    "view": {
+      "aria": "Folded {level} view",
+      "paragraphOpen": "Opened to Full · click again to fold",
+      "paragraphFold": "Fold this paragraph",
+      "paragraphOpenAction": "Open this paragraph in full",
+      "unfoldSection": "Unfold the section {heading}",
+      "jumpToParagraph": "Show this paragraph in full: {topic}",
+      "untitledSection": "Untitled",
+      "evidenceTitle": "Written from these sentences"
+    }
   }
 }

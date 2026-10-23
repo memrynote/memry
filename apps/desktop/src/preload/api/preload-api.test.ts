@@ -32,6 +32,7 @@ import { tagsApi, tagEvents } from './tags'
 import { updaterApi, updaterEvents } from './updater'
 import { vaultApi, vaultEvents } from './vault'
 import { vaultActivityApi, vaultActivityEvents } from './vault-activity'
+import { noteFoldApi } from './note-fold'
 import { ocrLanguagesApi, ocrLanguagesEvents } from './ocr-languages'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from '../lib/startup-theme'
 
@@ -234,6 +235,13 @@ describe('preload api wrappers', () => {
       'vault-activity:changed',
       noPayload
     )
+  })
+
+  it('routes note fold through its IPC channels', async () => {
+    await expectInvoke(() => noteFoldApi.get('n1'), 'note-fold:get', { noteId: 'n1' })
+    await expectInvoke(() => noteFoldApi.retry(), 'note-fold:retry', { noteId: undefined })
+    await expectInvoke(() => noteFoldApi.getLastRun(), 'note-fold:last-run')
+    expectSubscribe(() => noteFoldApi.onUpdated(callback), 'note-fold:updated')
   })
 
   it('routes the OCR languages setting through its IPC channels', async () => {

@@ -48,6 +48,8 @@ export interface AISettings {
   enabled: boolean
   /** Embed images with the vision encoder so text queries find them. Default on. */
   imageEmbeddings: boolean
+  /** Fold long notes into summary levels. Local, default off. */
+  summarizeLongNotes: boolean
 }
 
 export interface AIModelStatus {

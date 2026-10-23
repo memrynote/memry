@@ -9,6 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import {
+  FoldLevelControl,
+  type FoldLevelControlProps
+} from '@/components/note/fold/fold-level-control'
 import { PenLine } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { WritingRailMode } from './writing-tools-session'
@@ -23,6 +27,8 @@ interface WritingChromeProps {
   wordCountVisible: boolean
   wordCount: number
   onToggleWordCount: () => void
+  /** Present while the note is long enough to fold: the level menu replaces the plain count. */
+  fold?: FoldLevelControlProps
   disabled?: boolean
 }
 
@@ -44,6 +50,7 @@ export function WritingChrome({
   wordCountVisible,
   wordCount,
   onToggleWordCount,
+  fold,
   disabled
 }: WritingChromeProps) {
   const { t } = useT('notes')
@@ -56,13 +63,17 @@ export function WritingChrome({
 
   return (
     <>
-      {wordCountVisible && (
-        <span
-          data-testid="note-word-count"
-          className="me-1 px-1 text-xs tabular-nums text-text-secondary"
-        >
-          {t('writingTools.chrome.words', { count: wordCount })}
-        </span>
+      {fold ? (
+        <FoldLevelControl {...fold} disabled={disabled} />
+      ) : (
+        wordCountVisible && (
+          <span
+            data-testid="note-word-count"
+            className="me-1 px-1 text-xs tabular-nums text-text-secondary"
+          >
+            {t('writingTools.chrome.words', { count: wordCount })}
+          </span>
+        )
       )}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>

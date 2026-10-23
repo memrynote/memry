@@ -1,0 +1,184 @@
+import { describe, expect, it } from 'vitest'
+import { layers, paragraph } from './fold-fixtures'
+import {
+  buildFoldedView,
+  chipLabel,
+  effectiveLevel,
+  evidenceSegments,
+  isFoldable,
+  levelAvailability,
+  paragraphLine,
+  stepLevel,
+  type FoldedItem
+} from './fold-display'
+
+const none: ReadonlySet<string> = new Set()
+
+function sections(items: readonly FoldedItem[]) {
+  return items.flatMap((item) => (item.kind === 'section' ? [item.section] : []))
+}
+
+describe('which notes fold and which levels show', () => {
+  it('folds only notes above the length floor', () => {
+    expect(isFoldable(null)).toBe(false)
+    expect(isFoldable(layers({ status: 'short', totalWords: 90 }))).toBe(false)
+    expect(isFoldable(layers({ totalWords: 150 }))).toBe(false)
+    expect(isFoldable(layers({ totalWords: 151 }))).toBe(true)
+  })
+
+  it('shows Brief in place of a level the model has not written yet', () => {
+    const writing = layers({ ready: [], status: 'writing' })
+    expect(levelAvailability(writing, 'key')).toBe('writing')
+    expect(effectiveLevel('key', writing)).toBe('brief')
+    expect(effectiveLevel('full', writing)).toBe('full')
+    expect(effectiveLevel('brief', writing)).toBe('brief')
+  })
+
+  it('arrives at the requested level once it is written', () => {
+    expect(effectiveLevel('topic', layers({ ready: ['topic'], status: 'writing' }))).toBe('topic')
+  })
+
+  it('has nothing to wait for with no agent, so written levels are unavailable', () => {
+    const noAgent = layers({ ready: [], status: 'no_agent', agent: null })
+    expect(levelAvailability(noAgent, 'takeaway')).toBe('unavailable')
+    expect(effectiveLevel('takeaway', noAgent)).toBe('brief')
+  })
+
+  it('steps through ready levels only and stops at the ends', () => {
+    const partial = layers({ ready: ['takeaway'], status: 'writing' })
+    expect(stepLevel('full', 1, partial)).toBe('brief')
+    expect(stepLevel('brief', 1, partial)).toBe('takeaway')
+    expect(stepLevel('takeaway', 1, partial)).toBe('takeaway')
+    expect(stepLevel('takeaway', -1, partial)).toBe('brief')
+    expect(stepLevel('full', -1, partial)).toBe('full')
+  })
+})
+
+describe('paragraph lines', () => {
+  it('Brief is the author’s own sentences, in order, joined verbatim', () => {
+    const line = paragraphLine(paragraph({ hash: 'a', briefIdx: [2, 0] }), 'brief', 'en')
+    expect(line).toEqual({
+      text: 'First sentence here. Third sentence here.',
+      source: 'author',
+      evidence: []
+    })
+  })
+
+  it('Brief joins CJK sentences without a space', () => {
+    const line = paragraphLine(
+      paragraph({ hash: 'a', sentences: ['今日は晴れ。', '明日は雨。'], briefIdx: [0, 1] }),
+      'brief',
+      'ja'
+    )
+    expect(line.text).toBe('今日は晴れ。明日は雨。')
+  })
+
+  it('Brief falls back to the whole paragraph when no sentence was picked', () => {
+    const line = paragraphLine(
+      paragraph({ hash: 'a', briefIdx: [], text: 'Only text.' }),
+      'brief',
+      'en'
+    )
+    expect(line.text).toBe('Only text.')
+  })
+
+  it('Key is the written point and its reason, resting on the evidence', () => {
+    const [p1] = layers().sections[0].paragraphs
+    expect(paragraphLine(p1, 'key', 'en')).toEqual({
+      text: 'The team plan barely sold. Buyers wanted device sync.',
+      source: 'written',
+      evidence: [1]
+    })
+  })
+
+  it('a line the model has not written falls back to the author’s Brief', () => {
+    const unwritten = paragraph({ hash: 'a', key: null, takeaway: null })
+    expect(paragraphLine(unwritten, 'key', 'en').source).toBe('author')
+    expect(paragraphLine(unwritten, 'takeaway', 'en').source).toBe('author')
+  })
+
+  it('names a chip by its topic, else by the paragraph’s first words', () => {
+    expect(chipLabel(paragraph({ hash: 'a', topic: 'Pro at $8' }), 'en')).toBe('Pro at $8')
+    expect(chipLabel(paragraph({ hash: 'a', text: 'One two three four five six' }), 'en')).toBe(
+      'One two three four…'
+    )
+    expect(chipLabel(paragraph({ hash: 'a', text: '短い文' }), 'zh')).toBe('短い文')
+  })
+})
+
+describe('folded view', () => {
+  it('lists every section with one line per paragraph and keeps headings', () => {
+    const view = buildFoldedView(layers(), 'takeaway', none, none)
+    const [first, second] = sections(view.items)
+    expect(first.heading).toBe('Where we are')
+    expect(first.paragraphs.map((p) => p.line.text)).toEqual([
+      'The team plan barely sold',
+      'Pro stays at $8'
+    ])
+    expect(second.heading).toBeNull()
+    expect(view.sectionCount).toBe(2)
+  })
+
+  it('opens only the clicked paragraph to its full text', () => {
+    const view = buildFoldedView(layers(), 'takeaway', new Set(['p2']), none)
+    const [first] = sections(view.items)
+    expect(first.paragraphs.map((p) => p.open)).toEqual([false, true])
+    expect(first.paragraphs[1].line.text).toContain('Second sentence here.')
+  })
+
+  it('shows Topic as a card per section with a chip per paragraph', () => {
+    const view = buildFoldedView(layers(), 'topic', none, none)
+    expect(view.items).toHaveLength(2)
+    const [first] = view.items
+    expect(first).toMatchObject({
+      kind: 'card',
+      card: {
+        heading: 'Where we are',
+        takeaway: 'The team plan barely sold, so Pro absorbs it',
+        chips: [
+          { paragraphHash: 'p1', label: 'team plan sales' },
+          { paragraphHash: 'p2', label: 'First sentence here. Second…' }
+        ]
+      }
+    })
+  })
+
+  it('gives a headingless note one card', () => {
+    const headingless = layers({ sections: [layers().sections[1]] })
+    const view = buildFoldedView(headingless, 'topic', none, none)
+    expect(view.items).toHaveLength(1)
+    expect(view.items[0]).toMatchObject({ kind: 'card', card: { heading: null } })
+  })
+
+  it('unfolds one Topic section in full and leaves the rest as cards', () => {
+    const view = buildFoldedView(layers(), 'topic', none, new Set(['s1']))
+    expect(view.items.map((item) => item.kind)).toEqual(['section', 'card'])
+    const [open] = sections(view.items)
+    expect(open.unfolded).toBe(true)
+    expect(open.paragraphs.every((p) => p.line.text.length > 0 && p.open)).toBe(true)
+  })
+
+  it('skips empty paragraphs', () => {
+    const base = layers()
+    const withEmpty = layers({
+      sections: [
+        {
+          ...base.sections[0],
+          paragraphs: [paragraph({ hash: 'e', text: '  ' }), ...base.sections[0].paragraphs]
+        }
+      ]
+    })
+    const [section] = sections(buildFoldedView(withEmpty, 'brief', none, none).items)
+    expect(section.paragraphs.map((p) => p.hash)).toEqual(['p1', 'p2'])
+  })
+})
+
+describe('evidence', () => {
+  it('marks the cited sentences and ignores out-of-range indices', () => {
+    expect(evidenceSegments(['A.', 'B.', 'C.'], [1, 9])).toEqual([
+      { text: 'A.', cited: false },
+      { text: 'B.', cited: true },
+      { text: 'C.', cited: false }
+    ])
+  })
+})

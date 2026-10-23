@@ -1384,6 +1384,14 @@
       "disabled": "AI features disabled",
       "error": "Failed to update setting"
     },
+    "summarizeLongNotes": {
+      "label": "Summarize long notes",
+      "description": "Writes shorter versions of long notes with your connected agent, so you can fold a note down to its key points. Runs on this device.",
+      "error": "Failed to update summarize long notes",
+      "failed": "Last run failed \u00b7",
+      "retry": "Retry",
+      "retryError": "Could not retry summarizing"
+    },
     "imageSearch": {
       "label": "Search images by content",
       "description": "Find photos by what they show. Downloads a 109 MB image model the first time an image is indexed.",
@@ -2190,6 +2198,26 @@
         "actualSize": {
           "label": "Actual Size",
           "description": "Reset zoom to 100%"
+        },
+        "foldFull": {
+          "label": "Fold: Full",
+          "description": "Show every word of the note"
+        },
+        "foldBrief": {
+          "label": "Fold: Brief",
+          "description": "Show only the key sentences, as written"
+        },
+        "foldKey": {
+          "label": "Fold: Key",
+          "description": "Show each point and its reason"
+        },
+        "foldTakeaway": {
+          "label": "Fold: Takeaway",
+          "description": "Show one line per paragraph"
+        },
+        "foldTopic": {
+          "label": "Fold: Topic",
+          "description": "Show the note as a map of its sections"
         }
       }
     },
