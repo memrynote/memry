@@ -67,7 +67,7 @@ Renderer and main ship in one build, so an IPC contract change updates both side
 - Zod v4 throws in `safeParse` on `z.record(z.unknown())`. Write `z.record(z.string(), z.unknown())`.
 - Give every failure a visible outcome: an error the user can act on, or a log entry with context. Empty catch blocks and silent fallbacks hide data loss.
 - New UI uses logical layout properties on every platform, so RTL works: Tailwind `ms-*`/`me-*`, `ps-*`/`pe-*`, `start-*`/`end-*`, `text-start`/`text-end`, `border-s`/`border-e`, `rounded-s-*`/`rounded-e-*`, and SwiftUI `leading`/`trailing`.
-- ESLint caps desktop TypeScript files at 800 lines. `scripts/check-line-ceilings.mjs` caps Rust sources at 600 and iOS feature files at 400. Split a file at its ceiling before adding behavior to it.
+- oxlint caps JS/TS source files at 800 lines repo-wide (`max-lines`); `oxlint.config.mts` lists the exemptions (content, fixtures, and files with a TODO). `scripts/check-line-ceilings.mjs` caps Rust sources at 600 and iOS feature files at 400. Split a file at its ceiling before adding behavior to it.
 - Regenerate generated outputs, never hand-edit them. These pairs move together in one change:
   - `packages/contracts`, preload APIs, or main IPC handlers: run `pnpm ipc:generate`, then `pnpm ipc:check`.
   - A format covered by conformance vectors: update the `docs/protocol/` chapter and regenerate that vector class ([crates guide](crates/AGENTS.md#conformance)).
