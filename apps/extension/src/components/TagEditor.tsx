@@ -1,29 +1,13 @@
 import { useId, useState } from 'react'
+import { matchTags } from '@/lib/tag-match'
 
-const MAX_SUGGESTIONS = 6
-
-// Prefix matches first, then substring matches; tags already on the clip are
-// skipped. Case-insensitive, matching how the vault treats tag identity.
-export function matchTags(query: string, suggestions: string[], taken: string[]): string[] {
-  const q = query.trim().toLowerCase()
-  if (!q) return []
-  const takenSet = new Set(taken.map((t) => t.toLowerCase()))
-  const prefix: string[] = []
-  const inner: string[] = []
-  for (const s of suggestions) {
-    const lower = s.toLowerCase()
-    if (takenSet.has(lower)) continue
-    if (lower.startsWith(q)) prefix.push(s)
-    else if (lower.includes(q)) inner.push(s)
-  }
-  return [...prefix, ...inner].slice(0, MAX_SUGGESTIONS)
-}
+const NO_SUGGESTIONS: string[] = []
 
 export function TagEditor({
   tags,
   onChange,
   disabled,
-  suggestions = []
+  suggestions = NO_SUGGESTIONS
 }: {
   tags: string[]
   onChange: (next: string[]) => void
@@ -112,6 +96,7 @@ export function TagEditor({
         {matches.length > 0 && (
           <ul
             id={listId}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- ARIA combobox listbox; a native select cannot host a free-text input
             role="listbox"
             className="absolute start-0 top-full z-10 mt-1 max-h-40 min-w-36 overflow-y-auto rounded-md border border-border bg-surface-strong py-1 shadow-md"
           >
@@ -119,6 +104,7 @@ export function TagEditor({
               <li
                 key={m}
                 id={`${listId}-${i}`}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- ARIA combobox option; a native option only lives inside select
                 role="option"
                 aria-selected={i === active}
                 // mousedown + preventDefault keeps focus in the input, so its

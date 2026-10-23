@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { ConnectionState, PairResponse, StatusResponse } from '@/lib/messages'
 
 const PORT_KEY = 'memry:capture-port'
@@ -36,15 +36,18 @@ export default function App() {
   const [port, setPort] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const refresh = () =>
-    browser.runtime
-      .sendMessage({ type: 'GET_STATUS' })
-      .then((r: StatusResponse) => {
-        setConnection(r.connection)
-      })
-      .catch(() => {
-        setConnection('app-closed')
-      })
+  const refresh = useCallback(
+    () =>
+      browser.runtime
+        .sendMessage({ type: 'GET_STATUS' })
+        .then((r: StatusResponse) => {
+          setConnection(r.connection)
+        })
+        .catch(() => {
+          setConnection('app-closed')
+        }),
+    []
+  )
 
   useEffect(() => {
     void refresh()
@@ -52,7 +55,7 @@ export default function App() {
       const v = r[PORT_KEY]
       if (typeof v === 'number') setPort(String(v))
     })
-  }, [])
+  }, [refresh])
 
   const onPair = async () => {
     setBusy(true)
