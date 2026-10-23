@@ -4,17 +4,19 @@ import { getMainI18n } from '../lib/main-i18n'
 import { getStatus } from '../vault'
 import { ReadwiseError, verifyToken } from './client'
 import { deleteReadwiseToken, getReadwiseToken, setReadwiseToken } from './secrets'
+import {
+  getReadwiseScheduler,
+  ReadwiseRunInProgressError,
+  ReadwiseUnavailableError
+} from './runtime-effects'
 import { readReadwiseOptions } from './settings'
-import { clearRunState, getCursor, getLastRun } from './sync-state'
+import { clearRunState, getCursor, getLastRun, setLastRun } from './sync-state'
 
 function requireVaultPath(): string {
   const { path: vaultPath } = getStatus()
   if (!vaultPath) throw new Error(getMainI18n().t('errors:ipc.noVaultOpen'))
   return vaultPath
 }
-
-/** Flips to true when #1416's scheduler owns when a run starts outside the import dialog. */
-const SYNC_NOW_AVAILABLE = false
 
 /** The user-facing text for a Readwise failure, or null when `err` is not one. */
 export function describeReadwiseError(err: unknown): string | null {
@@ -35,8 +37,7 @@ export async function getReadwiseStatus(): Promise<ReadwiseStatusResult> {
     options: readReadwiseOptions(db),
     lastSyncAt: lastRun?.at ?? null,
     needsAttention: lastRun?.needsAttention ?? false,
-    hasImported: getCursor(db) !== null,
-    syncNowAvailable: SYNC_NOW_AVAILABLE
+    hasImported: getCursor(db) !== null
   }
 }
 
@@ -51,6 +52,10 @@ export async function connectReadwise(token: string): Promise<ReadwiseStatusResu
     throw new Error(message)
   }
   await setReadwiseToken(vaultPath, token)
+  // A fresh token ends "needs attention", so the schedule starts again.
+  const db = getDatabase()
+  const lastRun = getLastRun(db)
+  if (lastRun?.needsAttention) setLastRun(db, { ...lastRun, needsAttention: false })
   return await getReadwiseStatus()
 }
 
@@ -61,7 +66,24 @@ export async function disconnectReadwise(): Promise<void> {
   clearRunState(getDatabase())
 }
 
+/** Runs now, or joins the scheduler's run, and resolves when it completes. */
 export async function syncReadwiseNow(): Promise<void> {
-  if (!SYNC_NOW_AVAILABLE)
-    throw new Error(getMainI18n().t('errors:importer.readwiseRunUnavailable'))
+  try {
+    await getReadwiseScheduler().syncNow()
+  } catch (err) {
+    const t = getMainI18n().t
+    if (err instanceof ReadwiseRunInProgressError) {
+      throw new Error(t('errors:importer.readwiseRunInProgress'))
+    }
+    if (err instanceof ReadwiseUnavailableError) {
+      throw new Error(
+        err.reason === 'not-connected'
+          ? t('errors:importer.readwiseNotConnected')
+          : t('errors:importer.readwiseRunUnavailable')
+      )
+    }
+    const message = describeReadwiseError(err)
+    if (message === null) throw err
+    throw new Error(message, { cause: err })
+  }
 }

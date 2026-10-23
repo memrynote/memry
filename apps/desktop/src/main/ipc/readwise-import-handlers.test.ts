@@ -64,7 +64,7 @@ describe('readwise import IPC handlers', () => {
 
   it('status reports disconnected with defaults on a fresh vault', async () => {
     const status = await handlerFor(ReadwiseImportChannels.invoke.STATUS)({}, undefined)
-    expect(status).toMatchObject({ connected: false, hasImported: false, syncNowAvailable: false })
+    expect(status).toMatchObject({ connected: false, hasImported: false })
     expect((status.options as { rootFolder: string }).rootFolder).toBe('Readwise')
   })
 
@@ -127,9 +127,31 @@ describe('readwise import IPC handlers', () => {
     expect(secrets.size).toBe(0)
   })
 
-  it('sync-now answers a failure envelope until the run engine ships', async () => {
+  it('sync-now answers a failure envelope when Readwise is not connected', async () => {
     const res = await handlerFor(ReadwiseImportChannels.invoke.SYNC_NOW)({}, undefined)
     expect(res).toMatchObject({ success: false })
-    expect(String(res.error)).toMatch(/not available in this build/)
+    expect(String(res.error)).toMatch(/not connected/)
+  })
+
+  it('sync-now runs the engine against an empty account, completes, and records the run', async () => {
+    const requested: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        requested.push(new URL(input).pathname)
+        return input.includes('/auth/')
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ nextPageCursor: null, results: [] }), { status: 200 })
+      })
+    )
+    await handlerFor(ReadwiseImportChannels.invoke.CONNECT)({}, { token: TOKEN })
+
+    const res = await handlerFor(ReadwiseImportChannels.invoke.SYNC_NOW)({}, undefined)
+
+    expect(res).toEqual({ success: true })
+    expect(requested).toContain('/api/v2/export/')
+    const status = await handlerFor(ReadwiseImportChannels.invoke.STATUS)({}, undefined)
+    expect(status).toMatchObject({ connected: true, hasImported: true, needsAttention: false })
+    expect(status.lastSyncAt).toEqual(expect.any(String))
   })
 })

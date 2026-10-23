@@ -2,9 +2,7 @@
 
 Connect Readwise to bring the highlights you keep in Readwise into your vault as notes. This works on every plan, free included. It is an integration with your Readwise account, not cloud sync, and it only reads from Readwise: Memry never writes anything back.
 
-::: warning Syncing is manual for now
-**Import now** brings in everything new since the last time, but it only runs when you press it. Memry does not check Readwise by itself yet, and **Sync now** stays disabled until it does.
-:::
+Once you have imported, Memry checks Readwise for you: on launch and then every hour by default. See [Automatic syncing](#automatic-syncing).
 
 ## Connect
 
@@ -38,7 +36,7 @@ Highlight text is quoted as plain text. A `#tag` or `[[link]]` in a highlight do
 
 ### Importing again
 
-Press **Import now** again at any time. After the first import, Memry asks Readwise only for what changed since the last run, and writes only the books that changed:
+Press **Sync now** again at any time, or let Memry do it on its schedule. After the first import, Memry asks Readwise only for what changed since the last run, and writes only the books that changed:
 
 - **New highlights** arrive in the note. In a section you have not edited, they sit in the order they appear in the book. In a section you edited, they are added at the end, and your edits stay.
 - **Edits and deletions in Readwise** reach a section you have not edited. In a section you edited, Readwise edits of older highlights do not arrive, and a highlight you deleted from the note stays deleted.
@@ -52,6 +50,17 @@ If the import stops halfway, for example when you quit the app, the next import 
 
 A run that changes nothing writes nothing. A run that changes something adds one line to the vault activity list in **Settings**, such as _Readwise: 3 books, 12 highlights_. Your own text above, below and inside the section is never overwritten.
 
+## Automatic syncing
+
+After your first import, Memry syncs without being asked.
+
+- **On launch.** When you open Memry with Readwise connected and **Sync** set to **Hourly** or **Daily**, it runs one sync a moment after the vault opens.
+- **On a schedule.** **Hourly** syncs about once an hour while Memry is open, and **Daily** once a day. **Manual** never syncs by itself: nothing runs until you press **Sync now**. Your choice is saved, so it holds after a restart and on your other devices.
+- **Sync now.** The button in the Readwise dialog runs a sync right away and shows when it is done. If a sync is already running, it waits for that one instead of starting a second. It cannot join an import you started from the same dialog; wait for that one to finish.
+- **Only with a token.** Memry never syncs a disconnected vault, and never starts your first import by itself: that one always waits for you, so you see the preview first.
+- **Offline.** Memry skips a scheduled sync while the computer is offline and tries again on the next minute once it is back. A sync that fails because Readwise or the network is unavailable is retried after 5 minutes, then 10, 20 and so on, up to 6 hours between attempts. A sync that fails halfway writes what it finished, and the next one picks up from there.
+- **A token Readwise rejects.** Memry stops the schedule instead of trying again every hour. The row shows **Needs attention** until you connect again with a fresh token. Connecting resumes the schedule.
+
 ## Choose where notes go
 
 Once you have imported, the dialog shows your choices.
@@ -61,7 +70,7 @@ Once you have imported, the dialog shows your choices.
 | **Folder**        | `Readwise`  | The vault folder new books land in. It is created the first time a note is written.                                                                |
 | **Folder layout** | By category | **By category** sorts notes into `Books`, `Articles`, `Tweets` and `Podcasts` folders. **One folder** puts every note directly in the root folder. |
 | **Categories**    | See below   | One switch per category of Readwise item.                                                                                                          |
-| **Sync**          | Hourly      | How often new highlights will arrive: **Manual**, **Hourly** or **Daily**.                                                                         |
+| **Sync**          | Hourly      | How often Memry checks Readwise for new highlights: **Manual**, **Hourly** or **Daily**.                                                           |
 
 Turning a category off keeps the notes you already have and skips its books on the next import. Notes of an unknown category go into an `Other` folder.
 
