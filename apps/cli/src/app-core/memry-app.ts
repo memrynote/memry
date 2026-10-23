@@ -1,6 +1,20 @@
 import type { OpenedDatabases } from './database.ts'
 import type { AgentService } from './agent.ts'
 import { createAgentService } from './agent.ts'
+import type { AgentExtrasService } from './agent-extras.ts'
+import { createAgentExtrasService } from './agent-extras.ts'
+import type { CalendarExtrasService } from './calendar-extras.ts'
+import { createCalendarExtrasService } from './calendar-extras.ts'
+import type { AttachmentToolsService } from './attachment-tools.ts'
+import { createAttachmentToolsService } from './attachment-tools.ts'
+import type { NoteToolsService } from './note-tools.ts'
+import { createNoteToolsService } from './note-tools.ts'
+import type { PropertyToolsService } from './property-tools.ts'
+import { createPropertyToolsService } from './property-tools.ts'
+import type { InboxFilingService } from './inbox-filing.ts'
+import { createInboxFilingService } from './inbox-filing.ts'
+import type { SyncExtrasService } from './sync-extras.ts'
+import { createSyncExtrasService } from './sync-extras.ts'
 import type { BookmarksService } from '@memry/app-core/bookmarks'
 import { createBookmarksService } from '@memry/app-core/bookmarks'
 import type { CalendarService } from '@memry/app-core/calendar'
@@ -49,6 +63,16 @@ import {
 } from '@memry/app-core/search-tools'
 import type { TagsService } from '@memry/app-core/tags'
 import { createTagsService } from '@memry/app-core/tags'
+import type { TagSchemaService } from './tag-schema.ts'
+import { createTagSchemaService } from './tag-schema.ts'
+import { journalPropertyRows } from './journal-properties.ts'
+import { reindexSearch } from './reindex.ts'
+import { createVaultAdminService, type VaultAdminService } from './vault-admin.ts'
+import { createFtsSearch, SEARCH_CONTENT_KINDS, type SearchContentKind } from './search.ts'
+import type { ProjectLinksService } from './project-links.ts'
+import { createProjectLinksService } from './project-links.ts'
+import type { TaskActivityService } from './task-activity.ts'
+import { createTaskActivityService } from './task-activity.ts'
 import type { SyncService } from './sync.ts'
 import { createSyncService } from './sync.ts'
 import type { TaskRecord, TasksService } from '@memry/app-core/tasks'
@@ -56,6 +80,16 @@ import { createTasksService } from '@memry/app-core/tasks'
 import { withHeaderStatusSync } from './note-header-status.ts'
 import type { TemplatesService } from './templates.ts'
 import { createTemplatesService } from './templates.ts'
+import type { CanvasService } from './canvas.ts'
+import { createCanvasService } from './canvas.ts'
+import type { CustomIconsService } from './custom-icons.ts'
+import { createCustomIconsService } from './custom-icons.ts'
+import type { HomePagesService } from './home-pages.ts'
+import { createHomePagesService } from './home-pages.ts'
+import type { ImportService } from './importers.ts'
+import { createImportService } from './importers.ts'
+import type { ReadwiseService } from './readwise.ts'
+import { createReadwiseService } from './readwise.ts'
 import type { VersionsService } from './versions.ts'
 import { createVersionsService } from './versions.ts'
 
@@ -71,11 +105,44 @@ export interface SearchResult {
   snippet?: string
 }
 
+// Every field is optional and additive: with none set, `search` returns what it always did.
+export interface SearchOptions {
+  types?: SearchResult['kind'][]
+  tags?: string[]
+  from?: string
+  to?: string
+  projectId?: string
+  folderPath?: string
+  limit?: number
+  offset?: number
+}
+
+// A search hit plus what the filters need; stripped before it leaves `search`.
+interface SearchCandidate extends SearchResult {
+  modifiedAt?: string
+  tags?: string[]
+  projectId?: string
+}
+
+function isContentKind(kind: SearchResult['kind']): kind is SearchContentKind {
+  return (SEARCH_CONTENT_KINDS as readonly string[]).includes(kind)
+}
+
+// A bare `--to 2026-01-31` means the whole day, as a date picker would.
+function endOfDay(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T23:59:59.999Z` : value
+}
+
 export interface MemryApp {
   vault: {
     status(): { isOpen: true; path: string }
     config(): VaultConfig
     updateConfig(updates: Partial<VaultConfig>): Promise<VaultConfig>
+    reindex(): ReturnType<typeof reindexSearch>
+    setIcon: VaultAdminService['setIcon']
+    listActivity: VaultAdminService['listActivity']
+    clearActivity: VaultAdminService['clearActivity']
+    listLocks: VaultAdminService['listLocks']
   }
   notes: NotesService
   folders: FoldersService
@@ -109,11 +176,15 @@ export interface MemryApp {
     }>
     allTags(): Promise<Array<{ tag: string; count: number }>>
     streak(): Promise<{ current: number; longest: number }>
+    properties(from: string, to: string): ReturnType<typeof journalPropertyRows>
   }
   tasks: TasksService
+  taskActivity: TaskActivityService
+  projectLinks: ProjectLinksService
   inbox: InboxService
   locale: LocaleService
   tags: TagsService
+  tagSchema: TagSchemaService
   reminders: RemindersService
   settings: SettingsService
   templates: TemplatesService
@@ -122,8 +193,20 @@ export interface MemryApp {
   calendar: CalendarService
   sync: SyncService
   agent: AgentService
+  agentExtras: AgentExtrasService
+  calendarExtras: CalendarExtrasService
+  inboxFiling: InboxFilingService
+  syncExtras: SyncExtrasService
   versions: VersionsService
+  canvas: CanvasService
+  homePages: HomePagesService
+  customIcons: CustomIconsService
+  importer: ImportService
+  readwise: ReadwiseService
   attachments: AttachmentsService
+  attachmentTools: AttachmentToolsService
+  noteTools: NoteToolsService
+  propertyTools: PropertyToolsService
   importFiles(
     input: ImportFilesInput
   ): Promise<Awaited<ReturnType<ReturnType<typeof createImportFilesService>>>>
@@ -145,7 +228,7 @@ export interface MemryApp {
   searchStats(): Promise<SearchStats>
   searchReasons: SearchReasonsService
   searchTags(): Promise<string[]>
-  search(query: string): Promise<SearchResult[]>
+  search(query: string, options?: SearchOptions): Promise<SearchResult[]>
   close(): void
 }
 
@@ -196,13 +279,60 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   const calendar = createCalendarService(databases.dataDb)
   const sync = createSyncService({ dataDb: databases.dataDb, vaultPath, config })
   const agent = createAgentService(settings)
+  const agentExtras = createAgentExtrasService({ dataDb: databases.dataDb, agent })
+  const calendarExtras = createCalendarExtrasService({
+    dataDb: databases.dataDb,
+    indexDb: databases.indexDb,
+    calendar
+  })
+  const inboxFiling = createInboxFilingService({
+    dataDb: databases.dataDb,
+    vaultPath,
+    notes,
+    folders,
+    calendar,
+    reminders,
+    inbox
+  })
+  const syncExtras = createSyncExtrasService({ dataDb: databases.dataDb, vaultPath })
   const versions = createVersionsService({ vaultPath, indexDb: databases.indexDb, notes })
+  const canvas = createCanvasService({ dataDb: databases.dataDb, vaultPath })
+  const homePages = createHomePagesService(databases.dataDb)
+  const customIcons = createCustomIconsService({ dataDb: databases.dataDb, vaultPath })
+  const importer = createImportService({ notes })
+  const readwise = createReadwiseService(databases.dataDb)
   const attachments = createAttachmentsService({
     vaultPath,
     notes,
     dataDb: databases.dataDb
   })
+  const attachmentTools = createAttachmentToolsService({
+    vaultPath,
+    dataDb: databases.dataDb,
+    notes,
+    attachments
+  })
+  const noteTools = createNoteToolsService({
+    vaultPath,
+    dataDb: databases.dataDb,
+    notes,
+    templates
+  })
+  const propertyTools = createPropertyToolsService({
+    vaultPath,
+    dataDb: databases.dataDb,
+    notes,
+    properties
+  })
   const importFiles = createImportFilesService({ vaultPath, config, dataDb: databases.dataDb })
+  const taskActivity = createTaskActivityService(databases.dataDb)
+  const projectLinks = createProjectLinksService({
+    dataDb: databases.dataDb,
+    notes,
+    properties,
+    importFiles,
+    vaultPath
+  })
   const exportHtml = createExportHtmlService({ notes })
   const exportPdf = createExportPdfService({ notes })
   const exportMarkdown = createExportMarkdownService({ vaultPath, notes })
@@ -213,7 +343,16 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   })
   const searchStats = createSearchStatsService({ notes, tasks, inbox })
   const searchReasons = createSearchReasonsService(databases.dataDb)
+  const tagSchema = createTagSchemaService({
+    dataDb: databases.dataDb,
+    indexDb: databases.indexDb,
+    notes,
+    properties,
+    templates
+  })
   const searchTags = createSearchTagsService({ tags, templates })
+  const vaultAdmin = createVaultAdminService({ vaultPath, dataDb: databases.dataDb })
+  const fts = createFtsSearch({ indexDb: databases.indexDb, dataDb: databases.dataDb })
 
   return {
     vault: {
@@ -228,7 +367,18 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
         await writeVaultConfig(vaultPath, next)
         Object.assign(config, next)
         return config
-      }
+      },
+      reindex() {
+        return reindexSearch({
+          vaultPath,
+          indexDb: databases.indexDb,
+          dataDb: databases.dataDb
+        })
+      },
+      setIcon: vaultAdmin.setIcon,
+      listActivity: vaultAdmin.listActivity,
+      clearActivity: vaultAdmin.clearActivity,
+      listLocks: vaultAdmin.listLocks
     },
     notes,
     folders,
@@ -328,12 +478,18 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
         }
 
         return { current, longest }
+      },
+      properties(from, to) {
+        return journalPropertyRows({ notes, properties }, from, to)
       }
     },
     tasks,
+    taskActivity,
+    projectLinks,
     inbox,
     locale,
     tags,
+    tagSchema,
     reminders,
     settings,
     templates,
@@ -342,8 +498,20 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
     calendar,
     sync,
     agent,
+    agentExtras,
+    calendarExtras,
+    inboxFiling,
+    syncExtras,
     versions,
+    canvas,
+    homePages,
+    customIcons,
+    importer,
+    readwise,
     attachments,
+    attachmentTools,
+    noteTools,
+    propertyTools,
     importFiles,
     exportHtml,
     exportPdf,
@@ -352,94 +520,197 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
     searchStats,
     searchReasons,
     searchTags,
-    async search(rawQuery) {
+    async search(rawQuery, options = {}) {
       const query = rawQuery.toLowerCase().trim()
       if (!query) return []
 
-      const results: SearchResult[] = []
-      for (const note of await notes.list({ limit: 1000 })) {
-        const haystack = `${note.title} ${note.content} ${note.tags.join(' ')}`.toLowerCase()
-        if (!haystack.includes(query)) continue
-        results.push({
-          kind: 'note',
-          id: note.id,
-          title: note.title,
-          path: note.path,
-          snippet: note.snippet
+      const wanted = options.types?.length ? new Set(options.types) : null
+      const contentFilters =
+        !!options.tags?.length ||
+        options.from !== undefined ||
+        options.to !== undefined ||
+        options.projectId !== undefined ||
+        options.folderPath !== undefined
+      const want = (kind: SearchResult['kind']): boolean =>
+        (wanted === null || wanted.has(kind)) && (!contentFilters || isContentKind(kind))
+
+      const candidates: SearchCandidate[] = []
+      const seen = new Set<string>()
+      const push = (candidate: SearchCandidate): void => {
+        const key = `${candidate.kind}:${candidate.id}`
+        if (seen.has(key)) return
+        seen.add(key)
+        candidates.push(candidate)
+      }
+      // Ranked FTS hits go first; the substring scan below adds what the index lacks.
+      const pushFts = (kind: SearchContentKind): void => {
+        for (const hit of fts.search(rawQuery, kind, 500)) {
+          push({
+            kind,
+            id: hit.id,
+            title: hit.title,
+            path: hit.path,
+            snippet: hit.snippet,
+            modifiedAt: hit.modifiedAt,
+            projectId: hit.projectId
+          })
+        }
+      }
+
+      if (want('note')) {
+        pushFts('note')
+        for (const note of await notes.list({ limit: 1000 })) {
+          const haystack = `${note.title} ${note.content} ${note.tags.join(' ')}`.toLowerCase()
+          if (!haystack.includes(query)) continue
+          push({
+            kind: 'note',
+            id: note.id,
+            title: note.title,
+            path: note.path,
+            snippet: note.snippet,
+            modifiedAt: note.modifiedAt,
+            tags: note.tags
+          })
+        }
+      }
+
+      if (want('journal')) {
+        pushFts('journal')
+        for (const journal of await notes.list({ journalOnly: true, limit: 1000 })) {
+          const haystack = `${journal.title} ${journal.content}`.toLowerCase()
+          if (!haystack.includes(query)) continue
+          push({
+            kind: 'journal',
+            id: journal.id,
+            title: journal.title,
+            path: journal.path,
+            snippet: journal.snippet,
+            modifiedAt: journal.modifiedAt,
+            tags: journal.tags
+          })
+        }
+      }
+
+      if (want('task')) {
+        pushFts('task')
+        for (const task of await tasks.list({ includeCompleted: true, includeArchived: true })) {
+          if (!taskMatches(task, query)) continue
+          push({
+            kind: 'task',
+            id: task.id,
+            title: task.title,
+            snippet: task.description ?? undefined,
+            modifiedAt: task.modifiedAt,
+            tags: task.tags,
+            projectId: task.projectId
+          })
+        }
+      }
+
+      if (want('inbox')) {
+        pushFts('inbox')
+        for (const item of (await inbox.list({ includeArchived: true })).items) {
+          const haystack =
+            `${item.title} ${item.content ?? ''} ${item.tags.join(' ')}`.toLowerCase()
+          if (!haystack.includes(query)) continue
+          push({
+            kind: 'inbox',
+            id: item.id,
+            title: item.title,
+            snippet: item.content ?? undefined,
+            modifiedAt: item.modifiedAt,
+            tags: item.tags
+          })
+        }
+      }
+
+      if (want('reminder')) {
+        for (const reminder of (await reminders.list({ limit: 1000 })).reminders) {
+          const haystack =
+            `${reminder.title ?? ''} ${reminder.note ?? ''} ${reminder.highlightText ?? ''}`.toLowerCase()
+          if (!haystack.includes(query)) continue
+          push({
+            kind: 'reminder',
+            id: reminder.id,
+            title: reminder.title ?? reminder.targetId,
+            snippet: reminder.note ?? reminder.highlightText ?? undefined
+          })
+        }
+      }
+
+      if (want('template')) {
+        for (const template of await templates.list()) {
+          const haystack =
+            `${template.name} ${template.description ?? ''} ${template.content} ${template.tags.join(' ')}`.toLowerCase()
+          if (!haystack.includes(query)) continue
+          push({
+            kind: 'template',
+            id: template.id,
+            title: template.name,
+            path: template.path,
+            snippet: template.content.slice(0, 180)
+          })
+        }
+      }
+
+      if (want('calendar')) {
+        for (const event of await calendar.events.list({ includeArchived: true })) {
+          const haystack =
+            `${event.title} ${event.description ?? ''} ${event.location ?? ''}`.toLowerCase()
+          if (!haystack.includes(query)) continue
+          push({
+            kind: 'calendar',
+            id: event.id,
+            title: event.title,
+            snippet: event.description ?? event.location ?? undefined
+          })
+        }
+      }
+
+      let results = candidates
+      if (contentFilters) {
+        const wantedTags = (options.tags ?? []).map((tag) => tag.toLowerCase())
+        const indexed = new Map<SearchContentKind, Set<string>>()
+        const taggedIds = (kind: SearchContentKind): Set<string> => {
+          let ids = indexed.get(kind)
+          if (!ids) indexed.set(kind, (ids = fts.taggedIds(kind, options.tags ?? [])))
+          return ids
+        }
+        const to = options.to === undefined ? undefined : endOfDay(options.to)
+        results = candidates.filter((candidate) => {
+          if (!isContentKind(candidate.kind)) return false
+          if (wantedTags.length > 0) {
+            const hasTag = candidate.tags
+              ? candidate.tags.some((tag) => wantedTags.includes(tag.toLowerCase()))
+              : false
+            if (!hasTag && !taggedIds(candidate.kind).has(candidate.id)) return false
+          }
+          if (options.from !== undefined && (candidate.modifiedAt ?? '') < options.from)
+            return false
+          if (to !== undefined && (candidate.modifiedAt ?? '') > to) return false
+          if (options.projectId !== undefined && candidate.projectId !== options.projectId) {
+            return false
+          }
+          if (options.folderPath !== undefined) {
+            const isNote = candidate.kind === 'note' || candidate.kind === 'journal'
+            if (!isNote || !candidate.path?.startsWith(options.folderPath)) return false
+          }
+          return true
         })
       }
 
-      for (const journal of await notes.list({ journalOnly: true, limit: 1000 })) {
-        const haystack = `${journal.title} ${journal.content}`.toLowerCase()
-        if (!haystack.includes(query)) continue
-        results.push({
-          kind: 'journal',
-          id: journal.id,
-          title: journal.title,
-          path: journal.path,
-          snippet: journal.snippet
-        })
-      }
-
-      for (const task of await tasks.list({ includeCompleted: true, includeArchived: true })) {
-        if (!taskMatches(task, query)) continue
-        results.push({
-          kind: 'task',
-          id: task.id,
-          title: task.title,
-          snippet: task.description ?? undefined
-        })
-      }
-
-      for (const item of (await inbox.list({ includeArchived: true })).items) {
-        const haystack = `${item.title} ${item.content ?? ''} ${item.tags.join(' ')}`.toLowerCase()
-        if (!haystack.includes(query)) continue
-        results.push({
-          kind: 'inbox',
-          id: item.id,
-          title: item.title,
-          snippet: item.content ?? undefined
-        })
-      }
-
-      for (const reminder of (await reminders.list({ limit: 1000 })).reminders) {
-        const haystack =
-          `${reminder.title ?? ''} ${reminder.note ?? ''} ${reminder.highlightText ?? ''}`.toLowerCase()
-        if (!haystack.includes(query)) continue
-        results.push({
-          kind: 'reminder',
-          id: reminder.id,
-          title: reminder.title ?? reminder.targetId,
-          snippet: reminder.note ?? reminder.highlightText ?? undefined
-        })
-      }
-
-      for (const template of await templates.list()) {
-        const haystack =
-          `${template.name} ${template.description ?? ''} ${template.content} ${template.tags.join(' ')}`.toLowerCase()
-        if (!haystack.includes(query)) continue
-        results.push({
-          kind: 'template',
-          id: template.id,
-          title: template.name,
-          path: template.path,
-          snippet: template.content.slice(0, 180)
-        })
-      }
-
-      for (const event of await calendar.events.list({ includeArchived: true })) {
-        const haystack =
-          `${event.title} ${event.description ?? ''} ${event.location ?? ''}`.toLowerCase()
-        if (!haystack.includes(query)) continue
-        results.push({
-          kind: 'calendar',
-          id: event.id,
-          title: event.title,
-          snippet: event.description ?? event.location ?? undefined
-        })
-      }
-
-      return results
+      const offset = options.offset ?? 0
+      const page =
+        options.limit === undefined
+          ? results.slice(offset)
+          : results.slice(offset, offset + options.limit)
+      return page.map(({ kind, id, title, path, snippet }) => ({
+        kind,
+        id,
+        title,
+        ...(path === undefined ? {} : { path }),
+        ...(snippet === undefined ? {} : { snippet })
+      }))
     },
     close() {
       databases.close()

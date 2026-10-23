@@ -9,7 +9,7 @@ import {
 } from '@main/database/queries/tag-schema-counts'
 import type { DataDb, IndexDb } from '../../database/types'
 import { getTemplate } from '../../vault/templates'
-import { descendantsOf } from '../tag-schema'
+import { descendantsOf } from '@memry/app-core/tag-schema'
 import { tagKey } from '@memry/shared/tag-fold'
 import { loadResolvedTags } from './read'
 

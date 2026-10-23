@@ -35,6 +35,7 @@ import {
   wordCount,
   writeMarkdownNote
 } from '@memry/app-core/markdown'
+import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
@@ -233,14 +234,23 @@ async function rewriteInboundLinks(input: {
   }
 }
 
-function metadataByTitle(db: DataDb, indexDb: IndexDb, title: string): NoteMetadataRow | undefined {
+// Aliases come from two places: the index's `note_names` rows (projected by a
+// running desktop) and each note's own `aliases` frontmatter, which is what a CLI
+// or hand edit changes. A path or title hit settles the lookup without reading
+// any note; only an alias lookup (or a miss) reads the files, and an alias hit
+// in either source counts.
+async function metadataByTitle(
+  vaultPath: string,
+  db: DataDb,
+  indexDb: IndexDb,
+  title: string
+): Promise<NoteMetadataRow | undefined> {
   const rows = listNoteMetadata(db, { limit: 10000 })
   const aliases = new Map<string, string[]>()
   for (const row of indexDb.select().from(noteNames).where(eq(noteNames.kind, 'alias')).all()) {
     aliases.set(row.noteId, [...(aliases.get(row.noteId) ?? []), row.display])
   }
-  const match = pickWikiTarget(
-    title,
+  const candidates = () =>
     rows.map((row) => ({
       noteId: row.id,
       path: row.path,
@@ -248,7 +258,20 @@ function metadataByTitle(db: DataDb, indexDb: IndexDb, title: string): NoteMetad
       aliases: aliases.get(row.id) ?? [],
       journal: row.journalDate !== null
     }))
-  )
+  let match = pickWikiTarget(title, candidates())
+  if (!match || match.matchedBy === 'alias') {
+    for (const row of rows) {
+      if (row.fileType && row.fileType !== 'markdown') continue
+      try {
+        const parsed = parseMarkdownNote(await fs.readFile(path.join(vaultPath, row.path), 'utf-8'))
+        const fromFile = aliasesFromFrontmatter(parsed.frontmatter, row.title)
+        if (fromFile.length > 0) aliases.set(row.id, [...(aliases.get(row.id) ?? []), ...fromFile])
+      } catch {
+        // An unreadable note simply contributes no aliases.
+      }
+    }
+    match = pickWikiTarget(title, candidates())
+  }
   return match ? rows.find((row) => row.id === match.noteId) : undefined
 }
 
@@ -485,7 +508,7 @@ export function createNotesService({
     },
 
     async previewByTitle(title) {
-      const resolved = metadataByTitle(dataDb, indexDb, title)
+      const resolved = await metadataByTitle(vaultPath, dataDb, indexDb, title)
       if (!resolved) return null
       const note = await readNote(vaultPath, resolved)
       return {
@@ -499,7 +522,7 @@ export function createNotesService({
     },
 
     async resolveByTitle(title) {
-      const row = metadataByTitle(dataDb, indexDb, title)
+      const row = await metadataByTitle(vaultPath, dataDb, indexDb, title)
       if (!row) return null
       return {
         id: row.id,

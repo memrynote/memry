@@ -20,6 +20,10 @@ const store = vi.hoisted(() => ({
       isDefault: false
     }
   ],
+  currentVault: '/vaults/work' as string | null,
+  removeVault: vi.fn((vaultPath: string) => {
+    store.vaults = store.vaults.filter((item) => item.path !== vaultPath)
+  }),
   setDefaultVaultPath: vi.fn((vaultPath: string) => {
     const vault = store.vaults.find((item) => item.path === vaultPath)
     if (!vault) return null
@@ -34,7 +38,12 @@ const store = vi.hoisted(() => ({
 vi.mock('../store', () => ({
   getVaults: () => store.vaults,
   getDefaultVaultPath: () => store.vaults.find((vault) => vault.isDefault)?.path ?? null,
-  setDefaultVaultPath: (vaultPath: string) => store.setDefaultVaultPath(vaultPath)
+  setDefaultVaultPath: (vaultPath: string) => store.setDefaultVaultPath(vaultPath),
+  getCurrentVaultPath: () => store.currentVault,
+  setCurrentVaultPath: (vaultPath: string | null) => {
+    store.currentVault = vaultPath
+  },
+  removeVault: (vaultPath: string) => store.removeVault(vaultPath)
 }))
 
 describe('desktop CLI vault registry', () => {
@@ -78,5 +87,19 @@ describe('desktop CLI vault registry', () => {
     )
 
     expect(store.setDefaultVaultPath).toHaveBeenCalledWith('/vaults/work')
+  })
+
+  it('removes a vault from the list by name and clears it as the current vault', async () => {
+    const registry = createDesktopCliVaultRegistry()
+    store.currentVault = '/vaults/work'
+
+    expect(await registry.removeVault?.('work')).toEqual(
+      expect.objectContaining({ path: '/vaults/work', name: 'work' })
+    )
+
+    expect(store.removeVault).toHaveBeenCalledWith('/vaults/work')
+    expect(store.currentVault).toBeNull()
+    expect(store.vaults.map((vault) => vault.path)).toEqual(['/vaults/personal'])
+    expect(() => registry.removeVault?.('work')).toThrow('Unknown vault: work')
   })
 })

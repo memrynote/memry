@@ -114,11 +114,11 @@ const mimeTypes: Record<string, string> = {
 
 marked.setOptions({ gfm: true, breaks: true })
 
-function extension(filename: string): string {
+export function extension(filename: string): string {
   return path.extname(filename).toLowerCase().replace(/^\./, '')
 }
 
-function attachmentType(filename: string): 'image' | 'file' {
+export function attachmentType(filename: string): 'image' | 'file' {
   return imageExtensions.has(extension(filename)) ? 'image' : 'file'
 }
 
@@ -132,12 +132,12 @@ function fileType(filename: string): FileType | null {
   return null
 }
 
-function isAllowedAttachment(filename: string): boolean {
+export function isAllowedAttachment(filename: string): boolean {
   const ext = extension(filename)
   return imageExtensions.has(ext) || fileExtensions.has(ext)
 }
 
-function mimeType(filename: string): string {
+export function mimeType(filename: string): string {
   return mimeTypes[extension(filename)] ?? 'application/octet-stream'
 }
 
@@ -162,14 +162,14 @@ function uniqueAttachmentFilename(filename: string): string {
 // Mirror of desktop's `noteRelativeRef` (main/lib/paths.ts): how a note body
 // references a file that lives elsewhere in the vault. Note-relative is the
 // only shape that survives reaching a second device (#1606).
-function noteRelativeRef(notePath: string, targetPath: string): string {
+export function noteRelativeRef(notePath: string, targetPath: string): string {
   const noteDir = path.posix.dirname(normalizePath(notePath))
   const from = noteDir === '.' ? '' : noteDir
   return path.posix.relative(from, normalizePath(targetPath))
 }
 
 // Mirror of desktop's `encodeAttachmentUrl` (import/_shared/attachment-markdown.ts).
-function encodeAttachmentUrl(url: string): string {
+export function encodeAttachmentUrl(url: string): string {
   return url.replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')
 }
 
@@ -178,7 +178,7 @@ function encodeAttachmentUrl(url: string): string {
  * images embed inline, everything else renders as the file-block marker the
  * desktop renderer turns into a clickable card.
  */
-function attachmentEmbed(ref: string, result: AttachmentResult): string {
+export function attachmentEmbed(ref: string, result: AttachmentResult): string {
   if (result.type === 'image') {
     const alt = (result.name ?? '').replace(/[[\]]/g, '')
     return `![${alt}](${encodeAttachmentUrl(ref)})`

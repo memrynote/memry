@@ -19,7 +19,7 @@ import {
   type SchemaBodyEdit,
   type SchemaEditError,
   type SchemaEditResult
-} from '../tag-schema'
+} from '@memry/app-core/tag-schema'
 import { tagKey } from '@memry/shared/tag-fold'
 import { loadResolvedTags } from './read'
 

@@ -8,7 +8,11 @@ import {
   taskTags
 } from '@memry/db-schema/data-schema'
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
+import { plainVersionedMap, stampVersionedMapPatch, type JsonValue } from '@memry/shared/versioned'
 import { createId } from './ids.ts'
+import { deleteTaskBranches, type DeleteTaskOptions } from './task-delete.ts'
+
+export type { DeleteTaskOptions } from './task-delete.ts'
 
 export interface TaskRecord {
   id: string
@@ -33,6 +37,8 @@ export interface TaskRecord {
   tags: string[]
   linkedNoteIds: string[]
   linkedCanvasIds: string[]
+  /** Custom field values by name; removed fields are left out. */
+  fields: Record<string, JsonValue>
 }
 
 export interface ProjectRecord {
@@ -80,6 +86,7 @@ export interface CreateTaskInput {
   parentId?: string | null
   dueDate?: string | null
   dueTime?: string | null
+  durationMinutes?: number | null
   startDate?: string | null
   repeatConfig?: unknown | null
   repeatFrom?: string | null
@@ -88,6 +95,8 @@ export interface CreateTaskInput {
   tags?: string[]
   linkedNoteIds?: string[]
   linkedCanvasIds?: string[]
+  /** Field values by name. On update a null value removes the field. */
+  fields?: Record<string, JsonValue>
 }
 
 export interface MoveTaskInput {
@@ -136,9 +145,9 @@ export interface TasksService {
   bulkComplete(ids: string[]): Promise<number>
   bulkArchive(ids: string[]): Promise<number>
   bulkMove(ids: string[], projectId: string): Promise<number>
-  bulkDelete(ids: string[]): Promise<number>
+  bulkDelete(ids: string[], options?: DeleteTaskOptions): Promise<number>
   reorder(ids: string[], positions: number[]): Promise<boolean>
-  delete(id: string): Promise<boolean>
+  delete(id: string, options?: DeleteTaskOptions): Promise<boolean>
   projects: {
     list(): Promise<ProjectRecord[]>
     get(id: string): Promise<ProjectRecord | null>
@@ -273,8 +282,15 @@ function toTask(db: DataDb, row: typeof tasks.$inferSelect): TaskRecord {
     modifiedAt: row.modifiedAt,
     tags: getTags(db, row.id),
     linkedNoteIds: getLinkedNoteIds(db, row.id),
-    linkedCanvasIds: getLinkedCanvasIds(db, row.id)
+    linkedCanvasIds: getLinkedCanvasIds(db, row.id),
+    fields: plainVersionedMap(row.fields)
   }
+}
+
+function clockTotal(clock: Readonly<Record<string, number>> | null | undefined): number {
+  let total = 0
+  for (const tick of Object.values(clock ?? {})) total += tick
+  return total
 }
 
 function toProject(row: typeof projects.$inferSelect): ProjectRecord {
@@ -303,6 +319,11 @@ function toStatus(row: typeof statuses.$inferSelect): StatusRecord {
     isDone: row.isDone,
     createdAt: row.createdAt
   }
+}
+
+function createFields(fields: Record<string, JsonValue> | undefined) {
+  const stamped = fields ? stampVersionedMapPatch(undefined, fields, 0) : {}
+  return Object.keys(stamped).length > 0 ? stamped : null
 }
 
 function nextTaskPosition(db: DataDb, projectId: string): number {
@@ -340,12 +361,14 @@ export function createTasksService(dataDb: DataDb): TasksService {
           position: nextTaskPosition(dataDb, projectId),
           dueDate: input.dueDate ?? null,
           dueTime: input.dueTime ?? null,
+          durationMinutes: input.durationMinutes ?? null,
           startDate: input.startDate ?? null,
           repeatConfig: input.repeatConfig ?? null,
           repeatFrom: input.repeatFrom ?? null,
           sourceNoteId: input.sourceNoteId ?? null,
           completedAt: null,
           archivedAt: null,
+          fields: createFields(input.fields),
           createdAt: time,
           modifiedAt: time
         })
@@ -425,6 +448,9 @@ export function createTasksService(dataDb: DataDb): TasksService {
 
     async update(id, updates) {
       const time = nowIso()
+      const existing = updates.fields
+        ? dataDb.select().from(tasks).where(eq(tasks.id, id)).get()
+        : undefined
       const task = dataDb
         .update(tasks)
         .set({
@@ -436,6 +462,18 @@ export function createTasksService(dataDb: DataDb): TasksService {
           ...(updates.dueDate !== undefined ? { dueDate: updates.dueDate } : {}),
           ...(updates.dueTime !== undefined ? { dueTime: updates.dueTime } : {}),
           ...(updates.dueTime === null ? { durationMinutes: null } : {}),
+          ...(updates.durationMinutes !== undefined
+            ? { durationMinutes: updates.durationMinutes }
+            : {}),
+          ...(updates.fields && existing
+            ? {
+                fields: stampVersionedMapPatch(
+                  existing.fields,
+                  updates.fields,
+                  clockTotal(existing.clock)
+                )
+              }
+            : {}),
           ...(updates.startDate !== undefined ? { startDate: updates.startDate } : {}),
           ...(updates.repeatConfig !== undefined ? { repeatConfig: updates.repeatConfig } : {}),
           ...(updates.repeatFrom !== undefined ? { repeatFrom: updates.repeatFrom } : {}),
@@ -681,11 +719,8 @@ export function createTasksService(dataDb: DataDb): TasksService {
       return existingIds.length
     },
 
-    async bulkDelete(ids) {
-      const existingIds = existingTaskIds(dataDb, ids)
-      if (existingIds.length === 0) return 0
-      dataDb.delete(tasks).where(inArray(tasks.id, existingIds)).run()
-      return existingIds.length
+    async bulkDelete(ids, options) {
+      return deleteTaskBranches(dataDb, ids, options)
     },
 
     async reorder(ids, positions) {
@@ -701,8 +736,8 @@ export function createTasksService(dataDb: DataDb): TasksService {
       return true
     },
 
-    async delete(id) {
-      dataDb.delete(tasks).where(eq(tasks.id, id)).run()
+    async delete(id, options) {
+      deleteTaskBranches(dataDb, [id], options)
       return true
     },
 

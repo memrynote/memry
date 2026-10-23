@@ -7,7 +7,7 @@ import {
   resolveTagSchemas,
   type PropertyTypeLookup,
   type TagDefinitionInput
-} from '../tag-schema'
+} from '@memry/app-core/tag-schema'
 import { tagKey } from '@memry/shared/tag-fold'
 
 const propertyTypes: PropertyTypeLookup = {

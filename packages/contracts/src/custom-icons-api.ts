@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { CustomIconsChannels } from './ipc-channels'
+import { CustomIconsChannels } from './ipc-channels.ts'
 export { CustomIconsChannels }
 
 /**

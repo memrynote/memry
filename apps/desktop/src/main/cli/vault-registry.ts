@@ -1,7 +1,14 @@
 import path from 'node:path'
 import { homedir } from 'node:os'
 import type { CliKnownVault, CliVaultRegistry } from '@memry/cli'
-import { getDefaultVaultPath, getVaults, setDefaultVaultPath } from '../store'
+import {
+  getCurrentVaultPath,
+  getDefaultVaultPath,
+  getVaults,
+  removeVault,
+  setCurrentVaultPath,
+  setDefaultVaultPath
+} from '../store'
 
 function toCliVault(vault: ReturnType<typeof getVaults>[number]): CliKnownVault {
   return {
@@ -50,6 +57,14 @@ export function createDesktopCliVaultRegistry(): CliVaultRegistry {
       const vault = setDefaultVaultPath(vaultPath)
       if (!vault) throw new Error(`Unknown vault: ${reference}`)
       return toCliVault(vault)
+    },
+    removeVault(reference) {
+      const vaultPath = resolveVaultReference(reference)
+      const vault = toCliVault(getVaults().find((item) => item.path === vaultPath)!)
+      // Same store changes as the app's vault:remove; the vault's files stay on disk.
+      if (getCurrentVaultPath() === vaultPath) setCurrentVaultPath(null)
+      removeVault(vaultPath)
+      return vault
     }
   }
 }

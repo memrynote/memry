@@ -7,7 +7,7 @@ import { need } from '../context.ts'
 import type { PostContext } from './index.ts'
 
 /**
- * What `serializeSchema` stores for a tag (apps/desktop/src/main/tags/tag-schema.ts).
+ * What `serializeSchema` stores for a tag (packages/app-core/src/tag-schema.ts).
  * Key order is the app's: the edit spreads `{ t: 0, fields, template, extends,
  * preset }` and `stampVersionedValue` puts `t` last. A user's edits each add 1
  * to `t` (one per field, one for the template, one for `extends`); a ready-made

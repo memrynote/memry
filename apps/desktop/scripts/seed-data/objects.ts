@@ -8,7 +8,7 @@ import {
 } from '@memry/shared/versioned'
 import { generateId, generateNoteId } from '../../src/main/lib/id'
 import { PRESET_CATALOG, presetSpec, type PresetSpec } from '../../src/main/tags/preset-catalog'
-import { canonicalFieldName, serializeSchema } from '../../src/main/tags/tag-schema'
+import { canonicalFieldName, serializeSchema } from '@memry/app-core/tag-schema'
 import type {
   SeedNoteMetadata,
   SeedTagDefinition,

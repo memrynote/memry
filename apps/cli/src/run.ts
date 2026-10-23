@@ -2,6 +2,21 @@
 // apps/docs/src/user-guide/cli-reference.md to match.
 
 import { createMemryApp as defaultCreateMemryApp, type MemryApp } from './app-core/memry-app.ts'
+import { runAgentExtras } from './commands/agent.ts'
+import { runCalendarExtras } from './commands/calendar.ts'
+import { runInboxExtras } from './commands/inbox.ts'
+import { runSyncExtras } from './commands/sync.ts'
+import { parseSearchOptions } from './commands/search.ts'
+import { runVaultAdmin } from './commands/vault-admin.ts'
+import { runCanvas } from './commands/canvas.ts'
+import { runHomePages } from './commands/home-pages.ts'
+import { runIcons } from './commands/icons.ts'
+import { runImport } from './commands/import.ts'
+import { runReadwise } from './commands/readwise.ts'
+import { runTagFields } from './commands/tag-fields.ts'
+import { runProjectLinks, runTaskActivity } from './commands/project-links.ts'
+import { runFolderTools, runNoteTools, runPropertyTools } from './commands/note-tools.ts'
+import { parseDurationFlag, parseFieldFlags } from './commands/task-fields.ts'
 
 export interface CliIo {
   stdout?: (line: string) => void
@@ -19,6 +34,8 @@ export interface CliVaultRegistry {
   listVaults(): Promise<CliKnownVault[]> | CliKnownVault[]
   getDefaultVaultPath(): Promise<string | null> | string | null
   setDefaultVaultPath(reference: string): Promise<CliKnownVault> | CliKnownVault
+  /** Unregisters a vault from the known list. Never touches its files. */
+  removeVault?(reference: string): Promise<CliKnownVault> | CliKnownVault
 }
 
 export interface CliRuntimeDeps {
@@ -26,7 +43,7 @@ export interface CliRuntimeDeps {
   vaultRegistry?: CliVaultRegistry
 }
 
-interface ParsedCli {
+export interface ParsedCli {
   vaultPath: string | null
   json: boolean
   command: string | null
@@ -44,15 +61,15 @@ type CalendarBindingListOptions = NonNullable<
 type AgentBackend = Parameters<MemryApp['agent']['backendModels']>[0]
 type AgentLocalProviderSettingsInput = Parameters<MemryApp['agent']['setLocalProviderSettings']>[0]
 
-function getFlag(flags: Map<string, string[]>, key: string): string | undefined {
+export function getFlag(flags: Map<string, string[]>, key: string): string | undefined {
   return flags.get(key)?.at(-1)
 }
 
-function getFlagList(flags: Map<string, string[]>, key: string): string[] {
+export function getFlagList(flags: Map<string, string[]>, key: string): string[] {
   return flags.get(key) ?? []
 }
 
-function hasFlag(flags: Map<string, string[]>, key: string): boolean {
+export function hasFlag(flags: Map<string, string[]>, key: string): boolean {
   return flags.has(key)
 }
 
@@ -97,7 +114,7 @@ function parseCli(args: string[]): ParsedCli {
   return { vaultPath, json, command, subcommand, positionals, flags }
 }
 
-function print(io: CliIo, json: boolean, value: unknown): void {
+export function print(io: CliIo, json: boolean, value: unknown): void {
   const line = json ? JSON.stringify(value) : formatHuman(value)
   io.stdout?.(line)
 }
@@ -143,20 +160,20 @@ function formatHuman(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
-function requireFirst(positionals: string[], label: string): string {
+export function requireFirst(positionals: string[], label: string): string {
   const value = positionals[0]
   if (!value) throw new Error(`Missing ${label}`)
   return value
 }
 
-function parseNumber(value: string | undefined, fallback: number): number {
+export function parseNumber(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) throw new Error(`Invalid number: ${value}`)
   return parsed
 }
 
-function parseCliValue(value: string): unknown {
+export function parseCliValue(value: string): unknown {
   if (value === 'true') return true
   if (value === 'false') return false
   if (value === 'null') return null
@@ -186,7 +203,7 @@ function parseJsonStringFlag(flags: Map<string, string[]>, key: string): string 
   return JSON.stringify(parseCliValue(getFlag(flags, key) ?? ''))
 }
 
-function parseBooleanFlag(flags: Map<string, string[]>, key: string): boolean | undefined {
+export function parseBooleanFlag(flags: Map<string, string[]>, key: string): boolean | undefined {
   if (!flags.has(key)) return undefined
   const value = parseCliValue(getFlag(flags, key) ?? 'true')
   if (typeof value !== 'boolean') throw new Error(`Invalid boolean: --${key}`)
@@ -215,7 +232,10 @@ function parseSearchItemType(value: string | undefined) {
   return value as 'note' | 'journal' | 'task' | 'inbox'
 }
 
-function parseNullableFlag(flags: Map<string, string[]>, key: string): string | null | undefined {
+export function parseNullableFlag(
+  flags: Map<string, string[]>,
+  key: string
+): string | null | undefined {
   if (!flags.has(key)) return undefined
   const value = getFlag(flags, key)
   return value === 'null' ? null : (value ?? null)
@@ -246,9 +266,14 @@ async function runVault(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
         )
       )
       return
+    case 'reindex':
+    case 'set-icon':
+    case 'activity':
+    case 'locks':
+      return runVaultAdmin(app, parsed, io)
     default:
       throw new Error(
-        'Usage: memrynote vault list|current|use OR memrynote [--vault <path>] vault init|status|config|update-config'
+        'Usage: memrynote vault list|current|use|remove OR memrynote [--vault <path>] vault init|status|config|update-config|reindex|set-icon|activity|locks'
       )
   }
 }
@@ -275,12 +300,26 @@ async function runVaultRegistryCommand(
       print(io, parsed.json, vault)
       return true
     }
+    case 'remove': {
+      const reference = parsed.positionals[0]
+      if (!reference) throw new Error('Usage: memrynote vault remove <vault-name-or-path> --yes')
+      if (!hasFlag(parsed.flags, 'yes')) {
+        throw new Error('Pass --yes to remove the vault from the list (its files are kept)')
+      }
+      const resolved = await requireVaultRegistry(registry)
+      if (!resolved.removeVault) {
+        throw new Error('This CLI cannot remove vaults. Run Memry from the desktop app command.')
+      }
+      print(io, parsed.json, { removed: await resolved.removeVault(reference) })
+      return true
+    }
     default:
       return false
   }
 }
 
 async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runNoteTools(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'create':
       print(
@@ -521,12 +560,13 @@ async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] notes create|list|get|exists|preview|resolve|links|update|rename|move|set-local-only|local-only-count|delete|attach|attachments|delete-attachment|import-files|export-html|export-pdf|export-markdown|snapshot|versions|version|restore-version|delete-version'
+        'Usage: memrynote [--vault <path>] notes create|list|get|exists|preview|resolve|links|update|rename|move|set-local-only|local-only-count|delete|attach|attachments|delete-attachment|import-files|export-html|export-pdf|export-markdown|snapshot|versions|version|restore-version|delete-version|aliases|apply-template|unlinked-mentions|link-mention|carried-tasks|similar|suggest-tags|positions|reorder|read-lines|grep|attachment-rename'
       )
   }
 }
 
 async function runFolders(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runFolderTools(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'list':
       print(io, parsed.json, await app.folders.list())
@@ -555,11 +595,14 @@ async function runFolders(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<
       })
       return
     default:
-      throw new Error('Usage: memrynote [--vault <path>] folders list|create|rename|delete')
+      throw new Error(
+        'Usage: memrynote [--vault <path>] folders list|create|rename|delete|template'
+      )
   }
 }
 
 async function runProperties(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runPropertyTools(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'get':
       print(
@@ -629,7 +672,7 @@ async function runProperties(app: MemryApp, parsed: ParsedCli, io: CliIo): Promi
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] properties get|set|rename|definitions|define|update-definition|delete-definition'
+        'Usage: memrynote [--vault <path>] properties get|set|rename|definitions|define|update-definition|delete-definition|ensure|option-add|option-remove|option-rename|option-color|merge|resolve-refs|calendar-names|calendar-visibility'
       )
   }
 }
@@ -720,6 +763,7 @@ async function runFolderView(app: MemryApp, parsed: ParsedCli, io: CliIo): Promi
 }
 
 async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runTaskActivity(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'create':
       print(
@@ -741,7 +785,10 @@ async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
           sourceNoteId: parseNullableFlag(parsed.flags, 'source-note'),
           priority: parseNumber(getFlag(parsed.flags, 'priority'), 0),
           tags: getFlagList(parsed.flags, 'tag'),
-          linkedNoteIds: getFlagList(parsed.flags, 'link-note')
+          linkedNoteIds: getFlagList(parsed.flags, 'link-note'),
+          linkedCanvasIds: getFlagList(parsed.flags, 'link-canvas'),
+          durationMinutes: parseDurationFlag(parsed.flags),
+          fields: parseFieldFlags(parsed.flags)
         })
       )
       return
@@ -797,7 +844,12 @@ async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
           tags: parsed.flags.has('tag') ? getFlagList(parsed.flags, 'tag') : undefined,
           linkedNoteIds: parsed.flags.has('link-note')
             ? getFlagList(parsed.flags, 'link-note')
-            : undefined
+            : undefined,
+          linkedCanvasIds: parsed.flags.has('link-canvas')
+            ? getFlagList(parsed.flags, 'link-canvas')
+            : undefined,
+          durationMinutes: parseDurationFlag(parsed.flags),
+          fields: parseFieldFlags(parsed.flags)
         })
       )
       return
@@ -901,7 +953,11 @@ async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
     }
     case 'bulk-delete':
       if (!hasFlag(parsed.flags, 'yes')) throw new Error('Pass --yes to delete tasks')
-      print(io, parsed.json, { count: await app.tasks.bulkDelete(parsed.positionals) })
+      print(io, parsed.json, {
+        count: await app.tasks.bulkDelete(parsed.positionals, {
+          keepSubtasks: hasFlag(parsed.flags, 'keep-subtasks')
+        })
+      })
       return
     case 'reorder':
       print(io, parsed.json, {
@@ -911,17 +967,20 @@ async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
     case 'delete':
       if (!hasFlag(parsed.flags, 'yes')) throw new Error('Pass --yes to delete a task')
       print(io, parsed.json, {
-        success: await app.tasks.delete(requireFirst(parsed.positionals, 'task id'))
+        success: await app.tasks.delete(requireFirst(parsed.positionals, 'task id'), {
+          keepSubtasks: hasFlag(parsed.flags, 'keep-subtasks')
+        })
       })
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] tasks create|list|get|update|done|reopen|archive|unarchive|move|get-subtasks|get-linked-tasks|today|upcoming|overdue|stats|tags|convert-to-subtask|convert-to-task|duplicate|bulk-done|bulk-archive|bulk-move|bulk-delete|reorder|delete'
+        'Usage: memrynote [--vault <path>] tasks create|list|get|update|done|reopen|archive|unarchive|move|get-subtasks|get-linked-tasks|today|upcoming|overdue|stats|tags|convert-to-subtask|convert-to-task|duplicate|bulk-done|bulk-archive|bulk-move|bulk-delete|reorder|delete|activity'
       )
   }
 }
 
 async function runProjects(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runProjectLinks(app, parsed, io)) return
   switch (parsed.subcommand) {
     case 'list':
       print(io, parsed.json, await app.tasks.projects.list())
@@ -1036,7 +1095,7 @@ async function runProjects(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
       return
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] projects list|get|create|update|archive|unarchive|delete|reorder|statuses|status-create|status-update|status-delete|status-reorder'
+        'Usage: memrynote [--vault <path>] projects list|get|create|update|archive|unarchive|delete|reorder|statuses|status-create|status-update|status-delete|status-reorder|link|unlink|links|for-item|pin|unpin|contents|set-home-note|capture-url|import-files'
       )
   }
 }
@@ -1255,8 +1314,9 @@ async function runInbox(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       })
       return
     default:
+      if (await runInboxExtras(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] inbox capture|capture-link|capture-file|get|list|tags|stats|patterns|archived|filing-history|stale-threshold|set-stale-threshold|update|add-tag|remove-tag|mark-viewed|convert-note|convert-task|link-note|snooze|unsnooze|snoozed|bulk-tag|bulk-snooze|bulk-archive|archive|unarchive|delete'
+        'Usage: memrynote [--vault <path>] inbox capture|capture-link|capture-file|get|list|tags|stats|patterns|archived|filing-history|stale-threshold|set-stale-threshold|update|add-tag|remove-tag|mark-viewed|convert-note|convert-task|link-note|snooze|unsnooze|snoozed|bulk-tag|bulk-snooze|bulk-archive|archive|unarchive|delete|file|bulk-file|file-all-stale|convert-event|convert-reminder|suggestions|undo|capture-image|capture-pdf|capture-voice|jobs|retry'
       )
   }
 }
@@ -1335,9 +1395,14 @@ async function runJournal(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<
     case 'streak':
       print(io, parsed.json, await app.journal.streak())
       return
+    case 'properties': {
+      const from = requireFirst(parsed.positionals, 'from date (YYYY-MM-DD)')
+      print(io, parsed.json, await app.journal.properties(from, parsed.positionals[1] ?? from))
+      return
+    }
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] journal get|write|append|delete|month|heatmap|stats|context|tags|streak'
+        'Usage: memrynote [--vault <path>] journal get|write|append|delete|month|heatmap|stats|context|tags|streak|properties'
       )
   }
 }
@@ -1398,8 +1463,9 @@ async function runTags(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<voi
       })
       return
     default:
+      if (await runTagFields(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] tags list|notes|color|rename|remove-from-note|merge|delete'
+        'Usage: memrynote [--vault <path>] tags list|notes|color|rename|remove-from-note|merge|delete|schema|impact|objects|linked-here|categories|set-icon|pin|unpin|reorder|fill-status|fill-fields'
       )
   }
 }
@@ -1821,6 +1887,8 @@ async function runSavedFilters(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
 }
 
 async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {
+  if (await runCalendarExtras(app, parsed, io)) return
+
   if (parsed.subcommand === 'sources') {
     print(
       io,
@@ -1957,7 +2025,7 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
 
   if (parsed.subcommand !== 'events') {
     throw new Error(
-      'Usage: memrynote [--vault <path>] calendar events create|get|list|update|delete OR calendar sources|select-source|provider-status|google-settings|set-default-google-calendar|range|external|bindings'
+      'Usage: memrynote [--vault <path>] calendar events create|get|list|update|delete OR calendar sources|select-source|provider-status|google-settings|set-default-google-calendar|range|external|bindings|linked-notes|providers|provider-calendars|refresh|set-default-calendar|ics|retry-sync|writer-compat (events also: search)'
     )
   }
 
@@ -2076,8 +2144,9 @@ async function runSync(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<voi
       )
       return
     default:
+      if (await runSyncExtras(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] sync status|queue-size|history|devices|storage|quarantine|check-device|pause|resume|settings|update-setting'
+        'Usage: memrynote [--vault <path>] sync status|queue-size|history|devices|storage|quarantine|check-device|pause|resume|settings|update-setting|trigger|note-state|large-notes|unsent-notes|binding|progress|rename-device|remove-device'
       )
   }
 }
@@ -2127,8 +2196,9 @@ async function runAgent(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       return
     }
     default:
+      if (await runAgentExtras(app, parsed, io)) return
       throw new Error(
-        'Usage: memrynote [--vault <path>] agent backends|models|local-settings|set-local-settings'
+        'Usage: memrynote [--vault <path>] agent backends|models|local-settings|set-local-settings|conversations|conversation|preferences|set-preferences|local-models|test-local|mcp-status|mcp'
       )
   }
 }
@@ -2191,7 +2261,8 @@ async function runSearch(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<v
         await app.search(
           [parsed.subcommand, ...parsed.positionals]
             .filter((part): part is string => !!part)
-            .join(' ')
+            .join(' '),
+          parseSearchOptions(parsed)
         )
       )
   }
@@ -2241,9 +2312,19 @@ async function route(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void>
       return runGraph(app, parsed, io)
     case 'search':
       return runSearch(app, parsed, io)
+    case 'canvas':
+      return runCanvas(app, parsed, io)
+    case 'home-pages':
+      return runHomePages(app, parsed, io)
+    case 'icons':
+      return runIcons(app, parsed, io)
+    case 'import':
+      return runImport(app, parsed, io)
+    case 'readwise':
+      return runReadwise(app, parsed, io)
     default:
       throw new Error(
-        'Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search>'
+        'Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search|canvas|home-pages|icons|import|readwise>'
       )
   }
 }

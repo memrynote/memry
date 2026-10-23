@@ -12,7 +12,7 @@ import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { maskMarkdownCode, replaceMarkdownComments } from '@memry/shared/markdown-code'
 import { scanFootnotes } from '@memry/shared/footnotes'
 import type { CustomIconRow } from '@memry/db-schema/schema/custom-icons'
-import { sanitizeSvgBytes } from '../icons/sanitize-svg'
+import { sanitizeSvgBytes } from '@memry/shared/sanitize-svg'
 
 // ============================================================================
 // Types

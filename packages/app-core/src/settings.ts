@@ -1,4 +1,5 @@
 import { asc, eq } from 'drizzle-orm'
+import { GRAPH_VIEWS_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import { settings } from '@memry/db-schema/data-schema'
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 
@@ -33,6 +34,12 @@ export type SettingsGroupName =
   | 'journal'
   | 'tabs'
   | 'noteEditor'
+  | 'features'
+  | 'inbox'
+  | 'sticky'
+  | 'graphViews'
+  | 'tagSearches'
+  | 'sidebar'
 
 export interface SettingsService {
   list(): Promise<SettingRecord[]>
@@ -143,6 +150,54 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
   },
   noteEditor: {
     toolbarMode: 'floating'
+  },
+  // Mirrors FEATURES/INBOX/STICKY_SETTINGS_DEFAULTS in packages/contracts/src/settings-schemas.ts,
+  // which Node's type stripping cannot load (extensionless imports).
+  features: {
+    home: true,
+    inbox: true,
+    journal: true,
+    tasks: true,
+    calendar: true,
+    graph: true,
+    spatialCanvas: true
+  },
+  inbox: {
+    reviewReminderEnabled: false,
+    reviewReminderTime: '18:00',
+    imageFilingMode: 'embed',
+    imageFilingModeRemembered: false
+  },
+  sticky: { defaultKind: 'last', lastKind: 'note', tuckEdge: 'right' },
+  graphViews: { ...GRAPH_VIEWS_SETTINGS_DEFAULTS },
+  tagSearches: { searches: [] },
+  sidebar: {
+    navCollapsed: false,
+    notesFirst: false,
+    showFiles: true,
+    sectionOrder: [],
+    railOrder: [],
+    sortModes: {}
+  }
+}
+
+// `sidebar` is a CLI view over desktop's per-key `sidebar.*` rows. Each field
+// is stored as its own JSON value under that key, which is what desktop reads.
+const sidebarFields: Record<string, { key: string; accepts: (value: unknown) => boolean }> = {
+  navCollapsed: { key: 'sidebar.navCollapsed', accepts: (v) => typeof v === 'boolean' },
+  notesFirst: { key: 'sidebar.notesFirst', accepts: (v) => typeof v === 'boolean' },
+  showFiles: { key: 'sidebar.showFiles', accepts: (v) => typeof v === 'boolean' },
+  sectionOrder: {
+    key: 'sidebar.sectionOrder',
+    accepts: (v) => Array.isArray(v) && v.every((id) => typeof id === 'string')
+  },
+  railOrder: {
+    key: 'sidebar.railOrder',
+    accepts: (v) => Array.isArray(v) && v.every((id) => typeof id === 'string')
+  },
+  sortModes: {
+    key: 'sidebar.sortModes',
+    accepts: (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
   }
 }
 
@@ -158,7 +213,12 @@ const jsonSettingsGroupNames = new Set<SettingsGroupName>([
   'calendar.google',
   'calendar.ics',
   'calendar.caldav',
-  'voiceTranscription'
+  'voiceTranscription',
+  'features',
+  'inbox',
+  'sticky',
+  'graphViews',
+  'tagSearches'
 ])
 
 function nowIso(): string {
@@ -261,6 +321,24 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
             readRawSetting(dataDb, settingsKeys.noteEditorToolbarMode) ??
             settingsGroupDefaults.noteEditor.toolbarMode
         }
+      case 'sidebar': {
+        const defaults = settingsGroupDefaults.sidebar
+        const value: Record<string, unknown> = {}
+        for (const [field, { key, accepts }] of Object.entries(sidebarFields)) {
+          const raw = readRawSetting(dataDb, key)
+          let parsed: unknown = defaults[field]
+          if (raw !== null) {
+            try {
+              const candidate = JSON.parse(raw) as unknown
+              if (accepts(candidate)) parsed = candidate
+            } catch {
+              // Unreadable value reads as the default, as desktop's sidebar stores do.
+            }
+          }
+          value[field] = parsed
+        }
+        return value
+      }
       default:
         return readJsonGroup(groupName)
     }
@@ -330,6 +408,14 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
       case 'noteEditor':
         if (typeof updates.toolbarMode === 'string') {
           writeRawSetting(dataDb, settingsKeys.noteEditorToolbarMode, updates.toolbarMode)
+        }
+        return true
+      case 'sidebar':
+        for (const [field, value] of Object.entries(updates)) {
+          const spec = sidebarFields[field]
+          if (!spec) throw new Error(`Unknown sidebar setting: ${field}`)
+          if (!spec.accepts(value)) throw new Error(`Invalid value for sidebar.${field}`)
+          writeRawSetting(dataDb, spec.key, JSON.stringify(value))
         }
         return true
       default:

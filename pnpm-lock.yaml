@@ -116,6 +116,9 @@ importers:
       '@memry/editor-schema':
         specifier: workspace:*
         version: link:../../packages/editor-schema
+      '@memry/importers':
+        specifier: workspace:*
+        version: link:../../packages/importers
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -3683,6 +3686,7 @@ packages:
   '@opentelemetry/sdk-trace-base@2.10.0':
     resolution: {integrity: sha512-GuYQQT7QD2EeO8lcZLRQzcbOyhqAzL+6WWTKTU9mSUBYBazkEDl+VrQcXQhbB08OWM9anD1aHleVadzulpOaUQ==}
     engines: {node: ^18.19.0 || >=20.6.0}
+    deprecated: Use @opentelemetry/sdk-trace package
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
 
