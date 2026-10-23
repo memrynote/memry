@@ -6,6 +6,9 @@ import { buildPropertiesFileData, PROPERTY_DEFINITION_ROWS } from './properties'
 import { NOTES } from './notes'
 import { PROJECTS } from './tasks'
 
+const used = (key: 'status' | 'priority'): string[] =>
+  NOTES.map((note) => note.frontmatter[key]).filter((v): v is string => typeof v === 'string')
+
 describe('seed property definitions', () => {
   // A single unparsable entry makes safeParse fail, and PropertyDefinitionsService
   // then discards *every* definition in the file — so the whole block has to be
@@ -46,12 +49,9 @@ describe('seed property definitions', () => {
       )
     )
 
-    for (const note of NOTES) {
-      const noteStatus = note.frontmatter.status
-      if (typeof noteStatus === 'string') expect(statusValues).toContain(noteStatus)
-      const notePriority = note.frontmatter.priority
-      if (typeof notePriority === 'string') expect(priorityValues).toContain(notePriority)
-    }
+    expect(used('status').length).toBeGreaterThan(0)
+    for (const value of used('status')) expect(statusValues).toContain(value)
+    for (const value of used('priority')) expect(priorityValues).toContain(value)
   })
 
   it('only uses select and multiselect values the definitions declare', () => {

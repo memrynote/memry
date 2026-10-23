@@ -427,15 +427,14 @@ describe('worker', () => {
       const result = await resultPromise
 
       // #then every item is settled; the first failure carries the verdict.
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.failures).toHaveLength(2)
-        expect(result.failures[0]!.error).toBe('could not decrypt payload')
-        expect(result.failures[0]!.isSignatureError).toBe(false)
-        expect(result.failures[0]!.index).toBe(0)
-      } else {
+      if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
+      expect(result.results).toHaveLength(0)
+      expect(result.failures).toHaveLength(2)
+      expect(result.failures[0]!.error).toBe('could not decrypt payload')
+      expect(result.failures[0]!.isSignatureError).toBe(false)
+      expect(result.failures[0]!.index).toBe(0)
     })
 
     it('#then flags signature failures for the caller', async () => {
@@ -453,11 +452,10 @@ describe('worker', () => {
       const result = await resultPromise
 
       // #then
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.failures[0]!.isSignatureError).toBe(true)
-      } else {
+      if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
+      expect(result.failures[0]!.isSignatureError).toBe(true)
     })
 
     it('#then reports a failure when the signer key is missing', async () => {
@@ -470,13 +468,12 @@ describe('worker', () => {
       const result = await resultPromise
 
       // #then
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.failures[0]!.error).toContain('No public key')
-        expect(result.failures[0]!.noteId).toBe('n6')
-      } else {
+      if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
+      expect(result.results).toHaveLength(0)
+      expect(result.failures[0]!.error).toContain('No public key')
+      expect(result.failures[0]!.noteId).toBe('n6')
     })
 
     it('#then cleans up the vault key', async () => {

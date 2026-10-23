@@ -65,7 +65,8 @@ describe('pack-container vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(`${entry.name}`, async () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, async () => {
       const bytes = fromHex(entry.packHex)
       const parsed = await parsePack(bytes)
       expect(parsed.version, entry.pins).toBe(entry.expected.version)
@@ -83,7 +84,8 @@ describe('pack-container vectors', () => {
   }
 
   for (const entry of vectors.errorCases) {
-    it(`${entry.name}`, async () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, async () => {
       // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
       const rejects = expect(parsePack(fromHex(entry.packHex)), entry.pins).rejects
       // `entry-count-too-large` has no asserted message: the reference reaches

@@ -102,7 +102,8 @@ describe('tasksRpc input Zod schemas', () => {
     const bad = TaskUpdateSchema.safeParse({ title: 'no id' })
     expect(ok.success).toBe(true)
     expect(bad.success).toBe(false)
-    if (!bad.success) expect(bad.error.issues[0].path).toContain('id')
+    if (bad.success) throw new Error('expected the check above to fail')
+    expect(bad.error.issues[0].path).toContain('id')
   })
 
   it('TaskListSchema applies defaults for pagination', () => {

@@ -74,7 +74,8 @@ describe('attachment-manifest vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    describe(`${entry.name}`, () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    describe(entry.name, () => {
       it('decrypts to its manifest', async () => {
         const { manifest, fileKey } = await decryptAttachmentManifest(
           reader,

@@ -65,7 +65,8 @@ describe('cbor-canonical vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(`${entry.name}`, () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, () => {
       const bytes = encodeCbor(rehydrate(entry.input), entry.fieldOrder)
       expect(hex(bytes), entry.pins).toBe(entry.expectedHex)
 
@@ -76,7 +77,8 @@ describe('cbor-canonical vectors', () => {
   }
 
   for (const entry of vectors.rejectCases) {
-    it(`${entry.name}`, () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, () => {
       expect(() =>
         encodeCbor(
           rehydrate(entry.input),

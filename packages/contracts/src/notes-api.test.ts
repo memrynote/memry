@@ -185,7 +185,8 @@ describe('NoteUpdateSchema', () => {
     it('keeps a whole tag list for agent callers that replace the tags row', () => {
       const result = NoteUpdateSchema.safeParse({ id: 'note-123', tags: ['work', 'inline'] })
       expect(result.success).toBe(true)
-      if (result.success) expect(result.data).toEqual({ id: 'note-123', tags: ['work', 'inline'] })
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data).toEqual({ id: 'note-123', tags: ['work', 'inline'] })
     })
 
     it('should accept null emoji (to remove emoji)', () => {

@@ -68,7 +68,8 @@ describe('block-edit vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    describe(`${entry.name}`, () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    describe(entry.name, () => {
       it('renders its base document as the file records', () => {
         expect(canonicalFragment(applied(entry.baseUpdateHex))).toBe(entry.baseCanonical)
       })

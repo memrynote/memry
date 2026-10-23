@@ -276,8 +276,10 @@ describe('task push payload', () => {
         Object.keys(payload).filter((key) => !SENDABLE.has(key)),
         site
       ).toEqual([])
+      /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
       if (fields === null) expect(payload, site).not.toHaveProperty('fields')
       else expect(payload.fields, site).toEqual(fields)
+      /* oxlint-enable vitest/no-conditional-expect */
       expect(payload, site).toMatchObject({
         tags: ['work'],
         linkedNoteIds: ['note-1'],

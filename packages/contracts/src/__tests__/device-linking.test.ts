@@ -160,6 +160,7 @@ describe('device-linking vectors', () => {
       if ('verifyWithKeyHex' in entry) {
         const message = fromHex(entry.messageHex as string)
         const mac = sodium.from_base64(entry.macB64 as string, sodium.base64_variants.ORIGINAL)
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(
           sodium.crypto_auth_verify(mac, message, fromHex(entry.verifyWithKeyHex as string)),
           entry.pins as string
@@ -174,8 +175,10 @@ describe('device-linking vectors', () => {
         const h = sodium.crypto_generichash(4, sasKey, null)
         const u32 = ((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0
         const code = (u32 % 1000000).toString().padStart(6, '0')
+        /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
         expect(code).toBe(entry.expectedCode)
         expect(code, entry.pins as string).not.toBe(entry.mustDifferFrom)
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     })
   }

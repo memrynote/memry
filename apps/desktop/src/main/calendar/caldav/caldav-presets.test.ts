@@ -59,9 +59,11 @@ describe('discovery smoke test per preset (#1401)', () => {
 
       expect(info.calendars.map((calendar) => calendar.displayName)).toEqual(['Personal'])
       if (preset.id === 'nextcloud')
+        /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
         expect(serverUrl).toBe('https://cloud.example.com/remote.php/dav/')
       if (preset.id === 'icloud') {
         expect(info.calendars[0].url).toBe('https://p42-caldav.icloud.com/me/calendars/personal/')
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     }
   )

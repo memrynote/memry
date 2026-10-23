@@ -442,6 +442,7 @@ describe('page closure across tables (#2295)', () => {
         const served = [...servedCursors(page), ...tombstoneCursors].sort((a, b) => a - b)
         expect(served.length).toBeLessThanOrEqual(limit)
         expect(page.nextCursor).toBeGreaterThanOrEqual(cursor)
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         if (served.length > 0) expect(page.nextCursor).toBe(served[served.length - 1])
         seen.push(...served)
         if (!page.hasMore) break

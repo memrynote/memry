@@ -12,7 +12,9 @@ vi.mock('../../lib/logger', () => ({
   })
 }))
 
-import { getAllHandlers, getHandler } from './index'
+import { getAllHandlers, getHandler, type SyncItemHandler } from './index'
+
+type SeedData = Parameters<SyncItemHandler['applyUpsert']>[2]
 
 /**
  * Types that are deliberately absent from the record-handler registry because
@@ -97,7 +99,7 @@ beforeEach(() => {
   const seedEmit = vi.fn()
   const seedCtx = { db, emit: seedEmit, vaultKey: new Uint8Array(32) }
 
-  const applySeed = (type: SyncItemType, id: string, data: unknown): void => {
+  const applySeed = (type: SyncItemType, id: string, data: SeedData): void => {
     const result = getHandler(type)!.applyUpsert(seedCtx, id, data, { 'device-seed': 1 })
     if (result !== 'applied') throw new Error(`seeding ${type} FK parent returned ${result}`)
   }
@@ -147,7 +149,7 @@ describe('sync item handler registry', () => {
     // renderer showing stale data until the app is restarted — the "vault is
     // updated but the app does not refresh" class of report.
     for (const type of SYNC_ITEM_TYPES.filter(
-      (t) => !NON_RECORD_TYPES.includes(t) && EMIT_PROBE_EXEMPT[t]
+      (t) => !NON_RECORD_TYPES.includes(t) && EMIT_PROBE_EXEMPT[t] !== undefined
     )) {
       // Documented gap: these types cannot run against a bare data-db handle
       // (reason in EMIT_PROBE_EXEMPT); the skip keeps them visible in reports.
@@ -156,7 +158,7 @@ describe('sync item handler registry', () => {
     }
 
     for (const type of SYNC_ITEM_TYPES.filter(
-      (t) => !NON_RECORD_TYPES.includes(t) && !EMIT_PROBE_EXEMPT[t]
+      (t) => !NON_RECORD_TYPES.includes(t) && EMIT_PROBE_EXEMPT[t] === undefined
     )) {
       it(`${type}: emits a renderer event when a remote upsert is applied`, () => {
         const handler = getHandler(type)

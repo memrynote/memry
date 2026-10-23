@@ -138,8 +138,10 @@ describe('record-envelope vectors', () => {
       expect(sizeBytes).toBe(entry.expected.sizeBytes)
       // Omission, not null: an absent key is a different signed byte string
       // from a key carrying an empty value.
+      /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
       if (entry.input.clock === null) expect('clock' in pushItem).toBe(false)
       if (entry.input.deletedAt === null) expect('deletedAt' in pushItem).toBe(false)
+      /* oxlint-enable vitest/no-conditional-expect */
     })
 
     it(`${entry.name}: the reader verifies and decrypts it`, async () => {
@@ -157,7 +159,8 @@ describe('record-envelope vectors', () => {
   }
 
   for (const entry of vectors.tamperCases) {
-    it(`${entry.name}`, async () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, async () => {
       const crypto = deterministicProvider()
       const firstCase = vectors.cases[0]
       await expect(
@@ -173,7 +176,8 @@ describe('record-envelope vectors', () => {
   }
 
   for (const entry of vectors.sizeCeilingCases) {
-    it(`${entry.name}`, async () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, async () => {
       const crypto = deterministicProvider()
       const signer = sodium.crypto_sign_seed_keypair(fromHex(vectors.cases[0].input.signingSeedHex))
       const call = (): Promise<unknown> =>
@@ -189,9 +193,11 @@ describe('record-envelope vectors', () => {
         })
 
       if (entry.expectThrows) {
+        /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
         await expect(call(), entry.pins).rejects.toThrow('Item too large for sync')
       } else {
         await expect(call(), entry.pins).resolves.toBeDefined()
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     })
   }

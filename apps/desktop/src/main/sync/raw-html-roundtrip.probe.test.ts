@@ -225,7 +225,8 @@ const SURVIVORS: Probe[] = [
 ]
 
 function run(title: string, probes: Probe[]): void {
-  describe(`${title}`, () => {
+  // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+  describe(title, () => {
     it.each(probes)('$name', async ({ markdown, pass1, pass2 }) => {
       const once = await onePass(markdown)
       expect(once, 'first round-trip').toBe(pass1 ?? markdown)

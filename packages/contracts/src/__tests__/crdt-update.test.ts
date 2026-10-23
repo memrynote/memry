@@ -156,7 +156,8 @@ describe('crdt-update vectors', () => {
   }
 
   for (const entry of vectors.errorCases.filter((c) => c.expectErrorContains)) {
-    it(`${entry.name}`, async () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, async () => {
       const crypto = deterministicProvider()
       const signer = sodium.crypto_sign_seed_keypair(fromHex(vectors.cases[0].input.signingSeedHex))
       await expect(

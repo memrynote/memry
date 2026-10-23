@@ -443,12 +443,11 @@ describe('buildMindMap — deep links', () => {
 
   it('links every box and no connector', () => {
     const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
-    for (const element of map.elements) {
-      if (element.type === 'rectangle') {
-        expect(mindMapHrefOf(element)).toMatch(/^memry:\/\/note\/note-1/)
-      } else {
-        expect(element).not.toHaveProperty('customData')
-      }
+    for (const element of map.elements.filter((e) => e.type === 'rectangle')) {
+      expect(mindMapHrefOf(element)).toMatch(/^memry:\/\/note\/note-1/)
+    }
+    for (const element of map.elements.filter((e) => e.type !== 'rectangle')) {
+      expect(element).not.toHaveProperty('customData')
     }
   })
 

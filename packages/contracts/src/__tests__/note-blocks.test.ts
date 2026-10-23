@@ -73,7 +73,8 @@ describe('note-blocks vectors', () => {
   })
 
   for (const entry of vectors.cases) {
-    it(`${entry.name}`, () => {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, () => {
       const doc = applied(entry.updateHex)
       expect(extractBlocks(doc), entry.pins).toEqual(entry.expectedBlocks)
       expect(canonicalFragment(doc), entry.pins).toBe(entry.expectedCanonical)

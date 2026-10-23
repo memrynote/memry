@@ -1175,6 +1175,7 @@ describe('dirty-recovery', () => {
       expect(Object.keys(DIRTY_RECOVERY).sort()).toEqual([...RECORD_SYNC_ITEM_TYPES].sort())
       for (const type of RECORD_SYNC_ITEM_TYPES) {
         const entry = DIRTY_RECOVERY[type]
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         if (entry.kind === 'exempt') expect(entry.reason.trim(), type).not.toBe('')
       }
 

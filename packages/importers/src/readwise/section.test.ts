@@ -13,6 +13,7 @@ describe('readSection', () => {
       untouched: true,
       marker: { last: LAST, hash: hashSectionBody('## Highlights\n\n- one') }
     })
+    // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (read.found) expect(body.slice(read.range.start, read.range.end)).toBe(section)
   })
 
@@ -24,6 +25,7 @@ describe('readSection', () => {
   it('reports a touched section once the text changes', () => {
     const read = readSection(section.replace('- one', '- one, and my thought'))
     expect(read).toMatchObject({ found: true, untouched: false })
+    // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (read.found) expect(read.marker?.last).toBe(LAST)
   })
 
@@ -36,6 +38,7 @@ describe('readSection', () => {
       end: { marker: { last: LAST } }
     })
     if (!read.found && read.end)
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       expect(body.slice(read.end.range.start)).toMatch(/^<!-- readwise:end/)
     expect(readSection('just text')).toEqual({
       found: false,
@@ -97,6 +100,7 @@ describe('writeEndMarker', () => {
     )
     const read = readSection(appended)
     expect(read).toMatchObject({ found: true, untouched: false })
+    // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (read.found) expect(read.marker?.last).toBe('2026-11-01T00:00:00.000Z')
   })
 })

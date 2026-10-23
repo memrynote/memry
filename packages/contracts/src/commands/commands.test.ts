@@ -50,8 +50,8 @@ describe('COMMANDS', () => {
   })
 
   it('gives destructive commands no keyboard default', () => {
-    for (const [id, meta] of entries) {
-      if (meta.destructive) expect(meta.keyboard, id).toBeUndefined()
+    for (const [id, meta] of entries.filter(([, m]) => m.destructive)) {
+      expect(meta.keyboard, id).toBeUndefined()
     }
   })
 
@@ -59,9 +59,8 @@ describe('COMMANDS', () => {
     // A macOS menu accelerator is a live key equivalent: it would take ⌘B from Bold.
     for (const [id, meta] of entries) {
       const keyboard = meta.keyboard
-      if (keyboard?.owner === 'app' && keyboard.menuAccelerator) {
-        expect(keyboard.richText, id).not.toBe('yield')
-      }
+      const mirroredAsAccelerator = keyboard?.owner === 'app' && Boolean(keyboard.menuAccelerator)
+      expect(mirroredAsAccelerator ? keyboard.richText : undefined, id).not.toBe('yield')
     }
   })
 

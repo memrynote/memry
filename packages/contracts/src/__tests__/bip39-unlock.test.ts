@@ -162,8 +162,8 @@ describe('bip39-unlock vectors', () => {
     // the reference — which is the failure this case names.
     const bytes = sodium.from_base64(entry.expectedB64, sodium.base64_variants.ORIGINAL)
     const urlSafe = sodium.to_base64(bytes, sodium.base64_variants.URLSAFE_NO_PADDING)
-    // oxlint-disable-next-line vitest/no-conditional-expect -- only vectors whose base64 has an alternative url-safe spelling exercise this
     if (urlSafe !== entry.expectedB64) {
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       expect(
         utf8(urlSafe).length === derived.length && sodium.memcmp(utf8(urlSafe), derived),
         'a differently spelled base64 of the same bytes must NOT compare equal'

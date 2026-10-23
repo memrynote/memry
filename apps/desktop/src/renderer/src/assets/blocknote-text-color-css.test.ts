@@ -168,6 +168,7 @@ describe('BlockNote text colour palette', () => {
     it.each(SWATCHES)('%s carries enough chroma to name a hue', (name) => {
       // Gray is the one deliberate neutral, so it is the one exemption.
       if (name === 'gray') {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(chroma(swatch(selector, name))).toBeLessThan(MIN_CHROMA)
         return
       }

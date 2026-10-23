@@ -66,6 +66,7 @@ describe('project view-state keys', () => {
     // `VirtualizedProjectTaskList`, which is keyed separately.
     for (const key of PROJECT_TAB_KEYS) {
       if (key === 'tasks') {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(PROJECT_SCROLL_KEYS).not.toHaveProperty(key)
         continue
       }

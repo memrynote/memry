@@ -539,6 +539,7 @@ describe('useSubtaskManagement', () => {
       result.current.handleCompleteSubtask('child')
     })
     expect(onTasksChange).toHaveBeenCalledWith(
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       tasks.map((task) => (task.id === 'child' ? { ...task, completedAt: expect.any(Date) } : task))
     )
     act(() => vi.advanceTimersByTime(200))

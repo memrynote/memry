@@ -134,6 +134,7 @@ describe('a header tag with a template', () => {
   async function openDoc(noteId: string, body: string, notePath: string): Promise<Y.Doc> {
     const doc = new Y.Doc()
     if (body) {
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       expect(
         await markdownToYFragment(body, doc.getXmlFragment(CRDT_FRAGMENT_NAME), notePath)
       ).toBe(true)

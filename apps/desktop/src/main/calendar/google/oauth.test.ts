@@ -105,11 +105,13 @@ describe('google calendar oauth', () => {
       const url = String(input)
 
       if (url === 'https://oauth2.googleapis.com/token') {
+        /* oxlint-disable vitest/no-conditional-expect -- assertions run inside a fake endpoint that serves several URLs; the branch selects the request being checked */
         expect(init?.method).toBe('POST')
         const body = String(init?.body)
         expect(body).toContain('code=google-auth-code')
         expect(body).toContain('grant_type=authorization_code')
         expect(body).toContain('code_verifier=')
+        /* oxlint-enable vitest/no-conditional-expect */
         return new Response(
           JSON.stringify({
             access_token: 'google-access-token',
@@ -123,9 +125,11 @@ describe('google calendar oauth', () => {
       }
 
       if (url === 'https://www.googleapis.com/oauth2/v2/userinfo') {
+        /* oxlint-disable vitest/no-conditional-expect -- assertions run inside a fake endpoint that serves several URLs; the branch selects the request being checked */
         expect(init?.headers).toEqual(
           expect.objectContaining({
             Authorization: 'Bearer google-access-token'
+            /* oxlint-enable vitest/no-conditional-expect */
           })
         )
         return new Response(
@@ -140,9 +144,11 @@ describe('google calendar oauth', () => {
       }
 
       if (url === 'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary') {
+        /* oxlint-disable vitest/no-conditional-expect -- assertions run inside a fake endpoint that serves several URLs; the branch selects the request being checked */
         expect(init?.headers).toEqual(
           expect.objectContaining({
             Authorization: 'Bearer google-access-token'
+            /* oxlint-enable vitest/no-conditional-expect */
           })
         )
         return new Response(
@@ -667,6 +673,7 @@ describe('google calendar oauth', () => {
     fetchMock.mockImplementation(async (input, init) => {
       const url = String(input)
       if (url === 'https://oauth2.googleapis.com/token') {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- assertions run inside a fake endpoint that serves several URLs; the branch selects the request being checked
         expect(String(init?.body)).toContain('client_secret=desktop-secret')
         return new Response(
           JSON.stringify({
