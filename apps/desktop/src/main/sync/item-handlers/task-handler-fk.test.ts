@@ -33,18 +33,20 @@ describe('taskHandler missing FK parents (#837)', () => {
   })
 
   it('names the missing project instead of throwing a bare FK error on insert', () => {
+    let err: unknown
     try {
       taskHandler.applyUpsert(ctx, 'orphan-1', makeTaskPayload({ projectId: 'deleted-project' }), {
         'device-B': 1
       })
       expect.unreachable('expected a MissingSyncParentError')
-    } catch (err) {
-      expect(err).toBeInstanceOf(MissingSyncParentError)
-      const parent = err as MissingSyncParentError
-      expect(parent.parentType).toBe('project')
-      expect(parent.parentId).toBe('deleted-project')
-      expect(parent.childId).toBe('orphan-1')
+    } catch (thrown) {
+      err = thrown
     }
+    expect(err).toBeInstanceOf(MissingSyncParentError)
+    const parent = err as MissingSyncParentError
+    expect(parent.parentType).toBe('project')
+    expect(parent.parentId).toBe('deleted-project')
+    expect(parent.childId).toBe('orphan-1')
   })
 
   it('names the missing project when updating an existing task', () => {

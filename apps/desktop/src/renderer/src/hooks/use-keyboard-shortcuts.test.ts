@@ -39,11 +39,13 @@ describe('Keyboard Shortcuts Utilities', () => {
 
     it('should have consistent modifier key with isMac', () => {
       if (isMac) {
+        /* oxlint-disable vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted */
         expect(modifierKey).toBe('⌘')
         expect(altKey).toBe('⌥')
       } else {
         expect(modifierKey).toBe('Ctrl')
         expect(altKey).toBe('Alt')
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     })
   })

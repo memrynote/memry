@@ -22,9 +22,11 @@ describe('project links seed data', () => {
     for (const link of PROJECT_LINKS) {
       expect(PROJECT_ID_SET.has(link.projectId)).toBe(true)
       if (link.itemType === 'note') {
+        /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
         expect(NOTE_ID_SET.has(link.itemId)).toBe(true)
       } else if (link.itemType === 'calendar_event') {
         expect(EVENT_ID_SET.has(link.itemId)).toBe(true)
+        /* oxlint-enable vitest/no-conditional-expect */
       } else {
         throw new Error(`unexpected seeded link type: ${link.itemType}`)
       }

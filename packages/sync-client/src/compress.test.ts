@@ -121,7 +121,7 @@ describe('compressPayload / decompressPayload', () => {
       // as silently truncated note content.
       const garbage = new Uint8Array([FLAG_DEFLATE, 0xde, 0xad, 0xbe, 0xef, 0x00, 0x01])
 
-      expect(() => decompressPayload(garbage)).toThrow()
+      expect(() => decompressPayload(garbage)).toThrow('incorrect header check')
     })
 
     // pako's `inflate()` only assigns `result` when the deflate stream ENDS. A
@@ -144,7 +144,7 @@ describe('compressPayload / decompressPayload', () => {
       const corrupted = full.slice()
       corrupted[5] = corrupted[5] ^ 0xff
 
-      expect(() => decompressPayload(corrupted)).toThrow()
+      expect(() => decompressPayload(corrupted)).toThrow('invalid code lengths set')
     })
 
     it('#then a zero-length buffer is returned as-is rather than throwing', () => {

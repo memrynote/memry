@@ -412,7 +412,7 @@ describe('calendar-handlers', () => {
         isAllDay: false,
         color: 'cobalt'
       })
-    ).rejects.toThrow()
+    ).rejects.toThrow(/Validation failed: color: Invalid option: expected one of/)
   })
 
   it('returns projected range items for memrynote and imported provider events', async () => {

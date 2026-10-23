@@ -78,12 +78,16 @@ describe('Readwise status (#1418)', () => {
 
   it('a revoked token shows one toast across failed runs, and a new one only after it was fixed and came back', async () => {
     readwise.failWhen = () => 401
-    await expect(syncReadwiseNow()).rejects.toThrow()
+    await expect(syncReadwiseNow()).rejects.toThrow(
+      'Readwise did not accept this token. Copy it again from readwise.io/access_token.'
+    )
     expect((await getReadwiseStatus()).error).toEqual({ kind: 'invalid-token', detail: null })
     expect(claimErrorToast(db())).toBe(true)
 
     for (let attempt = 0; attempt < 3; attempt++) {
-      await expect(syncReadwiseNow()).rejects.toThrow()
+      await expect(syncReadwiseNow()).rejects.toThrow(
+        'Readwise did not accept this token. Copy it again from readwise.io/access_token.'
+      )
       expect(claimErrorToast(db())).toBe(false)
     }
 
@@ -103,7 +107,9 @@ describe('Readwise status (#1418)', () => {
 
     // It comes back: a new episode, a new toast.
     readwise.failWhen = () => 401
-    await expect(syncReadwiseNow()).rejects.toThrow()
+    await expect(syncReadwiseNow()).rejects.toThrow(
+      'Readwise did not accept this token. Copy it again from readwise.io/access_token.'
+    )
     expect(claimErrorToast(db())).toBe(true)
   })
 
@@ -117,7 +123,9 @@ describe('Readwise status (#1418)', () => {
           })
       )
     )
-    await expect(syncReadwiseNow()).rejects.toThrow()
+    await expect(syncReadwiseNow()).rejects.toThrow(
+      'Could not reach Readwise. Check your connection and try again.'
+    )
     expect((await getReadwiseStatus()).error).toEqual({
       kind: 'subscription-expired',
       detail: null
@@ -132,7 +140,9 @@ describe('Readwise status (#1418)', () => {
         throw new TypeError('offline')
       })
     )
-    await expect(syncReadwiseNow()).rejects.toThrow()
+    await expect(syncReadwiseNow()).rejects.toThrow(
+      'Could not reach Readwise. Check your connection and try again.'
+    )
     const status = await getReadwiseStatus()
     expect(status.error).toEqual({ kind: 'network', detail: null })
     expect(status.nextRunAt).not.toBeNull()

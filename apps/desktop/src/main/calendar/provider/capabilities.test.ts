@@ -130,6 +130,7 @@ describe('provider capability table (#1391)', () => {
         capabilities.sourceScope === 'device'
       )
       // A source row that never syncs cannot carry a synced mirror.
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       if (capabilities.sourceScope === 'device') expect(capabilities.mirrorScope).toBe('device')
     }
     for (const id of DEVICE_LOCAL_CALENDAR_PROVIDERS.sources) {

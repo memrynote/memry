@@ -94,13 +94,13 @@ describe('MicrotaskBatchBroadcaster', () => {
       await new Promise<void>((r) => queueMicrotask(r))
 
       // #then
+      const textByNote: Record<string, string> = {}
       for (const [noteId, merged] of broadcastFn.mock.calls as [string, Uint8Array][]) {
         const receiver = new Y.Doc()
         Y.applyUpdate(receiver, merged)
-        const text = receiver.getText('content').toString()
-        if (noteId === 'note-1') expect(text).toBe('AAA')
-        if (noteId === 'note-2') expect(text).toBe('BBB')
+        textByNote[noteId] = receiver.getText('content').toString()
       }
+      expect(textByNote).toEqual({ 'note-1': 'AAA', 'note-2': 'BBB' })
     })
   })
 

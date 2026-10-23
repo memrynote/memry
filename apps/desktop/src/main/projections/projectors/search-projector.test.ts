@@ -221,8 +221,10 @@ describe('search projector', () => {
     // statement rebuild used to start with (DELETE FROM fts_notes) throws too
     expect(() =>
       indexDb.db.all(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'alpha'`)
-    ).toThrow()
-    expect(() => indexDb.db.run(sql`DELETE FROM fts_notes`)).toThrow()
+    ).toThrow(/fts5: corruption found reading blob \d+ from table "fts_notes"/)
+    expect(() => indexDb.db.run(sql`DELETE FROM fts_notes`)).toThrow(
+      "Failed to run the query 'DELETE FROM fts_notes'"
+    )
 
     const projector = createSearchProjector(() => vaultDir)
 
@@ -306,7 +308,9 @@ describe('search projector', () => {
       const onCorrupt = vi.fn()
       const projector = createSearchProjector(() => vaultDir, onCorrupt)
 
-      await expect(projector.project(noteEvent)).rejects.toThrow()
+      await expect(projector.project(noteEvent)).rejects.toThrow(
+        /fts5: corruption found reading blob \d+ from table "fts_notes"/
+      )
       expect(onCorrupt).toHaveBeenCalledTimes(1)
     })
 
@@ -501,7 +505,7 @@ describe('search projector', () => {
     dataDb.db.run(sql`DROP TABLE fts_inbox`)
 
     const projector = createSearchProjector(() => vaultDir)
-    await expect(projector.reconcile()).rejects.toThrow()
+    await expect(projector.reconcile()).rejects.toThrow(/Failed to run the query/)
 
     expect(readDedupeMarker()).toBeUndefined()
 

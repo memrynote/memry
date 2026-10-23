@@ -517,6 +517,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
     await provider.init(outbox, pushSnapshot)
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
+    // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (!options?.store) expect(provider.storeId).toBeNull()
     return { provider, coordinator, pushUpdate, flushFullStates }
   }

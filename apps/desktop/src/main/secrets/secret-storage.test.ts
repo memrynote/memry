@@ -185,9 +185,10 @@ describe('secret-storage', () => {
       expect(value).toBe('legacy-value')
       expect(harness.keytarDelete).not.toHaveBeenCalled()
       expect(harness.keytarStore.get(`${SERVICE}:${ACCOUNT}`)).toBe('legacy-value')
-      if (fs.existsSync(storeFilePath())) {
-        expect(readStoreJson().entries[SERVICE]?.[ACCOUNT]).toBeUndefined()
-      }
+      const persisted = fs.existsSync(storeFilePath())
+        ? readStoreJson().entries[SERVICE]?.[ACCOUNT]
+        : undefined
+      expect(persisted).toBeUndefined()
     })
 
     it('reads safeStorage first when both copies exist (dual-read order)', async () => {

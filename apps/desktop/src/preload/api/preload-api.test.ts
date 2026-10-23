@@ -74,9 +74,11 @@ function expectSubscribe(
   expect(actualChannel).toBe(channel)
   handler({}, { ok: true })
   if (expectedPayload === noPayload) {
+    /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
     expect(callback).toHaveBeenLastCalledWith()
   } else {
     expect(callback).toHaveBeenLastCalledWith(expectedPayload)
+    /* oxlint-enable vitest/no-conditional-expect */
   }
 
   unsubscribe()

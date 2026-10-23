@@ -37,8 +37,8 @@ describe('completeStructured', () => {
   })
 
   it('rejects invalid JSON, schema mismatches and failed runs', async () => {
-    await expect(run(backendReplying('not json'))).rejects.toThrow()
-    await expect(run(backendReplying('{"a": "x"}'))).rejects.toThrow()
+    await expect(run(backendReplying('not json'))).rejects.toThrow('model reply has no JSON object')
+    await expect(run(backendReplying('{"a": "x"}'))).rejects.toThrow(/invalid_type/)
     await expect(run(backendReplying('{"a": 1}', 1))).rejects.toThrow(/exited 1/)
   })
 })

@@ -331,9 +331,8 @@ describe('vault watcher', () => {
     expect(tags).toEqual(['Alpha', 'Beta'])
 
     const links = indexDb.db.select().from(noteLinks).where(eq(noteLinks.sourceId, noteId)).all()
-    if (links.length > 0) {
-      expect(links).toEqual([expect.objectContaining({ targetTitle: 'Target Note' })])
-    }
+    if (!(links.length > 0)) throw new Error('expected: links.length > 0')
+    expect(links).toEqual([expect.objectContaining({ targetTitle: 'Target Note' })])
 
     window.webContents.send.mockClear()
 

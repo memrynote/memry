@@ -82,9 +82,10 @@ describe('worker', () => {
     await import('./worker')
 
     await vi.waitFor(() => {
-      expect(
-        mockPort.postMessage.mock.calls.some(([msg]: [WorkerToMainMessage]) => msg.type === 'ready')
-      ).toBe(true)
+      const ready = mockPort.postMessage.mock.calls.some(
+        ([msg]: [WorkerToMainMessage]) => msg.type === 'ready'
+      )
+      if (!ready) throw new Error('worker has not posted ready yet')
     })
   })
 
@@ -132,12 +133,12 @@ describe('worker', () => {
 
       // #then
       expect(result.type).toBe('encrypt-batch-result')
-      if (result.type === 'encrypt-batch-result') {
-        expect(result.requestId).toBe('req_enc_1')
-        expect(result.results).toHaveLength(1)
-        expect(result.results[0].queueId).toBe('q1')
-        expect(result.errors).toHaveLength(0)
-      }
+      if (result.type !== 'encrypt-batch-result')
+        throw new Error("expected: result.type === 'encrypt-batch-result'")
+      expect(result.requestId).toBe('req_enc_1')
+      expect(result.results).toHaveLength(1)
+      expect(result.results[0].queueId).toBe('q1')
+      expect(result.errors).toHaveLength(0)
     })
 
     it('#then reports per-item errors without crashing batch', async () => {
@@ -170,11 +171,11 @@ describe('worker', () => {
 
       // #then
       expect(result.type).toBe('encrypt-batch-result')
-      if (result.type === 'encrypt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.errors).toHaveLength(1)
-        expect(result.errors[0].error).toBe('sodium encrypt failed')
-      }
+      if (result.type !== 'encrypt-batch-result')
+        throw new Error("expected: result.type === 'encrypt-batch-result'")
+      expect(result.results).toHaveLength(0)
+      expect(result.errors).toHaveLength(1)
+      expect(result.errors[0].error).toBe('sodium encrypt failed')
     })
 
     it('#then calls secureCleanup on vaultKey and signingSecretKey', async () => {
@@ -232,11 +233,11 @@ describe('worker', () => {
 
       // #then
       expect(result.type).toBe('decrypt-batch-result')
-      if (result.type === 'decrypt-batch-result') {
-        expect(result.requestId).toBe('req_dec_1')
-        expect(result.results).toHaveLength(1)
-        expect(result.failures).toHaveLength(0)
-      }
+      if (result.type !== 'decrypt-batch-result')
+        throw new Error("expected: result.type === 'decrypt-batch-result'")
+      expect(result.requestId).toBe('req_dec_1')
+      expect(result.results).toHaveLength(1)
+      expect(result.failures).toHaveLength(0)
     })
 
     it('#then records failure when signer key is missing', async () => {
@@ -269,12 +270,12 @@ describe('worker', () => {
 
       // #then
       expect(result.type).toBe('decrypt-batch-result')
-      if (result.type === 'decrypt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.failures).toHaveLength(1)
-        expect(result.failures[0].isCryptoError).toBe(false)
-        expect(result.failures[0].error).toContain('No public key')
-      }
+      if (result.type !== 'decrypt-batch-result')
+        throw new Error("expected: result.type === 'decrypt-batch-result'")
+      expect(result.results).toHaveLength(0)
+      expect(result.failures).toHaveLength(1)
+      expect(result.failures[0].isCryptoError).toBe(false)
+      expect(result.failures[0].error).toContain('No public key')
     })
 
     it('#then records crypto failure from decryptSingleItem', async () => {
@@ -319,11 +320,11 @@ describe('worker', () => {
 
       // #then
       expect(result.type).toBe('decrypt-batch-result')
-      if (result.type === 'decrypt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.failures).toHaveLength(1)
-        expect(result.failures[0].isCryptoError).toBe(true)
-      }
+      if (result.type !== 'decrypt-batch-result')
+        throw new Error("expected: result.type === 'decrypt-batch-result'")
+      expect(result.results).toHaveLength(0)
+      expect(result.failures).toHaveLength(1)
+      expect(result.failures[0].isCryptoError).toBe(true)
     })
 
     it('#then calls secureCleanup on vaultKey', async () => {
@@ -383,10 +384,10 @@ describe('worker', () => {
       expect(Buffer.from(packed).toString('utf-8')).toBe('hello-update')
 
       expect(result.type).toBe('decrypt-crdt-batch-result')
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.results).toEqual([{ index: 2, update: new Uint8Array([9, 8, 7]) }])
-        expect(result.failures).toHaveLength(0)
-      }
+      if (result.type !== 'decrypt-crdt-batch-result')
+        throw new Error("expected: result.type === 'decrypt-crdt-batch-result'")
+      expect(result.results).toEqual([{ index: 2, update: new Uint8Array([9, 8, 7]) }])
+      expect(result.failures).toHaveLength(0)
     })
 
     it('#then passes already-decoded snapshot bytes through untouched', async () => {
@@ -424,15 +425,14 @@ describe('worker', () => {
       const result = await resultPromise
 
       // #then every item is settled; the first failure carries the verdict.
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.failures).toHaveLength(2)
-        expect(result.failures[0]!.error).toBe('could not decrypt payload')
-        expect(result.failures[0]!.isSignatureError).toBe(false)
-        expect(result.failures[0]!.index).toBe(0)
-      } else {
+      if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
+      expect(result.results).toHaveLength(0)
+      expect(result.failures).toHaveLength(2)
+      expect(result.failures[0]!.error).toBe('could not decrypt payload')
+      expect(result.failures[0]!.isSignatureError).toBe(false)
+      expect(result.failures[0]!.index).toBe(0)
     })
 
     it('#then flags signature failures for the caller', async () => {
@@ -450,11 +450,10 @@ describe('worker', () => {
       const result = await resultPromise
 
       // #then
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.failures[0]!.isSignatureError).toBe(true)
-      } else {
+      if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
+      expect(result.failures[0]!.isSignatureError).toBe(true)
     })
 
     it('#then reports a failure when the signer key is missing', async () => {
@@ -467,13 +466,12 @@ describe('worker', () => {
       const result = await resultPromise
 
       // #then
-      if (result.type === 'decrypt-crdt-batch-result') {
-        expect(result.results).toHaveLength(0)
-        expect(result.failures[0]!.error).toContain('No public key')
-        expect(result.failures[0]!.noteId).toBe('n6')
-      } else {
+      if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
+      expect(result.results).toHaveLength(0)
+      expect(result.failures[0]!.error).toContain('No public key')
+      expect(result.failures[0]!.noteId).toBe('n6')
     })
 
     it('#then cleans up the vault key', async () => {

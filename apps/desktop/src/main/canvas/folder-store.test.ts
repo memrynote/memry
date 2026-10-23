@@ -340,7 +340,9 @@ describe('canvas folder store', () => {
       // A real database failure, not a stub: every write now returns
       // SQLITE_READONLY, so the transaction throws after the directory moved.
       sqliteHandle.pragma('query_only = true')
-      expect(() => renameCanvasFolder(db, vault, VAULT_ID, 'Work', 'Job')).toThrow()
+      expect(() => renameCanvasFolder(db, vault, VAULT_ID, 'Work', 'Job')).toThrow(
+        'attempt to write a readonly database'
+      )
       sqliteHandle.pragma('query_only = false')
 
       // The rows still say `Work`, so the directory has to be `Work`.

@@ -252,7 +252,7 @@ describe('sendIncidentReport', () => {
         fetch: fetchMock,
         endpoint: 'http://localhost:8787/diagnostics/report'
       })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Failed to send incident report (status 500)')
   })
 
   it('resolves the production default endpoint from the report buildChannel when no override is given', async () => {

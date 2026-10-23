@@ -49,7 +49,9 @@ describe('writeMemryAssets / readMemryAssets round-trip', () => {
   })
 
   it('throws on unparseable scene JSON (callers pass valid scene JSON)', () => {
-    expect(() => writeMemryAssets('{not json', [descriptor()])).toThrow()
+    expect(() => writeMemryAssets('{not json', [descriptor()])).toThrow(
+      "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    )
   })
 })
 

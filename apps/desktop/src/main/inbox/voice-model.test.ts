@@ -312,6 +312,7 @@ describe('voice model', () => {
   it('rejects start, request, and fatal utility failures', async () => {
     vi.useFakeTimers()
     const startTimeout = transcribeWithLocalModel(Buffer.from('audio'), 'en')
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const startTimeoutExpectation = expect(startTimeout).rejects.toThrow(
       'Voice transcription utility failed to start within timeout'
     )
@@ -324,6 +325,7 @@ describe('voice model', () => {
 
     unloadVoiceModel()
     const fatalBeforeReady = transcribeWithLocalModel(Buffer.from('audio'), 'en')
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const fatalExpectation = expect(fatalBeforeReady).rejects.toThrow(
       'Voice transcription utility fatal error: SIGSEGV at worker.cc:10'
     )
@@ -338,6 +340,7 @@ describe('voice model', () => {
       expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
     })
 
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const requestTimeoutExpectation = expect(requestTimeout).rejects.toThrow(
       'Voice transcription request timed out: transcribe'
     )
@@ -349,6 +352,7 @@ describe('voice model', () => {
   it('reaps the utility process and detaches its listeners when the start times out', async () => {
     vi.useFakeTimers()
     const startTimeout = transcribeWithLocalModel(Buffer.from('audio'), 'en')
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const startTimeoutExpectation = expect(startTimeout).rejects.toThrow(
       'Voice transcription utility failed to start within timeout'
     )
@@ -378,6 +382,7 @@ describe('voice model', () => {
   it('transcribes on the next attempt after a start timeout, ignoring the orphan', async () => {
     vi.useFakeTimers()
     const timedOut = transcribeWithLocalModel(Buffer.from('first'), 'en')
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const timedOutExpectation = expect(timedOut).rejects.toThrow(
       'Voice transcription utility failed to start within timeout'
     )

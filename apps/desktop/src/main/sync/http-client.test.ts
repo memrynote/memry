@@ -418,7 +418,9 @@ describe('http-client', () => {
       mockFetch.mockResolvedValueOnce(
         createJsonResponse({ error: { code: 'STORAGE_BLOB_NOT_FOUND' } }, 503)
       )
-      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow()
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow(
+        'Dead letter after 1 attempts: Server error (503)'
+      )
 
       mockFetch.mockResolvedValueOnce(
         createJsonResponse({ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null })
@@ -717,15 +719,17 @@ describe('http-client', () => {
       )
 
       // #when / #then
+      let err: unknown
       try {
         await syncFetch('GET', '/api/test')
         expect.unreachable()
-      } catch (err) {
-        expect(err).toBeInstanceOf(RateLimitError)
-        const rle = err as RateLimitError
-        expect(rle.retryAfter).toBeGreaterThan(25)
-        expect(rle.retryAfter).toBeLessThanOrEqual(30)
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(RateLimitError)
+      const rle = err as RateLimitError
+      expect(rle.retryAfter).toBeGreaterThan(25)
+      expect(rle.retryAfter).toBeLessThanOrEqual(30)
     })
   })
 })

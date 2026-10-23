@@ -37,6 +37,7 @@ describe('text-extract vectors', () => {
   })
 
   for (const entry of vectors.cases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(entry.name, () => {
       expect(extractText(applied(entry.updateHex)), entry.pins).toBe(entry.expectedText)
     })

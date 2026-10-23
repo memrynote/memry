@@ -48,7 +48,7 @@ describe('DownloadVaultDialog', () => {
       screen.getByRole('button', { name: 'phaseF.componentsVaultSwitcher.changeLocation' })
     )
 
-    await screen.findByText('/picked/parent/beta')
+    expect(await screen.findByText('/picked/parent/beta')).toBeInTheDocument()
   })
 
   it('downloads with the default location and closes on success', async () => {

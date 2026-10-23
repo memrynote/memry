@@ -165,7 +165,9 @@ describe('resolveObsidianVaultOpen', () => {
       answer(CREATE_COPY)
 
       try {
-        await expect(resolveObsidianVaultOpen(vault)).rejects.toThrow()
+        await expect(resolveObsidianVaultOpen(vault)).rejects.toThrow(
+          /EACCES: permission denied, copyfile/
+        )
       } finally {
         fs.chmodSync(unreadable, 0o644)
       }

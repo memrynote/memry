@@ -139,9 +139,8 @@ describe('EncryptedItemSchema', () => {
   it('rejects unknown type literal', () => {
     const result = EncryptedItemSchema.safeParse({ ...validEncryptedItem, type: 'bogus' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('type')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('type')
   })
 
   it('rejects cryptoVersion below 1', () => {
@@ -172,9 +171,8 @@ describe('EncryptedItemSchema', () => {
     for (const field of fields) {
       const result = EncryptedItemSchema.safeParse({ ...validEncryptedItem, [field]: '' })
       expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues[0].path).toContain(field)
-      }
+      if (result.success) throw new Error('expected the check above to fail')
+      expect(result.error.issues[0].path).toContain(field)
     }
   })
 
@@ -223,9 +221,8 @@ describe('SignaturePayloadV1Schema', () => {
       operation: 'archive'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('operation')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('operation')
   })
 
   it('carries deletedAt at the top level (signature must cover deletion)', () => {
@@ -267,9 +264,8 @@ describe('SignaturePayloadV1Schema', () => {
       cryptoVersion: 2
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('cryptoVersion')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('cryptoVersion')
   })
 
   it('rejects empty id / type / required ciphertext fields', () => {

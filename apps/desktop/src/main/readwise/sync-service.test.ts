@@ -448,7 +448,7 @@ describe('Readwise incremental sync', () => {
       const cursor = state.getCursor(db())
       resetWrites()
 
-      await expect(sync()).rejects.toThrow()
+      await expect(sync()).rejects.toThrow('Readwise answered 500')
       expect(state.getCursor(db())).toBe(cursor)
       expect(writes()).toBe(0)
 

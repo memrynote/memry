@@ -779,6 +779,7 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
         expect(applySpy).not.toHaveBeenCalled()
         expect(matrixRow(db, type)).toEqual(before)
         if (type === 'note') {
+          // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
           expect(readFileSync(path.join(vault.dir, `${ID}.md`), 'utf8')).toBe(NOTE_BYTES)
         }
         expect(warn).toHaveBeenCalledWith('Pull: refused purged tombstones', { [reason]: 1 })

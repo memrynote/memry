@@ -442,6 +442,7 @@ describe('Enter through the real BlockNote keymap', () => {
   }
 
   for (const spec of specs) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     describe(spec.name, () => {
       const setup = (blocks: PartialBlock[]) => {
         const m = mount(blocks)

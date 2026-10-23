@@ -120,6 +120,7 @@ describe('R01 an iOS edit changes only the region it edited', () => {
       // failed on exactly that case — the assertion was wrong about the
       // operation, not the writer. Every other operation touches one block.
       if (entry.op.kind !== 'delete') {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(
           removed.length,
           `${entry.name} removed ${removed.length} lines: ${JSON.stringify(removed)}`

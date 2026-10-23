@@ -47,7 +47,7 @@ describe('vault lock IPC handlers (#2606)', () => {
   it('rejects a lock of a kind it does not know before touching the vault', async () => {
     await expect(
       invokeHandler(VaultLocksChannels.invoke.SET, { kind: 'tag', target: 'work', locked: true })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Validation failed: kind: Invalid option: expected one of "note"|"folder"')
     expect(mocks.setVaultLock).not.toHaveBeenCalled()
   })
 

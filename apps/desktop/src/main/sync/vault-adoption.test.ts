@@ -211,7 +211,9 @@ describe('adoptVaultLocally', () => {
     const joinerOwnUuid = getOrCreateVaultUuid(db)
     db.run('DROP TABLE settings')
 
-    expect(() => adoptVaultLocally(db, INITIATOR_UUID)).toThrow()
+    expect(() => {
+      adoptVaultLocally(db, INITIATOR_UUID)
+    }).toThrow("Failed to run the query 'DELETE FROM settings WHERE key = ?'")
 
     expect(getPendingCrdtStoreRename(INITIATOR_UUID)).toBe(joinerOwnUuid)
   })

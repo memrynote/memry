@@ -84,9 +84,8 @@ describe('JournalEntrySchema', () => {
       modifiedAt: '2025-01-03T12:00:00.000Z'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.properties).toEqual({ mood: 'happy', energy: 8 })
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.properties).toEqual({ mood: 'happy', energy: 8 })
   })
 
   it('should reject missing required fields', () => {
@@ -255,9 +254,8 @@ describe('DayTaskSchema', () => {
       isOverdue: false
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.priority).toBe('urgent')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.priority).toBe('urgent')
   })
 
   it('should reject invalid priority', () => {
@@ -295,9 +293,8 @@ describe('ScheduleEventSchema', () => {
       attendeeCount: 50
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.attendeeCount).toBe(50)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.attendeeCount).toBe(50)
   })
 
   it('should reject invalid event type', () => {
@@ -415,10 +412,9 @@ describe('CreateEntryInputSchema', () => {
       date: '2025-01-03'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.content).toBe('')
-      expect(result.data.tags).toEqual([])
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.content).toBe('')
+    expect(result.data.tags).toEqual([])
   })
 
   it('should validate full input', () => {

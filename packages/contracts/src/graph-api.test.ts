@@ -77,9 +77,8 @@ describe('GraphNodeSchema', () => {
       isUnresolved: false
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('type')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('type')
   })
 
   it('rejects empty id', () => {
@@ -140,9 +139,8 @@ describe('GraphEdgeSchema', () => {
       type: 'wikilink'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.weight).toBe(1)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.weight).toBe(1)
   })
 
   it('accepts all valid edge types', () => {
@@ -166,9 +164,8 @@ describe('GraphEdgeSchema', () => {
       type: 'bogus'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('type')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('type')
   })
 
   it('rejects empty source', () => {
@@ -229,9 +226,8 @@ describe('LocalGraphRequestSchema', () => {
   it('accepts minimal input with default depth', () => {
     const result = LocalGraphRequestSchema.safeParse({ noteId: 'n1' })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.depth).toBe(2)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.depth).toBe(2)
   })
 
   it('accepts depth at boundaries (1 and 3)', () => {
@@ -242,9 +238,8 @@ describe('LocalGraphRequestSchema', () => {
   it('rejects depth below 1', () => {
     const result = LocalGraphRequestSchema.safeParse({ noteId: 'n1', depth: 0 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('depth')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('depth')
   })
 
   it('rejects depth above 3', () => {
@@ -286,9 +281,8 @@ describe('GraphSettingsSchema', () => {
       showTagEdges: false
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('layout')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('layout')
   })
 
   it('rejects missing boolean field', () => {

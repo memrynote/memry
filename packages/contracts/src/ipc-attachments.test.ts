@@ -38,9 +38,8 @@ describe('UploadAttachmentSchema', () => {
       filePath: '/tmp/file.pdf'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('noteId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('noteId')
   })
 
   it('rejects empty filePath', () => {
@@ -49,9 +48,8 @@ describe('UploadAttachmentSchema', () => {
       filePath: ''
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('filePath')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('filePath')
   })
 
   it('rejects missing required fields', () => {
@@ -102,9 +100,8 @@ describe('DownloadAttachmentSchema', () => {
       targetPath: ''
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('targetPath')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('targetPath')
   })
 })
 

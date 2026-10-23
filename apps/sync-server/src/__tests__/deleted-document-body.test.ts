@@ -286,6 +286,7 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
       const body = await get(key)
       if (key === dayBlob && !raced) {
         raced = true
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(await deleteDay(app)).toEqual([DAY_ID])
       }
       return body

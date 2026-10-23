@@ -19,9 +19,11 @@ describe('hugeicons-subset', () => {
   })
 
   it('is up to date with the icons the renderer imports', () => {
-    execFileSync('node', ['scripts/generate-hugeicon-subset.mjs', '--check'], {
-      cwd: appRoot,
-      stdio: 'pipe'
-    })
+    expect(() =>
+      execFileSync('node', ['scripts/generate-hugeicon-subset.mjs', '--check'], {
+        cwd: appRoot,
+        stdio: 'pipe'
+      })
+    ).not.toThrow()
   })
 })

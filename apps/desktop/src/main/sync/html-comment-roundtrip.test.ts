@@ -102,6 +102,7 @@ describe('HTML comments in the shared doc (AF-015)', () => {
     const comments = items.filter((item) => item.type === 'htmlComment')
     expect(comments.map((item) => (item.props as { source: string }).source)).toEqual(COMMENTS)
     for (const item of items) {
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       if (item.type === 'text') expect(item.text).not.toMatch(/<!--|%%/)
     }
   })

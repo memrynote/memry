@@ -159,6 +159,7 @@ describe('manifest pagination over real SQLite', () => {
     // ...the already-served updated row is the only repeat, and only once more
     expect(seen.get('item-2')).toBe(2)
     for (const [id, count] of seen) {
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       if (id !== 'item-2') expect(count, `${id} must appear exactly once`).toBe(1)
     }
   })

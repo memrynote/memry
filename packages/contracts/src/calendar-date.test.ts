@@ -76,11 +76,10 @@ describe('CalendarDateSchema', () => {
   it('carries a message a user can act on', () => {
     const result = CalendarDateSchema.safeParse('2026-02-30')
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe(
-        'Date must be a real calendar date in YYYY-MM-DD form'
-      )
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].message).toBe(
+      'Date must be a real calendar date in YYYY-MM-DD form'
+    )
   })
 
   it('returns the input unchanged for a date that exists', () => {

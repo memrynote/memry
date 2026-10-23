@@ -44,12 +44,14 @@ describe('compression vectors', () => {
   })
 
   for (const entry of vectors.cases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(entry.name, () => {
       const input = fromHex(entry.inputHex)
       const frame = compressPayload(input)
       expect(hex(frame), `${entry.pins} (a pako upgrade changing output also lands here)`).toBe(
         entry.expectedFrameHex
       )
+      // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       if (entry.expectedFlag !== null) expect(frame[0]).toBe(entry.expectedFlag)
       expect(hex(decompressPayload(fromHex(entry.expectedFrameHex)))).toBe(
         entry.expectedInflatedHex
@@ -58,6 +60,7 @@ describe('compression vectors', () => {
   }
 
   for (const entry of vectors.readerCases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(entry.name, () => {
       expect(hex(decompressPayload(fromHex(entry.frameHex))), entry.pins).toBe(
         entry.expectedInflatedHex
@@ -66,16 +69,19 @@ describe('compression vectors', () => {
   }
 
   for (const entry of vectors.errorCases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(entry.name, () => {
       // MUST throw, and MUST NOT return an empty buffer.
       let returned: Uint8Array | undefined
       expect(() => {
         returned = decompressPayload(fromHex(entry.frameHex))
-      }, entry.pins).toThrow()
+      }, entry.pins).toThrow('Failed to decompress payload')
       expect(returned, 'a failed decompress must not return a value at all').toBeUndefined()
-      if (entry.expectErrorContains.length > 0) {
-        expect(() => decompressPayload(fromHex(entry.frameHex))).toThrow(entry.expectErrorContains)
-      }
+      // Vitest reads an empty string as an exact empty message, so vectors that pin
+      // no message fall back to the shared prefix.
+      expect(() => decompressPayload(fromHex(entry.frameHex))).toThrow(
+        entry.expectErrorContains || 'Failed to decompress payload'
+      )
     })
   }
 

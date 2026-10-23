@@ -176,6 +176,7 @@ describe('CRDT batch pass: snapshot GET prefetch', () => {
         process.stdout.write(
           `CRDT_PERF notes=80 latencyMs=${latencyMs} elevation=${factor} wallMs=${ms}\n`
         )
+        expect(fetchCrdtSnapshotMock).toHaveBeenCalled()
       }
     }
   )

@@ -102,10 +102,9 @@ describe('CreateCalendarEventSchema', () => {
       startAt: '2026-04-16T10:00:00Z'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.timezone).toBe('UTC')
-      expect(result.data.isAllDay).toBe(false)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.timezone).toBe('UTC')
+    expect(result.data.isAllDay).toBe(false)
   })
 
   it('accepts full valid input', () => {
@@ -142,9 +141,8 @@ describe('CreateCalendarEventSchema', () => {
       startAt: '2026-04-16T10:00:00Z'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('title')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('title')
   })
 
   it('rejects title over 200 chars', () => {
@@ -179,9 +177,8 @@ describe('CreateCalendarEventSchema', () => {
       startAt: '2026-04-16'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('startAt')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('startAt')
   })
 
   it('rejects empty timezone', () => {
@@ -226,9 +223,8 @@ describe('UpdateCalendarEventSchema', () => {
   it('rejects empty id', () => {
     const result = UpdateCalendarEventSchema.safeParse({ id: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('id')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('id')
   })
 
   it('rejects missing id', () => {
@@ -249,9 +245,8 @@ describe('ListCalendarEventsSchema', () => {
   it('accepts empty object with defaults', () => {
     const result = ListCalendarEventsSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.includeArchived).toBe(false)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.includeArchived).toBe(false)
   })
 
   it('accepts includeArchived: true', () => {
@@ -272,9 +267,8 @@ describe('GetCalendarRangeSchema', () => {
       endAt: '2026-04-30T23:59:59Z'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.includeUnselectedSources).toBe(false)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.includeUnselectedSources).toBe(false)
   })
 
   it('accepts includeUnselectedSources', () => {
@@ -341,9 +335,8 @@ describe('UpdateCalendarSourceSelectionSchema', () => {
       isSelected: true
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('id')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('id')
   })
 
   it('rejects missing isSelected', () => {
@@ -381,9 +374,8 @@ describe('CreateCalendarEventSchema — targetCalendarId (M2)', () => {
       targetCalendarId: 'work@group.calendar.google.com'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.targetCalendarId).toBe('work@group.calendar.google.com')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.targetCalendarId).toBe('work@group.calendar.google.com')
   })
 
   it('accepts null targetCalendarId (falls back to default at push time)', () => {
@@ -401,9 +393,8 @@ describe('CreateCalendarEventSchema — targetCalendarId (M2)', () => {
       startAt: '2026-04-20T09:00:00Z'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.targetCalendarId).toBeUndefined()
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.targetCalendarId).toBeUndefined()
   })
 })
 
@@ -436,9 +427,8 @@ describe('PromoteExternalEventSchema (M2)', () => {
   it('rejects empty externalEventId', () => {
     const result = PromoteExternalEventSchema.safeParse({ externalEventId: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('externalEventId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('externalEventId')
   })
 
   it('rejects missing externalEventId', () => {
@@ -465,10 +455,9 @@ describe('SetDefaultGoogleCalendarSchema (M2)', () => {
       calendarId: 'primary@group.calendar.google.com'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      // markOnboardingComplete defaults to true so onboarding stops showing
-      expect(result.data.markOnboardingComplete).toBe(true)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    // markOnboardingComplete defaults to true so onboarding stops showing
+    expect(result.data.markOnboardingComplete).toBe(true)
   })
 
   it('accepts null calendarId (user skipped onboarding, no default)', () => {

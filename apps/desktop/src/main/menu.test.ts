@@ -413,6 +413,7 @@ describe('buildAppMenu', () => {
     // macOS app menu only. Same app.name trap as About: the hide role's default
     // label is `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.
     if (process.platform === 'darwin') {
+      // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
       expect(findMenuItem('Hide MemryNote')).toMatchObject({ role: 'hide' })
     }
 
@@ -575,6 +576,7 @@ describe('menu and COMMANDS agree', () => {
         ? (COMMANDS[item.id as CommandId] as CommandMeta).keyboard
         : undefined
       if (keyboard?.owner === 'app' && keyboard.richText === 'yield') {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
         expect(item.accelerator, item.id).toBeUndefined()
       }
     }

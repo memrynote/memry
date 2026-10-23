@@ -77,9 +77,8 @@ describe('DatePickerCalendar', () => {
       const apr1Button = allButtons.find((btn) =>
         btn.getAttribute('aria-label')?.includes('April 1')
       )
-      if (apr1Button) {
-        expect(apr1Button).not.toBeDisabled()
-      }
+      if (!apr1Button) throw new Error('expected: apr1Button')
+      expect(apr1Button).not.toBeDisabled()
     })
 
     it('clicking outside month day selects it and navigates to that month', () => {

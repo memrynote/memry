@@ -228,12 +228,16 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for wrong keyNonce length', () => {
@@ -243,12 +247,16 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for encryptedKey too short (47 bytes)', () => {
@@ -258,12 +266,16 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for signature wrong length (63 bytes)', () => {
@@ -273,12 +285,16 @@ describe('validateEncryptedFields', () => {
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD when encryptedData exceeds the byte limit', () => {
@@ -291,7 +307,10 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       mockedSafeBase64Decode
         .mockImplementationOnce(() => new Uint8Array(24))
@@ -299,9 +318,10 @@ describe('validateEncryptedFields', () => {
         .mockImplementationOnce(() => new Uint8Array(48))
         .mockImplementationOnce(() => new Uint8Array(MAX_ENCRYPTED_DATA_BYTES + 1))
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw VALIDATION_ERROR for non-base64 dataNonce', () => {
@@ -312,15 +332,19 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem({ dataNonce: '!!!not-base64!!!' })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       mockedSafeBase64Decode.mockImplementationOnce(() => {
         throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Malformed base64 input', 400)
       })
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
   })
 })
 
@@ -378,12 +402,14 @@ describe('verifyItemSignature', () => {
       AppError
     )
 
+    let e: unknown
     try {
       mockedGetDevice.mockResolvedValue(null)
       await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
   })
 
   it('should throw AUTH_DEVICE_REVOKED when signer device is revoked', async () => {
@@ -396,12 +422,14 @@ describe('verifyItemSignature', () => {
       AppError
     )
 
+    let e: unknown
     try {
       mockedGetDevice.mockResolvedValue({ ...activeDevice, revoked_at: 9999 })
       await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_REVOKED)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_REVOKED)
   })
 
   it('should throw SYNC_INVALID_SIGNATURE when verification fails', async () => {
@@ -414,12 +442,14 @@ describe('verifyItemSignature', () => {
       AppError
     )
 
+    let e: unknown
     try {
       mockedVerifyEd25519.mockResolvedValueOnce(false)
       await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.SYNC_INVALID_SIGNATURE)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.SYNC_INVALID_SIGNATURE)
   })
 
   it('should include stateVector and deletedAt in the signed payload when present', async () => {

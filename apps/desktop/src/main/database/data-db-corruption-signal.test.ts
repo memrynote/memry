@@ -62,7 +62,7 @@ describe('data.db runtime corruption signal', () => {
     const listener = vi.fn()
     onDataDbCorruption(listener)
 
-    expect(() => db!.prepare('SELECT * FROM missing')).toThrow()
+    expect(() => db!.prepare('SELECT * FROM missing')).toThrow('no such table: missing')
     db.exec('CREATE TABLE u (id INTEGER PRIMARY KEY)')
     db.prepare('INSERT INTO u (id) VALUES (1)').run()
     expect(() => db!.prepare('INSERT INTO u (id) VALUES (1)').run()).toThrow(/UNIQUE/)

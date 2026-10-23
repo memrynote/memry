@@ -152,7 +152,7 @@ describe('google calendar client — push channels (Task 7)', () => {
           webhookUrl: 'https://sync.memry.io/webhooks/google-calendar',
           ttlSeconds: 3600
         })
-      ).rejects.toThrow()
+      ).rejects.toThrow('googleCalendar.scopeMissing')
     })
   })
 
@@ -191,7 +191,9 @@ describe('google calendar client — push channels (Task 7)', () => {
       fetchMock.mockResolvedValue(new Response('oops', { status: 500 }))
 
       const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
-      await expect(client.stopChannel({ channelId: 'c', resourceId: 'r' })).rejects.toThrow()
+      await expect(client.stopChannel({ channelId: 'c', resourceId: 'r' })).rejects.toThrow(
+        'googleCalendar.temporarilyUnavailable'
+      )
     })
   })
 
@@ -324,7 +326,7 @@ describe('google calendar client — push channels (Task 7)', () => {
         )
 
       const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
-      await expect(client.listCalendars()).rejects.toThrow()
+      await expect(client.listCalendars()).rejects.toThrow('googleCalendar.reconnectNeeded')
 
       expect(await getGoogleCalendarTokens(LEGACY_DEFAULT_ACCOUNT_ID)).toEqual({
         accessToken: null,
@@ -878,7 +880,7 @@ describe('google calendar client — push channels (Task 7)', () => {
       ).resolves.toBeUndefined()
       await expect(
         client.deleteEvent({ calendarId: 'primary', eventId: 'broken' })
-      ).rejects.toThrow()
+      ).rejects.toThrow('googleCalendar.temporarilyUnavailable')
       const watched = await client.watchCalendar({
         calendarId: 'primary',
         channelId: 'channel-1',

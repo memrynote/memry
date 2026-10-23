@@ -1,5 +1,5 @@
 // First import on purpose: sizes the libuv threadpool before anything can use
-// it (see uv-threadpool.ts — libuv reads the env var once, on first use).
+// the pool (see uv-threadpool.ts — libuv reads the env var once, on first use).
 import './uv-threadpool'
 // Second on purpose: Velopack's install/update hooks are command-line arguments
 // this process must handle before it does anything else (it may exit inside them).

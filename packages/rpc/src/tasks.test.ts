@@ -93,9 +93,8 @@ describe('tasksRpc input Zod schemas', () => {
   it('TaskCreateSchema rejects empty title with meaningful path', () => {
     const result = TaskCreateSchema.safeParse({ projectId: 'p', title: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('title')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('title')
   })
 
   it('TaskUpdateSchema requires id', () => {
@@ -103,16 +102,16 @@ describe('tasksRpc input Zod schemas', () => {
     const bad = TaskUpdateSchema.safeParse({ title: 'no id' })
     expect(ok.success).toBe(true)
     expect(bad.success).toBe(false)
-    if (!bad.success) expect(bad.error.issues[0].path).toContain('id')
+    if (bad.success) throw new Error('expected the check above to fail')
+    expect(bad.error.issues[0].path).toContain('id')
   })
 
   it('TaskListSchema applies defaults for pagination', () => {
     const result = TaskListSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.limit).toBe(100)
-      expect(result.data.offset).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.limit).toBe(100)
+    expect(result.data.offset).toBe(0)
   })
 
   it('ProjectCreateSchema rejects invalid hex color', () => {

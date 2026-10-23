@@ -702,6 +702,7 @@ describe('settings section coverage', () => {
   })
 
   it('reads a sync-settings blob without attachmentAutoDownload as on', async () => {
+    // SAFETY: setup() installs vi.fn() for every window.api.account method.
     ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       plan: 'pro',
       status: 'active',
@@ -717,6 +718,8 @@ describe('settings section coverage', () => {
       canManageBilling: true
     })
     // Blobs written by builds before the setting existed have no key.
+    // SAFETY: setup() installs vi.fn() for getSyncSettings; the untyped mock lets the test
+    // return the legacy shape the current type no longer describes.
     const getSyncSettings = window.api.settings.getSyncSettings as ReturnType<typeof vi.fn>
     getSyncSettings.mockResolvedValueOnce({ enabled: true, autoSync: true })
     render(<AccountSettings />)

@@ -227,7 +227,7 @@ describe('encryptCrdtUpdatePacked', () => {
 
     await expect(
       decryptCrdtUpdatePacked(crypto, packed, vaultKey, 'note-1', signing.publicKey)
-    ).rejects.toThrow()
+    ).rejects.toThrow('Signature verification failed for item note-1 from device crdt-signer')
   })
 })
 

@@ -29,7 +29,7 @@ describe('secureDeleteFile', () => {
     await secureDeleteFile(filePath)
 
     // #then
-    await expect(stat(filePath)).rejects.toThrow()
+    await expect(stat(filePath)).rejects.toThrow(/ENOENT: no such file or directory, stat/)
   })
 
   it('#given a file with content #when secureDeleteFile called #then overwrites before deletion', async () => {
@@ -41,7 +41,7 @@ describe('secureDeleteFile', () => {
     await secureDeleteFile(filePath)
 
     // #then — file is gone
-    await expect(stat(filePath)).rejects.toThrow()
+    await expect(stat(filePath)).rejects.toThrow(/ENOENT: no such file or directory, stat/)
   })
 
   it('#given file does not exist #when secureDeleteFile called #then no error thrown', async () => {
@@ -62,6 +62,6 @@ describe('secureDeleteFile', () => {
     await secureDeleteFile(filePath)
 
     // #then
-    await expect(stat(filePath)).rejects.toThrow()
+    await expect(stat(filePath)).rejects.toThrow(/ENOENT: no such file or directory, stat/)
   })
 })

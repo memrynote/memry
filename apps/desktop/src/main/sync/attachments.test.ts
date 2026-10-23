@@ -267,7 +267,9 @@ describe('AttachmentSyncService', () => {
       const deps = createTestDeps(mockFetch)
       const service = new AttachmentSyncService(deps)
 
-      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow()
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow(
+        /ENOENT: no such file, open/
+      )
     })
 
     it.skipIf(process.platform === 'win32')(
@@ -1307,7 +1309,7 @@ describe('terminal transfer phases', () => {
 
       await expect(
         service.uploadAttachment('note-1', path.join(tmpDir, 'never-existed.bin'))
-      ).rejects.toThrow()
+      ).rejects.toThrow(/ENOENT: no such file, open/)
 
       // Nothing was ever reported, so there is no renderer entry to terminate —
       // a terminal event here would invent an overlay that never existed.
@@ -1600,7 +1602,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     )
     expect(sidecar).toMatchObject({ chunksDone: 1, bytesWritten: 256, chunkCount: 3 })
     // ...and the final file does not exist yet (atomic rename only at the end).
-    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow(
+      /ENOENT: no such file or directory, stat/
+    )
 
     // #when — retry with the transport healthy
     failChunkOne = false
@@ -1611,7 +1615,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
     expect(downloaded.equals(Buffer.concat(fixture.plaintexts))).toBe(true)
     // The sidecar is consumed on success.
-    await expect(import('node:fs/promises').then((m) => m.stat(partialPath))).rejects.toThrow()
+    await expect(import('node:fs/promises').then((m) => m.stat(partialPath))).rejects.toThrow(
+      /ENOENT: no such file or directory, stat/
+    )
   })
 
   it('a manifest signed by another key fails as ManifestSignatureError, not a bare Error', async () => {
@@ -1724,7 +1730,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
       await import('node:fs/promises').then((m) => m.readFile(`${partialPath}.json`, 'utf-8'))
     )
     expect(sidecarMidFlight).toMatchObject({ chunksDone: 2, bytesWritten: 512 })
-    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow(
+      /ENOENT: no such file or directory, stat/
+    )
 
     releaseChunkTwo!()
     const result = await pending
@@ -1770,7 +1778,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     // Nothing was left behind for bytes that can never verify.
     const leftovers = await import('node:fs/promises').then((m) => m.readdir(tmpDir))
     expect(leftovers.filter((f) => f.startsWith('.att-integrity'))).toEqual([])
-    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow(
+      /ENOENT: no such file or directory, stat/
+    )
   })
 
   it('chunks each verify but a mismatching whole-file hash fails the download and wipes the partial', async () => {
@@ -1792,7 +1802,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     ).rejects.toThrow(/File integrity failure/)
 
     // #then — no file at the destination, and the partial is gone.
-    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow(
+      /ENOENT: no such file or directory, stat/
+    )
     const leftovers = await import('node:fs/promises').then((m) => m.readdir(tmpDir))
     expect(leftovers.filter((f) => f.startsWith('.att-whole-hash'))).toEqual([])
   })
@@ -1858,7 +1870,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
       await import('node:fs/promises').then((m) => m.readFile(`${partialPath}.json`, 'utf-8'))
     )
     expect(sidecar).toMatchObject({ chunksDone: 1, bytesWritten: 256 })
-    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow(
+      /ENOENT: no such file or directory, stat/
+    )
 
     // #when space returns — the retry resumes at chunk 1 instead of starting
     // over. Chunk 0 is NOT re-fetched (prefix reused); chunk 1 IS, because its

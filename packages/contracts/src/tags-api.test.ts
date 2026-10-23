@@ -12,10 +12,9 @@ describe('GetNotesByTagSchema', () => {
   it('should validate minimal input with defaults', () => {
     const result = GetNotesByTagSchema.safeParse({ tag: 'design' })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.sortBy).toBe('modified')
-      expect(result.data.sortOrder).toBe('desc')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.sortBy).toBe('modified')
+    expect(result.data.sortOrder).toBe('desc')
   })
 
   it('should validate full input', () => {

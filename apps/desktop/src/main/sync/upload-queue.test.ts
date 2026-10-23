@@ -140,6 +140,7 @@ describe('UploadQueue', () => {
     expect(rejected.length).toBeGreaterThanOrEqual(1)
     rejected.forEach((r) => {
       if (r.status === 'rejected') {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(r.reason.message).toBe('Upload queue cleared')
       }
     })

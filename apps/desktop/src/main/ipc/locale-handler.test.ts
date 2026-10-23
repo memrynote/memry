@@ -82,7 +82,7 @@ describe('locale handler', () => {
       ([channel]: [string]) => channel === 'locale:set'
     )[1]
 
-    await expect(setHandler({}, 'invalid' as any)).rejects.toThrow()
+    await expect(setHandler({}, 'invalid' as any)).rejects.toThrow(/invalid_value/)
   })
 
   it('persists, updates i18n, rebuilds menu, and broadcasts locale changes', async () => {

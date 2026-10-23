@@ -46,9 +46,8 @@ describe('InitiateLinkingRequestSchema', () => {
   it('rejects empty ephemeralPublicKey', () => {
     const result = InitiateLinkingRequestSchema.safeParse({ ephemeralPublicKey: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('ephemeralPublicKey')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('ephemeralPublicKey')
   })
 
   it('rejects missing ephemeralPublicKey', () => {
@@ -75,9 +74,8 @@ describe('ScanLinkingRequestSchema', () => {
   it('rejects empty sessionId', () => {
     const result = ScanLinkingRequestSchema.safeParse({ ...validInput, sessionId: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('sessionId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('sessionId')
   })
 
   it('rejects missing newDevicePublicKey', () => {
@@ -121,9 +119,8 @@ describe('ApproveLinkingRequestSchema', () => {
       keyConfirm: 'kc'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('encryptedMasterKey')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('encryptedMasterKey')
   })
 
   it('rejects missing keyConfirm', () => {
@@ -179,9 +176,8 @@ describe('InitiateLinkingResponseSchema', () => {
       linkingSecret: 'ls'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('expiresAt')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('expiresAt')
   })
 })
 

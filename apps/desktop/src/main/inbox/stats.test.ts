@@ -366,12 +366,9 @@ describe('Inbox Stats Module', () => {
     })
 
     it('should handle unknown item types gracefully', () => {
-      // Should not throw
-      incrementCaptureCount('unknown')
-
-      const _stats = getTodayStats()
-      // Stats may or may not be created depending on implementation
-      // The key is that it doesn't throw
+      expect(() => {
+        incrementCaptureCount('unknown')
+      }).not.toThrow()
     })
   })
 

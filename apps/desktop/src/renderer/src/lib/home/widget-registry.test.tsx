@@ -27,6 +27,6 @@ describe('widget-registry', () => {
     expect(createWidget('recently-edited').config).not.toBe(fakeDef.defaultConfig)
   })
   it('createWidget throws for an unknown type', () => {
-    expect(() => createWidget('nope' as never)).toThrow()
+    expect(() => createWidget('nope' as never)).toThrow('Unknown widget type: nope')
   })
 })

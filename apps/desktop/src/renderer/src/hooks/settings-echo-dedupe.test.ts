@@ -154,6 +154,7 @@ describe('settings:changed echo dedupe (#1063)', () => {
   }
 
   for (const testCase of CASES) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     describe(testCase.name, () => {
       it('keeps state identity when the unchanged group is echoed back', async () => {
         const { result } = await mountLoaded(testCase)

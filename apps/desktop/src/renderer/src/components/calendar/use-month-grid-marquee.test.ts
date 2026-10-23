@@ -256,8 +256,7 @@ describe('useMonthGridMarquee', () => {
       document.dispatchEvent(moveEvent)
     })
 
-    if (result.current.selection) {
-      expect(result.current.selection.startDate <= result.current.selection.endDate).toBe(true)
-    }
+    if (!result.current.selection) throw new Error('expected: result.current.selection')
+    expect(result.current.selection.startDate <= result.current.selection.endDate).toBe(true)
   })
 })
