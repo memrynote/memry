@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 /**
  * Task-block indent/outdent primitives: the one owner of Tab and Shift+Tab on a

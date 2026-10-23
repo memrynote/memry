@@ -5,7 +5,7 @@
  * @module note/content-area/portal-flows/portal-side-menu-items
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- BlockNote's own default
+/* oxlint-disable typescript/no-explicit-any -- BlockNote's own default
    drag-handle items type the editor as `<any, any, any>`; this file sits in the
    same menu and shares those call sites. */
 

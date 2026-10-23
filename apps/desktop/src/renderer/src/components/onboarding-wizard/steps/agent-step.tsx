@@ -109,7 +109,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
       cancelled = true
     }
     // Detection runs once per visit; the preselect reads the draft at that moment.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   const stateOf = (backend: AgentBackendId): OnboardingAgentStatus | undefined =>

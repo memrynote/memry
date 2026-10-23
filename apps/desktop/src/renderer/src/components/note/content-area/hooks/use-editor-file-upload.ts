@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { useCallback, useEffect } from 'react'
 import { notesService } from '@/services/notes-service'

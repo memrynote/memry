@@ -1058,7 +1058,7 @@ describe('LargeFileViewer', () => {
       await scrollTo(1_000, lineCount)
       const scrollMs = performance.now() - scrolledAt
 
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.info('large-file viewer, 66.2 MB / 17 KB lines:', {
         rowsDrawn: viewer.querySelectorAll('[data-index]').length,
         charsInDom: viewer.textContent?.length ?? 0,

@@ -246,6 +246,6 @@ export function useFirstRunTour(): void {
       if (frame !== undefined) cancelAnimationFrame(frame)
       tour?.destroy()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-scoped, see above
+    // oxlint-disable-next-line react/exhaustive-deps -- mount-scoped, see above
   }, [])
 }

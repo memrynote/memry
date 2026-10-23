@@ -160,7 +160,7 @@ function GraphWorkspace({
   }, [viewState, rememberState])
   useEffect(
     () => () => {
-      // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- unmount flush of a debounced settings write: the ref holds the value, not a DOM node
+      // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- unmount flush of a debounced settings write: the ref holds the value, not a DOM node
       if (pendingStateRef.current) rememberState(pendingStateRef.current)
     },
     [rememberState]

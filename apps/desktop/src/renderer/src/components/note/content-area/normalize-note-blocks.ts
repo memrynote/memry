@@ -13,7 +13,7 @@
  * Hash tags are deliberately not here: they need the note's tag list and colour
  * map, which only the editor has.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import type { Block } from '@blocknote/core'
 import { normalizeWikiLinks } from './wiki-link-utils'

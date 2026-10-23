@@ -97,7 +97,7 @@ export function formatValue(
   }
 
   // Only scalar primitives reach here; objects/arrays return earlier above.
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  // oxlint-disable-next-line typescript/no-base-to-string
   return String(value)
 }
 

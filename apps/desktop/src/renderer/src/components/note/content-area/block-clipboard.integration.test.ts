@@ -25,7 +25,7 @@ import { handleEditorPaste } from './table-cell-paste'
 // Uses the default BlockNote schema: the custom schema's extra specs drag
 // react-pdf into jsdom.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 // jsdom ships neither, and the copy and paste paths read both.
 class FakeDataTransfer {

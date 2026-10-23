@@ -1189,7 +1189,7 @@ export function useFolderView({
       }
     })
     return unsubscribe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [scopeKey(scope), queryClient])
 
   useEffect(() => {
@@ -1200,7 +1200,7 @@ export function useFolderView({
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
     })
     return unsubscribe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [scopeKey(scope), queryClient])
 
   // ============================================================================

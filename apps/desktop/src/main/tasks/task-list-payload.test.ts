@@ -192,7 +192,7 @@ describe('#1326 tasks:list row shape', () => {
     // 500 rows; after it is 260,350. The threshold is deliberately loose enough
     // to survive an added task field and tight enough that re-leaking the
     // bookkeeping fails it.
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.log(`#1326 tasks:list payload for ${response.tasks.length} rows: ${bytes} bytes`)
     expect(bytes).toBeLessThan(400_000)
   })

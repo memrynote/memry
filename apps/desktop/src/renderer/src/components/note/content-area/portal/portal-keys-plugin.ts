@@ -63,7 +63,7 @@ export function portalSelectionPast(state: EditorState, dir: 1 | -1): NodeSelect
 
 /** What the plugin needs of the host editor: nesting, and a paragraph to land in. */
 export type PortalKeysEditor = Pick<
-  BlockNoteEditor<any, any, any>, // eslint-disable-line @typescript-eslint/no-explicit-any -- the host's schema is not this file's concern
+  BlockNoteEditor<any, any, any>, // oxlint-disable-line typescript/no-explicit-any -- the host's schema is not this file's concern
   'nestBlock' | 'unnestBlock' | 'insertBlocks' | 'setTextCursorPosition'
 >
 

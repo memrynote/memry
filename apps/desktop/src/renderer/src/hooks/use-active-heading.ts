@@ -62,7 +62,7 @@ export function useActiveHeading({
   const headingElementsRef = useRef(new Map<string, Element>())
 
   const signature = headingsSignature(headings)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // oxlint-disable-next-line react/exhaustive-deps
   const stableHeadings = useMemo(() => headings, [signature])
 
   const resolveHeadingElement = useCallback(

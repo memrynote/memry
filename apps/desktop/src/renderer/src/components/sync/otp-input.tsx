@@ -61,7 +61,7 @@ export function OtpInput({
   const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
 
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: the verification result arrives as props from the parent, not from an event this component sees. The rule's suggested key-remount is exactly what broke here: the key included the per-second `expiresIn`, so every countdown tick remounted the input and wiped half-typed codes. Keying on a failed attempt instead leaves typing untouched.
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: the verification result arrives as props from the parent, not from an event this component sees. The rule's suggested key-remount is exactly what broke here: the key included the per-second `expiresIn`, so every countdown tick remounted the input and wiped half-typed codes. Keying on a failed attempt instead leaves typing untouched.
     if (error && !isVerifying) setValue('')
   }, [error, isVerifying])
 

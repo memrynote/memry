@@ -12,7 +12,7 @@
 // `any[]`, exactly like node's own EventEmitter listener type: subclasses
 // expose typed overloads (e.g. `(evt: SavedEvent) => void`) that must stay
 // assignable, and `unknown[]` rejects them by parameter contravariance.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 export type SyncEventListener = (...args: any[]) => void
 
 export class SyncEventEmitter {

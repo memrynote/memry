@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 /**
  * The editor's `inlineCheckbox` render has one job the main process's must not

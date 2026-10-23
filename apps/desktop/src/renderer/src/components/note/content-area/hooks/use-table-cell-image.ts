@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 /**
  * Getting an image into a table cell (#1640) — the three ways people try it:

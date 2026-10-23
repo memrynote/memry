@@ -78,7 +78,7 @@ function resolveAttachmentUrl(path: string | null): string | null {
   if (!path) return null
   // Import dynamically to avoid circular dependency
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // oxlint-disable-next-line typescript/no-require-imports
     const { resolveAttachmentUrl: resolve } = require('./attachments')
     return resolve(path)
   } catch {

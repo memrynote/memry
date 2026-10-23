@@ -231,7 +231,7 @@ export function ReviewBadgeLayer({
       top: Math.max(0, (review.activeDraft.top ?? 0) - containerOffset + 24),
       insetInlineStart: 0
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
+    // oxlint-disable-next-line react/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
   }, [active, containerRef, review.activeDraft])
 
   // Paint the drafted selection like an existing comment while composing.
@@ -244,7 +244,7 @@ export function ReviewBadgeLayer({
     return () => {
       CSS.highlights.delete(DRAFT_HIGHLIGHT_NAME)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
+    // oxlint-disable-next-line react/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
   }, [active, review.activeDraft])
 
   // Mirror the rail's inline-hover sync while it is unmounted.

@@ -142,7 +142,7 @@ vi.mock('@excalidraw/excalidraw', () => ({
         scrollToContent: (...args: unknown[]) => mocks.scrollToContent(...args),
         updateScene: (...args: unknown[]) => mocks.updateScene(...args)
       })
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only, like the real API handoff
+      // oxlint-disable-next-line react/exhaustive-deps -- mount-only, like the real API handoff
     }, [])
     return <div data-testid="excalidraw" />
   },

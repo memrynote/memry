@@ -68,7 +68,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
   // Clearing on an empty query is dropping stale async results, not deriving
   // state from a prop: leaving them would show the previous query's rows, and
   // the in-flight flag has to flip with the query it belongs to.
-  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- see above */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- see above */
   useEffect(() => {
     const trimmed = query.trim()
     if (!open || trimmed === '') {
@@ -114,7 +114,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       clearTimeout(timer)
     }
   }, [open, query])
-  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const groups = groupCandidates([
     ...candidatesFromSearch(results),

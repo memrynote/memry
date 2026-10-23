@@ -563,7 +563,7 @@ export function AdvancedDisclosure({
       if (hit) revealRef.current(hit.target as Element)
     })
     // False positive: `open` only changes from the observer callback, not here.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
     observer.observe(body, { subtree: true, attributeFilter: ['data-search-hit'] })
     return () => observer.disconnect()
   }, [])

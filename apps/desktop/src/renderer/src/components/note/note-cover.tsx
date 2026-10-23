@@ -153,7 +153,7 @@ export const NoteCover = memo(function NoteCover({
   useEffect(() => {
     // Not an event handler in disguise: reposition can start from the picker's
     // "Apply & reposition", where no event on this band ever fired.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-event-handler
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler
     if (isRepositioning) bandRef.current?.focus()
   }, [isRepositioning])
 

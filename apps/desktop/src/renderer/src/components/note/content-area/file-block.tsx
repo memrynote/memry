@@ -223,7 +223,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
 
   // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
   // known library limitation the React Compiler can't memoize around.
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
@@ -239,7 +239,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
   // reads calling a method on the returned object as forwarding those to a
   // parent. Nothing here is passed to or received from any parent.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
     virtualizer.measure()
   }, [pageNaturalHeight, numPages, virtualizer])
 

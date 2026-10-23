@@ -390,7 +390,7 @@ export const TasksPage = ({
     })
     saveTabState(activeTab.id, { viewState: { [SHOW_TASKS_LOCATION_KEY]: null } })
     // The token is the identity of a request; the parsed object is new every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [showLocationToken, activeTab?.id])
 
   // Also loaded while the filter menu is open: its Location panel lists folders

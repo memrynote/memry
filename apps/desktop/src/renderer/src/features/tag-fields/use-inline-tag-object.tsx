@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
+/* oxlint-disable typescript/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
 import { tagKey } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { toast } from 'sonner'

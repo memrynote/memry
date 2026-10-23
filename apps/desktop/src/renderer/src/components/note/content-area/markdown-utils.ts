@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { type Block } from '@blocknote/core'

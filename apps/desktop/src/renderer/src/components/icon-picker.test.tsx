@@ -99,7 +99,7 @@ describe('IconPicker inside a modal layer', () => {
     const hostFocus = vi.fn()
 
     render(
-      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+      // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
       <div onPointerDown={hostPointerDown} onFocus={hostFocus}>
         <IconPicker isOpen onClose={vi.fn()} onSelect={vi.fn()} position={{ x: 10, y: 10 }} />
       </div>

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { BlockNoteEditor } from '@blocknote/core'
 import { AIMenu, getDefaultAIMenuItems } from '@blocknote/xl-ai'
 import { SELECTION_COMMANDS, NO_SELECTION_COMMANDS } from './ai-commands'

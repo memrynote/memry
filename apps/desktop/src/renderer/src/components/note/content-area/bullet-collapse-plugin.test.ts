@@ -50,7 +50,7 @@ function mountEditor(
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   ;(editor as any)._tiptapEditor.registerPlugin(createBulletCollapsePlugin(LABELS))
   mounted.push({ editor, el })
   return editor
@@ -61,7 +61,7 @@ function toggles(el: HTMLElement): HTMLElement[] {
 }
 
 function view(editor: BlockNoteEditor) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   return (editor as any)._tiptapEditor.view
 }
 

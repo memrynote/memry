@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { selectedFragmentToHTML } from '@blocknote/core'

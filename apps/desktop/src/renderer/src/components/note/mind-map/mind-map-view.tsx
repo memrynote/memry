@@ -351,7 +351,7 @@ export function MindMapView({
   // the surface is mounted below this component precisely so that Excalidraw
   // stays out of the main bundle. Lifting it would move the lazy boundary.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent
     onFocusChange?.(focusBlock)
     return () => onFocusChange?.(null)
   }, [focusBlock, onFocusChange])

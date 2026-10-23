@@ -368,7 +368,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
     // anchorDate intentionally excluded: entering Day view seeds the date once; the
     // sync effect below keeps it in step while Day view is active.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [view, openForDayView, closeForDayView])
 
   useEffect(() => {
@@ -503,7 +503,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   // Agent Chat links arrive as tab view state; bridge that external navigation signal
   // into Calendar's local view and popover state.
-  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
   useEffect(() => {
     if (!calendarFocusEventId || !calendarFocusDate || calendarFocusToken === null) return
     if (consumedCalendarNavigationRef.current === calendarFocusToken) return
@@ -545,7 +545,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       }
     })
   }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
-  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
 
   // Sidebar "Calendar" click asks for the new-event popover (same as the toolbar +).
   // The nonce re-fires this on every click, even when the tab is already open.
@@ -803,7 +803,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   // write back. Shares the focus token with the native-event effect above.
   const selectFocusedExternalItem = useEffectEvent(handleSelectItem)
   // Reacts to the tab's focus request, like the focus effects above.
-  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (!calendarFocusEventId || calendarFocusToken === null) return
     if (openedCalendarFocusRef.current === calendarFocusToken || rangeQuery.isLoading) return
@@ -820,7 +820,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       height: 1
     })
   }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
-  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
     const tCalendar = getI18n().getFixedT(null, 'calendar')

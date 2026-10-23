@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
+/* oxlint-disable typescript/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'

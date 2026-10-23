@@ -512,7 +512,7 @@ vi.mock('@/components/note', () => ({
       mocks.contentAreaMounts += 1
       onEditorReady?.(editor)
       return () => onEditorReady?.(null)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // oxlint-disable-next-line react/exhaustive-deps
     }, [])
     return (
       <div>

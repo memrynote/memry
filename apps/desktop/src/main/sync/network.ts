@@ -9,7 +9,7 @@ export interface NetworkMonitorDeps {
 }
 
 function createElectronDeps(): NetworkMonitorDeps {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy import avoids Electron in tests
+  // oxlint-disable-next-line typescript/no-require-imports -- lazy import avoids Electron in tests
   const electron = require('electron') as typeof import('electron')
   return {
     getIsOnline: () => electron.net.online,

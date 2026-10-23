@@ -520,7 +520,7 @@ export function VaultPager({
       clearTimeout(timer)
     }
     // Mount-only: the cover is for the switch that mounted this tree.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   // Keep this vault's page current: once the list has loaded, and whenever a
@@ -538,7 +538,7 @@ export function VaultPager({
     () =>
       subscribeVaultSwitchState(() => {
         const { pending } = getVaultSwitchState()
-        // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- subscribes to the external vault-switch store; no ref crosses a component boundary
+        // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- subscribes to the external vault-switch store; no ref crosses a component boundary
         if (pending && pending.path !== activePath) captureSnapshot()
       }),
     [activePath, captureSnapshot]
@@ -563,7 +563,7 @@ export function VaultPager({
     const arrival = getVaultSwitchState().arrival
     const track = trackRef.current
     if (!track || !arrival || arrival.path !== activePath || !arrival.direction) return
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- mount animation for the switch that mounted this tree; there is no event to move it into
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- mount animation for the switch that mounted this tree; there is no event to move it into
     if (arrival !== mountArrival || coveringRef.current) return
     if (prefersReducedMotion()) {
       void animateTo(track, { opacity: 0 }, { opacity: 1 }, REDUCED_MS, 'linear')
@@ -580,7 +580,7 @@ export function VaultPager({
       EASE_OUT
     )
     // Mount-only (and re-run on reveal, where the arrival check skips it).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   useEffect(() => () => setVaultSwipeProgress(null, 0), [])

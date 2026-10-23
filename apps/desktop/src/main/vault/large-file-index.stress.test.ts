@@ -103,7 +103,7 @@ describe.runIf(ENABLED)('2 GB file', () => {
           // ...and the count arrived in pieces, so the bar could say "so far"
           expect(searchProgress.length).toBeGreaterThan(1)
 
-          // eslint-disable-next-line no-console
+          // oxlint-disable-next-line no-console
           console.log(`2 GB: scan ${scanMs} ms, mid-file seek ${seekMs} ms, search ${searchMs} ms`)
         } finally {
           await handle.close()

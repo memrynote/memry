@@ -145,7 +145,7 @@ function canonicalNumber(value: number): string {
  */
 function compareNames(left: string, right: string): number {
   for (const name of [left, right]) {
-    // eslint-disable-next-line no-control-regex
+    // oxlint-disable-next-line no-control-regex
     if (/[^\u0020-\u007e]/.test(name)) {
       throw new Error(`canonical fragment: attribute name ${JSON.stringify(name)} is not ASCII`)
     }

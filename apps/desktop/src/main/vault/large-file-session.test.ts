@@ -253,7 +253,7 @@ describe('large-file session', () => {
     mocks.buildLineIndex.mockResolvedValue(indexFor(body))
     const fsp = await import('fs/promises')
     const originalReadFile = fsp.default.readFile
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     ;(fsp.default as any).readFile = () => {
       throw new Error('ERR_STRING_TOO_LONG')
     }
@@ -269,7 +269,7 @@ describe('large-file session', () => {
       // asks for the file as one string
       expect(page?.lines).toEqual(['row 10', 'row 11'])
     } finally {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       ;(fsp.default as any).readFile = originalReadFile
     }
   })

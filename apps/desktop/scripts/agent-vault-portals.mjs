@@ -13,7 +13,7 @@
  * the renderer after the vault opens and builds the fences from the ids it gets back.
  */
 
-/* eslint-disable no-undef -- `window` exists in the renderer this function is sent to. */
+/* oxlint-disable no-undef -- `window` exists in the renderer this function is sent to. */
 async function seedPortalExamples() {
   const deadline = Date.now() + 30000
   while (!(window.api && window.api.notes && document.querySelector('[data-testid], #root'))) {

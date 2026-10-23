@@ -75,7 +75,7 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
       window.clearInterval(timer)
     }
     // finish only dispatches; re-running on its identity would restart polling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [waiting])
 
   const checkout = async (): Promise<void> => {

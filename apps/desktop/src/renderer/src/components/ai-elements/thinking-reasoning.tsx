@@ -74,7 +74,7 @@ export function ThinkingReasoning({
     thinkingSinceRef.current = null
     // Wall-clock time at the moment thinking ended: not derivable from props,
     // and reading the clock during render would be impure.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
     setMeasuredMs((total) => (total ?? 0) + performance.now() - since)
   }, [thinking])
 

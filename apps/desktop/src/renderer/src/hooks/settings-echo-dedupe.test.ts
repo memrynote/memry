@@ -30,7 +30,7 @@ interface SettingsCase {
   key: string
   loaded: Record<string, unknown>
   change: Record<string, unknown>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   render: () => { settings: any; isLoading: boolean }
   read: (settings: Record<string, unknown>) => unknown
   expected: unknown

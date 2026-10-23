@@ -55,7 +55,7 @@ vi.mock('@/pages/canvas', async () => {
       // One push per MOUNT (not per render): remount detection is the test.
       React.useEffect(() => {
         mocks.canvasMounts.push(canvasId ?? '')
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // oxlint-disable-next-line react/exhaustive-deps
       }, [])
       return <div data-testid="canvas-page-stub" data-canvas-id={canvasId} />
     }

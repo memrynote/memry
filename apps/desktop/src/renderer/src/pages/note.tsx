@@ -1008,7 +1008,7 @@ export function NotePage({ noteId }: NotePageProps) {
   // that chain and misreads it as this effect forwarding a ref or live state
   // to a parent — it does neither; it only calls `refreshMindMap()`.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
     refreshMindMap()
   }, [headings, refreshMindMap])
 

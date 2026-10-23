@@ -53,9 +53,9 @@ export interface ParentTaskRowProps {
   accentClass?: string
   isDragging?: boolean
   isJustDropped?: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   dragHandleListeners?: Record<string, any>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   dragHandleAttributes?: Record<string, any>
   droppedPriority?: Priority | null
   insertionIndicatorPosition?: 'before' | 'after'

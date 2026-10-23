@@ -12,7 +12,7 @@ import { handleEditorPaste } from './table-cell-paste'
 // Uses the default BlockNote schema: it carries the list and table blocks, and
 // the custom schema's extra specs drag react-pdf into jsdom.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 class FakeDataTransfer {
   private readonly store = new Map<string, string>()

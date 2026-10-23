@@ -255,7 +255,7 @@ export function AttachmentPickerDialog({
       cancelled = true
     }
     // `t` is not identity-stable across renders; the dialog reloads on open only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [open])
 
   const visible = useMemo(

@@ -157,7 +157,7 @@ function PdfThumbnailRail({
 
   // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
   // known library limitation the React Compiler can't memoize around.
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
@@ -173,7 +173,7 @@ function PdfThumbnailRail({
   // never leaves this component.
   useEffect(() => {
     if (numPages > 0) {
-      // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent
+      // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent
       virtualizer.scrollToIndex(leadPage - 1, { align: 'auto' })
     }
   }, [leadPage, numPages, virtualizer])

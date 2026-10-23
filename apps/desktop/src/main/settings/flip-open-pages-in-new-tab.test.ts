@@ -31,7 +31,7 @@ describe('flipOpenPagesInNewTabDefault', () => {
   let testDb: TestDatabaseResult
   let vaultPath: string
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   const db = (): any => testDb.db
 
   beforeEach(() => {

@@ -22,11 +22,11 @@ export function SettingsView() {
   // spread across the app, so settings watches the result instead of each caller.
   const activeTabId = useActiveTab()?.id
   const [openedOnTabId] = useState(activeTabId)
-  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (activeTabId !== openedOnTabId) close()
   }, [activeTabId, openedOnTabId, close])
-  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {

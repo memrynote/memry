@@ -59,7 +59,7 @@ const reader = {
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, wrapped, null, nonce, key),
   decrypt: async (ciphertext: Uint8Array, nonce: Uint8Array, key: Uint8Array) =>
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, null, nonce, key)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
 } as any
 
 describe('attachment-manifest vectors', () => {

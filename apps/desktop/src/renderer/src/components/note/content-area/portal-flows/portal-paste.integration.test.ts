@@ -7,7 +7,7 @@ import { blockDefinition, portalFenceMarkdown } from './portal-insert'
 // "Copy as portal" puts a memry-portal fence on the clipboard as plain text;
 // pasting it must land as a portal block through the editor's real paste path.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 class FakeDataTransfer {
   private readonly store = new Map<string, string>()

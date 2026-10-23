@@ -285,7 +285,7 @@ function encodeTableData(cells: string[][]): Buffer {
     (_, i) => new Uint8Array([i + 1, ...Array(15).fill(0)])
   )
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
+  /* oxlint-disable typescript/no-explicit-any */
   const objects: any[] = []
   const push = (object: any): number => objects.push(object) - 1
   const rootIndex = push({ customMap: { type: 1, mapEntry: [] } })
@@ -350,7 +350,7 @@ function encodeTableData(cells: string[][]): Buffer {
     { key: 2, value: { objectIndex: columnsIndex } },
     { key: 3, value: { objectIndex: cellsIndex } }
   ]
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  /* oxlint-enable typescript/no-explicit-any */
 
   const Proto = Root.fromJSON(descriptor).lookupType(MERGEABLE_DATA_TYPE)
   const bytes = Proto.encode(

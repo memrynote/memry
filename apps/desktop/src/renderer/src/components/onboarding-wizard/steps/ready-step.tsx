@@ -181,7 +181,7 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
       )
       .catch((err) => log.warn('Reading the default vault folder failed', err))
     // Runs once: later folder changes come from the user.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   const pick = async (mode: 'parent' | 'existing'): Promise<void> => {

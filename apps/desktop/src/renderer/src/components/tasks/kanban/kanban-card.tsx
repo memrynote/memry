@@ -32,9 +32,9 @@ interface KanbanCardProps {
 interface KanbanCardContentProps extends KanbanCardProps {
   isDragging?: boolean
   style?: React.CSSProperties
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   attributes?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   listeners?: any
   setNodeRef?: (node: HTMLElement | null) => void
 }

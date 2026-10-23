@@ -82,7 +82,7 @@ function OverflowRow({ item, render, onDelete }: OverflowRowProps) {
     element.replaceChildren(...(fragment ? [fragment] : []))
     setFormatted(fragment !== null)
     // `render` is a fresh closure every snapshot; the item's HTML is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [item.html])
 
   const copy = async (): Promise<void> => {

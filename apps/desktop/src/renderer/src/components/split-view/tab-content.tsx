@@ -256,7 +256,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         )
     }
     // Dependencies: tab identity fields and tasksContext for TasksPage props
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [
     tab.id,
     tab.type,

@@ -276,7 +276,7 @@ export function CoverPickerDialog({
       cancelled = true
     }
     // `t` is not identity-stable across renders; the dialog reloads on open only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [open])
 
   // The probe can land while the Photos tab is already selected, so the shown tab

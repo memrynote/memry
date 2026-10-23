@@ -1,10 +1,10 @@
 import type { Block, BlockNoteEditor } from '@blocknote/core'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 type AnyEditor = BlockNoteEditor<any, any, any>
 type AnyBlock = Block<any, any, any>
-/* eslint-enable @typescript-eslint/no-explicit-any */
+/* oxlint-enable typescript/no-explicit-any */
 
 export const LIST_BLOCK_TYPES = ['bulletListItem', 'numberedListItem', 'checkListItem'] as const
 

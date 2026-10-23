@@ -115,7 +115,7 @@ export function CalendarMonthView({
     for (let i = 0; i < gridDays.length; i += 7) rows.push(gridDays.slice(i, i + 7))
     return rows.map((weekDays) => ({ weekDays, ...buildWeekSpanBars(items, weekDays) }))
     // `gridDays` is recomputed each render from the anchor, so key on the anchor.
-  }, [anchorDate, weekStartsOn, items]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [anchorDate, weekStartsOn, items]) // oxlint-disable-line react/exhaustive-deps
 
   return (
     <div className="flex h-full flex-col" data-testid="calendar-view" data-view="month">

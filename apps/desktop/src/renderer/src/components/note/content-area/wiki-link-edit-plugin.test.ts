@@ -62,7 +62,7 @@ function stateWith(nodes: ProseMirrorNode[], cursorAt: number): EditorState {
  */
 function focusedPlugin(): ReturnType<typeof createWikiLinkEditPlugin> {
   const plugin = createWikiLinkEditPlugin()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   ;(plugin.spec as any).view({ hasFocus: () => true })
   return plugin
 }
@@ -87,7 +87,7 @@ function keyDown(state: EditorState, key: string, modifiers: Partial<KeyboardEve
   const view = viewOf(state)
   const handled = plugin.props.handleKeyDown!.call(
     plugin,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     view as any,
     { key, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false, ...modifiers } as any
   )
@@ -166,7 +166,7 @@ describe('wiki-link edit plugin', () => {
 
     plugin.props.handleKeyDown!.call(
       plugin,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       view as any,
       {
         key: 'Backspace',
@@ -174,7 +174,7 @@ describe('wiki-link edit plugin', () => {
         metaKey: false,
         ctrlKey: false,
         altKey: false
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
       } as any
     )
 
@@ -269,7 +269,7 @@ describe('wiki-link edit plugin', () => {
     const plugin = focusedPlugin()
 
     const decorations = plugin.props.decorations!.call(plugin, opened)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const found = (decorations as any).find().map((d: any) => [d.from, d.to, d.type.attrs.class])
 
     // `[[A]]` occupies 1..6, so the bracket pairs are 1..3 and 4..6.
@@ -290,7 +290,7 @@ describe('wiki-link edit plugin', () => {
     // a hidden chip without the user touching it.
     const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
     const unfocused = createWikiLinkEditPlugin()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     ;(unfocused.spec as any).view({ hasFocus: () => false })
 
     // #then nothing is painted, and the same caret in a focused editor is
@@ -305,7 +305,7 @@ describe('wiki-link edit plugin', () => {
     // a stale one would answer `hasFocus` for an editor that no longer exists.
     const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
     const plugin = createWikiLinkEditPlugin()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const mounted = (plugin.spec as any).view({ hasFocus: () => true })
     expect(plugin.props.decorations!.call(plugin, state)).not.toBeNull()
 
@@ -376,16 +376,16 @@ describe('wiki-link edit plugin', () => {
  * next Cmd+Z would undo the caret instead of the paragraph the user deleted.
  */
 describe('markdown shown beside the caret', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   function decorationsOf(state: EditorState): any[] {
     const plugin = focusedPlugin()
     const set = plugin.props.decorations!.call(plugin, state)
     if (!set) return []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     return (
       (set as any)
         .find()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         .map((d: any) => ({
           from: d.from,
           to: d.to,
@@ -619,7 +619,7 @@ describe('pressing a chip follows the link', () => {
       // working in, and `decorations` paints only for a focused editor.
       hasFocus: () => true
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     ;(plugin.spec as any).view(view)
 
     function fire(type: 'mousedown' | 'mouseup' | 'auxclick', props: Partial<MouseEvent> = {}) {
@@ -639,9 +639,9 @@ describe('pressing a chip follows the link', () => {
       }
       const handled = plugin.props.handleDOMEvents![type]!.call(
         plugin,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         view as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         event as any
       )
       return { handled, prevented }
@@ -829,7 +829,7 @@ describe('pressing a chip follows the link', () => {
     const parked = view.state.apply(
       view.state.tr.setSelection(TextSelection.create(view.state.doc, 4))
     )
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const painted = plugin.props.decorations!.call(plugin, parked) as any
     expect(painted?.find().map((d: any) => d.spec?.sourceText ?? d.type.attrs?.class)).toEqual([
       '[[Toplantı]]',

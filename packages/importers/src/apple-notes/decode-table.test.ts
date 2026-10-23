@@ -35,7 +35,7 @@ export function encodeTablePayload(cells: (string | null)[][]): Uint8Array {
     uuids.push([i + 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   }
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
+  /* oxlint-disable typescript/no-explicit-any */
   const objects: any[] = []
   const push = (object: any): number => objects.push(object) - 1
 
@@ -97,7 +97,7 @@ export function encodeTablePayload(cells: (string | null)[][]): Uint8Array {
     { key: KEY.columns, value: { objectIndex: columnsIndex } },
     { key: KEY.cellColumns, value: { objectIndex: cellsIndex } }
   ]
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  /* oxlint-enable typescript/no-explicit-any */
 
   const Proto = Root.fromJSON(descriptor).lookupType(MERGEABLE_DATA_TYPE)
   const payload = {

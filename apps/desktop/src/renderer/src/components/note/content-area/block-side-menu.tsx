@@ -17,7 +17,7 @@
  * @module note/content-area/block-side-menu
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- BlockNote's own default
+/* oxlint-disable typescript/no-explicit-any -- BlockNote's own default
    drag-handle items type the editor as `<any, any, any>`; narrowing here would
    make Memry's heterogeneous block schema unassignable at every call site. */
 

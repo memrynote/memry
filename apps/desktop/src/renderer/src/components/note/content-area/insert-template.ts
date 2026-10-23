@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { substituteTemplatePlaceholders } from '@memry/shared/template-placeholders'
 import { createLogger } from '@/lib/logger'
