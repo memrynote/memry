@@ -177,17 +177,16 @@ export function useNoteCommands(input: NoteCommandInput): {
       await input.toggleBookmark()
     }),
     'note.setReminder': item('note.setReminder', () => dialog.show('reminder')),
-    // A Readwise note offers these on the pulling device only (D16).
-    'note.readwiseReimport': item(
-      'note.readwiseReimport',
-      () => dialog.show('readwiseReimport'),
-      ready && readwise.isLinked && readwise.pullsHere
-    ),
-    'note.readwiseRefresh': item(
-      'note.readwiseRefresh',
-      readwise.refresh,
-      ready && readwise.isLinked && readwise.pullsHere
-    ),
+    // Unlabeled: the palette says "Refresh Readwise Book Info", so a search for
+    // Readwise finds both. A Readwise note offers them on the pulling device only (D16).
+    'note.readwiseReimport': {
+      run: () => dialog.show('readwiseReimport'),
+      enabled: ready && readwise.isLinked && readwise.pullsHere
+    },
+    'note.readwiseRefresh': {
+      run: readwise.refresh,
+      enabled: ready && readwise.isLinked && readwise.pullsHere
+    },
     'note.delete': item('note.delete', () => dialog.show('delete'))
   }
 

@@ -4,6 +4,7 @@ import type { ReadwiseDeletedBook } from '@memry/contracts/import-channels'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { SETTINGS_GROUP_LABEL } from '@/components/settings/settings-primitives'
+import { getActiveLocale } from '@/lib/active-locale'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
 interface ReadwiseDeletedBooksProps {
@@ -14,7 +15,7 @@ interface ReadwiseDeletedBooksProps {
 }
 
 function deletedOn(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(
+  return new Intl.DateTimeFormat(getActiveLocale(), { day: 'numeric', month: 'short' }).format(
     new Date(iso)
   )
 }

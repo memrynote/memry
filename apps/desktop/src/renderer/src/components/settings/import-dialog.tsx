@@ -133,7 +133,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{item ? t('import.dialog.title', { name: item.name }) : ''}</DialogTitle>
           <DialogDescription>{item ? t(item.descriptionKey) : ''}</DialogDescription>
