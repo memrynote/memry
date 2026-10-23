@@ -47,6 +47,8 @@ export interface PortalToolbarProps {
   onIncludeParent: (ancestor: PortalWindowBlock) => void
   onOpenHidden: (anchorEl: HTMLElement) => void
   onOpenSource: () => void
+  /** Middle click on the title. */
+  onOpenSourceInNewTab: () => void
   onOpenBeside: () => void
   onCopyContents: () => void
   onCopyLink: () => void
@@ -93,6 +95,7 @@ export function PortalToolbar({
   onIncludeParent,
   onOpenHidden,
   onOpenSource,
+  onOpenSourceInNewTab,
   onOpenBeside,
   onCopyContents,
   onCopyLink,
@@ -107,7 +110,18 @@ export function PortalToolbar({
     <TooltipProvider delayDuration={300}>
       <PortalToolbarShell aria-label={t('portalBlock.toolbar.label')}>
         {compact ? null : (
-          <PortalToolbarButton onClick={onOpenSource} className="max-w-[10rem]">
+          <PortalToolbarButton
+            onClick={onOpenSource}
+            onMouseDown={(event) => {
+              if (event.button === 1) event.preventDefault()
+            }}
+            onAuxClick={(event) => {
+              if (event.button !== 1) return
+              event.preventDefault()
+              onOpenSourceInNewTab()
+            }}
+            className="max-w-[10rem]"
+          >
             <Layers className="size-3 shrink-0" aria-hidden="true" />
             <span className="truncate">{title || '\u00a0'}</span>
           </PortalToolbarButton>

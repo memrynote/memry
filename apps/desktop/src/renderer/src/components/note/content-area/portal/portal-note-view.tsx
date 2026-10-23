@@ -272,6 +272,7 @@ export function PortalNoteView({
         }
         onOpenHidden={(anchorEl) => setHiddenRequest({ scope: { kind: 'siblings' }, anchorEl })}
         onOpenSource={() => openSource()}
+        onOpenSourceInNewTab={() => openSource({ inNewTab: true })}
         onOpenBeside={() => openSource({ toTheSide: true })}
         onCopyContents={() =>
           writeClipboard(
