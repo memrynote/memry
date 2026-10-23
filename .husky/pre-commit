@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-pnpm exec lint-staged
+pnpm exec lint-staged --concurrent false
 git diff --cached --check
 pnpm check:staged-secrets
 pnpm check:staged-renderer-guards
