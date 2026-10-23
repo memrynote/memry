@@ -435,3 +435,75 @@ describe('CommandPalette telemetry', () => {
     expect(names.filter((n) => n === 'search_opened')).toHaveLength(1)
   })
 })
+
+describe('CommandPalette matches inside a note', () => {
+  const body = [
+    'Kedi bir.',
+    'iki kedi',
+    'kedi üç',
+    'dört kedi',
+    'kedi beş',
+    'altı kedi',
+    'kedi yedi'
+  ]
+  const mockBody = (content: string): void => {
+    vi.mocked(notesService.get).mockResolvedValue({ content } as Awaited<
+      ReturnType<typeof notesService.get>
+    >)
+  }
+
+  // An occurrence row's accessible name drops the space around its marked word.
+  const findRow = (text: string): Promise<HTMLElement> =>
+    waitFor(() => {
+      const row = screen.getAllByRole('option').find((o) => o.textContent?.startsWith(text))
+      if (!row) throw new Error(`no row starting with ${text}`)
+      return row
+    })
+
+  it('lists the occurrences under their note and opens the note on the picked one', async () => {
+    respondWith([group([noteHit('note-1', 'Cats')])])
+    mockBody(body.join('\n\n'))
+    const { user } = renderPalette()
+
+    await user.type(input(), 'kedi')
+    const second = await findRow('iki kedi')
+
+    await user.click(second)
+
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/note/note-1',
+        viewState: { findRequest: { query: 'kedi', index: 1 } }
+      })
+    )
+  })
+
+  it('shows the first five occurrences, then the rest on request', async () => {
+    respondWith([group([noteHit('note-1', 'Cats')])])
+    mockBody(body.join('\n\n'))
+    const { user } = renderPalette()
+
+    await user.type(input(), 'kedi')
+    await findRow('iki kedi')
+    expect(rowTitles().some((title) => title.startsWith('kedi yedi'))).toBe(false)
+
+    await user.click(screen.getByRole('option', { name: /matchesMore.*"count":2/ }))
+
+    expect(rowTitles().some((title) => title.startsWith('kedi yedi'))).toBe(true)
+  })
+
+  it('opens a note with no phrase occurrence at the top, as before', async () => {
+    respondWith([group([noteHit('note-1', 'Cats')])])
+    mockBody('kedi ve köpek ayrı satırlarda.\n\nküçük kedi.')
+    const { user } = renderPalette()
+
+    await user.type(input(), 'kedi köpek')
+    await waitFor(() => expect(notesService.get).toHaveBeenCalled())
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+    await user.click(screen.getByRole('option', { name: /Cats/ }))
+
+    expect(openTab).toHaveBeenCalledWith(
+      expect.not.objectContaining({ viewState: expect.anything() })
+    )
+  })
+})

@@ -1311,6 +1311,9 @@
     "filterType": "Type",
     "filterModified": "Modified",
     "matches": "Matches",
+    "matchesMore": "{count, plural, one {# more match} other {# more matches}}",
+    "matchesHide": "Hide matches",
+    "matchOf": "Match {index} of {total}",
     "showMore": "Show {count} more",
     "keys": {
       "esc": "esc"
@@ -1348,6 +1351,7 @@
       "nextSection": "Next section",
       "open": "Open",
       "openNote": "Open note",
+      "openAtMatch": "Open at match",
       "openFile": "Open file",
       "openJournal": "Open journal",
       "openTask": "Open task",
@@ -1357,6 +1361,7 @@
       "chooseTag": "Choose tag",
       "addTag": "Add tag",
       "showAll": "Show all",
+      "hideMatches": "Hide matches",
       "searchEverywhere": "Search everywhere",
       "clearFilters": "Clear filters"
     },

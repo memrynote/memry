@@ -73,12 +73,15 @@ function trailingHint(item: SearchResultItemType, locale: string): string | null
 interface SearchResultItemProps {
   item: SearchResultItemType
   query: string
+  /** How many times the query occurs in the body, when the note lists them. */
+  matchCount?: number
   onSelect: (item: SearchResultItemType) => void
 }
 
 export function SearchResultItem({
   item,
   query,
+  matchCount,
   onSelect
 }: SearchResultItemProps): React.JSX.Element {
   const { i18n } = useT('common')
@@ -86,12 +89,24 @@ export function SearchResultItem({
   const meta = item.metadata
   const isTask = meta.type === 'task'
   const matchedName = meta.type === 'note' || meta.type === 'journal' ? meta.matchedName : undefined
+  const hint = trailingHint(item, i18n.resolvedLanguage ?? i18n.language) ?? ''
   return (
     <SearchRow
       value={resultValue(item)}
       onSelect={() => onSelect(item)}
       icon={<ResultIcon item={item} />}
-      trailing={trailingHint(item, i18n.resolvedLanguage ?? i18n.language) ?? ''}
+      trailing={
+        matchCount ? (
+          <span className="flex items-center gap-2">
+            {hint}
+            <span className="flex h-[18px] min-w-5 items-center justify-center rounded-full bg-surface px-[5px] font-mono text-[11px] leading-none tabular-nums text-text-secondary">
+              {matchCount}
+            </span>
+          </span>
+        ) : (
+          hint
+        )
+      }
       endLane={
         isTask ? (
           meta.priority > 0 ? (
