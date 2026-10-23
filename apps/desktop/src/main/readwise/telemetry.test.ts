@@ -123,7 +123,9 @@ describe('Readwise telemetry', () => {
       vi.fn(async () => new Response(null, { status: 401 }))
     )
 
-    await expect(connectReadwise(TOKEN)).rejects.toThrow()
+    await expect(connectReadwise(TOKEN)).rejects.toThrow(
+      'Readwise did not accept this token. Copy it again from readwise.io/access_token.'
+    )
 
     const { events, raw } = await shipped()
     expect(events).toHaveLength(1)
@@ -204,7 +206,9 @@ describe('Readwise telemetry', () => {
         throw new ReadwiseError('rate-limited', 'https://readwise.io/api/v2/export/?secret=1')
       })
 
-      await expect(scheduler.syncNow()).rejects.toThrow()
+      await expect(scheduler.syncNow()).rejects.toThrow(
+        'https://readwise.io/api/v2/export/?secret=1'
+      )
 
       const { events, raw } = await shipped()
       expect(events[0]).toMatchObject({

@@ -209,7 +209,9 @@ describe('Readwise book commands (D16)', () => {
       const before = (await note(noteId)).content
       readwise.books = []
 
-      await expect(commands.reimportBook(noteId)).rejects.toThrow()
+      await expect(commands.reimportBook(noteId)).rejects.toThrow(
+        'This book is no longer in your Readwise library.'
+      )
       expect((await note(noteId)).content).toBe(before)
     })
   })
@@ -294,7 +296,7 @@ describe('Readwise book commands (D16)', () => {
       expect(restored.content).toContain('Highlight 3')
       expect(restored.properties.readwise_url).toBe('https://readwise.io/bookreview/1')
 
-      await expect(commands.restoreBook(1)).rejects.toThrow()
+      await expect(commands.restoreBook(1)).rejects.toThrow('This book is not in the deleted list.')
       expect(await commands.listDeletedBooks()).toEqual([])
       const copies = indexDb.db
         .select()

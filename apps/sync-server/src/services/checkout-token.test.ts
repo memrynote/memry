@@ -265,7 +265,7 @@ describe('signCheckoutToken', () => {
     // required-secret guard at src/index.ts:141-147.
     await expect(
       signCheckoutToken('', { userId: 'user-1', exp: nowSeconds() + 600 })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Zero-length key is not supported')
   })
 
   it('binds the signature to the whole payload, not just the user id', async () => {

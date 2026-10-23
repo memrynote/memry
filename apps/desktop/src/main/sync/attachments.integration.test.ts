@@ -344,7 +344,7 @@ describe('attachment upload/download against the real sync-server', () => {
 
     const src = await writeTempFile('free.bin', randomBytes(1024))
 
-    await expect(svc.uploadAttachment('note-5', src)).rejects.toThrow()
+    await expect(svc.uploadAttachment('note-5', src)).rejects.toThrow(/Failed to initiate upload:/)
   }, 120_000)
 
   it('declares the exact encrypted byte total on initiate', async () => {

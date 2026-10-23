@@ -178,21 +178,23 @@ describe('attachment references', () => {
     it('refuses a traversal in either identifier', () => {
       writeAttachment('note-a', 'k3f9x2-report.pdf')
 
-      expect(() => buildExistingAttachmentReference('note-b', '../..', 'x.pdf')).toThrow()
+      expect(() => buildExistingAttachmentReference('note-b', '../..', 'x.pdf')).toThrow(
+        'Invalid attachment reference'
+      )
       expect(() =>
         buildExistingAttachmentReference('note-b', 'note-a', '../note-a/k3f9x2-report.pdf')
-      ).toThrow()
+      ).toThrow('Invalid attachment reference')
     })
 
     it('refuses a file that is not on disk, and an unknown receiving note', () => {
       expect(() =>
         buildExistingAttachmentReference('note-b', 'note-a', 'k3f9x2-report.pdf')
-      ).toThrow()
+      ).toThrow('Attachment file not found on disk')
 
       writeAttachment('note-a', 'k3f9x2-report.pdf')
       expect(() =>
         buildExistingAttachmentReference('missing-note', 'note-a', 'k3f9x2-report.pdf')
-      ).toThrow()
+      ).toThrow('Note not found: missing-note')
     })
   })
 })

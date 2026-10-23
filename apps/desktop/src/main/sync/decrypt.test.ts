@@ -124,7 +124,9 @@ describe('decryptItemFromPull', () => {
 
       const input = buildDecryptInput(pushItem, keys, { vaultKey: wrongVaultKey })
 
-      expect(() => decryptItemFromPull(input)).toThrow()
+      expect(() => decryptItemFromPull(input)).toThrow(
+        'Ciphertext authentication failed: ciphertext cannot be decrypted using that key'
+      )
       expect(() => decryptItemFromPull(input)).not.toThrow(SignatureVerificationError)
     })
   })

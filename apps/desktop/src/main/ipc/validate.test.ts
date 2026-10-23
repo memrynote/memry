@@ -493,8 +493,12 @@ describe('validated handler attribution', () => {
     setIpcHandlerChannel(notes, 'notes:create:distinct')
     setIpcHandlerChannel(tasks, 'tasks:create:distinct')
 
-    await expect(notes(invokeEvent, { title: '' })).rejects.toThrow()
-    await expect(tasks(invokeEvent, { title: '' })).rejects.toThrow()
+    await expect(notes(invokeEvent, { title: '' })).rejects.toThrow(
+      'Validation failed: title: Too small: expected string to have >=1 characters'
+    )
+    await expect(tasks(invokeEvent, { title: '' })).rejects.toThrow(
+      'Validation failed: title: Too small: expected string to have >=1 characters'
+    )
 
     // Not one throttled event under a shared key — two, one per channel.
     expect(mockTrackMainError.mock.calls.map((call) => call[1])).toEqual([
@@ -507,7 +511,9 @@ describe('validated handler attribution', () => {
     // Registration paths that never reach ipcMain.handle keep the old behaviour.
     const listener = createValidatedHandler(TitleSchema, async (input) => input)
 
-    await expect(listener(invokeEvent, { title: '' })).rejects.toThrow()
+    await expect(listener(invokeEvent, { title: '' })).rejects.toThrow(
+      'Validation failed: title: Too small: expected string to have >=1 characters'
+    )
 
     expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'validated_handler', expect.anything())
   })

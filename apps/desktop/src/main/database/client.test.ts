@@ -268,6 +268,7 @@ describe('database client', () => {
     vi.useFakeTimers()
     const pending = withTimeout(() => new Promise(() => undefined), 10)
 
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const expectation = expect(pending).rejects.toThrow('timed out')
     await vi.advanceTimersByTimeAsync(10)
     await expectation

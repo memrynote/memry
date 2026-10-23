@@ -210,12 +210,12 @@ describe('VaultPreferencesSchema', () => {
 
   it('#given invalid theme #then throws', () => {
     const input = { ...VAULT_PREFERENCES_DEFAULTS, theme: 'neon' }
-    expect(() => VaultPreferencesSchema.parse(input)).toThrow()
+    expect(() => VaultPreferencesSchema.parse(input)).toThrow(/invalid_value/)
   })
 
   it('#given invalid accentColor #then throws', () => {
     const input = { ...VAULT_PREFERENCES_DEFAULTS, accentColor: 'not-hex' }
-    expect(() => VaultPreferencesSchema.parse(input)).toThrow()
+    expect(() => VaultPreferencesSchema.parse(input)).toThrow(/invalid_format/)
   })
 
   it('#given defaults #then parses successfully', () => {

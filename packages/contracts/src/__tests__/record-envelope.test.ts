@@ -189,7 +189,7 @@ describe('record-envelope vectors', () => {
         })
 
       if (entry.expectThrows) {
-        await expect(call(), entry.pins).rejects.toThrow()
+        await expect(call(), entry.pins).rejects.toThrow('Item too large for sync')
       } else {
         await expect(call(), entry.pins).resolves.toBeDefined()
       }

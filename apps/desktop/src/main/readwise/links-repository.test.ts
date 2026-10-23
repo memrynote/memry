@@ -49,7 +49,9 @@ describe('readwise links repository', () => {
   })
 
   it('rejects a link that names neither id', () => {
-    expect(() => upsertLink(db, { noteId: 'n1' })).toThrow()
+    expect(() => upsertLink(db, { noteId: 'n1' })).toThrow(
+      'upsertLink needs a readwiseBookId or a readerDocumentId'
+    )
   })
 
   it('marks a link by book id, Reader id, or note id, and lists by state', () => {

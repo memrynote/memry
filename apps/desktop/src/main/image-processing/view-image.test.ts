@@ -107,6 +107,8 @@ describe('prepareViewImage', () => {
     const file = path.join(dir, 'broken.png')
     fs.writeFileSync(file, 'not an image')
 
-    await expect(prepareViewImage({ data: fs.readFileSync(file) }, MAX_EDGE)).rejects.toThrow()
+    await expect(prepareViewImage({ data: fs.readFileSync(file) }, MAX_EDGE)).rejects.toThrow(
+      'Input buffer contains unsupported image format'
+    )
   })
 })

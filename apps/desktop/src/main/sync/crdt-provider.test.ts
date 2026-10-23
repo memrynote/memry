@@ -536,7 +536,7 @@ describe('CrdtProvider', () => {
 
     await expect(
       provider.mergeRemoteUpdate('note-2', makeRemoteUpdate('from the feed'))
-    ).rejects.toThrow()
+    ).rejects.toThrow('No open doc to merge a change-feed body into')
     expect(store.storeUpdate).not.toHaveBeenCalled()
   })
 
@@ -545,7 +545,9 @@ describe('CrdtProvider', () => {
     const inMemory = new CrdtProvider()
     const update = makeRemoteUpdate('from the feed')
 
-    await expect(inMemory.mergeRemoteUpdate('note-2', update)).rejects.toThrow()
+    await expect(inMemory.mergeRemoteUpdate('note-2', update)).rejects.toThrow(
+      'No CRDT store to hold a change-feed body'
+    )
   })
 
   // #2297 review (A-M6, B-7): this device's own snapshot comes back through the

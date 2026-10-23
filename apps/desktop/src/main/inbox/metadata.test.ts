@@ -659,7 +659,9 @@ describe('fetchUrlHtml', () => {
 
   it('throws on non-ok status', async () => {
     mockFetch.mockResolvedValue(new Response('nope', { status: 404 }))
-    await expect(fetchUrlHtml('https://example.com/missing')).rejects.toThrow()
+    await expect(fetchUrlHtml('https://example.com/missing')).rejects.toThrow(
+      'Failed to fetch article HTML: 404'
+    )
   })
 })
 

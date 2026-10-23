@@ -654,7 +654,7 @@ describe('google calendar sync service', () => {
 
     await expect(
       syncGoogleCalendarSource(db, 'google-calendar:selected', { client })
-    ).rejects.toThrow()
+    ).rejects.toThrow(longMessage)
 
     const failedSource = db
       .select()
@@ -1626,7 +1626,9 @@ describe('google calendar sync service', () => {
           { sourceType: 'event', sourceId: 'event-strikeout' },
           { client }
         )
-      ).rejects.toThrow()
+      ).rejects.toThrow(
+        'Google calendar push gave up after 3 412 conflicts for event:event-strikeout'
+      )
 
       // #then: exactly 3 upsert attempts (no 4th) + binding marked conflict
       expect(upsertEvent).toHaveBeenCalledTimes(3)

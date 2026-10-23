@@ -39,6 +39,8 @@ describe('hashTelemetryId', () => {
     // #given an empty hmac key
     // #when hashing
     // #then it rejects
-    await expect(hashTelemetryId('', VALID_INSTALL_ID)).rejects.toThrow()
+    await expect(hashTelemetryId('', VALID_INSTALL_ID)).rejects.toThrow(
+      'Telemetry HMAC key is not configured'
+    )
   })
 })

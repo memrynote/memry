@@ -198,7 +198,7 @@ describe('adoptVaultLocally', () => {
 
     expect(() => {
       adoptVaultLocally(db, INITIATOR_UUID)
-    }).toThrow()
+    }).toThrow("Failed to run the query 'DELETE FROM settings WHERE key = ?'")
 
     expect(getPendingCrdtStoreRename(INITIATOR_UUID)).toBe(joinerOwnUuid)
   })

@@ -114,7 +114,7 @@ describe('addFromUrl', () => {
   })
 
   it('never reaches the network for a malformed request', async () => {
-    await expect(makeCustomIconHandlers(db).addFromUrl({})).rejects.toThrow()
+    await expect(makeCustomIconHandlers(db).addFromUrl({})).rejects.toThrow(/invalid_type/)
     expect(downloadRemoteIcon).not.toHaveBeenCalled()
     expect(writeCustomIconFile).not.toHaveBeenCalled()
   })

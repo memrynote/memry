@@ -221,6 +221,7 @@ describe('onenote-auth', () => {
     await vi.waitFor(() => {
       expect(shell.openExternal).toHaveBeenCalledTimes(1)
     })
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const firstRejects = expect(first).rejects.toThrow(/restarted/i)
 
     const second = connectOneNote()
@@ -231,6 +232,7 @@ describe('onenote-auth', () => {
     })
 
     // Leave no server listening (and no pending promise) behind either flow.
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const secondRejects = expect(second).rejects.toThrow(/cancelled/i)
     __resetOneNoteAuthForTests()
     await secondRejects

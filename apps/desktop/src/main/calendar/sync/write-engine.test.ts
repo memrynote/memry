@@ -250,7 +250,9 @@ describe('generalized write engine (#1393)', () => {
           modifiedAt: NOW
         })
         .run()
-      expect(() => promoteExternalEvent(db, { externalEventId: 'mirror-1' })).toThrow()
+      expect(() => promoteExternalEvent(db, { externalEventId: 'mirror-1' })).toThrow(
+        'External calendar event mirror-1 comes from a read-only subscription'
+      )
       expect(bindings()).toEqual([])
     })
   })

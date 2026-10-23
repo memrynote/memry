@@ -109,7 +109,7 @@ describe('readwise import IPC handlers', () => {
     vi.stubGlobal('fetch', fetchMock)
     await expect(
       handlerFor(ReadwiseImportChannels.invoke.CONNECT)({}, { token: '   ' })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Validation failed: token: Too small: expected string to have >=1 characters')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -124,7 +124,9 @@ describe('readwise import IPC handlers', () => {
       rootFolder: 'Reading',
       categories: { supplementals: true, books: true }
     })
-    await expect(set({}, { rootFolder: '../outside' })).rejects.toThrow()
+    await expect(set({}, { rootFolder: '../outside' })).rejects.toThrow(
+      'Validation failed: rootFolder: Invalid folder path'
+    )
   })
 
   it('disconnect deletes the token', async () => {
@@ -152,7 +154,7 @@ describe('readwise import IPC handlers', () => {
   it('take-over rejects an empty token at the schema', async () => {
     await expect(
       handlerFor(ReadwiseImportChannels.invoke.TAKE_OVER)({}, { token: '  ' })
-    ).rejects.toThrow()
+    ).rejects.toThrow('Validation failed: token: Too small: expected string to have >=1 characters')
   })
 
   it('sync-now answers a failure envelope when Readwise is not connected', async () => {

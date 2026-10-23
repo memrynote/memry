@@ -248,8 +248,12 @@ describe('rate limiting', () => {
 describe('readwiseGet', () => {
   it('only ever talks to readwise.io, whatever the path', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
-    await expect(readwiseGet({ token: TOKEN, path: '//evil.example/x' })).rejects.toThrow()
-    await expect(readwiseGet({ token: TOKEN, path: 'https://evil.example/x' })).rejects.toThrow()
+    await expect(readwiseGet({ token: TOKEN, path: '//evil.example/x' })).rejects.toThrow(
+      'Readwise requests must stay on readwise.io'
+    )
+    await expect(readwiseGet({ token: TOKEN, path: 'https://evil.example/x' })).rejects.toThrow(
+      'Readwise requests must stay on readwise.io'
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

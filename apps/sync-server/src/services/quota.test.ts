@@ -58,7 +58,9 @@ describe('checkQuota', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
-    await expect(checkQuota(db as unknown as D1Database, 'user-1', 200)).rejects.toThrow()
+    await expect(checkQuota(db as unknown as D1Database, 'user-1', 200)).rejects.toThrow(
+      'Storage quota exceeded'
+    )
     try {
       await checkQuota(db as unknown as D1Database, 'user-1', 200)
     } catch (e) {
@@ -80,7 +82,9 @@ describe('checkQuota', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
-    await expect(checkQuota(db as unknown as D1Database, 'user-1', 1)).rejects.toThrow()
+    await expect(checkQuota(db as unknown as D1Database, 'user-1', 1)).rejects.toThrow(
+      'Storage quota exceeded'
+    )
   })
 
   it('should not throw when exactly at limit', async () => {
@@ -106,7 +110,9 @@ describe('checkQuota', () => {
     db.prepare.mockReturnValue(stmt)
 
     // #when / #then
-    await expect(checkQuota(db as unknown as D1Database, 'nonexistent', 100)).rejects.toThrow()
+    await expect(checkQuota(db as unknown as D1Database, 'nonexistent', 100)).rejects.toThrow(
+      'User not found'
+    )
     try {
       await checkQuota(db as unknown as D1Database, 'nonexistent', 100)
     } catch (e) {

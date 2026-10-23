@@ -195,6 +195,8 @@ describe('per-provider credentials (#1394)', () => {
   })
 
   it('refuses a provider id that could escape its service namespace', () => {
-    expect(() => providerSecretService('google.evil')).toThrow()
+    expect(() => providerSecretService('google.evil')).toThrow(
+      'Invalid calendar provider id for secret storage: google.evil'
+    )
   })
 })

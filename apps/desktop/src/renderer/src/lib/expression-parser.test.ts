@@ -898,8 +898,12 @@ describe('expression-parser', () => {
       })
 
       it('should throw on null-like input', () => {
-        expect(() => parseExpression(null as unknown as string)).toThrow()
-        expect(() => parseExpression(undefined as unknown as string)).toThrow()
+        expect(() => parseExpression(null as unknown as string)).toThrow(
+          'Expression cannot be empty'
+        )
+        expect(() => parseExpression(undefined as unknown as string)).toThrow(
+          'Expression cannot be empty'
+        )
       })
     })
 

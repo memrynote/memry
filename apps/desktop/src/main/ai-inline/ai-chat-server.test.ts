@@ -239,7 +239,7 @@ describe('AI inline chat server', () => {
 
     expect(secondPort).toBeGreaterThan(0)
     expect(getServerPort()).toBe(secondPort)
-    await expect(fetch(`http://127.0.0.1:${firstPort}/nope`)).rejects.toThrow()
+    await expect(fetch(`http://127.0.0.1:${firstPort}/nope`)).rejects.toThrow('fetch failed')
 
     const response = await fetch(`http://127.0.0.1:${secondPort}/api/ai/chat`, {
       method: 'POST',
@@ -302,7 +302,7 @@ describe('AI inline chat server', () => {
     await stopChatServer()
 
     expect(getServerPort()).toBeNull()
-    await expect(fetch(`http://127.0.0.1:${port}/nope`)).rejects.toThrow()
+    await expect(fetch(`http://127.0.0.1:${port}/nope`)).rejects.toThrow('fetch failed')
     await drained
   })
 
@@ -346,7 +346,7 @@ describe('AI inline chat server', () => {
       expect(getServerPort()).toBe(port)
       await stopChatServer()
       expect(getServerPort()).toBeNull()
-      await expect(fetch(`http://127.0.0.1:${port}/nope`)).rejects.toThrow()
+      await expect(fetch(`http://127.0.0.1:${port}/nope`)).rejects.toThrow('fetch failed')
     } finally {
       spy.mockRestore()
     }

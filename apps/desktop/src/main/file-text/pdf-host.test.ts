@@ -140,6 +140,7 @@ describe('PDF host', () => {
     const contents = views[0].webContents
     contents.host.renderPage = () => new Promise(() => {})
 
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const outcome = expect(pdf.renderPage(1, 3300)).rejects.toThrow(
       'PDF host did not answer in time'
     )

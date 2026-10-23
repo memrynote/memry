@@ -26,7 +26,9 @@ describe('OCR reader', () => {
     const notAnImage = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-ocr-')), 'x.png')
     fs.writeFileSync(notAnImage, 'not an image')
 
-    await expect(reader.read({ data: fs.readFileSync(notAnImage) })).rejects.toThrow()
+    await expect(reader.read({ data: fs.readFileSync(notAnImage) })).rejects.toThrow(
+      'Input buffer contains unsupported image format'
+    )
     const text = await reader.read({ data: new Uint8Array(fs.readFileSync(FIXTURE)) })
 
     expect(text.trim()).toBe('Heron count at dawn')

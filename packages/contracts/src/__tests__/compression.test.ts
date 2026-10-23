@@ -71,7 +71,7 @@ describe('compression vectors', () => {
       let returned: Uint8Array | undefined
       expect(() => {
         returned = decompressPayload(fromHex(entry.frameHex))
-      }, entry.pins).toThrow()
+      }, entry.pins).toThrow('Failed to decompress payload')
       expect(returned, 'a failed decompress must not return a value at all').toBeUndefined()
       if (entry.expectErrorContains.length > 0) {
         expect(() => decompressPayload(fromHex(entry.frameHex))).toThrow(entry.expectErrorContains)

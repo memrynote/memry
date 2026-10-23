@@ -27,13 +27,17 @@ describe('Agent at-rest encryption', () => {
 
   it('rejects decryption with wrong associated data', () => {
     const env = encryptAgentJsonForVault('secret', vaultKey, 'agent_message_content')
-    expect(() => decryptAgentJsonForVault(env, vaultKey, 'agent_attachments')).toThrow()
+    expect(() => decryptAgentJsonForVault(env, vaultKey, 'agent_attachments')).toThrow(
+      'Ciphertext authentication failed: ciphertext cannot be decrypted using that key'
+    )
   })
 
   it('rejects decryption with tampered ciphertext', () => {
     const env = encryptAgentJsonForVault('secret', vaultKey, 'agent_message_content')
     const tampered = { ...env, ciphertext: env.ciphertext.slice(0, -1) + 'A' }
-    expect(() => decryptAgentJsonForVault(tampered, vaultKey, 'agent_message_content')).toThrow()
+    expect(() => decryptAgentJsonForVault(tampered, vaultKey, 'agent_message_content')).toThrow(
+      'invalid input'
+    )
   })
 
   it('produces different ciphertexts for the same input', () => {

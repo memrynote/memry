@@ -84,6 +84,7 @@ describe('pack-container vectors', () => {
 
   for (const entry of vectors.errorCases) {
     it(`${entry.name}`, async () => {
+      // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
       const rejects = expect(parsePack(fromHex(entry.packHex)), entry.pins).rejects
       // `entry-count-too-large` has no asserted message: the reference reaches
       // "pack truncated" only because it does not apply §8.6's cap, and a

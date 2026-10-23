@@ -756,7 +756,7 @@ describe('InboxSettings', () => {
   it('rejects a non-HH:MM time', () => {
     expect(() =>
       InboxSettingsSchema.parse({ reviewReminderEnabled: true, reviewReminderTime: '6pm' })
-    ).toThrow()
+    ).toThrow(/reviewReminderTime/)
   })
 })
 

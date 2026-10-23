@@ -81,7 +81,7 @@ export default defineConfig({
     // Swift app: the JS under it is generated bundles (editor, article-extract).
     'apps/ios/**',
     // Static assets served verbatim (e.g. the Excalidraw asset-path shim)
-    "apps/desktop/src/renderer/public/**",
+    'apps/desktop/src/renderer/public/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
     // Agent tooling and per-user scratch directories, not product code.
@@ -115,6 +115,8 @@ export default defineConfig({
       ],
       ['no-empty-function', { allow: ['arrowFunctions'] }],
       ['max-lines', { max: 800, skipBlankLines: true, skipComments: true }],
+      // Vitest's `expect(value, message)` second argument is a failure message, not a bug.
+      ['vitest/valid-expect', { maxArgs: 2 }],
       ['typescript/ban-ts-comment', { 'ts-ignore': 'allow-with-description' }],
       ['typescript/no-empty-object-type', { allowInterfaces: 'always' }],
       'no-array-constructor',
@@ -202,10 +204,7 @@ export default defineConfig({
       'import/first',
       'import/no-duplicates',
       'import/no-cycle',
-      [
-        'typescript/switch-exhaustiveness-check',
-        { considerDefaultExhaustiveForUnions: true }
-      ],
+      ['typescript/switch-exhaustiveness-check', { considerDefaultExhaustiveForUnions: true }],
       ['typescript/return-await', 'error-handling-correctness-only'],
       'typescript/no-deprecated',
       'typescript/no-misused-spread',

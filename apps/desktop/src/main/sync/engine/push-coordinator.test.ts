@@ -838,7 +838,7 @@ describe('PushCoordinator', () => {
       queue.enqueue({ type: 'note', itemId: 'note-1', operation: 'update', payload })
 
       // auth_expired is rethrown so the engine's error recovery can run.
-      await expect(coordinator.push()).rejects.toThrow()
+      await expect(coordinator.push()).rejects.toThrow('Unauthorized')
 
       expect(queue.getPendingCount()).toBe(1)
       expect(queue.peek()[0].payload).toBe(payload)

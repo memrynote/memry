@@ -151,18 +151,18 @@ describe('assertPresignKeyInVault', () => {
   it('rejects another user’s key', () => {
     expect(() => {
       assertPresignKeyInVault('u2/vaults/v1/chunks/hash', 'u1', 'v1')
-    }).toThrow()
+    }).toThrow('presign key outside vault scope: u2/vaults/v1/chunks/hash')
   })
 
   it('rejects another vault’s key', () => {
     expect(() => {
       assertPresignKeyInVault('u1/vaults/v2/chunks/hash', 'u1', 'v1')
-    }).toThrow()
+    }).toThrow('presign key outside vault scope: u1/vaults/v2/chunks/hash')
   })
 
   it('rejects lookalike prefixes (no partial segment matches)', () => {
     expect(() => {
       assertPresignKeyInVault('u1/vaults/v11/chunks/hash', 'u1', 'v1')
-    }).toThrow()
+    }).toThrow('presign key outside vault scope: u1/vaults/v11/chunks/hash')
   })
 })

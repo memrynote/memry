@@ -418,7 +418,9 @@ describe('http-client', () => {
       mockFetch.mockResolvedValueOnce(
         createJsonResponse({ error: { code: 'STORAGE_BLOB_NOT_FOUND' } }, 503)
       )
-      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow()
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow(
+        'Dead letter after 1 attempts: Server error (503)'
+      )
 
       mockFetch.mockResolvedValueOnce(
         createJsonResponse({ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null })

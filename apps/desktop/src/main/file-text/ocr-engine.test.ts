@@ -162,6 +162,7 @@ describe('OCR engine', () => {
     workers[0].answer = () => {}
 
     const stuck = recognizeText(source)
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const outcome = expect(stuck).rejects.toThrow('OCR did not finish in time')
     await vi.advanceTimersByTimeAsync(180_000)
 
