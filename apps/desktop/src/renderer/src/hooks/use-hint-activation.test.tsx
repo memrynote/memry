@@ -544,6 +544,7 @@ describe('HintModeProvider', () => {
 
     const Consumer = memo(function Consumer(): null {
       useHintModeContext()
+      // oxlint-disable-next-line react/globals -- test probe component records latest hook output in a module variable for assertions
       consumerRenders += 1
       return null
     })

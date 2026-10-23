@@ -178,7 +178,7 @@ describe('useEditorTeardown', () => {
         createElement(
           VaultWorkspaceLifecycleContext.Provider,
           { value: lifecycle },
-          createElement(Activity, { mode, children })
+          createElement(Activity, { mode }, children)
         )
       const view = renderHook(
         () => {

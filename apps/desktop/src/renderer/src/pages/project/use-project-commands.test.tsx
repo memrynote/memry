@@ -37,6 +37,7 @@ function ProjectPane({
 
 let available: ReadonlyArray<{ id: CommandId; label?: string }> = []
 function Probe(): null {
+  // oxlint-disable-next-line react/globals -- test probe component records latest hook output in a module variable for assertions
   available = useAvailableCommands().commands
   return null
 }

@@ -33,8 +33,8 @@ vi.mock('@/components/calendar/calendar-event-form', () => ({
   }) => (
     <div>
       <span data-testid="draft-title">{draft.title}</span>
-      <button data-testid="save" onClick={() => onSave()} />
-      <button data-testid="dismiss" onClick={onDismiss} />
+      <button data-testid="save" aria-label="save" onClick={() => onSave()} />
+      <button data-testid="dismiss" aria-label="dismiss" onClick={onDismiss} />
     </div>
   )
 }))

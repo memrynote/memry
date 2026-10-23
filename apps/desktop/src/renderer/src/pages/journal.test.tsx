@@ -361,6 +361,7 @@ vi.mock('@/components/note', () => ({
           data-testid="blocknote-editor"
           contentEditable
           suppressContentEditableWarning
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test stub of a contentEditable editor, which is focusable
           tabIndex={0}
         >
           BlockNote editor
