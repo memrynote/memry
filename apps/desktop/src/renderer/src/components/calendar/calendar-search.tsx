@@ -24,14 +24,14 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
   // ponytail: search scans a fixed ±-year window of the same projection the
   // calendar renders. Widen the window or add a dedicated calendar FTS index if
   // events ever fall outside it.
-  const range = useMemo(() => {
+  const [range] = useState(() => {
     const now = new Date()
     return {
       startAt: new Date(now.getFullYear() - SEARCH_WINDOW_YEARS_PAST, 0, 1).toISOString(),
       endAt: new Date(now.getFullYear() + SEARCH_WINDOW_YEARS_FUTURE, 0, 1).toISOString(),
       includeUnselectedSources: true
     }
-  }, [])
+  })
 
   const { data: rangeData, isLoading: rangeIsLoading } = useQuery({
     queryKey: calendarRangeKeys.range(range),
@@ -96,6 +96,7 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
       <div className="flex h-9 items-center gap-1.5 rounded-full border border-border bg-background ps-3 pe-1.5">
         <Search className="size-4 shrink-0 text-muted-foreground" />
         <input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a just-opened popover/inline editor
           autoFocus
           type="text"
           value={query}
@@ -133,6 +134,7 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
             </p>
           ) : (
             results.map((item) => (
+              // oxlint-disable-next-line jsx-a11y/control-has-associated-label -- button name comes from the title and time text rendered inside it
               <button
                 key={item.projectionId}
                 type="button"

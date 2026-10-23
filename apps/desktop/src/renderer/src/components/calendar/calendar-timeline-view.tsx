@@ -109,6 +109,7 @@ export function CalendarTimelineView({
   const { t } = useT('calendar')
   const actions = useTimelineTaskActions()
   const tabActions = useTabActionsOptional()
+  // oxlint-disable-next-line react/purity -- today is the wall clock on each render so day rollover shows up on the next render
   const today = toLocalDateString(new Date())
   const { zoom } = settings
   const dayWidth = TIMELINE_DAY_WIDTH[zoom]
@@ -598,6 +599,7 @@ export function CalendarTimelineView({
               groups.map((group) => {
                 const isCollapsed = collapsed.has(group.key)
                 return (
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
                   <div key={group.key} role="rowgroup" aria-label={groupLabel(group, t)}>
                     <TimelineGroupHeader
                       {...geometry}

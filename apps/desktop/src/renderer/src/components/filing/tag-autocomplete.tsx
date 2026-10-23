@@ -98,6 +98,7 @@ interface TagAutocompleteProps {
 }
 
 const LISTBOX_ID = 'tag-autocomplete-listbox'
+const NO_SUGGESTED_TAGS: string[] = []
 
 export const TagAutocomplete = ({
   tags,
@@ -106,7 +107,7 @@ export const TagAutocomplete = ({
   showSections: _showSections = true,
   maxSuggestions = 8,
   autoFocus = false,
-  aiSuggestedTags = [],
+  aiSuggestedTags = NO_SUGGESTED_TAGS,
   className,
   dropdownPlacement = 'bottom',
   variant = 'field'
@@ -485,6 +486,7 @@ export const TagAutocomplete = ({
           positionClassName,
           dropdownPlacement === 'top' ? 'bottom-full mb-1' : 'mt-1'
         )}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom rich-row popup list; native select/datalist cannot render these rows
         role="listbox"
         aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.tagSuggestions')}
       >
@@ -504,6 +506,7 @@ export const TagAutocomplete = ({
       <div ref={containerRef} className={cn('relative', className)}>
         {/* Pointer convenience only: the `+` button and the input itself are
             the keyboard paths into the field. */}
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- click-to-focus convenience; the input inside is the keyboard path */}
         <div
           title={tPhaseF('phaseF.componentsFilingTagAutocomplete.tags')}
           onClick={() => inputRef.current?.focus()}
@@ -570,6 +573,7 @@ export const TagAutocomplete = ({
       </span>
 
       <div className="relative">
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- click-to-focus convenience; the input inside is the keyboard path */}
         <menu
           className={cn(
             'flex items-center flex-wrap rounded-md py-2 px-3 gap-1.5 bg-foreground/[0.02] border transition-colors cursor-text',

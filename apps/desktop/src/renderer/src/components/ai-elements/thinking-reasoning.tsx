@@ -81,10 +81,10 @@ export function ThinkingReasoning({
   const autoExpanded = thinking && !answerStarted
   const expanded = autoExpanded || open
 
-  const syncFade = (viewport: HTMLDivElement): void => {
+  const syncFade = useCallback((viewport: HTMLDivElement): void => {
     setFadeTop(viewport.scrollTop > 1)
     setFadeBottom(viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1)
-  }
+  }, [])
 
   const sync = useCallback((): void => {
     const viewport = viewportRef.current
@@ -93,7 +93,7 @@ export function ThinkingReasoning({
     if (followRef.current) viewport.scrollTop = viewport.scrollHeight
     syncedHeightRef.current = viewport.scrollHeight
     syncFade(viewport)
-  }, [])
+  }, [syncFade])
 
   useLayoutEffect(() => {
     if (expanded) sync()

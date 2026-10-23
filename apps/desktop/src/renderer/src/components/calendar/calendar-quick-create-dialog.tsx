@@ -135,6 +135,7 @@ export function CalendarQuickCreateDialog({
             'fixed z-50 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none'
           )}
           ref={position.ref}
+          // oxlint-disable-next-line react/refs -- position.ref is a callback ref from usePopoverPosition, not a ref object read during render
           style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">

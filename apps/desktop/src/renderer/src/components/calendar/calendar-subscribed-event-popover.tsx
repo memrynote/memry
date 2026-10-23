@@ -105,6 +105,7 @@ function LinkedText({ text }: { text: string }): React.JSX.Element {
       {splitLinks(text).map((part, index) =>
         part.kind === 'link' ? (
           <a
+            // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
             key={index}
             href={part.value}
             target="_blank"
@@ -114,6 +115,7 @@ function LinkedText({ text }: { text: string }): React.JSX.Element {
             {part.value}
           </a>
         ) : (
+          // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
           <span key={index}>{part.value}</span>
         )
       )}
@@ -176,11 +178,13 @@ function AttendeeList({ attendees }: { attendees: CalendarEventAttendeeRecord[] 
               : attendee.responseStatus
           return (
             <li
+              // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
               key={`${attendee.email}-${index}`}
               className="flex min-w-0 items-center gap-2"
               title={attendee.email || undefined}
             >
               <span
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- decorative colored span with an accessible name; <img> needs a src and would change the rendering
                 role="img"
                 aria-label={t(`metadata.response.${responseKey}`)}
                 className="flex shrink-0"
@@ -298,6 +302,7 @@ function SubscribedEventPopover({
   return (
     <div
       ref={setContainer}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- manually positioned popover surface; native <dialog> top-layer behavior would change stacking and focus handling
       role="dialog"
       aria-label={kindLabel}
       data-testid="calendar-subscribed-event-popover"

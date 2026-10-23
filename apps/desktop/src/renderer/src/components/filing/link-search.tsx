@@ -65,6 +65,7 @@ const SearchResult = ({ note, onSelect, isHighlighted }: SearchResultProps): Rea
         }
       }}
       tabIndex={0}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- row of a custom rich-row listbox; native option cannot render the content
       role="option"
       aria-selected={isHighlighted}
     >
@@ -228,7 +229,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
       {/* Search Input */}
       <div className="relative">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--muted-foreground)]"
+          className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-[var(--muted-foreground)]"
           aria-hidden="true"
         />
         <Input
@@ -239,7 +240,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onKeyDown={handleKeyDown}
-          className="pl-9"
+          className="ps-9"
           aria-label={tPhaseF('phaseF.componentsFilingLinkSearch.searchNotesToLink2')}
           aria-expanded={isDropdownOpen}
           aria-haspopup="listbox"
@@ -249,7 +250,8 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
         {isDropdownOpen && filteredNotes.length > 0 && (
           <div
             ref={dropdownRef}
-            className="absolute top-full left-0 right-0 mt-1 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
+            className="absolute top-full start-0 end-0 mt-1 py-1 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom rich-row popup list; native select/datalist cannot render these rows
             role="listbox"
           >
             {filteredNotes.map((note, index) => (
@@ -265,7 +267,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
 
         {/* Loading indicator */}
         {isDropdownOpen && isSearching && (
-          <div className="absolute top-full left-0 right-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10 flex items-center gap-2">
+          <div className="absolute top-full start-0 end-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10 flex items-center gap-2">
             <Loader2 className="size-4 animate-spin text-[var(--muted-foreground)]" />
             <p className="text-sm text-[var(--muted-foreground)]">
               {tPhaseF('phaseF.componentsFilingLinkSearch.searching')}
@@ -275,7 +277,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
 
         {/* No results message */}
         {isDropdownOpen && searchQuery.trim() && !isSearching && filteredNotes.length === 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10">
+          <div className="absolute top-full start-0 end-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10">
             <p className="text-sm text-[var(--muted-foreground)]">
               {tPhaseF('phaseF.componentsFilingLinkSearch.noNotesFound')}
             </p>
@@ -287,6 +289,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
       {linkedNotes.length > 0 ? (
         <div
           className="space-y-1"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- list wrapper with custom row components; native ul would change the layout
           role="list"
           aria-label={tPhaseF('phaseF.componentsFilingLinkSearch.linkedNotes')}
         >

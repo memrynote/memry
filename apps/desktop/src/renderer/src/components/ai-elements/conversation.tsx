@@ -146,6 +146,7 @@ function useStickToBottom(scrollRef: RefObject<HTMLDivElement | null>, children:
     return () => {
       observer.disconnect()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- children is an intentional trigger: re-observe and reapply scroll policy when content changes
   }, [children, scrollRef])
 }
 

@@ -253,7 +253,8 @@ export function buildBodyChunks(current: string, candidate: string): BodyChunk[]
 
 function BodyDiff({ body }: { body: { current: string; candidate: string } }): React.JSX.Element {
   const { t } = useT('common')
-  const chunks = useMemo(() => buildBodyChunks(body.current, body.candidate), [body])
+  const { current, candidate } = body
+  const chunks = useMemo(() => buildBodyChunks(current, candidate), [current, candidate])
 
   return (
     <div className="flex max-h-72 flex-col gap-2 overflow-auto rounded-md bg-muted/60 p-3 text-start">

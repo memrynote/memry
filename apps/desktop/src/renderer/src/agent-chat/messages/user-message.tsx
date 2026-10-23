@@ -31,6 +31,7 @@ export function UserMessage({ message }: { message: Message }): React.JSX.Elemen
   const segments = splitMemryFileBlocks(message.content.data.text).map((segment, index) => {
     if (segment.kind === 'file') {
       return (
+        // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
         <UserFileCard key={index} name={segment.name} bytes={segment.bytes}>
           {segment.content}
         </UserFileCard>
@@ -43,6 +44,7 @@ export function UserMessage({ message }: { message: Message }): React.JSX.Elemen
     })
     renderedText.inlinedAttachmentKeys.forEach((key) => inlinedAttachmentKeys.add(key))
     return (
+      // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
       <p key={index} className="whitespace-pre-wrap break-words">
         {renderedText.content}
       </p>

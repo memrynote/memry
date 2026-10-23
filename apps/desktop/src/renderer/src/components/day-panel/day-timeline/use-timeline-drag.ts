@@ -87,6 +87,7 @@ export function useTimelineDrag({
 
   const { setNodeRef } = useDroppable({
     id: `day-timeline:${date}`,
+    // oxlint-disable-next-line react/refs -- pointer/grabOffset refs are read lazily when dnd-kit calls getSlotOffsetY during a drag, never during render
     data: timelineDropData(date, getSlotOffsetY)
   })
 

@@ -91,6 +91,7 @@ const BulkTagPopoverContent = ({
           onTagsChange={handleTagsChange}
           placeholder={t('bulk.tagPopover.placeholder')}
           showSections={true}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a just-opened popover/inline editor
           autoFocus
           dropdownPlacement="top"
         />
@@ -105,7 +106,7 @@ const BulkTagPopoverContent = ({
         >
           {isApplying ? (
             <>
-              <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
+              <Loader2 className="size-4 animate-spin me-2" aria-hidden="true" />
               {t('bulk.tagPopover.applying')}
             </>
           ) : (

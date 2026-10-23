@@ -40,6 +40,7 @@ const FolderItem = ({ folder, isSelected, onSelect }: FolderItemProps): React.JS
         'transition-all duration-[var(--duration-instant)] ease-[var(--ease-out)]',
         isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- row of a custom rich-row listbox; native option cannot render the content
       role="option"
       aria-selected={isSelected}
       tabIndex={0}
@@ -104,6 +105,7 @@ const FolderSection = ({
       <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-1">
         {title}
       </h4>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom rich-row popup list; native select/datalist cannot render these rows */}
       <div className="space-y-0.5" role="listbox" aria-label={title}>
         {folders.map((folder) => (
           <FolderItem
@@ -180,14 +182,14 @@ const FolderSelector = ({
         >
           <Folder className="size-4 text-primary" aria-hidden="true" />
           <span className="text-sm font-medium text-primary">{selectedFolder.path}</span>
-          <Check className="size-4 text-primary ml-auto" aria-hidden="true" />
+          <Check className="size-4 text-primary ms-auto" aria-hidden="true" />
         </div>
       )}
 
       {/* Search Input */}
       <div className="relative">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
+          className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
           aria-hidden="true"
         />
         <Input
@@ -195,7 +197,7 @@ const FolderSelector = ({
           placeholder={tPhaseF('phaseF.componentsFilingFolderSelector.searchFolders')}
           value={searchQuery}
           onChange={handleSearchChange}
-          className="pl-9"
+          className="ps-9"
           aria-label={tPhaseF('phaseF.componentsFilingFolderSelector.searchFolders2')}
         />
       </div>
@@ -206,6 +208,7 @@ const FolderSelector = ({
           // Search Results
           <div
             className="space-y-0.5"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom rich-row popup list; native select/datalist cannot render these rows
             role="listbox"
             aria-label={tPhaseF('phaseF.componentsFilingFolderSelector.searchResults')}
           >
@@ -230,6 +233,7 @@ const FolderSelector = ({
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-muted border border-dashed border-muted-foreground/30'
                 )}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- row of a custom rich-row listbox; native option cannot render the content
                 role="option"
                 aria-selected={selectedFolder?.path === searchQuery.trim()}
                 tabIndex={0}
@@ -305,6 +309,7 @@ const FolderSelector = ({
               {isAllExpanded && (
                 <div
                   className="space-y-0.5"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom rich-row popup list; native select/datalist cannot render these rows
                   role="listbox"
                   aria-label={tPhaseF('phaseF.componentsFilingFolderSelector.allFolders2')}
                 >

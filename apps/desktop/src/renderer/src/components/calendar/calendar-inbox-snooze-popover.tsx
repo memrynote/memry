@@ -70,6 +70,7 @@ export function CalendarInboxSnoozePopover({
   return (
     <div
       ref={setContainer}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- manually positioned popover surface; native <dialog> top-layer behavior would change stacking and focus handling
       role="dialog"
       aria-label={t('phaseI.inboxSnoozePopover.title')}
       data-testid="calendar-inbox-snooze-popover"

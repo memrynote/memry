@@ -119,6 +119,7 @@ export function EventProjectField({
   }, [isEdit, eventId])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- fetches the event project links over IPC on open / id change
     void load()
   }, [load])
 
@@ -136,6 +137,7 @@ export function EventProjectField({
       if (isWritingRef.current) return
       void load()
     })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- isWritingRef is a ref flag read at event time, not a reactive value
   }, [isEdit, eventId, load])
 
   // Shared by `handleSelect` and `handleRemoveExtra`: both are writes on the

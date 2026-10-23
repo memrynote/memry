@@ -26,11 +26,13 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key.split('.').pop() ?? key })
 }))
 
+const DEFAULT_INITIAL_TAGS = ['existing', 'last']
+
 describe('TagAutocomplete', () => {
   const onTagsChange = vi.fn()
 
   function ControlledAutocomplete({
-    initialTags = ['existing', 'last']
+    initialTags = DEFAULT_INITIAL_TAGS
   }: {
     initialTags?: string[]
   }): React.JSX.Element {

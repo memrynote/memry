@@ -159,6 +159,7 @@ export function ReportIncidentDialog({
                   <div className="space-y-2 font-mono text-xs">
                     {report.lines.map((line, index) => (
                       <div
+                        // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
                         key={`${line.ts}-${line.scope}-${index}`}
                         className="border-b border-border pb-2 last:border-0"
                       >

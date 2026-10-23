@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { CalendarAllDayCell } from './calendar-allday-cell'
 import { CalendarItemChip } from './calendar-item-chip'
@@ -297,10 +297,10 @@ export function CalendarWeekView({
             ALL_DAY_ROW_PADDING
         )
 
-  const currentTimeOffset = useMemo(() => {
+  const [currentTimeOffset] = useState(() => {
     const now = new Date()
     return now.getHours() * HOUR_HEIGHT + now.getMinutes() * (HOUR_HEIGHT / 60)
-  }, [])
+  })
 
   return (
     <div
@@ -500,6 +500,7 @@ export function CalendarWeekView({
               const today = isToday(date)
 
               return (
+                // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only gesture or key-interception wrapper; not itself a control, keyboard paths live on the controls inside
                 <div
                   key={vi.key}
                   data-day-index={vi.index}
@@ -530,6 +531,7 @@ export function CalendarWeekView({
                       const resizable = isEventResizable(item)
                       const isDraggingThis = drag?.projectionId === item.projectionId
                       return (
+                        // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only gesture or key-interception wrapper; not itself a control, keyboard paths live on the controls inside
                         <div
                           key={item.projectionId}
                           className={cn(
@@ -562,12 +564,14 @@ export function CalendarWeekView({
                           />
                           {resizable && (
                             <>
+                              {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only gesture or key-interception wrapper; not itself a control, keyboard paths live on the controls inside */}
                               <div
                                 className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
                                 onMouseDown={(e) => {
                                   startResize(e, item, vi.index, 'start')
                                 }}
                               />
+                              {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only gesture or key-interception wrapper; not itself a control, keyboard paths live on the controls inside */}
                               <div
                                 className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
                                 onMouseDown={(e) => {

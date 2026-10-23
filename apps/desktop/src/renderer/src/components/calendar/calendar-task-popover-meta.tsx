@@ -34,6 +34,8 @@ const PRIORITY_BY_NUMBER: readonly Priority[] = ['none', 'low', 'medium', 'high'
 const PILL_CLASS =
   'inline-flex h-[26px] items-center gap-1.5 rounded-md border border-border px-2 text-xs text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0'
 
+const NO_STATUSES: Status[] = []
+
 /**
  * The task's properties as quiet pills under the title: when, how often,
  * status, priority, tags. Indented to the title so the checkbox stays alone in
@@ -41,7 +43,7 @@ const PILL_CLASS =
  */
 export function CalendarTaskPopoverMeta({
   task,
-  statuses = [],
+  statuses = NO_STATUSES,
   tags,
   repeatSummary,
   description,
@@ -89,6 +91,7 @@ export function CalendarTaskPopoverMeta({
 
         {status && (
           <span data-testid="status-row" className={PILL_CLASS}>
+            {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- decorative colored span with an accessible name; <img> needs a src and would change the rendering */}
             <span role="img" aria-label={`Status: ${status.name}`} className="inline-flex">
               <StatusIcon type={statusType} color={status.color || '#6B7280'} size="sm" />
             </span>
