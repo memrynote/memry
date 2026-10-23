@@ -358,3 +358,106 @@ export interface OneNoteImportOptionsInput {
   /** Skip pages a previous OneNote run already imported (default true). */
   skipPreviouslyImported?: boolean
 }
+
+// ============================================================================
+// Readwise (account-based importer, #1408 D1/D2) — pasted access token, the
+// root folder, folder layout, per-category switches and cadence. The token goes
+// to secret storage and never comes back over IPC. The backfill itself runs
+// over the generic `import:start` channel.
+// ============================================================================
+
+export const ReadwiseImportChannels = {
+  invoke: {
+    /** Connection state, the synced options and the last run's outcome. */
+    STATUS: 'import:readwise:status',
+    /** Verify a pasted token against Readwise, then store it. */
+    CONNECT: 'import:readwise:connect',
+    /** Delete the token. Every note stays (D9). */
+    DISCONNECT: 'import:readwise:disconnect',
+    /** Ask the pulling device for a run now. */
+    SYNC_NOW: 'import:readwise:sync-now',
+    /** Change the synced options. */
+    SET_OPTIONS: 'import:readwise:set-options'
+  }
+} as const
+
+export const READWISE_CATEGORIES = [
+  'books',
+  'articles',
+  'tweets',
+  'podcasts',
+  'supplementals'
+] as const
+export type ReadwiseCategory = (typeof READWISE_CATEGORIES)[number]
+
+export const READWISE_FOLDER_LAYOUTS = ['by-category', 'flat'] as const
+export type ReadwiseFolderLayout = (typeof READWISE_FOLDER_LAYOUTS)[number]
+
+export const READWISE_CADENCES = ['manual', 'hourly', 'daily'] as const
+export type ReadwiseCadence = (typeof READWISE_CADENCES)[number]
+
+export interface ReadwiseOptions {
+  rootFolder: string
+  folderLayout: ReadwiseFolderLayout
+  categories: Record<ReadwiseCategory, boolean>
+  cadence: ReadwiseCadence
+}
+
+/** D3: supplementals are listed and off. D1/#1416: hourly by default. */
+export const READWISE_OPTIONS_DEFAULTS: ReadwiseOptions = {
+  rootFolder: 'Readwise',
+  folderLayout: 'by-category',
+  categories: {
+    books: true,
+    articles: true,
+    tweets: true,
+    podcasts: true,
+    supplementals: false
+  },
+  cadence: 'hourly'
+}
+
+export const ReadwiseConnectSchema = z.object({
+  /** Verified, then stored in secret storage. Never persisted anywhere else. */
+  token: z.string().trim().min(1)
+})
+export type ReadwiseConnectInput = z.infer<typeof ReadwiseConnectSchema>
+
+/** A vault-relative folder path: no leading slash, no `.` or `..` segment. */
+export const ReadwiseRootFolderSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.replace(/^\/+|\/+$/g, ''))
+  .refine(
+    (value) =>
+      value.length > 0 &&
+      value.split('/').every((part) => part !== '' && part !== '.' && part !== '..'),
+    'Invalid folder path'
+  )
+
+export const ReadwiseSetOptionsSchema = z.object({
+  rootFolder: ReadwiseRootFolderSchema.optional(),
+  folderLayout: z.enum(READWISE_FOLDER_LAYOUTS).optional(),
+  categories: z
+    .object({
+      books: z.boolean().optional(),
+      articles: z.boolean().optional(),
+      tweets: z.boolean().optional(),
+      podcasts: z.boolean().optional(),
+      supplementals: z.boolean().optional()
+    })
+    .optional(),
+  cadence: z.enum(READWISE_CADENCES).optional()
+})
+export type ReadwiseSetOptionsInput = z.infer<typeof ReadwiseSetOptionsSchema>
+
+export interface ReadwiseStatusResult {
+  connected: boolean
+  options: ReadwiseOptions
+  /** ISO time of the last completed run on this device, or null. */
+  lastSyncAt: string | null
+  /** The last run failed in a way the user must fix, such as a revoked token. */
+  needsAttention: boolean
+  /** False until the import and sync engine (#1413, #1415) is in this build. */
+  runAvailable: boolean
+}

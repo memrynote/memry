@@ -18,6 +18,43 @@ describe('SyncedSettingsSchema', () => {
     expect(SyncedSettingsSchema.parse({ features }).features).toEqual(features)
   })
 
+  describe('readwise group', () => {
+    const readwise = {
+      rootFolder: 'Reading',
+      folderLayout: 'flat',
+      categories: { books: true, supplementals: false },
+      cadence: 'daily',
+      syncDeviceId: 'device-a'
+    }
+
+    it('keeps the group, including a field only a newer build knows', () => {
+      expect(SyncedSettingsSchema.parse({ readwise }).readwise).toEqual(readwise)
+    })
+
+    it('keeps a layout and cadence value only a newer build knows', () => {
+      const parsed = SyncedSettingsSchema.parse({
+        readwise: { folderLayout: 'by-year', cadence: 'weekly' }
+      })
+      expect(parsed.readwise).toEqual({ folderLayout: 'by-year', cadence: 'weekly' })
+    })
+
+    it('parses under the schema an older build ships, which has no readwise group', () => {
+      const olderBuild = SyncedSettingsSchema.omit({ readwise: true })
+      const payload = { general: { theme: 'dark' }, readwise }
+
+      const parsed = olderBuild.safeParse(payload)
+
+      expect(parsed.success).toBe(true)
+      expect(parsed.data).toEqual({ general: { theme: 'dark' } })
+    })
+
+    it('rejects a non-boolean category switch', () => {
+      expect(
+        SyncedSettingsSchema.safeParse({ readwise: { categories: { books: 'yes' } } }).success
+      ).toBe(false)
+    })
+  })
+
   it('rejects a non-boolean features flag', () => {
     expect(SyncedSettingsSchema.safeParse({ features: { journal: 'off' } }).success).toBe(false)
   })

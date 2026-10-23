@@ -15,6 +15,7 @@ import { raindropImporter } from './raindrop/raindrop-importer'
 import { appleNotesImporter } from './apple-notes/apple-notes-importer'
 import { onenoteImporter } from './onenote/onenote-importer'
 import { isOneNoteConfigured } from './onenote/onenote-auth'
+import { readwiseImporter } from './readwise/readwise-importer'
 
 let registered = false
 
@@ -44,4 +45,6 @@ export function registerBuiltinImporters(): void {
   if (isOneNoteConfigured()) {
     registerImporter(onenoteImporter)
   }
+  // Readwise needs only the user's pasted token, on every plan.
+  registerImporter(readwiseImporter)
 }

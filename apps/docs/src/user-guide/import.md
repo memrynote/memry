@@ -23,6 +23,7 @@ Progress lines, preview warnings and import errors are shown in your selected la
 | CSV           | `.csv` file                     | Notes                 | [CSV](#importing-from-csv)                             |
 | OneNote       | Microsoft Graph (account)       | Notes                 | [OneNote](#importing-from-onenote)                     |
 | Raindrop      | Bookmark CSV `.csv`             | Inbox                 | [Raindrop](#importing-from-raindrop)                   |
+| Readwise      | Access token (account)          | Notes                 | See [Readwise](./readwise.md)                          |
 | Todoist       | Project CSV `.csv`              | Tasks                 | See [Import from Todoist](./tasks/import-todoist.md)   |
 | TickTick      | Backup CSV `.csv`               | Tasks                 | See [Import from TickTick](./tasks/import-ticktick.md) |
 

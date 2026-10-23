@@ -6,16 +6,20 @@ import {
   SettingsHeader
 } from '@/components/settings/settings-primitives'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import { ChevronRight, Search } from '@/lib/icons'
 import { ImportSourceIcon } from '@/components/import/import-source-icon'
 import { ImportDialog } from '@/components/settings/import-dialog'
 import { useImporters, type ImporterItem } from '@/hooks/use-importers'
+import { useReadwiseStatus } from '@/hooks/use-readwise-status'
+import { formatRelativePast } from '@/lib/format-relative-past'
 
-type ImportGroupId = 'noteApps' | 'tasks' | 'files'
+type ImportGroupId = 'reading' | 'noteApps' | 'tasks' | 'files'
 
-const IMPORT_GROUP_ORDER: ImportGroupId[] = ['noteApps', 'tasks', 'files']
+const IMPORT_GROUP_ORDER: ImportGroupId[] = ['reading', 'noteApps', 'tasks', 'files']
 
 const IMPORT_GROUP_IDS: Record<ImportGroupId, string[]> = {
+  reading: ['readwise'],
   noteApps: [
     'notion',
     'evernote',
@@ -52,12 +56,29 @@ function sortWithinGroup(group: ImportGroupId, items: ImporterItem[]): ImporterI
 }
 
 export function ImportSettings() {
-  const { t } = useT('settings')
+  const { t, i18n } = useT('settings')
   const { importers } = useImporters()
   const [active, setActive] = useState<ImporterItem | null>(null)
   const [query, setQuery] = useState('')
 
+  const hasReadwise = importers.some((item) => item.id === 'readwise')
+  const readwise = useReadwiseStatus(hasReadwise)
+
+  // Where other rows show a file format, Readwise shows its connection state (D1).
+  const readwiseState = (): string => {
+    const status = readwise.status
+    if (!status?.connected) return t('import.v2.readwise.notConnected')
+    if (status.needsAttention) return t('import.v2.readwise.needsAttention')
+    if (status.lastSyncAt) {
+      return t('import.v2.readwise.synced', {
+        time: formatRelativePast(status.lastSyncAt, i18n.language)
+      })
+    }
+    return t('import.v2.readwise.connected')
+  }
+
   const formatOf = (item: ImporterItem): string => {
+    if (item.id === 'readwise') return readwiseState()
     if (IMPORT_FORMAT_OVERRIDES[item.id]) return IMPORT_FORMAT_OVERRIDES[item.id]
     const extension = item.fileSpec.extensions[0]
     if (extension) return `.${extension}`
@@ -129,7 +150,12 @@ export function ImportSettings() {
                       {t(item.descriptionKey)}
                     </span>
                   </span>
-                  <span className="w-16 shrink-0 truncate text-end font-mono text-xs/4 text-muted-foreground">
+                  <span
+                    className={cn(
+                      'shrink-0 truncate text-end text-xs/4 text-muted-foreground',
+                      item.id === 'readwise' ? 'max-w-40' : 'w-16 font-mono'
+                    )}
+                  >
                     {formatOf(item)}
                   </span>
                   <ChevronRight
@@ -147,7 +173,10 @@ export function ImportSettings() {
         item={active}
         open={active !== null}
         onOpenChange={(open) => {
-          if (!open) setActive(null)
+          if (!open) {
+            setActive(null)
+            readwise.refresh()
+          }
         }}
       />
     </div>

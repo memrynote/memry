@@ -10,15 +10,19 @@ import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { SettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import type { DataDb } from '../database/types'
+import { setSetting } from '../database/queries/settings'
 import { upsertLink } from './links-repository'
 import {
   addRetry,
+  clearRunState,
   getCursor,
+  getLastRun,
   getFullPassPending,
   getRetryList,
   removeRetry,
   setCursor,
-  setFullPassPending
+  setFullPassPending,
+  setLastRun
 } from './sync-state'
 
 beforeAll(async () => {
@@ -89,5 +93,34 @@ describe('readwise device-local state', () => {
     expect(queued).toEqual([expect.objectContaining({ type: 'settings' })])
     expect(JSON.stringify(queued)).not.toContain('readwise')
     expect(RECORD_SYNC_ITEM_TYPES.some((t) => String(t).includes('readwise'))).toBe(false)
+  })
+})
+
+describe('readwise last run', () => {
+  let result: TestDatabaseResult
+  let db: DataDb
+
+  beforeEach(() => {
+    result = createTestDataDb()
+    db = asClientDb(result.db)
+  })
+  afterEach(() => result.close())
+
+  it('round-trips, drops an unreadable value, and clears with the run state', () => {
+    expect(getLastRun(db)).toBeNull()
+    setLastRun(db, { at: '2026-10-22T10:00:00.000Z', needsAttention: true })
+    expect(getLastRun(db)).toEqual({ at: '2026-10-22T10:00:00.000Z', needsAttention: true })
+
+    setCursor(db, '2026-10-22T10:00:00.000Z')
+    addRetry(db, 4, 'error')
+    setFullPassPending(db, true)
+    clearRunState(db)
+    expect(getLastRun(db)).toBeNull()
+    expect(getCursor(db)).toBeNull()
+    expect(getRetryList(db)).toEqual([])
+    expect(getFullPassPending(db)).toBe(false)
+
+    setSetting(db, 'readwise.lastRun', '{nope')
+    expect(getLastRun(db)).toBeNull()
   })
 })

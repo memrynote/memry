@@ -2,6 +2,7 @@ import {
   AppleNotesImportChannels,
   ImportChannels,
   OneNoteImportChannels,
+  ReadwiseImportChannels,
   type AppleNotesFoldersInput,
   type AppleNotesFoldersResult,
   type AppleNotesCheckUnlockInput,
@@ -16,7 +17,10 @@ import {
   type ImportPreviewResponse,
   type ImporterMeta,
   type OneNoteAuthStatusResult,
-  type OneNoteNotebooksResult
+  type OneNoteNotebooksResult,
+  type ReadwiseConnectInput,
+  type ReadwiseSetOptionsInput,
+  type ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import { invoke, subscribe } from '../lib/ipc'
 
@@ -45,6 +49,18 @@ export const importApi = {
       invoke<{ success: true }>(OneNoteImportChannels.invoke.DISCONNECT),
     notebooks: (): Promise<OneNoteNotebooksResult> =>
       invoke<OneNoteNotebooksResult>(OneNoteImportChannels.invoke.NOTEBOOKS)
+  },
+  readwise: {
+    status: (): Promise<ReadwiseStatusResult> =>
+      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.STATUS),
+    connect: (input: ReadwiseConnectInput): Promise<ReadwiseStatusResult> =>
+      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.CONNECT, input),
+    disconnect: (): Promise<{ success: true }> =>
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.DISCONNECT),
+    syncNow: (): Promise<{ success: true }> =>
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.SYNC_NOW),
+    setOptions: (input: ReadwiseSetOptionsInput): Promise<ReadwiseStatusResult> =>
+      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.SET_OPTIONS, input)
   }
 }
 

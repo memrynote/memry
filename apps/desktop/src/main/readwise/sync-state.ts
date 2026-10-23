@@ -11,6 +11,7 @@ import type { DataDb } from '../database/types'
 const CURSOR_KEY = 'readwise.cursor'
 const RETRY_KEY = 'readwise.retryList'
 const FULL_PASS_KEY = 'readwise.fullPass'
+const LAST_RUN_KEY = 'readwise.lastRun'
 
 const log = createLogger('ReadwiseState')
 
@@ -82,4 +83,37 @@ export function getFullPassPending(db: DataDb): boolean {
 export function setFullPassPending(db: DataDb, pending: boolean): void {
   if (pending) setSetting(db, FULL_PASS_KEY, 'true')
   else deleteSetting(db, FULL_PASS_KEY)
+}
+
+export interface LastRun {
+  /** ISO time the run finished on this device. */
+  at: string
+  /** Set when the run failed in a way the user must fix, such as a revoked token. */
+  needsAttention: boolean
+}
+
+const LastRunSchema = z.object({ at: z.string(), needsAttention: z.boolean() })
+
+export function getLastRun(db: DataDb): LastRun | null {
+  const raw = getSetting(db, LAST_RUN_KEY)
+  if (raw === null) return null
+  try {
+    return LastRunSchema.parse(JSON.parse(raw))
+  } catch (err) {
+    // Display state only: the row and panel show no last run until the next one.
+    log.warn('Dropping unreadable Readwise last run', err)
+    return null
+  }
+}
+
+export function setLastRun(db: DataDb, run: LastRun): void {
+  setSetting(db, LAST_RUN_KEY, JSON.stringify(run))
+}
+
+/** Forgets the connection's run state, so a reconnect starts from a full export. */
+export function clearRunState(db: DataDb): void {
+  deleteSetting(db, CURSOR_KEY)
+  deleteSetting(db, RETRY_KEY)
+  deleteSetting(db, FULL_PASS_KEY)
+  deleteSetting(db, LAST_RUN_KEY)
 }
