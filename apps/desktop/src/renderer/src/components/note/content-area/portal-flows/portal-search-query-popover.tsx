@@ -83,6 +83,7 @@ export function PortalSearchQueryForm({
           {t('portalFlows.searchQuery.text')}
         </span>
         <Input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
           autoFocus
           value={draft.text}
           placeholder={t('portalFlows.searchQuery.textPlaceholder')}

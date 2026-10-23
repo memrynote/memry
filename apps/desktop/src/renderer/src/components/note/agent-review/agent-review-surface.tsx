@@ -100,6 +100,7 @@ function DraftEditor({
       onMarkdownChange={handleMarkdownChange}
       flushMarkdownRef={flushDraftRef}
       runSideEffects={false}
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
       autoFocus
     />
   )
@@ -143,6 +144,7 @@ function AgentReviewBar({ review }: { review: AgentBodyReview }): React.JSX.Elem
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="region"
       aria-label={t('agentChat.inPageReview.barLabel')}
       className="sticky bottom-6 z-20 mt-6 flex flex-col gap-2.5 rounded-xl border border-border bg-background p-2.5 ps-4 shadow-lg"

@@ -122,6 +122,7 @@ export function PortalNoteView({
   useEffect(() => {
     handleRef.current = handle
   })
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   const actions = useMemo(() => createPortalActions(() => handleRef.current), [])
 
   const reportFailure = useCallback(
@@ -327,6 +328,7 @@ export function PortalNoteView({
         </PortalRemoveFromContext>
       ) : null}
       {HiddenBlocksSlot ? (
+        // oxlint-disable-next-line react/static-components -- component comes from a stable module-level table or plugin registry, not created per render
         <HiddenBlocksSlot
           portal={handle}
           scope={hiddenRequest?.scope ?? null}

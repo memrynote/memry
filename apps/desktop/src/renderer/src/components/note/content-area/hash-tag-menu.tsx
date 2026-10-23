@@ -45,6 +45,7 @@ export function HashTagMenu({
         'overflow-y-auto rounded-md border bg-popover p-1',
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="listbox"
       aria-label={t('menus.tags.aria')}
     >
@@ -62,6 +63,7 @@ export function HashTagMenu({
               isSelected && 'bg-accent text-accent-foreground'
             )}
             onClick={() => onItemClick?.(item)}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
             role="option"
             aria-selected={isSelected}
           >

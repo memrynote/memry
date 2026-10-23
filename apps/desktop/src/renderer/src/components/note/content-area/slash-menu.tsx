@@ -126,6 +126,7 @@ function RowIcon({ id }: { id: string }): ReactNode {
       : id.startsWith('template:')
         ? LayoutTemplate
         : File)
+  // oxlint-disable-next-line react/static-components -- component comes from a stable module-level table or plugin registry, not created per render
   return <Icon className={cn('size-4', id === 'ai' && 'text-tint')} aria-hidden />
 }
 
@@ -196,13 +197,16 @@ export function SlashMenu({
 
   // A new query is a new list; the first fallback is the one Enter runs.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- state resets when its input changes; render-time derivation would need previous-value tracking
     setFallbackIndex(0)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [query])
 
   useEffect(() => {
     listRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
       ?.scrollIntoView?.({ block: 'nearest' })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [selectedIndex, activeFallback])
 
   const closeAndClear = (): void => {
@@ -286,6 +290,7 @@ export function SlashMenu({
       currentGroup = item.group
       rows.push(
         <div
+          // oxlint-disable-next-line react/no-array-index-key -- list is positional and never reordered, so the index is the stable identity
           key={`group-${index}`}
           role="presentation"
           className={cn(
@@ -301,8 +306,10 @@ export function SlashMenu({
     rows.push(
       <button
         type="button"
+        // oxlint-disable-next-line react/no-array-index-key -- list is positional and never reordered, so the index is the stable identity
         key={`${item.group}-${item.id}-${index}`}
         id={`bn-suggestion-menu-item-${index}`}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="option"
         aria-selected={isSelected}
         aria-label={item.title}
@@ -341,6 +348,7 @@ export function SlashMenu({
   return (
     <div
       id="bn-suggestion-menu"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="listbox"
       aria-label={t('editor.slashMenu.aria')}
       className="bn-suggestion-menu memry-slash-menu flex max-h-[inherit] w-[360px] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-dropdown)]"
@@ -358,6 +366,7 @@ export function SlashMenu({
                 <button
                   type="button"
                   key={fallback.key}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                   role="option"
                   aria-selected={isSelected}
                   tabIndex={-1}

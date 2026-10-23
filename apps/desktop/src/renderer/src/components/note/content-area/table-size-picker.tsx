@@ -39,6 +39,7 @@ function OpenTableSizePicker({
   const gridRef = useRef<HTMLDivElement>(null)
   const labelId = useId()
   const anchorRef = useRef({ getBoundingClientRect: () => anchorRect })
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   anchorRef.current.getBoundingClientRect = () => anchorRect
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -69,11 +70,13 @@ function OpenTableSizePicker({
           event.preventDefault()
         }}
       >
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
         <div
           ref={gridRef}
           // Two axes at once, so no single-value role fits; the arrows are the
           // grid's own, and the size reaches a screen reader from the live label.
           role="application"
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- roving-focus target for the arrow-key grid; it is a composite widget (role=application)
           tabIndex={0}
           aria-label={t('editor.table.sizePicker.aria')}
           aria-describedby={labelId}

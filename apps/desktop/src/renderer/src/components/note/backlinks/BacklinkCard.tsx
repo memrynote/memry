@@ -33,6 +33,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
 
   const titleLink = (
     <span
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="link"
       tabIndex={0}
       onClick={(e) => {
@@ -58,6 +59,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
   )
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
     <div role="group" aria-label={t('backlinks.fromAria', { title: displayLabel })}>
       <div
         className={cn(
@@ -101,6 +103,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
       </div>
 
       {isExpanded && mentions.length > 0 && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         <div className="ms-5 flex flex-col gap-px" role="list">
           {mentions.map((mention) => (
             <button

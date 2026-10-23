@@ -180,6 +180,7 @@ export function PortalSearchView({
           <PortalChip>{t('portalBlock.search.count', { count: results.length })}</PortalChip>
         ) : null}
         <PortalActions>
+          {/* oxlint-disable-next-line react/static-components -- component comes from a stable module-level table or plugin registry, not created per render */}
           {QuerySlot ? <QuerySlot portal={handle}>{editQuery}</QuerySlot> : editQuery}
         </PortalActions>
       </PortalHeaderRow>

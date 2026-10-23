@@ -55,6 +55,7 @@ export function BodySyncPendingHint({ fragment }: { fragment: Y.XmlFragment }) {
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="status"
       aria-live="polite"
       className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground bg-muted/40 border-b border-border/60"

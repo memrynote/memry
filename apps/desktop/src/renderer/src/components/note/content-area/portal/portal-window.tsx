@@ -13,7 +13,7 @@
  * @module note/content-area/portal/portal-window
  */
 
-import { Suspense, lazy, useEffect, useRef, useState, type SyntheticEvent } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { createLogger } from '@/lib/logger'
@@ -103,6 +103,7 @@ export function PortalWindow({
   const openLink = usePortalLinkOpen()
   const [attached, setAttached] = useState(false)
   const [failed, setFailed] = useState(false)
+  const childAncestry = useMemo(() => descendPortalAncestry(ancestry, target), [ancestry, target])
 
   usePortalWindowPlugin({
     container: frameRef,
@@ -138,6 +139,7 @@ export function PortalWindow({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
     <div
       ref={frameRef}
       className={cn('portal-window min-h-6', near && !attached && 'invisible')}
@@ -153,7 +155,7 @@ export function PortalWindow({
       onDragLeave={keepInsideWindow}
     >
       {near ? (
-        <PortalAncestryContext.Provider value={descendPortalAncestry(ancestry, target)}>
+        <PortalAncestryContext.Provider value={childAncestry}>
           <EditorErrorBoundary noteId={target.note}>
             <Suspense fallback={null}>
               <ContentArea
