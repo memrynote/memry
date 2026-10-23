@@ -157,6 +157,7 @@ export const useSidebarNavigation = () => {
   // what this hook exists for (see the PERFORMANCE notes above).
   const { settings: generalSettings } = useGeneralSettings()
   const reuseActiveTabRef = useRef(!generalSettings.openPagesInNewTab)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   reuseActiveTabRef.current = !generalSettings.openPagesInNewTab
 
   // Use refs for state to avoid recreating callbacks

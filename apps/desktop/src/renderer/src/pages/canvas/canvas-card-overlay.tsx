@@ -959,6 +959,7 @@ export const CanvasCardLayer = ({
     activeCardId,
     dispatchActive,
     lockCtx,
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
     claimFailedTick,
     rich
   ])

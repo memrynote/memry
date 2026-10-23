@@ -24,6 +24,7 @@ export const RailProgress = ({ progress }: RailProgressProps): React.JSX.Element
       </div>
 
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
         role="progressbar"
         aria-valuenow={progress.pct}
         aria-valuemin={0}

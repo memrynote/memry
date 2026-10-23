@@ -258,6 +258,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
           }
         })
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [wantedSignature])
 
   // Live updates. Refetch (or apply payload) only for entities we hold.

@@ -33,6 +33,7 @@ export function useProjectsList(): UseProjectsListReturn {
   }, [])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
     void load()
   }, [load])
 

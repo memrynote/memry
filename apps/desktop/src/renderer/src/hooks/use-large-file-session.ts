@@ -201,6 +201,7 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
     }
     // `noteId` is in the deps for correctness, but the viewer keys this hook by
     // it, so in practice only `generation` (a reopen) re-runs the effect.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [noteId, generation])
 
   /**

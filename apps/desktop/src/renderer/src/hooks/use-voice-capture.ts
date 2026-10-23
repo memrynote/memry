@@ -64,6 +64,7 @@ function toCaptureError(cause: unknown): VoiceCaptureError {
  */
 export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
   const optionsRef = useRef(options)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   optionsRef.current = options
 
   const [state, setState] = useState<VoiceCaptureState>('idle')

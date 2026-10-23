@@ -415,6 +415,7 @@ function useSettingsSearchHighlight(
       clearTimeout(timeout)
       marked?.removeAttribute(SETTINGS_HIT_ATTR)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [containerRef, label, section])
 }
 
@@ -441,12 +442,14 @@ function SettingsSearchResults({
     <div className="flex flex-col gap-px px-2">
       <span
         className="px-2.5 pb-1 text-xs/4 font-medium text-sidebar-section-heading"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
         role="status"
       >
         {results.length > 0
           ? t('page.search.count', { count: results.length })
           : t('page.search.empty')}
       </span>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element */}
       <div id="settings-search-results" role="listbox" className="flex flex-col gap-px">
         {results.map((result, index) => {
           const isSelected = index === selectedIndex
@@ -455,6 +458,7 @@ function SettingsSearchResults({
               key={result.entry.id}
               id={`settings-search-result-${index}`}
               type="button"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
               role="option"
               aria-selected={isSelected}
               tabIndex={-1}

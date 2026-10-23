@@ -30,6 +30,7 @@ export function useReadwiseStatus(enabled: boolean): {
     return () => {
       active = false
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [enabled, nonce, t])
 
   // A run starting, moving on or ending changes what the row says.

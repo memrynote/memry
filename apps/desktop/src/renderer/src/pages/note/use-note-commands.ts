@@ -172,6 +172,7 @@ export function useNoteCommands(input: NoteCommandInput): {
       input.mindMap.toggle,
       ready && input.mindMap.isAvailable
     ),
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     'note.rename': item('note.rename', rename, canEdit),
     'note.addName': item(
       'note.addName',

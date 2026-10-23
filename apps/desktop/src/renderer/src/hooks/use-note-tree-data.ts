@@ -95,7 +95,9 @@ export function useNoteTreeData(): NoteTreeData {
   // with no data and `isLoading` flips back to true. Hold the page already on
   // screen so "load more" grows the tree instead of collapsing it to a skeleton.
   const loadedPageRef = useRef<LoadedPage>(EMPTY_PAGE)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   if (!isPageLoading && loadedPageRef.current.notes !== fetchedNotes) {
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     loadedPageRef.current = { notes: fetchedNotes, total, hasMore }
   }
   const page = loadedPageRef.current
@@ -157,9 +159,11 @@ export function useNoteTreeData(): NoteTreeData {
       }
     }
     void fetchPositions()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies, react/refs -- dependency is an intentional re-run trigger (token/identity), not read by the effect; latest-value ref (callbacks/state mirrored for stable handlers); not render output
   }, [notes])
 
   const unfilteredTree = useMemo(() => {
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     return buildTreeFromNotes(notes, folders, notePositions, sortMode, notesFirst)
   }, [notes, folders, notePositions, sortMode, notesFirst])
 
@@ -170,6 +174,7 @@ export function useNoteTreeData(): NoteTreeData {
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     notes.forEach((note) => map.set(note.id, note))
     return map
   }, [notes])
@@ -195,8 +200,11 @@ export function useNoteTreeData(): NoteTreeData {
     }
   }, [noteMap])
 
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   return {
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     notes,
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     isLoading: isPageLoading && notes.length === 0,
     error,
     folders,
@@ -213,7 +221,9 @@ export function useNoteTreeData(): NoteTreeData {
     folderTemplateNames,
     setFolderTemplateNames,
     computeTargetFolder,
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     hiddenNoteCount: page.hasMore ? Math.max(page.total - notes.length, 0) : 0,
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     isLoadingMore: isPageLoading && notes.length > 0,
     loadMore
   }

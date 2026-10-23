@@ -73,6 +73,7 @@ export const ProjectTabBar = ({
   return (
     <div className="flex items-center gap-1 px-4 py-1.5">
       <LayoutGroup id={layoutGroupId}>
+        {/* oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- tablist focus is managed by its roving-tabindex tab children */}
         <div
           ref={listRef}
           role="tablist"

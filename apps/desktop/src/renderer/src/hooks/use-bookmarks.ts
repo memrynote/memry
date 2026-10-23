@@ -461,6 +461,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
   }, [itemType, itemId, isBookmarked])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
     void checkBookmark()
 
     // Subscribe to bookmark events.

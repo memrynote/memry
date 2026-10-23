@@ -107,6 +107,7 @@ export function useTemplateDraft({
   // value correctly reads as clean.
   const persistedRef = useRef<string>(serialize(initial))
   const current = useMemo(() => serialize(fields), [fields])
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   const isDirty = current !== persistedRef.current
 
   // `save` reads these instead of closing over the values, so it stays stable
@@ -268,6 +269,7 @@ export function useTemplateDraft({
     return () => {
       clearTimeout(timer)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [templateId, isDirty, current, autoSaveDelayMs])
 
   return {

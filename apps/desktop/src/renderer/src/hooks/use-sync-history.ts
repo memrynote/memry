@@ -78,6 +78,7 @@ export function useSyncHistory(): UseSyncHistoryReturn {
   }, [])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
     void fetchEntries(0, false)
   }, [fetchEntries])
 
@@ -93,6 +94,7 @@ export function useSyncHistory(): UseSyncHistoryReturn {
 
   const visibleEntries = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
 
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   const hasMore = visibleCount < filtered.length || fetchedOffset.current < total
 
   const loadMore = useCallback(() => {
