@@ -372,11 +372,19 @@ describe('one pulling device', () => {
       syncOn()
       expect(claim.readClaim(db()).deviceId).toBeNull()
       expect(gate.canPull()).toBe(true)
+      // Read at the first Readwise request: the claim must have left the queue by then.
+      let pendingAtFirstRequest: boolean | null = null
+      readwise.failWhen = () => {
+        pendingAtFirstRequest ??= current.queue.hasPendingItem('synced_settings')
+        return null
+      }
 
       await sync()
 
       expect(claim.readClaim(db())).toEqual({ deviceId: 'dev-a', deviceName: 'Desk Mac' })
-      expect(current.queue.hasPendingItem('synced_settings')).toBe(false)
+      expect(pendingAtFirstRequest).toBe(false)
+      // The run changed three notes, so its status is queued after the claim (#3477).
+      expect(current.queue.hasPendingItem('synced_settings')).toBe(true)
       expect(noteFiles()).toHaveLength(3)
     })
 
