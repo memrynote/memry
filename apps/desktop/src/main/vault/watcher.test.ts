@@ -341,9 +341,7 @@ describe('vault watcher', () => {
     await watcher.handleFileDelete(notePath)
     await vi.advanceTimersByTimeAsync(500)
     // The delete first checks on disk that the file is really gone.
-    await vi.waitFor(() => {
-      expect(unlinkTasksFromDeletedNote).toHaveBeenCalledWith(noteId)
-    })
+    await vi.waitFor(() => expect(unlinkTasksFromDeletedNote).toHaveBeenCalledWith(noteId))
 
     const deleted = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
     expect(deleted).toBeUndefined()
@@ -856,9 +854,7 @@ describe('vault watcher', () => {
     fs.rmSync(imagePath)
     watcher.handleFileDelete(imagePath)
     await vi.advanceTimersByTimeAsync(5_000)
-    await vi.waitFor(() => {
-      expect(listActivity()).toHaveLength(2)
-    })
+    await vi.waitFor(() => expect(listActivity()).toHaveLength(2))
     await flushProjectionEvents()
 
     expect(listActivity().map((entry) => [entry.kind, entry.path])).toEqual([
@@ -998,7 +994,7 @@ describe('vault watcher', () => {
     watcher.handleFileDelete(journalPath)
     await vi.advanceTimersByTimeAsync(500)
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(window.webContents.send).toHaveBeenCalledWith(
         JournalChannels.events.ENTRY_DELETED,
         expect.objectContaining({
@@ -1006,7 +1002,7 @@ describe('vault watcher', () => {
           source: 'external'
         })
       )
-    })
+    )
   })
 
   // ==========================================================================
@@ -1175,11 +1171,11 @@ describe('vault watcher', () => {
     watcher.vaultPath = vault.path
     await watcher.handleFileChange(notePath)
     // The feed is deliberately un-awaited by the change handler.
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(crdtProvider.open).toHaveBeenCalledWith(noteId, undefined, {
         skipSeed: true
       })
-    })
+    )
   }
 
   it('feeds an external edit into the persisted doc of a note with no editor open', async () => {
@@ -1841,9 +1837,7 @@ describe('vault watcher', () => {
       fs.rmSync(absolutePath)
       trigger('unlink', absolutePath)
 
-      await vi.waitFor(() => {
-        expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id)
-      })
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
       const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
       expect(row?.deletedAt).not.toBeNull()
       expect(window.webContents.send).toHaveBeenCalledWith(CanvasChannels.events.DELETED, { id })
@@ -1906,9 +1900,7 @@ describe('vault watcher', () => {
       fs.renameSync(absolutePath, path.join(vault.path, 'Moved out.excalidraw'))
       trigger('unlink', absolutePath)
 
-      await vi.waitFor(() => {
-        expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id)
-      })
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
       expect(isLive(id)).toBe(false)
     })
 
@@ -1967,9 +1959,7 @@ describe('vault watcher', () => {
       fs.rmSync(absolutePath)
       trigger('unlink', absolutePath)
 
-      await vi.waitFor(() => {
-        expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id)
-      })
+      await vi.waitFor(() => expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('canvas', id))
       expect(fs.existsSync(diskPath)).toBe(true)
       expect(dereference).not.toHaveBeenCalled()
       expect(listAssetsByCanvas(db, id)).toHaveLength(1)
@@ -2009,11 +1999,7 @@ describe('vault watcher', () => {
       const { db, dereference, diskPath } = withAsset(id)
       const trashed = path.join(vault.path, 'trashed.excalidraw')
 
-      expect(
-        await removeCanvas(id, async (abs) => {
-          fs.renameSync(abs, trashed)
-        })
-      ).toBe(true)
+      expect(await removeCanvas(id, async (abs) => fs.renameSync(abs, trashed))).toBe(true)
       expect(dereference).not.toHaveBeenCalled()
       expect(fs.existsSync(diskPath)).toBe(true)
 
@@ -2043,9 +2029,7 @@ describe('vault watcher', () => {
       const { dereference, diskPath } = withAsset(canvas.id)
       const dir = path.dirname(resolveCanvasFile(vault.path, row!.filePath!))
       const trashed = path.join(vault.path, 'trashed-Work')
-      vi.mocked(shell.trashItem).mockImplementation(async (abs) => {
-        fs.renameSync(abs, trashed)
-      })
+      vi.mocked(shell.trashItem).mockImplementation(async (abs) => fs.renameSync(abs, trashed))
 
       try {
         await folderDelete({} as never, { path: 'Work' })
@@ -2106,9 +2090,9 @@ describe('vault watcher', () => {
         throw failure
       })
 
-      await vi.waitFor(() => {
+      await vi.waitFor(() =>
         expect(trackMainError).toHaveBeenCalledWith('canvas', 'external_delete', failure)
-      })
+      )
       vi.mocked(getDatabase).mockReturnValue(asClientDb(dataDb.db))
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalledWith('canvas', id)
       expect(isLive(id)).toBe(true)

@@ -46,9 +46,7 @@ describe('NativeSplitDropZones', () => {
     act(() => {
       fireEvent.dragEnd(window)
     })
-    await waitFor(() => {
-      expect(screen.queryByTestId('native-drop-zones')).toBeNull()
-    })
+    await waitFor(() => expect(screen.queryByTestId('native-drop-zones')).toBeNull())
   })
 
   it.each([
@@ -77,13 +75,7 @@ describe('NativeSplitDropZones', () => {
     const zone = container.querySelector('[data-zone="right"]')!
     // A user-driven drop flushes React between the window capture listener and
     // React's root listener; flushSync inside the listener reproduces that.
-    window.addEventListener(
-      'drop',
-      () => {
-        flushSync(() => undefined)
-      },
-      { capture: true, once: true }
-    )
+    window.addEventListener('drop', () => flushSync(() => undefined), { capture: true, once: true })
 
     fireEvent.drop(zone, { dataTransfer: transfer() })
 

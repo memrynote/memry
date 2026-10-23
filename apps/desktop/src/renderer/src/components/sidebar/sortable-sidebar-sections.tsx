@@ -161,9 +161,7 @@ export const SortableSidebarSections = ({
   // subtree untouched.
   const [carried, setCarried] = useState<{ id: string; offsetY: number } | null>(null)
 
-  const clearCarried = useCallback(() => {
-    setCarried(null)
-  }, [])
+  const clearCarried = useCallback(() => setCarried(null), [])
 
   const listeners = useMemo(
     () => ({

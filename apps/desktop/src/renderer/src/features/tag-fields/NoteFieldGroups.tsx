@@ -83,11 +83,7 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          onOpenTag(group.tag)
-                        }}
-                      >
+                      <DropdownMenuItem onSelect={() => onOpenTag(group.tag)}>
                         {t('tagFields.panel.openTag', { tag: group.tag.name.toLowerCase() })}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -108,9 +104,9 @@ export const NoteFieldGroups = memo(function NoteFieldGroups({
                         value: slot.value ?? null,
                         isCustom: false
                       }}
-                      onValueChange={(value) => {
+                      onValueChange={(value) =>
                         onFieldChange(slot.field.name, value, slot.field.type)
-                      }}
+                      }
                       relationTarget={slot.field.relation?.target}
                       relationMany={slot.field.relation?.many}
                       disabled={disabled}

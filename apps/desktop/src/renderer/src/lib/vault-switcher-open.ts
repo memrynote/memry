@@ -30,9 +30,7 @@ export function useVaultSwitcherOpenRequest(onRequest: () => void): void {
   }, [onRequest])
 
   useEffect(() => {
-    const listener = (): void => {
-      handlerRef.current()
-    }
+    const listener = (): void => handlerRef.current()
     listeners.add(listener)
     return () => {
       listeners.delete(listener)

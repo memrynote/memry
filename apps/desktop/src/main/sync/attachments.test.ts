@@ -1713,9 +1713,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     )
 
     const pending = service.downloadAttachment('att-stream', targetPath)
-    await vi.waitFor(() => {
-      expect(chunkTwoRequested).toBe(true)
-    })
+    await vi.waitFor(() => expect(chunkTwoRequested).toBe(true))
 
     // Mid-flight: chunks 0+1 are decrypted, verified and ALREADY on disk as the
     // partial — they were never held for a whole-file reassembly — while the

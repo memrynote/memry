@@ -34,9 +34,7 @@ describe('CrdtPersistenceNotice', () => {
 
     render(<CrdtPersistenceNotice />)
 
-    await waitFor(() => {
-      expect(getHealth).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(getHealth).toHaveBeenCalled())
     expect(toastFn).not.toHaveBeenCalled()
   })
 
@@ -47,9 +45,7 @@ describe('CrdtPersistenceNotice', () => {
 
     render(<CrdtPersistenceNotice />)
 
-    await waitFor(() => {
-      expect(getHealth).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(getHealth).toHaveBeenCalled())
     expect(toastFn).not.toHaveBeenCalled()
   })
 
@@ -58,9 +54,7 @@ describe('CrdtPersistenceNotice', () => {
 
     render(<CrdtPersistenceNotice />)
 
-    await waitFor(() => {
-      expect(toastFn).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(toastFn).toHaveBeenCalledTimes(1))
     const [title, options] = toastFn.mock.calls[0] as [string, { description: string }]
     expect(title).toBe('crdt.persistenceDegradedTitle')
     expect(options.description).toBe('crdt.persistenceDegradedBody')
@@ -71,9 +65,7 @@ describe('CrdtPersistenceNotice', () => {
 
     render(<CrdtPersistenceNotice />)
 
-    await waitFor(() => {
-      expect(getHealth).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(getHealth).toHaveBeenCalled())
     expect(toastFn).not.toHaveBeenCalled()
   })
 })

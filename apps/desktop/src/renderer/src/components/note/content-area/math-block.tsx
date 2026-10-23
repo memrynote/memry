@@ -109,9 +109,7 @@ export function MathBlockRenderer({ block, editor }: { block: MathBlockNode; edi
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
             autoFocus
             value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value)
-            }}
+            onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               // Enter breaks the line, as it does in any multi-line source.
               // Mod+Enter is the commit, which is also what Escape does

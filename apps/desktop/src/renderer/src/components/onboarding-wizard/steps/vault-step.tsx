@@ -76,9 +76,7 @@ export function VaultStep({ dispatch }: StepProps): React.JSX.Element {
         <div className="pt-6">
           <ContinueButton
             label={t(`${K}.startNew`)}
-            onClick={() => {
-              dispatch({ type: 'switch-to-new' })
-            }}
+            onClick={() => dispatch({ type: 'switch-to-new' })}
           />
         </div>
       </>
@@ -100,9 +98,7 @@ export function VaultStep({ dispatch }: StepProps): React.JSX.Element {
             compact
             disabled={opening}
             selected={vault.vaultUuid === selectedVault?.vaultUuid}
-            onSelect={() => {
-              setSelected(vault.vaultUuid)
-            }}
+            onSelect={() => setSelected(vault.vaultUuid)}
             title={vault.name ?? vault.vaultUuid.slice(0, 8)}
             description={t(`${K}.items`, { count: vault.itemCount })}
           />

@@ -46,9 +46,9 @@ export function UpdateInstallFailedDialog(): React.JSX.Element | null {
 
   const handleTryAgain = useCallback(() => {
     dismissInstallFailed()
-    void checkForUpdates().catch((err: unknown) => {
+    void checkForUpdates().catch((err: unknown) =>
       log.error('re-check after failed install failed', err)
-    })
+    )
   }, [checkForUpdates])
 
   const handleCopyDetails = useCallback(() => {
@@ -62,9 +62,7 @@ export function UpdateInstallFailedDialog(): React.JSX.Element | null {
           .filter(Boolean)
           .join('\n')
       )
-      .catch((err: unknown) => {
-        log.error('copy install failure details failed', err)
-      })
+      .catch((err: unknown) => log.error('copy install failure details failed', err))
   }, [state.currentVersion, state.error, failedVersion])
 
   if (!shouldShowInstallFailedPrompt(state, dismissed)) return null

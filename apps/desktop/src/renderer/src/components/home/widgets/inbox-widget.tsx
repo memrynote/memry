@@ -73,7 +73,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
             data-inbox-id={item.id}
             data-inbox-type={item.type}
             className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
-            onClick={() => {
+            onClick={() =>
               openTab({
                 type: 'inbox',
                 title: item.title || t('home.widget.untitled'),
@@ -86,7 +86,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
                 isDeleted: false,
                 isPreview: true
               })
-            }}
+            }
           >
             <span className="sr-only">{typeLabels[item.type]}</span>
             <InboxTypeIcon type={item.type} className="shrink-0" />
@@ -111,9 +111,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
             data-testid="inbox-archive"
             aria-label={tInbox('quickActions.archiveItem')}
             className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 group-focus-within/row:opacity-100 hover:bg-muted/60 hover:text-foreground focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-90"
-            onClick={() => {
-              archive.mutate(item.id)
-            }}
+            onClick={() => archive.mutate(item.id)}
           >
             <Archive className="size-3.5" />
           </button>

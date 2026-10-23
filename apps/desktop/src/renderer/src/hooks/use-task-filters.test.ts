@@ -203,9 +203,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('initial')
 
     // Advance timer
-    act(() => {
-      vi.advanceTimersByTime(300)
-    })
+    act(() => vi.advanceTimersByTime(300))
 
     expect(result.current).toBe('updated')
   })
@@ -747,16 +745,12 @@ describe('useFilteredAndSortedTasks', () => {
     rerender({ filters: { ...defaultFilters, search: 'query' } })
 
     const callCountBeforeDebounce = vi.mocked(applyFiltersAndSortWithContext).mock.calls.length
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    act(() => vi.advanceTimersByTime(100))
     expect(vi.mocked(applyFiltersAndSortWithContext).mock.calls.length).toBe(
       callCountBeforeDebounce
     )
 
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    act(() => vi.advanceTimersByTime(100))
 
     expect(applyFiltersAndSortWithContext).toHaveBeenCalledWith(
       mockTasks,
@@ -1031,7 +1025,7 @@ describe('useSavedFilters', () => {
       })
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(savedFiltersService.update).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'filter-1',
@@ -1041,21 +1035,21 @@ describe('useSavedFilters', () => {
           })
         })
       )
-    })
+    )
 
     act(() => {
       result.current.toggleStar('filter-1')
     })
 
     expect(result.current.savedFilters[0].starred).toBe(true)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(savedFiltersService.update).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'filter-1',
           config: expect.objectContaining({ starred: true })
         })
       )
-    })
+    )
   })
 
   it('handles saved-filter service failures and rolls back starred state', async () => {
@@ -1082,18 +1076,14 @@ describe('useSavedFilters', () => {
       result.current.updateFilter('filter-1', { name: 'Bad Update' })
     })
 
-    await waitFor(() => {
-      expect(savedFiltersService.create).toHaveBeenCalled()
-    })
-    await waitFor(() => {
-      expect(savedFiltersService.delete).toHaveBeenCalled()
-    })
-    await waitFor(() => {
+    await waitFor(() => expect(savedFiltersService.create).toHaveBeenCalled())
+    await waitFor(() => expect(savedFiltersService.delete).toHaveBeenCalled())
+    await waitFor(() =>
       expect(savedFiltersService.update).toHaveBeenCalledWith({
         id: 'filter-1',
         name: 'Bad Update'
       })
-    })
+    )
 
     act(() => {
       result.current.toggleStar('filter-1')

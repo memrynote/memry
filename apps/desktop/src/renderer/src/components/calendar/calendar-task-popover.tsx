@@ -115,9 +115,7 @@ export function CalendarTaskPopover({
       if (!task) return
       tasksService
         .update({ id: task.id, dueDate: target.dueDate, dueTime: target.dueTime })
-        .then(() => {
-          onDismiss()
-        })
+        .then(() => onDismiss())
         .catch((err: unknown) => {
           log.error(
             'snooze failed:',
@@ -161,9 +159,7 @@ export function CalendarTaskPopover({
     if (!task) return
     tasksService
       .update({ id: task.id, dueDate: null, dueTime: null })
-      .then(() => {
-        onDismiss()
-      })
+      .then(() => onDismiss())
       .catch((err: unknown) => {
         log.error(
           'remove due date failed:',

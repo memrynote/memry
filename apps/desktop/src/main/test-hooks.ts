@@ -877,9 +877,7 @@ export function registerTestHooks(): void {
         }
       })
 
-      win.on('ready-to-show', () => {
-        win.show()
-      })
+      win.on('ready-to-show', () => win.show())
 
       if (process.env['ELECTRON_RENDERER_URL']) {
         await win.loadURL(process.env['ELECTRON_RENDERER_URL'])

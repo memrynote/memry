@@ -102,12 +102,12 @@ describe('deleted folder prune (#2512)', () => {
 
     expect(applyRemoteFolderDelete(ctx, 'Projects')).toBe('applied')
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(logger.info).toHaveBeenCalledWith(
         'Kept a folder deleted on another device, it still holds files',
         { folderPath: 'Projects', file: 'Projects/plan.md' }
       )
-    })
+    )
     expect(exists('Projects/plan.md')).toBe(true)
   })
 
@@ -118,9 +118,7 @@ describe('deleted folder prune (#2512)', () => {
 
     applyRemoteFolderDelete(ctx, 'Projects')
     applyRemoteFolderDelete(ctx, 'Projects/Sub')
-    await vi.waitFor(() => {
-      expect(logger.info).toHaveBeenCalled()
-    })
+    await vi.waitFor(() => expect(logger.info).toHaveBeenCalled())
     expect(exists('Projects/Sub/plan.md')).toBe(true)
 
     // The note's own remote delete: the note handler unlinks the file, then
@@ -128,9 +126,7 @@ describe('deleted folder prune (#2512)', () => {
     fs.unlinkSync(path.join(vaultPath, 'Projects/Sub/plan.md'))
     scheduleDeletedFolderPrune(ctx.db, 'Projects/Sub')
 
-    await vi.waitFor(() => {
-      expect(exists('Projects')).toBe(false)
-    })
+    await vi.waitFor(() => expect(exists('Projects')).toBe(false))
   })
 
   it('#given a note edited here stays in the deleted folder #when another note delete lands #then the folder is kept', async () => {
@@ -142,12 +138,12 @@ describe('deleted folder prune (#2512)', () => {
     fs.unlinkSync(path.join(vaultPath, 'Projects/old.md'))
     scheduleDeletedFolderPrune(ctx.db, 'Projects')
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(logger.info).toHaveBeenCalledWith(
         'Kept a folder deleted on another device, it still holds files',
         { folderPath: 'Projects', file: 'Projects/edited-here.md' }
       )
-    })
+    )
     expect(exists('Projects/edited-here.md')).toBe(true)
   })
 
@@ -166,9 +162,7 @@ describe('deleted folder prune (#2512)', () => {
 
     expect(applyRemoteFolderDelete(ctx, 'Unbacked')).toBe('skipped')
 
-    await vi.waitFor(() => {
-      expect(exists('Unbacked')).toBe(false)
-    })
+    await vi.waitFor(() => expect(exists('Unbacked')).toBe(false))
     expect(logger.info).toHaveBeenCalledWith('Remote folder config delete has no local row', {
       itemId: 'Unbacked'
     })

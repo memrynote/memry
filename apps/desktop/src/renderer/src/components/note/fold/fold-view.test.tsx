@@ -91,9 +91,7 @@ describe('FoldBody', () => {
 describe('FoldLevelControl', () => {
   const HINT_KEY = 'memry:note-fold-hint-seen'
 
-  beforeEach(() => {
-    localStorage.setItem(HINT_KEY, '1')
-  })
+  beforeEach(() => localStorage.setItem(HINT_KEY, '1'))
 
   function renderControl(overrides: Partial<Parameters<typeof FoldLevelControl>[0]> = {}) {
     const props = {

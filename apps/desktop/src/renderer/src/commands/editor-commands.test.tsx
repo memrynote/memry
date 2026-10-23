@@ -31,9 +31,7 @@ function makeEditor(block: unknown = { id: 'block' }) {
     setTextCursorPosition: vi.fn(),
     insertInlineContent: vi.fn(),
     domElement,
-    focusInside: () => {
-      inner.focus()
-    }
+    focusInside: () => inner.focus()
   } satisfies EditorHandle & { focusInside: () => void }
 }
 
@@ -122,16 +120,12 @@ describe('editor commands target the active pane', () => {
       </>
     )
 
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' }))
     await expect(runCommand('editor.bold', 'menu')).resolves.toBe('ran')
     expect(first.toggleStyles).toHaveBeenCalledWith({ bold: true })
     expect(second.toggleStyles).not.toHaveBeenCalled()
 
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-b', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-b', activeGroupId: 'g' }))
     await runCommand('editor.insertTable', 'menu')
     expect(second.insertBlocks).toHaveBeenCalledTimes(1)
     expect(first.insertBlocks).not.toHaveBeenCalled()
@@ -152,17 +146,13 @@ describe('editor commands target the active pane', () => {
         )}
       </>
     )
-    act(() => {
-      publishActiveContext({ activeTabId: 'journal', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'journal', activeGroupId: 'g' }))
 
     // Neither was focused: the most recently mounted one wins.
     await runCommand('editor.italic', 'menu')
     expect(bottom.toggleStyles).toHaveBeenCalledWith({ italic: true })
 
-    act(() => {
-      top.focusInside()
-    })
+    act(() => top.focusInside())
     await runCommand('editor.code', 'menu')
     expect(top.toggleStyles).toHaveBeenCalledWith({ code: true })
     expect(bottom.toggleStyles).toHaveBeenCalledTimes(1)
@@ -176,14 +166,10 @@ describe('editor commands target the active pane', () => {
         {inTab('tab-a', <Editor editor={editor} />)}
       </>
     )
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-b', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-b', activeGroupId: 'g' }))
     await expect(runCommand('editor.bold', 'menu')).resolves.toBe('unavailable')
 
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' }))
     await expect(runCommand('editor.bold', 'menu')).resolves.toBe('ran')
 
     rerender(<Owner />)

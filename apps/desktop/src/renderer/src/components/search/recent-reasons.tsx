@@ -53,9 +53,7 @@ export function RecentReasons({
               <SearchRow
                 key={reason.id}
                 value={reasonValue(reason)}
-                onSelect={() => {
-                  onSelect(reason)
-                }}
+                onSelect={() => onSelect(reason)}
                 icon={
                   reason.itemIcon ? (
                     <NoteIconDisplay
@@ -81,9 +79,7 @@ export function RecentReasons({
             <SearchRow
               key={type}
               value={scopeValue(type)}
-              onSelect={() => {
-                onScope(type)
-              }}
+              onSelect={() => onScope(type)}
               icon={<Icon />}
               trailing={<SearchKbd>{`${MOD_KEY}${TYPE_SHORTCUTS[type]}`}</SearchKbd>}
             >

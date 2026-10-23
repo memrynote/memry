@@ -71,9 +71,7 @@ export async function setup({ page }) {
 
   // Files that came and went outside the app, a few seconds apart, as on a real afternoon.
   let n = await count(page)
-  const drop = (rel, from) => {
-    fs.copyFileSync(from, path.join(vault, rel))
-  }
+  const drop = (rel, from) => fs.copyFileSync(from, path.join(vault, rel))
   drop(
     'Ideas/Old newsletter draft.md',
     path.join(ASSETS, 'activity-log-drop/Old newsletter draft.md')

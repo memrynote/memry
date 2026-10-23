@@ -58,13 +58,13 @@ export const useMouseNavButtons = (): void => {
       navigate(command)
     }
 
-    MOUSE_NAV_EVENTS.forEach((eventName) => {
+    MOUSE_NAV_EVENTS.forEach((eventName) =>
       window.addEventListener(eventName, onMouseNavigation, true)
-    })
+    )
     return () => {
-      MOUSE_NAV_EVENTS.forEach((eventName) => {
+      MOUSE_NAV_EVENTS.forEach((eventName) =>
         window.removeEventListener(eventName, onMouseNavigation, true)
-      })
+      )
     }
   }, [navigate])
 

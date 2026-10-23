@@ -109,9 +109,7 @@ describe('WikiLinkContextMenu display settings (#2845)', () => {
     await openPanel()
 
     await screen.findByRole('switch', { name: 'Show preview' })
-    await waitFor(() => {
-      expect(loadCard).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(loadCard).toHaveBeenCalled())
     expect(screen.queryByRole('switch', { name: 'Show cover' })).not.toBeInTheDocument()
   })
 

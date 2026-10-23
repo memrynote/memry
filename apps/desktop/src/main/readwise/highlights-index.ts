@@ -75,9 +75,7 @@ export function markBooksDeleted(db: DataDb, bookIds: readonly number[]): void {
 }
 
 export function upsertHighlights(db: DataDb, rows: readonly IndexRow[]): void {
-  db.transaction((tx) => {
-    insertRows(tx, rows)
-  })
+  db.transaction((tx) => insertRows(tx, rows))
 }
 
 /** Replaces the whole index with `rows` (a full export). */

@@ -120,9 +120,7 @@ export function SidebarVaultHeader({ pages }: { pages: SidebarVaultPages }) {
             aria-label={t('vaultSwipe.iconButton', { name: active.name })}
             aria-haspopup="dialog"
             aria-expanded={pickerOpen}
-            onClick={() => {
-              setPickerOpen((open) => !open)
-            }}
+            onClick={() => setPickerOpen((open) => !open)}
             className={cn(
               'flex size-7 shrink-0 items-center justify-center rounded-[7px] outline-none',
               'hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent',

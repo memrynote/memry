@@ -51,12 +51,8 @@ export function SubtaskToggle({
     <span
       className="relative flex size-4 shrink-0 items-center justify-center"
       style={{ marginInlineStart: 20 }}
-      onPointerDown={(event) => {
-        event.stopPropagation()
-      }}
-      onDoubleClick={(event) => {
-        event.stopPropagation()
-      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
     >
       {count > 0 && (
         <button

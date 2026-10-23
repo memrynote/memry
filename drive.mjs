@@ -26,10 +26,11 @@ const page = browser
   .flatMap((c) => c.pages())
   .find((p) => !p.url().startsWith('devtools://'))
 const ready = () =>
-  page.waitForFunction(async () => (await window.api.vault.getStatus())?.isOpen, undefined, {
-    timeout: 45_000,
-    polling: 250
-  })
+  page.waitForFunction(
+    async () => (await window.api.vault.getStatus())?.isOpen === true,
+    undefined,
+    { timeout: 45_000, polling: 250 }
+  )
 await ready()
 const dismiss = async () => {
   for (const name of ['Skip', 'Skip tour', 'Close', 'Got it'])
@@ -115,9 +116,9 @@ for (const c of CASES) {
   await page.waitForTimeout(3000)
   check(`${c.name} not rewritten on open`, fs.readFileSync(c.abs, 'utf8') === text)
   await page.screenshot({ path: path.join(outDir, `${c.name}-0-open.png`) })
-  await typeAtEnd(editor, Q, '!').catch((e) => {
+  await typeAtEnd(editor, Q, '!').catch((e) =>
     log(`${c.name} typeAtEnd error ${e.message.split('\n')[0]}`)
-  })
+  )
   await page.screenshot({ path: path.join(outDir, `${c.name}-1-first-edit.png`) })
   results[c.name] = { orig: text, first: fs.readFileSync(c.abs, 'utf8') }
   log(`${c.name} first write-back ${JSON.stringify(results[c.name].first)}`)
@@ -132,9 +133,9 @@ for (const c of CASES) {
     `${c.name} unchanged after reopen`,
     fs.readFileSync(c.abs, 'utf8') === results[c.name].first
   )
-  await typeAtEnd(editor, Q, '?').catch((e) => {
+  await typeAtEnd(editor, Q, '?').catch((e) =>
     log(`${c.name} typeAtEnd2 error ${e.message.split('\n')[0]}`)
-  })
+  )
   await page.screenshot({ path: path.join(outDir, `${c.name}-2-second-edit.png`) })
   results[c.name].second = fs.readFileSync(c.abs, 'utf8')
   log(`${c.name} second write-back ${JSON.stringify(results[c.name].second)}`)
@@ -149,9 +150,9 @@ for (const c of CASES) {
   const editor = await openNote(note, name)
   await page.waitForTimeout(3000)
   check(`${name} unchanged after open`, fs.readFileSync(abs, 'utf8') === text)
-  await typeAtEnd(editor, Q, '?').catch((e) => {
+  await typeAtEnd(editor, Q, '?').catch((e) =>
     log(`${name} typeAtEnd error ${e.message.split('\n')[0]}`)
-  })
+  )
   await page.screenshot({ path: path.join(outDir, `${name}-fresh-parse-edit.png`) })
   results[c.name].fresh = fs.readFileSync(abs, 'utf8')
   log(`${name} fresh-parse write-back ${JSON.stringify(results[c.name].fresh)}`)

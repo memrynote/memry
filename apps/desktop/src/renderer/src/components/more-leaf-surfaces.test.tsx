@@ -149,36 +149,16 @@ vi.mock('@/components/tasks/date-picker-content', () => ({
     nextWeek.setDate(nextWeek.getDate() + 7)
     return (
       <div>
-        <button
-          type="button"
-          onClick={() => {
-            onSelect(null)
-          }}
-        >
+        <button type="button" onClick={() => onSelect(null)}>
           clear date
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onSelect(today)
-          }}
-        >
+        <button type="button" onClick={() => onSelect(today)}>
           select today
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onSelect(tomorrow)
-          }}
-        >
+        <button type="button" onClick={() => onSelect(tomorrow)}>
           select tomorrow
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onSelect(nextWeek)
-          }}
-        >
+        <button type="button" onClick={() => onSelect(nextWeek)}>
           select custom
         </button>
       </div>

@@ -85,9 +85,7 @@ describe('#given telemetry consent is OFF', () => {
   it('#then a full bootstrap queues nothing and sends nothing', async () => {
     const { client, fetchMock } = createClient(false)
     mocks.runtime = {
-      track: (event) => {
-        client.track(event)
-      }
+      track: (event) => client.track(event)
     }
 
     await runFullBootstrap()
@@ -102,9 +100,7 @@ describe('#given telemetry consent is ON', () => {
   it('#then the same bootstrap queues its milestone and throughput events', async () => {
     const { client } = createClient(true)
     mocks.runtime = {
-      track: (event) => {
-        client.track(event)
-      }
+      track: (event) => client.track(event)
     }
 
     await runFullBootstrap()

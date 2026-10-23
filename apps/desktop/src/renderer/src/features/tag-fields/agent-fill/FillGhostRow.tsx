@@ -46,9 +46,7 @@ export function FillGhostRow({ field, proposal, onAccept, onReject, busy }: Fill
   const { t } = useT('notes')
   const rowRef = useRef<HTMLLIElement>(null)
   const Icon = PROPERTY_TYPE_ICONS[field.type]
-  const paint = () => {
-    highlightSource(rowRef.current, proposal.sourceText)
-  }
+  const paint = () => highlightSource(rowRef.current, proposal.sourceText)
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- pointer/hover handler is a convenience; keyboard access is provided by inner controls
     <li

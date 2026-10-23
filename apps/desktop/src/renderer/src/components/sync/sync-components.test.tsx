@@ -256,9 +256,7 @@ vi.mock('@/components/ui/select', () => ({
   SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
     <button
       type="button"
-      onClick={() => {
-        mocks.selectCallbacks.forEach((callback) => callback(value))
-      }}
+      onClick={() => mocks.selectCallbacks.forEach((callback) => callback(value))}
     >
       {children}
     </button>
@@ -390,9 +388,7 @@ describe('sync components coverage', () => {
     render(<DeviceList onLinkDevice={onLinkDevice} />)
 
     expect(screen.getByRole('status', { name: 'devices.loadingAria' })).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('This Mac')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('This Mac')).toBeInTheDocument())
     expect(screen.queryByText('Tablet')).not.toBeInTheDocument()
 
     expect(
@@ -410,18 +406,18 @@ describe('sync components coverage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'devices.rename' })[0])
     fireEvent.change(screen.getByDisplayValue('iPhone'), { target: { value: 'Pocket Phone' } })
     fireEvent.click(screen.getByRole('button', { name: 'button.save' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(deviceService.renameDevice).toHaveBeenCalledWith({
         deviceId: 'dev-2',
         newName: 'Pocket Phone'
       })
-    })
+    )
 
     fireEvent.click(screen.getAllByRole('button', { name: 'devices.revoke' })[0])
     fireEvent.click(screen.getByRole('button', { name: 'devices.dialogs.revokeDevice' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(deviceService.removeDevice).toHaveBeenCalledWith({ deviceId: 'dev-2' })
-    })
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'devices.linkNew' }))
     expect(onLinkDevice).toHaveBeenCalledTimes(1)
@@ -432,18 +428,14 @@ describe('sync components coverage', () => {
     mocks.deviceService.getDevices.mockResolvedValueOnce({ devices: [] })
     const { unmount } = render(<DeviceList onLinkDevice={onLinkDevice} />)
 
-    await waitFor(() => {
-      expect(screen.getByText('devices.none')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('devices.none')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'devices.linkNew' }))
     expect(onLinkDevice).toHaveBeenCalledTimes(1)
     unmount()
 
     mocks.deviceService.getDevices.mockRejectedValueOnce(new Error('load failed'))
     render(<DeviceList />)
-    await waitFor(() => {
-      expect(mocks.toast.error).toHaveBeenCalledWith('devices.toasts.loadFailed')
-    })
+    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('devices.toasts.loadFailed'))
   })
 
   it('runs sync status actions for issue and paused states', async () => {
@@ -461,9 +453,7 @@ describe('sync components coverage', () => {
       screen.getByText('2 changes phaseF.componentsSyncSyncStatus.pending')
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    await waitFor(() => {
-      expect(mocks.syncStatus.triggerSync).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.syncStatus.triggerSync).toHaveBeenCalledTimes(1))
     expect(mocks.syncStatus.clearError).toHaveBeenCalledTimes(1)
 
     fireEvent.click(
@@ -477,15 +467,11 @@ describe('sync components coverage', () => {
     mocks.syncStatus.error = null
     rerender(<SyncStatus onOpenSettings={openSettings} iconOnly />)
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
-    await waitFor(() => {
-      expect(mocks.syncStatus.resume).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.syncStatus.resume).toHaveBeenCalledTimes(1))
 
     // No error to clear: the same button syncs directly.
     fireEvent.click(screen.getByRole('button', { name: 'Sync Now' }))
-    await waitFor(() => {
-      expect(mocks.syncStatus.triggerSync).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.syncStatus.triggerSync).toHaveBeenCalledTimes(2))
     expect(mocks.syncStatus.clearError).toHaveBeenCalledTimes(1)
   })
 
@@ -585,9 +571,7 @@ describe('sync components coverage', () => {
 
     expect(screen.getByText(/2 items haven't been synced yet/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Export Local Data' }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Exported' })).toBeDisabled()
-    })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Exported' })).toBeDisabled())
     fireEvent.click(
       screen.getByRole('button', {
         name: 'phaseF.componentsSyncDeviceRevokedDialog.signOut'
@@ -603,14 +587,12 @@ describe('sync components coverage', () => {
 
     expect(screen.getByRole('status', { name: 'qrLinking.generatingAria' })).toBeInTheDocument()
     act(() => vi.runOnlyPendingTimers())
-    await waitFor(() => {
-      expect(screen.getByRole('img')).toHaveTextContent('qr:')
-    })
+    await waitFor(() => expect(screen.getByRole('img')).toHaveTextContent('qr:'))
 
     fireEvent.click(screen.getByRole('button', { name: 'qrLinking.copyAria' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.clipboardWrite).toHaveBeenCalledWith(expect.stringContaining('session-1'))
-    })
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'button.cancel' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
@@ -634,9 +616,7 @@ describe('sync components coverage', () => {
       target: { value: validCode }
     })
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.linkDevice' }))
-    await waitFor(() => {
-      expect(onLinked).toHaveBeenCalledWith('session-2', '654321')
-    })
+    await waitFor(() => expect(onLinked).toHaveBeenCalledWith('session-2', '654321'))
     ;(window as any).api.syncLinking.linkViaQr.mockResolvedValueOnce({
       success: false,
       error: 'expired'
@@ -645,9 +625,7 @@ describe('sync components coverage', () => {
       target: { value: validCode.replace('session-2', 'session-3') }
     })
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.linkDevice' }))
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('expired')
-    })
+    await waitFor(() => expect(onError).toHaveBeenCalledWith('expired'))
 
     fireEvent.click(screen.getByRole('button', { name: 'button.back' }))
     expect(onBack).toHaveBeenCalledTimes(1)
@@ -666,13 +644,9 @@ describe('sync components coverage', () => {
       <LinkingApprovalDialog open event={event} onApprove={onApprove} onReject={onReject} />
     )
 
-    await waitFor(() => {
-      expect(screen.getByText('123 456')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('123 456')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'linkingApproval.approve' }))
-    await waitFor(() => {
-      expect(onApprove).toHaveBeenCalledWith('session-4')
-    })
+    await waitFor(() => expect(onApprove).toHaveBeenCalledWith('session-4'))
     ;(window as any).api.syncLinking.approveLinking.mockResolvedValueOnce({
       success: false,
       error: 'approval failed'
@@ -685,13 +659,9 @@ describe('sync components coverage', () => {
         onReject={onReject}
       />
     )
-    await waitFor(() => {
-      expect(screen.getByText('123 456')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('123 456')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'linkingApproval.approve' }))
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('approval failed')
-    })
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('approval failed'))
 
     fireEvent.click(screen.getByRole('button', { name: 'linkingApproval.reject' }))
     expect(onReject).toHaveBeenCalledTimes(1)

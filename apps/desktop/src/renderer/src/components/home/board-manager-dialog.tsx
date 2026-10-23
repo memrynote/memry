@@ -94,9 +94,7 @@ function BoardRow({
           value={draft}
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
           autoFocus
-          onChange={(event) => {
-            onDraftChange(event.target.value)
-          }}
+          onChange={(event) => onDraftChange(event.target.value)}
           onBlur={onCommitRename}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
@@ -253,9 +251,7 @@ export function BoardManagerDialog({
                     setDraft(board.name)
                   }}
                   onCommitRename={commitRename}
-                  onDelete={() => {
-                    onDelete(board.id)
-                  }}
+                  onDelete={() => onDelete(board.id)}
                 />
               ))}
             </ul>

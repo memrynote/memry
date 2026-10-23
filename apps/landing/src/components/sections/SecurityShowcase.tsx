@@ -118,12 +118,8 @@ export function SecurityShowcase() {
 
           <div
             className="cursor-crosshair overflow-hidden rounded-lg border border-dark-border bg-dark-surface p-6 transition-colors duration-300 hover:border-terracotta/40"
-            onMouseEnter={() => {
-              setHovered(true)
-            }}
-            onMouseLeave={() => {
-              setHovered(false)
-            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
           >
             <span className="mb-4 inline-block font-mono-accent text-[11px] uppercase tracking-[0.18em] text-terracotta">
               What our server stores

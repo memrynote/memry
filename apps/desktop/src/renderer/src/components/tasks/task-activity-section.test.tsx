@@ -74,11 +74,11 @@ describe('TaskActivitySection', () => {
 
     renderSection(section)
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(getActivity).toHaveBeenCalledWith(
         expect.objectContaining({ taskId: 'task-1', limit: 3, offset: 0 })
       )
-    })
+    )
   })
 
   it('renders old → new for a field change', async () => {
@@ -197,9 +197,7 @@ describe('TaskActivitySection', () => {
     getActivity.mockResolvedValue({ entries: [], total: 0, hasMore: false })
 
     renderSection(section)
-    await waitFor(() => {
-      expect(getActivity).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(getActivity).toHaveBeenCalledTimes(1))
 
     // The Google Calendar writeback and a peer update that loses whole-row LWW
     // both write rows without emitting `tasks:updated`, so the feed listens to
@@ -209,9 +207,7 @@ describe('TaskActivitySection', () => {
     expect(getActivity).toHaveBeenCalledTimes(1)
 
     activityListener?.({ taskId: 'task-1' })
-    await waitFor(() => {
-      expect(getActivity).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(getActivity).toHaveBeenCalledTimes(2))
   })
 
   it('invites the first edit when there is no history', async () => {

@@ -120,9 +120,7 @@ export function ReviewTimeInput({
         maxLength={2}
         aria-label={t('inbox.reviewReminder.time.hourLabel')}
         value={hourDraft}
-        onChange={(e) => {
-          setHourDraft(e.target.value.replace(/\D/g, '').slice(0, 2))
-        }}
+        onChange={(e) => setHourDraft(e.target.value.replace(/\D/g, '').slice(0, 2))}
         onBlur={handleBlur}
         className={fieldClass}
       />
@@ -135,9 +133,7 @@ export function ReviewTimeInput({
         maxLength={2}
         aria-label={t('inbox.reviewReminder.time.minuteLabel')}
         value={minDraft}
-        onChange={(e) => {
-          setMinDraft(e.target.value.replace(/\D/g, '').slice(0, 2))
-        }}
+        onChange={(e) => setMinDraft(e.target.value.replace(/\D/g, '').slice(0, 2))}
         onBlur={handleBlur}
         className={fieldClass}
       />

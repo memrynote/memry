@@ -270,9 +270,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
         return
       }
       void loadEntity(entityType, entityId)
-        .then((state) => {
-          dispatch({ type: 'set', key, state })
-        })
+        .then((state) => dispatch({ type: 'set', key, state }))
         .catch((err: unknown) => {
           log.error('Failed to refresh canvas card entity', err)
           trackRendererError('canvas_card_refresh', err)
@@ -300,15 +298,9 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
     }
 
     const unsubscribes = [
-      onNoteUpdated((event) => {
-        refreshNoteOrFile(event.id)
-      }),
-      onNoteRenamed((event) => {
-        refreshNoteOrFile(event.id)
-      }),
-      onNoteMoved((event) => {
-        refresh('file', event.id)
-      }),
+      onNoteUpdated((event) => refreshNoteOrFile(event.id)),
+      onNoteRenamed((event) => refreshNoteOrFile(event.id)),
+      onNoteMoved((event) => refresh('file', event.id)),
       onNoteDeleted((event) => {
         markDangling('note', event.id)
         markDangling('file', event.id)
@@ -327,12 +319,8 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
         markDangling('task', event.id)
         refreshProjects()
       }),
-      onProjectUpdated((event) => {
-        refresh('project', event.id)
-      }),
-      onProjectDeleted((event) => {
-        markDangling('project', event.id)
-      }),
+      onProjectUpdated((event) => refresh('project', event.id)),
+      onProjectDeleted((event) => markDangling('project', event.id)),
       onCalendarChanged((event) => {
         if (event.entityType === 'calendar_event') {
           refresh('calendar_event', event.id)
@@ -340,9 +328,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
       })
     ]
     return () => {
-      unsubscribes.forEach((unsubscribe) => {
-        unsubscribe()
-      })
+      unsubscribes.forEach((unsubscribe) => unsubscribe())
     }
   }, [])
 

@@ -135,9 +135,7 @@ describe('useWikiLinkBroken', () => {
     })
     const editor = editorWith(['Real Note', 'Ghost'])
 
-    renderHook(() => {
-      useWikiLinkBroken(editor)
-    })
+    renderHook(() => useWikiLinkBroken(editor))
     await flushResolve()
 
     expect(mocks.resolveTitles).toHaveBeenCalledTimes(1)
@@ -154,9 +152,7 @@ describe('useWikiLinkBroken', () => {
     })
     const editor = editorWith(['Sprint Plan#Goals', 'Gone#Intro', '#Local Heading'])
 
-    renderHook(() => {
-      useWikiLinkBroken(editor)
-    })
+    renderHook(() => useWikiLinkBroken(editor))
     await flushResolve()
 
     expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Gone#Intro'])
@@ -169,16 +165,12 @@ describe('useWikiLinkBroken', () => {
     mocks.resolveTitles.mockResolvedValue({ Ghost: null })
     const editor = editorWith(['Ghost'])
 
-    renderHook(() => {
-      useWikiLinkBroken(editor)
-    })
+    renderHook(() => useWikiLinkBroken(editor))
     await flushResolve()
     expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])
 
     mocks.resolveTitles.mockResolvedValue({ Ghost: { id: 'nte_new', path: 'Ghost.md' } })
-    callbacks().forEach((callback) => {
-      callback()
-    })
+    callbacks().forEach((callback) => callback())
     await flushResolve()
 
     expect(mocks.resolveTitles).toHaveBeenCalledTimes(2)
@@ -192,9 +184,7 @@ describe('useWikiLinkBroken', () => {
     })
     const editor = editorWith(['Sprint Board', 'Ghost'])
 
-    renderHook(() => {
-      useWikiLinkBroken(editor)
-    })
+    renderHook(() => useWikiLinkBroken(editor))
     await flushResolve()
 
     expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])

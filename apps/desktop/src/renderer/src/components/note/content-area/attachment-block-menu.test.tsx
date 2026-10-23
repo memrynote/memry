@@ -182,9 +182,7 @@ describe('renaming from the menu (#1714)', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
     await user.click(await screen.findByRole('button', { name: 'Rename' }))
 
-    await waitFor(() => {
-      expect(mocks.renameAttachment).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.renameAttachment).toHaveBeenCalled())
     expect(onRenamed).not.toHaveBeenCalled()
     expect(screen.getByTestId('attachment-rename-dialog')).toBeInTheDocument()
   })
@@ -207,9 +205,7 @@ function ImageMenuHostHarness() {
       {menuOpen && (
         <ImageAttachmentMenu
           target={{ x: 0, y: 0, url: URL, name: 'report.pdf', src: URL, blockId: 'b1' }}
-          onClose={() => {
-            setMenuOpen(false)
-          }}
+          onClose={() => setMenuOpen(false)}
           onRequestRename={() => {
             setRenameTarget({ url: URL, name: 'report.pdf' })
             setMenuOpen(false)

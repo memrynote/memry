@@ -93,14 +93,10 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
 
   const handleLinkLeave = () => {
     cancelTimers()
-    hideTimer.current = setTimeout(() => {
-      setPreview(null)
-    }, 100)
+    hideTimer.current = setTimeout(() => setPreview(null), 100)
   }
 
-  const handleCardEnter = () => {
-    cancelTimers()
-  }
+  const handleCardEnter = () => cancelTimers()
 
   const closePreview = () => {
     cancelTimers()
@@ -152,9 +148,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
             type="button"
             aria-label="Bookmark note"
             aria-pressed={bookmarked}
-            onClick={() => {
-              setBookmarked((value) => !value)
-            }}
+            onClick={() => setBookmarked((value) => !value)}
             className={cn(GHOST_BUTTON, bookmarked && 'text-terracotta hover:text-terracotta')}
           >
             <Bookmark className="h-3.5 w-3.5" fill={bookmarked ? 'currentColor' : 'none'} />
@@ -212,9 +206,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
                   <button
                     type="button"
                     aria-label={`Remove tag ${tag}`}
-                    onClick={() => {
-                      setTags((value) => value.filter((item) => item !== tag))
-                    }}
+                    onClick={() => setTags((value) => value.filter((item) => item !== tag))}
                     className="absolute -end-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#78716c] text-white opacity-0 shadow-sm transition-[opacity,transform] duration-150 hover:scale-110 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60 group-hover/chip:opacity-100"
                   >
                     <X className="h-2 w-2" strokeWidth={3} />
@@ -227,9 +219,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
               <button
                 type="button"
                 aria-pressed={showStatus}
-                onClick={() => {
-                  setShowStatus((value) => !value)
-                }}
+                onClick={() => setShowStatus((value) => !value)}
                 className={GHOST_PILL}
               >
                 <Plus className="h-3 w-3" />
@@ -238,9 +228,9 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
               <button
                 type="button"
                 disabled={hiddenTags.length === 0}
-                onClick={() => {
+                onClick={() =>
                   setTags((value) => (hiddenTags[0] ? [...value, hiddenTags[0]] : value))
-                }}
+                }
                 className={GHOST_PILL}
               >
                 <Plus className="h-3 w-3" />
@@ -329,9 +319,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
               <input
                 type="checkbox"
                 checked={carDone}
-                onChange={() => {
-                  setCarDone((value) => !value)
-                }}
+                onChange={() => setCarDone((value) => !value)}
                 aria-label="Toggle todo: Book the rental car"
                 className="me-2 ms-1 h-3.5 w-3.5 shrink-0 cursor-pointer accent-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
               />
@@ -348,9 +336,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
               <input
                 type="checkbox"
                 checked={dinnerDone}
-                onChange={() => {
-                  setDinnerDone((value) => !value)
-                }}
+                onChange={() => setDinnerDone((value) => !value)}
                 aria-label="Toggle todo: Reserve the harbour dinner"
                 className="me-2 ms-1 h-3.5 w-3.5 shrink-0 cursor-pointer accent-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
               />

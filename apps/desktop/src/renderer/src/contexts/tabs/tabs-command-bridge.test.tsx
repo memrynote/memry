@@ -84,9 +84,7 @@ beforeEach(() => {
 
 afterEach(() => {
   // The dispatcher subscribes to overrides, so resetting them re-renders it.
-  act(() => {
-    __setShortcutOverridesForTests({})
-  })
+  act(() => __setShortcutOverridesForTests({}))
   setShortcutRecording(false)
   hintModeActiveRef.current = false
   windowClose.mockClear()
@@ -129,14 +127,10 @@ describe('tab commands from the keyboard', () => {
     mount(makeState())
 
     press({ key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
-    await waitFor(() => {
-      expect(activeGroup().tabs[0].isPinned).toBe(true)
-    })
+    await waitFor(() => expect(activeGroup().tabs[0].isPinned).toBe(true))
 
     press({ key: 'P', code: 'KeyP', ctrlKey: true, shiftKey: true })
-    await waitFor(() => {
-      expect(activeGroup().tabs[0].isPinned).toBe(false)
-    })
+    await waitFor(() => expect(activeGroup().tabs[0].isPinned).toBe(false))
   })
 
   it('closes the active tab, and cycles tabs with Ctrl+Tab', async () => {
@@ -145,14 +139,10 @@ describe('tab commands from the keyboard', () => {
     mount(makeState([first, second]))
 
     press({ key: 'Tab', ctrlKey: true })
-    await waitFor(() => {
-      expect(activeGroup().activeTabId).toBe(second.id)
-    })
+    await waitFor(() => expect(activeGroup().activeTabId).toBe(second.id))
 
     press({ key: 'w', code: 'KeyW', ctrlKey: true })
-    await waitFor(() => {
-      expect(activeGroup().tabs.map((t) => t.id)).toEqual([first.id])
-    })
+    await waitFor(() => expect(activeGroup().tabs.map((t) => t.id)).toEqual([first.id]))
     expect(windowClose).not.toHaveBeenCalled()
   })
 
@@ -190,9 +180,7 @@ describe('closing the last tab', () => {
       press({ key: 'w', code: 'KeyW', ctrlKey: true })
 
       expect(windowClose).not.toHaveBeenCalled()
-      await waitFor(() => {
-        expect(activeGroup().tabs.every((t) => t.type !== type)).toBe(true)
-      })
+      await waitFor(() => expect(activeGroup().tabs.every((t) => t.type !== type)).toBe(true))
     }
   )
 
@@ -203,17 +191,13 @@ describe('closing the last tab', () => {
     press({ key: 'w', code: 'KeyW', ctrlKey: true })
 
     expect(windowClose).not.toHaveBeenCalled()
-    await waitFor(() => {
-      expect(activeGroup().tabs.some((t) => t.id === siblingHome.id)).toBe(false)
-    })
+    await waitFor(() => expect(activeGroup().tabs.some((t) => t.id === siblingHome.id)).toBe(false))
   })
 
   it('collapses the split instead of closing the window on a lone Home tab', async () => {
     mount(makeState([home()]))
     press({ key: '\\', code: 'Backslash', ctrlKey: true })
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('split')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('split'))
 
     press({ key: 'w', code: 'KeyW', ctrlKey: true })
 
@@ -229,14 +213,10 @@ describe('close split', () => {
     expect(press(closeSplit)).toBe(true)
 
     press({ key: '\\', code: 'Backslash', ctrlKey: true })
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('split')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('split'))
 
     expect(press(closeSplit)).toBe(false)
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('leaf')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('leaf'))
   })
 })
 
@@ -259,9 +239,7 @@ describe('when a tab chord must not fire', () => {
 
     setShortcutRecording(false)
     press({ key: '\\', code: 'Backslash', ctrlKey: true })
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('split')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('split'))
   })
 
   it('leaves the key untouched while hint mode holds the keyboard', async () => {
@@ -295,9 +273,7 @@ describe('typing and rebinding', () => {
 
     press({ key: '\\', code: 'Backslash', ctrlKey: true }, field)
 
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('split')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('split'))
     field.remove()
   })
 
@@ -314,9 +290,7 @@ describe('typing and rebinding', () => {
     act(() => {
       press({ key: 'y', code: 'KeyY', ctrlKey: true, altKey: true })
     })
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('split')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('split'))
   })
 
   it('keeps a rebind without ⌘/Ctrl out of text fields, where it would eat typing', async () => {
@@ -332,8 +306,6 @@ describe('typing and rebinding', () => {
 
     field.remove()
     press({ key: 'y', code: 'KeyY' })
-    await waitFor(() => {
-      expect(latest.layout.type).toBe('split')
-    })
+    await waitFor(() => expect(latest.layout.type).toBe('split'))
   })
 })

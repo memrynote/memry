@@ -108,9 +108,7 @@ function RowSelect<T extends string>({
       <button
         type="button"
         aria-label={ariaLabel}
-        onClick={() => {
-          setOpen((o) => !o)
-        }}
+        onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between rounded-md px-1 py-1 text-sm hover:bg-accent"
       >
         <span>{label}</span>
@@ -250,18 +248,14 @@ export function DateMentionPopover({
       <PopoverContent
         align="start"
         className="w-[250px] max-h-[520px] overflow-y-auto p-2"
-        onOpenAutoFocus={(e) => {
-          e.preventDefault()
-        }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex items-center gap-2">
           <Input
             key={dateKey}
             aria-label={t('dateMention.dateInput')}
             defaultValue={dateText}
-            onBlur={(e) => {
-              commitDateText(e.currentTarget.value)
-            }}
+            onBlur={(e) => commitDateText(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commitDateText(e.currentTarget.value)
             }}
@@ -272,9 +266,7 @@ export function DateMentionPopover({
               aria-label={t('dateMention.time')}
               type="time"
               value={`${pad(parts.h)}:${pad(parts.mi)}`}
-              onChange={(e) => {
-                handleTimeChange(e.target.value)
-              }}
+              onChange={(e) => handleTimeChange(e.target.value)}
               className="h-7 w-24"
             />
           )}
@@ -292,9 +284,7 @@ export function DateMentionPopover({
             ariaLabel={t('dateMention.dateFormat')}
             value={value.dateFormat}
             options={DATE_FORMAT_OPTIONS}
-            onSelect={(dateFormat) => {
-              onChange({ ...value, dateFormat })
-            }}
+            onSelect={(dateFormat) => onChange({ ...value, dateFormat })}
           />
 
           <div className="flex items-center justify-between py-0.5">
@@ -315,9 +305,7 @@ export function DateMentionPopover({
               ariaLabel={t('dateMention.timeFormat')}
               value={value.timeFormat}
               options={timeFormatOptions(clockFormat)}
-              onSelect={(timeFormat) => {
-                onChange({ ...value, timeFormat })
-              }}
+              onSelect={(timeFormat) => onChange({ ...value, timeFormat })}
             />
           )}
 
@@ -326,9 +314,7 @@ export function DateMentionPopover({
             ariaLabel={t('dateMention.remind')}
             value={value.remind}
             options={remindOptions(value.hasTime)}
-            onSelect={(remind) => {
-              onChange({ ...value, remind })
-            }}
+            onSelect={(remind) => onChange({ ...value, remind })}
           />
         </div>
 

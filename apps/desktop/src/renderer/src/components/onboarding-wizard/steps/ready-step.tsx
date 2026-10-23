@@ -144,9 +144,7 @@ function SyncRow({
             size="sm"
             className="h-[30px] shrink-0 text-[12.5px] font-semibold shadow-none"
             disabled={disabled}
-            onClick={() => {
-              dispatch({ type: 'goto', step: 'plan' })
-            }}
+            onClick={() => dispatch({ type: 'goto', step: 'plan' })}
           >
             {t(`${K}.choosePlan`)}
           </Button>
@@ -176,15 +174,13 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
     if (draft.folder) return
     vaultService
       .getDefaultParent()
-      .then((parent) => {
+      .then((parent) =>
         dispatch({
           type: 'update',
           patch: { folder: { kind: 'new', parent, name: t('onboardingWizard.preview.notesName') } }
         })
-      })
-      .catch((err: unknown) => {
-        log.warn('Reading the default vault folder failed', err)
-      })
+      )
+      .catch((err: unknown) => log.warn('Reading the default vault folder failed', err))
     // Runs once: later folder changes come from the user.
     // oxlint-disable-next-line react/exhaustive-deps
   }, [])
@@ -280,9 +276,7 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
               <Switch
                 aria-label={t(`${K}.metrics`)}
                 checked={draft.telemetry}
-                onCheckedChange={(telemetry) => {
-                  dispatch({ type: 'update', patch: { telemetry } })
-                }}
+                onCheckedChange={(telemetry) => dispatch({ type: 'update', patch: { telemetry } })}
               />
             </span>
           }

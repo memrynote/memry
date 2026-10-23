@@ -151,28 +151,13 @@ vi.mock('./filing-section', async () => {
     }) => (
       <section>
         filing section
-        <button
-          type="button"
-          onClick={() => {
-            onFolderSelect({ id: 'Projects', path: 'Projects' })
-          }}
-        >
+        <button type="button" onClick={() => onFolderSelect({ id: 'Projects', path: 'Projects' })}>
           select folder
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onTagsChange(['tag-a'])
-          }}
-        >
+        <button type="button" onClick={() => onTagsChange(['tag-a'])}>
           set tags
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onLinkedNotesChange([{ id: 'note-link' }])
-          }}
-        >
+        <button type="button" onClick={() => onLinkedNotesChange([{ id: 'note-link' }])}>
           link note
         </button>
       </section>
@@ -290,9 +275,9 @@ describe('InboxDetailPanel', () => {
     fireEvent.keyDown(document, { key: '1' })
     fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/memrynote', [], [], undefined)
-    })
+    )
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(props.onClose).toHaveBeenCalled()
@@ -428,9 +413,7 @@ describe('InboxDetailPanel', () => {
     await user.click(screen.getByRole('button', { name: /archive/ }))
     expect(props.onArchive).toHaveBeenCalledWith('reminder-1')
 
-    await waitFor(() => {
-      expect((window as any).api.inbox.getSuggestions).toHaveBeenCalled()
-    })
+    await waitFor(() => expect((window as any).api.inbox.getSuggestions).toHaveBeenCalled())
   })
 
   it('resizes content, clears resize state, and resets manual height on item changes', () => {

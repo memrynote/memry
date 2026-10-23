@@ -168,16 +168,14 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
           )
 
           for (const result of response.value.results ?? []) {
-            results.set(result.noteId, result.accepted)
-            if (result.accepted) {
+            results.set(result.noteId, result.accepted === true)
+            if (result.accepted === true) {
               const pushed = { sequenceNum: result.sequenceNum, revision: result.revision }
-              await Promise.resolve(deps.onPushed?.(result.noteId, pushed)).catch(
-                (err: unknown) => {
-                  log.warn('Could not record a pushed snapshot revision', { error: err })
-                }
+              await Promise.resolve(deps.onPushed?.(result.noteId, pushed)).catch((err: unknown) =>
+                log.warn('Could not record a pushed snapshot revision', { error: err })
               )
             }
-            if (!result.accepted) {
+            if (result.accepted !== true) {
               log.warn('Server rejected a snapshot inside a batch', {
                 noteId: result.noteId,
                 reason: result.reason

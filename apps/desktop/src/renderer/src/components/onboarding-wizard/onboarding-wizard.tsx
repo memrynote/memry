@@ -105,9 +105,7 @@ function useWizardKeys(state: WizardState, back: () => void): void {
       next.click()
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [state.step, back])
 }
 
@@ -124,9 +122,7 @@ export function OnboardingWizard(): React.JSX.Element {
     void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'wizard' })
   }, [])
 
-  const back = (): void => {
-    dispatch({ type: 'back' })
-  }
+  const back = (): void => dispatch({ type: 'back' })
   useWizardKeys(state, back)
 
   const progress = progressFor(state)

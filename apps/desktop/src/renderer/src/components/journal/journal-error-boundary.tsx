@@ -138,9 +138,7 @@ export class JournalErrorBoundary extends Component<
                     {t('action.reloadJournal')}
                   </Button>
                   <Button
-                    onClick={() => {
-                      window.location.reload()
-                    }}
+                    onClick={() => window.location.reload()}
                     variant="outline"
                     size="sm"
                     aria-label={t('action.goToToday')}

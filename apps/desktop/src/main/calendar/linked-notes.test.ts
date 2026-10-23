@@ -119,9 +119,7 @@ describe('calendar event note links', () => {
     }
   })
 
-  afterEach(() => {
-    closeAll()
-  })
+  afterEach(() => closeAll())
 
   it("lists a native event's notes, including ones linked to the mirror it was promoted from", () => {
     const notes = listLinkedNotes(dataDb, indexDb, { sourceType: 'event', sourceId: 'evt_g' })

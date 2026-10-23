@@ -140,9 +140,7 @@ export function ModePreviewPicker({
             aria-pressed={isActive}
             aria-label={label}
             title={label}
-            onClick={() => {
-              onChange(mode === 'light' ? storedLightMode(custom.colorTheme) : mode)
-            }}
+            onClick={() => onChange(mode === 'light' ? storedLightMode(custom.colorTheme) : mode)}
             className={cn(
               'relative h-11 w-[72px] shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border transition-shadow duration-150',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -225,9 +223,7 @@ export function ColorThemePicker({ custom, mode, onChange }: ThemeRowProps): Rea
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem
-          onSelect={() => {
-            onChange({ colorTheme: DEFAULT_COLOR_THEME_ID, ...CLEARED_OVERRIDES })
-          }}
+          onSelect={() => onChange({ colorTheme: DEFAULT_COLOR_THEME_ID, ...CLEARED_OVERRIDES })}
         >
           <ThemeSwatch palette={swatchFor(DEFAULT_COLOR_THEME_ID)} />
           <span className="flex-1 text-foreground">{defaultName}</span>
@@ -242,9 +238,7 @@ export function ColorThemePicker({ custom, mode, onChange }: ThemeRowProps): Rea
             {COLOR_THEMES.map((theme) => (
               <DropdownMenuItem
                 key={theme.id}
-                onSelect={() => {
-                  onChange({ colorTheme: theme.id, ...CLEARED_OVERRIDES })
-                }}
+                onSelect={() => onChange({ colorTheme: theme.id, ...CLEARED_OVERRIDES })}
               >
                 <ThemeSwatch palette={swatchFor(theme.id)} />
                 <span className="flex-1 text-foreground">{theme.name}</span>
@@ -255,9 +249,7 @@ export function ColorThemePicker({ custom, mode, onChange }: ThemeRowProps): Rea
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={() => {
-            onChange({ colorTheme: WARM_COLOR_THEME_ID, ...CLEARED_OVERRIDES })
-          }}
+          onSelect={() => onChange({ colorTheme: WARM_COLOR_THEME_ID, ...CLEARED_OVERRIDES })}
         >
           <ThemeSwatch palette={swatchFor(WARM_COLOR_THEME_ID)} />
           <span className="flex-1 text-foreground">{warmName}</span>
@@ -375,13 +367,9 @@ export function HexColorInput({
   useEffect(() => {
     const picker = pickerRef.current
     if (!picker) return
-    const onChange = (): void => {
-      commitRef.current(picker.value)
-    }
+    const onChange = (): void => commitRef.current(picker.value)
     picker.addEventListener('change', onChange)
-    return () => {
-      picker.removeEventListener('change', onChange)
-    }
+    return () => picker.removeEventListener('change', onChange)
   }, [])
 
   return (
@@ -414,9 +402,7 @@ export function HexColorInput({
           const hex = next.startsWith('#') ? next : `#${next}`
           if (isHexColor(hex)) onPreview(hex.toLowerCase())
         }}
-        onBlur={() => {
-          commitHex(normalized)
-        }}
+        onBlur={() => commitHex(normalized)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur()
           if (e.key === 'Escape') {
@@ -447,9 +433,7 @@ export function AccentPicker({
     : preset
       ? t(preset.labelKey)
       : t('appearance.accent.options.custom')
-  const pick = (accentColor: string): void => {
-    onChange({ accentColor, useThemeAccent: false })
-  }
+  const pick = (accentColor: string): void => onChange({ accentColor, useThemeAccent: false })
 
   return (
     <div className="flex items-center gap-2">
@@ -461,11 +445,7 @@ export function AccentPicker({
         <DropdownMenuContent align="end" className="w-44">
           {themed && (
             <>
-              <DropdownMenuItem
-                onSelect={() => {
-                  onChange({ useThemeAccent: true })
-                }}
-              >
+              <DropdownMenuItem onSelect={() => onChange({ useThemeAccent: true })}>
                 <span
                   aria-hidden
                   className="size-3 rounded-full"
@@ -484,12 +464,7 @@ export function AccentPicker({
             </>
           )}
           {ACCENT_PRESETS.map((p) => (
-            <DropdownMenuItem
-              key={p.value}
-              onSelect={() => {
-                pick(p.value)
-              }}
-            >
+            <DropdownMenuItem key={p.value} onSelect={() => pick(p.value)}>
               <span
                 aria-hidden
                 className="size-3 rounded-full"
@@ -508,9 +483,7 @@ export function AccentPicker({
         onCommit={pick}
         ariaLabel={t('appearance.accent.custom.label')}
         pickerLabel={t('appearance.colors.pick')}
-        onPreview={(hex) => {
-          onPreview(hex ? { accentColor: hex, useThemeAccent: false } : null)
-        }}
+        onPreview={(hex) => onPreview(hex ? { accentColor: hex, useThemeAccent: false } : null)}
       />
     </div>
   )
@@ -543,23 +516,17 @@ export function ColorOverrideInput({
           className={ICON_BUTTON}
           aria-label={t('appearance.colors.reset')}
           title={t('appearance.colors.reset')}
-          onClick={() => {
-            onChange({ [field]: '' })
-          }}
+          onClick={() => onChange({ [field]: '' })}
         >
           <Undo className="size-3" />
         </button>
       )}
       <HexColorInput
         value={effective}
-        onCommit={(hex) => {
-          onChange({ [field]: hex })
-        }}
+        onCommit={(hex) => onChange({ [field]: hex })}
         ariaLabel={t(`appearance.colors.${kind}`)}
         pickerLabel={t('appearance.colors.pick')}
-        onPreview={(hex) => {
-          onPreview(hex ? { [field]: hex } : null)
-        }}
+        onPreview={(hex) => onPreview(hex ? { [field]: hex } : null)}
       />
     </div>
   )
@@ -584,9 +551,7 @@ export function AdvancedDisclosure({
   // body is visible (scrolling a hidden row goes nowhere).
   const revealRef = useRef((target: Element): void => {
     setOpen(true)
-    requestAnimationFrame(() => {
-      target.scrollIntoView?.({ block: 'center' })
-    })
+    requestAnimationFrame(() => target.scrollIntoView?.({ block: 'center' }))
   })
 
   useEffect(() => {
@@ -601,9 +566,7 @@ export function AdvancedDisclosure({
     // False positive: `open` only changes from the observer callback, not here.
     // oxlint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
     observer.observe(body, { subtree: true, attributeFilter: ['data-search-hit'] })
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
   return (
@@ -612,9 +575,7 @@ export function AdvancedDisclosure({
         <button
           type="button"
           aria-expanded={open}
-          onClick={() => {
-            setOpen((v) => !v)
-          }}
+          onClick={() => setOpen((v) => !v)}
           data-settings-label={t('appearance.advanced.title')}
           className="flex cursor-pointer items-center gap-1 rounded-md text-[13px]/4 font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >

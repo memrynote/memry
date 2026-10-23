@@ -68,12 +68,12 @@ describe('Appearance font size stepper', () => {
 
     fireEvent.click(increaseButton())
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontSizePx: 17,
         fontSize: 'medium'
       })
-    })
+    )
   })
 
   it('#given the decrease button #then the interface shrinks one pixel and the step is saved', async () => {
@@ -83,12 +83,12 @@ describe('Appearance font size stepper', () => {
 
     expect(document.documentElement.style.fontSize).toBe('15px')
     expect(screen.getByText('15')).toBeInTheDocument()
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontSizePx: 15,
         fontSize: 'small'
       })
-    })
+    )
   })
 
   it('#given the reset button #then the size returns to the default', async () => {
@@ -106,12 +106,12 @@ describe('Appearance font size stepper', () => {
 
     fireEvent.click(resetButton())
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontSizePx: 16,
         fontSize: 'medium'
       })
-    })
+    )
     expect(document.documentElement.style.fontSize).toBe('16px')
   })
 
@@ -121,9 +121,7 @@ describe('Appearance font size stepper', () => {
 
     fireEvent.click(increaseButton())
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Failed to update font size')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update font size'))
     // The settings hook never re-runs for a value that never changed, so the
     // row has to hand the previous size back to the root element itself.
     expect(document.documentElement.style.fontSize).toBe('16px')
@@ -162,12 +160,12 @@ describe('Appearance font size stepper', () => {
     fireEvent.click(increaseButton())
 
     expect(screen.getByText('19')).toBeInTheDocument()
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontSizePx: 19,
         fontSize: 'large'
       })
-    })
+    )
     expect(mocks.generalSettings.updateSettings).toHaveBeenCalledTimes(1)
   })
 
@@ -179,12 +177,12 @@ describe('Appearance font size stepper', () => {
 
     unmount()
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontSizePx: 15,
         fontSize: 'small'
       })
-    })
+    )
   })
 
   it('#given only the legacy bucket is stored #then the row starts at that pixel size', () => {

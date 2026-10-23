@@ -59,9 +59,7 @@ async function editorText(page: Page): Promise<string> {
       document.querySelector('.bn-block-content')
     if (!block) return ''
     const clone = block.cloneNode(true) as HTMLElement
-    clone.querySelectorAll('.date-mention-ghost').forEach((n) => {
-      n.remove()
-    })
+    clone.querySelectorAll('.date-mention-ghost').forEach((n) => n.remove())
     return (clone.textContent ?? '').replace(/ /g, ' ').trim()
   })
 }

@@ -37,13 +37,9 @@ describe('useReadwiseErrorToast', () => {
     'shows one toast for %s, with a button that opens Readwise',
     async (kind) => {
       status.mockResolvedValue(connected(kind))
-      renderHook(() => {
-        useReadwiseErrorToast(open)
-      })
+      renderHook(() => useReadwiseErrorToast(open))
 
-      await waitFor(() => {
-        expect(toastMock).toHaveBeenCalledTimes(1)
-      })
+      await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
       const [title, options] = toastMock.mock.calls[0]
       expect(title).toBe(`import.dialog.readwise.errorToast.${kind}.title`)
       expect(options.action.label).toBe('import.dialog.readwise.errorToast.open')
@@ -55,13 +51,9 @@ describe('useReadwiseErrorToast', () => {
   it('shows nothing when main says this episode already had its toast', async () => {
     status.mockResolvedValue(connected('invalid-token'))
     ackErrorToast.mockResolvedValue({ first: false })
-    renderHook(() => {
-      useReadwiseErrorToast(open)
-    })
+    renderHook(() => useReadwiseErrorToast(open))
 
-    await waitFor(() => {
-      expect(ackErrorToast).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(ackErrorToast).toHaveBeenCalled())
     expect(toastMock).not.toHaveBeenCalled()
   })
 
@@ -69,18 +61,10 @@ describe('useReadwiseErrorToast', () => {
     'never toasts for %s, and does not even claim the episode',
     async (kind) => {
       status.mockResolvedValue(connected(kind))
-      renderHook(() => {
-        useReadwiseErrorToast(open)
-      })
-      await waitFor(() => {
-        expect(status).toHaveBeenCalled()
-      })
-      act(() => {
-        listeners.forEach((listener) => listener())
-      })
-      await waitFor(() => {
-        expect(status).toHaveBeenCalledTimes(2)
-      })
+      renderHook(() => useReadwiseErrorToast(open))
+      await waitFor(() => expect(status).toHaveBeenCalled())
+      act(() => listeners.forEach((listener) => listener()))
+      await waitFor(() => expect(status).toHaveBeenCalledTimes(2))
       expect(ackErrorToast).not.toHaveBeenCalled()
       expect(toastMock).not.toHaveBeenCalled()
     }
@@ -88,28 +72,18 @@ describe('useReadwiseErrorToast', () => {
 
   it('checks again when a run fails, and survives a status that cannot be read', async () => {
     status.mockRejectedValueOnce(new Error('no vault'))
-    renderHook(() => {
-      useReadwiseErrorToast(open)
-    })
-    await waitFor(() => {
-      expect(status).toHaveBeenCalledTimes(1)
-    })
+    renderHook(() => useReadwiseErrorToast(open))
+    await waitFor(() => expect(status).toHaveBeenCalledTimes(1))
     expect(toastMock).not.toHaveBeenCalled()
 
     status.mockResolvedValue(connected('invalid-token'))
-    act(() => {
-      listeners.forEach((listener) => listener())
-    })
-    await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledTimes(1)
-    })
+    act(() => listeners.forEach((listener) => listener()))
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1))
   })
 
   it('stops listening on unmount', () => {
     status.mockResolvedValue(connected(null))
-    const { unmount } = renderHook(() => {
-      useReadwiseErrorToast(open)
-    })
+    const { unmount } = renderHook(() => useReadwiseErrorToast(open))
     unmount()
     expect(listeners).toHaveLength(0)
   })

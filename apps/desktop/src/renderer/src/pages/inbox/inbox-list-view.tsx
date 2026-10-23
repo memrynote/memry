@@ -172,9 +172,7 @@ export function InboxListView({
       setActiveDetailItemId(focusItemId)
       setFocusedItemIdState(focusItemId)
     }, 0)
-    return () => {
-      window.clearTimeout(focusTimer)
-    }
+    return () => window.clearTimeout(focusTimer)
   }, [focusItemId, focusSequence, setActiveDetailItemId])
 
   // Computed values
@@ -191,9 +189,7 @@ export function InboxListView({
     return items.find((item) => item.id === storedDetailItemId) || null
   }, [storedDetailItemId, fullDetailItem, items])
 
-  const clearDetailItemId = useCallback(() => {
-    setActiveDetailItemId(null)
-  }, [setActiveDetailItemId])
+  const clearDetailItemId = useCallback(() => setActiveDetailItemId(null), [setActiveDetailItemId])
 
   // Archiving sets the item query to `null` outright, and a restored id can name
   // an item that is gone entirely. The panel's close button lives inside its
@@ -287,13 +283,9 @@ export function InboxListView({
     isInBulkMode,
     focusedItemId,
     items,
-    onRefresh: () => {
-      refetch()
-    },
+    onRefresh: () => refetch(),
     onArchiveFocusedItem: (itemId, nextItemId) => void archiveWithAnimation(itemId, nextItemId),
-    onOpenBulkArchiveDialog: () => {
-      setIsArchiveDialogOpen(true)
-    },
+    onOpenBulkArchiveDialog: () => setIsArchiveDialogOpen(true),
     onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer')
   })
 
@@ -868,9 +860,7 @@ export function InboxListView({
       void handlePaste(event)
     }
     window.addEventListener('paste', handlePasteEvent)
-    return () => {
-      window.removeEventListener('paste', handlePasteEvent)
-    }
+    return () => window.removeEventListener('paste', handlePasteEvent)
   }, [handleImageCapture])
 
   // === RENDER ===
@@ -961,13 +951,7 @@ export function InboxListView({
             <div className="flex flex-col items-center justify-center h-64 gap-4">
               <AlertCircle className="size-8 text-destructive/60" />
               <p className="text-sm text-destructive/80 font-serif">{t('loading.failed')}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  refetch()
-                }}
-              >
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
                 {t('loading.tryAgain')}
               </Button>
             </div>
@@ -1001,15 +985,9 @@ export function InboxListView({
         {/* Bulk & Detail components */}
         <BulkActionBar
           selectedCount={selectedCount}
-          onFileAll={() => {
-            setIsBulkFilePanelOpen(true)
-          }}
-          onTagAll={() => {
-            setIsBulkTagPopoverOpen(true)
-          }}
-          onArchiveAll={() => {
-            setIsArchiveDialogOpen(true)
-          }}
+          onFileAll={() => setIsBulkFilePanelOpen(true)}
+          onTagAll={() => setIsBulkTagPopoverOpen(true)}
+          onArchiveAll={() => setIsArchiveDialogOpen(true)}
           onSnoozeAll={(...args) => void handleBulkSnoozeAll(...args)}
           aiSuggestion={aiSuggestion}
           onAddSuggestionToSelection={handleAddSuggestionToSelection}
@@ -1019,9 +997,7 @@ export function InboxListView({
         <BulkFilePanel
           isOpen={isBulkFilePanelOpen}
           items={selectedItems}
-          onClose={() => {
-            setIsBulkFilePanelOpen(false)
-          }}
+          onClose={() => setIsBulkFilePanelOpen(false)}
           onFile={(...args) => void handleBulkFileComplete(...args)}
         />
 
@@ -1037,9 +1013,7 @@ export function InboxListView({
           isOpen={isArchiveDialogOpen}
           itemCount={selectedCount}
           onConfirm={handleBulkArchiveConfirm}
-          onCancel={() => {
-            setIsArchiveDialogOpen(false)
-          }}
+          onCancel={() => setIsArchiveDialogOpen(false)}
         />
       </div>
 
@@ -1047,9 +1021,7 @@ export function InboxListView({
         isOpen={isDetailPanelOpen}
         item={activeDetailItem}
         isLoading={isDetailLoading}
-        onClose={() => {
-          setActiveDetailItemId(null)
-        }}
+        onClose={() => setActiveDetailItemId(null)}
         onFile={handleFilingComplete}
         onArchive={(...args) => void handleArchive(...args)}
       />

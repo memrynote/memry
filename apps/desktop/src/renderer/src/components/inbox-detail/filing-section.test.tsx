@@ -32,12 +32,7 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
     <div>
       <span>tags {tags.join(',')}</span>
       {aiSuggestedTags.length > 0 && <span>ai tags {aiSuggestedTags.join(',')}</span>}
-      <button
-        type="button"
-        onClick={() => {
-          onTagsChange([...tags, 'review'])
-        }}
-      >
+      <button type="button" onClick={() => onTagsChange([...tags, 'review'])}>
         add tag
       </button>
     </div>
@@ -56,9 +51,9 @@ vi.mock('./link-input', () => ({
       <span>linked {linkedNotes.map((note) => note.title).join(',')}</span>
       <button
         type="button"
-        onClick={() => {
+        onClick={() =>
           onLinkedNotesChange([...linkedNotes, { id: 'manual', title: 'Manual', type: 'note' }])
-        }}
+        }
       >
         link manual
       </button>
@@ -206,11 +201,11 @@ describe('FilingSection', () => {
       />
     )
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(onFolderSelect).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'Projects/memrynote', aiConfidence: 0.91 })
       )
-    })
+    )
 
     expect(await screen.findAllByText('Projects / memrynote')).not.toHaveLength(0)
     expect(screen.getByText('ai tags research,link')).toBeInTheDocument()
@@ -236,9 +231,7 @@ describe('FilingSection', () => {
     await userEvent.type(screen.getByPlaceholderText('searchOrCreateFolder'), 'Areas/Writing')
     await userEvent.click(screen.getByRole('button', { name: 'detail.createFolder:Areas/Writing' }))
 
-    await waitFor(() => {
-      expect(api.notes.createFolder).toHaveBeenCalledWith('Areas/Writing')
-    })
+    await waitFor(() => expect(api.notes.createFolder).toHaveBeenCalledWith('Areas/Writing'))
     expect(onFolderSelect).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'Areas/Writing', path: 'Areas/Writing', parent: 'Areas' })
     )
@@ -344,9 +337,7 @@ describe('FilingSection', () => {
     expect(result.current.selectedFolder).toBeNull()
     expect(result.current.tags).toEqual(['fresh'])
 
-    act(() => {
-      result.current.resetFilingState()
-    })
+    act(() => result.current.resetFilingState())
     expect(result.current.tags).toEqual([])
     expect(result.current.canFile).toBe(false)
   })

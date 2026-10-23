@@ -76,12 +76,12 @@ describe('VaultActivitySettings', () => {
 
     expect(await screen.findByText('vault.activity.empty')).toBeInTheDocument()
     fireEvent.click(screen.getByText('vault.activity.filter.problems'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.vaultActivity.list).toHaveBeenLastCalledWith({
         limit: 200,
         filter: 'problems'
       })
-    })
+    )
     expect(await screen.findByText('vault.activity.emptyProblems')).toBeInTheDocument()
   })
 
@@ -91,9 +91,7 @@ describe('VaultActivitySettings', () => {
     renderActivity()
 
     fireEvent.click(await screen.findByText('vault.activity.reveal'))
-    await waitFor(() => {
-      expect(window.api.vaultActivity.reveal).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.vaultActivity.reveal).toHaveBeenCalled())
   })
 
   it('clears only after confirmation', async () => {
@@ -118,9 +116,7 @@ describe('VaultActivitySettings', () => {
     fireEvent.click(screen.getByText('vault.activity.clear'))
     expect(window.api.vaultActivity.clear).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('vault.activity.clearConfirm'))
-    await waitFor(() => {
-      expect(window.api.vaultActivity.clear).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.vaultActivity.clear).toHaveBeenCalled())
   })
 
   it('names the importer and expands a summary into its items', async () => {
@@ -199,15 +195,11 @@ describe('VaultActivitySettings', () => {
 
     await screen.findByText('vault.activity.entry.added:a.md')
     fireEvent.click(screen.getByText('vault.activity.reveal'))
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('no finder')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('no finder'))
 
     fireEvent.click(screen.getByText('vault.activity.clear'))
     fireEvent.click(screen.getByText('vault.activity.clearConfirm'))
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('read-only')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('read-only'))
   })
 
   it('refetches when the main process says the log changed', async () => {
@@ -223,9 +215,9 @@ describe('VaultActivitySettings', () => {
     await screen.findByText('vault.activity.empty')
     const calls = vi.mocked(window.api.vaultActivity.list).mock.calls.length
     onChanged?.()
-    await waitFor(() => {
+    await waitFor(() =>
       expect(vi.mocked(window.api.vaultActivity.list).mock.calls.length).toBeGreaterThan(calls)
-    })
+    )
   })
 
   it('says to open a vault when none is open', async () => {

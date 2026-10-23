@@ -527,12 +527,8 @@ export const IconPicker = ({
       aria-label={tPhaseF('phaseF.componentsIconPicker.iconPicker')}
       // Keep interactions from reaching a host modal's dismiss + focus-trap layers,
       // which would otherwise close the dialog or steal focus from the search box.
-      onPointerDown={(e) => {
-        e.stopPropagation()
-      }}
-      onFocus={(e) => {
-        e.stopPropagation()
-      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="border-b p-3">
@@ -554,9 +550,7 @@ export const IconPicker = ({
           type="text"
           placeholder={tPhaseF('phaseF.componentsIconPicker.searchIcons')}
           value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value)
-          }}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="h-8 text-sm"
         />
       </div>
@@ -565,9 +559,7 @@ export const IconPicker = ({
       <div className="flex gap-1 overflow-x-auto border-b p-2">
         <button
           type="button"
-          onClick={() => {
-            setSelectedCategory(null)
-          }}
+          onClick={() => setSelectedCategory(null)}
           className={cn(
             'shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors',
             !selectedCategory ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
@@ -579,9 +571,7 @@ export const IconPicker = ({
           <button
             key={category}
             type="button"
-            onClick={() => {
-              setSelectedCategory(category)
-            }}
+            onClick={() => setSelectedCategory(category)}
             className={cn(
               'shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors',
               selectedCategory === category
@@ -619,9 +609,7 @@ export const IconPicker = ({
                 <button
                   key={iconName}
                   type="button"
-                  onClick={() => {
-                    handleIconSelect(iconName)
-                  }}
+                  onClick={() => handleIconSelect(iconName)}
                   className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
                     'hover:bg-accent focus:bg-accent focus:outline-none',

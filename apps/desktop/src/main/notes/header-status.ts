@@ -90,9 +90,9 @@ export async function syncHeaderStatus(
 const queues = new Map<string, Promise<void>>()
 
 function enqueue(noteId: string, work: () => Promise<void>): void {
-  const run = (queues.get(noteId) ?? Promise.resolve()).then(work).catch((error: unknown) => {
-    logger.warn('Header status sync failed', { noteId, error })
-  })
+  const run = (queues.get(noteId) ?? Promise.resolve())
+    .then(work)
+    .catch((error: unknown) => logger.warn('Header status sync failed', { noteId, error }))
   queues.set(noteId, run)
   void run.finally(() => {
     if (queues.get(noteId) === run) queues.delete(noteId)

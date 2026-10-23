@@ -76,22 +76,16 @@ export default function App() {
         if (r.connection !== 'app-closed') {
           browser.runtime
             .sendMessage({ type: 'GET_TAGS' })
-            .then((tags: string[]) => {
-              setTagSuggestions(Array.isArray(tags) ? tags : [])
-            })
+            .then((tags: string[]) => setTagSuggestions(Array.isArray(tags) ? tags : []))
             .catch(() => {})
         }
         if (!r.canPickFolder) return
         browser.runtime
           .sendMessage({ type: 'GET_FOLDERS' })
-          .then((list: FolderList | null) => {
-            setFolderList(list ?? null)
-          })
+          .then((list: FolderList | null) => setFolderList(list ?? null))
           .catch(() => {})
       })
-      .catch(() => {
-        dispatch({ type: 'STATUS', connection: 'app-closed', port: null })
-      })
+      .catch(() => dispatch({ type: 'STATUS', connection: 'app-closed', port: null }))
 
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.id) {
@@ -107,18 +101,14 @@ export default function App() {
       const pdfFallback = () => buildPdfDraft({ url: tab.url, title: tab.title })
       browser.tabs
         .sendMessage(tab.id, { type: 'EXTRACT' })
-        .then((r: ExtractResponse) => {
+        .then((r: ExtractResponse) =>
           dispatch({ type: 'DRAFT_READY', draft: r.ok ? r.capture : pdfFallback() })
-        })
-        .catch(() => {
-          dispatch({ type: 'DRAFT_READY', draft: pdfFallback() })
-        })
+        )
+        .catch(() => dispatch({ type: 'DRAFT_READY', draft: pdfFallback() }))
     })
   }, [])
 
-  const setDraft = (draft: ArticleCapture) => {
-    dispatch({ type: 'EDIT', draft })
-  }
+  const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
 
   // Probe the desktop app again. The mount probe may have run while the Firefox
   // host permission was still blocked and cached a stale 'app-closed'.
@@ -153,10 +143,7 @@ export default function App() {
     noteSent(result, draft.folder)
     dispatch({ type: 'SAVE_DONE', result })
     // Flash a "Sent" confirmation, then close. Offline-queued / error stay open.
-    if (result.ok)
-      setTimeout(() => {
-        window.close()
-      }, 600)
+    if (result.ok) setTimeout(() => window.close(), 600)
     return result
   }
 
@@ -170,10 +157,7 @@ export default function App() {
       .catch(() => ({ ok: false, error: 'network' }))
     noteSent(result, draft.folder)
     dispatch({ type: 'SAVE_DONE', result })
-    if (result.ok)
-      setTimeout(() => {
-        window.close()
-      }, 600)
+    if (result.ok) setTimeout(() => window.close(), 600)
   }
 
   // One button. Request every origin this capture needs in a single prompt — a
@@ -228,9 +212,7 @@ export default function App() {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [phase])
 
   const draft = state.draft
@@ -339,9 +321,9 @@ export default function App() {
                 <EditableTitle
                   value={draft.properties.title}
                   disabled={!editable}
-                  onChange={(title) => {
+                  onChange={(title) =>
                     setDraft({ ...draft, properties: { ...draft.properties, title } })
-                  }}
+                  }
                 />
 
                 {draft.extractionStatus === 'failed' && (
@@ -354,9 +336,7 @@ export default function App() {
                   tags={draft.tags ?? []}
                   suggestions={tagSuggestions}
                   disabled={!editable}
-                  onChange={(tags) => {
-                    setDraft({ ...draft, tags })
-                  }}
+                  onChange={(tags) => setDraft({ ...draft, tags })}
                 />
 
                 {folderList && (
@@ -390,9 +370,7 @@ export default function App() {
                       key={draft.properties.source}
                       defaultValue={stripHtml(draft.contentMarkdown)}
                       disabled={!editable}
-                      onChange={(e) => {
-                        setDraft({ ...draft, contentMarkdown: e.target.value })
-                      }}
+                      onChange={(e) => setDraft({ ...draft, contentMarkdown: e.target.value })}
                       className="mt-1.5 max-h-64 min-h-24 w-full resize-y overflow-y-auto rounded-md border border-border bg-transparent p-2 font-sans text-[13px] leading-relaxed text-text-secondary outline-none focus:border-text-tertiary"
                     />
                   </details>
@@ -416,9 +394,7 @@ export default function App() {
                     <PropertyRows
                       properties={draft.properties}
                       disabled={!editable}
-                      onChange={(properties) => {
-                        setDraft({ ...draft, properties })
-                      }}
+                      onChange={(properties) => setDraft({ ...draft, properties })}
                     />
                   </div>
                 </details>
@@ -447,12 +423,7 @@ export default function App() {
           {phase === 'saved' && <PrimaryButton label={sentLabel} disabled />}
           {phase === 'launching' && <PrimaryButton label="Opening Memry…" disabled />}
           {phase === 'error' && (
-            <PrimaryButton
-              label="Try again"
-              onClick={() => {
-                dispatch({ type: 'RETRY' })
-              }}
-            />
+            <PrimaryButton label="Try again" onClick={() => dispatch({ type: 'RETRY' })} />
           )}
         </footer>
       )}

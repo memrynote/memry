@@ -71,8 +71,8 @@ export function offerRuntimeDataDbRecovery(dbPath: string, error: unknown): void
   logger.error(`SQLITE_CORRUPT from ${dbPath} mid-session — offering recovery`, error)
   trackMainError('vault', 'data_db_corrupt_runtime', error)
   setImmediate(() => {
-    offerDataDbRecovery(dbPath).catch((recoveryError: unknown) => {
+    offerDataDbRecovery(dbPath).catch((recoveryError: unknown) =>
       logger.error('Mid-session data.db recovery failed', recoveryError)
-    })
+    )
   })
 }

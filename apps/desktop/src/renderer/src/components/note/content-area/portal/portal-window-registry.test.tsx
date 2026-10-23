@@ -96,12 +96,8 @@ describe('portal window registry', () => {
     const offB = registerPortalWindow(B, { view: b.view, sourceNoteId: 'src' })
 
     expect(() => {
-      renderHook(() => {
-        usePortalInlineMarks(A, handlers())
-      })
-      renderHook(() => {
-        usePortalInlineMarks(B, handlers())
-      })
+      renderHook(() => usePortalInlineMarks(A, handlers()))
+      renderHook(() => usePortalInlineMarks(B, handlers()))
     }).not.toThrow()
     const keyed = (view: typeof a.view) =>
       view.state.plugins.filter((p) =>

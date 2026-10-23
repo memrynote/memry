@@ -36,13 +36,9 @@ export function useReadwiseStatus(enabled: boolean): {
   // A run starting, moving on or ending changes what the row says.
   useEffect(() => {
     if (!enabled) return
-    return window.api.onReadwiseStatusChanged(() => {
-      setNonce((n) => n + 1)
-    })
+    return window.api.onReadwiseStatusChanged(() => setNonce((n) => n + 1))
   }, [enabled])
 
-  const refresh = useCallback(() => {
-    setNonce((n) => n + 1)
-  }, [])
+  const refresh = useCallback(() => setNonce((n) => n + 1), [])
   return { status, refresh }
 }

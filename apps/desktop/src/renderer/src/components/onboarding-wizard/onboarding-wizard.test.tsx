@@ -87,11 +87,11 @@ describe('first-run wizard', () => {
       '/Users/k/Documents/Memry',
       'onboardingWizard.preview.notesName'
     )
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setFeaturesSettings).toHaveBeenCalledWith(
         expect.objectContaining({ tasks: false, journal: true })
       )
-    })
+    )
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ enabled: false })
     expect(api.settings.loadAIModel).not.toHaveBeenCalled()
     // The wizard replaces the sidebar tour.
@@ -152,9 +152,7 @@ describe('first-run wizard', () => {
     await screen.findByText('onboardingWizard.ready.existingFolderHint')
     await press(/ready\.open/)
 
-    await waitFor(() => {
-      expect(api.vault.select).toHaveBeenCalledWith('/Users/k/Old')
-    })
+    await waitFor(() => expect(api.vault.select).toHaveBeenCalledWith('/Users/k/Old'))
     expect(api.settings.setFeaturesSettings).not.toHaveBeenCalled()
     expect(api.settings.setGeneralSettings).not.toHaveBeenCalledWith(
       expect.objectContaining({ theme: expect.anything() })

@@ -373,9 +373,7 @@ export function scheduleWriteback(
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
     runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err: unknown) => {
-        reportWritebackFailure(noteId, err)
-      })
+      .catch((err: unknown) => reportWritebackFailure(noteId, err))
       .finally(() => {
         inFlightWritebacks.delete(noteId)
       })
@@ -462,9 +460,9 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
 export async function settleWriteback(noteId: string): Promise<void> {
   const pending = pendingTimers.get(noteId)
   if (!pending) return
-  await writebackNow(noteId, pending.doc).catch((err: unknown) => {
+  await writebackNow(noteId, pending.doc).catch((err: unknown) =>
     reportWritebackFailure(noteId, err)
-  })
+  )
 }
 
 export function cancelPendingWritebacks(): void {
@@ -716,9 +714,9 @@ function applyAttachmentRenames(
   try {
     const vaultRoot = getVaultRoot()
     reconcileRenamedAttachments(noteId, previousContent, nextContent, vaultRoot)
-    void placeLinkedDownloads(getDatabase(), vaultRoot, noteId).catch((err: unknown) => {
+    void placeLinkedDownloads(getDatabase(), vaultRoot, noteId).catch((err: unknown) =>
       log.warn('Placing linked downloads failed during write-back', { noteId, err })
-    })
+    )
   } catch (err) {
     log.warn('Attachment rename reconcile failed during write-back', { noteId, err })
   }

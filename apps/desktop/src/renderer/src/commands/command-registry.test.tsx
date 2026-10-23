@@ -149,16 +149,12 @@ describe('tab-scoped owners in a split view', () => {
 
     await expect(runCommand('view.zoomIn', 'ui')).resolves.toBe('unavailable')
 
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-right', activeGroupId: 'group-tab-right' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-right', activeGroupId: 'group-tab-right' }))
     await runCommand('view.zoomIn', 'ui')
     expect(right).toHaveBeenCalledTimes(1)
     expect(left).not.toHaveBeenCalled()
 
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-left', activeGroupId: 'group-tab-left' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-left', activeGroupId: 'group-tab-left' }))
     await runCommand('view.zoomIn', 'ui')
     expect(left).toHaveBeenCalledTimes(1)
     expect(right).toHaveBeenCalledTimes(1)
@@ -167,9 +163,7 @@ describe('tab-scoped owners in a split view', () => {
   it('drops a tab registration when its tab closes', async () => {
     const run = vi.fn()
     const { rerender } = render(inTab('tab-a', <PageOwner run={run} />))
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' }))
     await expect(runCommand('view.zoomIn', 'ui')).resolves.toBe('ran')
 
     rerender(<></>)
@@ -178,9 +172,7 @@ describe('tab-scoped owners in a split view', () => {
 
   it('registers nothing outside a tab', async () => {
     render(<PageOwner run={vi.fn()} />)
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' }))
     await expect(runCommand('view.zoomIn', 'ui')).resolves.toBe('unavailable')
   })
 })
@@ -203,9 +195,7 @@ describe('availability subscription', () => {
     owner.rerender(<AppOwner run={vi.fn()} label="Hide Day Panel" enabled={false} />)
     expect(result.current.commands).toEqual([])
 
-    act(() => {
-      publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' })
-    })
+    act(() => publishActiveContext({ activeTabId: 'tab-a', activeGroupId: 'g' }))
     expect(result.current.activeTabId).toBe('tab-a')
   })
 })

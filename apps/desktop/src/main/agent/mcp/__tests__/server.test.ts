@@ -687,13 +687,11 @@ function buildTool(
 function withDeadline(promise: Promise<unknown>, ms: number): Promise<'stopped'> {
   let timer: NodeJS.Timeout
   const deadline = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => {
-      reject(new Error(`stop() did not resolve within ${ms}ms`))
-    }, ms)
+    timer = setTimeout(() => reject(new Error(`stop() did not resolve within ${ms}ms`)), ms)
   })
-  return Promise.race([promise.then(() => 'stopped' as const), deadline]).finally(() => {
+  return Promise.race([promise.then(() => 'stopped' as const), deadline]).finally(() =>
     clearTimeout(timer)
-  })
+  )
 }
 
 async function mcpPost(

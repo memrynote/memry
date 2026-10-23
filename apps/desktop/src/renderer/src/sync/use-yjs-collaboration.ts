@@ -150,9 +150,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     setRebindGate: (gate) => {
       rebindGate = gate
     },
-    resumeRebind: () => {
-      provider.resumeRebind()
-    },
+    resumeRebind: () => provider.resumeRebind(),
     destroy: () => {
       destroyed = true
       provider.destroy()
@@ -239,9 +237,7 @@ export function useYjsCollaboration(
       if (destroyed) return
       setIsSideEffectOwner(isOwner)
     }
-    const onOwnerChange = (isOwner: boolean): void => {
-      ownerChangeRef.current(isOwner)
-    }
+    const onOwnerChange = (isOwner: boolean): void => ownerChangeRef.current(isOwner)
     const slotKey = registrySlotKey(scope, noteId)
     const parked = parkedRef.current
     let entry: DocEntry

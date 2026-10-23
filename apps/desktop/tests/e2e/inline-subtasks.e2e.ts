@@ -680,16 +680,8 @@ test.describe('Inline Subtasks', () => {
           const clickable = secondBlock.querySelector<HTMLElement>('[data-task-title-trigger]')
           if (clickable) {
             clickable.click()
-            await new Promise((r) =>
-              requestAnimationFrame(() => {
-                r(null)
-              })
-            )
-            await new Promise((r) =>
-              requestAnimationFrame(() => {
-                r(null)
-              })
-            )
+            await new Promise((r) => requestAnimationFrame(() => r(null)))
+            await new Promise((r) => requestAnimationFrame(() => r(null)))
             input = secondBlock.querySelector<HTMLInputElement>('input[type="text"]')
           }
         }
@@ -790,16 +782,8 @@ test.describe('Inline Subtasks', () => {
       let input = childBlock.querySelector<HTMLInputElement>('input[type="text"]')
       if (!input) {
         childBlock.querySelector<HTMLElement>('[data-task-title-trigger]')?.click()
-        await new Promise((r) =>
-          requestAnimationFrame(() => {
-            r(null)
-          })
-        )
-        await new Promise((r) =>
-          requestAnimationFrame(() => {
-            r(null)
-          })
-        )
+        await new Promise((r) => requestAnimationFrame(() => r(null)))
+        await new Promise((r) => requestAnimationFrame(() => r(null)))
         input = childBlock.querySelector<HTMLInputElement>('input[type="text"]')
       }
       if (!input) return { reason: 'no input' }
@@ -983,11 +967,7 @@ test.describe('Inline Subtasks', () => {
       if (!para) return { reason: 'no paragraph' }
       editor.setTextCursorPosition(para.id, 'start')
       editor.focus()
-      await new Promise((r) =>
-        requestAnimationFrame(() => {
-          r(null)
-        })
-      )
+      await new Promise((r) => requestAnimationFrame(() => r(null)))
       const editable = document.querySelector<HTMLElement>(
         '[aria-label="Rich text editor"] [contenteditable="true"]'
       )
@@ -1067,16 +1047,8 @@ test.describe('Inline Subtasks', () => {
         const clickable = block.querySelector<HTMLElement>('[data-task-title-trigger]')
         if (clickable) {
           clickable.click()
-          await new Promise((r) =>
-            requestAnimationFrame(() => {
-              r(null)
-            })
-          )
-          await new Promise((r) =>
-            requestAnimationFrame(() => {
-              r(null)
-            })
-          )
+          await new Promise((r) => requestAnimationFrame(() => r(null)))
+          await new Promise((r) => requestAnimationFrame(() => r(null)))
           input = block.querySelector<HTMLInputElement>('input[type="text"]')
         }
       }

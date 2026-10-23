@@ -562,9 +562,9 @@ describe('FileBlock url resolution', () => {
   it('renders a note-relative ref through the resolver', async () => {
     const { block } = renderBlock(RELATIVE, async () => ABSOLUTE)
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(screen.getByTestId('pdf-document')).toHaveAttribute('data-file', ABSOLUTE)
-    })
+    )
     // Render-time only: writing the resolved URL back would serialize this
     // machine's vault path into the note's markdown — the bug itself.
     expect(block.props.url).toBe(RELATIVE)

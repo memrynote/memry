@@ -52,21 +52,12 @@ export function InboxHeaderFilter({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem
-          onSelect={() => {
-            onChange({ ...config, type: undefined })
-          }}
-        >
+        <DropdownMenuItem onSelect={() => onChange({ ...config, type: undefined })}>
           {t('home.widget.inboxAllTypes')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {INBOX_WIDGET_TYPES.map((type) => (
-          <DropdownMenuItem
-            key={type}
-            onSelect={() => {
-              onChange({ ...config, type })
-            }}
-          >
+          <DropdownMenuItem key={type} onSelect={() => onChange({ ...config, type })}>
             {tInbox(TYPE_LABEL_KEYS[type])}
           </DropdownMenuItem>
         ))}

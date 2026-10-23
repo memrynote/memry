@@ -85,9 +85,7 @@ describe('UploadQueue', () => {
     ])
 
     expect(results).toHaveLength(3)
-    results.forEach((r) => {
-      expect(r.attachmentId).toBeTruthy()
-    })
+    results.forEach((r) => expect(r.attachmentId).toBeTruthy())
   })
 
   it('resolves all enqueued items eventually', async () => {

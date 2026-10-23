@@ -54,9 +54,7 @@ function useActiveModule() {
 
     // oxlint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state -- the active module comes from DOM layout, which exists only after mount
     read()
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
   // One stable callback per module — a fresh closure each render would detach and

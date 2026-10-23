@@ -39,12 +39,7 @@ vi.mock('@/components/ui/dialog', () => ({
 
 vi.mock('@/components/note/note-title/EmojiPicker', () => ({
   EmojiPicker: ({ onSelect }: { onSelect: (icon: string) => void }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onSelect('🚀')
-      }}
-    >
+    <button type="button" onClick={() => onSelect('🚀')}>
       pick-rocket
     </button>
   )

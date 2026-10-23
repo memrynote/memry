@@ -109,9 +109,7 @@ export const RepeatPicker = ({
       <DropdownMenuContent className="w-[280px]" align="start">
         {/* Does not repeat option */}
         <DropdownMenuItem
-          onSelect={() => {
-            handleSelectPreset(null)
-          }}
+          onSelect={() => handleSelectPreset(null)}
           className={cn(!value && 'bg-accent/50')}
         >
           <span className="flex size-4 items-center justify-center">
@@ -126,9 +124,7 @@ export const RepeatPicker = ({
         {presets.map((preset) => (
           <DropdownMenuItem
             key={preset.id}
-            onSelect={() => {
-              handleSelectPreset(preset)
-            }}
+            onSelect={() => handleSelectPreset(preset)}
             className={cn(matchingPresetId === preset.id && 'bg-accent/50')}
           >
             <span className="flex size-4 items-center justify-center">

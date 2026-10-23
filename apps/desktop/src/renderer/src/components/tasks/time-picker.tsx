@@ -31,9 +31,7 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
       <Input
         type="time"
         value={value ?? ''}
-        onChange={(e) => {
-          onChange(e.target.value || null)
-        }}
+        onChange={(e) => onChange(e.target.value || null)}
         aria-label={tPhaseF('phaseF.componentsTasksTimePicker.selectTime')}
         className="w-full"
       />

@@ -166,9 +166,7 @@ export function TemplateSelector({
             <Input
               placeholder={t('templateSelector.searchPlaceholder')}
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className={cn(
                 'ps-10 h-11',
                 'bg-card/50',

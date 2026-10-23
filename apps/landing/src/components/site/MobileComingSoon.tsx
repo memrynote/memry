@@ -14,9 +14,7 @@ export function MobileComingSoon({ location }: { location: string }) {
 
       <Link
         to="/ios-beta"
-        onClick={() => {
-          trackLandingEvent('landing_nav_click', `mobile-beta:${location}`)
-        }}
+        onClick={() => trackLandingEvent('landing_nav_click', `mobile-beta:${location}`)}
         className="group/pill inline-flex min-h-[58px] items-center justify-center gap-[22px] rounded-[18px] border-2 border-white/85 bg-terracotta py-[5px] ps-[21px] pe-1.5 shadow-[0_0_0_5px_rgb(255_255_255/0.58)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50"
       >
         <span className="text-[14px] font-semibold leading-[18px] text-white">
@@ -29,9 +27,7 @@ export function MobileComingSoon({ location }: { location: string }) {
 
       <Link
         to="/download"
-        onClick={() => {
-          trackLandingEvent('landing_nav_click', `download:all-platforms:${location}`)
-        }}
+        onClick={() => trackLandingEvent('landing_nav_click', `download:all-platforms:${location}`)}
         className="text-[13px] text-muted underline underline-offset-4 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
       >
         Looking for the desktop app? Tap here

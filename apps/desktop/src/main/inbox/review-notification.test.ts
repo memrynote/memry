@@ -117,9 +117,7 @@ describe('review-notification', () => {
     // The window dies between the banner being shown and the user clicking it.
     windowsRef.value = [makeDestroyedWindow(), live.win]
 
-    expect(() => {
-      clickHandler()
-    }).not.toThrow()
+    expect(() => clickHandler()).not.toThrow()
     expect(live.focus).toHaveBeenCalled()
     expect(live.send).toHaveBeenCalledWith(InboxChannels.events.REVIEW_OPEN, {})
   })

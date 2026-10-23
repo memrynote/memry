@@ -156,12 +156,12 @@ describe('ProjectCaptureInput — link capture', () => {
 
     await user.type(field(), 'example.com/spec{enter}')
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.captureUrlToProject).toHaveBeenCalledWith({
         projectId: 'project-1',
         url: 'https://example.com/spec'
       })
-    })
+    )
     expect(props.onAddTask).not.toHaveBeenCalled()
     expect(props.onChanged).toHaveBeenCalledTimes(1)
     expect(mocks.toastSuccess).toHaveBeenCalledWith('Link added to the project')
@@ -174,9 +174,7 @@ describe('ProjectCaptureInput — link capture', () => {
 
     await user.type(field(), 'example.com/spec{enter}')
 
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('offline')
-    })
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('offline'))
     expect(props.onChanged).not.toHaveBeenCalled()
   })
 })
@@ -192,12 +190,12 @@ describe('ProjectCaptureInput — file import', () => {
 
     await user.click(screen.getByRole('button', { name: 'Attach files' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.importFilesToProject).toHaveBeenCalledWith({
         projectId: 'project-1',
         sourcePaths: ['/tmp/spec.pdf']
       })
-    })
+    )
     expect(props.onChanged).toHaveBeenCalledTimes(1)
   })
 
@@ -207,9 +205,7 @@ describe('ProjectCaptureInput — file import', () => {
 
     await user.click(screen.getByRole('button', { name: 'Attach files' }))
 
-    await waitFor(() => {
-      expect(mocks.showImportDialog).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.showImportDialog).toHaveBeenCalled())
     expect(mocks.importFilesToProject).not.toHaveBeenCalled()
     expect(props.onChanged).not.toHaveBeenCalled()
   })
@@ -228,9 +224,9 @@ describe('ProjectCaptureInput — file import', () => {
 
     await user.click(screen.getByRole('button', { name: 'Attach files' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith('Could not link /tmp/broken.pdf')
-    })
+    )
   })
 
   it('opens the picker when importSignal changes, but not on first render', async () => {
@@ -242,9 +238,7 @@ describe('ProjectCaptureInput — file import', () => {
     // would remount the component instead of updating the mounted one.
     rerender(<ProjectCaptureInput {...props} importSignal={1} />)
 
-    await waitFor(() => {
-      expect(mocks.showImportDialog).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.showImportDialog).toHaveBeenCalledTimes(1))
   })
 })
 

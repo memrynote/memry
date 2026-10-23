@@ -73,9 +73,7 @@ beforeEach(() => {
   api.templates.get = vi.fn().mockResolvedValue({ id: 'tpl-person', content: '## Notes\n' })
   vi.mocked(insertTemplateBlocks).mockReset().mockResolvedValue({ ok: true, insertedBlockIds: [] })
   vi.mocked(toast.error).mockClear()
-  act(() => {
-    templateOffers.mark(noteId, 'person')
-  })
+  act(() => templateOffers.mark(noteId, 'person'))
 })
 
 describe('template offer row', () => {
@@ -85,7 +83,7 @@ describe('template offer row', () => {
     expect(await screen.findByText('Add the Person template below your text')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Add' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(insertTemplateBlocks).toHaveBeenCalledWith({
         editor: editorWithBlock,
         content: '## Notes\n',
@@ -94,11 +92,9 @@ describe('template offer row', () => {
         placement: 'after',
         notePath: 'people/ada.md'
       })
-    })
+    )
     expect(api.templates.get).toHaveBeenCalledWith('tpl-person')
-    await waitFor(() => {
-      expect(screen.queryByTestId('template-offer-row')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByTestId('template-offer-row')).not.toBeInTheDocument())
     expect(templateOffers.pending(noteId)).toEqual([])
   })
 
@@ -118,9 +114,7 @@ describe('template offer row', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Template not found')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Template not found'))
     expect(insertTemplateBlocks).not.toHaveBeenCalled()
     expect(screen.getByTestId('template-offer-row')).toBeInTheDocument()
     expect(templateOffers.pending(noteId)).toEqual(['person'])
@@ -132,9 +126,7 @@ describe('template offer row', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('The note changed')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('The note changed'))
     expect(screen.getByTestId('template-offer-row')).toBeInTheDocument()
   })
 
@@ -144,9 +136,7 @@ describe('template offer row', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add' }))
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('template-offer-row')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByTestId('template-offer-row')).not.toBeInTheDocument())
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -166,9 +156,7 @@ describe('template offer row', () => {
   })
 
   it('offers only tags that have a template, and only while they are on the note header', async () => {
-    act(() => {
-      templateOffers.mark(noteId, 'plain')
-    })
+    act(() => templateOffers.mark(noteId, 'plain'))
     const ui = (headerTags: string[]) => (
       <TemplateOffers
         noteId={noteId}

@@ -45,9 +45,7 @@ export function useInboxNotifications(): void {
       }
     })
 
-    return () => {
-      unsubscribe()
-    }
+    return () => unsubscribe()
   }, [queryClient, t])
 
   // Asking for permission is deliberately its own effect: `t` changes identity

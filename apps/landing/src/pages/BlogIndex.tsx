@@ -50,9 +50,7 @@ function PostCard({ post }: { post: BlogPost }) {
         <h3 className="mt-5 font-serif text-2xl font-normal leading-tight text-ink transition-colors group-hover:text-terracotta">
           <Link
             to={`/blog/${post.slug}`}
-            onClick={() => {
-              trackLandingEvent('landing_nav_click', `blog:card:${post.slug}`)
-            }}
+            onClick={() => trackLandingEvent('landing_nav_click', `blog:card:${post.slug}`)}
           >
             {post.title}
           </Link>
@@ -77,9 +75,7 @@ function PostCard({ post }: { post: BlogPost }) {
         <Link
           to={`/blog/${post.slug}`}
           className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-terracotta transition-transform group-hover:translate-x-1"
-          onClick={() => {
-            trackLandingEvent('landing_nav_click', `blog:read-more:${post.slug}`)
-          }}
+          onClick={() => trackLandingEvent('landing_nav_click', `blog:read-more:${post.slug}`)}
         >
           Read <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -157,9 +153,9 @@ export function BlogIndexPage() {
                 <h3 className="font-serif text-3xl md:text-4xl text-ink font-normal leading-tight transition-colors group-hover:text-terracotta">
                   <Link
                     to={`/blog/${featuredPost.slug}`}
-                    onClick={() => {
+                    onClick={() =>
                       trackLandingEvent('landing_nav_click', `blog:featured:${featuredPost.slug}`)
-                    }}
+                    }
                   >
                     {featuredPost.title}
                   </Link>
@@ -183,12 +179,12 @@ export function BlogIndexPage() {
                   <Link
                     to={`/blog/${featuredPost.slug}`}
                     className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-paper shadow-sm transition hover:bg-ink/90 group-hover:bg-terracotta"
-                    onClick={() => {
+                    onClick={() =>
                       trackLandingEvent(
                         'landing_nav_click',
                         `blog:featured-btn:${featuredPost.slug}`
                       )
-                    }}
+                    }
                   >
                     Read article <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -202,9 +198,7 @@ export function BlogIndexPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedCategory(null)
-                }}
+                onClick={() => setSelectedCategory(null)}
                 className={cn(
                   'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
                   selectedCategory === null
@@ -218,9 +212,7 @@ export function BlogIndexPage() {
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => {
-                    setSelectedCategory(cat)
-                  }}
+                  onClick={() => setSelectedCategory(cat)}
                   className={cn(
                     'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
                     selectedCategory === cat

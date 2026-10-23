@@ -49,7 +49,7 @@ export function ConversationView({
   }
 
   const messages = conversationId ? (state.messagesByConversation[conversationId] ?? []) : []
-  const inFlight = conversationId ? state.inFlight[conversationId] : false
+  const inFlight = conversationId ? state.inFlight[conversationId] === true : false
   const currentAgent = agent
 
   function cancelTurn(): void {

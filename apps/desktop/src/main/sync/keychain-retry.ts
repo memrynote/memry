@@ -75,16 +75,12 @@ function retryStart(deps: KeychainRetryDeps, trigger: 'timer' | 'keychain-recove
 
 function armRetry(deps: KeychainRetryDeps): void {
   if (!unsubscribeRecovered) {
-    unsubscribeRecovered = onKeychainRecovered(() => {
-      retryStart(deps, 'keychain-recovered')
-    })
+    unsubscribeRecovered = onKeychainRecovered(() => retryStart(deps, 'keychain-recovered'))
   }
   if (!retryTimer) {
     const delay = KEYCHAIN_RETRY_DELAYS_MS[Math.min(attempt, KEYCHAIN_RETRY_DELAYS_MS.length - 1)]
     attempt += 1
-    retryTimer = setTimeout(() => {
-      retryStart(deps, 'timer')
-    }, delay)
+    retryTimer = setTimeout(() => retryStart(deps, 'timer'), delay)
     retryTimer.unref?.()
   }
 }

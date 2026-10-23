@@ -103,9 +103,7 @@ export const CompleteParentDialog = ({
         <div className="py-4">
           <RadioGroup
             value={option}
-            onValueChange={(value) => {
-              setOption(value as CompleteOption)
-            }}
+            onValueChange={(value) => setOption(value as CompleteOption)}
             className="space-y-3"
           >
             <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">

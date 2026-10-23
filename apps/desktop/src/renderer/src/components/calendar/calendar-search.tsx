@@ -100,9 +100,7 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
           autoFocus
           type="text"
           value={query}
-          onChange={(event) => {
-            setQuery(event.target.value)
-          }}
+          onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               close()
@@ -138,9 +136,7 @@ export function CalendarSearch({ onJump }: CalendarSearchProps): React.JSX.Eleme
               <button
                 key={item.projectionId}
                 type="button"
-                onClick={() => {
-                  jump(item)
-                }}
+                onClick={() => jump(item)}
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start transition-colors hover:bg-accent"
               >
                 <span

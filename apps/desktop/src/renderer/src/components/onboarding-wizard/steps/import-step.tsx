@@ -41,9 +41,7 @@ function useImportSources(): { importers: ImporterMeta[]; sources: OnboardingSou
     window.api.import
       .list()
       .then((list) => !cancelled && setImporters(list.filter((meta) => !meta.accountBased)))
-      .catch((error: unknown) => {
-        log.warn('Listing importers failed', error)
-      })
+      .catch((error: unknown) => log.warn('Listing importers failed', error))
     window.api.onboarding
       .detectSources()
       .then((found) => !cancelled && setSources(found))
@@ -91,13 +89,10 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
   const [showOthers, setShowOthers] = useState(false)
   const chosen = activeImports(state.draft)
 
-  const setImports = (imports: ImportChoice[]): void => {
+  const setImports = (imports: ImportChoice[]): void =>
     dispatch({ type: 'update', patch: { imports } })
-  }
   const isChosen = (key: string): boolean => chosen.some((choice) => choice.key === key)
-  const remove = (key: string): void => {
-    setImports(chosen.filter((choice) => choice.key !== key))
-  }
+  const remove = (key: string): void => setImports(chosen.filter((choice) => choice.key !== key))
 
   const pick = async (meta: ImporterMeta): Promise<void> => {
     if (isChosen(meta.id)) {
@@ -125,10 +120,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
 
   const toggleVault = (path: string): void => {
     const key = `obsidian:${path}`
-    if (isChosen(key)) {
-      remove(key)
-      return
-    }
+    if (isChosen(key)) return remove(key)
     // An Obsidian vault is a folder of Markdown, which the Markdown importer reads.
     setImports([...chosen, { key, importerId: 'markdown', label: 'Obsidian', sourcePaths: [path] }])
   }
@@ -213,9 +205,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
                   role="checkbox"
                   aria-checked={isChosen(`obsidian:${vault.path}`)}
                   data-wizard-option
-                  onClick={() => {
-                    toggleVault(vault.path)
-                  }}
+                  onClick={() => toggleVault(vault.path)}
                   className="flex h-[30px] items-center gap-2.5 rounded-md px-2 text-start hover:bg-surface-active/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <CheckMark on={isChosen(`obsidian:${vault.path}`)} />
@@ -237,9 +227,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
             <button
               type="button"
               aria-expanded={showOthers}
-              onClick={() => {
-                setShowOthers((open) => !open)
-              }}
+              onClick={() => setShowOthers((open) => !open)}
               className={cn(ROW, 'h-12 hover:bg-surface/60')}
             >
               <span className="flex size-7 shrink-0 items-center justify-center rounded-[7px] ring-1 ring-inset ring-border">
@@ -279,21 +267,14 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
       <div className="flex flex-wrap items-center justify-center gap-4 pt-5">
         <ContinueButton
           label={t('onboardingWizard.keys.continue')}
-          onClick={() => {
-            dispatch({ type: 'next' })
-          }}
+          onClick={() => dispatch({ type: 'next' })}
         />
         {chosen.length > 0 ? (
           <span className={cn('text-[13px]', MUTED)}>
             {t(`${K}.sourcesSelected`, { count: chosen.length })}
           </span>
         ) : (
-          <QuietLink
-            underline={false}
-            onClick={() => {
-              dispatch({ type: 'next' })
-            }}
-          >
+          <QuietLink underline={false} onClick={() => dispatch({ type: 'next' })}>
             {t(`${K}.skip`)}
           </QuietLink>
         )}

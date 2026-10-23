@@ -148,9 +148,7 @@ export function QuickCapture(): React.JSX.Element {
         }
       })()
     }, 500)
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
   }, [isLinkPreviewVisible, value])
 
   useEffect(() => {
@@ -194,9 +192,7 @@ export function QuickCapture(): React.JSX.Element {
       void checkClipboard()
     }, 0)
 
-    return () => {
-      clearTimeout(timeoutId)
-    }
+    return () => clearTimeout(timeoutId)
   }, [])
 
   useEffect(() => {
@@ -546,9 +542,7 @@ export function QuickCapture(): React.JSX.Element {
       }
     })
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
   const handleValueChange = useCallback(
@@ -587,11 +581,7 @@ export function QuickCapture(): React.JSX.Element {
       )}
 
       {captureState === 'success' ? (
-        <CaptureSuccess
-          onAutoClose={() => {
-            window.api.quickCapture.close()
-          }}
-        />
+        <CaptureSuccess onAutoClose={() => window.api.quickCapture.close()} />
       ) : captureState === 'capturing' && !value.trim() && hasAttachment ? (
         <div className="flex items-center gap-2.5 px-4 py-3.5">
           <Loader2 className="size-4 animate-spin text-accent-orange" />
@@ -610,9 +600,7 @@ export function QuickCapture(): React.JSX.Element {
                 setDuplicateMatch(null)
                 handleSubmit(true)
               }}
-              onClose={() => {
-                window.api.quickCapture.close()
-              }}
+              onClose={() => window.api.quickCapture.close()}
             />
           ) : (
             <div
@@ -627,9 +615,7 @@ export function QuickCapture(): React.JSX.Element {
                 <QuickCaptureInput
                   value={value}
                   onChange={handleValueChange}
-                  onSubmit={() => {
-                    handleSubmit()
-                  }}
+                  onSubmit={() => handleSubmit()}
                   onStartRecording={() => {
                     if (!aiEnabled) return
                     void ensureVoiceRecordingReady((readiness) => {
@@ -668,9 +654,7 @@ export function QuickCapture(): React.JSX.Element {
                   <VoiceRecorder
                     ref={voiceRecorderRef}
                     onRecordingComplete={handleRecordingComplete}
-                    onCancel={() => {
-                      setIsRecording(false)
-                    }}
+                    onCancel={() => setIsRecording(false)}
                     maxDuration={300}
                     className="w-full min-w-0"
                   />

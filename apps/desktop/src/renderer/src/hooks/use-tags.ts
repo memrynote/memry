@@ -54,9 +54,7 @@ export function useTags() {
       window.api.onTagRenamed(refetch),
       window.api.onTagDeleted(refetch)
     ]
-    return () => {
-      unsubs.forEach((unsub) => unsub())
-    }
+    return () => unsubs.forEach((unsub) => unsub())
   }, [fetchTags])
 
   const searchTags = useCallback(

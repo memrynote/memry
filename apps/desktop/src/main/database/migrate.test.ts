@@ -923,9 +923,7 @@ describe('0059_sync_intents migration', () => {
       )
       .run()
 
-    expect(() => {
-      migrate(drizzle(sqlite), { migrationsFolder: makePre0059Folder() })
-    }).not.toThrow()
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0059Folder() })).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM sync_intents').get()).toEqual({ n: 1 })
     sqlite.close()
@@ -1002,9 +1000,7 @@ describe('0061_sync_tombstone_clocks migration', () => {
       )
       .run()
 
-    expect(() => {
-      migrate(drizzle(sqlite), { migrationsFolder: makePre0061Folder() })
-    }).not.toThrow()
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0061Folder() })).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM sync_tombstone_clocks').get()).toEqual({
       n: 1
@@ -1069,9 +1065,7 @@ describe('0062_crdt_body_withheld migration', () => {
     const sqlite = new Database(dbPath)
     sqlite.prepare("INSERT INTO crdt_body_withheld (note_id, created_at) VALUES ('n1', 1)").run()
 
-    expect(() => {
-      migrate(drizzle(sqlite), { migrationsFolder: makePre0062Folder() })
-    }).not.toThrow()
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0062Folder() })).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM crdt_body_withheld').get()).toEqual({ n: 1 })
     sqlite.close()
@@ -1156,9 +1150,7 @@ describe('0063_canvas_entity_edges migration', () => {
       )
       .run()
 
-    expect(() => {
-      migrate(drizzle(sqlite), { migrationsFolder: makePre0063Folder() })
-    }).not.toThrow()
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0063Folder() })).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM canvas_entity_edges').get()).toEqual({ n: 1 })
     sqlite.close()
@@ -1229,9 +1221,7 @@ describe('0064_sync_unknown_nested_fields migration', () => {
       )
       .run()
 
-    expect(() => {
-      migrate(drizzle(sqlite), { migrationsFolder: makePre0064Folder() })
-    }).not.toThrow()
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0064Folder() })).not.toThrow()
     // The older build's upsert names only `fields`.
     sqlite
       .prepare(
@@ -1301,9 +1291,7 @@ describe('0065_crdt_owed_file_bodies migration', () => {
     const sqlite = new Database(dbPath)
     sqlite.prepare("INSERT INTO crdt_owed_file_bodies (note_id, created_at) VALUES ('n1', 1)").run()
 
-    expect(() => {
-      migrate(drizzle(sqlite), { migrationsFolder: makePre0065Folder() })
-    }).not.toThrow()
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0065Folder() })).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM crdt_owed_file_bodies').get()).toEqual({
       n: 1
@@ -1397,9 +1385,9 @@ describe('0066_attachment_files migration', () => {
       )
       .run()
 
-    expect(() => {
+    expect(() =>
       migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0066() })
-    }).not.toThrow()
+    ).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM attachment_files').get()).toEqual({ n: 1 })
     sqlite.close()
@@ -1479,9 +1467,9 @@ describe('0068_note_body_sync migration', () => {
       )
       .run()
 
-    expect(() => {
+    expect(() =>
       migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0068() })
-    }).not.toThrow()
+    ).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM note_body_sync').get()).toEqual({ n: 1 })
     sqlite.close()
@@ -1563,9 +1551,9 @@ describe('0071_note_body_sync_snapshot migration', () => {
       )
       .run()
 
-    expect(() => {
+    expect(() =>
       migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0071() })
-    }).not.toThrow()
+    ).not.toThrow()
 
     expect(sqlite.prepare('SELECT count(*) AS n FROM note_body_sync').get()).toEqual({ n: 1 })
     sqlite.close()
@@ -1718,9 +1706,9 @@ describe('0073_tag_schema_task_fields migration', () => {
       )
       .run()
 
-    expect(() => {
+    expect(() =>
       migrate(drizzle(sqlite), { migrationsFolder: migrationsBefore0073() })
-    }).not.toThrow()
+    ).not.toThrow()
 
     expect(sqlite.prepare('SELECT schema FROM tag_definitions').get()).toEqual({
       schema: '{"t":1}'

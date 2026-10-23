@@ -202,8 +202,6 @@ describe('PropertiesSettings', () => {
     await userEvent.type(editInput, 'Idea')
     fireEvent.keyDown(editInput, { key: 'Enter' })
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('rename exploded')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('rename exploded'))
   })
 })

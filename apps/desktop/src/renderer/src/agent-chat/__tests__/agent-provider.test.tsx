@@ -144,17 +144,17 @@ describe('AgentProvider', () => {
   it('reports which conversation this window shows so deltas can be targeted', async () => {
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(agentApi.setStreamTarget).toHaveBeenCalledWith({ conversationId: null })
-    })
+    )
 
     await act(async () => {
       await result.current.loadConversation(conversation.id)
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(agentApi.setStreamTarget).toHaveBeenCalledWith({ conversationId: conversation.id })
-    })
+    )
   })
 
   it('keeps bootstrapping when the stream-target report fails', async () => {
@@ -162,9 +162,7 @@ describe('AgentProvider', () => {
 
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.sourceWindowId).toBe('window-1')
-    })
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
     expect(agentApi.setStreamTarget).toHaveBeenCalled()
   })
 
@@ -177,9 +175,7 @@ describe('AgentProvider', () => {
 
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.backendStatuses).toEqual(backendStatuses)
-    })
+    await waitFor(() => expect(result.current.state.backendStatuses).toEqual(backendStatuses))
     expect(agentApi.getBackendStatuses).toHaveBeenCalledTimes(2)
   })
 
@@ -195,9 +191,7 @@ describe('AgentProvider', () => {
 
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.sourceWindowId).toBe('window-1')
-    })
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
     expect(agentApi.getWindowId).toHaveBeenCalledTimes(2)
     expect(agentApi.getBackendStatuses).toHaveBeenCalledTimes(1)
   })
@@ -205,9 +199,7 @@ describe('AgentProvider', () => {
   it('routes conversation actions through the agent IPC API', async () => {
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.sourceWindowId).toBe('window-1')
-    })
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
 
     await act(async () => {
       await result.current.refreshConversations()
@@ -220,24 +212,22 @@ describe('AgentProvider', () => {
     })
     expect(created?.id).toBe('conversation-2')
     expect(agentApi.createConversation).toHaveBeenCalledWith({ backend: 'codex_cli' })
-    await waitFor(() => {
-      expect(result.current.state.activeConversationId).toBe('conversation-2')
-    })
+    await waitFor(() => expect(result.current.state.activeConversationId).toBe('conversation-2'))
 
     await act(async () => {
       await result.current.loadConversation(conversation.id)
     })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(result.current.state.messagesByConversation[conversation.id]).toEqual([message])
-    })
+    )
     expect(result.current.state.activeConversationId).toBe(conversation.id)
 
     await act(async () => {
       await result.current.loadConversation(conversation.id, { activate: false })
     })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(result.current.state.messagesByConversation[conversation.id]).toEqual([message])
-    })
+    )
     expect(result.current.state.activeConversationId).toBe(conversation.id)
 
     await act(async () => {
@@ -262,9 +252,7 @@ describe('AgentProvider', () => {
   it('routes approval, trust, disclosure, and cancel actions through the agent IPC API', async () => {
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.sourceWindowId).toBe('window-1')
-    })
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
 
     act(() => {
       eventHandler?.({
@@ -313,9 +301,7 @@ describe('AgentProvider', () => {
     agentApi.sendTurn.mockResolvedValueOnce({ ok: false, error: 'busy' })
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.sourceWindowId).toBe('window-1')
-    })
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
 
     let thrown: unknown
     await act(async () => {
@@ -339,9 +325,7 @@ describe('AgentProvider', () => {
   it('surfaces action errors from the agent IPC API', async () => {
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.sourceWindowId).toBe('window-1')
-    })
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
 
     agentApi.listConversations.mockRejectedValueOnce(new Error('list failed'))
     await act(async () => {
@@ -399,9 +383,7 @@ describe('AgentProvider', () => {
 
     const { result } = renderHook(() => useAgent(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.error).toBe('conversation load failed')
-    })
+    await waitFor(() => expect(result.current.state.error).toBe('conversation load failed'))
   })
 
   it('requires an AgentProvider', () => {
@@ -414,9 +396,7 @@ describe('AgentProvider', () => {
     beforeEach(() => {
       frames = []
       vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-        frames.push(() => {
-          callback(0)
-        })
+        frames.push(() => callback(0))
         return frames.length
       })
       vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
@@ -461,15 +441,13 @@ describe('AgentProvider', () => {
         { wrapper }
       )
 
-      await waitFor(() => {
-        expect(result.current.state.sourceWindowId).toBe('window-1')
-      })
+      await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
       await act(async () => {
         await result.current.loadConversation(conversation.id)
       })
-      await waitFor(() => {
+      await waitFor(() =>
         expect(result.current.state.messagesByConversation[conversation.id]).toHaveLength(1)
-      })
+      )
 
       return { renders, result }
     }

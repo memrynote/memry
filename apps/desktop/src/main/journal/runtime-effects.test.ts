@@ -17,9 +17,7 @@ import { enqueueJournalDelete, feedJournalBodyToCrdt } from './runtime-effects'
 // carries the doc's body state vector.
 describe('enqueueJournalDelete', () => {
   it('raises the delete with the day doc loaded', async () => {
-    const withDocLoaded = vi.fn(async (_id: string, enqueue: () => void) => {
-      enqueue()
-    })
+    const withDocLoaded = vi.fn(async (_id: string, enqueue: () => void) => enqueue())
     vi.mocked(getCrdtProvider).mockReturnValue({ withDocLoaded } as never)
 
     await enqueueJournalDelete('j2026-10-09', '2026-10-09')

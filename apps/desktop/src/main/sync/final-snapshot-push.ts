@@ -44,9 +44,7 @@ export async function pushFinalSnapshots(timeoutMs: number | undefined): Promise
   const finished = await Promise.race([
     push,
     new Promise<false>((resolve) => {
-      timer = setTimeout(() => {
-        resolve(false)
-      }, timeoutMs)
+      timer = setTimeout(() => resolve(false), timeoutMs)
     })
   ])
   clearTimeout(timer)

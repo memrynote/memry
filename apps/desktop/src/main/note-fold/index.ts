@@ -49,9 +49,7 @@ export function startNoteFold(): FoldService {
         getSetting(db, SUMMARIZE_LONG_NOTES_KEY) === 'true'
       )
     },
-    onUpdated: (noteId) => {
-      broadcastToAllWindows(FoldChannels.events.UPDATED, { noteId })
-    }
+    onUpdated: (noteId) => broadcastToAllWindows(FoldChannels.events.UPDATED, { noteId })
   })
   try {
     const removed = pruneChunksOlderThan(getIndexDatabase(), Date.now() - CHUNK_RETENTION_MS)

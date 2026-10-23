@@ -256,9 +256,7 @@ describe('ViewBlockRenderer', () => {
     expect(screen.getByText('Definition').parentElement).toHaveClass('hidden')
 
     // #when it moves into the block
-    act(() => {
-      editor.moveCaret('view-1')
-    })
+    act(() => editor.moveCaret('view-1'))
 
     // #then the definition shows, and the DOM selection is written again now
     // that there is a visible element to hold it

@@ -273,9 +273,9 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
                   source={message.source}
                   open={openSources[message.id]}
                   animate={!prefersReducedMotion}
-                  onToggle={() => {
+                  onToggle={() =>
                     setOpenSources((prev) => ({ ...prev, [message.id]: !prev[message.id] }))
-                  }}
+                  }
                 />
               )}
             </div>
@@ -294,9 +294,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
             ref={inputRef}
             type="text"
             value={input}
-            onChange={(event) => {
-              setInput(event.target.value)
-            }}
+            onChange={(event) => setInput(event.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder="Ask memrynote anything. @ to use mention file"
             aria-label="Message the agent"
@@ -316,9 +314,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
 
             <button
               type="button"
-              onClick={() => {
-                setWebSearch((on) => !on)
-              }}
+              onClick={() => setWebSearch((on) => !on)}
               aria-pressed={webSearch}
               aria-label="Toggle web search permission"
               className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper-deep text-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"

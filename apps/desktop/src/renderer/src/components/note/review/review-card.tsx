@@ -61,16 +61,12 @@ export function ReviewCard({
       data-expanded={isExpanded ? 'true' : 'false'}
       aria-expanded={isExpanded ? 'true' : 'false'}
       style={style}
-      onPointerOver={() => {
-        setHoveredMark(mark.id)
-      }}
+      onPointerOver={() => setHoveredMark(mark.id)}
       onPointerOut={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
         setHoveredMark(null)
       }}
-      onFocus={() => {
-        setHoveredMark(mark.id)
-      }}
+      onFocus={() => setHoveredMark(mark.id)}
       onBlur={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
         setHoveredMark(null)
@@ -89,9 +85,7 @@ export function ReviewCard({
             review.updateComment(mark.id, input)
             onEditingChange(null)
           }}
-          onCancel={() => {
-            onEditingChange(null)
-          }}
+          onCancel={() => onEditingChange(null)}
         />
       ) : (
         <>
@@ -100,9 +94,7 @@ export function ReviewCard({
             className="critic-review-expand-toggle"
             aria-label={isExpanded ? 'Collapse review card' : 'Expand review card'}
             aria-expanded={isExpanded ? 'true' : 'false'}
-            onClick={() => {
-              onToggleExpand(mark.id)
-            }}
+            onClick={() => onToggleExpand(mark.id)}
           />
           <div className="critic-review-content">
             {mark.createdAt !== undefined && (
@@ -122,9 +114,7 @@ export function ReviewCard({
                 event.preventDefault()
                 onEditingChange(mark.id)
               }}
-              onClick={() => {
-                onEditingChange(mark.id)
-              }}
+              onClick={() => onEditingChange(mark.id)}
             >
               <Pencil className="size-3.5" aria-hidden="true" />
             </Button>
@@ -138,9 +128,7 @@ export function ReviewCard({
                 event.preventDefault()
                 review.resolveMark(mark.id)
               }}
-              onClick={() => {
-                review.resolveMark(mark.id)
-              }}
+              onClick={() => review.resolveMark(mark.id)}
             >
               <Check className="size-3.5" aria-hidden="true" />
             </Button>
@@ -154,9 +142,7 @@ export function ReviewCard({
                 event.preventDefault()
                 review.deleteMark(mark.id)
               }}
-              onClick={() => {
-                review.deleteMark(mark.id)
-              }}
+              onClick={() => review.deleteMark(mark.id)}
             >
               <Trash className="size-3.5" aria-hidden="true" />
             </Button>

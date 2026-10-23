@@ -123,9 +123,7 @@ export const InfoSection = memo(function InfoSection({
         current.id === internalNewlyAdded.id ? { ...current, id: null } : current
       )
     }, 500)
-    return () => {
-      window.clearTimeout(clearHighlightTimer)
-    }
+    return () => window.clearTimeout(clearHighlightTimer)
   }, [internalNewlyAdded.id])
 
   const handleAddProperty = useCallback(

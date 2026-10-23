@@ -112,9 +112,7 @@ export function SettingsNav() {
       icon={icon}
       label={label}
       isActive={activePage === page}
-      onClick={() => {
-        setActiveSection(PAGE_ROOT_SECTION[page])
-      }}
+      onClick={() => setActiveSection(PAGE_ROOT_SECTION[page])}
     />
   )
 
@@ -148,9 +146,7 @@ export function SettingsNav() {
             type="search"
             data-settings-search=""
             value={query}
-            onChange={(event) => {
-              handleQueryChange(event.target.value)
-            }}
+            onChange={(event) => handleQueryChange(event.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder={t('page.search.placeholder')}
             aria-label={t('page.search.placeholder')}
@@ -171,9 +167,7 @@ export function SettingsNav() {
           <SettingsSearchResults
             results={results}
             selectedIndex={selectedIndex}
-            onSelect={(index) => {
-              selectResult(index)
-            }}
+            onSelect={(index) => selectResult(index)}
           />
         ) : (
           <>
@@ -229,9 +223,7 @@ export function SettingsContent() {
             <DrillInBar
               parentLabel={t(PARENT_LABEL_KEY[activePage])}
               currentLabel={t(`page.nav.items.${activeSection}`)}
-              onBack={() => {
-                setActiveSection(parent)
-              }}
+              onBack={() => setActiveSection(parent)}
             />
           )}
           <SettingsPageContent
@@ -465,12 +457,8 @@ function SettingsSearchResults({
               aria-selected={isSelected}
               tabIndex={-1}
               // Keep focus in the search field so arrows and Enter keep working.
-              onMouseDown={(event) => {
-                event.preventDefault()
-              }}
-              onClick={() => {
-                onSelect(index)
-              }}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onSelect(index)}
               className={cn(
                 'flex flex-col gap-px rounded-[7px] px-2.5 py-1.5 text-start transition-colors',
                 isSelected ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/60'

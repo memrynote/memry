@@ -22,7 +22,5 @@ describe('spike width carriers', () => {
   it('b', () => trip('B-escaped-pipe', '| a |\n| --- |\n| ![shot.png\\|300](x.png) |\n'))
   it('c', () => trip('C-title', '| a |\n| --- |\n| ![shot.png](x.png "300") |\n'))
   it('d', () => trip('D-dims', '| a |\n| --- |\n| ![300x200](x.png) |\n'))
-  it('ok', () => {
-    expect(true).toBe(true)
-  })
+  it('ok', () => expect(true).toBe(true))
 })

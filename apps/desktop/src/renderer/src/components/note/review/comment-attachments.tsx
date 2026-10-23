@@ -65,9 +65,7 @@ export function CommentAttachments({ mark }: { mark: CriticMarkupMark }): React.
               type="button"
               className="inline-flex max-w-full overflow-hidden rounded-md border border-border bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t('comments.openImageAria', { name: attachment.name })}
-              onClick={() => {
-                setActive(attachment)
-              }}
+              onClick={() => setActive(attachment)}
             >
               <img
                 src={attachment.path}

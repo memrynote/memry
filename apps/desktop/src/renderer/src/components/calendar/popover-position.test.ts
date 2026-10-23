@@ -111,9 +111,7 @@ describe('useAnchoredPopoverPosition', () => {
     )
     expect(result.current.style.top).toBe(300)
 
-    act(() => {
-      result.current.ref(fakePopover(600))
-    })
+    act(() => result.current.ref(fakePopover(600)))
 
     expect(result.current.style.top).toBe(700 - 8 - 600)
     expect(result.current.style.overflowY).toBeUndefined()
@@ -124,9 +122,7 @@ describe('useAnchoredPopoverPosition', () => {
     const { result } = renderHook(() =>
       useAnchoredPopoverPosition(anchor, { estimatedHeight: 200 })
     )
-    act(() => {
-      result.current.ref(fakePopover(600))
-    })
+    act(() => result.current.ref(fakePopover(600)))
 
     expect(result.current.style.top).toBe(8)
     expect(result.current.style.maxHeight).toBe(400 - 16)

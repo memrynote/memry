@@ -56,9 +56,7 @@ describe('note sync state (#2647)', () => {
     noteId: string,
     event: 'sent' | 'confirmed' | 'snapshot' | 'failed' | 'rejected',
     at: number
-  ) => {
-    recordNoteBodyPush(noteId, event, at, dbs.data)
-  }
+  ) => recordNoteBodyPush(noteId, event, at, dbs.data)
   const state = (noteId: string, syncEligible = true) =>
     getNoteSyncState(noteId, { dbs, syncEligible })
 

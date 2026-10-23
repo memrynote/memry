@@ -345,9 +345,7 @@ export function TagsHubPage(): React.JSX.Element {
           categories: applyCategoryOrder(displayCategories, result),
           uncategorized: displayUncategorized
         })
-        void reorder({ categories: result }).finally(() => {
-          applyOverride(null)
-        })
+        void reorder({ categories: result }).finally(() => applyOverride(null))
         return
       }
 
@@ -378,9 +376,7 @@ export function TagsHubPage(): React.JSX.Element {
 
       // The preview stays on screen as the optimistic state until the write
       // settles, so nothing snaps back mid-flight.
-      void reorder({ tags: assignments }).finally(() => {
-        applyOverride(null)
-      })
+      void reorder({ tags: assignments }).finally(() => applyOverride(null))
     },
     [isSearching, displayCategories, displayUncategorized, reorder, applyOverride]
   )
@@ -435,9 +431,7 @@ export function TagsHubPage(): React.JSX.Element {
                     type="text"
                     aria-label={t('tagsHub.search.placeholder')}
                     value={query}
-                    onChange={(e) => {
-                      setQuery(e.target.value)
-                    }}
+                    onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleSearchKeyDown}
                     placeholder={t('tagsHub.search.placeholder')}
                     className="h-8 w-[240px] rounded-md border border-transparent bg-transparent ps-8 pe-2.5 text-xs placeholder:text-muted-foreground transition-colors focus:border-ring focus:outline-none"

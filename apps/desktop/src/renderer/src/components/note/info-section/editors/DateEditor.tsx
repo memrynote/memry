@@ -79,9 +79,7 @@ export function DateEditor({ value, onChange, onBlur, defaultOpen = false }: Dat
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
           autoFocus
           value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value)
-          }}
+          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()

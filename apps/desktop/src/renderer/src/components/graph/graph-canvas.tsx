@@ -408,9 +408,7 @@ export function GraphCanvas({
     []
   )
 
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenu(null)
-  }, [])
+  const handleCloseContextMenu = useCallback(() => setContextMenu(null), [])
 
   const canStartLink = useCallback((nodeId: string) => isEditableGraphNode(graph, nodeId), [graph])
 

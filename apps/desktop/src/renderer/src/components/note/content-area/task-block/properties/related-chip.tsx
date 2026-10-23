@@ -121,9 +121,7 @@ export const RelatedChip = ({
         <input
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder={t('drawer.searchRelated')}
           aria-label={t('drawer.searchRelated')}
           className="h-7 shrink-0 rounded-[5px] bg-surface-active/60 px-2 text-[12px] leading-4 text-text-primary outline-none placeholder:text-text-tertiary"
@@ -137,9 +135,7 @@ export const RelatedChip = ({
                 <div key={relatedItemKey(ref)} className="group flex items-center">
                   <button
                     type="button"
-                    onClick={() => {
-                      onOpenItem(ref, title)
-                    }}
+                    onClick={() => onOpenItem(ref, title)}
                     className={cn(ROW, 'min-w-0 flex-1 hover:bg-surface-active')}
                   >
                     <RelatedIcon kind={ref.kind} info={info} projectColor={projectColor} />
@@ -149,9 +145,7 @@ export const RelatedChip = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      unlink(ref)
-                    }}
+                    onClick={() => unlink(ref)}
                     className="shrink-0 rounded-sm p-1 text-text-tertiary opacity-0 transition-opacity hover:text-text-secondary focus-visible:opacity-100 group-hover:opacity-100"
                     aria-label={t('drawer.removeRelatedItem', {
                       title: title ?? t('drawer.relatedItemFallback')
@@ -167,9 +161,7 @@ export const RelatedChip = ({
               <button
                 key={relatedItemKey(item)}
                 type="button"
-                onClick={() => {
-                  link(item)
-                }}
+                onClick={() => link(item)}
                 className={cn(ROW, 'hover:bg-surface-active')}
               >
                 <RelatedIcon kind={item.kind} info={item} projectColor={projectColor} />

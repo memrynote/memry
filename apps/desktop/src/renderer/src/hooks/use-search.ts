@@ -73,9 +73,7 @@ export function useSearch(): UseSearchReturn {
   const clearReasons = useCallback(() => {
     searchService
       .clearReasons()
-      .then(() => {
-        setReasons([])
-      })
+      .then(() => setReasons([]))
       .catch(() => {})
   }, [])
 

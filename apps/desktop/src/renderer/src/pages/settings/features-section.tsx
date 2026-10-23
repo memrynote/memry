@@ -34,12 +34,7 @@ export function FeaturesSection({ onConfigure }: FeaturesSectionProps = {}) {
         {FEATURE_KEYS.map((key: FeatureKey) => {
           const label = t(`features.items.${key}.label`)
           const enabled = flags[key]
-          const configure =
-            onConfigure && isConfigurable(key)
-              ? () => {
-                  onConfigure(key)
-                }
-              : undefined
+          const configure = onConfigure && isConfigurable(key) ? () => onConfigure(key) : undefined
           const canConfigure = Boolean(configure) && enabled
 
           return (

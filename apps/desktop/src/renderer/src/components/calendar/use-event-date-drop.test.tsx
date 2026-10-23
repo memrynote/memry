@@ -67,9 +67,7 @@ describe('eventTimesOnDate', () => {
 describe('useEventDateDrop', () => {
   it('commits an event dropped on a month or all-day cell', () => {
     const onMove = vi.fn()
-    renderHook(() => {
-      useEventDateDrop(onMove)
-    })
+    renderHook(() => useEventDateDrop(onMove))
     const item = makeEvent()
 
     drop(item, monthCell('2026-07-16'))
@@ -79,9 +77,7 @@ describe('useEventDateDrop', () => {
 
   it('ignores read-only events, time-grid columns and empty drops', () => {
     const onMove = vi.fn()
-    renderHook(() => {
-      useEventDateDrop(onMove)
-    })
+    renderHook(() => useEventDateDrop(onMove))
 
     drop(
       makeEvent({

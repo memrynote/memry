@@ -156,9 +156,7 @@ describe('EditorContextMenu', () => {
     )
 
     const menu = await screen.findByRole('menu')
-    await waitFor(() => {
-      expect(menu).toHaveFocus()
-    })
+    await waitFor(() => expect(menu).toHaveFocus())
     expect(screen.getByRole('menuitem', { name: /^Cut/ })).toHaveAttribute('data-disabled')
     expect(screen.getByRole('menuitem', { name: /^Add alternative/ })).toHaveAttribute(
       'data-disabled'

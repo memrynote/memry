@@ -67,9 +67,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
                 ref={inputRef}
                 type="search"
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                }}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('menus.emoji.searchPlaceholder')}
                 aria-label={t('menus.emoji.searchPlaceholder')}
                 autoComplete="off"
@@ -156,9 +154,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
                     <button
                       key={entry.name}
                       type="button"
-                      onClick={() => {
-                        onSelect(entry.name)
-                      }}
+                      onClick={() => onSelect(entry.name)}
                       title={entry.name.replace(/Icon$/, '')}
                       className={cn(
                         'flex items-center justify-center shrink-0',

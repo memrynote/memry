@@ -38,9 +38,7 @@ export interface PollRunnerOptions {
 export function createPollRunner(options: PollRunnerOptions): PollRunner {
   const timers = options.timers ?? {
     setTimeout: (callback: () => void, ms: number) => setTimeout(callback, ms),
-    clearTimeout: (handle: ReturnType<typeof setTimeout>) => {
-      clearTimeout(handle)
-    }
+    clearTimeout: (handle: ReturnType<typeof setTimeout>) => clearTimeout(handle)
   }
   let handle: ReturnType<typeof setTimeout> | null = null
   let started = false

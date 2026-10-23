@@ -27,9 +27,7 @@ export const useModifierHeld = (): boolean => {
     const handleKeyUp = (e: KeyboardEvent): void => {
       if (!isModDown(e)) setHeld(false)
     }
-    const reset = (): void => {
-      setHeld(false)
-    }
+    const reset = (): void => setHeld(false)
 
     window.addEventListener('keydown', handleKeyDown, true)
     window.addEventListener('keyup', handleKeyUp, true)

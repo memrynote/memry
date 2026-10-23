@@ -86,12 +86,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('forwards allowlisted desktop read operations to window.api', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-1',
@@ -107,20 +103,14 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('does not subscribe when disabled', () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder({ enabled: false })
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder({ enabled: false }))
 
     expect(window.api.onMainInvoke).not.toHaveBeenCalled()
   })
 
   it('forwards allowlisted desktop write operations with args', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-2',
@@ -139,12 +129,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('rejects Google Calendar integration operations', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     const operations = [
       'calendar.getProviderStatus',
@@ -171,12 +157,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('normalizes positional date args for calendar range reads', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-calendar-range-positional',
@@ -193,12 +175,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('normalizes stringified calendar range objects', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-calendar-range-string',
@@ -236,12 +214,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   }
 
   it('keeps Google events out of range reads while consent is unanswered', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await invokeCalendarRange('request-calendar-range-unanswered')
 
@@ -255,12 +229,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
 
   it('keeps Google events out of range reads when consent is denied, ignoring caller flags', async () => {
     consentByProvider.google = false
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await invokeCalendarRange('request-calendar-range-denied')
 
@@ -274,12 +244,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
 
   it('includes Google events in range reads once the user grants consent', async () => {
     consentByProvider.google = true
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await invokeCalendarRange('request-calendar-range-granted')
 
@@ -293,12 +259,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
 
   it('falls back to excluding Google events when the consent lookup fails', async () => {
     getCalendarProviderSettings.mockRejectedValue(new Error('settings unavailable'))
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await invokeCalendarRange('request-calendar-range-settings-error')
 
@@ -312,12 +274,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
 
   it('keeps ICS events out until ICS itself is consented, whatever Google answered', async () => {
     consentByProvider.google = true
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await invokeCalendarRange('request-calendar-range-google-only')
     expect(calendarGetRange).toHaveBeenLastCalledWith(
@@ -333,12 +291,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('parses stringified empty args for calendar event lists', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-calendar-list-string',
@@ -350,12 +304,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('preserves calendar event list filters', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-calendar-list-filtered',
@@ -367,12 +317,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('falls back to empty calendar event list args for malformed string args', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-calendar-list-malformed',
@@ -384,12 +330,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('rejects operations outside the desktop CRUD allowlist', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-3',
@@ -404,12 +346,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('ignores unrelated main invoke channels', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-ignore',
@@ -422,12 +360,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('returns a desktop API error when an allowlisted operation is unavailable', async () => {
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-4',
@@ -448,12 +382,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
   it('returns a desktop API error when an allowlisted operation is not callable', async () => {
     ;(window.api.templates as Record<string, unknown>).list = []
 
-    renderHook(() => {
-      useAgentMcpDesktopApiResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
     await onMainInvokeCallback?.({
       requestId: 'request-5',

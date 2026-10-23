@@ -72,9 +72,7 @@ describe('Readwise book commands in the note UI (D16)', () => {
   it('learns from main that another device pulls', async () => {
     status.mockResolvedValue({ thisDevicePulls: false, pullingDeviceName: 'MacBook Pro' })
     const { result } = renderHook(() => useReadwiseBookCommands(readwiseNote), { wrapper })
-    await waitFor(() => {
-      expect(result.current.pullsHere).toBe(false)
-    })
+    await waitFor(() => expect(result.current.pullsHere).toBe(false))
     expect(result.current.pullingDeviceName).toBe('MacBook Pro')
   })
 

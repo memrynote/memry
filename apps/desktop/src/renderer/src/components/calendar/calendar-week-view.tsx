@@ -146,9 +146,7 @@ export function CalendarWeekView({
     }
     body.addEventListener('scroll', sync, { passive: true })
     sync()
-    return () => {
-      body.removeEventListener('scroll', sync)
-    }
+    return () => body.removeEventListener('scroll', sync)
   }, [scrollContainerRef])
 
   const virtualItems = virtualizer.getVirtualItems()
@@ -515,12 +513,8 @@ export function CalendarWeekView({
                     height: HOUR_HEIGHT * 24,
                     backgroundImage: GRID_LINE_BG
                   }}
-                  onMouseDown={(e) => {
-                    handlers.onMouseDown(e, vi.index)
-                  }}
-                  onDoubleClick={(e) => {
-                    handlers.onDoubleClick(e, vi.index)
-                  }}
+                  onMouseDown={(e) => handlers.onMouseDown(e, vi.index)}
+                  onDoubleClick={(e) => handlers.onDoubleClick(e, vi.index)}
                 >
                   <CalendarTimedColumnDroppable date={date} hourHeight={HOUR_HEIGHT}>
                     {assignLanes(dayItems).map(({ item, lane, laneCount }) => {
@@ -545,13 +539,7 @@ export function CalendarWeekView({
                             left: `${leftPct}%`,
                             width: `${widthPct}%`
                           }}
-                          onMouseDown={
-                            movable
-                              ? (e) => {
-                                  startMove(e, item, vi.index)
-                                }
-                              : undefined
-                          }
+                          onMouseDown={movable ? (e) => startMove(e, item, vi.index) : undefined}
                         >
                           <CalendarItemChip
                             item={item}
@@ -567,16 +555,12 @@ export function CalendarWeekView({
                               {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only gesture or key-interception wrapper; not itself a control, keyboard paths live on the controls inside */}
                               <div
                                 className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
-                                onMouseDown={(e) => {
-                                  startResize(e, item, vi.index, 'start')
-                                }}
+                                onMouseDown={(e) => startResize(e, item, vi.index, 'start')}
                               />
                               {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only gesture or key-interception wrapper; not itself a control, keyboard paths live on the controls inside */}
                               <div
                                 className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
-                                onMouseDown={(e) => {
-                                  startResize(e, item, vi.index, 'end')
-                                }}
+                                onMouseDown={(e) => startResize(e, item, vi.index, 'end')}
                               />
                             </>
                           )}

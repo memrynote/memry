@@ -143,9 +143,7 @@ beforeEach(() => {
     () => () => {}
   ) as unknown as typeof window.api.onHomePageCreated
   window.api.onHomePageUpdated = vi.fn((callback: (event: { id: string }) => void) => {
-    emitHomePageUpdated = () => {
-      callback({ id: 'b1' })
-    }
+    emitHomePageUpdated = () => callback({ id: 'b1' })
     return () => {}
   }) as unknown as typeof window.api.onHomePageUpdated
   window.api.onHomePageDeleted = vi.fn(
@@ -160,18 +158,14 @@ describe('HomeTabTitleSync', () => {
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Work'))
   })
 
   it('keeps "Home" while the untouched default board is the one open', async () => {
     localStorage.setItem(ACTIVE_KEY, 'b1')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
 
-    await waitFor(() => {
-      expect(window.api.homePages.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalled())
     await Promise.resolve()
 
     expect(view.titleOf('main', 'tab-home')).toBe('Home')
@@ -180,32 +174,22 @@ describe('HomeTabTitleSync', () => {
   it('follows a switch to another board', async () => {
     localStorage.setItem(ACTIVE_KEY, 'b1')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Home')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Home'))
 
-    act(() => {
-      view.selectBoard('b2')
-    })
+    act(() => view.selectBoard('b2'))
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Work'))
   })
 
   it('follows a rename of the board that is open', async () => {
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Work'))
 
     boards = [board('b1', 'Home', 0), board('b2', 'Planning', 1)]
     act(() => emitHomePageUpdated?.())
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Planning')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Planning'))
   })
 
   it('retitles a Home tab the user is not looking at', async () => {
@@ -214,9 +198,7 @@ describe('HomeTabTitleSync', () => {
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [noteTab(), homeTab()], 'tab-note')]))
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Work'))
     expect(view.titleOf('main', 'tab-note')).toBe('Some note')
   })
 
@@ -229,36 +211,28 @@ describe('HomeTabTitleSync', () => {
       ])
     )
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-left')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-left')).toBe('Work'))
     expect(view.titleOf('side', 'tab-right')).toBe('Work')
   })
 
   it('follows the selection when the open board is deleted out from under it', async () => {
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Work'))
 
     // The stored id survives the delete; `useHomeBoards` resolves it to the
     // first board that still exists, and the title has to follow that.
     boards = [board('b1', 'Home', 0)]
     act(() => emitHomePageUpdated?.())
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Home')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Home'))
   })
 
   it('falls back to "Home" when the vault has no boards at all', async () => {
     boards = []
     const view = mount(makeState([makeGroup('main', [homeTab({ title: 'Work' })])]))
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Home')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Home'))
   })
 
   it('falls back to "Home" when a board name is blank', async () => {
@@ -266,18 +240,14 @@ describe('HomeTabTitleSync', () => {
     boards = [board('b1', 'Home', 0), board('b2', '   ', 1)]
     const view = mount(makeState([makeGroup('main', [homeTab({ title: 'Work' })])]))
 
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Home')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Home'))
   })
 
   it('leaves the restored title alone while the board list is still loading', async () => {
     listBoards = () => new Promise<TestBoard[]>(() => {})
     const view = mount(makeState([makeGroup('main', [homeTab({ title: 'Work' })])]))
 
-    await waitFor(() => {
-      expect(window.api.homePages.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalled())
 
     expect(view.titleOf('main', 'tab-home')).toBe('Work')
   })
@@ -287,15 +257,11 @@ describe('HomeTabTitleSync', () => {
     // the edge one: it must not churn state the persistence layer writes.
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
-    await waitFor(() => {
-      expect(view.titleOf('main', 'tab-home')).toBe('Work')
-    })
+    await waitFor(() => expect(view.titleOf('main', 'tab-home')).toBe('Work'))
     const before = view.groups
 
     act(() => emitHomePageUpdated?.())
-    await waitFor(() => {
-      expect(window.api.homePages.list).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalledTimes(2))
 
     expect(view.groups).toBe(before)
   })
@@ -304,9 +270,7 @@ describe('HomeTabTitleSync', () => {
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [noteTab()])]))
 
-    await waitFor(() => {
-      expect(window.api.homePages.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalled())
 
     expect(view.titleOf('main', 'tab-note')).toBe('Some note')
   })

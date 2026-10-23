@@ -243,15 +243,10 @@ export class NoteBodyOutbox {
         this.deferredFlushes.delete(noteId)
         if (pushed) this.deps.recordPush?.(noteId, fullState ? 'snapshot' : 'confirmed', pushed)
       })
-      .catch((err: unknown) => {
-        this.onFlushFailed(noteId, flush.rowIds, err)
-      })
+      .catch((err: unknown) => this.onFlushFailed(noteId, flush.rowIds, err))
       .finally(() => {
         this.flushingNotes.delete(noteId)
-        if (!fullState) {
-          this.scheduleFlush(noteId)
-          return
-        }
+        if (!fullState) return this.scheduleFlush(noteId)
         // Hand the full-state slot to the next note waiting for it.
         this.fullStateFlushing = false
         for (const next of this.deps.queue.listNoteBodyNoteIds()) this.scheduleFlush(next)

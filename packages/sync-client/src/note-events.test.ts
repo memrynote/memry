@@ -125,9 +125,9 @@ describe('emitNoteUpdated', () => {
       throw new Error('destroyed window')
     })
 
-    expect(() => {
+    expect(() =>
       emitNoteUpdated(emit, { id: 'note-1', changes: { title: 'A' }, source: 'sync' })
-    }).toThrow('destroyed window')
+    ).toThrow('destroyed window')
   })
 
   it('performs no runtime validation — `changes` is enforced by the type, not a check', () => {

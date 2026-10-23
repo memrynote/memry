@@ -184,9 +184,7 @@ describe('readwise synced settings group', () => {
 
     it('does nothing without an open vault', () => {
       currentDb = null
-      expect(() => {
-        followFolderRenameInReadwise('Readwise', 'Reading')
-      }).not.toThrow()
+      expect(() => followFolderRenameInReadwise('Readwise', 'Reading')).not.toThrow()
     })
   })
 

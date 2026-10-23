@@ -185,9 +185,7 @@ describe('LocalGraphPanel on a container with no width', () => {
 
     host.remove()
 
-    expect(() => {
-      runFrames(3)
-    }).not.toThrow()
+    expect(() => runFrames(3)).not.toThrow()
     expect(mocks.refreshCount).toBe(beforeDetach)
   })
 })

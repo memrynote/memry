@@ -101,12 +101,8 @@ export function CommentFormatButtons({ editor }: { editor: Editor }): React.JSX.
       className="critic-comment-format-row"
       // The bubble sits outside the contenteditable, so a plain mousedown moves
       // focus and collapses the selection before the command can run.
-      onMouseDown={(event) => {
-        event.preventDefault()
-      }}
-      onPointerDown={(event) => {
-        event.preventDefault()
-      }}
+      onMouseDown={(event) => event.preventDefault()}
+      onPointerDown={(event) => event.preventDefault()}
     >
       {COMMENT_FORMAT_ITEMS.map((item) => (
         <button
@@ -117,9 +113,7 @@ export function CommentFormatButtons({ editor }: { editor: Editor }): React.JSX.
           aria-label={t(item.labelKey)}
           aria-pressed={editor.isActive(item.markName)}
           tabIndex={-1}
-          onClick={() => {
-            item.run(editor)
-          }}
+          onClick={() => item.run(editor)}
         >
           <item.Icon className="size-3.5" aria-hidden="true" />
         </button>
@@ -195,9 +189,7 @@ export function CommentFormatToolbar({
     }
 
     dom.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      dom.removeEventListener('keydown', handleKeyDown, true)
-    }
+    return () => dom.removeEventListener('keydown', handleKeyDown, true)
   }, [editor])
 
   return (

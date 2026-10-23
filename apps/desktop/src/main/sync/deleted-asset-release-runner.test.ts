@@ -72,9 +72,7 @@ describe('deleted-asset release runner', () => {
 
     engine.resume('popover')
     deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
-    await vi.waitFor(() => {
-      expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1'])
-    })
+    await vi.waitFor(() => expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1']))
     await engine.stop({ skipFinalPush: true })
   })
 
@@ -113,9 +111,7 @@ describe('deleted-asset release runner', () => {
 
     // running settled back to false: the next pass releases.
     deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
-    await vi.waitFor(() => {
-      expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1'])
-    })
+    await vi.waitFor(() => expect(ctx.dereference).toHaveBeenCalledWith(['chunk-of-a-1']))
     await engine.stop({ skipFinalPush: true })
   })
 

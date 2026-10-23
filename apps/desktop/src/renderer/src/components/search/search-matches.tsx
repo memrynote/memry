@@ -70,9 +70,7 @@ export function SearchMatchRows({
             // oxlint-disable-next-line react/no-array-index-key -- index is the occurrence identity (onOpen/matchValue take it)
             key={i}
             value={matchValue(item, i)}
-            onSelect={() => {
-              onOpen(item, i)
-            }}
+            onSelect={() => onOpen(item, i)}
             className={ROW_CLASS}
           >
             <span className="flex min-w-0 flex-1 items-center overflow-hidden whitespace-pre text-xs leading-[18px] text-text-secondary">
@@ -88,9 +86,7 @@ export function SearchMatchRows({
       {hidden > 0 && (
         <Command.Item
           value={matchesToggleValue(item, expanded)}
-          onSelect={() => {
-            onToggle(item)
-          }}
+          onSelect={() => onToggle(item)}
           className={`${ROW_CLASS} text-xs leading-4 text-text-secondary`}
         >
           <span className="flex size-[13px] shrink-0 items-center justify-center text-text-tertiary [&_svg]:size-[13px]">

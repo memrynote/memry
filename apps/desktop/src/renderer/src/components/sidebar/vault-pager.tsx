@@ -96,9 +96,7 @@ function animateTo(
       animation.cancel()
       return undefined
     })
-    .catch(() => {
-      apply()
-    })
+    .catch(() => apply())
 }
 
 /**
@@ -226,9 +224,7 @@ export function VaultPager({
   const uncover = useCallback((animate: boolean) => {
     if (!coveringRef.current) return
     coveringRef.current = false
-    const dropCover = (): void => {
-      setCover(null)
-    }
+    const dropCover = (): void => setCover(null)
     if (!animate || prefersReducedMotion()) {
       dropCover()
       return
@@ -516,9 +512,7 @@ export function VaultPager({
         check()
       })
     })
-    const timer = setTimeout(() => {
-      uncover(true)
-    }, ARRIVAL_MAX_MS)
+    const timer = setTimeout(() => uncover(true), ARRIVAL_MAX_MS)
     const unsubscribeQueries = queryClient.getQueryCache().subscribe(check)
     const unsubscribeLoads = subscribeWorkspaceLoads(check)
     return () => {
@@ -592,12 +586,7 @@ export function VaultPager({
     // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
-  useEffect(
-    () => () => {
-      setVaultSwipeProgress(null, 0)
-    },
-    []
-  )
+  useEffect(() => () => setVaultSwipeProgress(null, 0), [])
 
   return (
     <div ref={viewportRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

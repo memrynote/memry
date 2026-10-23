@@ -166,9 +166,7 @@ export function TagSuggestionPopover({
     }
 
     document.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-    }
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [visible, suggestions, selectedIndex, onSelect, activeTagPos])
 
   if (!visible || !position || suggestions.length === 0) return null
@@ -203,9 +201,7 @@ export function TagSuggestionPopover({
               onSelect(item.tag, item.color, activeTagPos)
               setVisible(false)
             }}
-            onMouseEnter={() => {
-              setSelectedIndex(index)
-            }}
+            onMouseEnter={() => setSelectedIndex(index)}
             // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
             role="option"
             aria-selected={isSelected}

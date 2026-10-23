@@ -23,9 +23,7 @@ const mocks = vi.hoisted(() => {
     canvasMounts: [] as string[],
     closeTab: vi.fn(),
     tagsHubChunk,
-    releaseTagsHubChunk: () => {
-      releaseTagsHubChunk()
-    }
+    releaseTagsHubChunk: () => releaseTagsHubChunk()
   }
 })
 

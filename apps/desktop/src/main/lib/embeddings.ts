@@ -634,9 +634,7 @@ class EmbeddingModelBridge {
 
     // Inference is background work: a vault-wide re-embed must not take the
     // machine's CPU away from the user. The pid exists once the process spawns.
-    child.once('spawn', () => {
-      lowerProcessPriority(child.pid)
-    })
+    child.once('spawn', () => lowerProcessPriority(child.pid))
     this.process = child
     // A fresh worker must never inherit a force-kill phase latched for a prior one.
     this.pendingExitPhase = null

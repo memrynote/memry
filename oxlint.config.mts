@@ -220,7 +220,6 @@ export default defineConfig({
       'typescript/prefer-nullish-coalescing',
       'typescript/prefer-optional-chain',
       'typescript/consistent-return',
-      'typescript/no-unnecessary-boolean-literal-compare',
       'typescript/no-unnecessary-template-expression',
       'typescript/no-unnecessary-type-arguments',
       'typescript/no-unnecessary-type-conversion'
@@ -250,7 +249,11 @@ export default defineConfig({
       'react/only-export-components',
       // State is updated by copy (`items.map((i) => ({ ...i, done: true }))`) in React,
       // Zustand-style stores and sync merges; the rule's fix is to mutate in place.
-      'oxc/no-map-spread'
+      'oxc/no-map-spread',
+      // Types describe current writers, not data older builds persisted: `settings.flag !== false`
+      // reads a missing key as the shipped default `true`. The rule's fix (`settings.flag`) flips
+      // that to false, and its autofix shipped exactly that regression in capture and settings.
+      'typescript/no-unnecessary-boolean-literal-compare'
     ),
 
     // --- Repo guards ---

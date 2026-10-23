@@ -25,9 +25,7 @@ export function FieldPropertyCell({
     onPropertyUpdate !== undefined &&
     (isMetadataEditableRow(note) || (isField && note.kind === 'task'))
   const save = editable
-    ? (nextValue: unknown) => {
-        onPropertyUpdate(note.id, columnId, nextValue)
-      }
+    ? (nextValue: unknown) => onPropertyUpdate(note.id, columnId, nextValue)
     : undefined
 
   const target = isField ? table?.relationTargetOf(columnId) : null

@@ -130,42 +130,35 @@ export function useGraphFilters(initialState: GraphViewState): UseGraphFiltersRe
   })
 
   const updateState = useCallback(
-    (update: (state: GraphViewState) => GraphViewState) => {
-      setStored((previous) => ({ ...previous, state: update(previous.state) }))
-    },
+    (update: (state: GraphViewState) => GraphViewState) =>
+      setStored((previous) => ({ ...previous, state: update(previous.state) })),
     [setStored]
   )
 
   const dispatch = useCallback<Dispatch<GraphFilterAction>>(
-    (action) => {
-      updateState((state) => ({ ...state, filters: filterReducer(state.filters, action) }))
-    },
+    (action) =>
+      updateState((state) => ({ ...state, filters: filterReducer(state.filters, action) })),
     [updateState]
   )
 
   const setColorBy = useCallback(
-    (colorBy: GraphColorBy) => {
-      updateState((state) => ({ ...state, colorBy }))
-    },
+    (colorBy: GraphColorBy) => updateState((state) => ({ ...state, colorBy })),
     [updateState]
   )
 
   const toggleCollapsed = useCallback(
-    (categoryId: string) => {
+    (categoryId: string) =>
       updateState((state) => ({
         ...state,
         collapsedCategoryIds: state.collapsedCategoryIds.includes(categoryId)
           ? state.collapsedCategoryIds.filter((id) => id !== categoryId)
           : [...state.collapsedCategoryIds, categoryId]
-      }))
-    },
+      })),
     [updateState]
   )
 
   const applyView = useCallback(
-    (state: GraphViewState, activeViewId: string | null) => {
-      setStored({ state, activeViewId })
-    },
+    (state: GraphViewState, activeViewId: string | null) => setStored({ state, activeViewId }),
     [setStored]
   )
 

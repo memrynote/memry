@@ -49,9 +49,7 @@ export function VaultIconPicker({
   children
 }: VaultIconPickerProps) {
   const setIcon = useSetVaultIcon()
-  const close = useCallback(() => {
-    onOpenChange(false)
-  }, [onOpenChange])
+  const close = useCallback(() => onOpenChange(false), [onOpenChange])
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>

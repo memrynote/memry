@@ -144,9 +144,7 @@ export function MockupFrame({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              onClick={(e) => e.stopPropagation()}
             />
           </motion.div>
         )}

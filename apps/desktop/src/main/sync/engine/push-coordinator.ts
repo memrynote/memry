@@ -325,9 +325,7 @@ export class PushCoordinator {
                 if (payloadCarriesOfflineClock(payload)) offlineClocked.add(item.id)
                 return payload
               },
-              onItemTooLarge: (item) => {
-                this.reportItemTooLarge(item)
-              }
+              onItemTooLarge: (item) => this.reportItemTooLarge(item)
             }
           )
           timer.endPhase(dedupedItems.length)

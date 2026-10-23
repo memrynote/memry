@@ -1249,7 +1249,7 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
     })
   }
 
-  const accepted = outcomes.filter((outcome) => outcome.accepted)
+  const accepted = outcomes.filter((outcome) => outcome.accepted === true)
 
   if (accepted.length > 0) {
     // Claimed writes pruned inside their own commit (#2299).

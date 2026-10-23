@@ -29,9 +29,7 @@ async function openPage(browser, scale = 1) {
     viewport: { width: W, height: H },
     deviceScaleFactor: scale
   })
-  page.on('pageerror', (e) => {
-    console.error('pageerror:', e.message)
-  })
+  page.on('pageerror', (e) => console.error('pageerror:', e.message))
   page.on('console', (m) => {
     if (m.type() === 'error') console.error('console:', m.text())
   })

@@ -8,9 +8,7 @@ import { readCalloutRun } from './markdown'
 
 const mytype = { name: 'mytype', label: 'My type', color: '#ff8800', icon: 'star' }
 
-afterEach(() => {
-  setCalloutTypeDefinitions([])
-})
+afterEach(() => setCalloutTypeDefinitions([]))
 
 describe('custom callout types (#3207)', () => {
   it('leaves a type without a definition unclaimed, so it stays a quote', () => {

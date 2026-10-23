@@ -62,21 +62,13 @@ export function JournalBreadcrumb({
         >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onYearClick(dateParts.year)
-          }}
-          className={CRUMB_CLASS}
-        >
+        <button type="button" onClick={() => onYearClick(dateParts.year)} className={CRUMB_CLASS}>
           {dateParts.year}
         </button>
         <span className="text-xs text-text-secondary px-0.5">/</span>
         <button
           type="button"
-          onClick={() => {
-            onMonthClick(dateParts.year, dateParts.monthIndex)
-          }}
+          onClick={() => onMonthClick(dateParts.year, dateParts.monthIndex)}
           className={CRUMB_CLASS}
         >
           {dateParts.month}
@@ -101,21 +93,13 @@ export function JournalBreadcrumb({
       >
         <button
           type="button"
-          onClick={() => {
-            onYearClick(viewState.year)
-          }}
+          onClick={() => onYearClick(viewState.year)}
           className={BACK_BTN_CLASS}
           aria-label={t('nav.goToYearView')}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onYearClick(viewState.year)
-          }}
-          className={CRUMB_CLASS}
-        >
+        <button type="button" onClick={() => onYearClick(viewState.year)} className={CRUMB_CLASS}>
           {viewState.year}
         </button>
         <span className="text-xs text-text-secondary px-0.5">/</span>

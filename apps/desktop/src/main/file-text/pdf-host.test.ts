@@ -93,9 +93,7 @@ describe('PDF host', () => {
 
   it('fails with the message the page threw when it throws a plain object', async () => {
     const opening = openPdfDocument('/vault/broken.pdf', 10)
-    await vi.waitFor(() => {
-      expect(views).toHaveLength(1)
-    })
+    await vi.waitFor(() => expect(views).toHaveLength(1))
     // pdfjs exceptions are not real Errors, so they cross the bridge as plain objects.
     views[0].webContents.host.open = () =>
       // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
@@ -127,9 +125,7 @@ describe('PDF host', () => {
     contents.host.pageText = () => new Promise<string>(() => {})
 
     const pending = pdf.pageText(1)
-    await vi.waitFor(() => {
-      expect(contents.handlers.has('render-process-gone')).toBe(true)
-    })
+    await vi.waitFor(() => expect(contents.handlers.has('render-process-gone')).toBe(true))
     contents.handlers.get('render-process-gone')?.({}, { reason: 'crashed' })
 
     await expect(pending).rejects.toThrow('PDF host closed')

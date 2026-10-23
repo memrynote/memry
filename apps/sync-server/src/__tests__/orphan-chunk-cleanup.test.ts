@@ -38,9 +38,7 @@ describe('cleanupOrphanedBlobChunks (#2414)', () => {
       .run(USER_ID)
   })
 
-  afterEach(() => {
-    d1.close()
-  })
+  afterEach(() => d1.close())
 
   it('reaps more orphaned chunks than one statement can bind, rows and objects', async () => {
     const keys: string[] = []

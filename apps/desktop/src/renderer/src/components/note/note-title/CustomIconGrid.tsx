@@ -42,9 +42,7 @@ function readAsBase64(file: File): Promise<string> {
       }
       resolve(result.slice(result.indexOf(',') + 1))
     })
-    reader.addEventListener('error', () => {
-      reject(reader.error ?? new Error('Failed to read file'))
-    })
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('Failed to read file')))
     reader.readAsDataURL(file)
   })
 }
@@ -192,18 +190,14 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
         event.preventDefault()
         setIsDragging(true)
       }}
-      onDragLeave={() => {
-        setIsDragging(false)
-      }}
+      onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
     >
       <div className="shrink-0 space-y-2 p-3">
         <input
           type="search"
           value={search}
-          onChange={(event) => {
-            setSearch(event.target.value)
-          }}
+          onChange={(event) => setSearch(event.target.value)}
           placeholder={t('menus.emoji.custom.searchPlaceholder')}
           aria-label={t('menus.emoji.custom.searchPlaceholder')}
           className="h-8 w-full rounded-md border border-border bg-transparent px-2 text-sm outline-none focus:border-foreground/40"
@@ -250,9 +244,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
           <input
             type="url"
             value={url}
-            onChange={(event) => {
-              setUrl(event.target.value)
-            }}
+            onChange={(event) => setUrl(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault()
@@ -305,9 +297,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
                       autoFocus
                       value={renameDraft}
                       maxLength={CUSTOM_ICON_NAME_MAX_LENGTH}
-                      onChange={(event) => {
-                        setRenameDraft(event.target.value)
-                      }}
+                      onChange={(event) => setRenameDraft(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') void commitRename()
                         if (event.key === 'Escape') setRenamingId(null)
@@ -325,9 +315,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        setRenamingId(null)
-                      }}
+                      onClick={() => setRenamingId(null)}
                       aria-label={t('menus.emoji.custom.cancelRename')}
                       className="rounded p-1 text-muted-foreground hover:text-foreground"
                     >
@@ -338,9 +326,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
                   <>
                     <button
                       type="button"
-                      onClick={() => {
-                        onSelect(icon.id)
-                      }}
+                      onClick={() => onSelect(icon.id)}
                       className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-start hover:bg-muted"
                     >
                       <img

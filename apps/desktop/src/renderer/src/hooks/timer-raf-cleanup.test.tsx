@@ -58,9 +58,7 @@ describe('renderer timer/rAF cleanup on unmount', () => {
       const spy = vi.fn()
       const { result } = renderHook(() => useTrackedTimeout())
 
-      act(() => {
-        result.current(spy, 500)
-      })
+      act(() => result.current(spy, 500))
       expect(vi.getTimerCount()).toBe(1)
 
       act(() => void vi.advanceTimersByTime(500))
@@ -91,9 +89,7 @@ describe('renderer timer/rAF cleanup on unmount', () => {
   it('useRevealInSidebar drops the 2s highlight auto-clear', () => {
     const { result, unmount } = renderHook(() => useRevealInSidebar([]))
 
-    act(() => {
-      result.current.setHighlightedItemId('item-1')
-    })
+    act(() => result.current.setHighlightedItemId('item-1'))
     expect(vi.getTimerCount()).toBe(1)
 
     unmount()
@@ -157,9 +153,7 @@ describe('renderer timer/rAF cleanup on unmount', () => {
 
       // Trap goes away inside the same frame the auto-focus was queued for.
       rerender(<Trap isActive={false} />)
-      act(() => {
-        frames.forEach((frame) => frame())
-      })
+      act(() => frames.forEach((frame) => frame()))
 
       expect(document.activeElement).not.toBe(inside)
     } finally {

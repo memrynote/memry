@@ -133,9 +133,7 @@ describe('startGoogleCalendarSyncRunner (concurrent start)', () => {
       hasConnectionMock.mockImplementationOnce(
         () =>
           new Promise<boolean>((resolve) => {
-            releaseConnectionCheck = () => {
-              resolve(true)
-            }
+            releaseConnectionCheck = () => resolve(true)
             entered()
           })
       )

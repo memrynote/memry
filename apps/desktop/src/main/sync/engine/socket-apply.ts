@@ -161,9 +161,7 @@ export function createSocketApplier(deps: SocketApplyDeps): SocketApplier {
           changed++
           if (settled.result === 'conflict') conflicts++
           const { operation } = settled
-          page.afterCommit(() => {
-            deps.onApplied(dec, operation)
-          })
+          page.afterCommit(() => deps.onApplied(dec, operation))
         }
         page.commit()
       } catch (error) {

@@ -82,9 +82,7 @@ export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Elemen
             <button
               key={preset.id}
               type="button"
-              onClick={() => {
-                handleSelectPreset(preset.id)
-              }}
+              onClick={() => handleSelectPreset(preset.id)}
               className={cn(
                 'flex flex-col items-center gap-1 p-2 rounded-md',
                 'text-foreground',

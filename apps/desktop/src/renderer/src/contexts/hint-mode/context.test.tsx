@@ -73,27 +73,19 @@ describe('hint mode state/action contexts', () => {
 
     const actions = actionsSeen[0]
 
-    act(() => {
-      actions.activate()
-    })
+    act(() => actions.activate())
     expect(stateRenders).toBe(2)
     expect(actionsRenders).toBe(1)
 
-    act(() => {
-      actions.typeChar('T')
-    })
+    act(() => actions.typeChar('T'))
     expect(stateRenders).toBe(3)
     expect(actionsRenders).toBe(1)
 
-    act(() => {
-      actions.backspace()
-    })
+    act(() => actions.backspace())
     expect(stateRenders).toBe(4)
     expect(actionsRenders).toBe(1)
 
-    act(() => {
-      actions.deactivate()
-    })
+    act(() => actions.deactivate())
     expect(stateRenders).toBe(5)
     expect(actionsRenders).toBe(1)
 
@@ -114,9 +106,7 @@ describe('hint mode state/action contexts', () => {
     const firstState = result.current.state
     const firstActions = result.current.actions
 
-    act(() => {
-      result.current.actions.activate()
-    })
+    act(() => result.current.actions.activate())
     expect(result.current.state).not.toBe(firstState)
     expect(result.current.actions).toBe(firstActions)
     expect(result.current.actions.activate).toBe(firstActions.activate)
@@ -125,9 +115,7 @@ describe('hint mode state/action contexts', () => {
     expect(result.current.actions.deactivate).toBe(firstActions.deactivate)
 
     const activeState = result.current.state
-    act(() => {
-      result.current.actions.typeChar('T')
-    })
+    act(() => result.current.actions.typeChar('T'))
     expect(result.current.state).not.toBe(activeState)
     expect(result.current.actions).toBe(firstActions)
   })
@@ -144,9 +132,7 @@ describe('hint mode state/action contexts', () => {
     rerender()
     expect(result.current).toBe(first)
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
     expect(result.current).not.toBe(first)
     expect(result.current.state.isActive).toBe(true)
     expect(result.current.activate).toBe(first.activate)

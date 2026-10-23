@@ -50,9 +50,7 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
               data-item-id={b.itemId}
               data-item-type={b.itemType}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start text-[13px] hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
-              onClick={() => {
-                openSidebarItem(item)
-              }}
+              onClick={() => openSidebarItem(item)}
             >
               <Icon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
               <span className="sr-only">{typeLabel}</span>

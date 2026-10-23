@@ -140,9 +140,7 @@ describe('SyncEngine socket items (#2300)', () => {
 
     ws.emit('message', frame(['filter-1'], 9))
 
-    await vi.waitFor(() => {
-      expect(filterName('filter-1')).toBe('name of filter-1')
-    })
+    await vi.waitFor(() => expect(filterName('filter-1')).toBe('name of filter-1'))
     // The wake pull is parked on its /sync/changes request: nothing it fetched
     // put the row there.
     expect(changesCalls()).toBe(1)
@@ -157,9 +155,7 @@ describe('SyncEngine socket items (#2300)', () => {
       hasMore: false,
       nextCursor: 9
     })
-    await vi.waitFor(() => {
-      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
-    })
+    await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9'))
     expect(pullItems).toHaveBeenCalledWith(['filter-1'])
     expect(applySpy.mock.results.map((r) => r.value)).toEqual(['applied', 'skipped'])
 
@@ -174,9 +170,7 @@ describe('SyncEngine socket items (#2300)', () => {
 
     ws.emit('message', frame(['filter-bad', 'filter-ok'], 9))
 
-    await vi.waitFor(() => {
-      expect(filterName('filter-ok')).toBe('name of filter-ok')
-    })
+    await vi.waitFor(() => expect(filterName('filter-ok')).toBe('name of filter-ok'))
     expect(filterName('filter-bad')).toBeUndefined()
     expect(engine.getQuarantinedItems()).toEqual([])
 
@@ -189,9 +183,9 @@ describe('SyncEngine socket items (#2300)', () => {
       hasMore: false,
       nextCursor: 9
     })
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(engine.getQuarantinedItems().map((item) => item.itemId)).toEqual(['filter-bad'])
-    })
+    )
     expect(filterName('filter-bad')).toBeUndefined()
     expect(applySpy.mock.calls.map(([input]) => input.itemId)).not.toContain('filter-bad')
 
@@ -240,11 +234,11 @@ describe('SyncEngine socket items (#2300)', () => {
       items: [{ ...pullItem('note-n'), type: 'note' }]
     } satisfies SyncSocketEvent)
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(listCrdtBodyDebts(asSyncDb(getDb().db)).map((d) => [d.noteId, d.reason])).toEqual([
         ['note-n', 'record']
       ])
-    })
+    )
     expect(engine.hasUnmergedRemoteCrdtState('note-n')).toBe(true)
     expect(batch).not.toHaveBeenCalled()
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
@@ -255,9 +249,7 @@ describe('SyncEngine socket items (#2300)', () => {
       hasMore: false,
       nextCursor: 9
     })
-    await vi.waitFor(() => {
-      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
-    })
+    await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9'))
     expect(batched).toContainEqual(['note-n'])
 
     await engine.stop({ skipFinalPush: true })
@@ -284,17 +276,15 @@ describe('SyncEngine socket items (#2300)', () => {
       ]
     } satisfies SyncSocketEvent)
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(getDb().db.select().from(syncTombstoneClocks).all()).toMatchObject([
         { type: 'tag_definition', itemId: 'tag-x', clock: { 'device-2': 3 } }
       ])
-    })
+    )
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
 
     releaseChanges({ items: [], deleted: [], hasMore: false, nextCursor: 9 })
-    await vi.waitFor(() => {
-      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
-    })
+    await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9'))
     await engine.stop({ skipFinalPush: true })
   })
 
@@ -305,14 +295,10 @@ describe('SyncEngine socket items (#2300)', () => {
 
     ws.emit('message', { kind: 'changes_available', cursor: 9 } satisfies SyncSocketEvent)
 
-    await vi.waitFor(() => {
-      expect(changesCalls()).toBe(1)
-    })
+    await vi.waitFor(() => expect(changesCalls()).toBe(1))
     expect(filterName('filter-1')).toBeUndefined()
     releaseChanges({ items: [], deleted: [], hasMore: false, nextCursor: 9 })
-    await vi.waitFor(() => {
-      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
-    })
+    await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9'))
 
     await engine.stop({ skipFinalPush: true })
   })
@@ -420,9 +406,7 @@ describe('SyncEngine socket items (#2300)', () => {
       vi.spyOn(CrdtSyncCoordinator.prototype, 'applyCrdtBatch').mockImplementation(
         () =>
           new Promise((resolve) => {
-            releaseCrdt = () => {
-              resolve({ snapshotGets: 0, batchPosts: 0 })
-            }
+            releaseCrdt = () => resolve({ snapshotGets: 0, batchPosts: 0 })
             enteredCrdt()
           })
       )
@@ -441,9 +425,7 @@ describe('SyncEngine socket items (#2300)', () => {
       ws.emit('message', staleFrame())
       await new Promise((resolve) => setTimeout(resolve, 100))
       releaseCrdt()
-      await vi.waitFor(() => {
-        expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('101')
-      })
+      await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('101'))
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(filterName('filter-x')).toBeUndefined()
@@ -483,16 +465,12 @@ describe('SyncEngine socket items (#2300)', () => {
       ws.emit('message', { kind: 'changes_available', cursor: 101 } satisfies SyncSocketEvent)
       await secondSliceEntered
       // Slice 2's POST is prefetched while slice 1 applies.
-      await vi.waitFor(() => {
-        expect(filterName('filter-x')).toBeUndefined()
-      })
+      await vi.waitFor(() => expect(filterName('filter-x')).toBeUndefined())
 
       ws.emit('message', staleFrame())
       await new Promise((resolve) => setTimeout(resolve, 100))
       releaseSecondSlice()
-      await vi.waitFor(() => {
-        expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('101')
-      })
+      await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('101'))
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(filterName('filter-x')).toBeUndefined()
@@ -518,13 +496,13 @@ describe('SyncEngine socket items (#2300)', () => {
       setPage({ items: [], deleted: ['filter-x', ...others], hasMore: false, nextCursor: 101 })
 
       ws.emit('message', { kind: 'changes_available', cursor: 101 } satisfies SyncSocketEvent)
-      await vi.waitFor(() => {
+      await vi.waitFor(() =>
         expect(
           pullSpy.mock.calls.some(([, body]) =>
             (body as { itemIds: string[] }).itemIds.includes('gone-99')
           )
         ).toBe(true)
-      })
+      )
       await new Promise((resolve) => setTimeout(resolve, 100))
       expect(filterName('filter-x')).toBeUndefined()
       expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
@@ -537,9 +515,7 @@ describe('SyncEngine socket items (#2300)', () => {
 
       // Above the page the fast path is live.
       ws.emit('message', frame(['filter-2'], 102))
-      await vi.waitFor(() => {
-        expect(filterName('filter-2')).toBe('name of filter-2')
-      })
+      await vi.waitFor(() => expect(filterName('filter-2')).toBe('name of filter-2'))
       await engine.stop({ skipFinalPush: true })
     })
   })
@@ -570,15 +546,11 @@ describe('SyncEngine socket items (#2300)', () => {
 
     inFlight = false
     settle(true)
-    await vi.waitFor(() => {
-      expect(filterName('filter-1')).toBe('name of filter-1')
-    })
+    await vi.waitFor(() => expect(filterName('filter-1')).toBe('name of filter-1'))
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
 
     releaseChanges({ items: [], deleted: [], hasMore: false, nextCursor: 9 })
-    await vi.waitFor(() => {
-      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9')
-    })
+    await vi.waitFor(() => expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('9'))
     await engine.stop({ skipFinalPush: true })
   })
 })

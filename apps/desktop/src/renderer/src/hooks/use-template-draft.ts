@@ -266,9 +266,7 @@ export function useTemplateDraft({
       void saveRef.current()
     }, autoSaveDelayMs)
 
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [templateId, isDirty, current, autoSaveDelayMs])
 

@@ -28,9 +28,7 @@ const toolbarMocks = vi.hoisted(() => ({
     getSelection: vi.fn(() => ({ blocks: toolbarMocks.editor.selectedBlocks })),
     getTextCursorPosition: vi.fn(() => ({ block: toolbarMocks.editor.selectedBlocks[0] })),
     focus: vi.fn(),
-    transact: vi.fn((fn: () => void) => {
-      fn()
-    }),
+    transact: vi.fn((fn: () => void) => fn()),
     updateBlock: vi.fn()
   }
 }))

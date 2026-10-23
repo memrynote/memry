@@ -70,8 +70,6 @@ export const useHintActivation = (): void => {
     }
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, { capture: true })
-    }
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [activate, deactivate, typeChar, backspace])
 }

@@ -46,9 +46,7 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
 
   // A subtask's path opens Tasks zoomed into its parent, with it open.
   const openPath = useCallback(
-    (task: Task) => {
-      openTaskInTasksTab(openTab, task.id, task.projectId, task.parentId)
-    },
+    (task: Task) => openTaskInTasksTab(openTab, task.id, task.projectId, task.parentId),
     [openTab]
   )
   const dateView = useDateViewValue(tasks, projects, openPath)

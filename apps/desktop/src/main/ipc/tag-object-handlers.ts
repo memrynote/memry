@@ -96,9 +96,8 @@ function registerTagFillHandlers(): void {
           {
             settings: readAIInlineSettings(),
             disclosureAccepted: fillDisclosureAccepted(),
-            acceptDisclosure: () => {
-              store.set('agent', { ...store.get('agent'), fieldFillDisclosureAccepted: true })
-            },
+            acceptDisclosure: () =>
+              store.set('agent', { ...store.get('agent'), fieldFillDisclosureAccepted: true }),
             getNote: async (noteId) => {
               const note = await getNoteById(noteId)
               if (!note || note.contentOmitted) return null

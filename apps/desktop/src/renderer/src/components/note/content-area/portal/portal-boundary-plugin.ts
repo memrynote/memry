@@ -347,9 +347,7 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
       }
       const schedule = (view: EditorView): void => {
         clearTimeout(timer)
-        timer = setTimeout(() => {
-          reconcile(view)
-        }, RECONCILE_DELAY_MS)
+        timer = setTimeout(() => reconcile(view), RECONCILE_DELAY_MS)
       }
       return {
         update(view, previous) {

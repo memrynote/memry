@@ -93,9 +93,7 @@ export function SearchResultItem({
   return (
     <SearchRow
       value={resultValue(item)}
-      onSelect={() => {
-        onSelect(item)
-      }}
+      onSelect={() => onSelect(item)}
       icon={<ResultIcon item={item} />}
       trailing={
         matchCount ? (

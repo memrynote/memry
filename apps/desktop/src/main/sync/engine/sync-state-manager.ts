@@ -173,10 +173,7 @@ export class SyncStateManager {
     if (key === SYNC_STATE_KEYS.SYNC_PAUSED) {
       this.knownNotPaused = value !== 'true'
     }
-    if (key !== SYNC_STATE_KEYS.LAST_CURSOR) {
-      this.writeState(this.ctx.deps.db, key, value)
-      return
-    }
+    if (key !== SYNC_STATE_KEYS.LAST_CURSOR) return this.writeState(this.ctx.deps.db, key, value)
     // Both or neither (#2421): see NOTE_BODY_FEED_CURSOR.
     this.ctx.deps.db.transaction((tx) => {
       this.writeState(tx, key, value)

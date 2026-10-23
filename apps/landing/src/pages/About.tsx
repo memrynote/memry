@@ -314,9 +314,7 @@ function ExternalLink({
       target="_blank"
       rel="noopener noreferrer"
       className="text-sm font-medium text-terracotta underline decoration-terracotta/40 underline-offset-4 transition-colors hover:decoration-terracotta"
-      onClick={() => {
-        trackLandingEvent('landing_external_click', `about:${target}`)
-      }}
+      onClick={() => trackLandingEvent('landing_external_click', `about:${target}`)}
     >
       {children}
     </a>

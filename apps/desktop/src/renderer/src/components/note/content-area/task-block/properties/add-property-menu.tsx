@@ -63,9 +63,7 @@ export const AddPropertyMenu = ({
   // in the same frame fight over focus, and the newcomer loses.
   const pick = (id: OptionalTaskPropertyId): void => {
     setOpen(false)
-    requestAnimationFrame(() => {
-      onPick(id)
-    })
+    requestAnimationFrame(() => onPick(id))
   }
 
   return (
@@ -89,9 +87,7 @@ export const AddPropertyMenu = ({
       <DropdownMenuContent
         align="end"
         className="w-56"
-        onCloseAutoFocus={(event) => {
-          event.preventDefault()
-        }}
+        onCloseAutoFocus={(event) => event.preventDefault()}
         onKeyDown={(event) => {
           // The row's keys work here too: D in the menu is Due date.
           const id = resolvePropertyShortcut(event)
@@ -103,13 +99,7 @@ export const AddPropertyMenu = ({
         }}
       >
         {items.map((id) => (
-          <DropdownMenuItem
-            key={id}
-            onSelect={() => {
-              pick(id)
-            }}
-            className="gap-2"
-          >
+          <DropdownMenuItem key={id} onSelect={() => pick(id)} className="gap-2">
             {ITEM_ICONS[id]}
             <span className="flex-1 truncate">{labels[id]}</span>
             <Kbd className="h-4 min-w-4 text-[10px]">{shortcutLabelFor(id)}</Kbd>

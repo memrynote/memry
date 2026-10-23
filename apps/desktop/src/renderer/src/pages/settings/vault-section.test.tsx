@@ -73,9 +73,7 @@ describe('VaultSettings account vaults', () => {
     render(<VaultSettings />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('vault.accountVaults.deleteConfirm'))
-    await waitFor(() => {
-      expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old')
-    })
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
   })
 
   it('disables delete for the active vault', async () => {
@@ -93,9 +91,7 @@ describe('VaultSettings account vaults', () => {
 
   it('loads the account vault list on mount', async () => {
     render(<VaultSettings />)
-    await waitFor(() => {
-      expect(mocks.refresh).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
   })
 
   it('stays quiet when the open vault is in the account', async () => {
@@ -133,17 +129,15 @@ describe('VaultSettings account vaults', () => {
       screen.getByText('vault.accountVaults.unsyncedBodyOne:Memry Note Vault')
     ).toBeInTheDocument()
     fireEvent.click(screen.getByText('vault.accountVaults.unsyncedOpen'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.vault.switch).toHaveBeenCalledWith('/vaults/Memry Note Vault')
-    })
+    )
     // An in-app switch, so the app keeps its shell up and fences the leaving
     // vault's reads while main swaps vaults.
     expect(getVaultSwitchState().pending?.path).toBe('/vaults/Memry Note Vault')
 
     finishSwitch({ success: true, vault: null })
-    await waitFor(() => {
-      expect(getVaultSwitchState().pending).toBeNull()
-    })
+    await waitFor(() => expect(getVaultSwitchState().pending).toBeNull())
   })
 
   it('offers download when the account vault is not on this device', async () => {

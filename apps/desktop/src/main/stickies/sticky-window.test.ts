@@ -141,9 +141,7 @@ describe('sticky window', () => {
     const onFail = sticky.webContents.on.mock.calls.find(
       ([e]) => e === 'did-fail-load'
     )?.[1] as Handler
-    expect(() => {
-      onFail({}, -3, 'aborted')
-    }).not.toThrow()
+    expect(() => onFail({}, -3, 'aborted')).not.toThrow()
   })
 
   it('shows once ready, clamps resizes, and lets the edge tab follow tucking', () => {

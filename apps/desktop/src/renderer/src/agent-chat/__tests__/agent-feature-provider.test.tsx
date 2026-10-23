@@ -82,9 +82,7 @@ describe('AgentFeatureProvider', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Agent' }))
 
-    await waitFor(() => {
-      expect(api.listConversations).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.listConversations).toHaveBeenCalled())
     expect(api.onEvent).toHaveBeenCalled()
   })
 })

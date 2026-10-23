@@ -235,9 +235,7 @@ const ThumbnailImage = ({ thumbnailUrl }: { thumbnailUrl: string }): React.JSX.E
         src={thumbnailUrl}
         alt=""
         className="w-full h-full object-cover"
-        onError={() => {
-          setImageError(true)
-        }}
+        onError={() => setImageError(true)}
         loading="lazy"
       />
     </div>
@@ -586,9 +584,7 @@ export function InboxListItem({
                     setIsRenaming(false)
                     onRename?.(item.id, next)
                   }}
-                  onCancel={() => {
-                    setIsRenaming(false)
-                  }}
+                  onCancel={() => setIsRenaming(false)}
                 />
               </div>
             ) : (
@@ -698,11 +694,7 @@ export function InboxListItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem
-          onSelect={() => {
-            setIsRenaming(true)
-          }}
-        >
+        <ContextMenuItem onSelect={() => setIsRenaming(true)}>
           <Pencil className="me-2 h-4 w-4" />
           {t('list.rename')}
         </ContextMenuItem>

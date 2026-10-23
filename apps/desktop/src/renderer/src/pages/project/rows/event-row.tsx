@@ -30,9 +30,7 @@ export const EventRow = ({ event, onOpen }: EventRowProps): React.JSX.Element =>
   return (
     <HubRow
       leading={<Calendar className="size-4 text-muted-foreground" aria-hidden="true" />}
-      onOpen={() => {
-        onOpen(event)
-      }}
+      onOpen={() => onOpen(event)}
       openLabel={t('projectHub.rows.openEvent', { title: event.title })}
       trailing={<span>{when}</span>}
     >

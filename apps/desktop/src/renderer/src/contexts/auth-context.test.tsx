@@ -111,9 +111,7 @@ describe('AuthProvider', () => {
   it('runs OTP setup, resend, recovery confirmation, recovery linking, and logout flows', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
     expect(result.current.state.wizardStep).toBe('sign-in')
 
     let requestResult: { expiresIn?: number } | undefined
@@ -170,9 +168,7 @@ describe('AuthProvider', () => {
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('authenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
     expect(result.current.state.deviceId).toBe('current-device')
     expect(result.current.state.email).toBe('kaan@example.com')
 
@@ -211,9 +207,7 @@ describe('AuthProvider', () => {
     it('stays signed in when an advisory session-expired arrives', async () => {
       serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
       const { result } = renderHook(() => useAuth(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('authenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
 
       act(() => {
         sessionExpiredCallback?.({ reason: 'token_expired' })
@@ -225,9 +219,7 @@ describe('AuthProvider', () => {
     it('signs out when the keychain no longer holds a refresh token', async () => {
       serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
       const { result } = renderHook(() => useAuth(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('authenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
 
       act(() => {
         sessionExpiredCallback?.({ reason: 'credentials_missing' })
@@ -246,9 +238,7 @@ describe('AuthProvider', () => {
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
-      await waitFor(() => {
-        expect(serviceMocks.authService.refreshToken).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(serviceMocks.authService.refreshToken).toHaveBeenCalled())
       await act(async () => {
         await Promise.resolve()
       })
@@ -265,17 +255,13 @@ describe('AuthProvider', () => {
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('unauthenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
     })
 
     it('leaves the signed-out state when main refreshes a token', async () => {
       serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
       const { result } = renderHook(() => useAuth(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('authenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
       act(() => {
         sessionExpiredCallback?.({ reason: 'refresh_rejected' })
       })
@@ -285,9 +271,7 @@ describe('AuthProvider', () => {
         tokenRefreshedCallback?.()
       })
 
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('authenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
       expect(result.current.state.deviceId).toBe('current-device')
       expect(result.current.state.email).toBe('kaan@example.com')
     })
@@ -295,9 +279,7 @@ describe('AuthProvider', () => {
     it('stays signed out on a sync after the server ended the session', async () => {
       serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
       const { result } = renderHook(() => useAuth(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('authenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
       act(() => {
         sessionExpiredCallback?.({ reason: 'refresh_rejected' })
       })
@@ -318,9 +300,7 @@ describe('AuthProvider', () => {
         .mockRejectedValueOnce(new Error('device lookup failed'))
         .mockResolvedValue(signedInDevices)
       const { result } = renderHook(() => useAuth(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('unauthenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
       act(() => {
         syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() - 60_000 })
@@ -332,9 +312,7 @@ describe('AuthProvider', () => {
         syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() })
       })
 
-      await waitFor(() => {
-        expect(result.current.state.status).toBe('authenticated')
-      })
+      await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
     })
   })
 
@@ -346,9 +324,7 @@ describe('AuthProvider', () => {
       deviceId: 'current-device'
     })
     const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
     await act(async () => {
       await result.current.requestOtp('kaan@example.com')
     })
@@ -377,9 +353,7 @@ describe('AuthProvider', () => {
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('authenticating')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('authenticating'))
     expect(result.current.state.deviceId).toBe('current-device')
     expect(result.current.state.email).toBe('kaan@example.com')
     expect(result.current.state.needsRecoverySetup).toBe(true)
@@ -389,9 +363,7 @@ describe('AuthProvider', () => {
 
   it('supports OAuth callback state checks and wizard state helpers', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
     await act(async () => {
       expect(await result.current.initOAuth()).toEqual({ state: 'oauth-state' })
@@ -405,9 +377,7 @@ describe('AuthProvider', () => {
         oauthState: 'expected-state'
       })
     })
-    await waitFor(() => {
-      expect(result.current.state.wizardOAuthState).toBe('expected-state')
-    })
+    await waitFor(() => expect(result.current.state.wizardOAuthState).toBe('expected-state'))
 
     await act(async () => {
       oauthCallback?.({ code: 'ignored-code', state: 'wrong-state' })
@@ -420,9 +390,7 @@ describe('AuthProvider', () => {
       await Promise.resolve()
     })
 
-    await waitFor(() => {
-      expect(result.current.state.deviceId).toBe('oauth-device')
-    })
+    await waitFor(() => expect(result.current.state.deviceId).toBe('oauth-device'))
     expect(result.current.state.wizardStep).toBe('recovery-display')
 
     act(() => {
@@ -446,9 +414,7 @@ describe('AuthProvider', () => {
     })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
     await act(async () => {
       expect(await result.current.initOAuth()).toBeNull()
@@ -464,9 +430,7 @@ describe('AuthProvider', () => {
     })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
     let requestError: unknown
     await act(async () => {
@@ -477,9 +441,7 @@ describe('AuthProvider', () => {
       }
     })
     expect(requestError).toEqual(new Error('mail down'))
-    await waitFor(() => {
-      expect(result.current.state.error).toBe('mail down')
-    })
+    await waitFor(() => expect(result.current.state.error).toBe('mail down'))
 
     serviceMocks.authService.setupFirstDevice.mockResolvedValueOnce({ error: 'setup failed' })
     await act(async () => {
@@ -498,9 +460,7 @@ describe('AuthProvider', () => {
     serviceMocks.deviceService.getDevices.mockRejectedValueOnce(new Error('device lookup failed'))
     const { result } = renderHook(() => useAuth(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
     await expect(async () => result.current.verifyOtp('000000')).rejects.toThrow('No email set')
     await expect(async () => result.current.resendOtp()).rejects.toThrow('No email set')
@@ -580,16 +540,12 @@ describe('AuthProvider', () => {
     expect(() => renderHook(() => useAuth())).toThrow('useAuth must be used within an AuthProvider')
 
     const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('unauthenticated')
-    })
+    await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
     act(() => {
       result.current.setWizardStep('linking-scan', { oauthState: 'oauth-error-state' })
     })
-    await waitFor(() => {
-      expect(result.current.state.wizardOAuthState).toBe('oauth-error-state')
-    })
+    await waitFor(() => expect(result.current.state.wizardOAuthState).toBe('oauth-error-state'))
 
     serviceMocks.authService.setupFirstDevice.mockResolvedValueOnce({
       error: 'google setup failed'
@@ -598,24 +554,18 @@ describe('AuthProvider', () => {
       oauthCallback?.({ code: 'oauth-code', state: 'oauth-error-state' })
       await Promise.resolve()
     })
-    await waitFor(() => {
-      expect(result.current.state.wizardError).toBe('google setup failed')
-    })
+    await waitFor(() => expect(result.current.state.wizardError).toBe('google setup failed'))
 
     act(() => {
       result.current.setWizardStep('linking-scan', { oauthState: 'oauth-throw-state' })
     })
-    await waitFor(() => {
-      expect(result.current.state.wizardOAuthState).toBe('oauth-throw-state')
-    })
+    await waitFor(() => expect(result.current.state.wizardOAuthState).toBe('oauth-throw-state'))
 
     serviceMocks.authService.setupFirstDevice.mockRejectedValueOnce(new Error('google threw'))
     await act(async () => {
       oauthCallback?.({ code: 'oauth-code', state: 'oauth-throw-state' })
       await Promise.resolve()
     })
-    await waitFor(() => {
-      expect(result.current.state.wizardError).toBe('google threw')
-    })
+    await waitFor(() => expect(result.current.state.wizardError).toBe('google threw'))
   })
 })

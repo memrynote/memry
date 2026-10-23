@@ -78,9 +78,7 @@ export const EditRepeatingTaskDialog = ({
               type="radio"
               name="editScope"
               checked={selectedScope === 'this'}
-              onChange={() => {
-                setSelectedScope('this')
-              }}
+              onChange={() => setSelectedScope('this')}
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">
@@ -108,9 +106,7 @@ export const EditRepeatingTaskDialog = ({
               type="radio"
               name="editScope"
               checked={selectedScope === 'all'}
-              onChange={() => {
-                setSelectedScope('all')
-              }}
+              onChange={() => setSelectedScope('all')}
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">

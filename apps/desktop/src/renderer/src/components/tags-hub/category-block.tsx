@@ -233,9 +233,7 @@ export function CategoryBlock({
           <Input
             ref={focusRenameInput}
             value={draftName}
-            onChange={(event) => {
-              setDraftName(event.target.value)
-            }}
+            onChange={(event) => setDraftName(event.target.value)}
             onKeyDown={handleRenameKeyDown}
             className="h-7 w-48"
           />
@@ -268,9 +266,7 @@ export function CategoryBlock({
                 {t('tagsHub.category.rename')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => {
-                  setIsDeleteOpen(true)
-                }}
+                onClick={() => setIsDeleteOpen(true)}
                 className="text-destructive focus:text-destructive"
               >
                 <Trash className="me-2 h-3.5 w-3.5" />
@@ -310,9 +306,7 @@ export function CategoryBlock({
                   key={tag.tag}
                   tag={tag}
                   categoryId={id}
-                  onOpen={() => {
-                    onTagOpen(tag.tag)
-                  }}
+                  onOpen={() => onTagOpen(tag.tag)}
                 />
               ))}
         </div>

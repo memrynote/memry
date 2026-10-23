@@ -171,9 +171,7 @@ function useContextMenuOpen(editor: BlockNoteEditor): boolean {
       if ((event as { button?: number }).button === 2) return
       setIsOpen(false)
     }
-    const closeOnKey = (): void => {
-      setIsOpen(false)
-    }
+    const closeOnKey = (): void => setIsOpen(false)
 
     window.addEventListener('contextmenu', open, true)
     window.addEventListener('pointerdown', closeOnPointer, true)

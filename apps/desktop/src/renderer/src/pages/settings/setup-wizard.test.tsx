@@ -28,13 +28,7 @@ vi.mock('@/components/sync/email-entry-form', () => ({
     error?: string | null
   }) => (
     <div>
-      <button
-        onClick={() => {
-          onSubmit('kaan@example.com')
-        }}
-      >
-        submit email
-      </button>
+      <button onClick={() => onSubmit('kaan@example.com')}>submit email</button>
       {error && <p>{error}</p>}
     </div>
   )
@@ -64,13 +58,7 @@ vi.mock('@/components/sync/otp-verification', () => ({
       <span>
         otp for {email}:{expiresIn}
       </span>
-      <button
-        onClick={() => {
-          onVerify('123456')
-        }}
-      >
-        verify otp
-      </button>
+      <button onClick={() => onVerify('123456')}>verify otp</button>
       <button onClick={onResend}>resend otp</button>
       <button onClick={onBack}>back to sign in</button>
     </div>
@@ -113,13 +101,7 @@ vi.mock('@/components/sync/recovery-phrase-input', () => ({
     onBack: () => void
   }) => (
     <div>
-      <button
-        onClick={() => {
-          onSubmit('word one two')
-        }}
-      >
-        submit recovery phrase
-      </button>
+      <button onClick={() => onSubmit('word one two')}>submit recovery phrase</button>
       <button onClick={onBack}>back to link choice</button>
     </div>
   )
@@ -136,20 +118,8 @@ vi.mock('@/components/sync/linking-code-entry', () => ({
     onBack: () => void
   }) => (
     <div>
-      <button
-        onClick={() => {
-          onLinked('session-1', '654321')
-        }}
-      >
-        linked code
-      </button>
-      <button
-        onClick={() => {
-          onError('bad qr')
-        }}
-      >
-        link error
-      </button>
+      <button onClick={() => onLinked('session-1', '654321')}>linked code</button>
+      <button onClick={() => onError('bad qr')}>link error</button>
       <button onClick={onBack}>back from scan</button>
     </div>
   )
@@ -174,13 +144,7 @@ vi.mock('@/components/sync/linking-pending', () => ({
         pending:{sessionId}:{verificationCode}
       </span>
       <button onClick={onComplete}>complete link</button>
-      <button
-        onClick={() => {
-          onError('link failed')
-        }}
-      >
-        pending error
-      </button>
+      <button onClick={() => onError('link failed')}>pending error</button>
       <button onClick={onCancel}>cancel link</button>
     </div>
   )
@@ -262,18 +226,18 @@ describe('SetupWizard', () => {
     render(<SetupWizard />)
 
     await user.click(screen.getByRole('button', { name: 'submit email' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(auth.setWizardStep).toHaveBeenCalledWith('otp-verification', {
         expiresAt: expect.any(Number)
       })
-    })
+    )
     expect(auth.requestOtp).toHaveBeenCalledWith('kaan@example.com')
     expect(auth.clearWizardError).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'google oauth' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(auth.setWizardStep).toHaveBeenCalledWith('sign-in', { oauthState: 'oauth-state' })
-    })
+    )
     expect(auth.initOAuth).toHaveBeenCalledWith()
   })
 
@@ -294,16 +258,14 @@ describe('SetupWizard', () => {
 
     expect(screen.getByText(/otp for kaan@example.com:/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'verify otp' }))
-    await waitFor(() => {
-      expect(auth.setWizardStep).toHaveBeenCalledWith('linking-choice')
-    })
+    await waitFor(() => expect(auth.setWizardStep).toHaveBeenCalledWith('linking-choice'))
 
     await user.click(screen.getByRole('button', { name: 'resend otp' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(auth.setWizardStep).toHaveBeenCalledWith('otp-verification', {
         expiresAt: expect.any(Number)
       })
-    })
+    )
 
     await user.click(screen.getByRole('button', { name: 'back to sign in' }))
     expect(auth.setWizardStep).toHaveBeenCalledWith('sign-in')
@@ -328,9 +290,7 @@ describe('SetupWizard', () => {
 
     expect(await screen.findByText('confirm:alpha beta gamma')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'confirm recovery' }))
-    await waitFor(() => {
-      expect(auth.confirmRecoveryPhrase).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(auth.confirmRecoveryPhrase).toHaveBeenCalled())
     expect(clipboardWrite).toHaveBeenCalledWith('')
 
     await user.click(screen.getByRole('button', { name: 'back to phrase' }))
@@ -431,9 +391,7 @@ describe('SetupWizard', () => {
     })
     rerender(<SetupWizard />)
     await user.click(screen.getByRole('button', { name: 'submit recovery phrase' }))
-    await waitFor(() => {
-      expect(auth.linkViaRecovery).toHaveBeenCalledWith('word one two')
-    })
+    await waitFor(() => expect(auth.linkViaRecovery).toHaveBeenCalledWith('word one two'))
     await user.click(screen.getByRole('button', { name: 'back to link choice' }))
     expect(auth.setWizardStep).toHaveBeenCalledWith('linking-choice')
   })

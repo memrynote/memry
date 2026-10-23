@@ -521,9 +521,7 @@ describe('updater', () => {
     await Promise.all([firstDownload, secondDownload])
     expect(mocks.autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1)
 
-    expect(() => {
-      updater.quitAndInstall()
-    }).toThrow('No downloaded update is ready to install')
+    expect(() => updater.quitAndInstall()).toThrow('No downloaded update is ready to install')
 
     mocks.autoUpdater.emit('update-downloaded', {
       version: '1.2.5',

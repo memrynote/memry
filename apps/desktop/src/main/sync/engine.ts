@@ -180,12 +180,8 @@ export class SyncEngine extends SyncEventEmitter {
       rateLimitConsecutive: 0,
       scheduleSync: (fn) => this.scheduleSync(fn),
       acquireLock: () => this.acquireSyncLock(),
-      releaseLock: () => {
-        this.releaseLock()
-      },
-      requestPush: () => {
-        this.requestPush()
-      }
+      releaseLock: () => this.releaseLock(),
+      requestPush: () => this.requestPush()
     }
 
     this.stateManager = new SyncStateManager(this.ctx, (event, ...args) =>
@@ -228,9 +224,8 @@ export class SyncEngine extends SyncEventEmitter {
         this.quarantine.isQuarantined(itemId, itemType) ||
         this.pullCoordinator.schemaInvalid.has(itemType, itemId)
     )
-    this.pullCoordinator.onNoteBodyLegacySweepReset = () => {
+    this.pullCoordinator.onNoteBodyLegacySweepReset = () =>
       this.fullSyncRunner.resetNoteBodyLegacySweep()
-    }
     this.ctx.doPush = () => this.push()
     this.socketApply = createSocketApplier({
       db: this.ctx.deps.db,
@@ -256,18 +251,10 @@ export class SyncEngine extends SyncEventEmitter {
         this.pushCoordinator.suppressPushDuringPull = suppressed
       },
       isPushSuppressed: () => this.pushCoordinator.suppressPushDuringPull,
-      onApplied: (dec, op) => {
-        this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', op)
-      },
-      onConflict: (dec) => {
-        reportConflict(this.ctx.deps, dec)
-      },
-      requestPush: () => {
-        this.ctx.requestPush()
-      },
-      oweRecordBody: (noteId) => {
-        this.crdtSync.oweRecordBody(noteId)
-      }
+      onApplied: (dec, op) => this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', op),
+      onConflict: (dec) => reportConflict(this.ctx.deps, dec),
+      requestPush: () => this.ctx.requestPush(),
+      oweRecordBody: (noteId) => this.crdtSync.oweRecordBody(noteId)
     })
     SyncEngine.activeInstance = this
   }
@@ -375,9 +362,7 @@ export class SyncEngine extends SyncEventEmitter {
       if (pending > 0) {
         log.info(`Shutdown: attempting final push of ${pending} item(s)`)
         const ac = new AbortController()
-        const timer = setTimeout(() => {
-          ac.abort()
-        }, 2000)
+        const timer = setTimeout(() => ac.abort(), 2000)
         this.ctx.abortController = ac
         try {
           await this.push()
@@ -876,9 +861,7 @@ export class SyncEngine extends SyncEventEmitter {
     // first tick.
     this.lastPullTickWsGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
     this.lastPullTickPullAt = Date.now()
-    this.pullInterval = setInterval(() => {
-      this.runPullTick()
-    }, 60_000)
+    this.pullInterval = setInterval(() => this.runPullTick(), 60_000)
   }
 
   private runPullTick(): void {
@@ -892,7 +875,7 @@ export class SyncEngine extends SyncEventEmitter {
     // missed in between. A drop and reconnect bumps the generation; a drop
     // without one leaves `connected` false. See PERIODIC_PULL_MAX_QUIET_MS.
     const sameSocketSinceLastTick =
-      generation !== null && generation === this.lastPullTickWsGeneration && ws?.connected
+      generation !== null && generation === this.lastPullTickWsGeneration && ws?.connected === true
     this.lastPullTickWsGeneration = generation
 
     if (

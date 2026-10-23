@@ -64,12 +64,8 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
           heroImageUrl={showHeroImage ? heroImageUrl : null}
           faviconUrl={faviconUrl}
           faviconError={faviconError}
-          onImgError={() => {
-            setImgError(true)
-          }}
-          onFaviconError={() => {
-            setFaviconError(true)
-          }}
+          onImgError={() => setImgError(true)}
+          onFaviconError={() => setFaviconError(true)}
         />
       </div>
       <h3 className="text-[17px] leading-6 font-semibold text-foreground">{item.title}</h3>
@@ -101,21 +97,15 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
       <button
         type="button"
         className="flex flex-col gap-4 text-start cursor-pointer group rounded-xl p-2 -m-2 transition-colors hover:bg-foreground/[0.03]"
-        onClick={() => {
-          setIsPlaying(true)
-        }}
+        onClick={() => setIsPlaying(true)}
       >
         <div className="relative overflow-hidden rounded-[10px] bg-muted aspect-video w-full">
           <PreviewImage
             heroImageUrl={showHeroImage ? heroImageUrl : null}
             faviconUrl={faviconUrl}
             faviconError={faviconError}
-            onImgError={() => {
-              setImgError(true)
-            }}
-            onFaviconError={() => {
-              setFaviconError(true)
-            }}
+            onImgError={() => setImgError(true)}
+            onFaviconError={() => setFaviconError(true)}
           />
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
             <div className="flex items-center justify-center size-14 rounded-full bg-red-600 group-hover:bg-red-500 transition-colors shadow-lg">

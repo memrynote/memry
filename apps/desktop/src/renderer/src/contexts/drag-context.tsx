@@ -550,9 +550,10 @@ export const DragProvider = ({
       if (droppedId && event.over) {
         scheduleTimeout(() => {
           setDragStateInternal((prev) => ({ ...prev, lastDroppedId: droppedId }))
-          scheduleTimeout(() => {
-            setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null }))
-          }, 1100)
+          scheduleTimeout(
+            () => setDragStateInternal((prev) => ({ ...prev, lastDroppedId: null })),
+            1100
+          )
         }, 200)
       }
     },

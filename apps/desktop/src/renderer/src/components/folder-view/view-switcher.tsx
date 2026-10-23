@@ -288,9 +288,7 @@ export function ViewSwitcher({
                   >
                     <button
                       type="button"
-                      onClick={() => {
-                        handleSelectView(index)
-                      }}
+                      onClick={() => handleSelectView(index)}
                       className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-start"
                     >
                       {isActive ? (
@@ -312,9 +310,7 @@ export function ViewSwitcher({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        openEdit(index)
-                      }}
+                      onClick={() => openEdit(index)}
                       aria-label={tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewActions')}
                       className="me-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
                     >
@@ -341,9 +337,7 @@ export function ViewSwitcher({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    setScreen('list')
-                  }}
+                  onClick={() => setScreen('list')}
                   aria-label={tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel')}
                   className="-ms-1 flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent"
                 >
@@ -361,12 +355,8 @@ export function ViewSwitcher({
                   // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
                   autoFocus
                   value={formName}
-                  onChange={(e) => {
-                    handleNameChange(e.target.value)
-                  }}
-                  onFocus={(e) => {
-                    e.target.select()
-                  }}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   onBlur={handleNameBlur}
                   placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.myCustomView')}
                   className="h-8 text-[13px]"

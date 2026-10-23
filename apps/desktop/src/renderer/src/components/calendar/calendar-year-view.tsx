@@ -172,12 +172,8 @@ export function CalendarYearView({
                       key={day}
                       type="button"
                       className="relative flex flex-col items-center py-0.5"
-                      onClick={() => {
-                        handleDayClick(day)
-                      }}
-                      onDoubleClick={() => {
-                        handleDayDoubleClick(day)
-                      }}
+                      onClick={() => handleDayClick(day)}
+                      onDoubleClick={() => handleDayDoubleClick(day)}
                       aria-label={formatPopoverDate(day, i18n.language)}
                     >
                       <span

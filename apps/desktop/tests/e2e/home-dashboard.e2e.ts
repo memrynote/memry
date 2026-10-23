@@ -399,9 +399,7 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
     await selectBoard(page, newBoard.id)
     await expect(page.locator(SEL.switcher)).toContainText(newBoard.name, { timeout: 20000 })
 
-    await page.evaluate(() => {
-      localStorage.removeItem('memry-home-active-board')
-    })
+    await page.evaluate(() => localStorage.removeItem('memry-home-active-board'))
     await page.reload()
     await ready(page)
 

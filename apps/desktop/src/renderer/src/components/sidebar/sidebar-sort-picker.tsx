@@ -62,12 +62,7 @@ export function SidebarSortPicker({
   viewOptionsLabel
 }: SidebarSortPickerProps): React.JSX.Element {
   return (
-    <Picker
-      value={mode}
-      onValueChange={(value) => {
-        onModeChange(value as SidebarSortMode)
-      }}
-    >
+    <Picker value={mode} onValueChange={(value) => onModeChange(value as SidebarSortMode)}>
       <Picker.Trigger
         variant="icon"
         className="h-5 w-5"

@@ -245,9 +245,8 @@ describe('http-client', () => {
       mockFetch.mockImplementation(
         (_url: string, init: { signal: AbortSignal }) =>
           new Promise((_resolve, reject) => {
-            const abort = (): void => {
+            const abort = (): void =>
               reject(new DOMException('The operation was aborted.', 'AbortError'))
-            }
             if (init.signal.aborted) abort()
             init.signal.addEventListener('abort', abort)
           })

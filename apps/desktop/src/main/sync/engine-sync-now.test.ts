@@ -73,22 +73,17 @@ describe('SyncEngine pause, full sync, and Sync Now', () => {
     it('#then one runs at a time, and the requests made during it share one more run', async () => {
       const engine = new SyncEngine(createMockDeps(getDb()))
       const finishers: Array<() => void> = []
-      const run = vi.spyOn(internals(engine).fullSyncRunner, 'run').mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            finishers.push(() => {
-              resolve(DELIVERED)
-            })
-          )
-      )
+      const run = vi
+        .spyOn(internals(engine).fullSyncRunner, 'run')
+        .mockImplementation(
+          () => new Promise((resolve) => finishers.push(() => resolve(DELIVERED)))
+        )
 
       const requests = [engine.fullSync(), engine.fullSync(), engine.fullSync()]
       expect(run).toHaveBeenCalledTimes(1)
 
       finishers[0]()
-      await vi.waitFor(() => {
-        expect(run).toHaveBeenCalledTimes(2)
-      })
+      await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(2))
       finishers[1]()
 
       await expect(Promise.all(requests)).resolves.toEqual([DELIVERED, DELIVERED, DELIVERED])

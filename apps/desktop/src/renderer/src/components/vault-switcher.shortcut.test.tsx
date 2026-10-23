@@ -101,12 +101,7 @@ vi.mock('@/components/ui/picker', async () => {
   Picker.Item = ({ value, label }: { value: string; label: string }) => {
     const onValueChange = React.useContext(PickerContext)
     return (
-      <button
-        type="button"
-        onClick={() => {
-          onValueChange(value)
-        }}
-      >
+      <button type="button" onClick={() => onValueChange(value)}>
         {label}
       </button>
     )
@@ -182,9 +177,7 @@ describe('VaultSwitcher shortcut opening', () => {
   it('opens on an open request and lists the vaults, current one still selected', () => {
     render(<VaultSwitcher />)
 
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     const picker = screen.getByTestId('vault-picker')
     expect(within(picker).getByText('Active')).toBeInTheDocument()
@@ -196,9 +189,7 @@ describe('VaultSwitcher shortcut opening', () => {
     mocks.sidebarOpen = false
     render(<VaultSwitcher />)
 
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
     expect(mocks.setSidebarOpen).toHaveBeenCalledWith(true)
 
     fireEvent.keyDown(screen.getByTestId('vault-picker'), { key: 'Escape' })
@@ -208,9 +199,7 @@ describe('VaultSwitcher shortcut opening', () => {
   it('leaves an already-open sidebar alone', () => {
     render(<VaultSwitcher />)
 
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     expect(mocks.setSidebarOpen).not.toHaveBeenCalled()
   })
@@ -220,9 +209,7 @@ describe('VaultSwitcher shortcut opening', () => {
     mocks.sidebarOpen = false
     render(<VaultSwitcher />)
 
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     expect(mocks.setOpenMobile).toHaveBeenCalledWith(true)
     expect(mocks.setSidebarOpen).not.toHaveBeenCalled()
@@ -233,23 +220,17 @@ describe('VaultSwitcher shortcut opening', () => {
     render(<VaultSwitcher />)
 
     beginVaultSwitch({ path: '/vaults/Old', name: 'Old' }, null)
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
     expect(screen.queryByTestId('vault-picker')).not.toBeInTheDocument()
 
     endVaultSwitch(true)
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
     expect(screen.getByTestId('vault-picker')).toBeInTheDocument()
   })
 
   it('closes on Escape without switching the vault', () => {
     render(<VaultSwitcher />)
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     fireEvent.keyDown(screen.getByTestId('vault-picker'), { key: 'Escape' })
 
@@ -263,9 +244,7 @@ describe('VaultSwitcher shortcut opening', () => {
     opener.focus()
 
     render(<VaultSwitcher />)
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     // Stand in for the picker taking focus, the way Radix does once it opens.
     const inside = within(screen.getByTestId('vault-picker'))
@@ -281,9 +260,7 @@ describe('VaultSwitcher shortcut opening', () => {
 
   it('switches the vault when one is picked', () => {
     render(<VaultSwitcher />)
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     fireEvent.click(screen.getByText('Old'))
 
@@ -296,9 +273,7 @@ describe('VaultSwitcher shortcut opening', () => {
   it('opens focused on the active vault, so the arrow keys start where the user is', () => {
     render(<VaultSwitcher />)
 
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     const activeRow = within(screen.getByTestId('vault-picker'))
       .getByText('Active')
@@ -308,9 +283,7 @@ describe('VaultSwitcher shortcut opening', () => {
 
   it('switches the vault on Enter over a focused row', async () => {
     render(<VaultSwitcher />)
-    act(() => {
-      requestVaultSwitcherOpen()
-    })
+    act(() => requestVaultSwitcherOpen())
 
     // Arrow-key movement between rows lives in `ui/picker/picker-content.tsx`;
     // what matters here is that landing on a row and pressing Enter switches.
@@ -330,8 +303,6 @@ describe('VaultSwitcher shortcut opening', () => {
     const { unmount } = render(<VaultSwitcher />)
     unmount()
 
-    expect(() => {
-      act(() => requestVaultSwitcherOpen())
-    }).not.toThrow()
+    expect(() => act(() => requestVaultSwitcherOpen())).not.toThrow()
   })
 })

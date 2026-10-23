@@ -506,8 +506,7 @@ async function syncGoogleCalendarSourceInner(
         modifiedAt: now
       })
       markSyncedTableMutation('calendar_source', freshSource.id, true)
-      await syncGoogleCalendarSource(db, sourceId, deps)
-      return
+      return await syncGoogleCalendarSource(db, sourceId, deps)
     }
     throw error
   }
@@ -527,8 +526,7 @@ async function syncGoogleCalendarSourceInner(
       modifiedAt: now
     })
     markSyncedTableMutation('calendar_source', freshSource.id, true)
-    await syncGoogleCalendarSource(db, sourceId, deps)
-    return
+    return await syncGoogleCalendarSource(db, sourceId, deps)
   }
 
   const importDeviceId = getCurrentDeviceId(db)

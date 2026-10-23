@@ -272,9 +272,7 @@ export class ReadwiseSyncService {
     if (this.running) throw new Error('A Readwise run is already in progress')
     this.running = true
     const stop = new AbortController()
-    this.stopRun = () => {
-      stop.abort()
-    }
+    this.stopRun = () => stop.abort()
     const signal = AbortSignal.any([observer.signal, stop.signal])
     const result: RunResult = {
       cancelled: false,
@@ -689,9 +687,9 @@ export function getReadwiseSyncService(): ReadwiseSyncService {
     },
     claimLost: claimLostToAnotherDevice,
     onClaimLost: () => {
-      void releaseTokenIfClaimedElsewhere().catch((error: unknown) => {
+      void releaseTokenIfClaimedElsewhere().catch((error: unknown) =>
         log.warn('Could not drop the Readwise token after a takeover', { error })
-      })
+      )
     }
   })
   return service

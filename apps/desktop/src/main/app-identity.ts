@@ -178,7 +178,7 @@ function readPin(dir: string): IdentityPin | null {
   try {
     const raw = JSON.parse(readFileSync(join(dir, IDENTITY_PIN_FILENAME), 'utf-8')) as IdentityPin
     if (raw?.appName !== LEGACY_APP_NAME && raw?.appName !== MEMRYNOTE_APP_NAME) return null
-    return { version: 1, appName: raw.appName, flipped: raw.flipped }
+    return { version: 1, appName: raw.appName, flipped: raw.flipped === true }
   } catch {
     return null
   }

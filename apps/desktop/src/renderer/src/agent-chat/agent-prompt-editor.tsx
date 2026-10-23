@@ -325,9 +325,7 @@ function collectPromptRuns(node: JSONContent, runs: PromptTextRun[]): void {
     })
     return
   }
-  ;(node.content ?? []).forEach((child) => {
-    collectPromptRuns(child, runs)
-  })
+  ;(node.content ?? []).forEach((child) => collectPromptRuns(child, runs))
 }
 
 function promptRunsToValue(runs: PromptTextRun[]): {
@@ -372,9 +370,7 @@ function collectMentionAttachments(node: JSONContent, attachments: AttachmentInp
     }
   }
 
-  node.content?.forEach((child) => {
-    collectMentionAttachments(child, attachments)
-  })
+  node.content?.forEach((child) => collectMentionAttachments(child, attachments))
 }
 
 function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {

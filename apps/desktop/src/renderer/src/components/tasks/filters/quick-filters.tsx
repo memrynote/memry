@@ -109,9 +109,7 @@ export const QuickFilters = ({
             <button
               key={preset.id}
               type="button"
-              onClick={() => {
-                handleApply(preset)
-              }}
+              onClick={() => handleApply(preset)}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors',
                 isActive

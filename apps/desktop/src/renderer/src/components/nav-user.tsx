@@ -111,20 +111,12 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onSelect={() => {
-                  openSettings('account')
-                }}
-              >
+              <DropdownMenuItem onSelect={() => openSettings('account')}>
                 <BadgeCheck />
 
                 {tPhaseF('phaseF.componentsNavUser.account')}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => {
-                  openSettings('account')
-                }}
-              >
+              <DropdownMenuItem onSelect={() => openSettings('account')}>
                 <CreditCard />
 
                 {tPhaseF('phaseF.componentsNavUser.billing')}

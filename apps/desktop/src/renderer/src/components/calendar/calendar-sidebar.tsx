@@ -92,9 +92,7 @@ export function CalendarSidebar({
                     aria-label={source.title}
                     checked={selectedImportedSourceIds.includes(source.id)}
                     disabled={!showImportedCalendars}
-                    onCheckedChange={() => {
-                      onToggleImportedSource(source.id)
-                    }}
+                    onCheckedChange={() => onToggleImportedSource(source.id)}
                   />
                 </label>
               ))}

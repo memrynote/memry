@@ -78,9 +78,7 @@ describe('probeSecretStoreIdentity', () => {
     harness.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-probe-'))
   })
 
-  afterEach(() => {
-    fs.rmSync(harness.userDataDir, { recursive: true, force: true })
-  })
+  afterEach(() => fs.rmSync(harness.userDataDir, { recursive: true, force: true }))
 
   it('inlines the same master-key identifiers the contract defines', () => {
     // secret-storage.ts inlines these to stay dependency-free on the earliest

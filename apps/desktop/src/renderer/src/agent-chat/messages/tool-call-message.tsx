@@ -263,9 +263,7 @@ function InlineDiffApproval({
         <Textarea
           aria-label={t('agentChat.diff.candidate')}
           value={candidate}
-          onChange={(event) => {
-            setCandidate(event.target.value)
-          }}
+          onChange={(event) => setCandidate(event.target.value)}
           className="h-52 resize-none font-mono text-xs"
         />
       ) : (
@@ -277,13 +275,7 @@ function InlineDiffApproval({
         onApprove={editing ? applyEdited : applyOriginal}
         onReject={deny}
         editLabel={editableBody && !editing ? t('agentChat.diff.editBody') : undefined}
-        onEdit={
-          editableBody && !editing
-            ? () => {
-                setEditing(true)
-              }
-            : undefined
-        }
+        onEdit={editableBody && !editing ? () => setEditing(true) : undefined}
         onAllowAlways={canBeAlwaysAllowed(pending.previewKind) ? allowAlways : undefined}
         toolLabel={toolLabel}
       />

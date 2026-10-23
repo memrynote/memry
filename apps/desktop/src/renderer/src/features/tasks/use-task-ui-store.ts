@@ -16,9 +16,7 @@ let state: TaskUiStoreState = {
 }
 
 function emitChange(): void {
-  listeners.forEach((listener) => {
-    listener()
-  })
+  listeners.forEach((listener) => listener())
 }
 
 function updateState(nextState: TaskUiStoreState): void {

@@ -25,9 +25,7 @@ export function ProjectWidgetPicker({
     <span className="widget-no-drag" data-testid="project-widget-picker">
       <ProjectPicker
         value={projectId || null}
-        onChange={(id) => {
-          onChange({ ...config, projectId: id ?? '' })
-        }}
+        onChange={(id) => onChange({ ...config, projectId: id ?? '' })}
         projects={projects.filter((project) => !project.isArchived)}
         triggerVariant="badge"
         searchable

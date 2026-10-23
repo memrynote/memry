@@ -35,15 +35,9 @@ export const AddFileToProjectDialog = ({
     setIsLoading(true)
     tasksService
       .listProjects()
-      .then((res) => {
-        setProjects(res.projects.filter((project) => project.archivedAt == null))
-      })
-      .catch((error: unknown) => {
-        log.error('Failed to list projects', extractErrorMessage(error))
-      })
-      .finally(() => {
-        setIsLoading(false)
-      })
+      .then((res) => setProjects(res.projects.filter((project) => project.archivedAt == null)))
+      .catch((error: unknown) => log.error('Failed to list projects', extractErrorMessage(error)))
+      .finally(() => setIsLoading(false))
   }, [open])
 
   const handleSelect = async (project: ProjectWithStats): Promise<void> => {

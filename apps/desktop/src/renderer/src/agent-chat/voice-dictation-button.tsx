@@ -125,9 +125,9 @@ export function VoiceDictationButton({
     }
 
     void (async () => {
-      const ready = await ensureVoiceRecordingReady((readiness) => {
+      const ready = await ensureVoiceRecordingReady((readiness) =>
         openSettings(getVoiceRecordingSettingsTarget(readiness))
-      })
+      )
       if (!ready) return
       await start()
     })()

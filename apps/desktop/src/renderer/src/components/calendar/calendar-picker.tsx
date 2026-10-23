@@ -56,9 +56,7 @@ export function CalendarPicker({
       )}
       value={selectValue}
       disabled={disabled || isLoading}
-      onChange={(event) => {
-        handleChange(event.target.value)
-      }}
+      onChange={(event) => handleChange(event.target.value)}
     >
       <option value={DEFAULT_SENTINEL}>
         {isLoading

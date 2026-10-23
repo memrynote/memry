@@ -98,11 +98,11 @@ describe('ViewSwitcher', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'newView' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(props.onAddView).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'newView', type: 'table', default: false })
       )
-    })
+    )
   })
 
   it('renames a view in place on every keystroke (no save button)', async () => {
@@ -135,11 +135,11 @@ describe('ViewSwitcher', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[0])
     fireEvent.click(screen.getByRole('button', { name: 'duplicate' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(props.onAddView).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Table (copy)', default: false })
       )
-    })
+    )
   })
 
   it('sets a non-default view as default from the editor', async () => {
@@ -148,9 +148,7 @@ describe('ViewSwitcher', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'viewActions' })[1])
     fireEvent.click(screen.getByRole('button', { name: 'setAsDefault' }))
 
-    await waitFor(() => {
-      expect(props.onSetViewAsDefault).toHaveBeenCalledWith(1)
-    })
+    await waitFor(() => expect(props.onSetViewAsDefault).toHaveBeenCalledWith(1))
   })
 
   it('deletes a view via confirmation', async () => {
@@ -162,8 +160,6 @@ describe('ViewSwitcher', () => {
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
 
-    await waitFor(() => {
-      expect(props.onDeleteView).toHaveBeenCalledWith('Board')
-    })
+    await waitFor(() => expect(props.onDeleteView).toHaveBeenCalledWith('Board'))
   })
 })

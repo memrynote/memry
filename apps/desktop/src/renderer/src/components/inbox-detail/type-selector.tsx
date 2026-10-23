@@ -49,9 +49,7 @@ export const TypeSelector = ({ value, onChange }: TypeSelectorProps): React.JSX.
                   // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- radiogroup of styled buttons; native radios would change visuals
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => {
-                    onChange(type)
-                  }}
+                  onClick={() => onChange(type)}
                   className={cn(
                     'relative flex h-6 items-center rounded-[5px] px-2.5 text-[12px] leading-4',
                     'transition-colors duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',

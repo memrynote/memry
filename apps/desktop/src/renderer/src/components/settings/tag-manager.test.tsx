@@ -119,9 +119,7 @@ vi.mock('@/components/ui/select', () => ({
       <select
         aria-label="merge target"
         value={value}
-        onChange={(event) => {
-          onValueChange(event.target.value)
-        }}
+        onChange={(event) => onValueChange(event.target.value)}
       >
         {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- test double for a third-party control; label is irrelevant to the assertions */}
         <option value="" />
@@ -208,14 +206,12 @@ describe('TagManager', () => {
     fireEvent.change(input, { target: { value: 'later' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    await waitFor(() => {
-      expect(mocks.toastLoading).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.toastLoading).toHaveBeenCalledTimes(1))
     expect(mocks.toastLoading.mock.calls[0][0]).toBe('Renaming #work: 3 / 40 notes')
     finish({ success: true })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed "work" to "later"')
-    })
+    )
   })
 
   it('renames tags, skips unchanged names, and reports rename failures', async () => {

@@ -51,16 +51,12 @@ function dispatchDragStart(html: string): Map<string, string> {
 
 describe('dragging a block out of the editor', () => {
   it('carries the task id when the dragged block is a task', () => {
-    renderHook(() => {
-      useTaskBlockDragData()
-    })
+    renderHook(() => useTaskBlockDragData())
     expect(dispatchDragStart(dragHtml(1)).get(MEMRY_TASK_DRAG_MIME)).toBe('task-1')
   })
 
   it('carries no task id for a paragraph', () => {
-    renderHook(() => {
-      useTaskBlockDragData()
-    })
+    renderHook(() => useTaskBlockDragData())
     expect(dispatchDragStart(dragHtml(0)).has(MEMRY_TASK_DRAG_MIME)).toBe(false)
   })
 })

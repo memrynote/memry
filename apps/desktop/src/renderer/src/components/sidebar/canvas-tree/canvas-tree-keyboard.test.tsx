@@ -133,9 +133,7 @@ function renderTree(props: Partial<React.ComponentProps<typeof CanvasTree>> = {}
 }
 
 async function rowsRendered(): Promise<HTMLElement[]> {
-  await waitFor(() => {
-    expect(screen.getAllByTestId('canvas-tree-row').length).toBeGreaterThan(0)
-  })
+  await waitFor(() => expect(screen.getAllByTestId('canvas-tree-row').length).toBeGreaterThan(0))
   return screen.getAllByTestId('canvas-tree-row')
 }
 
@@ -256,9 +254,9 @@ describe('CanvasTree keyboard access', () => {
       const submenu = await screen.findByTestId('canvas-folder-move-menu')
       fireEvent.keyDown(within(submenu).getByText('Personal'), { key: 'Enter' })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
-      })
+      )
     })
 
     it('gives the folder row a keyboard menu too', async () => {
@@ -353,9 +351,7 @@ describe('CanvasTree keyboard access', () => {
       confirm.focus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(mocks.canvas.delete).toHaveBeenCalledWith('c1')
-      })
+      await waitFor(() => expect(mocks.canvas.delete).toHaveBeenCalledWith('c1'))
     })
 
     it('accepts Backspace as the delete key too', async () => {
@@ -385,9 +381,7 @@ describe('CanvasTree keyboard access', () => {
       confirm.focus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(mocks.folder.delete).toHaveBeenCalledWith({ path: 'Work' })
-      })
+      await waitFor(() => expect(mocks.folder.delete).toHaveBeenCalledWith({ path: 'Work' }))
     })
 
     /**
@@ -414,9 +408,7 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.keyDown(button, { key: 'Delete' })
 
       const dialog = await screen.findByRole('alertdialog')
-      await waitFor(() => {
-        expect(dialog.contains(document.activeElement)).toBe(true)
-      })
+      await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true))
       // Cancel first: a destructive dialog must not open on its destructive
       // button, or a held Enter deletes the canvas.
       expect(within(dialog).getByRole('button', { name: 'cancel' })).toHaveFocus()
@@ -425,9 +417,7 @@ describe('CanvasTree keyboard access', () => {
       expect(within(dialog).getByRole('button', { name: 'delete' })).toHaveFocus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(mocks.canvas.delete).toHaveBeenCalledWith('c1')
-      })
+      await waitFor(() => expect(mocks.canvas.delete).toHaveBeenCalledWith('c1'))
     })
 
     /**
@@ -547,9 +537,7 @@ describe('CanvasTree keyboard access', () => {
 
       const input = (await startRenameWithF2('Alpha')) as HTMLInputElement
 
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
       await waitFor(() => {
         expect(input.selectionStart).toBe(0)
         expect(input.selectionEnd).toBe('Alpha'.length)
@@ -565,15 +553,11 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.change(input, { target: { value: 'Renamed' } })
       fireEvent.keyDown(input, { key: 'Escape' })
 
-      await waitFor(() => {
-        expect(queryNameField()).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(queryNameField()).not.toBeInTheDocument())
       expect(mocks.canvas.update).not.toHaveBeenCalled()
       // Nothing else is focusable on the row once the field goes, so dropping
       // this ends keyboard navigation of the tree.
-      await waitFor(() => {
-        expect(rowButton('Alpha')).toHaveFocus()
-      })
+      await waitFor(() => expect(rowButton('Alpha')).toHaveFocus())
     })
 
     it('commits on blur — clicking away is an accepted name, not a lost one', async () => {
@@ -599,9 +583,7 @@ describe('CanvasTree keyboard access', () => {
 
       fireEvent.blur(await startRenameWithF2('Alpha'))
 
-      await waitFor(() => {
-        expect(queryNameField()).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(queryNameField()).not.toBeInTheDocument())
       expect(mocks.canvas.update).not.toHaveBeenCalled()
     })
 
@@ -611,9 +593,7 @@ describe('CanvasTree keyboard access', () => {
       mocks.canvas.update.mockImplementation(
         () =>
           new Promise((resolve) => {
-            settle = () => {
-              resolve({})
-            }
+            settle = () => resolve({})
           })
       )
       renderTree()
@@ -623,13 +603,9 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.change(input, { target: { value: 'Renamed' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
-        expect(input).toBeDisabled()
-      })
+      await waitFor(() => expect(input).toBeDisabled())
       settle()
-      await waitFor(() => {
-        expect(queryNameField()).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(queryNameField()).not.toBeInTheDocument())
     })
 
     it('does not delete the canvas when Delete is pressed inside the field', async () => {
@@ -706,24 +682,16 @@ describe('CanvasTree keyboard access', () => {
       await rowsRendered()
 
       const input = await startRenameWithF2('Work')
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
       fireEvent.change(input, { target: { value: 'Personal' } })
 
       // Focus really leaves — that is what makes this a blur commit rather than
       // an Enter one.
-      act(() => {
-        rowButton('Personal').focus()
-      })
+      act(() => rowButton('Personal').focus())
       expect(input).not.toHaveFocus()
 
-      await waitFor(() => {
-        expect(mocks.toastError).toHaveBeenCalled()
-      })
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+      await waitFor(() => expect(input).toHaveFocus())
     })
 
     /**
@@ -739,38 +707,24 @@ describe('CanvasTree keyboard access', () => {
       await rowsRendered()
 
       const input = await startRenameWithF2('Work')
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
       fireEvent.change(input, { target: { value: 'Personal' } })
 
       // First attempt to leave: blur commits, the store refuses, and the field
       // takes the user back with the reason.
-      act(() => {
-        rowButton('Personal').focus()
-      })
-      await waitFor(() => {
-        expect(mocks.folder.rename).toHaveBeenCalledTimes(1)
-      })
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      act(() => rowButton('Personal').focus())
+      await waitFor(() => expect(mocks.folder.rename).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(input).toHaveFocus())
 
       // Second attempt: the field lets go instead of committing the same name
       // again. Nothing is lost silently — the app has already said, inline and
       // in a toast, that this exact name is one it cannot use.
-      act(() => {
-        rowButton('Personal').focus()
-      })
+      act(() => rowButton('Personal').focus())
 
-      await waitFor(() => {
-        expect(queryNameField()).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(queryNameField()).not.toBeInTheDocument())
       expect(mocks.folder.rename).toHaveBeenCalledTimes(1)
       // Out of the field, and on the row rather than on `document.body`.
-      await waitFor(() => {
-        expect(rowButton('Work')).toHaveFocus()
-      })
+      await waitFor(() => expect(rowButton('Work')).toHaveFocus())
     })
 
     it('does not send the same refused name a second time', async () => {
@@ -782,17 +736,13 @@ describe('CanvasTree keyboard access', () => {
       const input = await startRenameWithF2('Work')
       fireEvent.change(input, { target: { value: 'Personal' } })
       fireEvent.keyDown(input, { key: 'Enter' })
-      await waitFor(() => {
-        expect(mocks.folder.rename).toHaveBeenCalledTimes(1)
-      })
+      await waitFor(() => expect(mocks.folder.rename).toHaveBeenCalledTimes(1))
 
       // Nothing about the name changed, so there is nothing new to ask.
       fireEvent.keyDown(input, { key: 'Enter' })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
       expect(mocks.folder.rename).toHaveBeenCalledTimes(1)
       // Still open on the refused name: the user has to be able to fix it.
       expect(input).toHaveValue('Personal')
@@ -808,18 +758,14 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.change(input, { target: { value: 'Personal' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
-        expect(mocks.toastError).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
       expect(input).toBeInTheDocument()
       expect(screen.getByRole('alert')).toHaveTextContent(
         'A canvas folder with that name already exists here.'
       )
       // Reverting silently would read as the app ignoring the user; they have
       // to be left where they can type another name.
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
     })
   })
 
@@ -839,12 +785,8 @@ describe('CanvasTree keyboard access', () => {
       confirm.focus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(mocks.canvas.delete).toHaveBeenCalled()
-      })
-      await waitFor(() => {
-        expect(rowButton('Beta')).toHaveFocus()
-      })
+      await waitFor(() => expect(mocks.canvas.delete).toHaveBeenCalled())
+      await waitFor(() => expect(rowButton('Beta')).toHaveFocus())
     })
 
     it('returns focus to the row it renamed', async () => {
@@ -856,12 +798,8 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.change(input, { target: { value: 'Renamed' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
-        expect(mocks.canvas.update).toHaveBeenCalled()
-      })
-      await waitFor(() => {
-        expect(rowButton('Alpha')).toHaveFocus()
-      })
+      await waitFor(() => expect(mocks.canvas.update).toHaveBeenCalled())
+      await waitFor(() => expect(rowButton('Alpha')).toHaveFocus())
     })
 
     /**
@@ -879,19 +817,13 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.change(input, { target: { value: 'Studio' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
-        expect(mocks.folder.rename).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.folder.rename).toHaveBeenCalled())
 
       // What the main process emits once the rename lands on disk.
       setData([], [folder('Studio')])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
-      await waitFor(() => {
-        expect(rowButton('Studio')).toHaveFocus()
-      })
+      await waitFor(() => expect(rowButton('Studio')).toHaveFocus())
     })
 
     it('lands the caret in the new subfolder, then hands focus back to its row', async () => {
@@ -909,43 +841,35 @@ describe('CanvasTree keyboard access', () => {
       fireEvent.click(within(menu).getByText('newFolder'))
 
       // Created immediately, under a default name, with no dialog in between.
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({
           parent: 'Work',
           name: 'Untitled Folder'
         })
-      })
+      )
 
       setData([], [folder('Work'), folder('Work/Untitled Folder')])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
       // The parent was expanded by the create, so the new row is on screen and
       // the field is where the user is already typing.
       const input = await nameField()
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
 
       fireEvent.change(input, { target: { value: 'Q3' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.rename).toHaveBeenCalledWith({
           path: 'Work/Untitled Folder',
           name: 'Q3'
         })
-      })
+      )
 
       setData([], [folder('Work'), folder('Work/Q3')])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
-      await waitFor(() => {
-        expect(rowButton('Q3')).toHaveFocus()
-      })
+      await waitFor(() => expect(rowButton('Q3')).toHaveFocus())
     })
 
     it('skips the rows a folder delete takes with it when choosing where focus lands', async () => {
@@ -967,20 +891,14 @@ describe('CanvasTree keyboard access', () => {
       confirmButton.focus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(mocks.folder.delete).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.folder.delete).toHaveBeenCalled())
 
       setData([canvas({ id: 'c2', title: 'Gamma' })], [])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
       // Beta is the row directly below Work, but it dies WITH the folder, so
       // landing focus there drops it to the body a tick later.
-      await waitFor(() => {
-        expect(rowButton('Gamma')).toHaveFocus()
-      })
+      await waitFor(() => expect(rowButton('Gamma')).toHaveFocus())
     })
   })
 
@@ -996,9 +914,7 @@ describe('CanvasTree keyboard access', () => {
       folderRow.focus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(screen.getByText('Beta')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('Beta')).toBeInTheDocument())
 
       const canvasRow = rowButton('Beta')
       canvasRow.focus()
@@ -1027,9 +943,7 @@ describe('CanvasTree keyboard access', () => {
       setData([], [])
       mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder') })
       renderTree()
-      await waitFor(() => {
-        expect(screen.getByText('empty')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
 
       const user = userEvent.setup()
       const newFolder = screen.getByRole('button', { name: 'newFolder' })
@@ -1040,65 +954,51 @@ describe('CanvasTree keyboard access', () => {
 
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
-      })
+      )
 
       setData([], [folder('Untitled Folder')])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
       // Typed into the focused field with no click first: the old name is
       // selected on entry, so this REPLACES it rather than appending.
       const input = await nameField()
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
       await user.keyboard('Work{Enter}')
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.rename).toHaveBeenCalledWith({
           path: 'Untitled Folder',
           name: 'Work'
         })
-      })
+      )
     })
 
     it('lands the caret in the folder it just created rather than on the body', async () => {
       setData([], [])
       mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder') })
       renderTree()
-      await waitFor(() => {
-        expect(screen.getByText('empty')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
 
       const user = userEvent.setup()
       await tabTo(user, screen.getByRole('button', { name: 'newFolder' }))
       await user.keyboard('{Enter}')
-      await waitFor(() => {
-        expect(mocks.folder.create).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.folder.create).toHaveBeenCalled())
 
       // What the main process emits once the directory and its row exist. The
       // button that was pressed is gone by now — the empty state it lived in has
       // been replaced by the list — so nothing restores focus on its own.
       setData([], [folder('Untitled Folder')])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
       const input = await nameField()
-      await waitFor(() => {
-        expect(input).toHaveFocus()
-      })
+      await waitFor(() => expect(input).toHaveFocus())
       expect(document.activeElement).not.toBe(document.body)
 
       // And abandoning the name still leaves the user on the row, not nowhere.
       fireEvent.keyDown(input, { key: 'Escape' })
-      await waitFor(() => {
-        expect(rowButton('Untitled Folder')).toHaveFocus()
-      })
+      await waitFor(() => expect(rowButton('Untitled Folder')).toHaveFocus())
     })
 
     it('parks focus on the empty state after the last row is deleted', async () => {
@@ -1116,20 +1016,14 @@ describe('CanvasTree keyboard access', () => {
       confirm.focus()
       await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(mocks.canvas.delete).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.canvas.delete).toHaveBeenCalled())
 
       setData([], [])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
       // There is no surviving row, so the empty state's own button is the only
       // place left that is not `document.body`.
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'newCanvas' })).toHaveFocus()
-      })
+      await waitFor(() => expect(screen.getByRole('button', { name: 'newCanvas' })).toHaveFocus())
       expect(document.activeElement).not.toBe(document.body)
     })
   })
@@ -1226,9 +1120,7 @@ describe('CanvasTree keyboard access', () => {
     const user = userEvent.setup()
     await tabTo(user, screen.getByLabelText('filterPlaceholder'))
     await user.keyboard('roadmap')
-    await waitFor(() => {
-      expect(screen.getByText('Roadmap')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Roadmap')).toBeInTheDocument())
 
     const trigger = within(
       screen.getByText('Work').closest('[data-testid="canvas-tree-row"]') as HTMLElement

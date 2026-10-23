@@ -14,12 +14,8 @@ function useElapsedLabel(since: number | undefined): string {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now())
-    }, 100)
-    return () => {
-      clearInterval(timer)
-    }
+    const timer = setInterval(() => setNow(Date.now()), 100)
+    return () => clearInterval(timer)
   }, [])
 
   const seconds = Math.floor(Math.max(0, now - start) / 100) / 10
@@ -59,12 +55,8 @@ export function useSilentSince(signal: string, active: boolean): number | null {
   useEffect(() => {
     if (!active) return
     const lastChange = Date.now()
-    const timer = setTimeout(() => {
-      setSilence({ signal, since: lastChange })
-    }, SILENCE_MS)
-    return () => {
-      clearTimeout(timer)
-    }
+    const timer = setTimeout(() => setSilence({ signal, since: lastChange }), SILENCE_MS)
+    return () => clearTimeout(timer)
   }, [signal, active])
 
   return active && silence?.signal === signal ? silence.since : null

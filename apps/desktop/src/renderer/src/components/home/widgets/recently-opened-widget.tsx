@@ -64,7 +64,7 @@ export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.
               data-testid={isCanvas ? 'recently-opened-canvas' : 'recently-opened-note'}
               data-note-id={item.itemId}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
-              onClick={() => {
+              onClick={() =>
                 openTab(
                   isCanvas
                     ? canvasTabData({ id: item.itemId, title: item.title }, t('canvas.untitled'))
@@ -80,7 +80,7 @@ export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.
                         isPreview: true
                       }
                 )
-              }}
+              }
             >
               {item.emoji ? (
                 // Icons are not always bare emoji: a note or canvas can carry an

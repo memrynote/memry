@@ -57,9 +57,7 @@ function httpGet(url: string): Promise<{ status: number; body: string }> {
       .get(url, (res) => {
         let body = ''
         res.on('data', (chunk) => (body += chunk))
-        res.on('end', () => {
-          resolve({ status: res.statusCode ?? 0, body })
-        })
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
       })
       .on('error', reject)
   })

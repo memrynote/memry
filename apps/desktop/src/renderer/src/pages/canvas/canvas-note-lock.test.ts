@@ -155,9 +155,7 @@ describe('note card claims', () => {
 
   it('releasing an unclaimed note is a no-op', () => {
     const claims = createNoteCardClaims()
-    expect(() => {
-      claims.release('n1', 'card-1')
-    }).not.toThrow()
+    expect(() => claims.release('n1', 'card-1')).not.toThrow()
     expect(claims.claimedBy('n1')).toBeNull()
   })
 

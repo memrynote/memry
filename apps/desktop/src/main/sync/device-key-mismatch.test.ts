@@ -33,9 +33,7 @@ describe('handleDeviceKeyMismatch', () => {
     const handle = await loadHandler()
 
     handle()
-    await vi.waitFor(() => {
-      expect(mocks.teardownSession).toHaveBeenCalledWith('integrity')
-    })
+    await vi.waitFor(() => expect(mocks.teardownSession).toHaveBeenCalledWith('integrity'))
 
     expect(mocks.broadcastToAllWindows).toHaveBeenCalledWith(EVENT_CHANNELS.STATUS_CHANGED, {
       status: 'error',
@@ -57,12 +55,8 @@ describe('handleDeviceKeyMismatch', () => {
     const handle = await loadHandler()
     mocks.teardownSession.mockRejectedValueOnce(new Error('teardown blew up'))
 
-    expect(() => {
-      handle()
-    }).not.toThrow()
-    await vi.waitFor(() => {
-      expect(mocks.teardownSession).toHaveBeenCalledWith('integrity')
-    })
+    expect(() => handle()).not.toThrow()
+    await vi.waitFor(() => expect(mocks.teardownSession).toHaveBeenCalledWith('integrity'))
   })
 
   it('#given key material is in flux #then it stands down and stays armed', async () => {
@@ -78,8 +72,6 @@ describe('handleDeviceKeyMismatch', () => {
 
     mocks.isKeyMaterialActivityRecent.mockReturnValue(false)
     handle()
-    await vi.waitFor(() => {
-      expect(mocks.teardownSession).toHaveBeenCalledWith('integrity')
-    })
+    await vi.waitFor(() => expect(mocks.teardownSession).toHaveBeenCalledWith('integrity'))
   })
 })

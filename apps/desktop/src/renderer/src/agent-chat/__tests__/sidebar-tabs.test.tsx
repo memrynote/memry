@@ -422,9 +422,7 @@ describe('SidebarTabs', () => {
     await user.click(screen.getByRole('button', { name: 'New conversation' }))
 
     expect(createConversation).toHaveBeenCalledTimes(1)
-    await waitFor(() => {
-      expect(screen.getByRole('textbox')).toHaveFocus()
-    })
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
     await user.keyboard('hello')
 
     expect(screen.getByRole('textbox')).toHaveTextContent('hello')

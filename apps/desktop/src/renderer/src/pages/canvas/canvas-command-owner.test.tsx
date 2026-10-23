@@ -12,9 +12,7 @@ const mount = (props: Parameters<typeof CanvasCommandOwner>[0]): ReactNode => (
   </TabIdentityProvider>
 )
 
-beforeEach(() => {
-  resetCommandStoreForTests()
-})
+beforeEach(() => resetCommandStoreForTests())
 
 describe('canvas commands', () => {
   it('open the card picker, the layout dialog and the link picker the board opens', async () => {
@@ -22,9 +20,7 @@ describe('canvas commands', () => {
     const openLayout = vi.fn()
     const openLinkPicker = vi.fn()
     render(mount({ openAddCardRef: { current: openAddCard }, openLayout, openLinkPicker }))
-    act(() => {
-      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
-    })
+    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
 
     await runCommand('canvas.addCard', 'palette')
     await runCommand('canvas.layoutByProperty', 'palette')
@@ -38,9 +34,7 @@ describe('canvas commands', () => {
     render(
       mount({ openAddCardRef: { current: null }, openLayout: vi.fn(), openLinkPicker: vi.fn() })
     )
-    act(() => {
-      publishActiveContext({ activeTabId: 't', activeGroupId: 'group' })
-    })
+    act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
 
     await expect(runCommand('canvas.addCard', 'palette')).resolves.toBe('ran')
   })

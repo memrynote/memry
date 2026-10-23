@@ -135,9 +135,7 @@ function renderTree() {
 }
 
 async function rowsRendered(): Promise<void> {
-  await waitFor(() => {
-    expect(screen.getAllByTestId('canvas-tree-row').length).toBeGreaterThan(0)
-  })
+  await waitFor(() => expect(screen.getAllByTestId('canvas-tree-row').length).toBeGreaterThan(0))
 }
 
 function rowFor(label: string): HTMLElement {
@@ -187,9 +185,9 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(target, { dataTransfer: transfer })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.canvas.update).toHaveBeenCalledWith({ id: 'c1', folder: 'Work' })
-    })
+    )
     expect(screen.queryByTestId('canvas-drop-indicator')).not.toBeInTheDocument()
   })
 
@@ -210,9 +208,9 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(zone, { dataTransfer: transfer })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.canvas.update).toHaveBeenCalledWith({ id: 'c2', folder: null })
-    })
+    )
   })
 
   it('moves a folder under another folder', async () => {
@@ -241,9 +239,9 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(target, { dataTransfer: transfer })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Personal', parent: 'Work' })
-    })
+    )
   })
 
   it('rejects dropping a folder into its own descendant', async () => {
@@ -266,9 +264,7 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(target, { dataTransfer: transfer })
 
-    await waitFor(() => {
-      expect(mocks.folder.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.folder.list).toHaveBeenCalled())
     expectNothingMoved()
   })
 
@@ -303,9 +299,7 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(target, { dataTransfer: transfer })
 
-    await waitFor(() => {
-      expect(mocks.folder.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.folder.list).toHaveBeenCalled())
     expectNothingMoved()
   })
 
@@ -335,9 +329,7 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(target, { dataTransfer: transfer })
 
-    await waitFor(() => {
-      expect(mocks.folder.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.folder.list).toHaveBeenCalled())
     expectNothingMoved()
   })
 
@@ -357,9 +349,9 @@ describe('canvas tree drag and drop', () => {
     transfer.protectedRead = false
     fireEvent.drop(rowFor('Personal'), { dataTransfer: transfer })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
-    })
+    )
     expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Work' })
     expect(mocks.folder.create.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.folder.move.mock.invocationCallOrder[0]
@@ -395,9 +387,7 @@ describe('canvas tree drag and drop', () => {
     fireEvent.drop(target, { dataTransfer: spoofed })
     fireEvent.drop(rootDropZone(), { dataTransfer: spoofed })
 
-    await waitFor(() => {
-      expect(mocks.folder.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.folder.list).toHaveBeenCalled())
     expectNothingMoved()
   })
 

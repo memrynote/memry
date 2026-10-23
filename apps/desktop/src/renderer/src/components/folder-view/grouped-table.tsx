@@ -1207,9 +1207,7 @@ export function GroupedTable({
                     key={row.id}
                     row={row}
                     virtualRow={virtualRow}
-                    measureElement={(node) => {
-                      rowVirtualizer.measureElement(node)
-                    }}
+                    measureElement={(node) => rowVirtualizer.measureElement(node)}
                     totalColumnsWidth={totalColumnsWidth}
                     density={density}
                     groupByProperty={groupBy?.property || ''}
@@ -1245,9 +1243,7 @@ export function GroupedTable({
                   <tr
                     data-index={virtualRow.index}
                     data-row-id={row.original.id}
-                    ref={(node) => {
-                      rowVirtualizer.measureElement(node)
-                    }}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
                     style={{
                       display: 'flex',
                       width: '100%',
@@ -1270,16 +1266,14 @@ export function GroupedTable({
                     )}
                     // A row, or the selection it belongs to, drops onto a canvas as cards.
                     draggable
-                    onDragStart={(e) => {
+                    onDragStart={(e) =>
                       startCanvasRowsDrag(e, dragRefsForRow(notes, row.original.id, selectedRowIds))
-                    }}
-                    onClick={(e) => {
-                      handleRowClick(virtualRow.index, row.original.id, e)
-                    }}
+                    }
+                    onClick={(e) => handleRowClick(virtualRow.index, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
-                    onMouseDown={(e) => {
+                    onMouseDown={(e) =>
                       handleMiddleClick(e, () => onOpenInBackgroundTab?.(row.original.id))
-                    }}
+                    }
                   >
                     {/* Leading per-row checkbox (reveals on hover or while a selection is active) */}
                     <td
@@ -1288,9 +1282,7 @@ export function GroupedTable({
                     >
                       <SelectionCheckbox
                         state={isSelected ? 'checked' : 'unchecked'}
-                        onToggle={() => {
-                          toggleRowSelection(row.original.id)
-                        }}
+                        onToggle={() => toggleRowSelection(row.original.id)}
                         alwaysVisible={selectionActive}
                         label={tPhaseF('phaseF.componentsFolderViewGroupedTable.selectRow')}
                       />
@@ -1424,9 +1416,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
         'bg-muted/30 hover:bg-muted/50',
         'transition-colors cursor-pointer'
       )}
-      onClick={() => {
-        row.toggleExpanded()
-      }}
+      onClick={() => row.toggleExpanded()}
     >
       {/* Spacer matching the leading selection-checkbox column */}
       <td

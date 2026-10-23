@@ -803,9 +803,7 @@ describe('secret-storage', () => {
         (_service: string, account: string) =>
           new Promise<string | null>((resolve) => {
             started.push(account)
-            gates.set(account, () => {
-              resolve(`value:${account}`)
-            })
+            gates.set(account, () => resolve(`value:${account}`))
           })
       )
 

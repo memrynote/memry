@@ -386,9 +386,7 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                 value={modelQuery}
                 aria-label={t('agentChat.composer.models.search')}
                 placeholder={t('agentChat.composer.models.search')}
-                onChange={(event) => {
-                  setModelQuery(event.target.value)
-                }}
+                onChange={(event) => setModelQuery(event.target.value)}
                 onKeyDown={(event) => {
                   // The menu's typeahead would otherwise swallow every
                   // keystroke; Escape still bubbles so Radix closes.
@@ -412,9 +410,7 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                   {section.models.map((model) => (
                     <DropdownMenuItem
                       key={model.id}
-                      onSelect={() => {
-                        props.onSelectCliModel(section.backend, model.id)
-                      }}
+                      onSelect={() => props.onSelectCliModel(section.backend, model.id)}
                     >
                       <span>{model.label}</span>
                       {props.selectedProvider === section.backend &&
@@ -443,9 +439,7 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
             )}
             {showCustomModelRow && customModelBackend && (
               <DropdownMenuItem
-                onSelect={() => {
-                  props.onSelectCliModel(customModelBackend, modelQuery.trim())
-                }}
+                onSelect={() => props.onSelectCliModel(customModelBackend, modelQuery.trim())}
               >
                 <span>
                   {t('agentChat.composer.models.useCustom', { query: modelQuery.trim() })}
@@ -473,9 +467,7 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                   localModelIds.map((modelId) => (
                     <DropdownMenuItem
                       key={modelId}
-                      onSelect={() => {
-                        props.onSelectLocalModel(modelId)
-                      }}
+                      onSelect={() => props.onSelectLocalModel(modelId)}
                     >
                       <span className="truncate">{modelId}</span>
                       {props.selectedProvider === 'local_openai_compatible' &&

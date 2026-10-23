@@ -52,9 +52,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => {
-      link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
-    })
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     expect(result.current.isVisible).toBe(false)
 
     await act(async () => {
@@ -67,9 +65,7 @@ describe('useWikiLinkHover', () => {
     expect(result.current.position).toEqual({ top: 64, left: 20, placement: 'below' })
     expect(result.current.isVisible).toBe(true)
 
-    act(() => {
-      link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
-    })
+    act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
     })
@@ -87,9 +83,7 @@ describe('useWikiLinkHover', () => {
       await vi.advanceTimersByTimeAsync(300)
     })
 
-    act(() => {
-      result.current.handleCardMouseEnter()
-    })
+    act(() => result.current.handleCardMouseEnter())
     act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
@@ -97,9 +91,7 @@ describe('useWikiLinkHover', () => {
 
     expect(result.current.isVisible).toBe(true)
 
-    act(() => {
-      result.current.handleCardMouseLeave()
-    })
+    act(() => result.current.handleCardMouseLeave())
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
     })
@@ -312,9 +304,7 @@ describe('useWikiLinkHover', () => {
     // The note gets created (this window or another device): drop the cache.
     api.notes.previewByTitle.mockResolvedValue({ id: 'nte_ghost', title: 'Ghost' })
     const createdCallbacks = api.onNoteCreated.mock.calls.map((call) => call[0] as () => void)
-    act(() => {
-      createdCallbacks.forEach((callback) => callback())
-    })
+    act(() => createdCallbacks.forEach((callback) => callback()))
 
     act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))

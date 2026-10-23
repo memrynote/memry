@@ -69,18 +69,14 @@ export const RepeatChip = ({
     <>
       <CustomRepeatDialog
         isOpen={isCustomOpen}
-        onClose={() => {
-          setIsCustomOpen(false)
-        }}
+        onClose={() => setIsCustomOpen(false)}
         onSave={setRule}
         initialConfig={repeatConfig}
         dueDate={dueDate}
       />
       <StopRepeatingDialog
         isOpen={isStopOpen}
-        onClose={() => {
-          setIsStopOpen(false)
-        }}
+        onClose={() => setIsStopOpen(false)}
         onConfirm={handleStopConfirm}
         taskTitle={taskTitle}
         repeatConfig={repeatConfig}
@@ -97,9 +93,7 @@ export const RepeatChip = ({
       <DropdownMenu
         modal={false}
         open={isOpen}
-        onOpenChange={(next) => {
-          onOpenChange('repeat', next)
-        }}
+        onOpenChange={(next) => onOpenChange('repeat', next)}
       >
         <DropdownMenuTrigger asChild>
           <PropertyChip
@@ -112,12 +106,7 @@ export const RepeatChip = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[240px]">
           {presets.map((preset) => (
-            <DropdownMenuItem
-              key={preset.id}
-              onSelect={() => {
-                setRule(preset.config)
-              }}
-            >
+            <DropdownMenuItem key={preset.id} onSelect={() => setRule(preset.config)}>
               <span className="flex size-4 items-center justify-center">
                 {matchingPresetId === preset.id && (
                   <Check className="size-3.5" aria-hidden="true" />
@@ -127,21 +116,12 @@ export const RepeatChip = ({
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => {
-              setIsCustomOpen(true)
-            }}
-          >
+          <DropdownMenuItem onSelect={() => setIsCustomOpen(true)}>
             <span className="size-4" />
             <span>{t('phaseF.componentsTasksRepeatPicker.custom')}</span>
           </DropdownMenuItem>
           {active && (
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => {
-                setIsStopOpen(true)
-              }}
-            >
+            <DropdownMenuItem variant="destructive" onSelect={() => setIsStopOpen(true)}>
               <span className="size-4" />
               <span>{t('phaseF.componentsTasksTaskRepeatSection.stopRepeating2')}</span>
             </DropdownMenuItem>

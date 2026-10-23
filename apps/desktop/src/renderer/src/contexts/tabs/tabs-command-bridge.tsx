@@ -31,9 +31,7 @@ export function TabsCommandBridge(): null {
 
   useAppCommands('tabs', {
     'tabs.newTab': {
-      run: () => {
-        openNewTabMenu(groupId)
-      }
+      run: () => openNewTabMenu(groupId)
     },
     // Closes the window only once Home is all that is left.
     'tabs.closeTab': {
@@ -45,34 +43,22 @@ export function TabsCommandBridge(): null {
       }
     },
     'tabs.closeAllTabs': {
-      run: () => {
-        dispatch({ type: 'CLOSE_ALL_TABS', payload: { groupId } })
-      }
+      run: () => dispatch({ type: 'CLOSE_ALL_TABS', payload: { groupId } })
     },
     'tabs.reopenTab': {
-      run: () => {
-        reopenClosedTab()
-      }
+      run: () => reopenClosedTab()
     },
     'tabs.nextTab': {
-      run: () => {
-        dispatch({ type: 'GO_TO_NEXT_TAB', payload: { groupId } })
-      }
+      run: () => dispatch({ type: 'GO_TO_NEXT_TAB', payload: { groupId } })
     },
     'tabs.prevTab': {
-      run: () => {
-        dispatch({ type: 'GO_TO_PREVIOUS_TAB', payload: { groupId } })
-      }
+      run: () => dispatch({ type: 'GO_TO_PREVIOUS_TAB', payload: { groupId } })
     },
     'tabs.navBack': {
-      run: () => {
-        navBack(groupId)
-      }
+      run: () => navBack(groupId)
     },
     'tabs.navForward': {
-      run: () => {
-        navForward(groupId)
-      }
+      run: () => navForward(groupId)
     },
     'tabs.pinTab': {
       enabled: tab !== null,
@@ -91,9 +77,7 @@ export function TabsCommandBridge(): null {
     'tabs.splitDown': { run: () => void splitView('vertical', groupId) },
     'tabs.closeSplit': {
       enabled: hasSplit,
-      run: () => {
-        dispatch({ type: 'CLOSE_SPLIT', payload: { groupId } })
-      }
+      run: () => dispatch({ type: 'CLOSE_SPLIT', payload: { groupId } })
     }
   })
 

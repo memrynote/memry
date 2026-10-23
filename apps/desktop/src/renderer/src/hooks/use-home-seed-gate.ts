@@ -32,12 +32,8 @@ export function useHomeSeedGate(): boolean {
 
   const [graceElapsed, setGraceElapsed] = useState(false)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setGraceElapsed(true)
-    }, SEED_GRACE_MS)
-    return () => {
-      clearTimeout(timer)
-    }
+    const timer = setTimeout(() => setGraceElapsed(true), SEED_GRACE_MS)
+    return () => clearTimeout(timer)
   }, [])
 
   // No account means nothing will ever arrive from a peer. 'idle' and

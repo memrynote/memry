@@ -46,9 +46,7 @@ export function StatusProjectPickerPanel({
           <button
             key={project.id}
             type="button"
-            onClick={() => {
-              onSelectProject(project.id)
-            }}
+            onClick={() => onSelectProject(project.id)}
             className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
           >
             <div
@@ -56,7 +54,7 @@ export function StatusProjectPickerPanel({
               style={{ backgroundColor: project.color }}
             />
             <span className="text-[13px] text-muted-foreground leading-4">{project.name}</span>
-            <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
+            <ChevronRight size={10} className="ms-auto text-muted-foreground/60" />
           </button>
         ))}
       </div>

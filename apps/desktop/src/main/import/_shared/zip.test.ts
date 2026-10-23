@@ -45,12 +45,8 @@ describe('shared zip iteration', () => {
   })
 
   it('rejects a zip-slip entry path', () => {
-    expect(() => {
-      assertSafeEntryPath('../../etc/passwd')
-    }).toThrow(/unsafe/i)
-    expect(() => {
-      assertSafeEntryPath('a/b/c.html')
-    }).not.toThrow()
+    expect(() => assertSafeEntryPath('../../etc/passwd')).toThrow(/unsafe/i)
+    expect(() => assertSafeEntryPath('a/b/c.html')).not.toThrow()
   })
 
   it('stops iterating when the signal is already aborted', async () => {

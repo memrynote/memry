@@ -53,18 +53,12 @@ export const SubtaskRow = ({
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
     >
       {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
-      <div
-        onClick={(e) => {
-          e.stopPropagation()
-        }}
-      >
+      <div onClick={(e) => e.stopPropagation()}>
         <InteractiveStatusIcon
           type={statusType}
           color={statusColor}
           isCompleted={isCompleted}
-          onClick={() => {
-            onToggleComplete(subtask.id)
-          }}
+          onClick={() => onToggleComplete(subtask.id)}
         />
       </div>
 

@@ -46,9 +46,7 @@ export function SelectEditor({
       open={isOpen}
       onOpenChange={setIsOpen}
       value={value}
-      onValueChange={(val) => {
-        onChange(val === value ? null : val)
-      }}
+      onValueChange={(val) => onChange(val === value ? null : val)}
     >
       <Picker.Trigger variant="inline" asChild>
         <span>
@@ -109,9 +107,7 @@ export function SelectEditor({
               type="text"
               aria-label={t('properties.optionName')}
               value={newOptionName}
-              onChange={(e) => {
-                setNewOptionName(e.target.value)
-              }}
+              onChange={(e) => setNewOptionName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -132,9 +128,7 @@ export function SelectEditor({
           <Picker.Footer>
             <button
               type="button"
-              onClick={() => {
-                setIsCreating(true)
-              }}
+              onClick={() => setIsCreating(true)}
               className="flex items-center gap-2 w-full px-2 py-1.5 text-[13px] text-muted-foreground hover:bg-accent rounded-[5px]"
             >
               <Plus className="size-3.5" />

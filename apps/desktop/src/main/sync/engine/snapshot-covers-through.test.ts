@@ -154,9 +154,7 @@ function pushFor(engine: SyncEngine, onStored: (noteId: string) => void = () => 
     getSigningKey: async () => new Uint8Array(64),
     authRetryDeps: { refreshAccessToken: async () => false, getAccessToken: async () => 'token' },
     hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
-    onNotCovered: (noteId, refusal) => {
-      engine.recordSnapshotRefusal(noteId, refusal)
-    },
+    onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
     onPushed: () => undefined,
     onStored,
     onError: () => undefined

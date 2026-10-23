@@ -94,11 +94,7 @@ async function startStub(): Promise<StubServer> {
 }
 
 async function stopStub(server: http.Server): Promise<void> {
-  await new Promise<void>((resolve) =>
-    server.close(() => {
-      resolve()
-    })
-  )
+  await new Promise<void>((resolve) => server.close(() => resolve()))
 }
 
 /**

@@ -68,8 +68,6 @@ export function useTitleBarSymbolColorSync(): void {
     sync()
     const observer = new MutationObserver(sync)
     observer.observe(root, { attributes: true, attributeFilter: ['class', 'style'] })
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 }

@@ -178,17 +178,15 @@ describe('NewInGroupButton', () => {
 
     await userEvent.click(button)
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.notes.create).toHaveBeenCalledWith({
         title: 'New Person',
         content: '',
         tags: ['person'],
         properties: { Role: 'CTO' }
       })
-    })
-    await waitFor(() => {
-      expect(onCreated).toHaveBeenCalledWith('n_new', 'New Person', false)
-    })
+    )
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('n_new', 'New Person', false))
   })
 
   it('opens the new object in a new tab on Cmd-click and on Cmd+Enter', async () => {
@@ -196,14 +194,10 @@ describe('NewInGroupButton', () => {
     const button = await screen.findByRole('button', { name: 'New Person in CTO' })
 
     fireEvent.click(button, { metaKey: true })
-    await waitFor(() => {
-      expect(onCreated).toHaveBeenLastCalledWith('n_new', 'New Person', true)
-    })
+    await waitFor(() => expect(onCreated).toHaveBeenLastCalledWith('n_new', 'New Person', true))
 
     fireEvent.keyDown(button, { key: 'Enter', metaKey: true })
-    await waitFor(() => {
-      expect(onCreated).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(2))
     expect(onCreated).toHaveBeenLastCalledWith('n_new', 'New Person', true)
     expect(api.notes.create).toHaveBeenCalledTimes(2)
   })
@@ -213,9 +207,7 @@ describe('NewInGroupButton', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'New Person' }))
 
-    await waitFor(() => {
-      expect(onCreated).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(onCreated).toHaveBeenCalled())
     expect(api.notes.create).toHaveBeenCalledWith({
       title: 'New Person',
       content: '',
@@ -229,14 +221,14 @@ describe('NewInGroupButton', () => {
     const button = await screen.findByRole('button', { name: 'New Person in Acme, Globex' })
     await userEvent.click(button)
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.notes.create).toHaveBeenCalledWith({
         title: 'New Person',
         content: '',
         tags: ['person'],
         properties: { Employer: [ACME, GLOBEX] }
       })
-    })
+    )
   })
 
   it('joins a multi-value group into the label', async () => {
@@ -253,9 +245,7 @@ describe('NewInGroupButton', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'New Person in CTO' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('vault locked')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('vault locked'))
   })
 })
 
@@ -449,9 +439,7 @@ describe('MentionedInSection', () => {
   it('renders nothing when no note mentions the tag', async () => {
     renderWithProviders(<MentionedInSection tag={person} onOpen={vi.fn()} />)
 
-    await waitFor(() => {
-      expect(api.folderView.listWithProperties).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.folderView.listWithProperties).toHaveBeenCalled())
     expect(screen.queryByTestId('mentioned-in')).not.toBeInTheDocument()
   })
 })

@@ -157,9 +157,7 @@ const ProjectPickerList = ({
       <DefaultProjectToggle
         name={name}
         isDefault={isDefault}
-        onToggle={() => {
-          onDefaultProjectChange(isDefault ? null : projectId)
-        }}
+        onToggle={() => onDefaultProjectChange(isDefault ? null : projectId)}
       />
     )
   }
@@ -248,9 +246,7 @@ export const ProjectPicker = ({
   const availableProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
   const currentProject = value ? availableProjects.find((p) => p.id === value) : undefined
 
-  const { canCreate, openCreate, dialog } = useProjectQuickCreate((id) => {
-    onChange(id)
-  })
+  const { canCreate, openCreate, dialog } = useProjectQuickCreate((id) => onChange(id))
   const showCreate = allowCreate && canCreate
 
   const resolvedAllLabel = allOptionLabel ?? tTasks('page.projectScope.allProjects')
@@ -290,9 +286,7 @@ export const ProjectPicker = ({
                 className
               )}
               style={{ backgroundColor: `${badgeColor}14` }}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              onClick={(e) => e.stopPropagation()}
               disabled={disabled}
               aria-label={`Project: ${badgeName}. Click to change.`}
             >

@@ -112,9 +112,7 @@ export function useReminders(options?: ListRemindersInput): {
       })
     ]
 
-    return () => {
-      unsubs.forEach((unsub) => unsub())
-    }
+    return () => unsubs.forEach((unsub) => unsub())
   }, [queryClient])
 
   return {
@@ -213,9 +211,7 @@ export function useRemindersForTarget(
       onReminderDismissed(invalidateIfMatching)
     ]
 
-    return () => {
-      unsubs.forEach((unsub) => unsub())
-    }
+    return () => unsubs.forEach((unsub) => unsub())
   }, [queryClient, targetType, targetId])
 
   return {

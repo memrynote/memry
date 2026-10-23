@@ -80,12 +80,10 @@ export function splitMemryFileBlocks(text: string): UserTextSegment[] {
 function readBytes(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.addEventListener('load', () => {
-      resolve(reader.result as ArrayBuffer)
-    })
-    reader.addEventListener('error', () => {
+    reader.addEventListener('load', () => resolve(reader.result as ArrayBuffer))
+    reader.addEventListener('error', () =>
       reject(new Error('FileReader failed', { cause: reader.error }))
-    })
+    )
     reader.readAsArrayBuffer(file)
   })
 }

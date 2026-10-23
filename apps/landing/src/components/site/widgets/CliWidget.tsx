@@ -311,9 +311,7 @@ export function CliWidget({ className }: CliWidgetProps) {
                   setFocused(true)
                   takeOver()
                 }}
-                onBlur={() => {
-                  setFocused(false)
-                }}
+                onBlur={() => setFocused(false)}
                 spellCheck={false}
                 autoCapitalize="off"
                 autoComplete="off"

@@ -111,12 +111,8 @@ export function TagChip({
         role="option"
         aria-selected={isSelected}
         onClick={onClick}
-        onMouseEnter={() => {
-          setIsHovered(true)
-        }}
-        onMouseLeave={() => {
-          setIsHovered(false)
-        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         disabled={isSelected || disabled}
         className={pillClasses}
         style={pillStyle}
@@ -129,12 +125,8 @@ export function TagChip({
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- handler only stops propagation or handles pointer for an enclosing widget; keyboard path is on the child control
     <li
-      onMouseEnter={() => {
-        setIsHovered(true)
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false)
-      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={pillClasses}
       style={pillStyle}
     >

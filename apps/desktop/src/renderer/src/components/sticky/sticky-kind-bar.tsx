@@ -30,9 +30,7 @@ export function StickyKindBar({
             role="radio"
             aria-checked={selected}
             title={`${modKey}${index + 1}`}
-            onClick={() => {
-              onChange(kind)
-            }}
+            onClick={() => onChange(kind)}
             className={cn(
               'no-drag rounded-full px-2.5 py-1 text-[12px]/4 font-medium transition-colors duration-150',
               'focus-visible:outline-2 focus-visible:outline-[var(--tint)]',

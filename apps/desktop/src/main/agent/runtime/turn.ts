@@ -441,9 +441,7 @@ async function killAbandonedChild(sub: BackendRunHandle): Promise<boolean> {
   // shutdown, so an unbounded wait here would trade the leak for a hang.
   let timer: ReturnType<typeof setTimeout> | undefined
   const timedOut = new Promise<false>((resolve) => {
-    timer = setTimeout(() => {
-      resolve(false)
-    }, ABANDONED_KILL_GRACE_MS)
+    timer = setTimeout(() => resolve(false), ABANDONED_KILL_GRACE_MS)
   })
   try {
     const exited = await Promise.race([sub.waitExit().then(() => true), timedOut])

@@ -356,9 +356,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     // vault activity log, so the toast offers the way back to them.
     const activityAction = (): { label: string; onClick: () => void } => ({
       label: tSettings('vault.activity.toastAction'),
-      onClick: () => {
-        requestOpenSettings('vault:activity')
-      }
+      onClick: () => requestOpenSettings('vault:activity')
     })
 
     cleanups.push(
@@ -545,9 +543,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     const timer = setInterval(() => {
       dispatch({ type: 'PRUNE_STALE', now: Date.now() })
     }, PRUNE_INTERVAL_MS)
-    return () => {
-      clearInterval(timer)
-    }
+    return () => clearInterval(timer)
   }, [authState.status])
 
   useEffect(() => {
@@ -729,9 +725,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           vaultBinding.status === 'needs-decision' && !bindingPromptDismissed ? vaultBinding : null
         }
         onChoose={resolveVaultBinding}
-        onDismiss={() => {
-          setBindingPromptDismissed(true)
-        }}
+        onDismiss={() => setBindingPromptDismissed(true)}
       />
     </SyncContext.Provider>
   )

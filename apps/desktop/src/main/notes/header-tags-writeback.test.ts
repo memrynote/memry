@@ -126,9 +126,7 @@ describe('a header tag added to an open note', () => {
 
   async function typeBody(doc: Y.Doc, markdown: string, notePath: string): Promise<void> {
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    doc.transact(() => {
-      fragment.delete(0, fragment.length)
-    })
+    doc.transact(() => fragment.delete(0, fragment.length))
     expect(await markdownToYFragment(markdown, fragment, notePath)).toBe(true)
   }
 

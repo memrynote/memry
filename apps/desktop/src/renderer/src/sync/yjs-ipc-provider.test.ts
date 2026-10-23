@@ -358,9 +358,7 @@ describe('YjsIpcProvider provider reset', () => {
 
     // #when
     broadcastProviderReady()
-    await vi.waitFor(() => {
-      expect(mockSyncStep2).toHaveBeenCalled()
-    })
+    await vi.waitFor(() => expect(mockSyncStep2).toHaveBeenCalled())
 
     // #then re-opening is what re-attributes this window to the fresh doc; without
     // it main broadcasts to a window set the editor is not in and the note goes
@@ -437,9 +435,7 @@ describe('YjsIpcProvider provider reset', () => {
 
     // #and vault A's ready rebinds
     broadcastProviderReady({ vaultPath: '/vaults/a' })
-    await vi.waitFor(() => {
-      expect(provider.isSynced).toBe(true)
-    })
+    await vi.waitFor(() => expect(provider.isSynced).toBe(true))
     expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
 
     provider.destroy()
@@ -468,9 +464,7 @@ describe('YjsIpcProvider provider reset', () => {
     // #and once its own vault is open again, the held rebind runs
     allowed = true
     provider.resumeRebind()
-    await vi.waitFor(() => {
-      expect(provider.isSynced).toBe(true)
-    })
+    await vi.waitFor(() => expect(provider.isSynced).toBe(true))
     expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
 
     // #and a live binding does not re-handshake on a later resume
@@ -544,9 +538,7 @@ describe('YjsIpcProvider provider reset', () => {
     // #when
     broadcastProviderReady()
     broadcastProviderReady()
-    await vi.waitFor(() => {
-      expect(provider.isSynced).toBe(true)
-    })
+    await vi.waitFor(() => expect(provider.isSynced).toBe(true))
     await Promise.resolve()
     await Promise.resolve()
 
@@ -626,9 +618,7 @@ describe('YjsIpcProvider.disconnect', () => {
     const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
 
     // #when — normal teardown path invoked by useEffect cleanup
-    expect(() => {
-      provider.destroy()
-    }).not.toThrow()
+    expect(() => provider.destroy()).not.toThrow()
 
     // Let the rejected promise microtask flush
     await Promise.resolve()

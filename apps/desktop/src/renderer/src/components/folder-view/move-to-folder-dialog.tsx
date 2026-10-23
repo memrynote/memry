@@ -553,13 +553,7 @@ function MoveToFolderDialogSession({
       </ScrollArea>
 
       <DialogFooter>
-        <Button
-          variant="outline"
-          onClick={() => {
-            onOpenChange(false)
-          }}
-          disabled={isMoving}
-        >
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isMoving}>
           {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.cancel')}
         </Button>
         <Button

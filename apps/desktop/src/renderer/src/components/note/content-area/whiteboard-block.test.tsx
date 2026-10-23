@@ -134,9 +134,9 @@ describe('WhiteboardBlockRenderer', () => {
     // #then the save ran while the surface was still live, and the same
     // editor carries on in view mode rather than being rebuilt
     expect(editingWhenSaved).toBe('true')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('canvas-editor')).toHaveAttribute('data-editing', 'false')
-    })
+    )
     expect(mocks.mounts).toBe(1)
   })
 
@@ -149,23 +149,19 @@ describe('WhiteboardBlockRenderer', () => {
 
     // #when another tab or device changes the canvas
     mocks.get.mockResolvedValue(canvas({ scene: 'scene-b' }))
-    act(() => {
-      changedElsewhere()
-    })
+    act(() => changedElsewhere())
 
     // #then a fresh editor shows the new drawing
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('canvas-editor')).toHaveAttribute('data-scene', 'scene-b')
-    })
+    )
     expect(mocks.mounts).toBe(2)
 
     // #when it changes again while the author is drawing here
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     mocks.get.mockClear()
     mocks.get.mockResolvedValue(canvas({ scene: 'scene-c' }))
-    act(() => {
-      changedElsewhere()
-    })
+    act(() => changedElsewhere())
 
     // #then the live surface is left alone — the update is its own save
     // echoing back, or loses to it anyway

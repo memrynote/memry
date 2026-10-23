@@ -60,9 +60,7 @@ export function InboxRowNameInput({
       type="text"
       aria-label={ariaLabel}
       value={value}
-      onChange={(event) => {
-        setValue(event.target.value)
-      }}
+      onChange={(event) => setValue(event.target.value)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault()
@@ -77,13 +75,9 @@ export function InboxRowNameInput({
         // what makes typing a plain edit.
         event.stopPropagation()
       }}
-      onBlur={() => {
-        settle(value)
-      }}
+      onBlur={() => settle(value)}
       // The row opens the detail panel on click; placing the caret is not that.
-      onClick={(event) => {
-        event.stopPropagation()
-      }}
+      onClick={(event) => event.stopPropagation()}
       className="h-5 w-full min-w-0 rounded border border-input bg-background px-1 text-[13px] focus:outline-none"
     />
   )

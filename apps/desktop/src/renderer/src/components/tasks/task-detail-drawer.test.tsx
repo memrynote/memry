@@ -110,12 +110,7 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   }) => (
     <div data-variant={variant}>
       <span data-testid="tag-autocomplete-tags">{tags.join(',')}</span>
-      <button
-        type="button"
-        onClick={() => {
-          onTagsChange([...tags, 'new-tag'])
-        }}
-      >
+      <button type="button" onClick={() => onTagsChange([...tags, 'new-tag'])}>
         Add tags
       </button>
     </div>
@@ -487,12 +482,12 @@ describe('TaskDetailDrawer — editable properties', () => {
       await user.type(textarea, 'H')
 
       // Persistence is debounced, so wait for the update to flush.
-      await waitFor(() => {
+      await waitFor(() =>
         expect(onUpdateTask).toHaveBeenCalledWith(
           'task-1',
           expect.objectContaining({ description: expect.any(String) })
         )
-      })
+      )
     })
   })
 

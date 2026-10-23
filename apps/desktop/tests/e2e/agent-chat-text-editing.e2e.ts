@@ -69,9 +69,7 @@ test.describe('Agent chat prompt native text editing', () => {
     await page.keyboard.press(editShortcut('X'))
     await expect(composer).toHaveText('')
 
-    await app.evaluate(({ clipboard }) => {
-      clipboard.writeText('pasted prompt')
-    })
+    await app.evaluate(({ clipboard }) => clipboard.writeText('pasted prompt'))
     await page.keyboard.press(editShortcut('V'))
     await expect(composer).toHaveText('pasted prompt')
   })

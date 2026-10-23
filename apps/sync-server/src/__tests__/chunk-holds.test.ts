@@ -53,9 +53,7 @@ describe('attachment chunk holds (#3022)', () => {
       .run(USER_ID)
   })
 
-  afterEach(() => {
-    d1.close()
-  })
+  afterEach(() => d1.close())
 
   it('keeps a held chunk through the orphan sweep after its upload ref is gone', async () => {
     const key = insertChunk('h1', 1)

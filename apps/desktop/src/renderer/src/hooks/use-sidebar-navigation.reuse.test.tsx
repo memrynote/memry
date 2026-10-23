@@ -48,43 +48,21 @@ function Probe(): React.JSX.Element {
       <span data-testid="tab-count">{group.tabs.length}</span>
       <span data-testid="inbox-count">{group.tabs.filter((t) => t.type === 'inbox').length}</span>
       <span data-testid="active-entity">{activeTab?.entityId ?? activeTab?.type ?? 'none'}</span>
-      <button
-        type="button"
-        onClick={() => {
-          openSidebarItem(noteItem('note-a'))
-        }}
-      >
+      <button type="button" onClick={() => openSidebarItem(noteItem('note-a'))}>
         open-a
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          openSidebarItem(noteItem('note-b'))
-        }}
-      >
+      <button type="button" onClick={() => openSidebarItem(noteItem('note-b'))}>
         open-b
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          openSidebarItem(INBOX_ITEM)
-        }}
-      >
+      <button type="button" onClick={() => openSidebarItem(INBOX_ITEM)}>
         open-inbox
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          openSidebarItem(INBOX_ITEM, { inNewTab: true })
-        }}
-      >
+      <button type="button" onClick={() => openSidebarItem(INBOX_ITEM, { inNewTab: true })}>
         open-inbox-new-tab
       </button>
       <button
         type="button"
-        onClick={() => {
-          openSidebarItem(INBOX_ITEM, { inNewTab: true, inBackground: true })
-        }}
+        onClick={() => openSidebarItem(INBOX_ITEM, { inNewTab: true, inBackground: true })}
       >
         open-inbox-middle-click
       </button>

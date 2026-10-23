@@ -215,12 +215,8 @@ describe('settings field clocks — legacy "local" key (#2287)', () => {
     holdsOld.manager.mergeRemote(oldClient)
     holdsNew.manager.updateField('general.theme', 'light')
 
-    expect(() => {
-      holdsOld.manager.mergeRemote(newClient)
-    }).not.toThrow()
-    expect(() => {
-      holdsNew.manager.mergeRemote(oldClient)
-    }).not.toThrow()
+    expect(() => holdsOld.manager.mergeRemote(newClient)).not.toThrow()
+    expect(() => holdsNew.manager.mergeRemote(oldClient)).not.toThrow()
 
     expect(holdsOld.manager.getPayload().fieldClocks['general.theme']).toEqual({
       local: 3,

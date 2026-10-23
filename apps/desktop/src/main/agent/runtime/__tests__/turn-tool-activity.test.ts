@@ -355,7 +355,7 @@ describe('tool activity persistence', () => {
       outcome: { ok: true }
     })
 
-    expect(() => {
+    expect(() =>
       persistToolActivity(messages, {
         conversationId: 'conversation-1',
         toolCallId: 'toolu-dup',
@@ -363,7 +363,7 @@ describe('tool activity persistence', () => {
         args: {},
         outcome: { ok: true }
       })
-    }).not.toThrow()
+    ).not.toThrow()
     expect(messages.listByConversation('conversation-1')).toHaveLength(1)
   })
 

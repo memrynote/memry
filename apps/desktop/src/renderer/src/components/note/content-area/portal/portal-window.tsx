@@ -53,9 +53,7 @@ function useMountedNearViewport(ref: React.RefObject<HTMLElement | null>): boole
       { rootMargin: NEAR_VIEWPORT_MARGIN }
     )
     observer.observe(node)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [near, ref])
   return near
 }
@@ -65,9 +63,7 @@ function useMountedNearViewport(ref: React.RefObject<HTMLElement | null>): boole
  * also deliver them to every enclosing editor's handlers, which would then act
  * on the same gesture a second time, in the host note.
  */
-const keepInsideWindow = (event: SyntheticEvent): void => {
-  event.stopPropagation()
-}
+const keepInsideWindow = (event: SyntheticEvent): void => event.stopPropagation()
 
 export interface PortalWindowProps {
   /** The portal block in the host editor, for the window registry. */
@@ -125,9 +121,7 @@ export function PortalWindow({
       log.error('Portal window never attached', { portalBlockId, note: target.note })
       setFailed(true)
     }, ATTACH_TIMEOUT_MS)
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
   }, [near, attached, portalBlockId, target.note])
 
   if (failed && !attached) {

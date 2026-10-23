@@ -46,9 +46,7 @@ function renderInline(tokens: Token[] | undefined, keyPrefix: string): ReactNode
           <a
             key={key}
             href={link.href}
-            onClick={(e) => {
-              openLink(e, link.href)
-            }}
+            onClick={(e) => openLink(e, link.href)}
             className="text-primary underline underline-offset-2 hover:opacity-80"
           >
             {renderInline(link.tokens, key)}

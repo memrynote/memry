@@ -178,9 +178,7 @@ export const CanvasNodeLinkLayer = ({
         // logical inset here would put the card on the wrong side of an RTL
         // canvas.
         style={{ left: hovered.x, top: hovered.y }}
-        onClick={() => {
-          onOpen(hovered.href)
-        }}
+        onClick={() => onOpen(hovered.href)}
       >
         <Link className="size-3.5 shrink-0 text-text-tertiary" />
         <span className="truncate">{name}</span>

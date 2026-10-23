@@ -183,9 +183,7 @@ export function WikiLinkMenu({
               <button
                 type="button"
                 className="flex min-w-0 flex-1 items-center gap-2 text-start outline-none"
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                }}
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
               >
                 <FileAudio className="h-4 w-4 shrink-0 opacity-70" />
@@ -196,9 +194,7 @@ export function WikiLinkMenu({
                   type="button"
                   className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-background hover:text-foreground"
                   aria-label={t('menus.wiki.embedAria', { title: item.title })}
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                  }}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={(event) => {
                     event.stopPropagation()
                     onItemClick?.({ ...item, insertMode: 'embed' })
@@ -210,9 +206,7 @@ export function WikiLinkMenu({
                   type="button"
                   className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-background hover:text-foreground"
                   aria-label={t('menus.wiki.wikiLinkAria', { title: item.title })}
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                  }}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={(event) => {
                     event.stopPropagation()
                     onItemClick?.({ ...item, insertMode: 'wikiLink' })

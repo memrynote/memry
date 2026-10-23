@@ -60,9 +60,7 @@ const createAdapters = (): SyncPlatformAdapters => {
       baseUrl: () => 'http://localhost:0',
       online: {
         onStatusChanged: (cb) => {
-          const handler = ({ online }: { online: boolean }): void => {
-            cb(online)
-          }
+          const handler = ({ online }: { online: boolean }): void => cb(online)
           monitor.on('status-changed', handler)
           return () => {
             monitor.off('status-changed', handler)

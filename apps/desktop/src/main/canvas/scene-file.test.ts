@@ -172,9 +172,9 @@ describe('file io', () => {
   })
 
   it('deleting a missing file is a no-op', () => {
-    expect(() => {
+    expect(() =>
       deleteCanvasFileSync(resolveCanvasFile(vault, 'canvases/nope.excalidraw'))
-    }).not.toThrow()
+    ).not.toThrow()
   })
 
   it('lists only canvas documents', () => {
@@ -462,9 +462,7 @@ describe('folder-aware canvas paths', () => {
     expect(() => allocateCanvasPath(vault, 'Plan', new Set(), null, PAST_CAP)).toThrow(
       /deeper than/
     )
-    expect(() => {
-      ensureCanvasFolderDir(vault, PAST_CAP)
-    }).toThrow(/deeper than/)
+    expect(() => ensureCanvasFolderDir(vault, PAST_CAP)).toThrow(/deeper than/)
   })
 
   it('lists canvases at the depth cap and warns about the ones past it', () => {

@@ -25,9 +25,7 @@ async function line({ rec, page, sleep }, x1, y1, ms) {
 
 export async function setup({ page }) {
   // The one-time "Checkbox turned into a task" hint would cover the note on camera.
-  await page.evaluate(() => {
-    localStorage.setItem('memry_checkbox_task_hint_seen', '1')
-  })
+  await page.evaluate(() => localStorage.setItem('memry_checkbox_task_hint_seen', '1'))
   await open(page, NOTE)
   await closeOtherTabs(page, NOTE)
   // Sidebar away, then the note on the left and today's Day view on the right.

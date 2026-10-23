@@ -109,9 +109,9 @@ export function usePortalWindowPlugin(options: {
       if (attached) detach()
       if (!tiptap) return
 
-      const plugin = createPortalWindowPlugin(specRef.current, (resolution) => {
+      const plugin = createPortalWindowPlugin(specRef.current, (resolution) =>
         onResolveRef.current(resolution)
-      })
+      )
       const editor = { _tiptapEditor: tiptap }
       const unregisterPlugin = registerEditorPlugin(editor, plugin)
       const unregisterBoundary = registerEditorPlugin(

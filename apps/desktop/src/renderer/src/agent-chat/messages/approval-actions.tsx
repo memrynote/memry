@@ -101,9 +101,7 @@ function AlwaysAllowMenu({
       <DropdownMenuContent align="start" className="w-[262px]">
         <DropdownMenuItem
           className="flex-col items-start gap-px"
-          onSelect={() => {
-            onAllowAlways('conversation')
-          }}
+          onSelect={() => onAllowAlways('conversation')}
         >
           <span className="text-[13px] text-foreground">
             {t('agentChat.approval.alwaysInChat')}
@@ -114,9 +112,7 @@ function AlwaysAllowMenu({
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex-col items-start gap-px"
-          onSelect={() => {
-            onAllowAlways('vault')
-          }}
+          onSelect={() => onAllowAlways('vault')}
         >
           <span className="text-[13px] text-foreground">
             {t('agentChat.approval.alwaysInVault')}

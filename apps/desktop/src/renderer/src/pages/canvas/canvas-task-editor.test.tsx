@@ -28,9 +28,7 @@ vi.mock('@/components/tasks/interactive-status-badge', () => ({
     <button
       data-testid="status-badge"
       aria-label="status-badge"
-      onClick={() => {
-        onStatusChange('done')
-      }}
+      onClick={() => onStatusChange('done')}
     />
   )
 }))
@@ -39,9 +37,7 @@ vi.mock('@/components/tasks/interactive-priority-badge', () => ({
     <button
       data-testid="priority-badge"
       aria-label="priority-badge"
-      onClick={() => {
-        onPriorityChange('high')
-      }}
+      onClick={() => onPriorityChange('high')}
     />
   )
 }))
@@ -57,16 +53,12 @@ vi.mock('@/components/tasks/interactive-due-date-badge', () => ({
       <button
         data-testid="date-badge"
         aria-label="date-badge"
-        onClick={() => {
-          onDateChange(new Date('2026-08-01'))
-        }}
+        onClick={() => onDateChange(new Date('2026-08-01'))}
       />
       <button
         data-testid="time-badge"
         aria-label="time-badge"
-        onClick={() => {
-          onTimeChange('09:00')
-        }}
+        onClick={() => onTimeChange('09:00')}
       />
     </>
   )
@@ -76,9 +68,7 @@ vi.mock('@/components/tasks/task-description-editor', () => ({
     <button
       data-testid="description-editor"
       aria-label="description-editor"
-      onClick={() => {
-        onContentChange('new body')
-      }}
+      onClick={() => onContentChange('new body')}
     />
   )
 }))

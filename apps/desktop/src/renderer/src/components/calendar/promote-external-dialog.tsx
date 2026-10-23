@@ -61,9 +61,7 @@ export function PromoteExternalDialog({
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
               checked={dontAskAgain}
-              onCheckedChange={(value) => {
-                setDontAskAgain(value === true)
-              }}
+              onCheckedChange={(value) => setDontAskAgain(value === true)}
               disabled={isWorking}
               aria-label={t('promote-dialog.do-not-ask-again')}
             />
@@ -81,9 +79,7 @@ export function PromoteExternalDialog({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => {
-                onOpenChange(false)
-              }}
+              onClick={() => onOpenChange(false)}
               disabled={isWorking}
             >
               {tCommon('button.cancel')}

@@ -28,9 +28,7 @@ beforeEach(() => {
     .run()
 })
 
-afterEach(() => {
-  testDb.close()
-})
+afterEach(() => testDb.close())
 
 function apply(data: Partial<TaskSyncPayload>, clock: VectorClock): string {
   const parsed = TaskSyncPayloadSchema.parse(makeTaskPayload(data))

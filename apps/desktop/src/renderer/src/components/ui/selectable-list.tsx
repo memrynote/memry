@@ -156,9 +156,7 @@ export function SelectableListItem({
   return (
     <button
       type="button"
-      onClick={() => {
-        onSelect(id)
-      }}
+      onClick={() => onSelect(id)}
       className={cn(
         'group relative w-full text-start',
         'flex items-center gap-3',

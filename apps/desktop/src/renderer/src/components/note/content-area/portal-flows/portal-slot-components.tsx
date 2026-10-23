@@ -146,9 +146,7 @@ export function useRegisterPortalSlots(): void {
         registerPortalSearchQuerySlot(SearchQuerySlot),
         registerPortalActionHandlers(handlers)
       ]
-      unregister = () => {
-        offs.forEach((off) => off())
-      }
+      unregister = () => offs.forEach((off) => off())
     }
     return () => {
       mounted -= 1

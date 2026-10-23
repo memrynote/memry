@@ -664,20 +664,16 @@ describe('settings section coverage', () => {
 
     // Free plan renders the marketing CTA in both the sync upsell and billing.
     fireEvent.click(screen.getAllByText('account.billing.actions.unlockSync')[0])
-    await waitFor(() => {
-      expect(window.api.account.startCheckout).toHaveBeenCalledWith()
-    })
+    await waitFor(() => expect(window.api.account.startCheckout).toHaveBeenCalledWith())
 
     fireEvent.click(screen.getByText('account.billing.actions.refresh'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getAllByText('account.billing.plans.pro').length).toBeGreaterThan(0)
-    })
+    )
     expect(mocks.syncContext.triggerSync).toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('account.billing.actions.manage'))
-    await waitFor(() => {
-      expect(window.api.account.openBillingPortal).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.account.openBillingPortal).toHaveBeenCalled())
   })
 
   it('shows the sync toggle for a paid plan and pauses sync on toggle', async () => {
@@ -743,9 +739,7 @@ describe('settings section coverage', () => {
 
     // Two refresh buttons now (sync card + billing actions); either must refresh.
     fireEvent.click(screen.getAllByText('account.billing.actions.refresh')[0])
-    await waitFor(() => {
-      expect(window.api.account.refreshBillingStatus).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.account.refreshBillingStatus).toHaveBeenCalled())
     expect(window.api.account.startCheckout).not.toHaveBeenCalled()
   })
 
@@ -770,15 +764,11 @@ describe('settings section coverage', () => {
 
     fireEvent.click(screen.getByText('account.security.signOut.action'))
     fireEvent.click(screen.getByText('account.signOutDialog.confirm'))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('nope')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('nope'))
 
     fireEvent.click(screen.getByText('account.security.signOut.action'))
     fireEvent.click(screen.getByText('account.signOutDialog.confirm'))
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('account.toasts.signedOut')
-    })
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('account.toasts.signedOut'))
   })
 
   it('updates appearance controls and reports failed saves', async () => {
@@ -791,39 +781,37 @@ describe('settings section coverage', () => {
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByLabelText('appearance.theme.options.dark'))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('appearance.theme.error')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('appearance.theme.error'))
 
     fireEvent.pointerDown(screen.getByLabelText('appearance.accent.aria'), {
       button: 0,
       ctrlKey: false
     })
     fireEvent.click(await screen.findByText('appearance.accent.presets.amber'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         accentColor: '#f59e0b',
         useThemeAccent: false
       })
-    })
+    )
 
     fireEvent.click(screen.getByLabelText('appearance.typography.fontSize.reset'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontSizePx: 16,
         fontSize: 'medium'
       })
-    })
+    )
 
     // Picking a built-in preset also clears any custom family behind it, so the
     // preset is what actually renders.
     fireEvent.click(screen.getByText('appearance.typography.fontFamily.options.monospace'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontFamily: 'monospace',
         customFontFamily: ''
       })
-    })
+    )
   })
 
   it('shows three color modes, with a saved white on the light card', () => {
@@ -846,9 +834,9 @@ describe('settings section coverage', () => {
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByLabelText('appearance.theme.options.light'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ theme: 'light' })
-    })
+    )
   })
 
   it('moves a light mode along when the theme switches to warm', async () => {
@@ -860,11 +848,11 @@ describe('settings section coverage', () => {
       ctrlKey: false
     })
     fireEvent.click(await screen.findByText('appearance.colorTheme.warm'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({ colorTheme: 'warm', theme: 'light' })
       )
-    })
+    )
     mocks.generalSettings.settings.theme = 'system'
   })
 
@@ -883,11 +871,11 @@ describe('settings section coverage', () => {
     const input = screen.getByLabelText('appearance.colors.background')
     fireEvent.change(input, { target: { value: '#111111' } })
     fireEvent.blur(input)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         backgroundLight: '#111111'
       })
-    })
+    )
   })
 
   it('saves a picker color once the picker settles, not on every drag step', async () => {
@@ -901,12 +889,12 @@ describe('settings section coverage', () => {
     expect(root.style.getPropertyValue('--user-accent-color')).toBe('#123456')
 
     fireEvent.change(accentPicker, { target: { value: '#123456' } })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         accentColor: '#123456',
         useThemeAccent: false
       })
-    })
+    )
     root.removeAttribute('data-color-theme')
     root.removeAttribute('style')
   })
@@ -929,19 +917,19 @@ describe('settings section coverage', () => {
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByLabelText('appearance.advanced.pointerCursors.label'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ pointerCursors: true })
-    })
+    )
 
     fireEvent.click(screen.getByText('appearance.advanced.title'))
     fireEvent.click(screen.getByText('appearance.advanced.reset'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         reduceMotion: 'system',
         pointerCursors: false,
         fontSmoothing: false
       })
-    })
+    )
   })
 
   it('saves a color theme picked from the themes submenu', async () => {
@@ -954,7 +942,7 @@ describe('settings section coverage', () => {
     fireEvent.click(await screen.findByText('appearance.colorTheme.themes'))
     fireEvent.click(await screen.findByText('Nord'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         colorTheme: 'nord',
         useThemeAccent: true,
@@ -963,7 +951,7 @@ describe('settings section coverage', () => {
         backgroundDark: '',
         foregroundDark: ''
       })
-    })
+    )
   })
 
   it('reports that installed fonts cannot be enumerated but still offers the presets', async () => {
@@ -1017,11 +1005,11 @@ describe('settings section coverage', () => {
     ).toBeInTheDocument()
 
     fireEvent.click(systemSection.getByText('Iosevka Term'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         customFontFamily: 'Iosevka Term'
       })
-    })
+    )
   })
 
   it('renders and updates calendar, editor, and journal settings', async () => {
@@ -1034,54 +1022,54 @@ describe('settings section coverage', () => {
     )
 
     fireEvent.click(screen.getAllByText('calendar.options.openCalendar')[0])
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.calendarPreferences.updateSettings).toHaveBeenCalledWith({
         dayCellClickBehavior: 'calendar'
       })
-    })
+    )
 
     fireEvent.click(screen.getByText('editor.width.options.full'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ width: 'full' })
-    })
+    )
 
     fireEvent.click(screen.getAllByRole('switch')[1])
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
         toolbarMode: 'sticky'
       })
-    })
+    )
 
     fireEvent.click(screen.getByLabelText('editor.v2.spellCheck'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({ spellCheck: true })
-    })
+    )
 
     fireEvent.click(screen.getByText('editor.pdfDisplayMode.options.link'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
         pdfDisplayMode: 'link'
       })
-    })
+    )
 
     fireEvent.click(screen.getByLabelText('editor.v2.convertChecklists'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
         convertChecklistsToTasks: false
       })
-    })
+    )
 
     fireEvent.click(screen.getByLabelText('editor.v2.convertAgentChecklists'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.editorSettings.updateSettings).toHaveBeenCalledWith({
         convertAgentChecklistsToTasks: true
       })
-    })
+    )
 
     fireEvent.click(screen.getByText('Daily template'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
-    })
+    )
 
     // The whole "Sidebar Visibility" group is gone: JournalDayPanel never reads showSchedule /
     // showTasks, and nothing renders AIConnectionsPanel, so none of the three toggles controlled
@@ -1093,11 +1081,11 @@ describe('settings section coverage', () => {
 
     // [5] is "Show in sidebar" in the location group; the footer switch follows.
     fireEvent.click(screen.getAllByRole('switch')[6])
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showStatsFooter: false
       })
-    })
+    )
   })
 
   it('loads and updates AI inline settings, including test connection states', async () => {
@@ -1107,25 +1095,25 @@ describe('settings section coverage', () => {
     await screen.findByText('ai.inline.connection')
 
     fireEvent.click(screen.getByText('ai.inline.providers.anthropic'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
         provider: 'anthropic',
         model: 'claude-sonnet-5',
         baseUrl: ''
       })
-    })
+    )
 
     fireEvent.click(screen.getByText('ai.inline.test'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith('ai.inline.connected {"port":9191}')
-    })
+    )
 
     fireEvent.click(screen.getByRole('switch'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
         enabled: false
       })
-    })
+    )
     expect(toast.success).toHaveBeenCalledWith('ai.inline.disabled')
   })
 
@@ -1145,11 +1133,11 @@ describe('settings section coverage', () => {
     await screen.findByText('ai.inline.connection')
 
     fireEvent.click(screen.getByText('ai.inline.test'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
         'Ollama is not running. Start it with "ollama serve" and try again.'
       )
-    })
+    )
     expect(toast.success).not.toHaveBeenCalledWith('ai.inline.connected {"port":59185}')
   })
 
@@ -1173,18 +1161,18 @@ describe('settings section coverage', () => {
     expect(screen.getAllByText('agentProviders.cliAgents.status.notDetected')).toHaveLength(2)
 
     fireEvent.click(screen.getByText('agentProviders.permissions.access.computerAccess'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.agent.setPreferences).toHaveBeenCalledWith({
         accessMode: 'computer_access'
       })
-    })
+    )
 
     fireEvent.click(screen.getByText('agentProviders.permissions.confirm.askBeforeChanges'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.agent.setPreferences).toHaveBeenCalledWith({
         toolApprovalMode: 'ask'
       })
-    })
+    )
 
     expect(screen.queryByText('agentProviders.presets.lmStudio')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /agentProviders\.v2\.localModel\.label/ }))
@@ -1212,7 +1200,7 @@ describe('settings section coverage', () => {
 
     // Edits auto-save (debounced) — no Save button — then the connection is re-checked.
     await waitFor(
-      () => {
+      () =>
         expect(window.api.agent.setLocalProviderSettings).toHaveBeenCalledWith({
           preset: 'lm_studio',
           baseUrl: 'https://models.example.com/v1',
@@ -1220,8 +1208,7 @@ describe('settings section coverage', () => {
           allowNonLoopback: true,
           thinking: 'off',
           apiKey: 'local-secret'
-        })
-      },
+        }),
       { timeout: 2000 }
     )
     expect(window.api.agent.testLocalProvider).toHaveBeenCalled()
@@ -1232,9 +1219,7 @@ describe('settings section coverage', () => {
     ).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.test' }))
-    await waitFor(() => {
-      expect(window.api.agent.testLocalProvider).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(window.api.agent.testLocalProvider).toHaveBeenCalledTimes(2))
   })
 
   // #2523: the lazy agent runtime rejects with runtimeStarting while it boots;
@@ -1258,9 +1243,7 @@ describe('settings section coverage', () => {
     render(<AgentProvidersSection />)
 
     expect(await screen.findByText('agentProviders.cliAgents.claude.label')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(window.api.agent.getBackendStatuses).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(window.api.agent.getBackendStatuses).toHaveBeenCalledTimes(1))
     expect(screen.getAllByText('agentProviders.cliAgents.status.notDetected')).toHaveLength(3)
   })
 
@@ -1278,12 +1261,12 @@ describe('settings section coverage', () => {
       })
     )
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.agent.editTrustList).toHaveBeenCalledWith({
         remove: ['create_note'],
         scope: 'vault'
       })
-    })
+    )
     expect(await screen.findByText('agentProviders.alwaysAllowed.empty')).toBeInTheDocument()
   })
 
@@ -1317,9 +1300,7 @@ describe('settings section coverage', () => {
     await screen.findByText('commandLine.command.descriptionNotInstalled')
     fireEvent.click(screen.getByRole('switch'))
 
-    await waitFor(() => {
-      expect(window.api.settings.installTerminalCommand).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.settings.installTerminalCommand).toHaveBeenCalled())
     expect(toast.success).toHaveBeenCalledWith('commandLine.status.installedToast')
   })
 
@@ -1329,11 +1310,11 @@ describe('settings section coverage', () => {
     await screen.findByText('work')
     fireEvent.click(screen.getByText('work'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.settings.setTerminalCommandDefaultVault).toHaveBeenCalledWith(
         '/vaults/work'
       )
-    })
+    )
     expect(toast.success).toHaveBeenCalledWith('commandLine.status.defaultVaultUpdatedToast')
   })
 })

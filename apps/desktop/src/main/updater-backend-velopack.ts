@@ -52,9 +52,7 @@ export function createVelopackBackend(host: UpdaterHost): UpdaterBackend | null 
     }
 
     try {
-      await manager.downloadUpdateAsync(info, (percent) => {
-        host.onDownloadProgress(percent)
-      })
+      await manager.downloadUpdateAsync(info, (percent) => host.onDownloadProgress(percent))
     } catch (error) {
       host.onError(error)
       throw error

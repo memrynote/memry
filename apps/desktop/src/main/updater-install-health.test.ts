@@ -39,9 +39,7 @@ describe('update install health', () => {
   })
 
   const healthFile = (): string => path.join(tempDir, UPDATE_INSTALL_HEALTH_FILENAME)
-  const writeRaw = (contents: string): void => {
-    fs.writeFileSync(healthFile(), contents, 'utf-8')
-  }
+  const writeRaw = (contents: string): void => fs.writeFileSync(healthFile(), contents, 'utf-8')
 
   it('escalates on the third failed install of the same update, and only once', () => {
     // #given two launches whose install of the same target already failed

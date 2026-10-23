@@ -23,7 +23,5 @@ export function onOpenSettingsRequested(callback: (section: string) => void): ()
     if (typeof section === 'string') callback(section)
   }
   window.addEventListener(OPEN_SETTINGS_EVENT, listener)
-  return () => {
-    window.removeEventListener(OPEN_SETTINGS_EVENT, listener)
-  }
+  return () => window.removeEventListener(OPEN_SETTINGS_EVENT, listener)
 }

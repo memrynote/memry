@@ -183,9 +183,7 @@ export const FilingSection = ({
     ) {
       autoSelectedItemId.current = currentItemId
       const top = suggestedFolders[0]
-      void Promise.resolve().then(() => {
-        onFolderSelect(top)
-      })
+      void Promise.resolve().then(() => onFolderSelect(top))
     }
   }, [currentItemId, suggestedFolders, selectedFolder, onFolderSelect])
 
@@ -320,9 +318,7 @@ export const FilingSection = ({
                   type="button"
                   data-testid={`image-filing-mode-${mode}`}
                   aria-pressed={imageFiling.mode === mode}
-                  onClick={() => {
-                    imageFiling.onModeChange(mode)
-                  }}
+                  onClick={() => imageFiling.onModeChange(mode)}
                   className={cn(
                     'h-[22px] rounded-[5px] px-2 text-[12px] leading-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
                     imageFiling.mode === mode
@@ -342,9 +338,7 @@ export const FilingSection = ({
               type="checkbox"
               data-testid="image-filing-mode-remember"
               checked={imageFiling.remember}
-              onChange={(e) => {
-                imageFiling.onRememberChange(e.target.checked)
-              }}
+              onChange={(e) => imageFiling.onRememberChange(e.target.checked)}
               className="size-3 accent-[var(--primary)]"
             />
             {t('detail.imageFilingModeRemember')}
@@ -405,9 +399,7 @@ export const FilingSection = ({
                 <Input
                   placeholder={t('detail.searchOrCreateFolder')}
                   value={folderSearch}
-                  onChange={(e) => {
-                    setFolderSearch(e.target.value)
-                  }}
+                  onChange={(e) => setFolderSearch(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && canCreateFolder) {
                       e.preventDefault()
@@ -531,9 +523,7 @@ export const FilingSection = ({
                 <button
                   key={folder.id || 'root-chip'}
                   type="button"
-                  onClick={() => {
-                    onFolderSelect(folder)
-                  }}
+                  onClick={() => onFolderSelect(folder)}
                   aria-keyshortcuts={String(shortcut)}
                   className="flex h-[22px] min-w-0 items-center gap-1.5 rounded-[5px] border border-border px-1.5 text-[12px] leading-4 text-text-secondary transition-colors hover:bg-surface-active/60 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 >
@@ -573,9 +563,7 @@ export const FilingSection = ({
             <button
               type="button"
               key={suggestion.note.id}
-              onClick={() => {
-                handleLinkSuggestedNote(suggestion.note)
-              }}
+              onClick={() => handleLinkSuggestedNote(suggestion.note)}
               title={suggestion.reason}
               className={cn(DRAWER_ROW, 'group')}
             >

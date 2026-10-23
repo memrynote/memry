@@ -42,9 +42,9 @@ export function SocialLinks() {
             aria-label={link.label}
             title={link.label}
             className="block text-dark-muted transition-colors hover:text-ink-inverted"
-            onClick={() => {
+            onClick={() =>
               trackLandingEvent('landing_external_click', `footer:${link.label.toLowerCase()}`)
-            }}
+            }
           >
             <svg viewBox="0 0 24 24" aria-hidden className="h-5 w-5 fill-current">
               <path d={link.path} />

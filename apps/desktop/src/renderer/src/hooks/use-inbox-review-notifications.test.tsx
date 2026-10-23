@@ -38,9 +38,7 @@ describe('useInboxReviewNotifications', () => {
   })
 
   it('shows a calm toast with an open-inbox action on review-due', () => {
-    renderHook(() => {
-      useInboxReviewNotifications()
-    })
+    renderHook(() => useInboxReviewNotifications())
     dueCb?.({ count: 4 })
 
     expect(toastFn).toHaveBeenCalledTimes(1)
@@ -55,9 +53,7 @@ describe('useInboxReviewNotifications', () => {
   })
 
   it('opens the inbox on review-open', () => {
-    renderHook(() => {
-      useInboxReviewNotifications()
-    })
+    renderHook(() => useInboxReviewNotifications())
     openCb?.()
 
     expect(openSidebarItem).toHaveBeenCalledWith(
@@ -66,9 +62,7 @@ describe('useInboxReviewNotifications', () => {
   })
 
   it('unsubscribes both listeners on unmount', () => {
-    const { unmount } = renderHook(() => {
-      useInboxReviewNotifications()
-    })
+    const { unmount } = renderHook(() => useInboxReviewNotifications())
     unmount()
 
     expect(unsubscribeDue).toHaveBeenCalled()

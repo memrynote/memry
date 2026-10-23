@@ -55,9 +55,7 @@ export function StickyEdgeTab(): React.JSX.Element {
   const tab = (
     <button
       type="button"
-      onClick={() => {
-        unfold(drafts[0]?.id ?? null)
-      }}
+      onClick={() => unfold(drafts[0]?.id ?? null)}
       aria-label={t('sticky.tab.label', { count: drafts.length })}
       className={cn(
         'flex h-[72px] w-8 shrink-0 flex-col items-center justify-center gap-1.5',
@@ -73,12 +71,8 @@ export function StickyEdgeTab(): React.JSX.Element {
 
   return (
     <div
-      onMouseEnter={() => {
-        peek(true)
-      }}
-      onMouseLeave={() => {
-        peek(false)
-      }}
+      onMouseEnter={() => peek(true)}
+      onMouseLeave={() => peek(false)}
       className={cn(
         'flex h-screen w-screen items-start pt-1.5',
         edge === 'right' ? 'flex-row-reverse' : 'flex-row'
@@ -92,9 +86,7 @@ export function StickyEdgeTab(): React.JSX.Element {
               <li key={draft.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    unfold(draft.id)
-                  }}
+                  onClick={() => unfold(draft.id)}
                   className="flex h-[52px] w-full flex-col justify-center px-3 text-start hover:bg-foreground/[0.06]"
                 >
                   <span className="truncate text-[13px]/5 font-medium">
@@ -109,9 +101,7 @@ export function StickyEdgeTab(): React.JSX.Element {
           </ul>
           <button
             type="button"
-            onClick={() => {
-              unfold(null)
-            }}
+            onClick={() => unfold(null)}
             className="mt-auto flex items-center gap-1.5 px-3 py-2 text-[12px]/4 font-medium text-[var(--tint)] hover:bg-foreground/[0.06]"
           >
             <Plus className="size-3.5" aria-hidden="true" />

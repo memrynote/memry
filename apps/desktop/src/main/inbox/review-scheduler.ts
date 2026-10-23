@@ -154,9 +154,7 @@ export function startInboxReviewScheduler(): void {
   }
   safeTick() // startup catch-up
   registerMinuteTick(MINUTE_TICK_ID, safeTick)
-  resumeHandler = () => {
-    safeTick()
-  }
+  resumeHandler = () => safeTick()
   powerMonitor.on('resume', resumeHandler)
 }
 

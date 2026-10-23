@@ -68,9 +68,7 @@ export function TeamSwitcher({
               return (
                 <DropdownMenuItem
                   key={team.name}
-                  onClick={() => {
-                    setActiveTeam(team)
-                  }}
+                  onClick={() => setActiveTeam(team)}
                   className="rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 transition-colors"
                 >
                   <div className="flex size-7 items-center justify-center rounded-md border border-gray-200 bg-white">
@@ -109,12 +107,8 @@ export function TeamSwitcher({
               </span>
               <Switch
                 checked={isDarkMode}
-                onCheckedChange={(checked) => {
-                  setTheme(checked ? 'dark' : 'light')
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                onClick={(e) => e.stopPropagation()}
               />
             </DropdownMenuItem>
 

@@ -17,9 +17,7 @@ const fake: Importer = {
 }
 
 describe('importer registry', () => {
-  beforeEach(() => {
-    __resetRegistry()
-  })
+  beforeEach(() => __resetRegistry())
 
   it('registers and looks up by id', () => {
     registerImporter(fake)
@@ -33,9 +31,7 @@ describe('importer registry', () => {
 
   it('throws on duplicate id', () => {
     registerImporter(fake)
-    expect(() => {
-      registerImporter(fake)
-    }).toThrow(/already registered/)
+    expect(() => registerImporter(fake)).toThrow(/already registered/)
   })
 
   it('returns undefined for unknown id', () => {

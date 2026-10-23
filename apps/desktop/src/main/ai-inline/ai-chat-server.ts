@@ -259,9 +259,7 @@ function readBody(req: http.IncomingMessage): Promise<string> {
       }
       chunks.push(chunk)
     })
-    req.on('end', () => {
-      resolve(Buffer.concat(chunks).toString())
-    })
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()))
     req.on('error', reject)
   })
 }

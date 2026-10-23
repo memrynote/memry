@@ -102,9 +102,7 @@ export function watchFiredPills(
     attributes: true,
     attributeFilter: ['data-anchor-id']
   })
-  return () => {
-    observer.disconnect()
-  }
+  return () => observer.disconnect()
 }
 
 /**

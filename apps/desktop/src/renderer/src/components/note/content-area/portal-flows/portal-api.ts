@@ -50,7 +50,5 @@ export function searchPortalBlocks(input: PortalSearchInput): Promise<PortalSear
 }
 
 export function onPortalUsageChanged(callback: (noteIds: string[]) => void): () => void {
-  return portalsApi().onUsageChanged((event) => {
-    callback(event.noteIds)
-  })
+  return portalsApi().onUsageChanged((event) => callback(event.noteIds))
 }

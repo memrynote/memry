@@ -449,14 +449,10 @@ export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
     },
     view(view) {
       const doc = view.dom.ownerDocument
-      const onSelectionChange = (): void => {
-        snapToVisibleEnd(view)
-      }
+      const onSelectionChange = (): void => snapToVisibleEnd(view)
       doc.addEventListener('selectionchange', onSelectionChange)
       return {
-        destroy: () => {
-          doc.removeEventListener('selectionchange', onSelectionChange)
-        }
+        destroy: () => doc.removeEventListener('selectionchange', onSelectionChange)
       }
     },
     appendTransaction(trs, oldState, newState) {

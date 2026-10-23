@@ -20,9 +20,9 @@ export function registerTagSchemaHandlers(): void {
   ipcMain.handle(
     TagSchemaChannels.invoke.EDIT_SCHEMA,
     createValidatedHandler(TagSchemaCommandSchema, (command) =>
-      runTagSchemaCommand(requireDatabase(), getIndexDatabase(), command, (event) => {
+      runTagSchemaCommand(requireDatabase(), getIndexDatabase(), command, (event) =>
         broadcastToAllWindows(TagSchemaChannels.events.PROGRESS, event)
-      })
+      )
     )
   )
 

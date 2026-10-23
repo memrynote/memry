@@ -101,9 +101,7 @@ vi.mock('./sync/crdt-provider', () => ({
     updateMeta: mocks.updateMeta,
     setNoteLocalOnly: vi.fn(),
     purge: mocks.purge,
-    withDocLoaded: async (_id: string, enqueue: () => void) => {
-      enqueue()
-    }
+    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue()
   })
 }))
 
@@ -185,9 +183,7 @@ function createDb(existing: Record<string, unknown> | null = null) {
     delete: vi.fn(() => ({
       where: vi.fn(() => ({ run }))
     })),
-    transaction: vi.fn((fn: (tx: unknown) => void) => {
-      fn(db)
-    })
+    transaction: vi.fn((fn: (tx: unknown) => void) => fn(db))
   }
   return db
 }

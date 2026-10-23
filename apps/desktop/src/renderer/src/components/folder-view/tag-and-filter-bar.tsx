@@ -130,9 +130,7 @@ export function TagAndFilterBar({
             <TagChip
               key={tag.toLowerCase()}
               tag={tag}
-              onRemove={() => {
-                onRemoveTag(tag)
-              }}
+              onRemove={() => onRemoveTag(tag)}
               removeLabel={t('tagAndFilter.removeTag', { tag })}
             />
           ))}
@@ -149,9 +147,7 @@ export function TagAndFilterBar({
             variant="ghost"
             size="sm"
             className="h-6 gap-1 px-2 text-[11px]"
-            onClick={() => {
-              setSaveOpen(true)
-            }}
+            onClick={() => setSaveOpen(true)}
             data-testid="tag-and-filter-save"
           >
             <Bookmark className="size-3" />
@@ -178,9 +174,7 @@ export function TagAndFilterBar({
             {searches.map((search) => (
               <DropdownMenuItem
                 key={search.id}
-                onSelect={() => {
-                  onOpenSavedSearch(search)
-                }}
+                onSelect={() => onOpenSavedSearch(search)}
                 className="flex items-start gap-2"
               >
                 <Check
@@ -224,9 +218,7 @@ export function TagAndFilterBar({
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
             autoFocus
             value={name}
-            onChange={(event) => {
-              setName(event.target.value)
-            }}
+            onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault()
@@ -238,12 +230,7 @@ export function TagAndFilterBar({
             data-testid="tag-and-filter-save-name"
           />
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSaveOpen(false)
-              }}
-            >
+            <Button variant="ghost" onClick={() => setSaveOpen(false)}>
               {t('tagAndFilter.cancel')}
             </Button>
             <Button

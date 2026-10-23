@@ -574,9 +574,9 @@ describe('SyncEngine', () => {
         engine as unknown as { handleWsMessage: (message: SyncSocketEvent) => void }
       ).handleWsMessage({ kind: 'crdt_updated', noteId: 'note-ws', cursor: 12 })
 
-      await vi.waitFor(() => {
+      await vi.waitFor(() =>
         expect(paid).toHaveBeenCalledWith(['note-owed'], expect.any(AbortSignal))
-      })
+      )
       await engine.stop({ skipFinalPush: true })
       vi.restoreAllMocks()
     })

@@ -283,9 +283,7 @@ function TaskToCheckboxItem() {
     <MenuItem
       icon={<CheckSquare size={16} />}
       label={t('editor.blockMenu.turnIntoCheckbox')}
-      onClick={() => {
-        actions.toCheckbox(block.id)
-      }}
+      onClick={() => actions.toCheckbox(block.id)}
     />
   )
 }
@@ -345,9 +343,7 @@ function MoveToItem({ onRequestMove }: { onRequestMove?: (blockId: string) => vo
     <MenuItem
       icon={<ArrowRight size={16} />}
       label={t('editor.blockMenu.moveTo')}
-      onClick={() => {
-        onRequestMove(block.id)
-      }}
+      onClick={() => onRequestMove(block.id)}
     />
   )
 }
@@ -366,9 +362,7 @@ function InsertTemplateItem({
     <MenuItem
       icon={<LayoutTemplate size={16} />}
       label={t('editor.blockMenu.insertTemplate')}
-      onClick={() => {
-        onRequestInsertTemplate({ blockId: block.id, placement: 'after' })
-      }}
+      onClick={() => onRequestInsertTemplate({ blockId: block.id, placement: 'after' })}
     />
   )
 }

@@ -25,9 +25,7 @@ export const OverviewTab = ({ project, hub, handlers }: OverviewTabProps): React
       <HubSection
         title={t('projectHub.tabs.tasks')}
         count={hub.counts.tasks}
-        onViewAll={() => {
-          handlers.onGoToTab('tasks')
-        }}
+        onViewAll={() => handlers.onGoToTab('tasks')}
         onAdd={handlers.onAddTask}
         emptyLabel={t('projectHub.sections.emptyTasks')}
         isEmpty={hub.rowTasks.length === 0}
@@ -48,9 +46,7 @@ export const OverviewTab = ({ project, hub, handlers }: OverviewTabProps): React
       <HubSection
         title={t('projectHub.tabs.notes')}
         count={hub.counts.notes}
-        onViewAll={() => {
-          handlers.onGoToTab('notes')
-        }}
+        onViewAll={() => handlers.onGoToTab('notes')}
         onAdd={handlers.onAddNote}
         emptyLabel={t('projectHub.sections.emptyNotes')}
         isEmpty={hub.notes.length === 0}
@@ -68,9 +64,7 @@ export const OverviewTab = ({ project, hub, handlers }: OverviewTabProps): React
       <HubSection
         title={t('projectHub.tabs.files')}
         count={hub.counts.files}
-        onViewAll={() => {
-          handlers.onGoToTab('files')
-        }}
+        onViewAll={() => handlers.onGoToTab('files')}
         onAdd={handlers.onAddFile}
         emptyLabel={t('projectHub.sections.emptyFiles')}
         isEmpty={hub.files.length === 0}
@@ -83,9 +77,7 @@ export const OverviewTab = ({ project, hub, handlers }: OverviewTabProps): React
       <HubSection
         title={t('projectHub.tabs.events')}
         count={hub.counts.events}
-        onViewAll={() => {
-          handlers.onGoToTab('events')
-        }}
+        onViewAll={() => handlers.onGoToTab('events')}
         onAdd={handlers.onAddEvent}
         emptyLabel={t('projectHub.sections.emptyEvents')}
         isEmpty={hub.events.length === 0}

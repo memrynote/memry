@@ -158,9 +158,9 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     try {
       applyMergedReadwiseSettings(getDatabase(), merged.readwise)
       // Another device took Readwise over: this one gives up its token (D8).
-      void releaseTokenIfClaimedElsewhere().catch((err: unknown) => {
+      void releaseTokenIfClaimedElsewhere().catch((err: unknown) =>
         log.warn('Failed to release the Readwise token after a takeover:', err)
-      })
+      )
     } catch (err) {
       log.warn('Failed to propagate merged readwise settings:', err)
     }

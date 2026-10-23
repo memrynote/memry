@@ -146,9 +146,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       }
     }
     document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [isOpen, onClose, isLinkingNote])
 
   const handleStartLinkNote = useCallback(() => {
@@ -478,11 +476,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               statuses={project.statuses}
               onToggleComplete={onToggleComplete}
               onAddSubtask={
-                onAddSubtask && canAddSubtask
-                  ? (title) => {
-                      onAddSubtask(task.id, title)
-                    }
-                  : undefined
+                onAddSubtask && canAddSubtask ? (title) => onAddSubtask(task.id, title) : undefined
               }
               progressById={subtaskProgress}
               onOpenSubtask={onOpenTask}
@@ -554,9 +548,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     ref={noteSearchInputRef}
                     type="text"
                     value={noteSearchQuery}
-                    onChange={(e) => {
-                      setNoteSearchQuery(e.target.value)
-                    }}
+                    onChange={(e) => setNoteSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') {
                         setIsLinkingNote(false)
@@ -631,20 +623,18 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             <div className="flex flex-col py-3 px-5 gap-3 mt-auto">
               {task.archivedAt !== null && onUpdateTask && (
                 <TaskUnarchiveButton
-                  onUnarchive={() => {
-                    onUpdateTask(task.id, { archivedAt: null })
-                  }}
+                  onUnarchive={() => onUpdateTask(task.id, { archivedAt: null })}
                 />
               )}
               {onDeleteTask && (
                 <button
                   type="button"
                   // A task with subtasks gets the host's subtask-aware confirm instead.
-                  onClick={() => {
+                  onClick={() =>
                     onDeleteParentTask && task.subtaskIds.length > 0
                       ? onDeleteParentTask(task.id)
                       : setIsDeleteDialogOpen(true)
-                  }}
+                  }
                   className="flex items-center gap-2 py-1.5 px-2.5 rounded-md text-[12px] leading-4 text-destructive hover:bg-destructive/10 transition-colors w-full"
                   aria-label={t('task.delete')}
                 >
@@ -660,12 +650,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             {onDeleteTask && (
               <DeleteTaskDialog
                 isOpen={isDeleteDialogOpen}
-                onClose={() => {
-                  setIsDeleteDialogOpen(false)
-                }}
-                onConfirm={() => {
-                  onDeleteTask(task.id)
-                }}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onConfirm={() => onDeleteTask(task.id)}
                 taskTitle={task.title}
               />
             )}
@@ -737,9 +723,7 @@ function TaskPathCrumbs({
       {onOpenTask && (
         <button
           type="button"
-          onClick={() => {
-            onOpenTask(parent.id)
-          }}
+          onClick={() => onOpenTask(parent.id)}
           className="ms-auto shrink-0 rounded-sm p-0.5 hover:bg-surface-active/60 hover:text-text-secondary"
           aria-label={t('subtaskTree.zoom.up')}
           title={t('subtaskTree.zoom.up')}

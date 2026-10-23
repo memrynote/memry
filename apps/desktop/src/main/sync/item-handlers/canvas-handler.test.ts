@@ -1032,9 +1032,7 @@ describe('canvasHandler', () => {
       ctx = { db, emit: vi.fn() }
 
       const result = canvasHandler.applyUpsert(ctx, 'c1', echo, { B: 1 })
-      await vi.waitFor(() => {
-        expect(mockEnsureAssetsPresent).toHaveBeenCalledTimes(1)
-      })
+      await vi.waitFor(() => expect(mockEnsureAssetsPresent).toHaveBeenCalledTimes(1))
 
       expect(result).toBe('skipped')
       expect(ctx.emit).not.toHaveBeenCalled()

@@ -38,15 +38,11 @@ export function extractHeadings(blocks: Block[]): HeadingInfo[] {
     }
 
     if (block.children && Array.isArray(block.children)) {
-      block.children.forEach((child) => {
-        processBlock(child as Block)
-      })
+      block.children.forEach((child) => processBlock(child as Block))
     }
   }
 
-  blocks.forEach((block) => {
-    processBlock(block)
-  })
+  blocks.forEach((block) => processBlock(block))
   return headings
 }
 

@@ -193,12 +193,8 @@ export const TabBarWithDrag = ({
     el.scrollBy({ left: distance * sign, behavior: scrollBehavior() })
   }
 
-  const scrollToStart = (): void => {
-    scrollByLogical(-200)
-  }
-  const scrollToEnd = (): void => {
-    scrollByLogical(200)
-  }
+  const scrollToStart = (): void => scrollByLogical(-200)
+  const scrollToEnd = (): void => scrollByLogical(200)
 
   return (
     // Same LazyMotion bundle the sidebar tree loads — `m.` components need the

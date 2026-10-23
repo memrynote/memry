@@ -30,9 +30,7 @@ export async function mount(): Promise<void> {
 
   // react-helmet-async re-inserts the tags it manages on mount, so the prerendered
   // copies have to go first or the document ends up with two titles and two canonicals.
-  document.head.querySelectorAll('[data-rh="true"]').forEach((node) => {
-    node.remove()
-  })
+  document.head.querySelectorAll('[data-rh="true"]').forEach((node) => node.remove())
 
   // A route chunk that has not arrived yet makes React treat the boundary as suspended
   // and throw away the server HTML it was about to adopt — the page would blank out and

@@ -78,12 +78,12 @@ function ResultRow({ item }: { item: PortalSearchResultItem }): React.JSX.Elemen
     <button
       type="button"
       data-portal-result=""
-      onClick={(event) => {
+      onClick={(event) =>
         openSidebarItem(
           { type: 'note', path: item.path, entityId: item.noteId, title: item.title },
           event.metaKey || event.ctrlKey ? { inNewTab: true } : undefined
         )
-      }}
+      }
       className="flex w-full flex-col gap-0.5 py-1.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
     >
       <span className="flex items-center gap-1.5 text-xs font-medium leading-4 text-foreground">

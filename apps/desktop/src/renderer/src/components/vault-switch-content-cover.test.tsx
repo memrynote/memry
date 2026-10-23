@@ -25,9 +25,7 @@ describe('VaultSwitchContentCover', () => {
 
   it('covers the vault being left once the switch outlasts the delay', () => {
     renderIn('/a')
-    act(() => {
-      beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next')
-    })
+    act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
 
     // A quick switch never shows it.
     act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS - 1))
@@ -36,34 +34,24 @@ describe('VaultSwitchContentCover', () => {
     act(() => vi.advanceTimersByTime(1))
     expect(screen.getByTestId('vault-switch-content-cover')).toHaveTextContent('Switching to Beta')
 
-    act(() => {
-      endVaultSwitch(true)
-    })
+    act(() => endVaultSwitch(true))
     expect(screen.queryByTestId('vault-switch-content-cover')).toBeNull()
   })
 
   it('does not cover the vault being entered', () => {
     renderIn('/b')
-    act(() => {
-      beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next')
-    })
+    act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
     act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS))
     expect(screen.queryByTestId('vault-switch-content-cover')).toBeNull()
   })
 
   it('waits out the delay again on a later switch to the same vault', () => {
     renderIn('/a')
-    act(() => {
-      beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next')
-    })
+    act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
     act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS))
-    act(() => {
-      endVaultSwitch(false)
-    })
+    act(() => endVaultSwitch(false))
 
-    act(() => {
-      beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next')
-    })
+    act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
     expect(screen.queryByTestId('vault-switch-content-cover')).toBeNull()
   })
 })

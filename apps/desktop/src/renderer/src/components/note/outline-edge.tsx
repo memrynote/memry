@@ -182,9 +182,7 @@ export const OutlineEdge = memo(function OutlineEdge({
                   key={heading.id}
                   type="button"
                   data-heading-id={heading.id}
-                  onClick={() => {
-                    handleClick(heading.id)
-                  }}
+                  onClick={() => handleClick(heading.id)}
                   className={cn(
                     'w-full text-start px-3 py-1.5 text-sm',
                     'transition-colors duration-150',

@@ -321,9 +321,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Input
               type={showApiKey ? 'text' : 'password'}
               value={settings.apiKey}
-              onChange={(e) => {
-                setSettings((prev) => ({ ...prev, apiKey: e.target.value }))
-              }}
+              onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
               onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
               placeholder={t('ai.inline.apiKeyPlaceholder', {
                 provider: t(PROVIDER_LABEL_KEYS[settings.provider])
@@ -333,9 +331,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setShowApiKey((v) => !v)
-              }}
+              onClick={() => setShowApiKey((v) => !v)}
               tabIndex={-1}
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
             >
@@ -354,9 +350,7 @@ export function AIInlineSettings(): React.JSX.Element {
           <div className="flex items-center gap-2">
             <Input
               value={settings.baseUrl}
-              onChange={(e) => {
-                setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))
-              }}
+              onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
               onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
               placeholder={tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')}
               className="h-7 w-52 font-mono text-xs/4"

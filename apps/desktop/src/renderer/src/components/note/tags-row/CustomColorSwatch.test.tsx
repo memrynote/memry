@@ -39,9 +39,7 @@ describe('CustomColorSwatch native picker dismiss guard', () => {
   // Mirrors Radix's dismissable-layer listener: a bubble-phase `focusin` on the
   // document is how it detects focus landing outside a layer and dismisses it.
   let radixDismiss: ReturnType<typeof vi.fn>
-  afterEach(() => {
-    document.removeEventListener('focusin', radixDismiss)
-  })
+  afterEach(() => document.removeEventListener('focusin', radixDismiss))
 
   it('lets focusin reach the layer when the picker is closed (control)', () => {
     radixDismiss = vi.fn()

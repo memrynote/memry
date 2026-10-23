@@ -47,9 +47,7 @@ function ProjectActions({
           variant="ghost"
           size="icon"
           className="size-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
+          onClick={(e) => e.stopPropagation()}
         >
           <MoreHorizontal className="size-3.5" />
         </Button>

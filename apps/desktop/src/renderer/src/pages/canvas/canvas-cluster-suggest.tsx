@@ -234,16 +234,12 @@ export function CanvasClusterSuggest({
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={group.accepted}
-                    onCheckedChange={(checked) => {
-                      update(group.key, { accepted: checked === true })
-                    }}
+                    onCheckedChange={(checked) => update(group.key, { accepted: checked === true })}
                     aria-label={t('canvas.cluster.acceptGroup', { name: group.name })}
                   />
                   <Input
                     value={group.name}
-                    onChange={(event) => {
-                      update(group.key, { name: event.target.value })
-                    }}
+                    onChange={(event) => update(group.key, { name: event.target.value })}
                     disabled={!group.accepted}
                     aria-label={t('canvas.cluster.groupName')}
                     className="h-8 text-sm"
@@ -260,13 +256,7 @@ export function CanvasClusterSuggest({
           </ul>
 
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setProposals(null)
-              }}
-              disabled={creating}
-            >
+            <Button variant="ghost" onClick={() => setProposals(null)} disabled={creating}>
               {t('canvas.cluster.discard')}
             </Button>
             <Button onClick={() => void create()} disabled={creating || acceptedCount === 0}>

@@ -252,9 +252,7 @@ describe('zero-covered leaf surfaces', () => {
     await waitFor(() => expect(screen.getByText('/Users/kaan/Vault')).toBeInTheDocument())
     expect(screen.getByText('vault.storage.categories.notes')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'vault.storage.refreshAria' }))
-    await waitFor(() => {
-      expect(mocks.refreshStorage).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.refreshStorage).toHaveBeenCalled())
     fireEvent.click(screen.getByRole('button', { name: 'vault.reveal' }))
     expect((window as any).api.vault.reveal).toHaveBeenCalled()
   })

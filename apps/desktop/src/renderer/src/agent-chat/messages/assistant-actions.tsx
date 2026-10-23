@@ -109,12 +109,7 @@ function CopyButton({ text }: { text: string }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  useEffect(
-    () => () => {
-      clearTimeout(resetTimer.current)
-    },
-    []
-  )
+  useEffect(() => () => clearTimeout(resetTimer.current), [])
 
   const label = copied
     ? t('agentChat.actions.copied', { defaultValue: 'Copied' })
@@ -131,9 +126,7 @@ function CopyButton({ text }: { text: string }): React.JSX.Element {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true)
           clearTimeout(resetTimer.current)
-          resetTimer.current = setTimeout(() => {
-            setCopied(false)
-          }, COPIED_RESET_MS)
+          resetTimer.current = setTimeout(() => setCopied(false), COPIED_RESET_MS)
         })
       }}
       className={cn(

@@ -583,11 +583,11 @@ describe('JournalPage', () => {
     )
 
     fireEvent.click(screen.getByText('internal link'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'note-2' })
       )
-    })
+    )
 
     fireEvent.click(screen.getByText('headings'))
     fireEvent.click(screen.getByRole('button', { name: 'Intro' }))
@@ -637,11 +637,11 @@ describe('JournalPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Linked Note' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'note-2' })
       )
-    })
+    )
     expect(mocks.resolveWikiLink).toHaveBeenCalledWith('Linked Note')
   })
 
@@ -810,31 +810,27 @@ describe('JournalPage', () => {
     expect(open).toHaveBeenCalledWith('https://memry.test', '_blank', 'noopener,noreferrer')
 
     fireEvent.click(screen.getByText('internal link'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'file', entityId: 'file-1' })
       )
-    })
+    )
 
     // The old dead-end "not found" toast is now the create-confirm dialog
     // (#1716); Cancel leaves everything as it was.
     fireEvent.click(screen.getByText('internal link'))
     expect(await screen.findByText('wikiLinkCreateDialog.body')).toBeInTheDocument()
     fireEvent.click(screen.getByText('button.cancel'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.queryByText('wikiLinkCreateDialog.body')).not.toBeInTheDocument()
-    })
+    )
     expect(toast.info).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('internal link'))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Linked Note')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Linked Note'))
 
     fireEvent.click(screen.getByText('internal link'))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('toast.openLinkedItemFailed')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('toast.openLinkedItemFailed'))
   })
 
   it('shows entry errors, save retry toast, export, history, and find controls', async () => {
@@ -866,9 +862,7 @@ describe('JournalPage', () => {
     expect(screen.getByTestId('version-history')).toHaveTextContent('open history')
 
     fireEvent.click(screen.getByText('restore version'))
-    await waitFor(() => {
-      expect(mocks.forceReload).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.forceReload).toHaveBeenCalled())
   })
 
   it('creates the entry before bookmarking an empty day', async () => {
@@ -879,12 +873,12 @@ describe('JournalPage', () => {
 
     fireEvent.click(screen.getByText('bookmark'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.bookmarksToggle).toHaveBeenCalledWith({
         itemType: 'journal',
         itemId: 'j2026-01-15'
       })
-    })
+    )
     expect(mocks.updateEntry).toHaveBeenCalledWith({ date: '2026-01-15' })
     expect(mocks.toggleBookmark).not.toHaveBeenCalled()
   })
@@ -897,18 +891,12 @@ describe('JournalPage', () => {
     fireEvent.click(screen.getByText('delete entry'))
     fireEvent.click(await screen.findByRole('button', { name: 'page.deleteConfirm.confirm' }))
 
-    await waitFor(() => {
-      expect(mocks.deleteEntry).toHaveBeenCalledTimes(1)
-    })
-    await waitFor(() => {
-      expect(mocks.contentAreaMounts).toBeGreaterThan(mountsBefore)
-    })
+    await waitFor(() => expect(mocks.deleteEntry).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.contentAreaMounts).toBeGreaterThan(mountsBefore))
   })
 
   describe('a journal entry under a lock (#2606)', () => {
-    afterEach(() => {
-      broadcastLocks({ notes: [], folders: [] })
-    })
+    afterEach(() => broadcastLocks({ notes: [], folders: [] }))
 
     function expectReadOnly(): void {
       expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
@@ -972,21 +960,21 @@ describe('JournalPage', () => {
 
       fireEvent.click(screen.getByText('lock entry'))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(set).toHaveBeenCalledWith({ kind: 'note', target: 'j2026-01-15', locked: true })
-      })
+      )
       expectReadOnly()
 
       set.mockResolvedValueOnce({ notes: [], folders: [] })
       fireEvent.click(screen.getByText('unlock entry'))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(set).toHaveBeenLastCalledWith({
           kind: 'note',
           target: 'j2026-01-15',
           locked: false
         })
-      })
+      )
       expect(mocks.contentAreaProps.editable).toBe(true)
     })
 
@@ -1008,9 +996,7 @@ describe('JournalPage', () => {
 
       fireEvent.click(screen.getByText('lock entry'))
 
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith('disk full')
-      })
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk full'))
     })
 
     it('refuses a property edit with the lock text', () => {

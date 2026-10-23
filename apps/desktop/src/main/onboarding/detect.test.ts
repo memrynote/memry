@@ -10,9 +10,7 @@ import { readObsidianVaults } from './detect'
 describe('readObsidianVaults', () => {
   let dir: string
 
-  afterEach(() => {
-    rmSync(dir, { recursive: true, force: true })
-  })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
   it("lists Obsidian's registered vaults that still exist on disk", async () => {
     dir = mkdtempSync(join(tmpdir(), 'obsidian-registry-'))

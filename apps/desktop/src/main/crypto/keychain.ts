@@ -52,9 +52,7 @@ async function withTestTimeout<T>(op: Promise<T>, fallback: T): Promise<T> {
   if (!isTestEnv) return op
   let timer: ReturnType<typeof setTimeout>
   const guard = new Promise<T>((resolve) => {
-    timer = setTimeout(() => {
-      resolve(fallback)
-    }, KEYCHAIN_TEST_TIMEOUT_MS)
+    timer = setTimeout(() => resolve(fallback), KEYCHAIN_TEST_TIMEOUT_MS)
   })
   try {
     return await Promise.race([op, guard])

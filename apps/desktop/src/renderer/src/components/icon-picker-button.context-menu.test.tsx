@@ -51,13 +51,7 @@ function Row() {
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem>Rename</ContextMenuItem>
-        <ContextMenuItem
-          onClick={() => {
-            setPickerOpen(true)
-          }}
-        >
-          Set Icon
-        </ContextMenuItem>
+        <ContextMenuItem onClick={() => setPickerOpen(true)}>Set Icon</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )

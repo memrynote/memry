@@ -135,9 +135,7 @@ describe('VoiceRecorder', () => {
 
     await userEvent.click(screen.getByLabelText('Stop recording'))
 
-    await waitFor(() => {
-      expect(onRecordingComplete).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(onRecordingComplete).toHaveBeenCalled())
     const [blob, duration] = onRecordingComplete.mock.calls[0]
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.type).toBe('audio/webm')

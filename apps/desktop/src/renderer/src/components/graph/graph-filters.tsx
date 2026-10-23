@@ -73,9 +73,7 @@ export function GraphFilters({
                 key={type}
                 size="sm"
                 pressed={filterState[TYPE_TO_STATE_KEY[type]] as boolean}
-                onPressedChange={() => {
-                  dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: type })
-                }}
+                onPressedChange={() => dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: type })}
                 aria-label={t('filter.toggle-entity', { label })}
               >
                 <Icon
@@ -90,9 +88,7 @@ export function GraphFilters({
           <Toggle
             size="sm"
             pressed={filterState.showOrphans}
-            onPressedChange={() => {
-              dispatch({ type: 'TOGGLE_ORPHANS' })
-            }}
+            onPressedChange={() => dispatch({ type: 'TOGGLE_ORPHANS' })}
             aria-label={t('filter.toggle-orphans')}
           >
             <Unlink
@@ -107,9 +103,7 @@ export function GraphFilters({
                 variant="ghost"
                 size="sm"
                 className="h-8 px-1.5"
-                onClick={() => {
-                  dispatch({ type: 'RESET_FILTERS' })
-                }}
+                onClick={() => dispatch({ type: 'RESET_FILTERS' })}
                 aria-label={t('control.reset-filters')}
               >
                 <Undo className="size-3.5 text-muted-foreground" />
@@ -130,9 +124,7 @@ export function GraphFilters({
             variant="ghost"
             size="sm"
             className="h-5 w-5 p-0 ms-auto"
-            onClick={() => {
-              dispatch({ type: 'CLEAR_FOCUS' })
-            }}
+            onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
             aria-label={t('control.clear-focus')}
           >
             <X className="size-3 text-muted-foreground" />

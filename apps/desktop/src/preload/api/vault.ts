@@ -41,9 +41,7 @@ export const vaultEvents = {
     subscribe<string>(VaultChannels.events.ERROR, callback),
 
   onVaultListChanged: (callback: () => void): (() => void) =>
-    subscribe<void>(VaultChannels.events.LIST_CHANGED, () => {
-      callback()
-    }),
+    subscribe<void>(VaultChannels.events.LIST_CHANGED, () => callback()),
 
   onVaultConfigChanged: (callback: (config: unknown) => void): (() => void) =>
     subscribe<unknown>(VaultChannels.events.CONFIG_CHANGED, callback),

@@ -93,9 +93,7 @@ describe('useNoteTreeData truncation', () => {
 
     const { result } = renderHook(() => useNoteTreeData(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     // The page itself is unchanged — still bounded at the ceiling.
     expect(result.current.notes).toHaveLength(NOTE_TREE_PAGE_SIZE)
@@ -109,9 +107,7 @@ describe('useNoteTreeData truncation', () => {
 
     const { result } = renderHook(() => useNoteTreeData(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.notes).toHaveLength(42)
-    })
+    await waitFor(() => expect(result.current.notes).toHaveLength(42))
     expect(result.current.hiddenNoteCount).toBe(0)
   })
 
@@ -122,17 +118,11 @@ describe('useNoteTreeData truncation', () => {
 
     const { result } = renderHook(() => useNoteTreeData(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.hiddenNoteCount).toBe(500)
-    })
+    await waitFor(() => expect(result.current.hiddenNoteCount).toBe(500))
 
-    act(() => {
-      result.current.loadMore()
-    })
+    act(() => result.current.loadMore())
 
-    await waitFor(() => {
-      expect(result.current.notes).toHaveLength(vault.length)
-    })
+    await waitFor(() => expect(result.current.notes).toHaveLength(vault.length))
     expect(result.current.hiddenNoteCount).toBe(0)
     expect(result.current.tree.rootNotes).toHaveLength(vault.length)
     // The last note in the vault — the one the first page dropped — is reachable.
@@ -156,17 +146,11 @@ describe('useNoteTreeData truncation', () => {
 
     const { result } = renderHook(() => useNoteTreeData(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.hiddenNoteCount).toBe(500)
-    })
+    await waitFor(() => expect(result.current.hiddenNoteCount).toBe(500))
 
-    act(() => {
-      result.current.loadMore()
-    })
+    act(() => result.current.loadMore())
 
-    await waitFor(() => {
-      expect(result.current.isLoadingMore).toBe(true)
-    })
+    await waitFor(() => expect(result.current.isLoadingMore).toBe(true))
     // The sidebar must not fall back to a skeleton mid-page: the tree it already
     // has stays mounted, and the footer carries the pending state.
     expect(result.current.isLoading).toBe(false)
@@ -177,9 +161,7 @@ describe('useNoteTreeData truncation', () => {
       release?.()
     })
 
-    await waitFor(() => {
-      expect(result.current.notes).toHaveLength(vault.length)
-    })
+    await waitFor(() => expect(result.current.notes).toHaveLength(vault.length))
     expect(result.current.isLoadingMore).toBe(false)
   })
 })

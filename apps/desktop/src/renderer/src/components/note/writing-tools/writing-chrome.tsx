@@ -73,9 +73,7 @@ export function WritingChrome({
         <DropdownMenuContent align="end" className="min-w-52">
           <DropdownMenuRadioGroup
             value={mode ?? NO_MODE}
-            onValueChange={(value) => {
-              onSelectMode(value as WritingRailMode)
-            }}
+            onValueChange={(value) => onSelectMode(value as WritingRailMode)}
           >
             {modes.map((entry) => (
               <DropdownMenuRadioItem

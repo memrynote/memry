@@ -99,9 +99,7 @@ export function MentionMenu({
       onItemClick?.(item)
     }
     document.addEventListener('keydown', handler, true)
-    return () => {
-      document.removeEventListener('keydown', handler, true)
-    }
+    return () => document.removeEventListener('keydown', handler, true)
   }, [items, selectedIndex, onItemClick])
 
   if (items.length === 0 && loadingState !== 'loaded') {
@@ -362,9 +360,7 @@ export function MentionMenu({
               'rounded-[5px] px-2 py-1.5 text-xs text-muted-foreground outline-none transition-colors',
               'hover:bg-accent'
             )}
-            onMouseDown={(event) => {
-              event.preventDefault()
-            }}
+            onMouseDown={(event) => event.preventDefault()}
             onClick={onShowMore}
           >
             {t('menus.mention.showMore')}

@@ -47,9 +47,9 @@ async function writeMergedFolderConfig(folderPath: string, icon: string | null):
  * else is a genuine write failure and is logged at error with the itemId.
  */
 function mirrorFolderConfigToVault(itemId: string, icon: string | null): void {
-  void writeMergedFolderConfig(itemId, icon).catch((error: unknown) => {
+  void writeMergedFolderConfig(itemId, icon).catch((error: unknown) =>
     logMirrorFailure(itemId, error)
-  })
+  )
 }
 
 function logMirrorFailure(itemId: string, error: unknown): void {
@@ -75,12 +75,8 @@ function applyDeletedFolderToVault(db: DrizzleDb, itemId: string): void {
   void (async () => {
     if (folderExists(itemId)) await writeMergedFolderConfig(itemId, null)
   })()
-    .catch((error: unknown) => {
-      logMirrorFailure(itemId, error)
-    })
-    .then(() => {
-      scheduleDeletedFolderPrune(db, itemId, { folderConfigDeleted: true })
-    })
+    .catch((error: unknown) => logMirrorFailure(itemId, error))
+    .then(() => scheduleDeletedFolderPrune(db, itemId, { folderConfigDeleted: true }))
 }
 
 class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {

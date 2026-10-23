@@ -44,16 +44,12 @@ vi.mock('@/components/note/content-area', () => ({
         <button
           data-testid="edit"
           aria-label="edit"
-          onClick={() => {
-            onMarkdownChange('edited body')
-          }}
+          onClick={() => onMarkdownChange('edited body')}
         />
         <button
           data-testid="edit-again"
           aria-label="edit-again"
-          onClick={() => {
-            onMarkdownChange('edited again')
-          }}
+          onClick={() => onMarkdownChange('edited again')}
         />
       </div>
     )

@@ -9,9 +9,7 @@ const storeSet = vi.fn((key: string, value: unknown) => {
 vi.mock('../store', () => ({
   store: {
     get: (key: string) => storeGet(key),
-    set: (key: string, value: unknown) => {
-      storeSet(key, value)
-    }
+    set: (key: string, value: unknown) => storeSet(key, value)
   }
 }))
 
@@ -150,9 +148,7 @@ describe('entitlement-cache', () => {
   })
 
   it('invalidateCachedEntitlementLimits is a no-op on a cold cache', () => {
-    expect(() => {
-      invalidateCachedEntitlementLimits()
-    }).not.toThrow()
+    expect(() => invalidateCachedEntitlementLimits()).not.toThrow()
     expect(getCachedEntitlement()).toBeNull()
   })
 

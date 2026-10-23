@@ -165,9 +165,7 @@ describe('ObjectPreviewBody', () => {
     renderPreview()
 
     expect(await screen.findByText('math, engines')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getAllByText('Acme Corp')).toHaveLength(2)
-    })
+    await waitFor(() => expect(screen.getAllByText('Acme Corp')).toHaveLength(2))
     expect(screen.queryByText('Deleted note')).not.toBeInTheDocument()
   })
 
@@ -237,14 +235,10 @@ describe('ObjectPreviewBody', () => {
     const emit = api.onNoteUpdated.mock.calls[0][0] as (event: { id: string }) => void
 
     api.properties.get.mockResolvedValue([{ name: 'Job title', value: 'Engineer', type: 'text' }])
-    act(() => {
-      emit({ id: 'someone-else' })
-    })
+    act(() => emit({ id: 'someone-else' }))
     expect(api.properties.get).toHaveBeenCalledTimes(1)
 
-    act(() => {
-      emit({ id: 'person-1' })
-    })
+    act(() => emit({ id: 'person-1' }))
     expect(await screen.findByText('Engineer')).toBeInTheDocument()
     expect(screen.queryByText('Mathematician')).not.toBeInTheDocument()
   })

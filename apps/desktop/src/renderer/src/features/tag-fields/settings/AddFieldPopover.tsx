@@ -137,9 +137,7 @@ export function AddFieldPopover({
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
                 autoFocus
                 value={name}
-                onChange={(event) => {
-                  setName(event.target.value)
-                }}
+                onChange={(event) => setName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') chooseType('text', name, true)
                 }}
@@ -160,9 +158,7 @@ export function AddFieldPopover({
                         key={property.name}
                         type="button"
                         disabled={busy}
-                        onClick={() => {
-                          reuse(property)
-                        }}
+                        onClick={() => reuse(property)}
                         className="flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-start hover:bg-accent"
                       >
                         <Icon className="mt-0.5 size-3.5 shrink-0 text-text-secondary" />
@@ -191,9 +187,7 @@ export function AddFieldPopover({
                     key={type}
                     type="button"
                     disabled={busy || !trimmed || error !== null}
-                    onClick={() => {
-                      chooseType(type, name, true)
-                    }}
+                    onClick={() => chooseType(type, name, true)}
                     className="flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-start hover:bg-accent disabled:opacity-50 disabled:hover:bg-transparent"
                   >
                     <Icon className="mt-0.5 size-3.5 shrink-0 text-text-secondary" />
@@ -218,9 +212,7 @@ export function AddFieldPopover({
             tagName={tagName}
             initial={null}
             submitLabel={t('tagFields.settings.addField.submit')}
-            onCancel={() => {
-              handleOpenChange(false)
-            }}
+            onCancel={() => handleOpenChange(false)}
             onSubmit={(relation) => add({ name: step.name, type: 'relation', relation })}
           />
         )}
@@ -237,9 +229,7 @@ export function AddFieldPopover({
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
               autoFocus
               value={name}
-              onChange={(event) => {
-                setName(event.target.value)
-              }}
+              onChange={(event) => setName(event.target.value)}
               aria-label={t('tagFields.settings.addField.namePlaceholder')}
               className="h-8"
             />
@@ -259,9 +249,7 @@ export function AddFieldPopover({
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      setName(alternativeFieldName(tagName, existing.name))
-                    }}
+                    onClick={() => setName(alternativeFieldName(tagName, existing.name))}
                     className="rounded-full border bg-background px-2.5 py-1 text-xs hover:bg-accent"
                   >
                     {t('tagFields.settings.shared.useInstead', {
@@ -272,13 +260,7 @@ export function AddFieldPopover({
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  handleOpenChange(false)
-                }}
-              >
+              <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
                 {t('tagFields.settings.cancel')}
               </Button>
               <Button

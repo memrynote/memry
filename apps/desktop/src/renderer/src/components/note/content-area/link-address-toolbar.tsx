@@ -111,9 +111,7 @@ function EditLinkAddressForm(props: LinkToolbarProps): React.JSX.Element {
         placeholder={dict.link_toolbar.form.url_placeholder}
         value={url}
         onKeyDown={onKeyDown}
-        onChange={(event: FormEvent<HTMLInputElement>) => {
-          setUrl(event.currentTarget.value)
-        }}
+        onChange={(event: FormEvent<HTMLInputElement>) => setUrl(event.currentTarget.value)}
         onSubmit={submit}
       />
       <Components.Generic.Form.TextInput
@@ -123,9 +121,7 @@ function EditLinkAddressForm(props: LinkToolbarProps): React.JSX.Element {
         placeholder={dict.link_toolbar.form.title_placeholder}
         value={text}
         onKeyDown={onKeyDown}
-        onChange={(event: FormEvent<HTMLInputElement>) => {
-          setText(event.currentTarget.value)
-        }}
+        onChange={(event: FormEvent<HTMLInputElement>) => setText(event.currentTarget.value)}
         onSubmit={submit}
       />
     </Components.Generic.Form.Root>

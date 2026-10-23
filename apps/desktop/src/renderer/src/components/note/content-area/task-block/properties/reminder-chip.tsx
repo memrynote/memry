@@ -25,9 +25,7 @@ export const ReminderChip = ({
         taskId={taskId}
         className={CHIP_CLASS}
         open={isOpen}
-        onOpenChange={(next) => {
-          onOpenChange('reminder', next)
-        }}
+        onOpenChange={(next) => onOpenChange('reminder', next)}
       />
     </div>
   )

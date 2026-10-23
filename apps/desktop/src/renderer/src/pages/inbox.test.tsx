@@ -78,28 +78,13 @@ vi.mock('@/components/inbox/inbox-segment-control', () => ({
     onChange: (value: 'inbox' | 'archived' | 'insights') => void
   }) => (
     <div data-testid="segment" data-view={value}>
-      <button
-        type="button"
-        onClick={() => {
-          onChange('inbox')
-        }}
-      >
+      <button type="button" onClick={() => onChange('inbox')}>
         segment inbox
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onChange('archived')
-        }}
-      >
+      <button type="button" onClick={() => onChange('archived')}>
         segment archived
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onChange('insights')
-        }}
-      >
+      <button type="button" onClick={() => onChange('insights')}>
         segment insights
       </button>
     </div>
@@ -118,12 +103,7 @@ vi.mock('@/components/capture-input', () => ({
       <button type="button" onClick={onCaptureSuccess}>
         capture ok
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onCaptureError('capture failed')
-        }}
-      >
+      <button type="button" onClick={() => onCaptureError('capture failed')}>
         capture fail
       </button>
     </div>
@@ -143,20 +123,10 @@ vi.mock('@/components/ui/picker', () => {
     children: ReactNode
   }) => (
     <div data-testid="picker" data-open={String(open)}>
-      <button
-        type="button"
-        onClick={() => {
-          onOpenChange(!open)
-        }}
-      >
+      <button type="button" onClick={() => onOpenChange(!open)}>
         toggle filter
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onValueChange('link')
-        }}
-      >
+      <button type="button" onClick={() => onValueChange('link')}>
         pick link
       </button>
       {children}

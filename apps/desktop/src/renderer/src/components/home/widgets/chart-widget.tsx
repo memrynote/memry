@@ -140,7 +140,7 @@ function JournalChartWidget({
       data={data}
       chart={chart}
       size={size}
-      onOpenDay={(day) => {
+      onOpenDay={(day) =>
         openSidebarItem({
           type: 'journal',
           title: t('editor.chart.sourceJournal'),
@@ -148,7 +148,7 @@ function JournalChartWidget({
           path: '/journal',
           viewState: { date: day.day }
         })
-      }}
+      }
     />
   )
 }
@@ -199,18 +199,14 @@ function HeaderSettings({
       properties={properties}
       needsDateFrom={settings.source.kind !== 'journal'}
       defaultOpen={!settings.chart.property}
-      onChange={(patch) => {
-        onChange({ ...config, chart: patchChart(settings.chart, patch) })
-      }}
+      onChange={(patch) => onChange({ ...config, chart: patchChart(settings.chart, patch) })}
       sourceSlot={
         <SourcePicker
           source={settings.source}
           disabled={false}
           defaultOpen={false}
           // A new source has its own properties: start the chart over.
-          onChange={(source) => {
-            onChange({ ...config, source, chart: {} })
-          }}
+          onChange={(source) => onChange({ ...config, source, chart: {} })}
         />
       }
     />

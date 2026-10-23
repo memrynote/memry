@@ -71,9 +71,7 @@ describe('ReadwiseScheduler', () => {
   /** Export requests so far: one per run on an empty account. */
   const runs = () => readwise.requests.filter((u) => u.pathname === '/api/v2/export/').length
   const advance = (ms: number) => vi.advanceTimersByTimeAsync(ms)
-  const setCadence = (cadence: string) => {
-    setSetting(db(), 'readwise', JSON.stringify({ cadence }))
-  }
+  const setCadence = (cadence: string) => setSetting(db(), 'readwise', JSON.stringify({ cadence }))
 
   beforeEach(async () => {
     markSyncIneligible()
@@ -312,9 +310,7 @@ describe('ReadwiseScheduler', () => {
   })
 
   describe('syncReadwiseNow (the sync-now IPC body)', () => {
-    afterEach(() => {
-      stopReadwiseScheduler()
-    })
+    afterEach(() => stopReadwiseScheduler())
 
     it('answers a readable error for a revoked token, and marks needs-attention', async () => {
       readwise.failWhen = () => 401

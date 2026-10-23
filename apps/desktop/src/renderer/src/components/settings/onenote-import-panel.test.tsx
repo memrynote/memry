@@ -63,9 +63,7 @@ describe('OneNoteImportPanel', () => {
     const signIn = await screen.findByText('Sign in with Microsoft')
     fireEvent.click(signIn)
 
-    await waitFor(() => {
-      expect(connect).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(connect).toHaveBeenCalled())
     await screen.findByText('Signed in as Kaan (kaan@example.com)')
 
     // Tree renders notebook, group and both sections.
@@ -129,9 +127,7 @@ describe('OneNoteImportPanel', () => {
     await screen.findByText('Ideas')
 
     fireEvent.click(screen.getByText('Switch account'))
-    await waitFor(() => {
-      expect(disconnect).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(disconnect).toHaveBeenCalled())
     await screen.findByText('Sign in with Microsoft')
   })
 })

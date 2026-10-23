@@ -265,9 +265,7 @@ export function ReminderPicker({
                       'phaseF.componentsReminderReminderPicker.addANoteOptional'
                     )}
                     value={note}
-                    onChange={(e) => {
-                      setNote(e.target.value)
-                    }}
+                    onChange={(e) => setNote(e.target.value)}
                     className="h-16 resize-none text-sm"
                   />
                 </div>
@@ -303,9 +301,7 @@ export function ReminderPicker({
                           aria-label={tPhaseF(
                             'phaseF.componentsReminderReminderPicker.editReminder'
                           )}
-                          onClick={() => {
-                            startEdit(reminder)
-                          }}
+                          onClick={() => startEdit(reminder)}
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Pencil className="size-3.5" />
@@ -342,9 +338,7 @@ export function ReminderPicker({
             <div className="min-h-0 overflow-y-auto p-2">
               <button
                 type="button"
-                onClick={() => {
-                  mode === 'edit' ? resetState() : setMode('presets')
-                }}
+                onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
                 className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <ChevronRight className="h-3 w-3 rotate-180" />
@@ -356,9 +350,7 @@ export function ReminderPicker({
 
               <DatePickerCalendar
                 selected={selectedDate}
-                onSelect={(d) => {
-                  setSelectedDate(d)
-                }}
+                onSelect={(d) => setSelectedDate(d)}
                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 className="rounded-md border p-2"
               />
@@ -374,9 +366,7 @@ export function ReminderPicker({
                     id="reminder-time"
                     type="time"
                     value={selectedTime}
-                    onChange={(e) => {
-                      setSelectedTime(e.target.value)
-                    }}
+                    onChange={(e) => setSelectedTime(e.target.value)}
                     className="h-8 w-28"
                   />
                 </div>
@@ -392,9 +382,7 @@ export function ReminderPicker({
                         'phaseF.componentsReminderReminderPicker.whyAreYouSettingThisReminder'
                       )}
                       value={note}
-                      onChange={(e) => {
-                        setNote(e.target.value)
-                      }}
+                      onChange={(e) => setNote(e.target.value)}
                       className="mt-1.5 h-16 resize-none text-sm"
                     />
                   </div>

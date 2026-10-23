@@ -59,9 +59,8 @@ describe('a note header status written from the tasks in its body', () => {
   const holding = (...ids: string[]): void => {
     mocks.content = ids.map((id) => `- [ ] ${id} {task:${id}}`).join('\n')
   }
-  const storeStatus = (value: unknown = 'Not started', name = 'status', type = 'status'): void => {
+  const storeStatus = (value: unknown = 'Not started', name = 'status', type = 'status'): void =>
     setNoteProperties(index.db as never, 'n1', { [name]: value }, () => type as never)
-  }
   const written = (): unknown => mocks.merge.mock.calls[0]?.[1]
 
   beforeEach(() => {
@@ -193,9 +192,7 @@ describe('a note header status written from the tasks in its body', () => {
     addTask('a', 'doing')
     holding('a')
     fillHeaderStatus('n1')
-    await vi.waitFor(() => {
-      expect(written()).toEqual({ status: 'In Progress' })
-    })
+    await vi.waitFor(() => expect(written()).toEqual({ status: 'In Progress' }))
 
     mocks.merge.mockClear()
     storeStatus('Done')
@@ -209,9 +206,7 @@ describe('a note header status written from the tasks in its body', () => {
     addTask('a', 'done')
     holding('a')
     syncHeaderStatusForTask({ id: 'a', sourceNoteId: 'n1', linkedNoteIds: ['n1', 'n1'] })
-    await vi.waitFor(() => {
-      expect(mocks.merge).toHaveBeenCalledTimes(1)
-    })
+    await vi.waitFor(() => expect(mocks.merge).toHaveBeenCalledTimes(1))
     expect(mocks.merge.mock.calls[0]?.[0]).toBe('n1')
   })
 })

@@ -274,9 +274,7 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
     ]
 
     return () => {
-      unsubscribers.forEach((unsubscribe) => {
-        unsubscribe()
-      })
+      unsubscribers.forEach((unsubscribe) => unsubscribe())
     }
   }, [enabled, queryClient])
 

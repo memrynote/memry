@@ -67,22 +67,16 @@ describe('shortcut bindings store', () => {
     const fresh = await import('./shortcut-bindings')
     const { result } = renderHook(() => fresh.useShortcutBinding('nav.search'))
 
-    await vi.waitFor(() => {
-      expect(result.current.key).toBe('a')
-    })
+    await vi.waitFor(() => expect(result.current.key).toBe('a'))
 
     // The first status names the open vault; repeats (index progress) do not reload.
     act(() => onVaultStatus?.({ isOpen: true, path: '/vault-a' }))
     act(() => onVaultStatus?.({ isOpen: true, path: '/vault-a' }))
-    await vi.waitFor(() => {
-      expect(getKeyboardSettings).toHaveBeenCalledTimes(2)
-    })
+    await vi.waitFor(() => expect(getKeyboardSettings).toHaveBeenCalledTimes(2))
     expect(result.current.key).toBe('a')
 
     act(() => onVaultStatus?.({ isOpen: true, path: '/vault-b' }))
-    await vi.waitFor(() => {
-      expect(result.current).toEqual({ key: 'k', modifiers: { meta: true } })
-    })
+    await vi.waitFor(() => expect(result.current).toEqual({ key: 'k', modifiers: { meta: true } }))
     expect(getKeyboardSettings).toHaveBeenCalledTimes(3)
   })
 })

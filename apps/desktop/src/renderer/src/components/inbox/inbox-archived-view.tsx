@@ -79,9 +79,7 @@ function ArchivedListItem({
         isFocused && 'bg-muted'
       )}
       aria-label={t('list.itemAria', { type: typeLabels[item.type], title: displayTitle })}
-      onClick={() => {
-        onPreview(item.id)
-      }}
+      onClick={() => onPreview(item.id)}
       data-item-id={item.id}
     >
       <div className="flex-shrink-0">
@@ -183,12 +181,8 @@ export function InboxArchivedView({
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery)
-    }, 250)
-    return () => {
-      clearTimeout(timer)
-    }
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 250)
+    return () => clearTimeout(timer)
   }, [searchQuery])
 
   const { items, hasMore, isLoading, loadMore, isLoadingMore } = useInboxArchived({
@@ -280,9 +274,7 @@ export function InboxArchivedView({
     return sortedItems.find((item) => item.id === storedDetailItemId) || null
   }, [storedDetailItemId, fullDetailItem, sortedItems])
 
-  const clearDetailItemId = useCallback(() => {
-    setActiveDetailItemId(null)
-  }, [setActiveDetailItemId])
+  const clearDetailItemId = useCallback(() => setActiveDetailItemId(null), [setActiveDetailItemId])
 
   // A restored id can name an item that was unarchived or deleted permanently.
   // The panel's close button lives inside its `item ?` branch, so an
@@ -379,9 +371,7 @@ export function InboxArchivedView({
         item={activeDetailItem}
         isLoading={isDetailLoading}
         readOnly
-        onClose={() => {
-          setActiveDetailItemId(null)
-        }}
+        onClose={() => setActiveDetailItemId(null)}
         onFile={noopFile}
         onArchive={noopFile}
         onRestore={handleUnarchive}

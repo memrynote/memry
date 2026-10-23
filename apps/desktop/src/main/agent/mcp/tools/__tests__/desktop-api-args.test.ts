@@ -230,12 +230,12 @@ describe('desktop API object arguments', () => {
   ])(
     'refuses $unknown nested in a record value or a recursive filter',
     ({ operation, args, unknown }) => {
-      expect(() => {
+      expect(() =>
         assertDesktopApiArgs({
           operation: operation as (typeof AgentMcpDesktopOperations)[number],
           args
         })
-      }).toThrow(unknown)
+      ).toThrow(unknown)
     }
   )
 })

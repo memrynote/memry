@@ -758,9 +758,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     tagIconMap,
     onContentChange,
     onMarkdownChange: onMarkdownChange
-      ? (markdown) => {
-          onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
-        }
+      ? (markdown) => onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
       : undefined,
     onHeadingsChange,
     onInlineTagsChange
@@ -1131,9 +1129,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       })
     }
     container.addEventListener('click', handleClick)
-    return () => {
-      container.removeEventListener('click', handleClick)
-    }
+    return () => container.removeEventListener('click', handleClick)
   }, [])
 
   // Insert a configurable dateMention pill from a committed value (slash items
@@ -1358,9 +1354,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       })
       review.onMarkPositionsChange?.(positions)
     })
-    return () => {
-      window.cancelAnimationFrame(frame)
-    }
+    return () => window.cancelAnimationFrame(frame)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [review, review?.marks])
 
@@ -1416,9 +1410,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   const discardTask = useCallback((taskId: string) => {
-    tasksService.delete(taskId).catch((err: unknown) => {
-      log.warn('Failed to delete a task whose conversion was undone', { taskId, err })
-    })
+    tasksService
+      .delete(taskId)
+      .catch((err: unknown) =>
+        log.warn('Failed to delete a task whose conversion was undone', { taskId, err })
+      )
   }, [])
 
   // A checkbox back where its task was stays a checkbox, including after the
@@ -1470,9 +1466,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         description: tRef.current('editor.checkboxTask.hint', { undo: isMac ? '⌘Z' : 'Ctrl+Z' }),
         action: {
           label: tRef.current('editor.checkboxTask.keepAsCheckbox'),
-          onClick: () => {
-            revertConversion(blockId)
-          }
+          onClick: () => revertConversion(blockId)
         }
       })
     },
@@ -1688,16 +1682,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     if (!runSideEffects) return
     return registerCheckboxTaskActions(editor, {
-      toTask: (blockId) => {
-        convertCheckboxToTask(blockId)
-      },
+      toTask: (blockId) => convertCheckboxToTask(blockId),
       toCheckbox: (blockId) => {
         // Asked about like any task leaving the note, even one converted this
         // session: this is a choice, not an undo.
         convertedCheckboxesRef.current.delete(blockId)
-        turnTaskIntoCheckbox(editor as any, blockId).catch((err: unknown) => {
+        turnTaskIntoCheckbox(editor as any, blockId).catch((err: unknown) =>
           log.warn('Failed to turn a task into a checkbox', { blockId, err })
-        })
+        )
       }
     })
   }, [editor, runSideEffects, convertCheckboxToTask])
@@ -2085,12 +2077,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               type="button"
               data-testid="file-panel-choose"
               className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-popover-foreground outline-none hover:bg-accent focus-visible:bg-accent"
-              onClick={() => {
+              onClick={() =>
                 deps.open({
                   kind: attachmentKindForBlockType(deps.editor.getBlock(blockId)?.type),
                   replaceBlockId: blockId
                 })
-              }}
+              }
             >
               <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
               {deps.label}
@@ -2160,9 +2152,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         markTaskRemovalsHandled(editor, movedTaskIds)
         editor.removeBlocks([block])
         for (const taskId of movedTaskIds) {
-          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err: unknown) => {
+          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err: unknown) =>
             log.warn('Failed to relink a moved task', { taskId, err })
-          })
+          )
         }
       } catch (err) {
         toast.error(extractErrorMessage(err, tRef.current('editor.blockMenu.moveDialog.failed')))
@@ -2420,10 +2412,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   useEffect(
-    () =>
-      writingToolsService.onEditorContextMenu((spelling) => {
-        openPendingEditorMenu(spelling)
-      }),
+    () => writingToolsService.onEditorContextMenu((spelling) => openPendingEditorMenu(spelling)),
     [openPendingEditorMenu]
   )
   useEffect(
@@ -2452,9 +2441,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         pendingEditorMenuRef.current = {
           x,
           y,
-          timer: window.setTimeout(() => {
-            openPendingEditorMenu(null)
-          }, EDITOR_MENU_SPELLING_WAIT_MS)
+          timer: window.setTimeout(() => openPendingEditorMenu(null), EDITOR_MENU_SPELLING_WAIT_MS)
         }
         return
       }
@@ -2566,9 +2553,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (menu.spelling) {
             void writingToolsService
               .addWordToDictionary(menu.spelling.misspelledWord)
-              .catch((err: unknown) => {
-                log.warn('Failed to add a word to the dictionary', err)
-              })
+              .catch((err: unknown) => log.warn('Failed to add a word to the dictionary', err))
           }
           return
       }
@@ -2582,10 +2567,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     (action: EditorMenuAction) => {
       const menu = editorMenu
       setEditorMenu(null)
-      if (menu)
-        window.setTimeout(() => {
-          runEditorMenuAction(menu, action)
-        }, 0)
+      if (menu) window.setTimeout(() => runEditorMenuAction(menu, action), 0)
     },
     [editorMenu, runEditorMenuAction]
   )
@@ -2594,10 +2576,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     (suggestion: string) => {
       const menu = editorMenu
       setEditorMenu(null)
-      if (menu)
-        window.setTimeout(() => {
-          replaceSpelling(menu, suggestion)
-        }, 0)
+      if (menu) window.setTimeout(() => replaceSpelling(menu, suggestion), 0)
     },
     [editorMenu, replaceSpelling]
   )
@@ -2734,9 +2713,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
 
     container.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      container.removeEventListener('keydown', handleKeyDown, true)
-    }
+    return () => container.removeEventListener('keydown', handleKeyDown, true)
   }, [editor])
 
   // Turns the editor's block tree into task side effects: checkbox → task
@@ -2904,9 +2881,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }
 
   const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
-    relinkTaskNotes(taskId, change).catch((err: unknown) => {
+    relinkTaskNotes(taskId, change).catch((err: unknown) =>
       log.warn("Failed to update a task's linked notes", { taskId, err })
-    })
+    )
   }
 
   // The task stays; this note just stops being one of its linked notes.
@@ -2968,9 +2945,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }, 0)
     }
     container.addEventListener('cut', onCut, true)
-    return () => {
-      container.removeEventListener('cut', onCut, true)
-    }
+    return () => container.removeEventListener('cut', onCut, true)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [editor])
 
@@ -2995,9 +2970,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // Conversion turning on, once the setting is read or when the owner switches
   // it on, converts what the note already holds, as opening it would have.
-  const scanWithConversion = useEffectEvent(() => {
-    applyTaskIntents()
-  })
+  const scanWithConversion = useEffectEvent(() => applyTaskIntents())
   useEffect(() => {
     if (convertChecklists) scanWithConversion()
   }, [convertChecklists])
@@ -3021,9 +2994,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-    }
+    return () => document.removeEventListener('keydown', onKeyDown)
   }, [aiEnabled, aiError])
 
   // What the `/` menu offers when nothing matches: the query is handed on
@@ -3039,9 +3010,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     },
     askAI: aiEnabled
       ? aiReady
-        ? () => {
-            getAISlashMenuItems(editor)[0]?.onItemClick()
-          }
+        ? () => getAISlashMenuItems(editor)[0]?.onItemClick()
         : aiError
           ? reportAIUnavailable
           : null
@@ -3103,9 +3072,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               })}
               onAction={handleEditorMenuAction}
               onReplaceSpelling={handleEditorMenuSpelling}
-              onClose={() => {
-                setEditorMenu(null)
-              }}
+              onClose={() => setEditorMenu(null)}
             />
           )}
           {wikiLinkMenu && (
@@ -3131,18 +3098,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 const menu = wikiLinkMenu
                 setWikiLinkMenu(null)
                 // After the menu lets go of focus, so the editor can take it.
-                window.setTimeout(() => {
-                  runWikiLinkMenuAction(menu, action)
-                }, 0)
+                window.setTimeout(() => runWikiLinkMenuAction(menu, action), 0)
               }}
             />
           )}
           {imageMenuTarget && (
             <ImageAttachmentMenu
               target={imageMenuTarget}
-              onClose={() => {
-                setImageMenuTarget(null)
-              }}
+              onClose={() => setImageMenuTarget(null)}
               onRequestRename={() => {
                 setImageRenameTarget(imageMenuTarget)
                 setImageMenuTarget(null)
@@ -3165,9 +3128,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <TemplateSelector
               isOpen
               applyMode
-              onClose={() => {
-                setTemplateAnchor(null)
-              }}
+              onClose={() => setTemplateAnchor(null)}
               onSelect={(templateId) => {
                 setTemplateAnchor(null)
                 if (templateId) void insertTemplate(templateId, templateAnchor)
@@ -3206,9 +3167,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <ImageLightbox
               src={lightbox.src}
               alt={lightbox.alt}
-              onClose={() => {
-                setLightbox(null)
-              }}
+              onClose={() => setLightbox(null)}
             />
           )}
           {imageRenameTarget && (
@@ -3233,15 +3192,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <ImageHoverMenuButton
               target={imageHoverTarget}
               onOpenChange={handleImageHoverMenuOpenChange}
-              onRequestRename={() => {
-                setImageRenameTarget(imageHoverTarget)
-              }}
+              onRequestRename={() => setImageRenameTarget(imageHoverTarget)}
               onRequestCrop={
-                editable
-                  ? () => {
-                      requestImageCrop(imageHoverTarget.blockId)
-                    }
-                  : undefined
+                editable ? () => requestImageCrop(imageHoverTarget.blockId) : undefined
               }
             />
           )}
@@ -3346,9 +3299,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         return inCell
                           ? {
                               ...item,
-                              onItemClick: () => {
+                              onItemClick: () =>
                                 editor.insertInlineContent([createInlineCheckboxContent(false)])
-                              }
                             }
                           : {
                               ...item,
@@ -3381,26 +3333,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           ? { ...withPhoto, onItemClick: pickImageForCell }
                           : {
                               ...withPhoto,
-                              onItemClick: () => {
-                                openAttachmentPicker('image')
-                              }
+                              onItemClick: () => openAttachmentPicker('image')
                             }
                       }
                       if (key === 'video' || key === 'audio') {
                         return {
                           ...item,
-                          onItemClick: () => {
-                            openAttachmentPicker('media')
-                          }
+                          onItemClick: () => openAttachmentPicker('media')
                         }
                       }
                       if (key === 'file') {
                         return {
                           ...item,
                           aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
-                          onItemClick: () => {
-                            openAttachmentPicker('file')
-                          }
+                          onItemClick: () => openAttachmentPicker('file')
                         }
                       }
                       return item
@@ -3420,9 +3366,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           title: t('editor.slashMenu.pdf.title'),
                           subtext: t('editor.slashMenu.pdf.subtext'),
                           aliases: ['pdf', 'document'],
-                          onItemClick: () => {
-                            openAttachmentPicker('pdf')
-                          }
+                          onItemClick: () => openAttachmentPicker('pdf')
                         },
                         {
                           ...fileItem,
@@ -3433,9 +3377,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           // second row under the same word makes the user choose
                           // between two things that do the same thing.
                           aliases: ['media', 'video', 'audio', 'movie'],
-                          onItemClick: () => {
-                            openAttachmentPicker('media')
-                          }
+                          onItemClick: () => openAttachmentPicker('media')
                         },
                         {
                           ...fileItem,
@@ -3443,9 +3385,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           title: t('editor.slashMenu.html.title'),
                           subtext: t('editor.slashMenu.html.subtext'),
                           aliases: ['html', 'htm', 'webpage', 'embed'],
-                          onItemClick: () => {
-                            openAttachmentPicker('html')
-                          }
+                          onItemClick: () => openAttachmentPicker('html')
                         }
                       ]
                     : []
@@ -3576,9 +3516,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         {
                           id: 'date',
                           title: suggestion.dateLabel,
-                          onItemClick: () => {
-                            insertDatePill(suggestion.dateValue)
-                          },
+                          onItemClick: () => insertDatePill(suggestion.dateValue),
                           aliases: dateAliases,
                           group: 'Basic blocks',
                           subtext: 'Insert a date'
@@ -3586,9 +3524,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         {
                           id: 'remind',
                           title: 'Remind me',
-                          onItemClick: () => {
-                            insertDatePill(suggestion.remindValue)
-                          },
+                          onItemClick: () => insertDatePill(suggestion.remindValue),
                           aliases: dateAliases,
                           group: 'Basic blocks',
                           subtext: suggestion.remindSubtitle
@@ -3616,12 +3552,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   // unlike image and check there is no inline form to fall back to.
                   const insertTemplateItem = {
                     title: t('editor.slashMenu.insertTemplate.title'),
-                    onItemClick: () => {
+                    onItemClick: () =>
                       setTemplateAnchor({
                         blockId: editor.getTextCursorPosition().block.id,
                         placement: 'replace-if-empty'
-                      })
-                    },
+                      }),
                     aliases: ['template', 'templates', 'snippet', 'insert'],
                     group: 'Basic blocks',
                     subtext: t('editor.slashMenu.insertTemplate.subtext')
@@ -3711,9 +3646,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               getItems={getMentionItems}
               suggestionMenuComponent={MentionSuggestionMenu}
               floatingUIOptions={MENTION_MENU_FLOATING_OPTIONS}
-              onItemClick={(item) => {
-                handleMentionSelect(item)
-              }}
+              onItemClick={(item) => handleMentionSelect(item)}
               // While the inline date ghost still has text to fill (e.g. a time
               // being typed: `@today 12` → ghost `:00`), keep this menu closed so
               // Tab is owned by the ghost (which fills the time) instead of the menu
@@ -3757,7 +3690,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 position={wikiLinkHover.position}
                 onMouseEnter={wikiLinkHover.handleCardMouseEnter}
                 onMouseLeave={wikiLinkHover.handleCardMouseLeave}
-                onTagClick={(tag, color) => {
+                onTagClick={(tag, color) =>
                   openSidebarItem({
                     type: 'tag',
                     title: tag,
@@ -3765,7 +3698,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     entityId: tag,
                     color
                   })
-                }}
+                }
                 onNoteClick={onInternalLinkClick}
               />
             )}

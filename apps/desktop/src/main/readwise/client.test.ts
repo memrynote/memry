@@ -138,9 +138,7 @@ describe('exportPages', () => {
     const pending = collect(
       exportPages({ token: TOKEN, includeDeleted: false, signal: controller.signal })
     )
-    await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1)
-    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     controller.abort()
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
     expect(fetchMock).toHaveBeenCalledTimes(1)

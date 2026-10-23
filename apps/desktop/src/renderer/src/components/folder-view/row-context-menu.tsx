@@ -265,21 +265,13 @@ export function RowContextMenu({
                 {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
               </ContextMenuItem>
               {canSetIcon && (
-                <ContextMenuItem
-                  onClick={() => {
-                    setIsIconPickerOpen(true)
-                  }}
-                >
+                <ContextMenuItem onClick={() => setIsIconPickerOpen(true)}>
                   <Smile className="me-2 h-4 w-4" />
                   {tPhaseF('tree.actions.setIcon')}
                 </ContextMenuItem>
               )}
               {canSetIcon && note.emoji && (
-                <ContextMenuItem
-                  onClick={() => {
-                    handleSetIcon(null)
-                  }}
-                >
+                <ContextMenuItem onClick={() => handleSetIcon(null)}>
                   <X className="me-2 h-4 w-4" />
                   {tPhaseF('tree.actions.removeIcon')}
                 </ContextMenuItem>
@@ -318,15 +310,9 @@ export function RowContextMenu({
             <LazyEmojiPicker
               isOpen
               embedded
-              onClose={() => {
-                setIsIconPickerOpen(false)
-              }}
-              onSelect={(icon) => {
-                handleSetIcon(icon)
-              }}
-              onRemove={() => {
-                handleSetIcon(null)
-              }}
+              onClose={() => setIsIconPickerOpen(false)}
+              onSelect={(icon) => handleSetIcon(icon)}
+              onRemove={() => handleSetIcon(null)}
               hasEmoji={!!note.emoji}
             />
           </Suspense>

@@ -74,9 +74,7 @@ export const DuplicateWithSubtasksDialog = ({
             <Checkbox
               id="include-subtasks"
               checked={includeSubtasks}
-              onCheckedChange={(checked) => {
-                setIncludeSubtasks(checked === true)
-              }}
+              onCheckedChange={(checked) => setIncludeSubtasks(checked === true)}
             />
             <div className="space-y-1">
               <Label htmlFor="include-subtasks" className="cursor-pointer font-medium">

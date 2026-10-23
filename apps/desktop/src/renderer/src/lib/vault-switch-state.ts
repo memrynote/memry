@@ -206,9 +206,7 @@ export function useVaultPageRequest(onRequest: (request: VaultPageRequest) => vo
   }, [onRequest])
 
   useEffect(() => {
-    const listener = (request: VaultPageRequest): void => {
-      handlerRef.current(request)
-    }
+    const listener = (request: VaultPageRequest): void => handlerRef.current(request)
     pageListeners.add(listener)
     return () => {
       pageListeners.delete(listener)

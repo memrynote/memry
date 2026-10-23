@@ -50,12 +50,7 @@ vi.mock('@/components/ui/popover', () => ({
     children: ReactNode
   }) => (
     <div>
-      <button
-        type="button"
-        onClick={() => {
-          onOpenChange(!open)
-        }}
-      >
+      <button type="button" onClick={() => onOpenChange(!open)}>
         toggle due popover
       </button>
       {children}
@@ -71,12 +66,7 @@ vi.mock('@/components/ui/separator', () => ({
 
 vi.mock('./date-picker-calendar', () => ({
   DatePickerCalendar: ({ onSelect }: { onSelect: (date: Date | undefined) => void }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onSelect(new Date(2026, 4, 20))
-      }}
-    >
+    <button type="button" onClick={() => onSelect(new Date(2026, 4, 20))}>
       select calendar date
     </button>
   )
@@ -94,16 +84,9 @@ vi.mock('./time-picker', () => ({
       <input
         aria-label="time input"
         value={value ?? ''}
-        onChange={(event) => {
-          onChange(event.currentTarget.value)
-        }}
+        onChange={(event) => onChange(event.currentTarget.value)}
       />
-      <button
-        type="button"
-        onClick={() => {
-          onChange(null)
-        }}
-      >
+      <button type="button" onClick={() => onChange(null)}>
         clear mocked time
       </button>
     </div>
@@ -121,15 +104,11 @@ vi.mock('./natural-date-input', () => ({
     <div>
       <input
         aria-label="natural date"
-        onChange={(event) => {
-          onInputChange(event.currentTarget.value)
-        }}
+        onChange={(event) => onInputChange(event.currentTarget.value)}
       />
       <button
         type="button"
-        onClick={() => {
-          onSelect({ date: new Date(2026, 4, 14), time: '14:30' })
-        }}
+        onClick={() => onSelect({ date: new Date(2026, 4, 14), time: '14:30' })}
       >
         select natural date
       </button>

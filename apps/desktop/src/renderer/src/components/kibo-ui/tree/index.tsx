@@ -223,9 +223,7 @@ export const TreeProvider = ({
         // Ignore storage errors
       }
     }, 500)
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
   }, [expandedIds, persistKey])
 
   // Sync save on app close (catches the debounce window)
@@ -239,9 +237,7 @@ export const TreeProvider = ({
       }
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [expandedIds, persistKey])
 
   const isControlled = selectedIds !== undefined && onSelectionChange !== undefined
@@ -590,9 +586,7 @@ export const TreeNode = ({
   // Register this node with the tree
   useEffect(() => {
     registerNode(nodeId, parentId, hasChildren, customIcon, inheritedIcon)
-    return () => {
-      unregisterNode(nodeId)
-    }
+    return () => unregisterNode(nodeId)
   }, [nodeId, parentId, hasChildren, customIcon, inheritedIcon, registerNode, unregisterNode])
 
   // Build the parent path - mark positions where the parent was the last child
@@ -925,9 +919,7 @@ export const TreeNodeTrigger = ({
               }
               onClick?.(e)
             }}
-            onFocus={() => {
-              setFocusedId(nodeId)
-            }}
+            onFocus={() => setFocusedId(nodeId)}
             // A context-menu click does not focus the row on its own, so
             // arrow navigation had nothing to start from once the menu closed.
             onContextMenu={() => triggerRef.current?.focus()}
@@ -984,9 +976,7 @@ export const TreeNodeTrigger = ({
                 <>
                   <ContextMenuSeparator />
                   <ContextMenuItem
-                    onClick={() => {
-                      setNodeIcon(nodeId, null)
-                    }}
+                    onClick={() => setNodeIcon(nodeId, null)}
                     className="text-destructive focus:text-destructive"
                   >
                     {tPhaseF('phaseF.componentsKiboUiTreeIndex.clearIcon')}

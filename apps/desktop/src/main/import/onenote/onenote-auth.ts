@@ -407,9 +407,7 @@ export async function connectOneNote(): Promise<OneNoteAccount> {
       abortActiveFlow = null
       fn(value)
     }
-    abortActiveFlow = (error) => {
-      settle(reject, error)
-    }
+    abortActiveFlow = (error) => settle(reject, error)
 
     activeTimeout = setTimeout(() => {
       sessions.delete(state)

@@ -111,15 +111,11 @@ describe('PDF host page', () => {
     await window.memryPdfHost.open('doc-3', 'memry-file://local/a.pdf', 4096)
 
     pdfjs.state.transport?.requestDataRange(0, 1024)
-    await vi.waitFor(() => {
-      expect(pdfjs.state.chunks).toEqual([{ begin: 0, bytes: 1024 }])
-    })
+    await vi.waitFor(() => expect(pdfjs.state.chunks).toEqual([{ begin: 0, bytes: 1024 }]))
     const destroyedBefore = pdfjs.state.destroyedTasks
     pdfjs.state.transport?.requestDataRange(1024, 2048)
 
-    await vi.waitFor(() => {
-      expect(pdfjs.state.destroyedTasks).toBe(destroyedBefore + 1)
-    })
+    await vi.waitFor(() => expect(pdfjs.state.destroyedTasks).toBe(destroyedBefore + 1))
     expect(fetch).toHaveBeenCalledWith('memry-file://local/a.pdf', {
       headers: { Range: 'bytes=1024-2047' }
     })

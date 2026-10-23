@@ -76,9 +76,7 @@ describe('settingsHandler.applyUpsert — editor.calloutTypes (#3207)', () => {
     mocks.rows.clear()
     mocks.getDatabase.mockReturnValue({})
   })
-  afterEach(() => {
-    setCalloutTypeDefinitions([])
-  })
+  afterEach(() => setCalloutTypeDefinitions([]))
 
   it('stores a synced type, teaches the parser and tells the renderer', () => {
     const settings = { editor: { calloutTypes: { mytype, gone: null } } }

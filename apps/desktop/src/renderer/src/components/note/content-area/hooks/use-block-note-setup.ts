@@ -97,9 +97,7 @@ export function useBlockNoteSetup({
     }
     applySpellCheck()
     const t = setTimeout(applySpellCheck, 100)
-    return () => {
-      clearTimeout(t)
-    }
+    return () => clearTimeout(t)
   }, [spellCheck, editorContainerRef])
 
   // focusAtEndRef assignment
@@ -230,9 +228,7 @@ export function useBlockNoteSetup({
     }
 
     const timeoutId = setTimeout(scrollToHighlight, 500)
-    return () => {
-      clearTimeout(timeoutId)
-    }
+    return () => clearTimeout(timeoutId)
   }, [initialHighlight, editorContainerRef])
 
   // Scroll to inline date pill on mount (from note_date reminder navigation).
@@ -252,9 +248,7 @@ export function useBlockNoteSetup({
       timeoutId = setTimeout(tryScroll, 100)
     }
     timeoutId = setTimeout(tryScroll, 100)
-    return () => {
-      clearTimeout(timeoutId)
-    }
+    return () => clearTimeout(timeoutId)
   }, [initialAnchorId, editorContainerRef])
 
   // Derive aiReady so we don't reset state in an effect on prop change. The

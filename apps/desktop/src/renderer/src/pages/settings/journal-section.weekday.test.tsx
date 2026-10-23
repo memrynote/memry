@@ -122,9 +122,7 @@ describe('Journal settings — date format refused by a read-only lock (#2606)',
     await user.tab()
 
     expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledWith(LOCK_TEXT)
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(LOCK_TEXT))
     expect(input).toHaveValue('YYYY-MM-DD')
   })
 
@@ -137,9 +135,9 @@ describe('Journal settings — date format refused by a read-only lock (#2606)',
     await user.type(input, 'YYYY-MM-DD dddd')
     await user.tab()
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
-    })
+    )
     expect(toastError).not.toHaveBeenCalled()
     expect(input).toHaveValue('YYYY-MM-DD dddd')
   })
@@ -167,9 +165,7 @@ describe('Journal settings — per-day templates', () => {
     render(<JournalSettings />)
 
     // A configured setting must never hide behind a collapsed row.
-    await waitFor(() => {
-      expect(screen.getAllByTestId(/^journal-weekday-\d$/)).toHaveLength(7)
-    })
+    await waitFor(() => expect(screen.getAllByTestId(/^journal-weekday-\d$/)).toHaveLength(7))
   })
 
   it('orders rows by the first-day-of-week preference', async () => {
@@ -193,9 +189,7 @@ describe('Journal settings — per-day templates', () => {
     journalSettings.weekdayTemplates = { '1': 'daily-standup' }
     const user = userEvent.setup()
     render(<JournalSettings />)
-    await waitFor(() => {
-      expect(screen.getAllByTestId(/^journal-weekday-\d$/)).toHaveLength(7)
-    })
+    await waitFor(() => expect(screen.getAllByTestId(/^journal-weekday-\d$/)).toHaveLength(7))
 
     expect(renderedDayNames()[0]).toBe('Sunday')
     // The Monday template is still on Monday: rows are keyed by absolute
@@ -224,9 +218,7 @@ describe('Journal settings — per-day templates', () => {
   it('flags a day pointing at a deleted template', async () => {
     journalSettings.weekdayTemplates = { '4': 'gone-template' }
     render(<JournalSettings />)
-    await waitFor(() => {
-      expect(screen.getAllByTestId(/^journal-weekday-\d$/)).toHaveLength(7)
-    })
+    await waitFor(() => expect(screen.getAllByTestId(/^journal-weekday-\d$/)).toHaveLength(7))
 
     expect(screen.getByTestId('journal-weekday-4').textContent).toContain('Deleted template')
   })
@@ -241,8 +233,6 @@ describe('Journal settings — per-day templates', () => {
     await user.click(screen.getByRole('combobox', { name: 'Wednesday' }))
     await user.click(await screen.findByRole('option', { name: /Daily Standup/ }))
 
-    await waitFor(() => {
-      expect(setWeekdayTemplate).toHaveBeenCalledWith(3, 'daily-standup')
-    })
+    await waitFor(() => expect(setWeekdayTemplate).toHaveBeenCalledWith(3, 'daily-standup'))
   })
 })

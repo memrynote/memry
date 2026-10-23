@@ -135,9 +135,7 @@ describe('CRDT cursor stability', () => {
       }
 
       // #then — wait for microtask flush
-      await new Promise<void>((r) => {
-        queueMicrotask(r)
-      })
+      await new Promise<void>((r) => queueMicrotask(r))
 
       expect(broadcasts.length).toBe(1)
 

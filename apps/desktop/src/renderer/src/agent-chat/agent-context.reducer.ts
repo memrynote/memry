@@ -140,7 +140,8 @@ export const initialAgentState: AgentState = {
  */
 export function isConversationBusy(state: AgentState, conversationId: string): boolean {
   return (
-    state.inFlight[conversationId] || state.queuedTurns?.[conversationId]?.[0]?.status === 'sending'
+    state.inFlight[conversationId] === true ||
+    state.queuedTurns?.[conversationId]?.[0]?.status === 'sending'
   )
 }
 
@@ -410,7 +411,7 @@ function isPinnedTranscript(
   }
 ): boolean {
   if (input.conversationId === input.activeConversationId) return true
-  if (state.inFlight[input.conversationId]) return true
+  if (state.inFlight[input.conversationId] === true) return true
   if (state.pendingApprovals.some((pending) => pending.conversationId === input.conversationId)) {
     return true
   }

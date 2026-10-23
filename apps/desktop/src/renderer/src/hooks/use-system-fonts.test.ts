@@ -32,9 +32,7 @@ describe('useSystemFonts', () => {
   it('#given no Local Font Access API #when enabled #then it reports unavailable', async () => {
     const { result } = renderHook(() => useSystemFonts(true))
 
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: 'unavailable' })
-    })
+    await waitFor(() => expect(result.current).toEqual({ status: 'unavailable' }))
   })
 
   it('#given the query rejects #when enabled #then it reports unavailable', async () => {
@@ -42,9 +40,7 @@ describe('useSystemFonts', () => {
 
     const { result } = renderHook(() => useSystemFonts(true))
 
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: 'unavailable' })
-    })
+    await waitFor(() => expect(result.current).toEqual({ status: 'unavailable' }))
   })
 
   it('#given no faces come back #when enabled #then it reports unavailable', async () => {
@@ -52,9 +48,7 @@ describe('useSystemFonts', () => {
 
     const { result } = renderHook(() => useSystemFonts(true))
 
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: 'unavailable' })
-    })
+    await waitFor(() => expect(result.current).toEqual({ status: 'unavailable' }))
   })
 
   it('#given repeated and unusable families #when enabled #then it dedupes, drops and sorts them', async () => {
@@ -69,12 +63,12 @@ describe('useSystemFonts', () => {
 
     const { result } = renderHook(() => useSystemFonts(true))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(result.current).toEqual({
         status: 'ready',
         families: ['Avenir Next', 'Inter', 'Iosevka Term']
       })
-    })
+    )
   })
 
   it('#given StrictMode remounts the effect #when enabled #then it still resolves', async () => {
@@ -82,9 +76,7 @@ describe('useSystemFonts', () => {
 
     const { result } = renderHook(() => useSystemFonts(true), { wrapper: StrictMode })
 
-    await waitFor(() => {
-      expect(result.current).toEqual({ status: 'ready', families: ['Inter'] })
-    })
+    await waitFor(() => expect(result.current).toEqual({ status: 'ready', families: ['Inter'] }))
   })
 
   it('#given a completed load #when enabled toggles again #then it does not query twice', async () => {
@@ -93,9 +85,7 @@ describe('useSystemFonts', () => {
     const { result, rerender } = renderHook(({ enabled }) => useSystemFonts(enabled), {
       initialProps: { enabled: true }
     })
-    await waitFor(() => {
-      expect(result.current.status).toBe('ready')
-    })
+    await waitFor(() => expect(result.current.status).toBe('ready'))
 
     rerender({ enabled: false })
     rerender({ enabled: true })

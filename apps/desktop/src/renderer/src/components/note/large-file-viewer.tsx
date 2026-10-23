@@ -140,9 +140,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
       setWidthEpoch((epoch) => epoch + 1)
     })
     observer.observe(element)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [showRows])
 
   const openFind = search.open
@@ -163,9 +161,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
       openFind()
     }
     window.addEventListener('keydown', handler, { capture: true })
-    return () => {
-      window.removeEventListener('keydown', handler, { capture: true })
-    }
+    return () => window.removeEventListener('keydown', handler, { capture: true })
   }, [active, canFind, openFind])
 
   // Edit > Find and the note menu reach the bar through this.
@@ -507,9 +503,7 @@ const LineRow = memo(function LineRow({
             <span aria-hidden="true">…</span>
             <button
               type="button"
-              onClick={() => {
-                setExpanded(true)
-              }}
+              onClick={() => setExpanded(true)}
               className="ms-2 rounded-sm bg-muted px-1.5 py-0.5 align-middle text-[0.7em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
             >
               {showRestLabel}

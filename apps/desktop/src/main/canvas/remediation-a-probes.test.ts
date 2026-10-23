@@ -127,9 +127,7 @@ describe('P2 — a canvas the user deleted in the app', () => {
   it('is not counted as a missing document when the trash took the file', async () => {
     const kept = createCanvas(db, vault, VAULT_ID, { title: 'Kept', scene: SCENE })
     const dropped = createCanvas(db, vault, VAULT_ID, { title: 'Dropped', scene: SCENE })
-    await deleteCanvas(db, vault, dropped.id, async (abs) => {
-      fs.rmSync(abs)
-    })
+    await deleteCanvas(db, vault, dropped.id, async (abs) => fs.rmSync(abs))
 
     const result = await reconcileCanvasFiles(db, vault, VAULT_ID)
 

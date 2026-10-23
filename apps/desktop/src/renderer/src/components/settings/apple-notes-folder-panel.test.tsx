@@ -103,9 +103,7 @@ describe('AppleNotesFolderPanel', () => {
     })
 
     fireEvent.click(checkboxFor('Personal'))
-    await waitFor(() => {
-      expect(states[states.length - 1].options).toEqual({})
-    })
+    await waitFor(() => expect(states[states.length - 1].options).toEqual({}))
   })
 
   it('cascades a parent toggle to its children and reports the narrowed selection', async () => {
@@ -128,9 +126,7 @@ describe('AppleNotesFolderPanel', () => {
 
     fireEvent.click(checkboxFor('Clients'))
 
-    await waitFor(() => {
-      expect(checkboxFor('Work')).toHaveAttribute('data-state', 'indeterminate')
-    })
+    await waitFor(() => expect(checkboxFor('Work')).toHaveAttribute('data-state', 'indeterminate'))
     expect(checkboxFor('Work')).toHaveAttribute('aria-checked', 'mixed')
   })
 
@@ -207,9 +203,9 @@ describe('AppleNotesFolderPanel', () => {
         sourcePath: '/Users/k/Library/Group Containers/group.com.apple.notes',
         password: 'hunter2'
       })
-      await waitFor(() => {
+      await waitFor(() =>
         expect(states[states.length - 1].options).toEqual({ notesPassword: 'hunter2' })
-      })
+      )
     })
 
     it('keeps a wrong password out of the import options and says so', async () => {
@@ -239,15 +235,11 @@ describe('AppleNotesFolderPanel', () => {
       renderPanel((state) => states.push(state))
       await screen.findByText('Work')
       await enterPassword('hunter2')
-      await waitFor(() => {
-        expect(states[states.length - 1].options.notesPassword).toBe('hunter2')
-      })
+      await waitFor(() => expect(states[states.length - 1].options.notesPassword).toBe('hunter2'))
 
       fireEvent.change(screen.getByLabelText('Notes password'), { target: { value: 'hunter' } })
 
-      await waitFor(() => {
-        expect(states[states.length - 1].options.notesPassword).toBeUndefined()
-      })
+      await waitFor(() => expect(states[states.length - 1].options.notesPassword).toBeUndefined())
     })
   })
 })

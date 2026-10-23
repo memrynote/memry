@@ -58,12 +58,8 @@ export function useShortcutCapture(
     onCancelRef.current = options.onCancel
   })
 
-  const start = useCallback(() => {
-    setIsCapturing(true)
-  }, [])
-  const stop = useCallback(() => {
-    setIsCapturing(false)
-  }, [])
+  const start = useCallback(() => setIsCapturing(true), [])
+  const stop = useCallback(() => setIsCapturing(false), [])
   const cancel = useCallback(() => {
     setIsCapturing(false)
     onCancelRef.current?.()
@@ -79,9 +75,7 @@ export function useShortcutCapture(
         cancel()
         return
       }
-      onKeyRef.current(e, () => {
-        setIsCapturing(false)
-      })
+      onKeyRef.current(e, () => setIsCapturing(false))
     }
     const handleMouseDown = (e: MouseEvent): void => {
       if (captureRef.current && !captureRef.current.contains(e.target as Node)) {

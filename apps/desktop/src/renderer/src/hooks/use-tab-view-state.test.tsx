@@ -85,9 +85,7 @@ describe('useTabViewState', () => {
       useTabViewState({ key: 'mode', defaultValue: 'list' as const, parse: parseMode })
     )
 
-    act(() => {
-      result.current[1]('board')
-    })
+    act(() => result.current[1]('board'))
 
     expect(result.current[0]).toBe('board')
     expect(mocks.dispatch).toHaveBeenCalledWith({
@@ -107,9 +105,7 @@ describe('useTabViewState', () => {
       })
     )
 
-    act(() => {
-      result.current[1]((previous) => previous + 3)
-    })
+    act(() => result.current[1]((previous) => previous + 3))
 
     expect(result.current[0]).toBe(5)
     expect(mocks.dispatch).toHaveBeenCalledWith({
@@ -164,17 +160,11 @@ describe('useTabViewState', () => {
       useTabViewState({ key: 'mode', defaultValue: 'list' as const, parse: parseMode })
     )
 
-    act(() => {
-      result.current[1]('board')
-    })
+    act(() => result.current[1]('board'))
     expect(result.current[0]).toBe('board')
-    act(() => {
-      result.current[1]('list')
-    })
+    act(() => result.current[1]('list'))
     expect(result.current[0]).toBe('list')
-    act(() => {
-      result.current[1]('board')
-    })
+    act(() => result.current[1]('board'))
     expect(result.current[0]).toBe('board')
   })
 
@@ -218,9 +208,7 @@ describe('useTabViewState', () => {
       })
     )
 
-    act(() => {
-      result.current[1]('board')
-    })
+    act(() => result.current[1]('board'))
 
     // A session written here still restores on a build that only knows the old
     // name.
@@ -241,9 +229,7 @@ describe('useTabViewState', () => {
       useTabViewState({ key: 'mode', defaultValue: 'list' as const, parse: parseMode })
     )
 
-    act(() => {
-      result.current[1]('board')
-    })
+    act(() => result.current[1]('board'))
 
     expect(result.current[0]).toBe('board')
     expect(mocks.dispatch).not.toHaveBeenCalled()

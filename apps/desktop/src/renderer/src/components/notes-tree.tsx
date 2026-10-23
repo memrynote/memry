@@ -286,9 +286,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     }
 
     container.addEventListener('keydown', handleKeyDown)
-    return () => {
-      container.removeEventListener('keydown', handleKeyDown)
-    }
+    return () => container.removeEventListener('keydown', handleKeyDown)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete, actions])
 
@@ -310,9 +308,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' })
           element.classList.add('bg-accent')
-          setTimeout(() => {
-            element.classList.remove('bg-accent')
-          }, 2000)
+          setTimeout(() => element.classList.remove('bg-accent'), 2000)
         }
       }, 100)
       pendingRevealNoteIdRef.current = null
@@ -454,9 +450,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   onApplyTemplate={setApplyTemplateNote}
                   onSaveAsTemplate={setSaveAsTemplateNote}
                   onNewNoteFromNote={(n) => void createNoteFromNote(n.id)}
-                  onSetIcon={(n) => {
-                    actions.setIconPickerNoteId(n.id)
-                  }}
+                  onSetIcon={(n) => actions.setIconPickerNoteId(n.id)}
                   onRemoveIcon={(n) =>
                     void data.mutations.updateNote.mutateAsync({ id: n.id, emoji: null })
                   }
@@ -487,9 +481,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               }
               ariaLabel={t('tree.actions.setIcon')}
               pickerOpen={actions.iconPickerNoteId === note.id}
-              onPickerOpenChange={(open) => {
-                actions.setIconPickerNoteId(open ? note.id : null)
-              }}
+              onPickerOpenChange={(open) => actions.setIconPickerNoteId(open ? note.id : null)}
             >
               {getFileIcon(note)}
             </IconPickerButton>
@@ -500,9 +492,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               type="text"
               aria-label={t('tree.actions.rename')}
               value={actions.renameValue}
-              onChange={(e) => {
-                actions.handleRenameInputChange(note.id, e.target.value)
-              }}
+              onChange={(e) => actions.handleRenameInputChange(note.id, e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -513,12 +503,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                 }
                 stopInlineRenameKeyPropagation(e)
               }}
-              onBlur={(e) => {
+              onBlur={(e) =>
                 handleInlineRenameBlur(e, () => void actions.handleRenameSubmit(note.id, note.path))
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              }
+              onClick={(e) => e.stopPropagation()}
               disabled={actions.isRenaming}
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
@@ -578,28 +566,16 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   {t('tree.actions.newFolder')}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem
-                  onClick={() => {
-                    setSubtreeExpanded(folder.path, true)
-                  }}
-                >
+                <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, true)}>
                   <ChevronsUp className="me-2 h-4 w-4" />
                   {t('tree.actions.expandSubfolders')}
                 </ContextMenuItem>
-                <ContextMenuItem
-                  onClick={() => {
-                    setSubtreeExpanded(folder.path, false)
-                  }}
-                >
+                <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, false)}>
                   <ChevronsDown className="me-2 h-4 w-4" />
                   {t('tree.actions.collapseSubfolders')}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem
-                  onClick={() => {
-                    actions.handleSetFolderTemplate(folder.path)
-                  }}
-                >
+                <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
                   <LayoutTemplate className="me-2 h-4 w-4" />
                   {t('tree.actions.setDefaultTemplate')}
                   {data.folderTemplateNames.get(folder.path) && (
@@ -615,11 +591,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   {t('tree.actions.clearDefaultTemplate')}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem
-                  onClick={() => {
-                    actions.setIconPickerFolderPath(folder.path)
-                  }}
-                >
+                <ContextMenuItem onClick={() => actions.setIconPickerFolderPath(folder.path)}>
                   <Smile className="me-2 h-4 w-4" />
                   {t('tree.actions.setIcon')}
                 </ContextMenuItem>
@@ -640,19 +612,13 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   {fileActions.revealInFolder}
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem
-                  onClick={() => {
-                    actions.handleRenameFolderClick(folder.path)
-                  }}
-                >
+                <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
                   <Pencil className="me-2 h-4 w-4" />
                   {t('tree.actions.rename')}
                 </ContextMenuItem>
                 <ContextMenuItem
                   variant="destructive"
-                  onClick={() => {
-                    actions.handleDeleteFolderClick(folder.path)
-                  }}
+                  onClick={() => actions.handleDeleteFolderClick(folder.path)}
                 >
                   <Trash2 className="me-2 h-4 w-4" />
                   {tCommon('button.delete')}
@@ -667,9 +633,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             hasChildren={hasChildren}
             onIconChange={(icon) => void data.setFolderIcon(folder.path, icon)}
             pickerOpen={actions.iconPickerFolderPath === folder.path}
-            onPickerOpenChange={(open) => {
+            onPickerOpenChange={(open) =>
               actions.setIconPickerFolderPath(open ? folder.path : null)
-            }}
+            }
           />
           {isBeingRenamed ? (
             <input
@@ -677,9 +643,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               type="text"
               aria-label={t('tree.actions.rename')}
               value={actions.folderRenameValue}
-              onChange={(e) => {
-                actions.setFolderRenameValue(e.target.value)
-              }}
+              onChange={(e) => actions.setFolderRenameValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -690,12 +654,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                 }
                 stopInlineRenameKeyPropagation(e)
               }}
-              onBlur={(e) => {
+              onBlur={(e) =>
                 handleInlineRenameBlur(e, () => void actions.handleFolderRenameSubmit(folder.path))
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              }
+              onClick={(e) => e.stopPropagation()}
               disabled={actions.isFolderRenaming}
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
             />
@@ -821,9 +783,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             pendingRevealNoteId={pendingRevealNoteId}
             noteMap={data.noteMap}
             onReveal={handleRevealComplete}
-            onClear={() => {
-              setPendingRevealNoteId(null)
-            }}
+            onClear={() => setPendingRevealNoteId(null)}
           />
           <FolderRevealHandler />
           <TreeView>
@@ -879,17 +839,13 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       <ApplyTemplateToNoteDialog
         noteId={applyTemplateNote?.id ?? null}
         isOpen={applyTemplateNote !== null}
-        onClose={() => {
-          setApplyTemplateNote(null)
-        }}
+        onClose={() => setApplyTemplateNote(null)}
       />
 
       <SaveNoteAsTemplateDialog
         noteId={saveAsTemplateNote?.id ?? null}
         isOpen={saveAsTemplateNote !== null}
-        onClose={() => {
-          setSaveAsTemplateNote(null)
-        }}
+        onClose={() => setSaveAsTemplateNote(null)}
       />
     </div>
   )

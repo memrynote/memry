@@ -180,9 +180,7 @@ export function SlashMenu({
       label: t('editor.slashMenu.fallback.linkTo'),
       target: trimmedQuery,
       icon: Link,
-      run: () => {
-        fallbackActions.linkToNote(trimmedQuery)
-      }
+      run: () => fallbackActions.linkToNote(trimmedQuery)
     })
     if (fallbackActions.askAI) {
       fallbacks.push({
@@ -272,13 +270,9 @@ export function SlashMenu({
   })
 
   useEffect(() => {
-    const listener = (event: KeyboardEvent): void => {
-      handleKeyDown(event)
-    }
+    const listener = (event: KeyboardEvent): void => handleKeyDown(event)
     document.addEventListener('keydown', listener, true)
-    return () => {
-      document.removeEventListener('keydown', listener, true)
-    }
+    return () => document.removeEventListener('keydown', listener, true)
   }, [])
 
   if (items.length === 0 && !showEmpty) return null
@@ -315,9 +309,7 @@ export function SlashMenu({
         aria-label={item.title}
         tabIndex={-1}
         className={cn(ROW_CLASS, isSelected && 'bg-surface-active')}
-        onMouseDown={(event) => {
-          event.preventDefault()
-        }}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => onItemClick?.(item)}
       >
         <span
@@ -371,12 +363,8 @@ export function SlashMenu({
                   aria-selected={isSelected}
                   tabIndex={-1}
                   className={cn(ROW_CLASS, isSelected && 'bg-surface-active')}
-                  onMouseDown={(event) => {
-                    event.preventDefault()
-                  }}
-                  onClick={() => {
-                    runFallback(fallback)
-                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => runFallback(fallback)}
                 >
                   <span className="flex size-5 shrink-0 items-center justify-center text-text-secondary">
                     <Icon

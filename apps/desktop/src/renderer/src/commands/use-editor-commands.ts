@@ -127,9 +127,7 @@ export function useEditorCommands(): void {
       id,
       {
         enabled: hasEditor,
-        run: () => {
-          runEditorAction(action)
-        }
+        run: () => runEditorAction(action)
       }
     ])
   )
@@ -139,14 +137,10 @@ export function useEditorCommands(): void {
   useAppCommands('editor', {
     ...(impls as Omit<OwnerImpls<'editor'>, HistoryCommandId>),
     'editor.undo': {
-      run: () => {
-        runHistoryCommand('undo')
-      }
+      run: () => runHistoryCommand('undo')
     },
     'editor.redo': {
-      run: () => {
-        runHistoryCommand('redo')
-      }
+      run: () => runHistoryCommand('redo')
     }
   })
 }

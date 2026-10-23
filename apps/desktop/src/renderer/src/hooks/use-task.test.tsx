@@ -35,9 +35,7 @@ describe('useTask', () => {
 
     const { result } = renderHook(() => useTask('t1'), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.data?.title).toBe('Hello')
-    })
+    await waitFor(() => expect(result.current.data?.title).toBe('Hello'))
     expect(window.api.tasks.get).toHaveBeenCalledWith('t1')
   })
 

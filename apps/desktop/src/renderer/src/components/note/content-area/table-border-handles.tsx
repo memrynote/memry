@@ -120,9 +120,7 @@ const RESIZE_SHIELD_WIDTH = 7
  * from pointer coordinates rather than from a handle element, so hiding
  * `.column-resize-handle` in CSS would change only the cursor, not the drag.
  */
-const stopEvent = (event: { stopPropagation: () => void }): void => {
-  event.stopPropagation()
-}
+const stopEvent = (event: { stopPropagation: () => void }): void => event.stopPropagation()
 
 /** Marks the overlay so pointer bookkeeping can tell it apart from the table. */
 const OVERLAY_ATTR = 'data-memry-table-handles'
@@ -605,9 +603,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     }
 
     containerEl.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      containerEl.removeEventListener('keydown', handleKeyDown, true)
-    }
+    return () => containerEl.removeEventListener('keydown', handleKeyDown, true)
   }, [containerEl, openKeyboardMenu, isMenuPinned])
 
   useEffect(() => {
@@ -660,9 +656,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     if (!table) return
     const observer = new ResizeObserver(remeasure)
     observer.observe(table)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [table, remeasure])
 
   const focusTable = focusRing?.wrapper.querySelector('table') ?? null
@@ -670,9 +664,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     if (!focusTable) return
     const observer = new ResizeObserver(resolveFocus)
     observer.observe(focusTable)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [focusTable, resolveFocus])
 
   let handles: ReactNode = null
@@ -707,11 +699,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
                 } as CSSProperties
               }
             >
-              <Root
-                onOpenChange={(open) => {
-                  handleOpenChange(bar.key, open)
-                }}
-              >
+              <Root onOpenChange={(open) => handleOpenChange(bar.key, open)}>
                 <Trigger>
                   <button
                     type="button"
@@ -726,9 +714,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
                     }}
                     // Keep the caret where the user left it; the click is the
                     // handle's.
-                    onMouseDown={(event) => {
-                      event.preventDefault()
-                    }}
+                    onMouseDown={(event) => event.preventDefault()}
                   >
                     {/*
                       The button is the hit target and the pill is the paint:

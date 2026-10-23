@@ -108,9 +108,7 @@ function jobOf(db: IndexDb, id: string): ReturnType<typeof getFileTextJob> {
 }
 
 async function settled(db: IndexDb, id: string, status: 'done' | 'failed'): Promise<void> {
-  await vi.waitFor(() => {
-    expect(jobOf(db, id)?.status).toBe(status)
-  })
+  await vi.waitFor(() => expect(jobOf(db, id)?.status).toBe(status))
 }
 
 describe('FileTextRunner', () => {
@@ -255,12 +253,8 @@ describe('FileTextRunner', () => {
     harness.pages = [{ layer: 'chapter one' }, { hangs: true }, { layer: 'chapter three' }]
 
     const first = start()
-    await vi.waitFor(() => {
-      expect(pagesOf(harness.db, 'pdf-1')).toHaveLength(1)
-    })
-    await vi.waitFor(() => {
-      expect(harness.inFlight.size).toBe(1)
-    })
+    await vi.waitFor(() => expect(pagesOf(harness.db, 'pdf-1')).toHaveLength(1))
+    await vi.waitFor(() => expect(harness.inFlight.size).toBe(1))
     await first.stop()
 
     expect(pagesOf(harness.db, 'pdf-1').map((page) => page.part)).toEqual([1])
@@ -296,9 +290,7 @@ describe('FileTextRunner', () => {
     fs.writeFileSync(path.join(vaultDir, 'moved/scan.png'), 'different, longer bytes')
     harness.imageText = 'second draft'
     runner.noteChanged('img-1')
-    await vi.waitFor(() => {
-      expect(getExtractedText(harness.db, 'img-1')).toBe('second draft')
-    })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'img-1')).toBe('second draft'))
   })
 
   it('stores a page that fails twice as unreadable and goes on to the next', async () => {
@@ -383,14 +375,9 @@ describe('FileTextRunner', () => {
         return 'new words'
       }
     })
-    await vi.waitFor(
-      () => {
-        expect(jobOf(harness.db, 'b-img')?.status).toBe('done')
-      },
-      {
-        timeout: 5_000
-      }
-    )
+    await vi.waitFor(() => expect(jobOf(harness.db, 'b-img')?.status).toBe('done'), {
+      timeout: 5_000
+    })
     seedFile(harness, 'c-img', 'third.png', 'image')
     runner.noteChanged('b-img')
     runner.noteChanged('c-img')
@@ -472,9 +459,9 @@ describe('FileTextRunner', () => {
     await sameVersion.stop()
 
     start({ appVersion: '1.0.1' })
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(pagesOf(harness.db, 'pdf-1').map((page) => page.text)).toEqual(['one', 'two', 'three'])
-    })
+    )
     expect(jobOf(harness.db, 'pdf-1')?.status).toBe('done')
   })
 
@@ -515,19 +502,15 @@ describe('FileTextRunner', () => {
     harness.imageText = 'Größe'
     languages = ['eng', 'deu']
     runner.languagesChanged()
-    await vi.waitFor(() => {
-      expect(ocrCalls).toBeGreaterThan(callsBefore)
-    })
+    await vi.waitFor(() => expect(ocrCalls).toBeGreaterThan(callsBefore))
     expect(getExtractedText(harness.db, 'pdf-1')).toBe('cover\n\nStrabenbahn')
     expect(getExtractedText(harness.db, 'img-1')).toBe('GroBe')
     openGate()
 
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(getExtractedText(harness.db, 'pdf-1')).toBe('cover\n\nStraßenbahn')
-    })
-    await vi.waitFor(() => {
-      expect(getExtractedText(harness.db, 'img-1')).toBe('Größe')
-    })
+    )
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'img-1')).toBe('Größe'))
     await settled(harness.db, 'pdf-1', 'done')
     expect(opened).not.toContain('typed.pdf')
     expect(jobOf(harness.db, 'pdf-1')?.ocrLanguages).toBe('eng+deu')
@@ -572,18 +555,14 @@ describe('FileTextRunner', () => {
     await settled(harness.db, 'img-2', 'done')
     failing.languagesChanged()
     failing.noteChanged('img-2')
-    await vi.waitFor(() => {
-      expect(harness.changed.length).toBeGreaterThan(0)
-    })
+    await vi.waitFor(() => expect(harness.changed.length).toBeGreaterThan(0))
     await new Promise((resolve) => setTimeout(resolve, 200))
     expect(pageReads).toBe(readsAfterFailure)
     await failing.stop()
 
     harness.pages = [{ scanned: 'Größe' }, { scanned: 'Straße' }]
     start({ appVersion: '1.0.1', ocrLanguages: () => ['eng', 'deu'] })
-    await vi.waitFor(() => {
-      expect(getExtractedText(harness.db, 'pdf-1')).toBe('Größe\n\nStraße')
-    })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'pdf-1')).toBe('Größe\n\nStraße'))
     expect(jobOf(harness.db, 'pdf-1')?.ocrLanguages).toBe('eng+deu')
   })
 
@@ -605,9 +584,7 @@ describe('FileTextRunner', () => {
 
     harness.imageText = 'Größe'
     start({ ocrLanguages: () => ['eng', 'deu'] })
-    await vi.waitFor(() => {
-      expect(getExtractedText(harness.db, 'img-1')).toBe('Größe')
-    })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'img-1')).toBe('Größe'))
   })
 
   it('re-reads every unreadable page of a retried PDF, including one before a good page', async () => {
@@ -666,9 +643,9 @@ describe('FileTextRunner', () => {
     harness.pages = [{ scanned: 'Scanned receipt' }]
 
     const runner = start()
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(getExtractedText(harness.db, 'md-1')).toBe('Scanned receipt\n\nPasted screenshot text')
-    })
+    )
     expect(harness.changed).toContain('md-1')
     expect(
       harness.db.all(sql`SELECT source FROM file_text_jobs WHERE note_id = 'md-1' ORDER BY source`)
@@ -677,9 +654,7 @@ describe('FileTextRunner', () => {
     // The image block is gone from the note; its file stays on disk.
     fs.writeFileSync(notePath, '<!-- file:{"url":"../attachments/md-1/scan.pdf"} -->\n')
     runner.noteChanged('md-1')
-    await vi.waitFor(() => {
-      expect(getExtractedText(harness.db, 'md-1')).toBe('Scanned receipt')
-    })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe('Scanned receipt'))
     expect(fs.existsSync(path.join(attachments, 'shot.png'))).toBe(true)
   })
 
@@ -705,11 +680,11 @@ describe('FileTextRunner', () => {
     const recognize = vi.fn(async () => 'never called')
 
     const runner = start({ recognize })
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(getExtractedText(harness.db, 'md-1')).toBe(
         'Tidal chart\n\nSpring tides peak\n\nSee [[Harbor Log]]'
       )
-    })
+    )
     expect(
       harness.db.all(sql`SELECT source, part, method FROM extracted_text WHERE note_id = 'md-1'`)
     ).toEqual([{ source: 'chart.html', part: 1, method: 'html' }])
@@ -721,9 +696,7 @@ describe('FileTextRunner', () => {
     fs.writeFileSync(path.join(attachments, 'chart.html'), '<p>Neap tides</p>')
     fs.utimesSync(path.join(attachments, 'chart.html'), new Date(), new Date(Date.now() + 5_000))
     runner.noteChanged('md-1')
-    await vi.waitFor(() => {
-      expect(getExtractedText(harness.db, 'md-1')).toBe('Neap tides')
-    })
+    await vi.waitFor(() => expect(getExtractedText(harness.db, 'md-1')).toBe('Neap tides'))
   })
 
   it('never parses an HTML block file over the size cap, now or on a later retry', async () => {
@@ -745,9 +718,7 @@ describe('FileTextRunner', () => {
     const htmlJob = () => getFileTextJob(harness.db, { noteId: 'md-1', source: 'huge.html' })
 
     const first = start()
-    await vi.waitFor(() => {
-      expect(htmlJob()?.status).toBe('failed')
-    })
+    await vi.waitFor(() => expect(htmlJob()?.status).toBe('failed'))
     expect(htmlJob()?.error).toMatch(/too large/i)
     expect(
       harness.db.all(
@@ -762,11 +733,11 @@ describe('FileTextRunner', () => {
     fs.appendFileSync(notePath, '![](attachments/md-1/shot.png)\n')
     harness.imageText = 'Pasted screenshot text'
     start({ appVersion: '2.0.0' })
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(getFileTextJob(harness.db, { noteId: 'md-1', source: 'shot.png' })?.status).toBe(
         'done'
       )
-    })
+    )
     expect(htmlJob()?.status).toBe('failed')
     expect(htmlJob()?.updatedAt).toBe(failedAt)
   })
@@ -782,9 +753,9 @@ describe('FileTextRunner', () => {
     `)
     harness.imageText = 'Pasted screenshot text'
     const runner = start()
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(getExtractedText(harness.db, 'md-1')).toBe('Pasted screenshot text')
-    })
+    )
 
     fs.writeFileSync(notePath, 'The screenshot is gone.\n')
     seedFile(harness, 'img-1', 'scan.png', 'image')
@@ -792,14 +763,9 @@ describe('FileTextRunner', () => {
     for (let i = 0; i < 40_000; i++) runner.noteChanged(`note-${i}`)
     runner.noteChanged('md-1')
     runner.noteChanged('img-1')
-    await vi.waitFor(
-      () => {
-        expect(jobOf(harness.db, 'img-1')?.status).toBe('done')
-      },
-      {
-        timeout: 5_000
-      }
-    )
+    await vi.waitFor(() => expect(jobOf(harness.db, 'img-1')?.status).toBe('done'), {
+      timeout: 5_000
+    })
 
     expect(getExtractedText(harness.db, 'img-1')).toBe('Filed scan text')
     expect(getExtractedText(harness.db, 'md-1')).toBe('')
@@ -825,9 +791,7 @@ describe('FileTextRunner', () => {
     seedFile(harness, 'img-2', 'second.png', 'image')
     failNextRead = true
     runner.noteChanged('img-2')
-    await vi.waitFor(() => {
-      expect(failedReads).toBe(1)
-    })
+    await vi.waitFor(() => expect(failedReads).toBe(1))
     seedFile(harness, 'img-3', 'third.png', 'image')
     runner.noteChanged('img-3')
     await settled(harness.db, 'img-3', 'done')

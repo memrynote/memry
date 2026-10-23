@@ -171,9 +171,7 @@ export function TabErrorBoundary(props: TabErrorBoundaryProps): ReactNode {
   return (
     <TabErrorBoundaryImpl
       {...props}
-      onReport={(error) => {
-        open(toTrigger(error))
-      }}
+      onReport={(error) => open(toTrigger(error))}
       onAutoReport={autoSendReport}
       labels={{
         somethingWentWrong: t('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong'),

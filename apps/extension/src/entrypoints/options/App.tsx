@@ -40,12 +40,8 @@ export default function App() {
     () =>
       browser.runtime
         .sendMessage({ type: 'GET_STATUS' })
-        .then((r: StatusResponse) => {
-          setConnection(r.connection)
-        })
-        .catch(() => {
-          setConnection('app-closed')
-        }),
+        .then((r: StatusResponse) => setConnection(r.connection))
+        .catch(() => setConnection('app-closed')),
     []
   )
 
@@ -149,9 +145,7 @@ export default function App() {
             <input
               aria-label="Port override"
               value={port}
-              onChange={(e) => {
-                setPort(e.target.value)
-              }}
+              onChange={(e) => setPort(e.target.value)}
               inputMode="numeric"
               placeholder="auto"
               className="w-28 rounded-md border border-border bg-background px-3 py-1.5 text-[13px] text-foreground outline-none transition-shadow placeholder:text-text-tertiary focus-visible:ring-2 focus-visible:ring-foreground/20"

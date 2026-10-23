@@ -106,9 +106,7 @@ export function SidebarTabs({
             active={resolvedActive === 'day'}
             dataTour="rsb-day"
             label={dayTabLabel}
-            onClick={() => {
-              setActive('day')
-            }}
+            onClick={() => setActive('day')}
           >
             <CalendarDays className="size-4" aria-hidden="true" />
           </SidebarTabButton>
@@ -157,9 +155,7 @@ export function SidebarTabs({
                         type="button"
                         aria-label={t('agentChat.sidebar.close')}
                         title={t('agentChat.sidebar.close')}
-                        onClick={() => {
-                          setActive('day')
-                        }}
+                        onClick={() => setActive('day')}
                         className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <X className="size-3.5" aria-hidden="true" />

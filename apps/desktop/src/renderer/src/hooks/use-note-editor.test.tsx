@@ -61,9 +61,7 @@ describe('useNoteEditor', () => {
 
     const { result, unmount } = renderHook(() => useNoteEditor('note-1'))
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.note?.title).toBe('Original')
     expect(api.notes.get).toHaveBeenCalledWith('note-1')
@@ -88,9 +86,7 @@ describe('useNoteEditor', () => {
   it('updates title, emoji, tags, debounced content, manual saves, and saved status reset', async () => {
     const { result } = renderHook(() => useNoteEditor('note-1', { debounceMs: 50 }))
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {
       await result.current.updateTitle('Renamed')
@@ -138,9 +134,7 @@ describe('useNoteEditor', () => {
     api.notes.get = vi.fn().mockRejectedValueOnce(new Error('load failed'))
 
     const failedLoad = renderHook(() => useNoteEditor('note-1', { showToasts: false }))
-    await waitFor(() => {
-      expect(failedLoad.result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(failedLoad.result.current.isLoading).toBe(false))
 
     expect(failedLoad.result.current.error).toBe('load failed')
 
@@ -150,9 +144,7 @@ describe('useNoteEditor', () => {
     expect(failedLoad.result.current.error).toBeNull()
 
     const nullHook = renderHook(() => useNoteEditor(null))
-    await waitFor(() => {
-      expect(nullHook.result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(nullHook.result.current.isLoading).toBe(false))
 
     await act(async () => {
       await nullHook.result.current.updateTitle('ignored')
@@ -167,9 +159,7 @@ describe('useNoteEditor', () => {
     const noAutoSave = renderHook(() =>
       useNoteEditor('note-1', { autoSave: false, showToasts: false })
     )
-    await waitFor(() => {
-      expect(noAutoSave.result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(noAutoSave.result.current.isLoading).toBe(false))
 
     act(() => {
       noAutoSave.result.current.updateContent('Pending')

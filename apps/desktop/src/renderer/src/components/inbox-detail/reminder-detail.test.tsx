@@ -107,9 +107,7 @@ describe('ReminderDetail task navigation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'reminder.archive' }))
 
-    await waitFor(() => {
-      expect(mocks.archive).toHaveBeenCalledWith('inbox_rem_1')
-    })
+    await waitFor(() => expect(mocks.archive).toHaveBeenCalledWith('inbox_rem_1'))
     expect(mocks.markViewed).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       expect.stringContaining('Archived'),

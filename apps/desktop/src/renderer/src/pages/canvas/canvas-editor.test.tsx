@@ -302,9 +302,7 @@ describe('CanvasEditor persistence safety', () => {
   it('persists a changed scene after init completes', async () => {
     render(<CanvasEditor canvasId="c1" initialScene="" />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -325,9 +323,7 @@ describe('CanvasEditor persistence safety', () => {
     // every canvas tab visit.
     render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE_WITH_SIDECAR} />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -338,9 +334,7 @@ describe('CanvasEditor persistence safety', () => {
   it('Cmd+S flushes to the vault and never reaches Excalidraw', async () => {
     const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
 
     const documentKeydown = vi.fn()
     document.addEventListener('keydown', documentKeydown)
@@ -368,9 +362,7 @@ describe('CanvasEditor persistence safety', () => {
     finishInit()
 
     // A real edit: serialized once and written.
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -385,15 +377,11 @@ describe('CanvasEditor persistence safety', () => {
     // Pan/zoom fires onChange but leaves every element untouched. Before the
     // signature gate each of these paid a full serializeAsJSON (multi-MB with
     // inline images) purely to discover the string was identical.
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -405,9 +393,7 @@ describe('CanvasEditor persistence safety', () => {
   it('persists an edit made right after the previous save (flush is never gated)', async () => {
     render(<CanvasEditor canvasId="c1" initialScene="" />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -416,9 +402,7 @@ describe('CanvasEditor persistence safety', () => {
     // New stroke, then an immediate flush (Cmd+S / tab close / quit) inside the
     // debounce window: the fingerprint moved, so it must reach the vault.
     mocks.api.elements = [...mocks.api.elements, { id: 'stroke-2', type: 'freedraw' }]
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     const wrapper = document.querySelector('[data-canvas-editor="c1"]')!
     fireEvent.keyDown(wrapper.querySelector('[data-testid="excalidraw"]')!, {
       key: 's',

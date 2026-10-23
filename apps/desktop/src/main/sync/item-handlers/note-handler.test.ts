@@ -63,9 +63,7 @@ vi.mock('@main/database/queries/notes', () => ({
 }))
 
 vi.mock('@memry/storage-data', () => ({
-  getNoteMetadataById: (...args: unknown[]) => {
-    mockGetNoteMetadataById(...args)
-  },
+  getNoteMetadataById: (...args: unknown[]) => mockGetNoteMetadataById(...args),
   updateNoteMetadata: (...args: unknown[]) => mockUpdateNoteMetadata(...args)
 }))
 

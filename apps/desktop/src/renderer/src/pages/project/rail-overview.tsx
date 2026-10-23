@@ -119,9 +119,7 @@ export const RailOverview = ({
       ) : (
         <button
           type="button"
-          onClick={() => {
-            setIsPicking(true)
-          }}
+          onClick={() => setIsPicking(true)}
           className="mt-2 flex items-center gap-1.5 rounded-sm px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <Plus className="size-3.5" aria-hidden="true" />

@@ -429,12 +429,7 @@ export const VirtualizedAllTasksView = ({
       <div className={cn('flex-1 overflow-auto pt-4', className)}>
         <TaskEmptyState
           variant="all"
-          onAddTask={
-            onFocusQuickAdd ??
-            (() => {
-              onQuickAdd('New Task')
-            })
-          }
+          onAddTask={onFocusQuickAdd ?? (() => onQuickAdd('New Task'))}
         />
       </div>
     )

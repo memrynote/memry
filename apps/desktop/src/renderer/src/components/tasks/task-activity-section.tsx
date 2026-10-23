@@ -42,9 +42,7 @@ export function TaskActivitySection({
           total > entries.length && (
             <button
               type="button"
-              onClick={() => {
-                setIsSheetOpen(true)
-              }}
+              onClick={() => setIsSheetOpen(true)}
               className="text-[12px] leading-4 text-text-tertiary hover:text-text-secondary transition-colors"
             >
               {t('drawer.activityShowAll', { count: total })}

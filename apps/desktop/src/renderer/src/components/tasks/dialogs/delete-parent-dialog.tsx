@@ -80,19 +80,12 @@ export const DeleteParentDialog = ({
             <Button
               variant="outline"
               className="text-destructive hover:text-destructive"
-              onClick={() => {
-                confirm(false)
-              }}
+              onClick={() => confirm(false)}
               ref={deleteAllRef}
             >
               {t('subtaskTree.deleteParent.deleteAll')}
             </Button>
-            <Button
-              onClick={() => {
-                confirm(true)
-              }}
-              ref={keepRef}
-            >
+            <Button onClick={() => confirm(true)} ref={keepRef}>
               {t('subtaskTree.deleteParent.keepSubtasks')}
             </Button>
           </div>

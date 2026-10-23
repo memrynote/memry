@@ -191,45 +191,31 @@ describe('useSubtaskManagement', () => {
     const onReorderTasks = vi.fn()
     const { result } = setup({ onAddTask, onUpdateTask, onDeleteTask, onReorderTasks })
 
-    act(() => {
-      result.current.handleAddSubtask('parent', 'New child')
-    })
+    act(() => result.current.handleAddSubtask('parent', 'New child'))
     expect(mocks.createSubtask).toHaveBeenCalledWith(
       { parentId: 'parent', title: 'New child' },
       tasks
     )
     expect(onAddTask).toHaveBeenCalledWith({ id: 'new-subtask' })
 
-    act(() => {
-      result.current.handleBulkAddSubtasks('parent', ['A', 'B'])
-    })
+    act(() => result.current.handleBulkAddSubtasks('parent', ['A', 'B']))
     expect(onAddTask).toHaveBeenCalledWith({ id: 'new-a' })
     expect(onAddTask).toHaveBeenCalledWith({ id: 'new-b' })
 
-    act(() => {
-      result.current.handleBulkAddSubtasks('parent', [])
-    })
+    act(() => result.current.handleBulkAddSubtasks('parent', []))
     expect(mocks.createMultipleSubtasks).toHaveBeenCalledTimes(1)
 
-    act(() => {
-      result.current.handleReorderSubtasks('parent', ['new-a', 'child'])
-    })
+    act(() => result.current.handleReorderSubtasks('parent', ['new-a', 'child']))
     expect(onReorderTasks).toHaveBeenCalledWith(['child', 'new-a'], [0, 1])
 
-    act(() => {
-      result.current.handlePromoteToTask('child')
-    })
+    act(() => result.current.handlePromoteToTask('child'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { parentId: null })
 
-    act(() => {
-      result.current.handleDeleteSubtask('child')
-    })
+    act(() => result.current.handleDeleteSubtask('child'))
     expect(onDeleteTask).toHaveBeenCalledWith('child')
 
     mocks.createSubtask.mockReturnValueOnce({ success: false, error: new Error('nope') })
-    act(() => {
-      result.current.handleAddSubtask('parent', 'Bad child')
-    })
+    act(() => result.current.handleAddSubtask('parent', 'Bad child'))
     expect(toast.error).toHaveBeenCalledWith('nope')
   })
 
@@ -237,55 +223,37 @@ describe('useSubtaskManagement', () => {
     const onTasksChange = vi.fn()
     const { result } = setup({ onTasksChange })
 
-    act(() => {
-      result.current.handleAddSubtask('parent', 'New child')
-    })
+    act(() => result.current.handleAddSubtask('parent', 'New child'))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
 
-    act(() => {
-      result.current.handleBulkAddSubtasks('parent', ['Solo'])
-    })
+    act(() => result.current.handleBulkAddSubtasks('parent', ['Solo']))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
     expect(toast.success).toHaveBeenCalledWith('toasts.subtasks.added')
 
-    act(() => {
-      result.current.handleReorderSubtasks('parent', ['child'])
-    })
+    act(() => result.current.handleReorderSubtasks('parent', ['child']))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
 
-    act(() => {
-      result.current.handlePromoteToTask('missing-child')
-    })
+    act(() => result.current.handlePromoteToTask('missing-child'))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
     expect(toast.success).toHaveBeenCalledWith('toasts.subtasks.promoted')
 
-    act(() => {
-      result.current.handleDeleteSubtask('child')
-    })
+    act(() => result.current.handleDeleteSubtask('child'))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
 
     mocks.createMultipleSubtasks.mockReturnValueOnce({ success: false, error: new Error('bulk') })
-    act(() => {
-      result.current.handleBulkAddSubtasks('parent', ['Bad'])
-    })
+    act(() => result.current.handleBulkAddSubtasks('parent', ['Bad']))
     expect(toast.error).toHaveBeenCalledWith('bulk')
 
     mocks.reorderSubtasks.mockReturnValueOnce({ success: false, error: new Error('order') })
-    act(() => {
-      result.current.handleReorderSubtasks('parent', ['Bad'])
-    })
+    act(() => result.current.handleReorderSubtasks('parent', ['Bad']))
     expect(toast.error).toHaveBeenCalledWith('order')
 
     mocks.promoteToTask.mockReturnValueOnce({ success: false, error: new Error('promote') })
-    act(() => {
-      result.current.handlePromoteToTask('child')
-    })
+    act(() => result.current.handlePromoteToTask('child'))
     expect(toast.error).toHaveBeenCalledWith('promote')
 
     mocks.deleteSubtask.mockReturnValueOnce({ success: false, error: new Error('delete') })
-    act(() => {
-      result.current.handleDeleteSubtask('child')
-    })
+    act(() => result.current.handleDeleteSubtask('child'))
     expect(toast.error).toHaveBeenCalledWith('delete')
   })
 
@@ -293,69 +261,45 @@ describe('useSubtaskManagement', () => {
     const onTasksChange = vi.fn()
     const { result } = setup({ onTasksChange })
 
-    act(() => {
-      result.current.openDeleteParentDialog(parent)
-    })
+    act(() => result.current.openDeleteParentDialog(parent))
     expect(result.current.deleteParentDialogOpen).toBe(true)
     expect(result.current.pendingDeleteSubtaskCount).toBe(1)
-    act(() => {
-      result.current.confirmDeleteParent(true)
-    })
+    act(() => result.current.confirmDeleteParent(true))
     expect(mocks.deleteParentWithSubtasks).toHaveBeenCalledWith('parent', true, tasks)
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
     expect(result.current.deleteParentDialogOpen).toBe(false)
 
-    act(() => {
-      result.current.openCompleteParentDialog(parent)
-    })
+    act(() => result.current.openCompleteParentDialog(parent))
     expect(result.current.pendingCompleteIncompleteSubtasks).toEqual([child])
-    act(() => {
-      result.current.confirmCompleteParent(false)
-    })
+    act(() => result.current.confirmCompleteParent(false))
     expect(mocks.completeParentWithSubtasks).toHaveBeenCalledWith('parent', false, tasks)
 
-    act(() => {
-      result.current.openParentPickerDialog(leaf)
-    })
+    act(() => result.current.openParentPickerDialog(leaf))
     expect(result.current.parentPickerDialogOpen).toBe(true)
-    act(() => {
-      result.current.confirmDemoteToSubtask('parent')
-    })
+    act(() => result.current.confirmDemoteToSubtask('parent'))
     expect(mocks.demoteToSubtask).toHaveBeenCalledWith('leaf', 'parent', tasks)
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
 
-    act(() => {
-      result.current.handleDeleteTask('child')
-    })
+    act(() => result.current.handleDeleteTask('child'))
     expect(mocks.deleteSubtask).toHaveBeenCalledWith('child', tasks)
 
-    act(() => {
-      result.current.handleDeleteTask('parent')
-    })
+    act(() => result.current.handleDeleteTask('parent'))
     expect(result.current.deleteParentDialogOpen).toBe(true)
 
     mocks.hasSubtasks.mockReturnValueOnce(false)
-    act(() => {
-      result.current.handleDeleteTask('leaf')
-    })
+    act(() => result.current.handleDeleteTask('leaf'))
     expect(onTasksChange).toHaveBeenCalledWith(tasks.filter((task) => task.id !== 'leaf'))
 
-    act(() => {
-      result.current.handleCompleteTask('done')
-    })
+    act(() => result.current.handleCompleteTask('done'))
     expect(onTasksChange).toHaveBeenCalledWith(
       tasks.map((task) => (task.id === 'done' ? { ...task, completedAt: null } : task))
     )
 
-    act(() => {
-      result.current.handleCompleteTask('parent')
-    })
+    act(() => result.current.handleCompleteTask('parent'))
     expect(result.current.completeParentDialogOpen).toBe(true)
 
     mocks.hasIncompleteSubtasks.mockReturnValueOnce(false)
-    act(() => {
-      result.current.handleCompleteTask('leaf')
-    })
+    act(() => result.current.handleCompleteTask('leaf'))
     expect(toast.success).toHaveBeenCalledWith('phaseI.toasts.taskCompleted')
   })
 
@@ -364,27 +308,13 @@ describe('useSubtaskManagement', () => {
     const onUpdateTask = vi.fn()
     const { result } = setup({ onTasksChange, onUpdateTask })
 
-    act(() => {
-      result.current.confirmDeleteParent(false)
-    })
-    act(() => {
-      result.current.confirmCompleteParent(true)
-    })
-    act(() => {
-      result.current.confirmDemoteToSubtask('parent')
-    })
-    act(() => {
-      result.current.autoCompleteParent()
-    })
-    act(() => {
-      result.current.confirmBulkDueDate(null, false)
-    })
-    act(() => {
-      result.current.confirmBulkPriority('low', true)
-    })
-    act(() => {
-      result.current.confirmDeleteAllSubtasks()
-    })
+    act(() => result.current.confirmDeleteParent(false))
+    act(() => result.current.confirmCompleteParent(true))
+    act(() => result.current.confirmDemoteToSubtask('parent'))
+    act(() => result.current.autoCompleteParent())
+    act(() => result.current.confirmBulkDueDate(null, false))
+    act(() => result.current.confirmBulkPriority('low', true))
+    act(() => result.current.confirmDeleteAllSubtasks())
 
     expect(mocks.deleteParentWithSubtasks).not.toHaveBeenCalled()
     expect(mocks.completeParentWithSubtasks).not.toHaveBeenCalled()
@@ -395,12 +325,8 @@ describe('useSubtaskManagement', () => {
       success: false,
       error: new Error('delete parent')
     })
-    act(() => {
-      result.current.openDeleteParentDialog(parent)
-    })
-    act(() => {
-      result.current.confirmDeleteParent(false)
-    })
+    act(() => result.current.openDeleteParentDialog(parent))
+    act(() => result.current.confirmDeleteParent(false))
     expect(toast.error).toHaveBeenCalledWith('delete parent')
     expect(result.current.pendingDeleteParent).toBeNull()
 
@@ -408,22 +334,14 @@ describe('useSubtaskManagement', () => {
       success: false,
       error: new Error('complete parent')
     })
-    act(() => {
-      result.current.openCompleteParentDialog(parent)
-    })
-    act(() => {
-      result.current.confirmCompleteParent(true)
-    })
+    act(() => result.current.openCompleteParentDialog(parent))
+    act(() => result.current.confirmCompleteParent(true))
     expect(toast.error).toHaveBeenCalledWith('complete parent')
     expect(result.current.pendingCompleteParent).toBeNull()
 
     mocks.demoteToSubtask.mockReturnValueOnce({ success: false, error: new Error('demote') })
-    act(() => {
-      result.current.openParentPickerDialog(leaf)
-    })
-    act(() => {
-      result.current.confirmDemoteToSubtask('parent')
-    })
+    act(() => result.current.openParentPickerDialog(leaf))
+    act(() => result.current.confirmDemoteToSubtask('parent'))
     expect(toast.error).toHaveBeenCalledWith('demote')
     expect(result.current.pendingDemoteTask).toBeNull()
   })
@@ -433,61 +351,39 @@ describe('useSubtaskManagement', () => {
     const onTasksChange = vi.fn()
     const { result, rerender } = setup({ onTasksChange, onUpdateTask })
 
-    act(() => {
-      result.current.handleCompleteSubtask('child')
-    })
+    act(() => result.current.handleCompleteSubtask('child'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { completedAt: expect.any(Date) })
 
     act(() => vi.advanceTimersByTime(200))
     expect(onUpdateTask).toHaveBeenCalledWith('parent', { completedAt: expect.any(Date) })
 
-    act(() => {
-      result.current.handleCompleteAllSubtasks('parent')
-    })
+    act(() => result.current.handleCompleteAllSubtasks('parent'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { completedAt: expect.any(Date) })
     act(() => vi.advanceTimersByTime(1500))
     expect(onUpdateTask).toHaveBeenCalledWith('parent', { completedAt: expect.any(Date) })
 
-    act(() => {
-      result.current.handleMarkAllSubtasksIncomplete('parent')
-    })
+    act(() => result.current.handleMarkAllSubtasksIncomplete('parent'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { completedAt: null })
 
     mocks.autoCompleteParent = false
     rerender()
-    act(() => {
-      result.current.handleCompleteSubtask('child')
-    })
+    act(() => result.current.handleCompleteSubtask('child'))
     act(() => vi.advanceTimersByTime(1000))
     expect(result.current.allSubtasksCompleteDialogOpen).toBe(true)
 
-    act(() => {
-      result.current.keepParentOpen()
-    })
+    act(() => result.current.keepParentOpen())
     expect(result.current.allSubtasksCompleteDialogOpen).toBe(false)
 
-    act(() => {
-      result.current.openBulkDueDateDialog('parent')
-    })
-    act(() => {
-      result.current.confirmBulkDueDate(new Date('2026-01-01T00:00:00.000Z'), true)
-    })
+    act(() => result.current.openBulkDueDateDialog('parent'))
+    act(() => result.current.confirmBulkDueDate(new Date('2026-01-01T00:00:00.000Z'), true))
     expect(mocks.setDueDateForAllSubtasks).toHaveBeenCalled()
 
-    act(() => {
-      result.current.openBulkPriorityDialog('parent')
-    })
-    act(() => {
-      result.current.confirmBulkPriority('high', false)
-    })
+    act(() => result.current.openBulkPriorityDialog('parent'))
+    act(() => result.current.confirmBulkPriority('high', false))
     expect(mocks.setPriorityForAllSubtasks).toHaveBeenCalledWith('parent', 'high', false, tasks)
 
-    act(() => {
-      result.current.openDeleteAllSubtasksDialog('parent')
-    })
-    act(() => {
-      result.current.confirmDeleteAllSubtasks()
-    })
+    act(() => result.current.openDeleteAllSubtasksDialog('parent'))
+    act(() => result.current.confirmDeleteAllSubtasks())
     expect(mocks.deleteAllSubtasks).toHaveBeenCalledWith('parent', tasks)
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
   })
@@ -513,9 +409,7 @@ describe('useSubtaskManagement', () => {
       })
     )
 
-    act(() => {
-      result.current.handleCompleteSubtask('child')
-    })
+    act(() => result.current.handleCompleteSubtask('child'))
     act(() => vi.advanceTimersByTime(200))
     expect(onUpdateTask).toHaveBeenCalledWith('parent', {
       completedAt: expect.any(Date),
@@ -525,9 +419,7 @@ describe('useSubtaskManagement', () => {
     const undo = vi.mocked(toast.success).mock.calls.find(([, options]) => options)?.[1] as {
       action: { onClick: () => void }
     }
-    act(() => {
-      undo.action.onClick()
-    })
+    act(() => undo.action.onClick())
     expect(onUpdateTask).toHaveBeenLastCalledWith('parent', { completedAt: null, statusId: 'todo' })
   })
 
@@ -535,9 +427,7 @@ describe('useSubtaskManagement', () => {
     const onTasksChange = vi.fn()
     const { result } = setup({ onTasksChange })
 
-    act(() => {
-      result.current.handleCompleteSubtask('child')
-    })
+    act(() => result.current.handleCompleteSubtask('child'))
     expect(onTasksChange).toHaveBeenCalledWith(
       tasks.map((task) => (task.id === 'child' ? { ...task, completedAt: expect.any(Date) } : task))
     )
@@ -549,32 +439,22 @@ describe('useSubtaskManagement', () => {
     const completedChild = { ...child, completedAt: new Date('2026-01-01T00:00:00.000Z') }
     const withCompletedChild = [parent, completedChild, done, leaf]
     const completedSetup = setup({ onUpdateTask }, withCompletedChild)
-    act(() => {
-      completedSetup.result.current.handleCompleteSubtask('child')
-    })
+    act(() => completedSetup.result.current.handleCompleteSubtask('child'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { completedAt: null })
 
     const fallbackCompletedSetup = setup({ onTasksChange }, withCompletedChild)
-    act(() => {
-      fallbackCompletedSetup.result.current.handleCompleteSubtask('child')
-    })
+    act(() => fallbackCompletedSetup.result.current.handleCompleteSubtask('child'))
     expect(onTasksChange).toHaveBeenCalledWith(
       withCompletedChild.map((task) =>
         task.id === 'child' ? { ...task, completedAt: null } : task
       )
     )
 
-    act(() => {
-      result.current.handleCompleteSubtask('missing')
-    })
-    act(() => {
-      result.current.handleCompleteSubtask('leaf')
-    })
+    act(() => result.current.handleCompleteSubtask('missing'))
+    act(() => result.current.handleCompleteSubtask('leaf'))
 
     const autoSetup = setup({ onUpdateTask })
-    act(() => {
-      autoSetup.result.current.handleCompleteSubtask('child')
-    })
+    act(() => autoSetup.result.current.handleCompleteSubtask('child'))
     act(() => vi.advanceTimersByTime(200))
     const successCall = vi
       .mocked(toast.success)
@@ -592,43 +472,29 @@ describe('useSubtaskManagement', () => {
     const dialogSetup = setup({ onTasksChange })
     mocks.autoCompleteParent = false
     dialogSetup.rerender()
-    act(() => {
-      dialogSetup.result.current.handleCompleteSubtask('child')
-    })
+    act(() => dialogSetup.result.current.handleCompleteSubtask('child'))
     act(() => vi.advanceTimersByTime(1000))
-    act(() => {
-      dialogSetup.result.current.autoCompleteParent()
-    })
+    act(() => dialogSetup.result.current.autoCompleteParent())
     expect(mocks.completeParentTask).toHaveBeenCalledWith('parent', tasks)
 
     mocks.completeAllSubtasks.mockReturnValueOnce({ success: false, error: new Error('all done') })
-    act(() => {
-      result.current.handleCompleteAllSubtasks('parent')
-    })
+    act(() => result.current.handleCompleteAllSubtasks('parent'))
     expect(toast.error).toHaveBeenCalledWith('all done')
 
     mocks.markAllSubtasksIncomplete.mockReturnValueOnce({
       success: false,
       error: new Error('incomplete')
     })
-    act(() => {
-      result.current.handleMarkAllSubtasksIncomplete('parent')
-    })
+    act(() => result.current.handleMarkAllSubtasksIncomplete('parent'))
     expect(toast.error).toHaveBeenCalledWith('incomplete')
 
-    act(() => {
-      result.current.openBulkDueDateDialog('missing-parent')
-    })
+    act(() => result.current.openBulkDueDateDialog('missing-parent'))
     expect(result.current.bulkDueDateDialogOpen).toBe(false)
 
-    act(() => {
-      result.current.openBulkPriorityDialog('missing-parent')
-    })
+    act(() => result.current.openBulkPriorityDialog('missing-parent'))
     expect(result.current.bulkPriorityDialogOpen).toBe(false)
 
-    act(() => {
-      result.current.openDeleteAllSubtasksDialog('missing-parent')
-    })
+    act(() => result.current.openDeleteAllSubtasksDialog('missing-parent'))
     expect(result.current.deleteAllSubtasksDialogOpen).toBe(false)
 
     mocks.setDueDateForAllSubtasks.mockReturnValueOnce({
@@ -636,45 +502,29 @@ describe('useSubtaskManagement', () => {
       updatedTasks,
       affectedCount: 2
     })
-    act(() => {
-      result.current.openBulkDueDateDialog('parent')
-    })
-    act(() => {
-      result.current.confirmBulkDueDate(null, false)
-    })
+    act(() => result.current.openBulkDueDateDialog('parent'))
+    act(() => result.current.confirmBulkDueDate(null, false))
     expect(toast.success).toHaveBeenCalledWith('toasts.subtasks.dueDateCleared')
 
     mocks.setDueDateForAllSubtasks.mockReturnValueOnce({
       success: false,
       error: new Error('due date')
     })
-    act(() => {
-      result.current.openBulkDueDateDialog('parent')
-    })
-    act(() => {
-      result.current.confirmBulkDueDate(new Date('2026-01-01T00:00:00.000Z'), true)
-    })
+    act(() => result.current.openBulkDueDateDialog('parent'))
+    act(() => result.current.confirmBulkDueDate(new Date('2026-01-01T00:00:00.000Z'), true))
     expect(toast.error).toHaveBeenCalledWith('due date')
 
     mocks.setPriorityForAllSubtasks.mockReturnValueOnce({
       success: false,
       error: new Error('priority')
     })
-    act(() => {
-      result.current.openBulkPriorityDialog('parent')
-    })
-    act(() => {
-      result.current.confirmBulkPriority('urgent', true)
-    })
+    act(() => result.current.openBulkPriorityDialog('parent'))
+    act(() => result.current.confirmBulkPriority('urgent', true))
     expect(toast.error).toHaveBeenCalledWith('priority')
 
     mocks.deleteAllSubtasks.mockReturnValueOnce({ success: false, error: new Error('delete all') })
-    act(() => {
-      result.current.openDeleteAllSubtasksDialog('parent')
-    })
-    act(() => {
-      result.current.confirmDeleteAllSubtasks()
-    })
+    act(() => result.current.openDeleteAllSubtasksDialog('parent'))
+    act(() => result.current.confirmDeleteAllSubtasks())
     expect(toast.error).toHaveBeenCalledWith('delete all')
   })
 })

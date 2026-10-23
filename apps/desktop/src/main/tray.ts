@@ -41,9 +41,7 @@ function buildContextMenu(): Menu {
   return Menu.buildFromTemplate([
     {
       label: t('tray.show'),
-      click: () => {
-        showMainWindow()
-      }
+      click: () => showMainWindow()
     },
     { type: 'separator' },
     {
@@ -65,18 +63,12 @@ function createTray(): void {
     case 'darwin':
       // No setContextMenu on macOS: it makes a left click open the menu, which
       // would leave no click that restores the window.
-      instance.on('click', () => {
-        showMainWindow()
-      })
-      instance.on('right-click', () => {
-        instance.popUpContextMenu(menu)
-      })
+      instance.on('click', () => showMainWindow())
+      instance.on('right-click', () => instance.popUpContextMenu(menu))
       break
     case 'win32':
       instance.setContextMenu(menu)
-      instance.on('click', () => {
-        showMainWindow()
-      })
+      instance.on('click', () => showMainWindow())
       break
     default:
       // Linux tray hosts do not reliably deliver click events, so the menu is

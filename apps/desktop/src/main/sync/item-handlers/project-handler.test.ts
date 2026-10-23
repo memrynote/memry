@@ -506,9 +506,7 @@ describe('projectHandler', () => {
   })
 
   describe('sync payload split (frontmatter-owned links)', () => {
-    const seedNote = (id: string): void => {
-      seedMarkdownNote(testDb, id)
-    }
+    const seedNote = (id: string): void => seedMarkdownNote(testDb, id)
 
     it('keeps markdown-note links in the pushed payload — a device that has not adopted the split still needs them', () => {
       testDb.db.insert(projects).values(TEST_PROJECT).run()

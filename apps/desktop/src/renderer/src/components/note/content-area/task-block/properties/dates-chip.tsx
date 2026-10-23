@@ -64,9 +64,7 @@ export const DatesChip = ({
   return (
     <Popover
       open={isOpen}
-      onOpenChange={(next) => {
-        onOpenChange(next ? clickSegment : (open ?? clickSegment), next)
-      }}
+      onOpenChange={(next) => onOpenChange(next ? clickSegment : (open ?? clickSegment), next)}
     >
       <PopoverTrigger asChild>
         <PropertyChip
@@ -85,9 +83,7 @@ export const DatesChip = ({
           dueDate={dueDate}
           dueTime={dueTime}
           onChange={onChange}
-          onDone={() => {
-            onOpenChange(open ?? 'due', false)
-          }}
+          onDone={() => onOpenChange(open ?? 'due', false)}
         />
       </PopoverContent>
     </Popover>
@@ -146,9 +142,7 @@ const DatesPicker = ({
             // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
             role="radio"
             aria-checked={segment === item.id}
-            onClick={() => {
-              setSegment(item.id)
-            }}
+            onClick={() => setSegment(item.id)}
             className={cn(
               'h-6 flex-1 rounded-[5px] text-[12px] leading-4 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-tertiary',
               segment === item.id
@@ -166,13 +160,7 @@ const DatesPicker = ({
         onSelect={handleSelect}
         showRemoveDate={!!selected}
         time={segment === 'due' ? dueTime : undefined}
-        onTimeChange={
-          segment === 'due'
-            ? (time) => {
-                onChange({ dueTime: time })
-              }
-            : undefined
-        }
+        onTimeChange={segment === 'due' ? (time) => onChange({ dueTime: time }) : undefined}
       />
     </div>
   )

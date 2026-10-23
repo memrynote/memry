@@ -16,9 +16,7 @@ const NAMES = ['01-hero', '02-capture', '03-notes', '04-tasks', '05-journal', '0
 mkdirSync(out, { recursive: true })
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 })
-page.on('pageerror', (e) => {
-  console.error('pageerror:', e.message)
-})
+page.on('pageerror', (e) => console.error('pageerror:', e.message))
 page.on('console', (m) => {
   if (m.type() === 'error') console.error('console:', m.text())
 })

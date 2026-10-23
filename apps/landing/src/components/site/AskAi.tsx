@@ -84,9 +84,7 @@ export function AskAi() {
               rel="noopener noreferrer"
               title={`Ask ${item.name} about MemryNote`}
               aria-label={`Ask ${item.name} about MemryNote`}
-              onClick={() => {
-                trackLandingEvent('landing_external_click', item.target)
-              }}
+              onClick={() => trackLandingEvent('landing_external_click', item.target)}
               className="inline-grid size-12 place-items-center rounded-xl bg-white text-[#111] shadow-[0_4px_12px_rgb(0_0_0/0.35)] transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
             >
               {item.icon}

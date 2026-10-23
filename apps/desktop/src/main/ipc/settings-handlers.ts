@@ -1721,9 +1721,7 @@ function saveStickyShortcut(binding: ShortcutBinding | null): StickyShortcutResu
 
 function applyStickyBinding(binding: ShortcutBinding | null): GlobalCaptureStatus {
   return registerConfiguredShortcut(stickyShortcut, binding, {
-    onFire: () => {
-      showStickyWindow()
-    }
+    onFire: () => showStickyWindow()
   })
 }
 

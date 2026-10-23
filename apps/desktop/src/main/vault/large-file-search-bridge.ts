@@ -97,9 +97,7 @@ function searchOnWorker(
       run()
     }
 
-    register(() => {
-      finish(() => resolve(cancelledResult()))
-    })
+    register(() => finish(() => resolve(cancelledResult())))
 
     worker.on('message', (message: LargeFileWorkerMessage) => {
       if (message.type === 'search-progress') {
@@ -107,7 +105,7 @@ function searchOnWorker(
         return
       }
       if (message.type === 'search-done') {
-        finish(() => {
+        finish(() =>
           resolve({
             hits: message.hits,
             total: message.total,
@@ -115,25 +113,18 @@ function searchOnWorker(
             cancelled: false,
             bytesSearched: message.bytesSearched
           })
-        })
+        )
         return
       }
-      if (message.type === 'error')
-        finish(() => {
-          reject(new Error(message.message))
-        })
+      if (message.type === 'error') finish(() => reject(new Error(message.message)))
     })
 
     // Same wrapping as the line-index bridge, for the same reason: the
     // in-process fallback below keeps the find bar working, so this log line is
     // the only trace that the worker was abandoned at all.
-    worker.on('error', (err: unknown) => {
-      finish(() => reject(asError(err)))
-    })
+    worker.on('error', (err: unknown) => finish(() => reject(asError(err))))
     worker.on('exit', (code) => {
-      finish(() => {
-        reject(new Error(`Large-file worker exited with code ${code}`))
-      })
+      finish(() => reject(new Error(`Large-file worker exited with code ${code}`)))
     })
   })
 }

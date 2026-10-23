@@ -48,15 +48,11 @@ describe('SidebarDrillDownProvider', () => {
   it('keeps main view stable when backing from or resetting the root', () => {
     const { result } = renderHook(() => useSidebarDrillDown(), { wrapper })
 
-    act(() => {
-      result.current.goBack()
-    })
+    act(() => result.current.goBack())
     expect(result.current.viewStack).toEqual([{ type: 'main' }])
     expect(result.current.animationDirection).toBe('right')
 
-    act(() => {
-      result.current.resetToMain()
-    })
+    act(() => result.current.resetToMain())
     expect(result.current.currentView).toEqual({ type: 'main' })
   })
 

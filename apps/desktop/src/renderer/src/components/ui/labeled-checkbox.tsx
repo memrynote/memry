@@ -41,9 +41,7 @@ export function LabeledCheckbox({
     >
       <Checkbox
         checked={checked}
-        onCheckedChange={(value) => {
-          onCheckedChange(value === true)
-        }}
+        onCheckedChange={(value) => onCheckedChange(value === true)}
         disabled={disabled}
         className={cn('mt-0.5', 'border-muted-foreground/30', 'transition-colors')}
       />

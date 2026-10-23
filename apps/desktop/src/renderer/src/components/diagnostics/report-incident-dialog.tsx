@@ -117,9 +117,7 @@ export function ReportIncidentDialog({
       })
   }, [report, phase, t])
 
-  const handleNotNow = useCallback(() => {
-    onOpenChange(false)
-  }, [onOpenChange])
+  const handleNotNow = useCallback(() => onOpenChange(false), [onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

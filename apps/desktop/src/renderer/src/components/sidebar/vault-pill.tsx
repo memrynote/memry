@@ -54,17 +54,13 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
   useLayoutEffect(() => {
     const el = scrollerRef.current
     if (!el) return
-    const measure = (): void => {
-      setOverflowing(el.scrollWidth > el.clientWidth + 1)
-    }
+    const measure = (): void => setOverflowing(el.scrollWidth > el.clientWidth + 1)
     measure()
     if (typeof ResizeObserver !== 'function') return
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     if (el.firstElementChild) observer.observe(el.firstElementChild)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- vault count change re-measures the strip
   }, [vaults.length])
 
@@ -119,9 +115,7 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
               <VaultIconPicker
                 key={vault.path}
                 open={pickerPath === vault.path}
-                onOpenChange={(open) => {
-                  setPickerPath(open ? vault.path : null)
-                }}
+                onOpenChange={(open) => setPickerPath(open ? vault.path : null)}
                 vaultPath={vault.path}
                 hasIcon={!!vault.icon}
                 side="top"
@@ -166,20 +160,12 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
                       </button>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="w-44">
-                      <ContextMenuItem
-                        onSelect={() => {
-                          setPickerPath(vault.path)
-                        }}
-                      >
+                      <ContextMenuItem onSelect={() => setPickerPath(vault.path)}>
                         <Smile />
                         {t('vaultSwipe.changeIcon')}
                       </ContextMenuItem>
                       {vault.icon && (
-                        <ContextMenuItem
-                          onSelect={() => {
-                            setIcon(vault.path, null)
-                          }}
-                        >
+                        <ContextMenuItem onSelect={() => setIcon(vault.path, null)}>
                           <X />
                           {t('vaultSwipe.resetIcon')}
                         </ContextMenuItem>

@@ -102,9 +102,7 @@ export function NoteTitle({
                 <LazyEmojiPicker
                   isOpen
                   embedded
-                  onClose={() => {
-                    setPickerOpen(false)
-                  }}
+                  onClose={() => setPickerOpen(false)}
                   onSelect={handleIconSelect}
                   onRemove={handleIconRemove}
                   hasEmoji

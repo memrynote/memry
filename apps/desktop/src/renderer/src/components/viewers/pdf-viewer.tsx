@@ -203,9 +203,7 @@ function PdfThumbnailRail({
               // Only the page the spread STARTS on is the reading position;
               // marking both would announce two current pages.
               aria-current={page === leadPage ? 'page' : undefined}
-              onClick={() => {
-                onSelectPage(page)
-              }}
+              onClick={() => onSelectPage(page)}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -292,12 +290,8 @@ function PdfPageField({
         style={{ width: `${Math.max(2, String(numPages).length) + 1.5}ch` }}
         className="h-7 rounded border border-transparent bg-transparent px-1 text-center tabular-nums text-foreground hover:border-border focus:border-border focus:outline-none focus:ring-1 focus:ring-ring"
         value={draft ?? String(currentPage)}
-        onChange={(e) => {
-          setDraft(e.target.value)
-        }}
-        onFocus={(e) => {
-          e.currentTarget.select()
-        }}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
@@ -505,9 +499,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(fit)
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [computeFitScale, applyScale])
 
   /** Picking a zoom by hand ends the fit; the number the user chose wins. */
@@ -519,12 +511,8 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
     [applyScale, setStoredFitMode]
   )
 
-  const zoomIn = useCallback(() => {
-    zoomBy(ZOOM_STEP)
-  }, [zoomBy])
-  const zoomOut = useCallback(() => {
-    zoomBy(-ZOOM_STEP)
-  }, [zoomBy])
+  const zoomIn = useCallback(() => zoomBy(ZOOM_STEP), [zoomBy])
+  const zoomOut = useCallback(() => zoomBy(-ZOOM_STEP), [zoomBy])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
@@ -588,9 +576,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setSidebarOpen(!sidebarOpen)
-            }}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
             className="h-8 w-8 shrink-0 p-0"
             title={
               sidebarOpen
@@ -617,9 +603,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              stepSpread(-1)
-            }}
+            onClick={() => stepSpread(-1)}
             disabled={isFirstSpread}
             className="h-8 w-8 p-0"
             title={tPhaseF('phaseF.componentsViewersPdfViewer.previousPage')}
@@ -635,9 +619,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              stepSpread(1)
-            }}
+            onClick={() => stepSpread(1)}
             disabled={isLastSpread}
             className="h-8 w-8 p-0"
             title={tPhaseF('phaseF.componentsViewersPdfViewer.nextPage')}
@@ -694,9 +676,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
                   with nothing selected is the honest reading of that state. */}
               <DropdownMenuRadioGroup
                 value={fitMode ?? ''}
-                onValueChange={(value) => {
-                  chooseFit(value as 'width' | 'height')
-                }}
+                onValueChange={(value) => chooseFit(value as 'width' | 'height')}
               >
                 <DropdownMenuRadioItem value="width">
                   <Maximize2 className="me-2 h-4 w-4" />
@@ -713,9 +693,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={pageMode}
-                onValueChange={(value) => {
-                  choosePageMode(value as PdfPageMode)
-                }}
+                onValueChange={(value) => choosePageMode(value as PdfPageMode)}
               >
                 <DropdownMenuRadioItem value="single">
                   <FileText className="me-2 h-4 w-4" />
@@ -734,7 +712,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
               <DropdownMenuCheckboxItem
                 checked={adaptToTheme}
                 onCheckedChange={(checked) => {
-                  void updateEditorSettings({ pdfAdaptToTheme: checked })
+                  void updateEditorSettings({ pdfAdaptToTheme: checked === true })
                 }}
               >
                 <Moon className="me-2 h-4 w-4" />

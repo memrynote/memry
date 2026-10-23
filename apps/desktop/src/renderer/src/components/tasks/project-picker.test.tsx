@@ -158,14 +158,10 @@ describe('ProjectPicker — create footer', () => {
     await user.type(screen.getByPlaceholderText('Project name'), 'Roadmap')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 
-    await waitFor(() => {
-      expect(addProject).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(addProject).toHaveBeenCalledTimes(1))
     const created = addProject.mock.calls[0][0] as Project
     expect(created.name).toBe('Roadmap')
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith(created.id)
-    })
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(created.id))
   })
 })
 

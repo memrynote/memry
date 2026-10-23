@@ -98,7 +98,7 @@ describe('CalDAV connect form (#1401)', () => {
     await user.click(within(list).getByRole('checkbox', { name: 'Work' }))
     await user.click(screen.getByRole('button', { name: 'Connect' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.connectProvider).toHaveBeenCalledWith({
         provider: 'caldav',
         connection: expect.objectContaining({
@@ -106,7 +106,7 @@ describe('CalDAV connect form (#1401)', () => {
           selectedCalendarIds: ['https://p42-caldav.icloud.com/1/calendars/home/']
         })
       })
-    })
+    )
     expect(onConnected).toHaveBeenCalled()
   })
 
@@ -164,9 +164,7 @@ describe('CalDAV connect form (#1401)', () => {
     await user.click(screen.getByRole('button', { name: 'Test connection' }))
     await user.click(await screen.findByRole('button', { name: 'Connect' }))
 
-    await waitFor(() => {
-      expect(mocks.connectProvider).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.connectProvider).toHaveBeenCalled())
     const connection = mocks.connectProvider.mock.calls[0][0].connection
     expect(connection).toMatchObject({
       serverUrl: 'https://caldav.icloud.com/',

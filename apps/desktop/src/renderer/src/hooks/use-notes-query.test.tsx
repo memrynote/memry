@@ -183,18 +183,14 @@ describe('use-notes-query', () => {
   it('fetches a single note and refreshes it from note events', async () => {
     const { result } = renderHook(() => useNote('n1'), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.note?.title).toBe('First')
-    })
+    await waitFor(() => expect(result.current.note?.title).toBe('First'))
 
     mocks.notesService.get.mockResolvedValueOnce(note('n1', 'Refreshed'))
     await act(async () => {
       mocks.handlers.updated[0]({ id: 'n1', changes: { content: 'changed' } })
     })
 
-    await waitFor(() => {
-      expect(result.current.note?.title).toBe('Refreshed')
-    })
+    await waitFor(() => expect(result.current.note?.title).toBe('Refreshed'))
 
     await act(async () => {
       mocks.handlers.deleted[0]({ id: 'n1' })
@@ -205,9 +201,7 @@ describe('use-notes-query', () => {
   it('fetches note lists and invalidates them on create, rename, move, update, and delete events', async () => {
     const { result } = renderHook(() => useNotesList({ folder: 'Work' }), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.notes[0]?.title).toBe('First')
-    })
+    await waitFor(() => expect(result.current.notes[0]?.title).toBe('First'))
     expect(mocks.notesService.list).toHaveBeenCalledWith({ folder: 'Work' })
 
     mocks.notesService.list.mockResolvedValue({
@@ -224,24 +218,18 @@ describe('use-notes-query', () => {
       mocks.handlers.deleted[0]({ id: 'n2' })
     })
 
-    await waitFor(() => {
-      expect(mocks.notesService.list).toHaveBeenCalledTimes(6)
-    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(6))
     expect(result.current.notes[0]?.title).toBe('Second')
   })
 
   it('refetches a list that includes journal entries on journal events, and only that one', async () => {
     renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
-    await waitFor(() => {
-      expect(mocks.notesService.list).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(1))
     // A list without journal entries does not listen to the Journal at all.
     expect(mocks.handlers.journal).toHaveLength(0)
 
     renderHook(() => useNotesList({ fields: 'tree', includeJournals: true }), { wrapper })
-    await waitFor(() => {
-      expect(mocks.notesService.list).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(2))
     expect(mocks.notesService.list).toHaveBeenLastCalledWith({
       fields: 'tree',
       includeJournals: true
@@ -251,17 +239,13 @@ describe('use-notes-query', () => {
     await act(async () => {
       mocks.handlers.journal[0]()
     })
-    await waitFor(() => {
-      expect(mocks.notesService.list).toHaveBeenCalledTimes(4)
-    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(4))
   })
 
   it('#1832: refetches lists on background index-build progress, throttled, always at completion', async () => {
     const { result } = renderHook(() => useNotesList(), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.notes[0]?.title).toBe('First')
-    })
+    await waitFor(() => expect(result.current.notes[0]?.title).toBe('First'))
 
     mocks.notesService.list.mockResolvedValue({
       notes: [listItem('n9', 'Indexed')],
@@ -279,23 +263,19 @@ describe('use-notes-query', () => {
       beat(20)
       beat(30)
     })
-    await waitFor(() => {
-      expect(mocks.notesService.list).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(2))
 
     // The completion beat always lands so the finished tree is fetched.
     await act(async () => {
       beat(100)
     })
-    await waitFor(() => {
-      expect(mocks.notesService.list).toHaveBeenCalledTimes(3)
-    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(3))
     expect(result.current.notes[0]?.title).toBe('Indexed')
   })
 
   it('loads tags, folders, folder mutations, and link queries with event invalidation', async () => {
     const tagsHook = renderHook(() => useNoteTagsQuery(), { wrapper })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(tagsHook.result.current.tags[0]).toEqual({
         tag: 'work',
         color: '#ff0000',
@@ -304,12 +284,10 @@ describe('use-notes-query', () => {
         categoryId: null,
         sortOrder: 0
       })
-    })
+    )
 
     const foldersHook = renderHook(() => useNoteFoldersQuery(), { wrapper })
-    await waitFor(() => {
-      expect(foldersHook.result.current.folders[0]?.name).toBe('Work')
-    })
+    await waitFor(() => expect(foldersHook.result.current.folders[0]?.name).toBe('Work'))
 
     await act(async () => {
       expect(await foldersHook.result.current.createFolder('Projects')).toBe(true)
@@ -321,9 +299,7 @@ describe('use-notes-query', () => {
     })
 
     const linksHook = renderHook(() => useNoteLinksQuery('n1'), { wrapper })
-    await waitFor(() => {
-      expect(linksHook.result.current.outgoing[0]?.title).toBe('Second')
-    })
+    await waitFor(() => expect(linksHook.result.current.outgoing[0]?.title).toBe('Second'))
 
     mocks.notesService.getLinks.mockResolvedValueOnce({
       outgoing: [],
@@ -332,9 +308,7 @@ describe('use-notes-query', () => {
     await act(async () => {
       mocks.handlers.updated.find(Boolean)?.({ id: 'other', changes: { content: 'changed' } })
     })
-    await waitFor(() => {
-      expect(linksHook.result.current.incoming[0]?.title).toBe('Third')
-    })
+    await waitFor(() => expect(linksHook.result.current.incoming[0]?.title).toBe('Third'))
   })
 
   it('refetches links when a note is created, so an unresolved outgoing link resolves', async () => {
@@ -343,33 +317,27 @@ describe('use-notes-query', () => {
       incoming: []
     })
     const { result } = renderHook(() => useNoteLinksQuery('n1'), { wrapper })
-    await waitFor(() => {
-      expect(result.current.outgoing[0]?.targetId).toBeNull()
-    })
+    await waitFor(() => expect(result.current.outgoing[0]?.targetId).toBeNull())
 
     mocks.notesService.getLinks.mockResolvedValueOnce({
       outgoing: [{ sourceId: 'n1', targetId: 'n9', targetTitle: 'Later' }],
       incoming: []
     })
     await act(async () => {
-      mocks.handlers.created.forEach((handler) => {
-        handler()
-      })
+      mocks.handlers.created.forEach((handler) => handler())
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(result.current.outgoing).toEqual([
         { sourceId: 'n1', targetId: 'n9', targetTitle: 'Later' }
       ])
-    })
+    )
   })
 
   it('refetches links when a canvas changes, so a new arrow shows as a connection', async () => {
     mocks.notesService.getLinks.mockResolvedValueOnce({ outgoing: [], incoming: [] })
     const { result } = renderHook(() => useNoteLinksQuery('n1'), { wrapper })
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     // Subscription order: created, updated, deleted.
     expect(mocks.handlers.canvas).toHaveLength(3)
@@ -382,9 +350,7 @@ describe('use-notes-query', () => {
       mocks.handlers.canvas[1]()
     })
 
-    await waitFor(() => {
-      expect(result.current.outgoing[0]?.via).toEqual(via)
-    })
+    await waitFor(() => expect(result.current.outgoing[0]?.via).toEqual(via))
   })
 
   it('exposes note mutations and updates the affected query caches', async () => {

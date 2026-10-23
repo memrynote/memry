@@ -36,9 +36,7 @@ function useCountdown(
       setSeconds((prev) => Math.max(prev - 1, 0))
     }, 1000)
 
-    return () => {
-      clearTimeout(countdownTimeout)
-    }
+    return () => clearTimeout(countdownTimeout)
   }, [seconds])
 
   const reset = useCallback(() => {

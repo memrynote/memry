@@ -57,12 +57,10 @@ describe('DownloadVaultDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'phaseF.componentsVaultSwitcher.download' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.vault.downloadRemote).toHaveBeenCalledWith('uuid-b', undefined)
-    })
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalled()
-    })
+    )
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
   it('downloads into the picked parent folder', async () => {
@@ -75,9 +73,9 @@ describe('DownloadVaultDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'phaseF.componentsVaultSwitcher.download' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.vault.downloadRemote).toHaveBeenCalledWith('uuid-b', '/picked/parent')
-    })
+    )
   })
 
   it('shows the error and stays open when the download fails', async () => {

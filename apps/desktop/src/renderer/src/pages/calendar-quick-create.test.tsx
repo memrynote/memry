@@ -121,9 +121,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     await user.type(screen.getByPlaceholderText('New Event'), 'Clicked save')
     await user.click(screen.getByTestId('quick-create-save'))
 
-    await waitFor(() => {
-      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
     expect(mockCreateEvent.mock.calls[0][0].title).toBe('Clicked save')
   })
 
@@ -141,9 +139,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     const titleInput = screen.getByPlaceholderText('New Event')
     await user.type(titleInput, 'Team sync{Enter}')
 
-    await waitFor(() => {
-      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
 
     const payload = mockCreateEvent.mock.calls[0][0]
     expect(payload.title).toBe('Team sync')
@@ -165,9 +161,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Team sync{Enter}')
 
-    await waitFor(() => {
-      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
 
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith(
@@ -185,9 +179,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Team sync{Enter}')
 
-    await waitFor(() => {
-      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
 
     expect(screen.getByTestId('quick-create-popover')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('New Event')).toHaveValue('Team sync')
@@ -207,9 +199,7 @@ describe('CalendarPage · marquee → quick-create → save', () => {
     await screen.findByTestId('quick-create-popover')
     await user.type(screen.getByPlaceholderText('New Event'), 'Team sync{Enter}')
 
-    await waitFor(() => {
-      expect(mockCreateEvent).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalledTimes(1))
 
     expect(screen.getByTestId('quick-create-popover')).toBeInTheDocument()
     expect(screen.getByTestId('quick-create-error')).toHaveTextContent(/validation failed/i)

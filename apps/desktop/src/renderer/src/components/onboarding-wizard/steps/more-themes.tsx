@@ -46,22 +46,13 @@ export function MoreThemes({
           <ChevronDown className="size-3 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" className="max-h-72 w-56 overflow-y-auto">
-          <DropdownMenuItem
-            onSelect={() => {
-              onChange(null)
-            }}
-          >
+          <DropdownMenuItem onSelect={() => onChange(null)}>
             <span className="flex-1 text-foreground">{t(`${K}.moreNone`)}</span>
             {!active && <Check className="size-3.5 text-foreground" />}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {COLOR_THEMES.map((theme) => (
-            <DropdownMenuItem
-              key={theme.id}
-              onSelect={() => {
-                onChange(theme.id)
-              }}
-            >
+            <DropdownMenuItem key={theme.id} onSelect={() => onChange(theme.id)}>
               {swatch(theme.id)}
               <span className="flex-1 text-foreground">{theme.name}</span>
               {active?.id === theme.id && <Check className="size-3.5 text-foreground" />}

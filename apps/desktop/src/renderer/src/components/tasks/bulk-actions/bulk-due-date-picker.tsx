@@ -88,9 +88,7 @@ export const BulkDueDatePicker = ({
         <div className="flex flex-col items-center gap-4 py-4">
           <DatePickerCalendar
             selected={selectedDate}
-            onSelect={(d) => {
-              setSelectedDate(d)
-            }}
+            onSelect={(d) => setSelectedDate(d)}
             disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
           />
 
@@ -106,9 +104,7 @@ export const BulkDueDatePicker = ({
               <Input
                 type="time"
                 value={selectedTime}
-                onChange={(e) => {
-                  setSelectedTime(e.target.value)
-                }}
+                onChange={(e) => setSelectedTime(e.target.value)}
                 className="w-32"
               />
             )}

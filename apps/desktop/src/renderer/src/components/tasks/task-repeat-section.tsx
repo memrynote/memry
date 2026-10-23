@@ -104,9 +104,7 @@ export const TaskRepeatSection = ({
         ) : (
           <button
             type="button"
-            onClick={() => {
-              setIsEditDialogOpen(true)
-            }}
+            onClick={() => setIsEditDialogOpen(true)}
             className="text-text-tertiary hover:text-text-secondary transition-colors"
             aria-label={tPhaseF('phaseF.componentsTasksTaskRepeatSection.addRepeat')}
           >
@@ -132,9 +130,7 @@ export const TaskRepeatSection = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setIsEditDialogOpen(true)
-              }}
+              onClick={() => setIsEditDialogOpen(true)}
               className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
               aria-label={tPhaseF('phaseF.componentsTasksTaskRepeatSection.edit')}
             >
@@ -144,9 +140,7 @@ export const TaskRepeatSection = ({
             </button>
             <button
               type="button"
-              onClick={() => {
-                setIsStopDialogOpen(true)
-              }}
+              onClick={() => setIsStopDialogOpen(true)}
               className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
               aria-label={tPhaseF('phaseF.componentsTasksTaskRepeatSection.stopRepeating')}
             >
@@ -160,9 +154,7 @@ export const TaskRepeatSection = ({
 
       <CustomRepeatDialog
         isOpen={isEditDialogOpen}
-        onClose={() => {
-          setIsEditDialogOpen(false)
-        }}
+        onClose={() => setIsEditDialogOpen(false)}
         onSave={handleSaveRepeat}
         initialConfig={repeatConfig}
         dueDate={dueDate}
@@ -170,9 +162,7 @@ export const TaskRepeatSection = ({
 
       <StopRepeatingDialog
         isOpen={isStopDialogOpen}
-        onClose={() => {
-          setIsStopDialogOpen(false)
-        }}
+        onClose={() => setIsStopDialogOpen(false)}
         onConfirm={handleStopConfirm}
         taskTitle={taskTitle}
         repeatConfig={repeatConfig}
@@ -243,19 +233,10 @@ export const TaskRepeatRow = ({
               </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => {
-                setIsEditDialogOpen(true)
-              }}
-            >
+            <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
               {tPhaseF('phaseF.componentsTasksTaskRepeatSection.edit2')}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => {
-                setIsStopDialogOpen(true)
-              }}
-            >
+            <DropdownMenuItem variant="destructive" onSelect={() => setIsStopDialogOpen(true)}>
               {tPhaseF('phaseF.componentsTasksTaskRepeatSection.stopRepeating2')}
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -263,9 +244,7 @@ export const TaskRepeatRow = ({
       ) : (
         <button
           type="button"
-          onClick={() => {
-            setIsEditDialogOpen(true)
-          }}
+          onClick={() => setIsEditDialogOpen(true)}
           className={cn(REPEAT_TRIGGER, 'text-text-tertiary')}
         >
           <RepeatIcon color="var(--text-tertiary)" />
@@ -277,9 +256,7 @@ export const TaskRepeatRow = ({
 
       <CustomRepeatDialog
         isOpen={isEditDialogOpen}
-        onClose={() => {
-          setIsEditDialogOpen(false)
-        }}
+        onClose={() => setIsEditDialogOpen(false)}
         onSave={onRepeatChange}
         initialConfig={repeatConfig}
         dueDate={dueDate}
@@ -287,9 +264,7 @@ export const TaskRepeatRow = ({
 
       <StopRepeatingDialog
         isOpen={isStopDialogOpen}
-        onClose={() => {
-          setIsStopDialogOpen(false)
-        }}
+        onClose={() => setIsStopDialogOpen(false)}
         onConfirm={handleStopConfirm}
         taskTitle={taskTitle}
         repeatConfig={repeatConfig}

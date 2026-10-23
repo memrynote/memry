@@ -147,9 +147,7 @@ export function createInnermostSideMenuPlugin(): Plugin {
         if (!view.isDestroyed) innermostEditorWinsAround(view)
       })
       return {
-        update: () => {
-          innermostEditorWinsAround(view)
-        }
+        update: () => innermostEditorWinsAround(view)
       }
     }
   })

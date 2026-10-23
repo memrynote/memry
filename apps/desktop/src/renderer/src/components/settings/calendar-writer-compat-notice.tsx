@@ -52,9 +52,7 @@ export function CalendarWriterCompatNotice({
       <label className="flex items-center gap-2">
         <Checkbox
           checked={acknowledged}
-          onCheckedChange={(checked) => {
-            onAcknowledgedChange(checked === true)
-          }}
+          onCheckedChange={(checked) => onAcknowledgedChange(checked === true)}
           aria-label={t('calendar.providers.compat.acknowledge')}
         />
         <span>{t('calendar.providers.compat.acknowledge')}</span>

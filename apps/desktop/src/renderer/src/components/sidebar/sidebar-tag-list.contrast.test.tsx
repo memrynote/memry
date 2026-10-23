@@ -66,9 +66,7 @@ describe('sidebar tag list contrast', () => {
 
     // The heading swaps its own background to `bg-muted` on hover, so it has to
     // clear the floor against both surfaces.
-    expect(() => {
-      assertSmallTextContrast(heading.className, ['--sidebar', '--muted'])
-    }).not.toThrow()
+    expect(() => assertSmallTextContrast(heading.className, ['--sidebar', '--muted'])).not.toThrow()
     expect(heading.className.split(/\s+/)).toContain('text-sidebar-section-heading')
   })
 
@@ -78,9 +76,7 @@ describe('sidebar tag list contrast', () => {
     // of "show 1 more".
     const showMore = screen.getByRole('button', { name: '1' })
 
-    expect(() => {
-      assertSmallTextContrast(showMore.className, ['--sidebar'])
-    }).not.toThrow()
+    expect(() => assertSmallTextContrast(showMore.className, ['--sidebar'])).not.toThrow()
     expect(showMore.className.split(/\s+/)).toContain('text-sidebar-section-heading')
   })
 
@@ -90,9 +86,7 @@ describe('sidebar tag list contrast', () => {
     // paints the row `bg-muted`, so `--muted` is the only surface it sits on.
     const count = screen.getByText('4')
 
-    expect(() => {
-      assertSmallTextContrast(count.className, ['--muted'])
-    }).not.toThrow()
+    expect(() => assertSmallTextContrast(count.className, ['--muted'])).not.toThrow()
     expect(count.className.split(/\s+/)).toContain('text-sidebar-section-heading')
   })
 })

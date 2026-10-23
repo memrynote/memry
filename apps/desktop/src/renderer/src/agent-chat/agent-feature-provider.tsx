@@ -23,13 +23,9 @@ export function AgentFeatureProvider({ children }: { children: ReactNode }): Rea
   const [activated, setActivated] = useState(false)
 
   useEffect(() => {
-    const activate = () => {
-      setActivated(true)
-    }
+    const activate = () => setActivated(true)
     window.addEventListener('memry:agent-surface-opened', activate)
-    return () => {
-      window.removeEventListener('memry:agent-surface-opened', activate)
-    }
+    return () => window.removeEventListener('memry:agent-surface-opened', activate)
   }, [])
 
   const isPersistedAgentPanelOpen = isDayPanelOpen && readPersistedRightSidebarTab() === 'agent'

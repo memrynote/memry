@@ -59,7 +59,7 @@ describe('OcrLanguagesRow', () => {
     renderRow()
     await screen.findByTestId('ocr-languages-trigger')
 
-    act(() => {
+    act(() =>
       changed({
         selected: ['eng', 'deu'],
         statuses: {
@@ -67,11 +67,11 @@ describe('OcrLanguagesRow', () => {
           deu: { state: 'downloading', receivedBytes: 512, totalBytes: 1024 }
         }
       })
-    })
+    )
     expect(screen.getByText('Downloading Deutsch: 50%')).toBeInTheDocument()
     expect(screen.getByTestId('ocr-languages-trigger')).toHaveTextContent('English, Deutsch')
 
-    act(() => {
+    act(() =>
       changed({
         selected: ['eng', 'deu'],
         statuses: {
@@ -79,15 +79,13 @@ describe('OcrLanguagesRow', () => {
           deu: { state: 'failed', error: 'errors:ocrLanguages.unreachable' }
         }
       })
-    })
+    )
     expect(
       screen.getByText(
         "Deutsch: Memry's server could not be reached. The languages already here keep working, and Memry tries again at the next start."
       )
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    await waitFor(() => {
-      expect(window.api.ocrLanguages.retry).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(window.api.ocrLanguages.retry).toHaveBeenCalledTimes(1))
   })
 })

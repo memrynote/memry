@@ -86,9 +86,7 @@ export const PickerContent = React.forwardRef<
         className
       )}
       style={typeof width === 'number' ? { width: `${width}px` } : undefined}
-      onClick={(e) => {
-        e.stopPropagation()
-      }}
+      onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}
       {...props}
     >

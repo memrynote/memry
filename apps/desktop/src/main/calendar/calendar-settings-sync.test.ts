@@ -116,9 +116,9 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   it('pushes every writer of a calendar group through settings sync', () => {
     const { sync, enqueue } = manager(db)
-    setSettingWriteListener((_db, key, before, after) => {
+    setSettingWriteListener((_db, key, before, after) =>
       mirrorCalendarSettingWrite(sync, key, before, after)
-    })
+    )
     setSetting(
       db,
       'calendar.google',
@@ -195,9 +195,9 @@ describe('calendar settings sync (spec 007 D3a)', () => {
 
   it('writes merged values into the local groups without echoing them back', () => {
     const { sync, enqueue } = manager(db)
-    setSettingWriteListener((_db, key, before, after) => {
+    setSettingWriteListener((_db, key, before, after) =>
       mirrorCalendarSettingWrite(sync, key, before, after)
-    })
+    )
     writeRaw(db, 'calendar', JSON.stringify({ dayCellClickBehavior: 'calendar' }))
     writeRaw(
       db,

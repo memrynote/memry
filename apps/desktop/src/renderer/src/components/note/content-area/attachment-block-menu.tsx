@@ -165,13 +165,7 @@ function useAttachmentMenu(
     reveal,
     openExternal,
     copyPath,
-    startRename:
-      onRequestRename ??
-      (onRenamed
-        ? () => {
-            setRenameOpen(true)
-          }
-        : undefined),
+    startRename: onRequestRename ?? (onRenamed ? () => setRenameOpen(true) : undefined),
     startCrop: onRequestCrop,
     startView: onRequestView,
     renameOpen,
@@ -250,11 +244,7 @@ function AttachmentMenuBody({
         {t('editor.toolbar.copyPath')}
       </Item>
       {pdfDisplay && (
-        <Item
-          onClick={() => {
-            pdfDisplay.onChange(pdfDisplay.value === 'link' ? 'embed' : 'link')
-          }}
-        >
+        <Item onClick={() => pdfDisplay.onChange(pdfDisplay.value === 'link' ? 'embed' : 'link')}>
           {pdfDisplay.value === 'link' ? (
             <Maximize2 className="h-4 w-4" />
           ) : (
@@ -382,9 +372,7 @@ export function AttachmentMenuButton({
             data-testid="attachment-menu-button"
             // Keep the editor from treating the press as a selection change
             // before the menu opens (same guard as the PDF alignment buttons).
-            onPointerDown={(e) => {
-              e.stopPropagation()
-            }}
+            onPointerDown={(e) => e.stopPropagation()}
             className={cn(
               'flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50',
               className

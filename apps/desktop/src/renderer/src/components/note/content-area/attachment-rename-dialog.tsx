@@ -91,9 +91,7 @@ export function AttachmentRenameDialog({
             autoFocus
             value={value}
             aria-label={t('editor.attachmentRename.fieldLabel')}
-            onChange={(e) => {
-              setValue(e.target.value)
-            }}
+            onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key !== 'Enter') return
               e.preventDefault()
@@ -103,12 +101,7 @@ export function AttachmentRenameDialog({
           {extension && <span className="shrink-0 text-sm text-muted-foreground">{extension}</span>}
         </div>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              onOpenChange(false)
-            }}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {tCommon('button.cancel')}
           </Button>
           <Button onClick={submit} disabled={!trimmed || busy}>
@@ -164,9 +157,7 @@ export function AttachmentRenameFlow({
         .catch((err: unknown) => {
           toast.error(extractErrorMessage(err, t('editor.attachmentRename.failed')))
         })
-        .finally(() => {
-          setBusy(false)
-        })
+        .finally(() => setBusy(false))
     },
     [noteId, url, onRenamed, onOpenChange, t]
   )

@@ -438,12 +438,8 @@ export function CanvasTree({
    */
   React.useEffect(() => {
     if (!pendingFocus) return
-    const timer = setTimeout(() => {
-      focusRow(pendingFocus)
-    }, 0)
-    return () => {
-      clearTimeout(timer)
-    }
+    const timer = setTimeout(() => focusRow(pendingFocus), 0)
+    return () => clearTimeout(timer)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- rows re-runs the focus attempt until the target row exists (see comment above)
   }, [focusRow, pendingFocus, rows])
 
@@ -451,12 +447,8 @@ export function CanvasTree({
   // refresh cannot extend it.
   React.useEffect(() => {
     if (!pendingFocus) return
-    const timer = setTimeout(() => {
-      setPendingFocus(null)
-    }, FOCUS_SETTLE_MS)
-    return () => {
-      clearTimeout(timer)
-    }
+    const timer = setTimeout(() => setPendingFocus(null), FOCUS_SETTLE_MS)
+    return () => clearTimeout(timer)
   }, [pendingFocus])
 
   /**
@@ -755,9 +747,7 @@ export function CanvasTree({
   React.useImperativeHandle(
     ref,
     () => ({
-      createFolder: () => {
-        handleNewFolder(null)
-      }
+      createFolder: () => handleNewFolder(null)
     }),
     [handleNewFolder]
   )
@@ -862,9 +852,7 @@ export function CanvasTree({
           title={confirmCopy.title}
           body={confirmCopy.body}
           onConfirm={handleConfirm}
-          onCancel={() => {
-            setConfirm(null)
-          }}
+          onCancel={() => setConfirm(null)}
         />
       )}
     </>
@@ -902,18 +890,14 @@ export function CanvasTree({
             <button
               type="button"
               data-row-key={EMPTY_STATE_FOCUS_KEY}
-              onClick={() => {
-                handleNewCanvas(null)
-              }}
+              onClick={() => handleNewCanvas(null)}
               className={EMPTY_STATE_ACTION_CLASS}
             >
               {t('canvas.newCanvas')}
             </button>
             <button
               type="button"
-              onClick={() => {
-                handleNewFolder(null)
-              }}
+              onClick={() => handleNewFolder(null)}
               className={EMPTY_STATE_ACTION_CLASS}
             >
               {t('canvas.actions.newFolder')}
@@ -934,9 +918,7 @@ export function CanvasTree({
             value={filter}
             aria-label={t('canvas.filterPlaceholder')}
             placeholder={t('canvas.filterPlaceholder')}
-            onChange={(event) => {
-              setFilter(event.target.value)
-            }}
+            onChange={(event) => setFilter(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') setFilter('')
             }}
@@ -970,7 +952,7 @@ export function CanvasTree({
                   isNaming={editing !== null}
                   isExpanded={isExpanded}
                   isDropTarget={dropTarget === node.path}
-                  onDragStart={(event, target) => {
+                  onDragStart={(event, target) =>
                     handleDragStart(event, {
                       tree: 'canvas',
                       kind: 'folder',
@@ -981,15 +963,11 @@ export function CanvasTree({
                       subtreeDepth: folderSubtreeDepth(target),
                       materialized: target.materialized
                     })
-                  }}
+                  }
                   onDragEnd={handleDragEnd}
-                  onDragOver={(event, target) => {
-                    handleDragOver(event, target.path, target.path)
-                  }}
+                  onDragOver={(event, target) => handleDragOver(event, target.path, target.path)}
                   onDragLeave={handleDragLeave}
-                  onDrop={(event, target) => {
-                    handleDrop(event, target.path)
-                  }}
+                  onDrop={(event, target) => handleDrop(event, target.path)}
                   onToggle={toggleFolder}
                   onNewCanvas={handleNewCanvas}
                   onNewFolder={handleNewFolder}
@@ -1001,21 +979,21 @@ export function CanvasTree({
                       return canvasFolderService.setIcon({ path: target.path, icon })
                     })
                   }}
-                  onRename={(target) => {
+                  onRename={(target) =>
                     beginEdit(
                       { kind: 'folder', path: target.path, materialized: target.materialized },
                       target.name
                     )
-                  }}
+                  }
                   folderOptions={folderOptions}
                   onMove={handleFolderMove}
-                  onDelete={(target) => {
+                  onDelete={(target) =>
                     setConfirm({
                       kind: 'delete-folder',
                       node: target,
                       count: trueFolderCounts.get(target.path) ?? target.canvasCount
                     })
-                  }}
+                  }
                 />
 
                 {/*
@@ -1036,9 +1014,7 @@ export function CanvasTree({
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        handleNewCanvas(node.path)
-                      }}
+                      onClick={() => handleNewCanvas(node.path)}
                       className="rounded-sm text-[11px] leading-3.5 font-medium text-sidebar-section-heading transition-colors text-start hover:text-sidebar-primary"
                     >
                       {t('canvas.actions.newCanvasHere')}
@@ -1071,9 +1047,9 @@ export function CanvasTree({
                 onTargetFolderChange?.(target.folder ?? null)
                 onCanvasClick?.(target)
               }}
-              onRename={(target) => {
+              onRename={(target) =>
                 beginEdit({ kind: 'canvas', id: target.id }, target.title || t('canvas.untitled'))
-              }}
+              }
               onDuplicate={(target) => {
                 void run(() => canvasService.duplicate(target.id))
               }}
@@ -1089,12 +1065,10 @@ export function CanvasTree({
               onRevealInFinder={(target) => {
                 void run(() => canvasService.revealInFinder(target.id))
               }}
-              onDelete={(target) => {
-                setConfirm({ kind: 'delete-canvas', canvas: target })
-              }}
-              onDragStart={(event, target) => {
+              onDelete={(target) => setConfirm({ kind: 'delete-canvas', canvas: target })}
+              onDragStart={(event, target) =>
                 handleDragStart(event, { tree: 'canvas', kind: 'canvas', id: target.id })
-              }}
+              }
               onDragEnd={handleDragEnd}
             />
           )
@@ -1108,13 +1082,9 @@ export function CanvasTree({
         <div
           data-testid="canvas-tree-root-drop"
           className="relative mt-0.5 h-6"
-          onDragOver={(event) => {
-            handleDragOver(event, null, ROOT_DROP_KEY)
-          }}
+          onDragOver={(event) => handleDragOver(event, null, ROOT_DROP_KEY)}
           onDragLeave={handleDragLeave}
-          onDrop={(event) => {
-            handleDrop(event, null)
-          }}
+          onDrop={(event) => handleDrop(event, null)}
         >
           {dragging && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border border-dashed border-border text-[11px] text-muted-foreground">

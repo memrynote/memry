@@ -168,9 +168,7 @@ function CommandsPaletteBody({ onRun }: { onRun: (id: CommandId) => void }): Rea
   const searchNotes: SearchAction = {
     label: t('commandsPalette.actions.searchNotes'),
     keyLabel: searchKeys,
-    onRun: () => {
-      onRun('nav.search')
-    }
+    onRun: () => onRun('nav.search')
   }
   const run: SearchAction | null =
     values.length > 0
@@ -272,9 +270,7 @@ function CommandRow({
   return (
     <SearchRow
       value={command.id}
-      onSelect={() => {
-        onSelect(command.id)
-      }}
+      onSelect={() => onSelect(command.id)}
       icon={<Icon />}
       trailing={
         keyboardId ? (

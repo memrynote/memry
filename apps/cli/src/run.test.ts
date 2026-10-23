@@ -70,9 +70,7 @@ async function runCliProcess(args: string[]): Promise<{
 
   return new Promise((resolve, reject) => {
     child.on('error', reject)
-    child.on('close', (code) => {
-      resolve({ code, stdout, stderr })
-    })
+    child.on('close', (code) => resolve({ code, stdout, stderr }))
   })
 }
 

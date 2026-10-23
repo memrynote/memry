@@ -93,9 +93,7 @@ export function CanvasRowNameInput({
         aria-describedby={edit.error ? errorId : undefined}
         value={edit.value}
         disabled={edit.busy}
-        onChange={(event) => {
-          edit.onChange(event.target.value)
-        }}
+        onChange={(event) => edit.onChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault()
@@ -136,9 +134,7 @@ export function CanvasRowNameInput({
         }}
         // The row opens the canvas or toggles the folder on click; putting the
         // caret somewhere is neither.
-        onClick={(event) => {
-          event.stopPropagation()
-        }}
+        onClick={(event) => event.stopPropagation()}
         className="h-5 w-full rounded border border-input bg-background px-1 text-[13px] focus:outline-none"
       />
       {edit.error && (

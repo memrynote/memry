@@ -24,9 +24,7 @@ export function renameTagsInDoc(doc: Y.Doc, renames: readonly TagRename[]): bool
       }
     }
   }
-  doc.transact(() => {
-    visit(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-  }, ORIGIN_LOCAL)
+  doc.transact(() => visit(doc.getXmlFragment(CRDT_FRAGMENT_NAME)), ORIGIN_LOCAL)
   return changed
 }
 

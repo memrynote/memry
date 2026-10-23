@@ -189,9 +189,9 @@ export function scheduleLockedFileReconcile(): void {
   if (reconcileTimer) return
   reconcileTimer = setTimeout(() => {
     reconcileTimer = null
-    void reconcileLockedFiles().catch((err: unknown) => {
+    void reconcileLockedFiles().catch((err: unknown) =>
       log.warn('Reconciling locked files failed', { error: err })
-    })
+    )
   }, 1000)
 }
 
@@ -227,18 +227,18 @@ function resumeFieldRenameAfterUnlock(): void {
   // Lazy: the rename pulls in the note writer, which imports this module back.
   void import('../tags/schema/field-rename')
     .then(({ resumeFieldRename }) => resumeFieldRename(getDatabase()))
-    .catch((err: unknown) => {
+    .catch((err: unknown) =>
       log.warn('Resuming a field rename after an unlock failed', { error: err })
-    })
+    )
 }
 
 /** A lock record from another device landed: refresh, re-protect, tell the windows. */
 export function onRemoteVaultLockApplied(folderUnlocked?: string): void {
   invalidateVaultLocks()
   void reconcileLockedFiles(folderUnlocked)
-    .catch((err: unknown) => {
+    .catch((err: unknown) =>
       log.warn('Reconciling locked files after a remote lock failed', { error: err })
-    })
+    )
     .finally(() => broadcastLockState())
   resumeFieldRenameAfterUnlock()
 }

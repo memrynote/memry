@@ -44,9 +44,7 @@ export function LargeNotesWarning(): React.JSX.Element | null {
     <div data-testid="large-notes-warning">
       <button
         type="button"
-        onClick={() => {
-          setExpanded(!isExpanded)
-        }}
+        onClick={() => setExpanded(!isExpanded)}
         aria-expanded={isExpanded}
         className="flex w-full min-h-11 items-center gap-2 py-2.5 text-start"
       >

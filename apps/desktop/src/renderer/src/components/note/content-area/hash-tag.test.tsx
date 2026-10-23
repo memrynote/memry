@@ -219,10 +219,10 @@ describe('hash tag with an uploaded icon', () => {
     })
 
     expect(render.dom.textContent).toBe('#books')
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(render.dom.querySelector('img')?.getAttribute('src')).toBe(
         'memry-file://local/vault/.memry/icons/star.png'
       )
-    })
+    )
   })
 })

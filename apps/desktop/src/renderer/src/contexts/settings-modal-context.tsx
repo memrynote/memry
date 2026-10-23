@@ -91,17 +91,13 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
     SETTINGS_SECTIONS.map((section) => [
       settingsCommandId(section),
       {
-        run: () => {
-          open(section)
-        }
+        run: () => open(section)
       }
     ])
   ) as Record<SettingsCommandId, { run: () => void }>
   useAppCommands('settings', {
     'nav.settings': {
-      run: () => {
-        open()
-      }
+      run: () => open()
     },
     ...sectionImpls
   })

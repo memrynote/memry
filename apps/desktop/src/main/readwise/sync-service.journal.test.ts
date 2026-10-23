@@ -232,9 +232,7 @@ describe('Readwise journal highlights', () => {
     })
   }
 
-  const journalOn = () => {
-    settings.writeReadwiseOptions(db(), { journalHighlights: true })
-  }
+  const journalOn = () => settings.writeReadwiseOptions(db(), { journalHighlights: true })
   const entry = async (date: string) => (await journal.readJournalEntry(date))?.content ?? null
   const journalWrites = () =>
     vi.mocked(journalOwner.updateJournalEntry).mock.calls.length +

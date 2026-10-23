@@ -50,9 +50,7 @@ function send(data: unknown): void {
 }
 
 async function replyTo(requestId: number): Promise<OcrWorkerToMainMessage> {
-  await vi.waitFor(() => {
-    expect(port.posted).toContainEqual(expect.objectContaining({ requestId }))
-  })
+  await vi.waitFor(() => expect(port.posted).toContainEqual(expect.objectContaining({ requestId })))
   return port.posted.find(
     (message) => (message as { requestId?: number }).requestId === requestId
   ) as OcrWorkerToMainMessage

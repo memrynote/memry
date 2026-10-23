@@ -305,9 +305,7 @@ describe('the claimed snapshot is never replaced by one that does not cover it (
     const { bucket, blocked, release } = gatedBucket()
 
     const stale = push('note-1', 'old-client', undefined, PEER_ID, bucket)
-    await vi.waitFor(() => {
-      expect(blocked()).toBe(true)
-    })
+    await vi.waitFor(() => expect(blocked()).toBe(true))
     await push('note-1', 'covers-22', claim(22))
     release()
 
@@ -474,9 +472,7 @@ describe('the claimed snapshot is never replaced by one that does not cover it (
 
     // B read the feed through 50, A through 60; both see the base snapshot.
     const loser = push('note-1', 'b-without-55', claim(50), 'device-b', bucket)
-    await vi.waitFor(() => {
-      expect(blocked()).toBe(true)
-    })
+    await vi.waitFor(() => expect(blocked()).toBe(true))
     await push('note-1', 'a-with-55', claim(60), 'device-a')
     release()
 

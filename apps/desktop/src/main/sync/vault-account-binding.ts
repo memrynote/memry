@@ -214,9 +214,9 @@ export function scheduleBindingRetry(start: () => Promise<unknown>): void {
   if (bindingRetryTimer) return
   bindingRetryTimer = setTimeout(() => {
     bindingRetryTimer = null
-    void start().catch((err: unknown) => {
+    void start().catch((err: unknown) =>
       log.warn('Sync retry after vault ownership check failed', err)
-    })
+    )
   }, BINDING_RETRY_MS)
   bindingRetryTimer.unref?.()
 }

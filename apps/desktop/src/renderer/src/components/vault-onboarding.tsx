@@ -84,9 +84,7 @@ export function VaultOnboarding(): React.JSX.Element {
       event.preventDefault()
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [view, isLoading, handleOpenFolder])
 
   return (
@@ -102,18 +100,14 @@ export function VaultOnboarding(): React.JSX.Element {
             recentVaults={recentVaults}
             currentVault={currentVault ?? null}
             isLoading={isLoading}
-            onPick={() => {
-              setView('create')
-            }}
+            onPick={() => setView('create')}
             onOpenRecent={(path) => void handleOpenRecent(path)}
           />
         )}
         {view === 'create' ? (
           <main className="flex flex-col grow shrink basis-0 h-full bg-background">
             <CreateVaultForm
-              onBack={() => {
-                setView('home')
-              }}
+              onBack={() => setView('home')}
               onCreated={trackCompleted}
               onOpenExisting={(path) => void handleOpenFolder(path)}
             />
@@ -121,13 +115,9 @@ export function VaultOnboarding(): React.JSX.Element {
         ) : view === 'sync' ? (
           <main className="flex flex-col grow shrink basis-0 h-full bg-background">
             <SyncVaultPanel
-              onBack={() => {
-                setView('home')
-              }}
+              onBack={() => setView('home')}
               onOpened={trackCompleted}
-              onCreateVault={() => {
-                setView('create')
-              }}
+              onCreateVault={() => setView('create')}
             />
           </main>
         ) : (
@@ -135,13 +125,9 @@ export function VaultOnboarding(): React.JSX.Element {
             t={t}
             isLoading={isLoading}
             error={error}
-            onCreate={() => {
-              setView('create')
-            }}
+            onCreate={() => setView('create')}
             onOpenFolder={() => void handleOpenFolder()}
-            onOpenFromSync={() => {
-              setView('sync')
-            }}
+            onOpenFromSync={() => setView('sync')}
             onHelp={handleHelp}
           />
         )}
@@ -196,9 +182,7 @@ function RecentVaultSidebar({
             <button
               key={vault.path}
               type="button"
-              onClick={() => {
-                onOpenRecent(vault.path)
-              }}
+              onClick={() => onOpenRecent(vault.path)}
               disabled={isLoading}
               className={cn(
                 'group flex items-center w-full text-start rounded-lg p-2 gap-2 transition-colors disabled:opacity-60',

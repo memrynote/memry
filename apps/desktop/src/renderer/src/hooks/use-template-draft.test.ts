@@ -50,9 +50,7 @@ describe('useTemplateDraft', () => {
   it('becomes dirty and saveable once a name is typed', () => {
     const { result } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
 
-    act(() => {
-      result.current.setFields({ name: 'Meeting' })
-    })
+    act(() => result.current.setFields({ name: 'Meeting' }))
 
     expect(result.current.isDirty).toBe(true)
     expect(result.current.canSave).toBe(true)
@@ -61,9 +59,7 @@ describe('useTemplateDraft', () => {
   it('never auto-saves while in draft', () => {
     const { result } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
 
-    act(() => {
-      result.current.setFields({ name: 'Meeting' })
-    })
+    act(() => result.current.setFields({ name: 'Meeting' }))
     act(() => vi.advanceTimersByTime(5000))
 
     expect(createTemplate).not.toHaveBeenCalled()
@@ -73,9 +69,7 @@ describe('useTemplateDraft', () => {
     const onCreated = vi.fn()
     const { result } = renderHook(() => useTemplateDraft({ initial: emptyFields, onCreated }))
 
-    act(() => {
-      result.current.setFields({ name: '  Meeting  ' })
-    })
+    act(() => result.current.setFields({ name: '  Meeting  ' }))
     await act(async () => {
       await result.current.save()
     })
@@ -96,18 +90,14 @@ describe('useTemplateDraft', () => {
     )
 
     expect(result.current.state).toBe('saved')
-    act(() => {
-      result.current.setFields({ content: 'hello' })
-    })
+    act(() => result.current.setFields({ content: 'hello' }))
     expect(result.current.state).toBe('dirty')
 
     await act(async () => {
       vi.advanceTimersByTime(800)
     })
 
-    await waitFor(() => {
-      expect(updateTemplate).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(updateTemplate).toHaveBeenCalledTimes(1))
     expect(updateTemplate).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'tpl-1', content: 'hello' })
     )
@@ -121,20 +111,14 @@ describe('useTemplateDraft', () => {
       })
     )
 
-    act(() => {
-      result.current.setFields({ content: 'a' })
-    })
+    act(() => result.current.setFields({ content: 'a' }))
     act(() => vi.advanceTimersByTime(400))
-    act(() => {
-      result.current.setFields({ content: 'ab' })
-    })
+    act(() => result.current.setFields({ content: 'ab' }))
     await act(async () => {
       vi.advanceTimersByTime(800)
     })
 
-    await waitFor(() => {
-      expect(updateTemplate).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(updateTemplate).toHaveBeenCalledTimes(1))
     expect(updateTemplate).toHaveBeenCalledWith(expect.objectContaining({ content: 'ab' }))
   })
 
@@ -146,12 +130,8 @@ describe('useTemplateDraft', () => {
       })
     )
 
-    act(() => {
-      result.current.setFields({ content: 'a' })
-    })
-    act(() => {
-      result.current.setFields({ content: '' })
-    })
+    act(() => result.current.setFields({ content: 'a' }))
+    act(() => result.current.setFields({ content: '' }))
     await act(async () => {
       vi.advanceTimersByTime(800)
     })
@@ -169,9 +149,7 @@ describe('useTemplateDraft', () => {
       })
     )
 
-    act(() => {
-      result.current.setFields({ content: 'hello' })
-    })
+    act(() => result.current.setFields({ content: 'hello' }))
     let saved: boolean | undefined
     await act(async () => {
       saved = await result.current.save()
@@ -192,9 +170,7 @@ describe('useTemplateDraft', () => {
       })
     )
 
-    act(() => {
-      result.current.setFields({ content: 'hello' })
-    })
+    act(() => result.current.setFields({ content: 'hello' }))
     await act(async () => {
       await result.current.save()
     })
@@ -212,17 +188,13 @@ describe('useTemplateDraft', () => {
       })
     )
 
-    act(() => {
-      result.current.setFields({ content: 'a' })
-    })
+    act(() => result.current.setFields({ content: 'a' }))
     let first: Promise<boolean> = Promise.resolve(false)
     await act(async () => {
       first = result.current.save()
     })
     expect(updateTemplate).toHaveBeenCalledWith(expect.objectContaining({ content: 'a' }))
-    act(() => {
-      result.current.setFields({ content: 'ab' })
-    })
+    act(() => result.current.setFields({ content: 'ab' }))
     let second: Promise<boolean> = Promise.resolve(false)
     act(() => {
       second = result.current.save()
@@ -247,9 +219,7 @@ describe('useTemplateDraft', () => {
     it('flushes edits still inside the debounce instead of dropping them', async () => {
       const { result, unmount } = renderHook(() => useTemplateDraft(existing))
 
-      act(() => {
-        result.current.setFields({ content: 'typed' })
-      })
+      act(() => result.current.setFields({ content: 'typed' }))
       unmount()
       await act(async () => {})
 
@@ -271,9 +241,7 @@ describe('useTemplateDraft', () => {
     it('never writes an uncreated draft', async () => {
       const { result, unmount } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
 
-      act(() => {
-        result.current.setFields({ name: 'Meeting' })
-      })
+      act(() => result.current.setFields({ name: 'Meeting' }))
       unmount()
       await act(async () => {})
 
@@ -283,12 +251,8 @@ describe('useTemplateDraft', () => {
     it('skips the flush after discard', async () => {
       const { result, unmount } = renderHook(() => useTemplateDraft(existing))
 
-      act(() => {
-        result.current.setFields({ content: 'typed' })
-      })
-      act(() => {
-        result.current.discard()
-      })
+      act(() => result.current.setFields({ content: 'typed' }))
+      act(() => result.current.discard())
       unmount()
       await act(async () => {})
 
@@ -299,9 +263,7 @@ describe('useTemplateDraft', () => {
       const { result, unmount } = renderHook(() => useTemplateDraft(existing))
       const { setFields } = result.current
 
-      act(() => {
-        setFields({ content: 'typ' })
-      })
+      act(() => setFields({ content: 'typ' }))
       unmount()
       setFields({ content: 'typed' })
       await act(async () => {})
@@ -313,9 +275,7 @@ describe('useTemplateDraft', () => {
       updateTemplate.mockResolvedValueOnce(null)
       const first = renderHook(() => useTemplateDraft(existing))
 
-      act(() => {
-        first.result.current.setFields({ content: 'typed' })
-      })
+      act(() => first.result.current.setFields({ content: 'typed' }))
       first.unmount()
       await act(async () => {})
       expect(toastError).toHaveBeenCalled()
@@ -328,9 +288,7 @@ describe('useTemplateDraft', () => {
       await act(async () => {
         vi.advanceTimersByTime(800)
       })
-      await waitFor(() => {
-        expect(updateTemplate).toHaveBeenCalledTimes(2)
-      })
+      await waitFor(() => expect(updateTemplate).toHaveBeenCalledTimes(2))
       expect(updateTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'typed' }))
       second.unmount()
     })
@@ -340,9 +298,7 @@ describe('useTemplateDraft', () => {
       updateTemplate.mockImplementationOnce(() => new Promise((resolve) => (release = resolve)))
       const first = renderHook(() => useTemplateDraft(existing))
 
-      act(() => {
-        first.result.current.setFields({ content: 'typed' })
-      })
+      act(() => first.result.current.setFields({ content: 'typed' }))
       first.unmount()
       await act(async () => {})
 
@@ -358,9 +314,7 @@ describe('useTemplateDraft', () => {
     it('forgets flushed edits once they are written', async () => {
       const first = renderHook(() => useTemplateDraft(existing))
 
-      act(() => {
-        first.result.current.setFields({ content: 'typed' })
-      })
+      act(() => first.result.current.setFields({ content: 'typed' }))
       first.unmount()
       await act(async () => {})
 

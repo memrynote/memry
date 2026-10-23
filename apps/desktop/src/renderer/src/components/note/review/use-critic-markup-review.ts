@@ -395,9 +395,7 @@ export function useCriticMarkupReview({
     }
 
     document.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-    }
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [undoLastReviewAction])
 
   const updateMarkPositions = useCallback((positions: Record<string, number>) => {

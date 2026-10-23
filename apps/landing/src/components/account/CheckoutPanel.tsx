@@ -201,9 +201,7 @@ export function CheckoutPanel({
                     // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
                     role="radio"
                     aria-checked={active}
-                    onClick={() => {
-                      setCadence(option)
-                    }}
+                    onClick={() => setCadence(option)}
                     className={cn(
                       'flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition duration-200',
                       active ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'
@@ -279,9 +277,7 @@ function PlanRow({
       role="radio"
       aria-checked={selected}
       disabled={disabled}
-      onClick={() => {
-        onSelect(planId)
-      }}
+      onClick={() => onSelect(planId)}
       className={cn(
         'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start transition-colors duration-200',
         selected ? 'bg-[var(--color-paper-alt)]' : 'hover:bg-[var(--color-paper-alt)]/60',

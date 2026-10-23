@@ -146,9 +146,7 @@ beforeEach(() => {
   // Deferred like the real thing: the layer stores the handle it returns and
   // only schedules again once the callback has cleared it.
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-    queueMicrotask(() => {
-      cb(0)
-    })
+    queueMicrotask(() => cb(0))
     return 1
   })
   vi.stubGlobal('cancelAnimationFrame', () => {})
@@ -185,9 +183,7 @@ describe('CanvasFrameLayer', () => {
       { action: { onClick: () => void } }
     ]
 
-    act(() => {
-      options.action.onClick()
-    })
+    act(() => options.action.onClick())
     await flush()
 
     expect(api.updateScene).toHaveBeenCalledTimes(1)
@@ -206,9 +202,7 @@ describe('CanvasFrameLayer', () => {
     expect(mocks.toast).toHaveBeenCalledTimes(1)
     const [, options] = mocks.toast.mock.calls[0] as [string, { action: { onClick: () => void } }]
     mocks.remove.mockResolvedValue({ status: 'applied', revert: vi.fn() })
-    act(() => {
-      options.action.onClick()
-    })
+    act(() => options.action.onClick())
     await flush()
     expect(mocks.remove).toHaveBeenCalledWith({ entityType: 'note', entityId: 'n-c1' }, tag)
   })
@@ -247,9 +241,7 @@ describe('CanvasFrameLayer', () => {
     fireEvent.click(screen.getByTestId('canvas-frame-chip-f1'))
     expect(mocks.bindingDialog?.open).toBe(true)
 
-    act(() => {
-      mocks.bindingDialog!.onPick(tag)
-    })
+    act(() => mocks.bindingDialog!.onPick(tag))
     await flush()
 
     const frame = scene.elements.find((el) => el.id === 'f1')!
@@ -263,9 +255,7 @@ describe('CanvasFrameLayer', () => {
       string,
       { action: { onClick: () => void } }
     ]
-    act(() => {
-      options.action.onClick()
-    })
+    act(() => options.action.onClick())
     await flush()
     expect(mocks.revert).toHaveBeenCalledTimes(1)
     expect(scene.elements.find((el) => el.id === 'c1')!.frameId).toBe('f1')
@@ -275,9 +265,7 @@ describe('CanvasFrameLayer', () => {
     const named = { ...boundFrame, name: 'My section' }
     const { scene } = mount([card('c1', 'f1'), named])
     fireEvent.click(screen.getByTestId('canvas-frame-chip-f1'))
-    act(() => {
-      mocks.bindingDialog!.onUnbind()
-    })
+    act(() => mocks.bindingDialog!.onUnbind())
     await flush()
     const frame = scene.elements.find((el) => el.id === 'f1')!
     expect(frame.customData).toBeNull()

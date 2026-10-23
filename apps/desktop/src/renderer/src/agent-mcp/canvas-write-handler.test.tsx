@@ -77,12 +77,8 @@ describe('useAgentMcpCanvasWriteResponder', () => {
   })
 
   async function send(payload: unknown): Promise<unknown> {
-    renderHook(() => {
-      useAgentMcpCanvasWriteResponder()
-    })
-    await waitFor(() => {
-      expect(window.api.onMainInvoke).toHaveBeenCalled()
-    })
+    renderHook(() => useAgentMcpCanvasWriteResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
     await onMainInvokeCallback?.({
       requestId: 'r1',
       channel: AgentMcpCanvasWriteChannel,

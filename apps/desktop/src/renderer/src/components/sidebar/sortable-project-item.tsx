@@ -226,11 +226,7 @@ export const SortableProjectItem = ({
         <ContextMenuContent className="w-48">
           <OpenTargetMenuItems tab={projectTab} />
           <ContextMenuSeparator />
-          <ContextMenuItem
-            onClick={() => {
-              onEdit(project)
-            }}
-          >
+          <ContextMenuItem onClick={() => onEdit(project)}>
             <Settings className="me-2 h-4 w-4" />
             {tPhaseF('phaseF.componentsSidebarSortableProjectItem.settings')}
           </ContextMenuItem>

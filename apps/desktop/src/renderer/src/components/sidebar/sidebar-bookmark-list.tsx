@@ -225,9 +225,7 @@ export function SidebarBookmarkList({
       {hasMore && (
         <SidebarMenuItem>
           <SidebarMenuButton
-            onClick={() => {
-              setShowAll(!showAll)
-            }}
+            onClick={() => setShowAll(!showAll)}
             className="text-muted-foreground hover:text-foreground"
           >
             <Star className="size-3.5 opacity-50" />

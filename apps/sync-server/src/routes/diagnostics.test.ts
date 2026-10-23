@@ -75,9 +75,7 @@ describe('POST /diagnostics/report', () => {
     expect((await response.json()) as { incidentId: string }).toEqual({
       incidentId: 'MEMRY-AB12CD34'
     })
-    await vi.waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled()
-    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const [url, init] = fetchMock.mock.calls[0]
     expect(String(url)).toBe('https://us.i.posthog.com/i/v1/logs')
     const parsedBody = JSON.parse((init as { body: string }).body)

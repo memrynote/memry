@@ -35,9 +35,7 @@ vi.mock('@/components/ui/select', () => ({
       <select
         aria-label="logic select"
         value={value}
-        onChange={(event) => {
-          onValueChange(event.target.value)
-        }}
+        onChange={(event) => onValueChange(event.target.value)}
       >
         <option value="and">and</option>
         <option value="or">or</option>
@@ -76,9 +74,9 @@ vi.mock('./filter-row', () => ({
       </span>
       <button
         type="button"
-        onClick={() => {
+        onClick={() =>
           onChange({ ...condition, property: 'status', operator: '==', value: 'done' })
-        }}
+        }
       >
         update {condition.id}
       </button>

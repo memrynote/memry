@@ -178,14 +178,9 @@ function requeueFor(
   const local = adapters?.getLocal(type)
   if (!local) return null
   // A create re-runs as one: append-only types (task activity) ignore updates.
-  if (create)
-    return () => {
-      local.enqueueCreate(itemId)
-    }
+  if (create) return () => local.enqueueCreate(itemId)
   // `[]`: calendar events read it as the changed fields, so no field ticks.
-  return () => {
-    local.enqueueUpdate(itemId, [])
-  }
+  return () => local.enqueueUpdate(itemId, [])
 }
 
 function reportStuck(key: string, message: string): void {

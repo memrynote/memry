@@ -85,9 +85,7 @@ const runShellProbe: RunShellProbe = (shell, args) =>
       // so the polite signal leaves this promise pending for the whole session
       // and every consumer awaiting the PATH gate hangs with it.
       child.kill('SIGKILL')
-      settle(() => {
-        reject(Object.assign(new Error('login shell probe timed out'), { code: null }))
-      })
+      settle(() => reject(Object.assign(new Error('login shell probe timed out'), { code: null })))
     }, PROBE_TIMEOUT_MS)
     timer.unref?.()
 
@@ -95,9 +93,7 @@ const runShellProbe: RunShellProbe = (shell, args) =>
     child.stdout.on('data', (chunk: string) => {
       stdout += chunk
     })
-    child.on('error', (error) => {
-      settle(() => reject(error))
-    })
+    child.on('error', (error) => settle(() => reject(error)))
     child.on('close', (code) => {
       settle(() => {
         if (code === 0) resolve(stdout)

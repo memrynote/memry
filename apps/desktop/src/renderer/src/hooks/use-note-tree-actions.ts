@@ -1131,9 +1131,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     })
   }, [deps.selectedIds, deps.noteMap])
 
-  const closeSelectionMoveDialog = useCallback(() => {
-    setSelectionMoveRequest(null)
-  }, [])
+  const closeSelectionMoveDialog = useCallback(() => setSelectionMoveRequest(null), [])
 
   const handleBookmarkSelection = useCallback(async () => {
     const { notes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)

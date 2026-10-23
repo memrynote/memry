@@ -37,9 +37,7 @@ export function CustomColorSwatch({
       if (guardingRef.current) e.stopImmediatePropagation()
     }
     document.addEventListener('focusin', swallow, true)
-    return () => {
-      document.removeEventListener('focusin', swallow, true)
-    }
+    return () => document.removeEventListener('focusin', swallow, true)
   }, [])
 
   const armGuard = useCallback(() => {
@@ -76,13 +74,9 @@ export function CustomColorSwatch({
   useEffect(() => {
     const el = inputRef.current
     if (!el) return
-    const commit = () => {
-      onChangeRef.current(el.value)
-    }
+    const commit = () => onChangeRef.current(el.value)
     el.addEventListener('change', commit)
-    return () => {
-      el.removeEventListener('change', commit)
-    }
+    return () => el.removeEventListener('change', commit)
   }, [])
 
   return (
@@ -107,9 +101,7 @@ export function CustomColorSwatch({
         type="color"
         value={draft}
         onClick={armGuard}
-        onChange={(e) => {
-          setDraft(e.target.value)
-        }}
+        onChange={(e) => setDraft(e.target.value)}
         className="absolute inset-0 cursor-pointer opacity-0"
       />
     </label>

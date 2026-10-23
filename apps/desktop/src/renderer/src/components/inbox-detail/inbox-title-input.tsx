@@ -48,9 +48,7 @@ export function InboxTitleInput({
       type="text"
       key={itemId}
       defaultValue={title}
-      onBlur={(e) => {
-        commit(e.target.value)
-      }}
+      onBlur={(e) => commit(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.currentTarget.blur()

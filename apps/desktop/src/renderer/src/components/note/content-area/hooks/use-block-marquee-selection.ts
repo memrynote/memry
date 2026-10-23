@@ -736,9 +736,7 @@ export function useBlockMarqueeSelection({
       }
     }
     document.addEventListener('keydown', onKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown, true)
-    }
+    return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [
     clearSelection,
     editor,
@@ -793,9 +791,7 @@ export function useBlockMarqueeSelection({
       clearSelection()
     }
     document.addEventListener('mousedown', onMouseDown, true)
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown, true)
-    }
+    return () => document.removeEventListener('mousedown', onMouseDown, true)
   }, [clearSelection, triggerContainerEl])
 
   return {

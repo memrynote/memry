@@ -152,9 +152,7 @@ describe('SyncStatus with device keys missing', () => {
     expect(repairDeviceKeys).toHaveBeenCalledTimes(1)
 
     finish({ status: 'repaired' })
-    await vi.waitFor(() => {
-      expect((button as HTMLButtonElement).disabled).toBe(false)
-    })
+    await vi.waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false))
   })
 
   it('keeps the session and explains why sync did not start', async () => {

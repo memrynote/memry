@@ -175,9 +175,8 @@ export class NoteBodyFeed {
       const lowest = held === null || cursor === null ? null : Math.min(held ?? cursor, cursor)
       cursors.set(noteId, lowest)
     }
-    const noteCursor = (noteId: string, cursor: number | null): void => {
+    const noteCursor = (noteId: string, cursor: number | null): void =>
       lowestInto(page.cursors!, noteId, cursor)
-    }
     for (const raw of changes.noteBodies) {
       const result = NoteBodyChangeSchema.safeParse(raw)
       const skippedId = result.success ? result.data.noteId : (raw as { noteId?: unknown })?.noteId
@@ -354,9 +353,7 @@ export class NoteBodyFeed {
           {
             provider,
             isKnownNote: (id) => isKnownNote(this.deps.ctx.deps.db, id),
-            onMissingBase: (id) => {
-              this.deps.crdtSync().addPendingPull(id, 'missing_base')
-            }
+            onMissingBase: (id) => this.deps.crdtSync().addPendingPull(id, 'missing_base')
           },
           noteId,
           bodies.map((body) => body.update),

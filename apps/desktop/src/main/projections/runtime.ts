@@ -100,11 +100,7 @@ interface ProjectorLane {
 
 export function createProjectionRuntime(options: ProjectionRuntimeOptions): ProjectionRuntime {
   const logger = options.logger
-  const scheduleDrain =
-    options.scheduleDrain ??
-    ((task: () => void) => {
-      queueMicrotask(task)
-    })
+  const scheduleDrain = options.scheduleDrain ?? ((task: () => void) => queueMicrotask(task))
   const queueLimit = options.queueLimit ?? DEFAULT_PROJECTION_QUEUE_LIMIT
 
   let isStopped = false

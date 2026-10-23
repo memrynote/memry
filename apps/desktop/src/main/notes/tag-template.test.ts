@@ -212,9 +212,7 @@ describe('a header tag with a template', () => {
     expect(result.tagTemplate?.kind).toBe('applied')
 
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    doc.transact(() => {
-      fragment.delete(0, fragment.length)
-    })
+    doc.transact(() => fragment.delete(0, fragment.length))
     await markdownToYFragment(`${TEMPLATE_BODY}\nAction items`, fragment, note.path)
 
     const undoToken = result.tagTemplate?.kind === 'applied' ? result.tagTemplate.undoToken : ''

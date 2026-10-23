@@ -92,9 +92,9 @@ export function PresetOfferStrip(): React.JSX.Element | null {
                   variant="outline"
                   size="sm"
                   disabled={busy !== null}
-                  onClick={() => {
+                  onClick={() =>
                     offer.state === 'add-fields' ? setMergeOffer(offer) : void addPreset(offer)
-                  }}
+                  }
                 >
                   <Plus aria-hidden className="size-3.5" />
                   {offer.state === 'add-fields'
@@ -109,9 +109,7 @@ export function PresetOfferStrip(): React.JSX.Element | null {
       <AddPresetFieldsDialog
         key={mergeOffer?.key ?? 'none'}
         offer={mergeOffer}
-        onClose={() => {
-          setMergeOffer(null)
-        }}
+        onClose={() => setMergeOffer(null)}
       />
     </section>
   )

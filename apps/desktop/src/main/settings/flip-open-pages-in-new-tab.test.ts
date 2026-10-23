@@ -155,9 +155,7 @@ describe('flipOpenPagesInNewTabDefault', () => {
     vaultPath = createTempVault()
     fs.writeFileSync(path.join(vaultPath, MEMRY_DIR, 'config.json'), '{not json')
 
-    expect(() => {
-      flipOpenPagesInNewTabDefault(db(), vaultPath)
-    }).not.toThrow()
+    expect(() => flipOpenPagesInNewTabDefault(db(), vaultPath)).not.toThrow()
     expect(getSetting(db(), OPEN_PAGES_IN_NEW_TAB_FLIPPED_KEY)).toBe('1')
   })
 })

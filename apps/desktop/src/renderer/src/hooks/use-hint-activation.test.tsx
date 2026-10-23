@@ -44,9 +44,7 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
 
     expect(result.current.state.isActive).toBe(true)
     expect(result.current.state.hints).toHaveLength(2)
@@ -59,14 +57,10 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
     expect(result.current.state.isActive).toBe(true)
 
-    act(() => {
-      result.current.deactivate()
-    })
+    act(() => result.current.deactivate())
     expect(result.current.state.isActive).toBe(false)
     expect(result.current.state.hints).toHaveLength(0)
   })
@@ -77,15 +71,11 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
     expect(result.current.state.hints[0].label).toBe('TA')
     expect(result.current.state.hints[1].label).toBe('TS')
 
-    act(() => {
-      result.current.typeChar('T')
-    })
+    act(() => result.current.typeChar('T'))
     expect(result.current.state.typedChars).toBe('T')
   })
 
@@ -95,12 +85,8 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
-    act(() => {
-      result.current.typeChar('I')
-    })
+    act(() => result.current.activate())
+    act(() => result.current.typeChar('I'))
 
     expect(clickSpy).toHaveBeenCalledOnce()
     expect(result.current.state.isActive).toBe(false)
@@ -112,17 +98,11 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
-    act(() => {
-      result.current.typeChar('T')
-    })
+    act(() => result.current.activate())
+    act(() => result.current.typeChar('T'))
     expect(result.current.state.typedChars).toBe('T')
 
-    act(() => {
-      result.current.backspace()
-    })
+    act(() => result.current.backspace())
     expect(result.current.state.typedChars).toBe('')
   })
 
@@ -131,23 +111,17 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
     expect(result.current.state.isActive).toBe(true)
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
     expect(result.current.state.isActive).toBe(false)
   })
 
   it('activate with no clickable elements is a no-op', () => {
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
+    act(() => result.current.activate())
     expect(result.current.state.isActive).toBe(false)
   })
 
@@ -156,12 +130,8 @@ describe('HintModeProvider', () => {
 
     const { result } = renderHook(() => useHintModeContext(), { wrapper })
 
-    act(() => {
-      result.current.activate()
-    })
-    act(() => {
-      result.current.typeChar('Z')
-    })
+    act(() => result.current.activate())
+    act(() => result.current.typeChar('Z'))
 
     expect(result.current.state.typedChars).toBe('')
     expect(result.current.state.isActive).toBe(true)

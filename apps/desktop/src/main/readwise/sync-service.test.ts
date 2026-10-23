@@ -217,9 +217,8 @@ describe('Readwise incremental sync', () => {
    * second), so it names that highlight's book again every run. Moving the
    * cursor stands in for a later run, to see a window that holds only the edits.
    */
-  const cursorAt = (day: number) => {
+  const cursorAt = (day: number) =>
     state.setCursor(db(), `2026-10-${String(day).padStart(2, '0')}T00:00:00.000Z`)
-  }
   const userEdit = async (bookId: number, change: (body: string) => string) => {
     const note = await noteFor(bookId)
     await notes.updateNote({ id: note.id, content: change(note.content) })
@@ -295,9 +294,7 @@ describe('Readwise incremental sync', () => {
     )
     const progress = await import('../readwise/run-status')
     const running = service.run(TOKEN, { signal: new AbortController().signal, book: () => {} })
-    await vi.waitFor(() => {
-      expect(progress.getRunProgress()?.stage).toBe('reading')
-    })
+    await vi.waitFor(() => expect(progress.getRunProgress()?.stage).toBe('reading'))
 
     service.cancel()
     const result = await running

@@ -374,12 +374,8 @@ async function runImport(
     getAccessToken,
     fetch: deps.fetch,
     isCancelled: () => ctx.isCancelled(),
-    status: (m) => {
-      ctx.status(m)
-    },
-    onRateLimited: () => {
-      ctx.status(IMPORT_STATUS.onenoteRateLimited)
-    }
+    status: (m) => ctx.status(m),
+    onRateLimited: () => ctx.status(IMPORT_STATUS.onenoteRateLimited)
   })
 
   // ---- Phase 1: scan the notebook → section group → section → page tree ----

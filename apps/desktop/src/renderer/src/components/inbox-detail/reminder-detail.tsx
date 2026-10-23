@@ -99,9 +99,9 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   const handleNavigateToSource = useCallback(() => {
     if (!metadata) return
 
-    inboxService.markViewed(item.id).catch((err: unknown) => {
-      log.warn('Failed to mark reminder viewed', err)
-    })
+    inboxService
+      .markViewed(item.id)
+      .catch((err: unknown) => log.warn('Failed to mark reminder viewed', err))
 
     const tab = buildReminderTargetTab({
       targetType: metadata.targetType,
@@ -215,9 +215,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           <button
             key={preset.id}
             type="button"
-            onClick={() => {
-              handlePresetSnooze(preset.getTime)
-            }}
+            onClick={() => handlePresetSnooze(preset.getTime)}
             disabled={isSnoozing}
             className={SNOOZE_CHIP}
           >

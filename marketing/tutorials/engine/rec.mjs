@@ -43,9 +43,7 @@ export async function installCursor(page) {
         r.style.left = e.clientX + 'px'
         r.style.top = e.clientY + 'px'
         document.documentElement.appendChild(r)
-        setTimeout(() => {
-          r.remove()
-        }, 500)
+        setTimeout(() => r.remove(), 500)
       },
       true
     )

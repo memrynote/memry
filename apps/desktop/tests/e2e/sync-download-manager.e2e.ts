@@ -546,11 +546,7 @@ test.describe('Attachment download manager', () => {
       // which is reported as a genuine failure instead of the expected one.
       const settled = await Promise.race([
         download,
-        new Promise<null>((resolve) =>
-          setTimeout(() => {
-            resolve(null)
-          }, DEAD_LETTER_BUDGET_MS)
-        )
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), DEAD_LETTER_BUDGET_MS))
       ])
 
       // Snapshot the disk before disarming the fault: clearing it first would

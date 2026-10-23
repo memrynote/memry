@@ -55,9 +55,9 @@ describe('y-prosemirror remote update (BBF-120)', () => {
       ;((remoteFragment.get(3) as Y.XmlElement).get(0) as Y.XmlText).insert(2, '!')
     })
 
-    expect(() => {
+    expect(() =>
       Y.applyUpdate(local, Y.encodeStateAsUpdate(remote, Y.encodeStateVector(local)), 'remote')
-    }).not.toThrow()
+    ).not.toThrow()
     expect(view.state.doc.firstChild?.textContent).toBe('hi!')
     expect(view.state.selection.anchor).toBeLessThanOrEqual(view.state.doc.content.size)
   })

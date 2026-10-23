@@ -312,22 +312,11 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
 
         <DialogFooter>
           {summary ? (
-            <Button
-              size="sm"
-              onClick={() => {
-                handleOpenChange(false)
-              }}
-            >
+            <Button size="sm" onClick={() => handleOpenChange(false)}>
               {t('import.dialog.done')}
             </Button>
           ) : run.isRunning ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                run.cancel()
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={() => run.cancel()}>
               {t('import.dialog.cancel')}
             </Button>
           ) : (

@@ -602,9 +602,7 @@ describe('NotesTree - one folder subtree, view options', () => {
     await user.keyboard('{Alt>}')
     await user.click(screen.getByText('P1'))
     await user.keyboard('{/Alt}')
-    await waitFor(() => {
-      expect(screen.queryByText('Personal')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Personal')).not.toBeInTheDocument())
 
     // Reopening P1 alone finds Personal closed too.
     await user.click(screen.getByText('P1'))
@@ -622,9 +620,7 @@ describe('NotesTree - one folder subtree, view options', () => {
 
     await user.pointer({ target: screen.getByText('P1'), keys: '[MouseRight]' })
     await user.click(await screen.findByText('Collapse All Subfolders'))
-    await waitFor(() => {
-      expect(screen.queryByText('Personal')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Personal')).not.toBeInTheDocument())
   })
 
   it('keeps folders before notes by default and lists notes first when asked', async () => {
@@ -640,9 +636,7 @@ describe('NotesTree - one folder subtree, view options', () => {
       getSidebarNotesFirst: vi.fn(() => Promise.resolve(true))
     }
     renderWithProviders(<NotesTree />)
-    await waitFor(() => {
-      expect(rowIds()).toEqual(['root', 'folder-P1', 'folder-Zeta'])
-    })
+    await waitFor(() => expect(rowIds()).toEqual(['root', 'folder-P1', 'folder-Zeta']))
     await user.click(screen.getByText('P1'))
 
     expect(rowIds()).toEqual(['root', 'folder-P1', 'p1', 'folder-P1/Personal', 'folder-Zeta'])
@@ -659,9 +653,7 @@ describe('NotesTree - one folder subtree, view options', () => {
     await user.click(screen.getByText('P1'))
     await user.click(screen.getByText('Personal'))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Scan')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Scan')).not.toBeInTheDocument())
     expect(screen.getByText('Personal Summary')).toBeInTheDocument()
     expect(screen.getByText('Identity')).toBeInTheDocument()
     expect(screen.getByText('Zeta')).toBeInTheDocument()
@@ -683,13 +675,9 @@ describe('NotesTree - one folder subtree, view options', () => {
       await user.click(screen.getByText('Scan'))
 
       act(() => {
-        listeners.forEach((listener) => {
-          listener({ key: 'sidebar.showFiles', value: false })
-        })
+        listeners.forEach((listener) => listener({ key: 'sidebar.showFiles', value: false }))
       })
-      await waitFor(() => {
-        expect(screen.queryByText('Scan')).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.queryByText('Scan')).not.toBeInTheDocument())
 
       fireEvent.keyDown(document.querySelector('[data-tree-view]')!, { key: 'Delete' })
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -705,9 +693,7 @@ describe('NotesTree - one folder subtree, view options', () => {
       getSidebarShowFiles: vi.fn(() => Promise.resolve(false))
     }
     renderWithProviders(<NotesTree />)
-    await waitFor(() => {
-      expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.settings.getSidebarShowFiles).toHaveBeenCalled())
     await act(async () => {})
 
     act(() => {
@@ -1034,9 +1020,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     await user.click(projectsFolder)
 
     // Call createNote via the exposed action (simulates clicking header button)
-    await waitFor(() => {
-      expect(capturedActionsRef.current).not.toBeNull()
-    })
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
     capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
@@ -1056,9 +1040,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     const noteInFolder = screen.getByText('Project Alpha')
     await user.click(noteInFolder)
 
-    await waitFor(() => {
-      expect(capturedActionsRef.current).not.toBeNull()
-    })
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
     capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
@@ -1074,9 +1056,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     const projectsFolder = screen.getByText('Projects')
     await user.click(projectsFolder)
 
-    await waitFor(() => {
-      expect(capturedActionsRef.current).not.toBeNull()
-    })
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
     capturedActionsRef.current!.createFolder()
 
     await waitFor(() => {
@@ -1102,9 +1082,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     })
 
     // Now create a note — folder should auto-expand
-    await waitFor(() => {
-      expect(capturedActionsRef.current).not.toBeNull()
-    })
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
     capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
@@ -1127,9 +1105,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     const projectsFolder = screen.getByText('Projects')
     await user.click(projectsFolder)
 
-    await waitFor(() => {
-      expect(capturedActionsRef.current).not.toBeNull()
-    })
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
     capturedActionsRef.current!.createNote()
 
     await waitFor(() => {
@@ -1147,9 +1123,7 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     renderWithProviders(<NotesTree ref={capturedActionsRef} />)
 
     // Don't click anything — no selection
-    await waitFor(() => {
-      expect(capturedActionsRef.current).not.toBeNull()
-    })
+    await waitFor(() => expect(capturedActionsRef.current).not.toBeNull())
     capturedActionsRef.current!.createNote()
 
     await waitFor(() => {

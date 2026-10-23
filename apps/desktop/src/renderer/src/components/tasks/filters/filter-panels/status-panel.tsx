@@ -49,9 +49,7 @@ export function StatusPanel({
             <button
               key={status.id}
               type="button"
-              onClick={() => {
-                onToggleStatus(status.id)
-              }}
+              onClick={() => onToggleStatus(status.id)}
               className={cn(
                 'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
                 selected ? 'bg-accent' : 'hover:bg-accent'
@@ -68,7 +66,7 @@ export function StatusPanel({
               </span>
               <span
                 className={cn(
-                  'ml-auto text-[11px] leading-3.5 tabular-nums',
+                  'ms-auto text-[11px] leading-3.5 tabular-nums',
                   selected ? 'text-text-secondary' : 'text-text-tertiary'
                 )}
               >

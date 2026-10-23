@@ -161,9 +161,7 @@ function withKeychainDeadline<T>(
       reject(new KeychainUnavailableError(service, account, 'timeout'))
     }, KEYCHAIN_READ_TIMEOUT_MS)
   })
-  return Promise.race([pending, deadline]).finally(() => {
-    clearTimeout(timer)
-  })
+  return Promise.race([pending, deadline]).finally(() => clearTimeout(timer))
 }
 
 /**

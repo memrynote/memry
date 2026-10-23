@@ -42,12 +42,10 @@ describe('CustomIconGrid link input', () => {
     const input = screen.getByLabelText('Image link')
     await user.type(input, 'https://example.com/star.png{Enter}')
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(addFromUrl).toHaveBeenCalledWith({ url: 'https://example.com/star.png' })
-    })
-    await waitFor(() => {
-      expect(input).toHaveValue('')
-    })
+    )
+    await waitFor(() => expect(input).toHaveValue(''))
   })
 
   it('shows the failure and keeps the link so it can be retried', async () => {

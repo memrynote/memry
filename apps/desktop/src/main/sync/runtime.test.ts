@@ -905,9 +905,7 @@ describe('sync runtime', () => {
 
     // #when - the build finishes
     vaultMocks.setStatus({ isIndexing: false })
-    await vi.waitFor(() => {
-      expect(runtimeMocks.crdtProvider.seedExistingDocs).toHaveBeenCalled()
-    })
+    await vi.waitFor(() => expect(runtimeMocks.crdtProvider.seedExistingDocs).toHaveBeenCalled())
 
     // #then
     expect(runtimeMocks.crdtProvider.seedExistingDocs).toHaveBeenCalledWith(
@@ -943,13 +941,9 @@ describe('sync runtime', () => {
 
     // The engine is reachable while its start is still running: the runtime
     // slot is filled before engine.start() is awaited.
-    await vi.waitFor(() => {
-      expect(runtime.getSyncEngine()).not.toBeNull()
-    })
+    await vi.waitFor(() => expect(runtime.getSyncEngine()).not.toBeNull())
     const engine = runtimeMocks.SyncEngine.instances[0]!
-    await vi.waitFor(() => {
-      expect(engine.start).toHaveBeenCalled()
-    })
+    await vi.waitFor(() => expect(engine.start).toHaveBeenCalled())
 
     let stopSettled = false
     const stopPromise = runtime.stopSyncRuntime().then(() => {
@@ -1481,9 +1475,7 @@ describe('sync runtime', () => {
     await expect(deps.getSigningKeys()).resolves.toBeNull()
     // Same escalation the push coordinator reaches when the SERVER is the one
     // that spots the mismatch.
-    expect(() => {
-      deps.onDeviceKeyMismatch()
-    }).not.toThrow()
+    expect(() => deps.onDeviceKeyMismatch()).not.toThrow()
     expect(runtimeMocks.db.updateRun).not.toHaveBeenCalled()
     expect(runtimeMocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([4, 5, 6]))
   })
@@ -1779,9 +1771,7 @@ describe('sync runtime', () => {
 
       const beforeStart = queueFile('before-start.png')
       await runtime.startSyncRuntime()
-      await vi.waitFor(() => {
-        expect(upload).toHaveBeenCalledWith('note-1', beforeStart)
-      })
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', beforeStart))
 
       return { runtime, outbox, upload, queueFile }
     }
@@ -1792,9 +1782,7 @@ describe('sync runtime', () => {
 
       runtimeMocks.NetworkMonitor.instances[0].listeners.get('status-changed')?.({ online: true })
 
-      await vi.waitFor(() => {
-        expect(upload).toHaveBeenCalledWith('note-1', midSession)
-      })
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
       expect(outbox.listPendingUploads(outboxDb)).toEqual([])
     })
 
@@ -1805,9 +1793,7 @@ describe('sync runtime', () => {
 
       vi.advanceTimersByTime(FIVE_MINUTES_MS)
 
-      await vi.waitFor(() => {
-        expect(upload).toHaveBeenCalledWith('note-1', midSession)
-      })
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
       expect(outbox.listPendingUploads(outboxDb)).toEqual([])
     })
 
@@ -1818,9 +1804,7 @@ describe('sync runtime', () => {
 
       vi.advanceTimersByTime(FIVE_MINUTES_MS)
 
-      await vi.waitFor(() => {
-        expect(outbox.listPendingUploads(outboxDb)).toEqual([])
-      })
+      await vi.waitFor(() => expect(outbox.listPendingUploads(outboxDb)).toEqual([]))
       expect(upload).toHaveBeenCalledTimes(1)
     })
 
@@ -1846,9 +1830,7 @@ describe('sync runtime', () => {
       runtimeMocks.getValidAccessToken.mockResolvedValue('access-token')
       vi.advanceTimersByTime(FIVE_MINUTES_MS)
 
-      await vi.waitFor(() => {
-        expect(upload).toHaveBeenCalledWith('note-1', midSession)
-      })
+      await vi.waitFor(() => expect(upload).toHaveBeenCalledWith('note-1', midSession))
     })
 
     it('drops a row whose file is gone even while offline', async () => {
@@ -1859,9 +1841,7 @@ describe('sync runtime', () => {
 
       vi.advanceTimersByTime(FIVE_MINUTES_MS)
 
-      await vi.waitFor(() => {
-        expect(outbox.listPendingUploads(outboxDb)).toEqual([])
-      })
+      await vi.waitFor(() => expect(outbox.listPendingUploads(outboxDb)).toEqual([]))
       expect(upload).toHaveBeenCalledTimes(1)
     })
 

@@ -72,9 +72,7 @@ describe('useTemplates', () => {
   it('loads, reloads on service events, and exposes template CRUD helpers', async () => {
     const { result } = renderHook(() => useTemplates())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.templates).toHaveLength(1)
 
     await act(async () => {

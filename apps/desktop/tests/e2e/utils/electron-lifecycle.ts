@@ -127,11 +127,7 @@ export async function destroyElectronApp(
   const graceful = app.close().catch(() => {})
   const timedOut = await Promise.race([
     graceful.then(() => false),
-    new Promise<boolean>((resolve) =>
-      setTimeout(() => {
-        resolve(true)
-      }, GRACEFUL_CLOSE_MS)
-    )
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(true), GRACEFUL_CLOSE_MS))
   ])
   if (timedOut && child && !child.killed) {
     try {

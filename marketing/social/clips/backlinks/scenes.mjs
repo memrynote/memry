@@ -87,9 +87,7 @@ export const scenes = {
     await page
       .locator('[data-wiki-link-preview]')
       .waitFor({ timeout: 3000 })
-      .catch(() => {
-        console.log('  no hover card')
-      })
+      .catch(() => console.log('  no hover card'))
     console.log(`  hover card at ${rec.now().toFixed(1)}s`)
     await at(6.6)
   },

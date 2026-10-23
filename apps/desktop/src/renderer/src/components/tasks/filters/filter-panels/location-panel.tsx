@@ -127,9 +127,9 @@ export function LocationPanel({
             <button
               key={`${option.kind}:${option.value}`}
               type="button"
-              onClick={() => {
+              onClick={() =>
                 option.kind === 'folder' ? onToggleFolder(option.value) : onToggleNote(option.value)
-              }}
+              }
               title={option.context ? `${option.context}/${option.label}` : option.label}
               style={{ paddingInlineStart: 8 + option.depth * 12 }}
               className={cn(

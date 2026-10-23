@@ -82,9 +82,7 @@ describe('runCrdtPreflight', () => {
   async function failNodeRetry(
     options: { code?: number; storeOps?: Array<keyof typeof PREFLIGHT_MARK_STORE_OPS> } = {}
   ): Promise<void> {
-    await vi.waitFor(() => {
-      expect(mockSpawn).toHaveBeenCalled()
-    })
+    await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
     nodeChild.say(PREFLIGHT_MARK_STARTED)
     nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
     for (const op of options.storeOps ?? []) nodeChild.say(PREFLIGHT_MARK_STORE_OPS[op])
@@ -162,9 +160,7 @@ describe('runCrdtPreflight', () => {
       child.say(PREFLIGHT_MARK_BINDING_LOADED)
       child.say(PREFLIGHT_MARK_STORE_OPS.open)
       child.emit('exit', 1)
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalled()
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
       nodeChild.say(PREFLIGHT_MARK_STARTED)
       nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
       nodeChild.say(PREFLIGHT_MARK_STORE_OPS.open)
@@ -261,9 +257,7 @@ describe('runCrdtPreflight', () => {
       child.say(PREFLIGHT_MARK_BINDING_LOADED)
       child.say(PREFLIGHT_MARK_STORE_OPS.open)
       child.emit('exit', -1073741819)
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalled()
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
       nodeChild.say(PREFLIGHT_MARK_STARTED)
       nodeChild.say(`${PREFLIGHT_MARK_BINDING_INFO}${JSON.stringify(binding)}`)
       nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
@@ -324,9 +318,7 @@ describe('runCrdtPreflight', () => {
     it('retries under ELECTRON_RUN_AS_NODE and passes when that child survives', async () => {
       const pending = runCrdtPreflight(STORE_DIR)
       child.emit('exit', -36861)
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalledTimes(1)
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
       nodeChild.emit('exit', 0)
 
       // The transport is what the persistence layer reports: a verdict from
@@ -346,9 +338,7 @@ describe('runCrdtPreflight', () => {
     it('keeps stage "bootstrap" when the fallback child cannot start either', async () => {
       const pending = runCrdtPreflight(STORE_DIR)
       child.emit('exit', -36861)
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalledTimes(1)
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
       nodeChild.emit('exit', -36861)
 
       // Stage bootstrap is what keeps the provider from quarantining a store
@@ -359,9 +349,7 @@ describe('runCrdtPreflight', () => {
     it("reports the fallback child's own stage when it does reach the store", async () => {
       const pending = runCrdtPreflight(STORE_DIR)
       child.emit('exit', -36861)
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalledTimes(1)
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
       nodeChild.say(PREFLIGHT_MARK_STARTED)
       nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
       nodeChild.emit('exit', 134)
@@ -383,9 +371,7 @@ describe('runCrdtPreflight', () => {
       child.say(PREFLIGHT_MARK_STORE_OPS.open)
       child.emit('exit', -1073741819)
 
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalledTimes(1)
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
       expect((mockSpawn.mock.calls[0] as [string, string[]])[1][1]).toBe(STORE_DIR)
       nodeChild.emit('exit', 0)
 
@@ -398,9 +384,7 @@ describe('runCrdtPreflight', () => {
       child.say(PREFLIGHT_MARK_BINDING_LOADED)
       child.emit('exit', -1073741819)
 
-      await vi.waitFor(() => {
-        expect(mockSpawn).toHaveBeenCalledTimes(1)
-      })
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
       nodeChild.say(PREFLIGHT_MARK_STARTED)
       nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
       nodeChild.say(PREFLIGHT_MARK_STORE_OPS.open)

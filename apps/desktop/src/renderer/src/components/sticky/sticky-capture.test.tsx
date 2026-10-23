@@ -68,9 +68,7 @@ function setup(session: { draftId: string | null }, drafts: StickyDraft[] = []):
 async function renderSticky(): Promise<HTMLTextAreaElement> {
   render(<StickyCapture />)
   const input = screen.getByLabelText(INPUT) as HTMLTextAreaElement
-  await waitFor(() => {
-    expect(input).not.toBeDisabled()
-  })
+  await waitFor(() => expect(input).not.toBeDisabled())
   return input
 }
 
@@ -95,13 +93,13 @@ describe('StickyCapture', () => {
     expect(screen.getByRole('radio', { name: 'sticky.kinds.journal' })).toBeChecked()
 
     fireEvent.change(input, { target: { value: 'Buy oat milk and bread' } })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(sticky.saveDraft).toHaveBeenCalledWith({
         id: 'draft-1',
         content: 'Buy oat milk and bread',
         kind: 'journal'
       })
-    })
+    )
     expect(await screen.findByText('sticky.saved')).toBeInTheDocument()
   })
 
@@ -132,19 +130,17 @@ describe('StickyCapture', () => {
     const input = await renderSticky()
 
     fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(sticky.send).toHaveBeenCalledWith({
         draftId: 'draft-1',
         content: 'Buy oat milk',
         kind: 'note'
       })
-    })
+    )
     expect(await screen.findByText('sticky.sent.note')).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: 'z', metaKey: true })
-    await waitFor(() => {
-      expect(sticky.undoSend).toHaveBeenCalledWith('undo-1')
-    })
+    await waitFor(() => expect(sticky.undoSend).toHaveBeenCalledWith('undo-1'))
     expect(await screen.findByLabelText(INPUT)).toHaveValue('Buy oat milk')
   })
 
@@ -185,9 +181,7 @@ describe('StickyCapture', () => {
     fireEvent.change(input, { target: { value: 'half a thought' } })
     fireEvent.keyDown(window, { key: 'Escape' })
 
-    await waitFor(() => {
-      expect(sticky.tuck).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(sticky.tuck).toHaveBeenCalled())
     expect(sticky.saveDraft).toHaveBeenCalledWith({ content: 'half a thought', kind: 'task' })
     expect(sticky.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(
       sticky.tuck.mock.invocationCallOrder[0]
@@ -201,9 +195,7 @@ describe('StickyCapture', () => {
     fireEvent.change(input, { target: { value: '' } })
     fireEvent.keyDown(window, { key: 'Escape' })
 
-    await waitFor(() => {
-      expect(sticky.tuck).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(sticky.tuck).toHaveBeenCalled())
     expect(sticky.deleteDraft).toHaveBeenCalledWith('draft-1')
   })
 
@@ -212,16 +204,14 @@ describe('StickyCapture', () => {
     const input = await renderSticky()
 
     fireEvent.keyDown(window, { key: 'Backspace', metaKey: true })
-    await waitFor(() => {
-      expect(sticky.deleteDraft).toHaveBeenCalledWith('draft-1')
-    })
+    await waitFor(() => expect(sticky.deleteDraft).toHaveBeenCalledWith('draft-1'))
     expect(input).toHaveValue('')
 
     fireEvent.click(await screen.findByText(/sticky\.undo/))
     expect(input).toHaveValue('Buy oat milk')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(sticky.saveDraft).toHaveBeenCalledWith({ content: 'Buy oat milk', kind: 'note' })
-    })
+    )
   })
 
   it('sends a lone link as text to the chosen kind', async () => {
@@ -237,12 +227,12 @@ describe('StickyCapture', () => {
 
     fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(sticky.send).toHaveBeenCalledWith({
         draftId: 'draft-1',
         content: 'example.com',
         kind: 'task'
       })
-    })
+    )
   })
 })

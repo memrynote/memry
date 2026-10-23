@@ -221,9 +221,9 @@ describe('TemplatesSettings', () => {
     expect(screen.getByDisplayValue('Meeting Notes Copy')).toBeInTheDocument()
     await user.click(screen.getAllByRole('button', { name: 'templates.actions.duplicate' }).at(-1)!)
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(duplicateTemplate).toHaveBeenCalledWith('custom', 'Meeting Notes Copy')
-    })
+    )
     expect(toastSuccess).toHaveBeenCalledWith('templates.toasts.duplicated')
   })
 
@@ -233,9 +233,7 @@ describe('TemplatesSettings', () => {
 
     await user.click(screen.getByRole('button', { name: /templates.actions.delete/ }))
     await user.click(screen.getByRole('button', { name: 'button.delete' }))
-    await waitFor(() => {
-      expect(deleteTemplate).toHaveBeenCalledWith('custom')
-    })
+    await waitFor(() => expect(deleteTemplate).toHaveBeenCalledWith('custom'))
     expect(toastSuccess).toHaveBeenCalledWith('templates.toasts.deleted')
 
     deleteTemplate.mockResolvedValue(false)
@@ -244,9 +242,7 @@ describe('TemplatesSettings', () => {
 
     await user.click(screen.getByRole('button', { name: /templates.actions.delete/ }))
     await user.click(screen.getByRole('button', { name: 'button.delete' }))
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledWith('templates.toasts.deleteFailed')
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('templates.toasts.deleteFailed'))
 
     await user.click(screen.getByRole('button', { name: /templates.actions.duplicate/ }))
     await user.clear(screen.getByDisplayValue('Meeting Notes Copy'))
@@ -255,9 +251,7 @@ describe('TemplatesSettings', () => {
 
     await user.type(screen.getByRole('textbox'), 'Copy')
     await user.click(screen.getAllByRole('button', { name: 'templates.actions.duplicate' }).at(-1)!)
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledWith('templates.toasts.duplicateFailed')
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('templates.toasts.duplicateFailed'))
   })
 
   it('closes settings modal when creating a template', async () => {

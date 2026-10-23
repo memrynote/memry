@@ -7,9 +7,7 @@ import {
 } from './agent-model-preference'
 
 describe('agent-model-preference', () => {
-  beforeEach(() => {
-    localStorage.clear()
-  })
+  beforeEach(() => localStorage.clear())
 
   it('returns null when nothing stored', () => {
     expect(readAgentModelPreference()).toBeNull()

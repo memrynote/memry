@@ -156,9 +156,7 @@ describe('the renderer promotes [[X]] inside a collaborative document', () => {
 
     // #when the editor fires its first change
     const handleChange = mountEditorSync(editor, fragment)
-    act(() => {
-      handleChange()
-    })
+    act(() => handleChange())
 
     // #then the promotion reached the CRDT, not just the local editor state
     expect(nodeNames(fragment)).toContain('wikiLink')
@@ -173,22 +171,14 @@ describe('the renderer promotes [[X]] inside a collaborative document', () => {
     const { editor, doc, fragment } = createCollaborativeEditor()
     seedWithPlainText(editor, 'See [[Wiki Link]] for details.')
     const handleChange = mountEditorSync(editor, fragment)
-    act(() => {
-      handleChange()
-    })
+    act(() => handleChange())
 
     // #when every later change event runs the same normalizer
     const updates: Uint8Array[] = []
     doc.on('update', (update: Uint8Array) => updates.push(update))
-    act(() => {
-      handleChange()
-    })
-    act(() => {
-      handleChange()
-    })
-    act(() => {
-      handleChange()
-    })
+    act(() => handleChange())
+    act(() => handleChange())
+    act(() => handleChange())
 
     // #then nothing more is written: a `wikiLink` node carries its target in
     // props, so `[[` never reappears in the document and `normalizeWikiLinks`
@@ -210,9 +200,7 @@ describe('the renderer promotes [[X]] inside a collaborative document', () => {
 
     // #when
     const handleChange = mountEditorSync(editor, fragment)
-    act(() => {
-      handleChange()
-    })
+    act(() => handleChange())
 
     // #then — the trailing empty paragraph is BlockNote's own, not ours
     const authored = editor.document.filter(
@@ -238,9 +226,7 @@ describe('the renderer promotes [[X]] inside a collaborative document', () => {
     // #when
     const updates: Uint8Array[] = []
     doc.on('update', (update: Uint8Array) => updates.push(update))
-    act(() => {
-      handleChange()
-    })
+    act(() => handleChange())
 
     // #then
     expect(updates).toEqual([])
@@ -409,9 +395,7 @@ describe('raw [[X]] arriving in a remote update to an open editor', () => {
     seedWithPlainText(local.editor, 'hello')
     const handleChange = mountEditorSync(local.editor, local.fragment)
     // What BlockNoteView's `onChange` prop does.
-    local.editor.onChange(() => {
-      handleChange()
-    })
+    local.editor.onChange(() => handleChange())
     return local
   }
 

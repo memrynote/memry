@@ -38,9 +38,7 @@ describe('settingsHandler: readwise group', () => {
     testDb = createTestDatabase()
     vi.mocked(getDatabase).mockReturnValue(asClientDb(testDb.db))
   })
-  afterEach(() => {
-    cleanupTestDatabase(testDb)
-  })
+  afterEach(() => cleanupTestDatabase(testDb))
 
   it('merges a remote readwise group into the local row, keeping local and unknown fields', () => {
     setSetting(

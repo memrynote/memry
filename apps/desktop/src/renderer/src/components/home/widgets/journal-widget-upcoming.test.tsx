@@ -102,9 +102,7 @@ describe('home journal widget upcoming days', () => {
 
   it('lists today and the next three local days, across month and year boundaries', async () => {
     renderWidget()
-    await waitFor(() => {
-      expect(upcomingRows()).toHaveLength(4)
-    })
+    await waitFor(() => expect(upcomingRows()).toHaveLength(4))
     expect(upcomingRows().map((r) => r.dataset.date)).toEqual(UPCOMING)
   })
 
@@ -112,9 +110,9 @@ describe('home journal widget upcoming days', () => {
     server.set('2027-01-01', entry('2027-01-01', 'Fly home, then unpack slowly.'))
     renderWidget()
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(rowFor('2027-01-01').textContent).toContain('Fly home, then unpack slowly.')
-    })
+    )
     expect(rowFor('2027-01-02').textContent).toContain('No entry yet')
     expect(rowFor('2026-12-31').textContent).toContain('No entry yet')
   })
@@ -122,9 +120,7 @@ describe('home journal widget upcoming days', () => {
   it('opens the journal tab with the clicked future ISO date', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     renderWidget()
-    await waitFor(() => {
-      expect(upcomingRows()).toHaveLength(4)
-    })
+    await waitFor(() => expect(upcomingRows()).toHaveLength(4))
 
     await user.click(rowFor('2027-01-02'))
 
@@ -139,26 +135,18 @@ describe('home journal widget upcoming days', () => {
   // 30s staleTime would keep serving the empty cache long after the entry landed.
   it('picks up an entry written for a future day while the widget is mounted', async () => {
     renderWidget()
-    await waitFor(() => {
-      expect(rowFor('2026-12-31').textContent).toContain('No entry yet')
-    })
+    await waitFor(() => expect(rowFor('2026-12-31').textContent).toContain('No entry yet'))
 
     server.set('2026-12-31', entry('2026-12-31', 'Pack for the flight.'))
     for (const listener of Array.from(createdListeners)) listener({ date: '2026-12-31' })
 
-    await waitFor(() => {
-      expect(rowFor('2026-12-31').textContent).toContain('Pack for the flight.')
-    })
+    await waitFor(() => expect(rowFor('2026-12-31').textContent).toContain('Pack for the flight.'))
   })
 
   it('reads at most one entry per upcoming day', async () => {
     renderWidget()
-    await waitFor(() => {
-      expect(upcomingRows()).toHaveLength(4)
-    })
-    await waitFor(() => {
-      expect(mockGetEntry).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(upcomingRows()).toHaveLength(4))
+    await waitFor(() => expect(mockGetEntry).toHaveBeenCalled())
 
     const requested = mockGetEntry.mock.calls.map((call) => call[0] as string)
     for (const date of UPCOMING) {

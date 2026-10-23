@@ -46,9 +46,7 @@ function startWatch(root: string): AttachmentWatch {
     })
     .on('add', protect)
     .on('change', protect)
-    .on('error', (error) => {
-      log.warn('Watching locked attachments failed', { error })
-    })
+    .on('error', (error) => log.warn('Watching locked attachments failed', { error }))
   return { root, close: () => watcher.close() }
 }
 

@@ -76,11 +76,7 @@ function createReview(
 }
 
 function nextFrame(): Promise<void> {
-  return new Promise((resolve) =>
-    requestAnimationFrame(() => {
-      resolve()
-    })
-  )
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
 }
 
 describe('review UI', () => {
@@ -363,9 +359,7 @@ describe('review UI', () => {
     expect(editorElement).toHaveTextContent('Original body')
     expect(editorElement).toHaveTextContent('@Planning note')
     expect(screen.getByText('spec.pdf')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(editorElement).toHaveFocus()
-    })
+    await waitFor(() => expect(editorElement).toHaveFocus())
 
     await user.keyboard(' more')
     await user.click(screen.getByLabelText('comments.sendAria'))
@@ -398,9 +392,7 @@ describe('review UI', () => {
 
     await user.click(screen.getByRole('button', { name: 'comments.edit' }))
     const editorElement = await screen.findByLabelText('comments.commentPlaceholder')
-    await waitFor(() => {
-      expect(editorElement).toHaveFocus()
-    })
+    await waitFor(() => expect(editorElement).toHaveFocus())
     await user.keyboard('{Escape}')
 
     expect(review.updateComment).not.toHaveBeenCalled()

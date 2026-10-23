@@ -3711,9 +3711,7 @@ describe('callouts on the CRDT path (#1846)', () => {
   describe('a custom callout type (#3207)', () => {
     const definition = { name: 'mytype', label: 'My type', color: '#ff8800', icon: 'star' }
 
-    afterEach(() => {
-      setCalloutTypeDefinitions([])
-    })
+    afterEach(() => setCalloutTypeDefinitions([]))
 
     it.each([
       '> [!mytype]\n> body text',

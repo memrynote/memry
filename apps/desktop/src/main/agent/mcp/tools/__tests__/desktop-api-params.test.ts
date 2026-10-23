@@ -111,15 +111,15 @@ describe('desktop API parameter lists', () => {
   })
 
   it('accept a call up to the last parameter, including the two-string calendar range', () => {
-    expect(() => {
+    expect(() =>
       assertDesktopApiArgs({ operation: 'properties.set', args: ['note-1', { Status: 'Done' }] })
-    }).not.toThrow()
-    expect(() => {
+    ).not.toThrow()
+    expect(() =>
       assertDesktopApiArgs({ operation: 'calendar.getRange', args: ['2026-10-01', '2026-10-02'] })
-    }).not.toThrow()
-    expect(() => {
+    ).not.toThrow()
+    expect(() =>
       assertDesktopApiArgs({ operation: 'properties.set', args: ['note-1', {}, { merge: true }] })
-    }).toThrow(
+    ).toThrow(
       'properties.set takes 2 arguments (entityId, properties), but this call passed 3. Nothing was run.'
     )
   })
@@ -142,10 +142,7 @@ describe('desktop API parameter lists', () => {
         names[index] === 'scope' ? { kind: 'folder', path: 'a' } : sample(item, index)
       )
       const readback = desktopWriteReadback({ operation, args })
-      if (readback)
-        expect(() => {
-          assertDesktopApiArgs(readback.request)
-        }, operation).not.toThrow()
+      if (readback) expect(() => assertDesktopApiArgs(readback.request), operation).not.toThrow()
     }
   })
 
@@ -219,27 +216,24 @@ describe('desktop API parameter lists', () => {
         anyOf: expect.arrayContaining([{ type: 'null' }])
       }
     )
-    expect(() => {
+    expect(() =>
       assertDesktopApiArgs({ operation: 'reminders.getUpcoming', args: [null] })
-    }).toThrow('days: expected number, got null')
+    ).toThrow('days: expected number, got null')
   })
 
   it('refuse a key inside an input object that the IPC handler would drop', () => {
-    const define = (input: unknown) => {
+    const define = (input: unknown) =>
       assertDesktopApiArgs({ operation: 'notes.createPropertyDefinition', args: [input] })
-    }
 
-    expect(() => {
-      define({ name: 'mood', type: 'select', optionz: [] })
-    }).toThrow('notes.createPropertyDefinition does not take input.optionz. Nothing was run.')
-    expect(() => {
-      define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky', tint: 1 }] })
-    }).toThrow(
-      'notes.createPropertyDefinition does not take input.options.0.tint. Nothing was run.'
+    expect(() => define({ name: 'mood', type: 'select', optionz: [] })).toThrow(
+      'notes.createPropertyDefinition does not take input.optionz. Nothing was run.'
     )
-    expect(() => {
+    expect(() =>
+      define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky', tint: 1 }] })
+    ).toThrow('notes.createPropertyDefinition does not take input.options.0.tint. Nothing was run.')
+    expect(() =>
       define({ name: 'mood', type: 'select', options: [{ value: 'Calm', color: 'sky' }] })
-    }).not.toThrow()
+    ).not.toThrow()
   })
 })
 
@@ -324,9 +318,7 @@ describe('desktop API argument validation', () => {
       ['settings.setGeneralSettings', [{ startOnBoot: true }]]
     ]
     for (const [operation, args] of valid) {
-      expect(() => {
-        assertDesktopApiArgs({ operation, args })
-      }, operation).not.toThrow()
+      expect(() => assertDesktopApiArgs({ operation, args }), operation).not.toThrow()
     }
   })
 })

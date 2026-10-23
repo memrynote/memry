@@ -24,13 +24,7 @@ vi.mock('@/components/filing/folder-selector', () => ({
     <div>
       <div>folders:{folders.map((folder) => folder.name).join(',')}</div>
       <div>suggested:{suggestedFolders.map((folder) => folder.name).join(',')}</div>
-      <button
-        onClick={() => {
-          onSelect(folders[1] ?? folders[0])
-        }}
-      >
-        select folder
-      </button>
+      <button onClick={() => onSelect(folders[1] ?? folders[0])}>select folder</button>
     </div>
   )
 }))
@@ -42,15 +36,7 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   }: {
     tags: string[]
     onTagsChange: (tags: string[]) => void
-  }) => (
-    <button
-      onClick={() => {
-        onTagsChange([...tags, 'urgent'])
-      }}
-    >
-      tags:{tags.join(',')}
-    </button>
-  )
+  }) => <button onClick={() => onTagsChange([...tags, 'urgent'])}>tags:{tags.join(',')}</button>
 }))
 
 function wrapper() {
@@ -112,9 +98,7 @@ describe('BulkFilePanel', () => {
     expect(screen.getByText('Voice note')).toBeInTheDocument()
     expect(screen.getByText('PDF capture')).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(window.api.notes.getFolders).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.notes.getFolders).toHaveBeenCalled())
     await waitFor(() =>
       expect(screen.getByText(/folders:/)).toHaveTextContent(
         'folders:detail.notesRootLabel,Projects,Research,Archive'

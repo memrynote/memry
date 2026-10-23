@@ -137,9 +137,7 @@ describe('pasting an image with the caret in a cell', () => {
 
     // #then BlockNote never sees the paste, so no image block is created
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(() => {
-      expect(editor.insertInlineContent).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(editor.insertInlineContent).toHaveBeenCalled())
     expect(editor.insertInlineContent).toHaveBeenCalledWith([
       {
         type: 'inlineImage',
@@ -160,9 +158,7 @@ describe('pasting an image with the caret in a cell', () => {
     paste(container, [PNG()])
 
     // #then
-    await waitFor(() => {
-      expect(mocks.uploadAttachment).toHaveBeenCalledWith('n1', expect.any(File))
-    })
+    await waitFor(() => expect(mocks.uploadAttachment).toHaveBeenCalledWith('n1', expect.any(File)))
   })
 
   it('leaves the paste alone when the caret is not in a cell', async () => {
@@ -207,9 +203,7 @@ describe('pasting an image with the caret in a cell', () => {
     paste(container, [PNG()])
 
     // #then
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('File too large')
-    })
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('File too large'))
     expect(editor.insertInlineContent).not.toHaveBeenCalled()
   })
 
@@ -224,9 +218,7 @@ describe('pasting an image with the caret in a cell', () => {
     paste(container, [PNG()])
 
     // #then
-    await waitFor(() => {
-      expect(mocks.uploadAttachment).not.toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.uploadAttachment).not.toHaveBeenCalled())
   })
 })
 
@@ -261,14 +253,14 @@ describe('pasting an image that arrives as HTML with no file', () => {
 
     // #then BlockNote never gets to build a block the cell cannot hold
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
         {
           type: 'inlineImage',
           props: { src: 'https://cdn.example.com/chart.png', alt: 'chart', width: 0 }
         }
       ])
-    })
+    )
     // an addressable URL needs no copy in the vault
     expect(mocks.uploadAttachment).not.toHaveBeenCalled()
   })
@@ -281,14 +273,14 @@ describe('pasting an image that arrives as HTML with no file', () => {
     paste(container, [], '<img src="https://cdn.example.com/a.png" alt="a" width="180">')
 
     // #then
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
         {
           type: 'inlineImage',
           props: { src: 'https://cdn.example.com/a.png', alt: 'a', width: 180 }
         }
       ])
-    })
+    )
   })
 
   it('leaves the same fragment alone outside a cell', () => {
@@ -331,14 +323,14 @@ describe('pasting an image that arrives as HTML with no file', () => {
 
     // #then
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
         {
           type: 'inlineImage',
           props: { src: '../attachments/n1/a1b2c3-shot.png', alt: 'shot', width: 0 }
         }
       ])
-    })
+    )
   })
 
   it("refuses another note's relative ref", () => {
@@ -386,9 +378,7 @@ describe('pasting an image that arrives as HTML with no file', () => {
 
     // #then
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(() => {
-      expect(editor.insertInlineContent).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(editor.insertInlineContent).toHaveBeenCalled())
   })
 
   it('saves a data: image as an attachment instead of writing base64 into the row', async () => {
@@ -401,9 +391,7 @@ describe('pasting an image that arrives as HTML with no file', () => {
 
     // #then the bytes go through the same upload every other image does…
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(() => {
-      expect(mocks.uploadAttachment).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.uploadAttachment).toHaveBeenCalled())
     const [noteId, file] = mocks.uploadAttachment.mock.calls[0] as [string, File]
     expect(noteId).toBe('n1')
     // the extension is what `saveAttachment` validates, so it has to be real
@@ -411,11 +399,11 @@ describe('pasting an image that arrives as HTML with no file', () => {
     expect(file.type).toBe('image/png')
 
     // …and what lands in the node is the vault-relative path it returned
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
         { type: 'inlineImage', props: { src: '../attachments/n1/shot.png', alt: 'grab', width: 0 } }
       ])
-    })
+    )
   })
 
   it('leaves a fragment with no image at all alone', () => {
@@ -485,14 +473,14 @@ describe('picking an image for the cell (the slash menu row)', () => {
     choose(input, [PNG()])
 
     // #then
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
         {
           type: 'inlineImage',
           props: { src: '../attachments/n1/shot.png', alt: 'shot.png', width: 0 }
         }
       ])
-    })
+    )
   })
 
   it('puts the image back where the caret was when the row was chosen', async () => {
@@ -512,9 +500,9 @@ describe('picking an image for the cell (the slash menu row)', () => {
     choose(input, [PNG()])
 
     // #then the position captured at click time is what is restored
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.prosemirrorView.dispatch).toHaveBeenCalledWith({ selectedPos: 7 })
-    })
+    )
   })
 
   it('ignores a chosen file that is not an image', async () => {
@@ -531,9 +519,7 @@ describe('picking an image for the cell (the slash menu row)', () => {
     choose(input, [new File(['x'], 'a.pdf', { type: 'application/pdf' })])
 
     // #then
-    await waitFor(() => {
-      expect(mocks.uploadAttachment).not.toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.uploadAttachment).not.toHaveBeenCalled())
     expect(editor.insertInlineContent).not.toHaveBeenCalled()
   })
 
@@ -545,9 +531,7 @@ describe('picking an image for the cell (the slash menu row)', () => {
     const { result } = mount({ insertInlineContent: vi.fn() }, container)
 
     // #when / #then no throw reaches the menu row
-    expect(() => {
-      result.current.pickImageForCell()
-    }).not.toThrow()
+    expect(() => result.current.pickImageForCell()).not.toThrow()
   })
 })
 
@@ -591,9 +575,7 @@ describe('dropping an image onto a cell', () => {
     expect(editor.prosemirrorView.posAtCoords).toHaveBeenCalledWith({ left: 10, top: 20 })
     // the caret is moved to the drop position, not left wherever it was
     expect(editor.prosemirrorView.dispatch).toHaveBeenCalledWith({ selectedPos: 4 })
-    await waitFor(() => {
-      expect(editor.insertInlineContent).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(editor.insertInlineContent).toHaveBeenCalled())
   })
 
   it('takes an image dragged out of a browser, which carries HTML and no file', async () => {
@@ -612,14 +594,14 @@ describe('dropping an image onto a cell', () => {
 
     // #then
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
         {
           type: 'inlineImage',
           props: { src: 'https://cdn.example.com/chart.png', alt: 'chart', width: 0 }
         }
       ])
-    })
+    )
   })
 
   it('leaves a drop outside a table to the existing block path', () => {

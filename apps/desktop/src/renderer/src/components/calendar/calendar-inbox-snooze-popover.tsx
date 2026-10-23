@@ -93,9 +93,7 @@ export function CalendarInboxSnoozePopover({
           variant="ghost"
           size="sm"
           className="justify-start"
-          onClick={() => {
-            onOpenInInbox(item.sourceId)
-          }}
+          onClick={() => onOpenInInbox(item.sourceId)}
         >
           <PageInboxIcon className="me-2 h-4 w-4" />
           {t('phaseI.inboxSnoozePopover.openInInbox')}

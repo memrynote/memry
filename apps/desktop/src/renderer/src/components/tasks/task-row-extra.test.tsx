@@ -30,12 +30,7 @@ vi.mock('@/components/tasks/inline-status-popover', () => ({
       <button type="button" onClick={onToggleComplete}>
         status toggle
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onStatusChange('done')
-        }}
-      >
+      <button type="button" onClick={() => onStatusChange('done')}>
         status done
       </button>
     </span>
@@ -48,12 +43,7 @@ vi.mock('@/components/tasks/inline-priority-popover', () => ({
   }: {
     onPriorityChange: (priority: Task['priority']) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onPriorityChange('urgent')
-      }}
-    >
+    <button type="button" onClick={() => onPriorityChange('urgent')}>
       priority urgent
     </button>
   )
@@ -65,12 +55,7 @@ vi.mock('@/components/tasks/interactive-project-badge', () => ({
   }: {
     onProjectChange: (projectId: string) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onProjectChange('project-b')
-      }}
-    >
+    <button type="button" onClick={() => onProjectChange('project-b')}>
       project change
     </button>
   )

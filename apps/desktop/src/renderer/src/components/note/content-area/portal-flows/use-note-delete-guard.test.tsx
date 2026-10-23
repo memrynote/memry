@@ -51,9 +51,7 @@ describe('useNoteDeleteGuard', () => {
     const onResult = vi.fn()
     render(<Harness notes={[{ id: 'a', title: 'A' }]} onResult={onResult} />)
     await userEvent.click(screen.getByText('go'))
-    await waitFor(() => {
-      expect(onResult).toHaveBeenCalledWith(true)
-    })
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(true))
     expect(screen.queryByTestId('portal-delete-dialog')).toBeNull()
   })
 
@@ -65,9 +63,7 @@ describe('useNoteDeleteGuard', () => {
     expect(await screen.findByTestId('portal-delete-dialog')).toBeTruthy()
     expect(screen.getByText('Title x')).toBeTruthy()
     await userEvent.click(screen.getByText('cancel'))
-    await waitFor(() => {
-      expect(onResult).toHaveBeenCalledWith(false)
-    })
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(false))
   })
 
   it('deletes on "Delete everywhere"', async () => {
@@ -76,9 +72,7 @@ describe('useNoteDeleteGuard', () => {
     render(<Harness notes={[{ id: 'a', title: 'A' }]} onResult={onResult} />)
     await userEvent.click(screen.getByText('go'))
     await userEvent.click(await screen.findByText('everywhere'))
-    await waitFor(() => {
-      expect(onResult).toHaveBeenCalledWith(true)
-    })
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(true))
   })
 
   it('ignores hosts that are being deleted too and lists each host once', async () => {
@@ -108,8 +102,6 @@ describe('useNoteDeleteGuard', () => {
     const onResult = vi.fn()
     render(<Harness notes={[{ id: 'a', title: 'A' }]} onResult={onResult} />)
     await userEvent.click(screen.getByText('go'))
-    await waitFor(() => {
-      expect(onResult).toHaveBeenCalledWith(true)
-    })
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(true))
   })
 })

@@ -18,12 +18,7 @@ vi.mock('@/components/tasks/task-reminder-button', () => ({
 }))
 vi.mock('@/components/tasks/task-description-editor', () => ({
   TaskDescriptionEditor: ({ onContentChange }: { onContentChange: (md: string) => void }) => (
-    <textarea
-      aria-label="description editor"
-      onChange={(e) => {
-        onContentChange(e.target.value)
-      }}
-    />
+    <textarea aria-label="description editor" onChange={(e) => onContentChange(e.target.value)} />
   )
 }))
 vi.mock('@/components/filing/tag-autocomplete', () => ({
@@ -34,12 +29,7 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
     tags: string[]
     onTagsChange: (tags: string[]) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onTagsChange([...tags, 'beta'])
-      }}
-    >
+    <button type="button" onClick={() => onTagsChange([...tags, 'beta'])}>
       add beta
     </button>
   )
@@ -123,9 +113,7 @@ const Harness = ({
       hostNoteId="host-note"
       projectColor="#000"
       open={open}
-      onOpenChange={(id, next) => {
-        setOpen((prev) => (next ? id : prev === id ? null : prev))
-      }}
+      onOpenChange={(id, next) => setOpen((prev) => (next ? id : prev === id ? null : prev))}
       {...handlers}
     />
   )

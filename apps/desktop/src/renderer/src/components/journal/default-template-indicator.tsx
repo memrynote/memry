@@ -50,22 +50,16 @@ export function DefaultTemplateIndicator({
     const timer = setTimeout(() => {
       setIsFading(true)
       // After fade animation, hide completely
-      setTimeout(() => {
-        setIsVisible(false)
-      }, 300)
+      setTimeout(() => setIsVisible(false), 300)
     }, 5000)
 
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
   }, [])
 
   // Handle dismiss
   const handleDismiss = useCallback(() => {
     setIsFading(true)
-    setTimeout(() => {
-      setIsVisible(false)
-    }, 300)
+    setTimeout(() => setIsVisible(false), 300)
   }, [])
 
   if (!isVisible) {

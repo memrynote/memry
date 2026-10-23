@@ -205,9 +205,7 @@ function isVaultSwitchPending(): boolean {
  * button only opens: it asks to see the surface, and asking twice is harmless.
  */
 const keyToggles = (toggle: () => void, open: () => void): CommandImpl => ({
-  run: ({ source }) => {
-    source === 'keyboard' ? toggle() : open()
-  }
+  run: ({ source }) => (source === 'keyboard' ? toggle() : open())
 })
 
 const AppContent = (): React.JSX.Element => {
@@ -228,35 +226,23 @@ const AppContent = (): React.JSX.Element => {
   useEffect(() => {
     const mountPalette = (): void => {
       loadCommandPalette().then(
-        () => {
-          setCommandPaletteMounted(true)
-        },
-        (error: unknown) => {
-          log.warn('Command palette preload failed', error)
-        }
+        () => setCommandPaletteMounted(true),
+        (error: unknown) => log.warn('Command palette preload failed', error)
       )
       loadCommandsPalette().then(
-        () => {
-          setCommandsPaletteMounted(true)
-        },
-        (error: unknown) => {
-          log.warn('Commands palette preload failed', error)
-        }
+        () => setCommandsPaletteMounted(true),
+        (error: unknown) => log.warn('Commands palette preload failed', error)
       )
     }
     // jsdom has no requestIdleCallback; Chromium always does.
     if (typeof window.requestIdleCallback !== 'function') {
       const timer = setTimeout(mountPalette, 0)
-      return () => {
-        clearTimeout(timer)
-      }
+      return () => clearTimeout(timer)
     }
     const handle = window.requestIdleCallback(mountPalette, {
       timeout: COMMAND_PALETTE_IDLE_TIMEOUT_MS
     })
-    return () => {
-      window.cancelIdleCallback(handle)
-    }
+    return () => window.cancelIdleCallback(handle)
   }, [])
 
   // Fire `page_viewed` whenever the active tab type changes. Only ever surface enums,
@@ -281,9 +267,7 @@ const AppContent = (): React.JSX.Element => {
   useMouseNavButtons()
   const isChordActive = useChordShortcuts()
   const { open: openSettings, isOpen: isSettingsOpen } = useSettingsModal()
-  const openReadwiseSettings = useCallback(() => {
-    openSettings('import:readwise')
-  }, [openSettings])
+  const openReadwiseSettings = useCallback(() => openSettings('import:readwise'), [openSettings])
   useAppZoom()
   useFolderNoteShortcutsRuntime()
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
@@ -305,35 +289,21 @@ const AppContent = (): React.JSX.Element => {
     if (isVaultSwitchPending()) return
     setActivePalette(palette)
   }, [])
-  const closePalette = useCallback(() => {
-    setActivePalette(null)
-  }, [])
-  const openShortcutsDialog = useCallback(() => {
-    setShowShortcutsDialog(true)
-  }, [])
-  const toggleShortcutsDialog = useCallback(() => {
-    setShowShortcutsDialog((prev) => !prev)
-  }, [])
+  const closePalette = useCallback(() => setActivePalette(null), [])
+  const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
+  const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
   const createNewNote = useCreateNewNote()
   useHintActivation()
 
   useAppCommands('shell', {
     'nav.newNote': { run: () => createNewNote() },
     'nav.search': keyToggles(
-      () => {
-        togglePalette('search')
-      },
-      () => {
-        openPalette('search')
-      }
+      () => togglePalette('search'),
+      () => openPalette('search')
     ),
     'nav.commands': keyToggles(
-      () => {
-        togglePalette('commands')
-      },
-      () => {
-        openPalette('commands')
-      }
+      () => togglePalette('commands'),
+      () => openPalette('commands')
     ),
     'view.shortcuts': keyToggles(toggleShortcutsDialog, openShortcutsDialog)
   })
@@ -360,9 +330,7 @@ const AppContent = (): React.JSX.Element => {
     }
 
     window.addEventListener('memry:test-open-note', openTestNote as EventListener)
-    return () => {
-      window.removeEventListener('memry:test-open-note', openTestNote as EventListener)
-    }
+    return () => window.removeEventListener('memry:test-open-note', openTestNote as EventListener)
   }, [openTab])
 
   useEffect(() => {
@@ -384,9 +352,8 @@ const AppContent = (): React.JSX.Element => {
     }
 
     window.addEventListener('memry:test-open-folder', openTestFolder as EventListener)
-    return () => {
+    return () =>
       window.removeEventListener('memry:test-open-folder', openTestFolder as EventListener)
-    }
   }, [openTab])
 
   useEffect(() => {
@@ -449,9 +416,7 @@ const AppContent = (): React.JSX.Element => {
         <Suspense fallback={null}>
           <LazyKeyboardShortcutsDialog
             isOpen={showShortcutsDialog}
-            onClose={() => {
-              setShowShortcutsDialog(false)
-            }}
+            onClose={() => setShowShortcutsDialog(false)}
           />
         </Suspense>
       )}
@@ -461,9 +426,7 @@ const AppContent = (): React.JSX.Element => {
         <Suspense fallback={null}>
           <LazyCommandPalette
             open={activePalette === 'search'}
-            onOpenChange={(open) => {
-              open ? openPalette('search') : closePalette()
-            }}
+            onOpenChange={(open) => (open ? openPalette('search') : closePalette())}
           />
         </Suspense>
       )}
@@ -473,9 +436,7 @@ const AppContent = (): React.JSX.Element => {
         <Suspense fallback={null}>
           <LazyCommandsPalette
             open={activePalette === 'commands'}
-            onOpenChange={(open) => {
-              open ? openPalette('commands') : closePalette()
-            }}
+            onOpenChange={(open) => (open ? openPalette('commands') : closePalette())}
           />
         </Suspense>
       )}
@@ -597,9 +558,7 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
   const mainContent = (
     <IncidentReportProvider>
       <TabErrorBoundary
-        onError={(error, errorInfo) => {
-          log.error('Critical error:', error, errorInfo)
-        }}
+        onError={(error, errorInfo) => log.error('Critical error:', error, errorInfo)}
       >
         <TasksProvider
           tasks={tasks}
@@ -948,13 +907,13 @@ function App(): React.JSX.Element {
             only as a stackless generic window_error. */}
         <IncidentReportProvider>
           <TabErrorBoundary
-            onError={(error, errorInfo) => {
+            onError={(error, errorInfo) =>
               trackRendererError(
                 'onboarding_error_boundary',
                 error,
                 errorInfo.componentStack ?? undefined
               )
-            }}
+            }
           >
             <Suspense fallback={null}>
               <LazyVaultOnboarding />

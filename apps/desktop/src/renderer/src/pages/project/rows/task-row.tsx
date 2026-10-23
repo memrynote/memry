@@ -47,24 +47,16 @@ export const TaskRow = ({
             statusId={task.statusId}
             statuses={project.statuses}
             isCompleted={isDone}
-            onStatusChange={(statusId) => {
-              onStatusChange(task.id, statusId)
-            }}
-            onToggleComplete={() => {
-              onToggleComplete(task.id)
-            }}
+            onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
+            onToggleComplete={() => onToggleComplete(task.id)}
           />
           <InlinePriorityPopover
             priority={task.priority}
-            onPriorityChange={(priority) => {
-              onPriorityChange(task.id, priority)
-            }}
+            onPriorityChange={(priority) => onPriorityChange(task.id, priority)}
           />
         </>
       }
-      onOpen={() => {
-        onOpen(task.id)
-      }}
+      onOpen={() => onOpen(task.id)}
       openLabel={t('projectHub.rows.openTask', { title: task.title })}
       trailing={
         <>

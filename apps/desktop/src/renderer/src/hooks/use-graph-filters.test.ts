@@ -20,29 +20,17 @@ describe('useGraphFilters', () => {
   it('toggles collapsed categories and applies a saved view', () => {
     const { result } = renderHook(() => useGraphFilters(GRAPH_VIEW_STATE_DEFAULTS))
 
-    act(() => {
-      result.current.toggleCollapsed('work')
-    })
-    act(() => {
-      result.current.toggleCollapsed('home')
-    })
-    act(() => {
-      result.current.toggleCollapsed('work')
-    })
+    act(() => result.current.toggleCollapsed('work'))
+    act(() => result.current.toggleCollapsed('home'))
+    act(() => result.current.toggleCollapsed('work'))
     expect(result.current.viewState.collapsedCategoryIds).toEqual(['home'])
 
-    act(() => {
-      result.current.setColorBy('tag-category')
-    })
-    act(() => {
-      result.current.dispatch({ type: 'SET_SEARCH_QUERY', query: 'alpha' })
-    })
+    act(() => result.current.setColorBy('tag-category'))
+    act(() => result.current.dispatch({ type: 'SET_SEARCH_QUERY', query: 'alpha' }))
     expect(result.current.viewState.colorBy).toBe('tag-category')
     expect(result.current.filterState.searchQuery).toBe('alpha')
 
-    act(() => {
-      result.current.applyView(seeded, 'view-1')
-    })
+    act(() => result.current.applyView(seeded, 'view-1'))
     expect(result.current.viewState).toEqual(seeded)
     expect(result.current.activeViewId).toBe('view-1')
   })

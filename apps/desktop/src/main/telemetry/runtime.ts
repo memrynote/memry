@@ -188,9 +188,7 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
   runtimeInstance = {
     context,
     client,
-    track: (event) => {
-      client.track(event)
-    },
+    track: (event) => client.track(event),
     flush: (reason) => client.flush(reason),
     setEnabled: (enabled) => {
       client.setEnabled(enabled)

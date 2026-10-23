@@ -123,9 +123,7 @@ vi.mock('./canvas-card', () => ({
     <button
       data-testid={`card-${cardRef.elementId}`}
       data-canvas-card-locked={locked ? 'true' : undefined}
-      onClick={() => {
-        onRedirect(cardRef)
-      }}
+      onClick={() => onRedirect(cardRef)}
     >
       {cardRef.entityId}
     </button>
@@ -164,31 +162,21 @@ vi.mock('./canvas-add-card-dialog', () => ({
       <>
         <button
           data-testid="stub-add-all"
-          onClick={() => {
+          onClick={() =>
             onAddAll([
               { entityType: 'note', entityId: 'n1' },
               { entityType: 'note', entityId: 'b1' },
               { entityType: 'task', entityId: 'b2' },
               { entityType: 'file', entityId: 'b3' }
             ])
-          }}
+          }
         >
           add all
         </button>
-        <button
-          data-testid="stub-create-note"
-          onClick={() => {
-            onCreateNote('')
-          }}
-        >
+        <button data-testid="stub-create-note" onClick={() => onCreateNote('')}>
           create
         </button>
-        <button
-          data-testid="stub-reveal-n2"
-          onClick={() => {
-            onReveal('note', 'n2')
-          }}
-        >
+        <button data-testid="stub-reveal-n2" onClick={() => onReveal('note', 'n2')}>
           reveal
         </button>
       </>
@@ -305,9 +293,7 @@ describe('CanvasCardLayer', () => {
     Object.defineProperty(drop, 'clientY', { value: 80 })
     wrapper.dispatchEvent(drop)
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const passed = updateScene.mock.calls[0][0]
     expect(passed.captureUpdate).toBe('immediately')
     expect(
@@ -343,9 +329,7 @@ describe('CanvasCardLayer', () => {
     Object.defineProperty(drop, 'clientY', { value: 300 })
     screen.getByTestId('wrapper').dispatchEvent(drop)
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const elements = updateScene.mock.calls[0][0].elements as Array<{
       id: string
       frameId?: string
@@ -375,9 +359,7 @@ describe('CanvasCardLayer', () => {
       Object.defineProperty(drop, 'clientX', { value: 120 })
       Object.defineProperty(drop, 'clientY', { value: 80 })
       wrapper.dispatchEvent(drop)
-      await waitFor(() => {
-        expect(updateScene).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(updateScene).toHaveBeenCalled())
       const element = updateScene.mock.calls[0][0].elements.find(
         (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'dropped'
       ) as { width: number; height: number }
@@ -420,9 +402,7 @@ describe('CanvasCardLayer', () => {
     Object.defineProperty(drop, 'clientY', { value: 80 })
     screen.getByTestId('wrapper').dispatchEvent(drop)
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const created = updateScene.mock.calls[0][0].elements.find(
       (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'scan'
     )
@@ -451,9 +431,7 @@ describe('CanvasCardLayer', () => {
     Object.defineProperty(drop, 'clientY', { value: 80 })
     screen.getByTestId('wrapper').dispatchEvent(drop)
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalledTimes(1))
     const passed = updateScene.mock.calls[0][0]
     const created = passed.elements.slice(1)
     expect(created.map((e: { customData: unknown }) => e.customData)).toEqual([
@@ -549,12 +527,8 @@ describe('CanvasCardLayer', () => {
 
     fireEvent.click(screen.getByTestId('canvas-add-card'))
     fireEvent.click(screen.getByTestId('stub-create-note'))
-    await waitFor(() => {
-      expect(mocks.notesCreate).toHaveBeenCalled()
-    })
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.notesCreate).toHaveBeenCalled())
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const passed = updateScene.mock.calls[0][0]
     expect(
       passed.elements.some(
@@ -573,9 +547,7 @@ describe('CanvasCardLayer', () => {
 
     fireEvent.click(screen.getByTestId('canvas-add-card'))
     fireEvent.click(screen.getByTestId('stub-create-note'))
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
 
     const created = updateScene.mock.calls[0][0].elements.find(
       (e: { customData?: { entityId?: string } }) => e.customData?.entityId === 'captured'
@@ -603,9 +575,7 @@ describe('CanvasCardLayer', () => {
     fireEvent.click(screen.getByTestId('canvas-add-card'))
     fireEvent.click(screen.getByTestId('stub-reveal-n2'))
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const passed = updateScene.mock.calls[0][0]
     const expected = revealScroll(
       { x: 1000, y: 1000, width: 260, height: 168 },
@@ -633,9 +603,9 @@ describe('CanvasCardLayer', () => {
       clientY: 150
     })
     wrapper.dispatchEvent(dbl)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(document.querySelector('[data-canvas-active-card="e1"]')).toBeInTheDocument()
-    })
+    )
     expect(document.querySelector('[data-canvas-card-entity="note:n1"]')).toHaveAttribute(
       'data-canvas-card-state',
       'active'
@@ -701,9 +671,9 @@ describe('CanvasCardLayer', () => {
       return el as HTMLElement
     })
     fireEvent.keyDown(active, { key: 'Escape' })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(document.querySelector('[data-canvas-active-card]')).not.toBeInTheDocument()
-    })
+    )
   })
 
   it('click-away pointerdown deactivates the active card without swallowing it', async () => {
@@ -715,9 +685,9 @@ describe('CanvasCardLayer', () => {
     wrapper.dispatchEvent(
       new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
     )
-    await waitFor(() => {
+    await waitFor(() =>
       expect(document.querySelector('[data-canvas-active-card="e1"]')).toBeInTheDocument()
-    })
+    )
     const pointerdown = new MouseEvent('pointerdown', {
       bubbles: true,
       cancelable: true,
@@ -726,9 +696,9 @@ describe('CanvasCardLayer', () => {
     })
     const stopPropagation = vi.spyOn(pointerdown, 'stopPropagation')
     wrapper.dispatchEvent(pointerdown)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(document.querySelector('[data-canvas-active-card]')).not.toBeInTheDocument()
-    })
+    )
     // C4: the deactivating pointerdown must still be free to pan/select.
     expect(stopPropagation).not.toHaveBeenCalled()
   })
@@ -761,9 +731,9 @@ describe('CanvasCardLayer', () => {
       wrapper.dispatchEvent(
         new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: 150, clientY: 150 })
       )
-      await waitFor(() => {
+      await waitFor(() =>
         expect(document.querySelector('[data-canvas-active-card="e1"]')).toBeInTheDocument()
-      })
+      )
 
       // The note becomes live in another visible pane — the lock context
       // changes and the yield-to-tab effect must deactivate the card.
@@ -778,9 +748,9 @@ describe('CanvasCardLayer', () => {
       mocks.entities = new Map([['note:n1', { status: 'ready', kind: 'note', title: 'Hit' }]])
       const { api } = makeApi([cardEl('e1', 'n1')])
       render(<Harness api={api} />)
-      await waitFor(() => {
+      await waitFor(() =>
         expect(screen.getByTestId('card-e1')).toHaveAttribute('data-canvas-card-locked', 'true')
-      })
+      )
     })
   })
 })
@@ -833,9 +803,7 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
       dnd.listeners.onDragEnd?.(dropEvent({ type: 'task', task: { id: 't1' } }, 't1'))
     })
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const passed = updateScene.mock.calls[0][0]
     expect(entityIds(passed)).toEqual(['t1'])
     const card = passed.elements[0]
@@ -860,9 +828,7 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
       )
     })
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     expect(updateScene.mock.calls[0][0].elements[0].customData).toEqual({
       entityType: 'calendar_event',
       entityId: 'ev1'
@@ -912,9 +878,7 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
       dnd.listeners.onDragEnd?.(dropEvent({ type: 'task', task: { id: 't1' } }, 't1'))
     })
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     const passed = updateScene.mock.calls[0][0]
     expect(entityIds(passed)).toEqual(['t1', 't2', 't3'])
     const centers = passed.elements.map(
@@ -932,9 +896,7 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
       dnd.listeners.onDragEnd?.(dropEvent({ type: 'task', task: { id: 't1' } }, 't1', null))
     })
 
-    await waitFor(() => {
-      expect(updateScene).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateScene).toHaveBeenCalled())
     expect(entityIds(updateScene.mock.calls[0][0])).toEqual(['t1'])
   })
 
@@ -947,17 +909,13 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
     act(() => {
       dnd.listeners.onDragStart?.({ active: { id: 't1', data: { current: { type: 'task' } } } })
     })
-    await waitFor(() => {
-      expect(screen.getByTestId('canvas-drop-ring')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByTestId('canvas-drop-ring')).toBeInTheDocument())
 
     act(() => {
       dnd.listeners.onDragCancel?.()
     })
     rerender(<Harness api={api} />)
-    await waitFor(() => {
-      expect(screen.queryByTestId('canvas-drop-ring')).toBeNull()
-    })
+    await waitFor(() => expect(screen.queryByTestId('canvas-drop-ring')).toBeNull())
   })
 
   it('does not show the drop ring for a drag the canvas cannot place', async () => {
@@ -969,9 +927,7 @@ describe('CanvasCardLayer — dnd-kit drops', () => {
       dnd.listeners.onDragStart?.({ active: { id: 'c1', data: { current: { type: 'column' } } } })
     })
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('canvas-drop-ring')).toBeNull()
-    })
+    await waitFor(() => expect(screen.queryByTestId('canvas-drop-ring')).toBeNull())
   })
 })
 
@@ -1006,9 +962,7 @@ describe('CanvasCardLayer — recompute scoping', () => {
   function flushFrames(): void {
     const pending = [...frames.values()]
     frames = new Map()
-    pending.forEach((callback) => {
-      callback(0)
-    })
+    pending.forEach((callback) => callback(0))
   }
 
   /** The transformed overlay layer — where the whole card plane sits. */
@@ -1238,9 +1192,7 @@ describe('CanvasCardLayer — recompute scoping', () => {
     // bring e2 in — a held size would leave a blank hole where the card is.
     clipWidth = 2000
     act(() => {
-      resizeCallbacks.forEach((callback) => {
-        callback([], {} as ResizeObserver)
-      })
+      resizeCallbacks.forEach((callback) => callback([], {} as ResizeObserver))
     })
 
     expect(screen.getByTestId('card-e2')).toBeInTheDocument()

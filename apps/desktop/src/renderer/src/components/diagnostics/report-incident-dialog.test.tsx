@@ -93,16 +93,12 @@ describe('ReportIncidentDialog', () => {
     const { previewReport, sendReport } = mockDiagnosticsApi()
     render(<ReportIncidentDialog open trigger={trigger} onOpenChange={() => {}} />)
 
-    await waitFor(() => {
-      expect(previewReport).toHaveBeenCalledWith(trigger)
-    })
+    await waitFor(() => expect(previewReport).toHaveBeenCalledWith(trigger))
 
     const sendButton = await screen.findByRole('button', { name: /^send$/i })
     await userEvent.click(sendButton)
 
-    await waitFor(() => {
-      expect(sendReport).toHaveBeenCalledWith(fixedReport)
-    })
+    await waitFor(() => expect(sendReport).toHaveBeenCalledWith(fixedReport))
     expect(await screen.findByText(/MEMRY-ABCD2345/)).toBeInTheDocument()
   })
 
@@ -152,16 +148,12 @@ describe('ReportIncidentDialog', () => {
     // Cycle A reaches preview; start an in-flight send.
     const sendButton = await screen.findByRole('button', { name: /^send$/i })
     await userEvent.click(sendButton)
-    await waitFor(() => {
-      expect(sendReport).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(sendReport).toHaveBeenCalledTimes(1))
 
     // Supersede: reopen with a NEW trigger (dialog stays mounted). Cycle B
     // re-previews and returns to the preview state.
     rerender(<ReportIncidentDialog open trigger={triggerB} onOpenChange={() => {}} />)
-    await waitFor(() => {
-      expect(previewReport).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(previewReport).toHaveBeenCalledTimes(2))
     await screen.findByRole('button', { name: /^send$/i })
 
     // The STALE send for cycle A now resolves — it must not clobber cycle B.

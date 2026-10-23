@@ -205,9 +205,9 @@ export function CaptureInput({
 
   const handleVoiceReadiness = useCallback(
     () =>
-      ensureVoiceRecordingReady((readiness) => {
+      ensureVoiceRecordingReady((readiness) =>
         openSettings(getVoiceRecordingSettingsTarget(readiness))
-      }),
+      ),
     [openSettings]
   )
 

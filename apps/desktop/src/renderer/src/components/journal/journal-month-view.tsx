@@ -94,9 +94,7 @@ export function JournalMonthView({
               heatmapLevel={heatmapLevel}
               isToday={dayData.date === today}
               isFuture={dayData.isFuture}
-              onClick={() => {
-                onDayClick(dayData.date)
-              }}
+              onClick={() => onDayClick(dayData.date)}
             />
           )
         })}

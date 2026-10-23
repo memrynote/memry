@@ -48,9 +48,7 @@ const tasksOff = {
 describe('useGraphViews', () => {
   it('saves, updates and deletes views through settings IPC', async () => {
     const { result } = renderGraphViews()
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.saveView('   ', GRAPH_VIEW_STATE_DEFAULTS, 'forceatlas2')).toBeNull()
 
@@ -58,40 +56,24 @@ describe('useGraphViews', () => {
     act(() => {
       savedId = result.current.saveView(' Work ', GRAPH_VIEW_STATE_DEFAULTS, 'forceatlas2')!.id
     })
-    await waitFor(() => {
-      expect(result.current.views).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.views).toHaveLength(1))
     expect(result.current.views[0]).toMatchObject({ id: savedId, name: 'Work' })
 
-    act(() => {
-      result.current.updateView(savedId, tasksOff, 'circular')
-    })
-    await waitFor(() => {
-      expect(result.current.views[0].layout).toBe('circular')
-    })
+    act(() => result.current.updateView(savedId, tasksOff, 'circular'))
+    await waitFor(() => expect(result.current.views[0].layout).toBe('circular'))
     expect(result.current.views[0].state).toEqual(tasksOff)
 
-    act(() => {
-      result.current.deleteView(savedId)
-    })
-    await waitFor(() => {
-      expect(result.current.views).toHaveLength(0)
-    })
+    act(() => result.current.deleteView(savedId))
+    await waitFor(() => expect(result.current.views).toHaveLength(0))
     expect(setGraphViews).toHaveBeenCalledTimes(3)
   })
 
   it('remembers the last state without touching saved views', async () => {
     const { result } = renderGraphViews()
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    act(() => {
-      result.current.rememberState(tasksOff)
-    })
-    await waitFor(() => {
-      expect(result.current.lastState).toEqual(tasksOff)
-    })
+    act(() => result.current.rememberState(tasksOff))
+    await waitFor(() => expect(result.current.lastState).toEqual(tasksOff))
     expect(setGraphViews).toHaveBeenCalledWith({ lastState: tasksOff })
   })
 
@@ -107,24 +89,18 @@ describe('useGraphViews', () => {
       lastState: null
     }
     const { result } = renderGraphViews()
-    await waitFor(() => {
-      expect(result.current.views).toHaveLength(MAX_SAVED_GRAPH_VIEWS)
-    })
+    await waitFor(() => expect(result.current.views).toHaveLength(MAX_SAVED_GRAPH_VIEWS))
     expect(result.current.saveView('One more', GRAPH_VIEW_STATE_DEFAULTS, 'forceatlas2')).toBeNull()
   })
 
   it('rolls back an optimistic write that failed', async () => {
     setGraphViews.mockRejectedValueOnce(new Error('no vault'))
     const { result, queryClient } = renderGraphViews()
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    act(() => {
-      result.current.rememberState(tasksOff)
-    })
-    await waitFor(() => {
+    act(() => result.current.rememberState(tasksOff))
+    await waitFor(() =>
       expect(queryClient.getQueryData<GraphViewsSettings>(GRAPH_VIEWS_KEY)?.lastState).toBeNull()
-    })
+    )
   })
 })

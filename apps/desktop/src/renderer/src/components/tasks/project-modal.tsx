@@ -344,9 +344,7 @@ const ProjectModalDialog = ({
                         isOpen
                         embedded
                         hasEmoji={formData.icon !== DEFAULT_ICON}
-                        onClose={() => {
-                          setIconPickerOpen(false)
-                        }}
+                        onClose={() => setIconPickerOpen(false)}
                         onSelect={handleIconSelect}
                         onRemove={handleIconRemove}
                       />
@@ -466,9 +464,7 @@ const ProjectModalDialog = ({
       {/* Unsaved Changes Confirmation */}
       <DeleteProjectDialog
         isOpen={showDeleteDialog}
-        onClose={() => {
-          setShowDeleteDialog(false)
-        }}
+        onClose={() => setShowDeleteDialog(false)}
         onConfirm={handleConfirmDelete}
         project={project ?? null}
       />

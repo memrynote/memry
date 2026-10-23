@@ -8,7 +8,5 @@ export const inboxEvents = {
 
   /** Subscribe to the review notification click — open the inbox */
   onInboxReviewOpen: (callback: () => void): (() => void) =>
-    subscribe<unknown>(InboxChannels.events.REVIEW_OPEN, () => {
-      callback()
-    })
+    subscribe<unknown>(InboxChannels.events.REVIEW_OPEN, () => callback())
 }

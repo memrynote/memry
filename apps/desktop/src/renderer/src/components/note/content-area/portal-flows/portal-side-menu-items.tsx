@@ -74,9 +74,7 @@ export function HideInPortalItem(): ReactElement | null {
     <Components.Generic.Menu.Item
       className="bn-menu-item"
       icon={<EyeOff size={16} />}
-      onClick={() => {
-        handler.hide(block.id)
-      }}
+      onClick={() => handler.hide(block.id)}
     >
       {t('portalFlows.menu.hideInPortal')}
     </Components.Generic.Menu.Item>

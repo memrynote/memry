@@ -129,15 +129,11 @@ describe('CalendarTaskPopover', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Status: To Do. Click to change.' }))
     await userEvent.click(await screen.findByText('Done'))
 
-    await waitFor(() => {
-      expect(completeMock).toHaveBeenCalledWith({ id: 't1' })
-    })
+    await waitFor(() => expect(completeMock).toHaveBeenCalledWith({ id: 't1' }))
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 't1', statusId: 'p-done' })
     )
-    await waitFor(() => {
-      expect(toastMock).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(toastMock).toHaveBeenCalled())
     const [, options] = toastMock.mock.calls.at(-1) as [string, { action: { onClick: () => void } }]
     options.action.onClick()
     expect(uncompleteMock).toHaveBeenCalledWith('t1')
@@ -235,9 +231,7 @@ describe('CalendarTaskPopover', () => {
     expect(uncompleteMock).toHaveBeenCalledWith('sub-2')
 
     await userEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
-    await waitFor(() => {
-      expect(onDismiss).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(onDismiss).toHaveBeenCalled())
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
 
     await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
@@ -271,7 +265,7 @@ describe('CalendarTaskPopover', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /more actions/i }))
     await userEvent.click(screen.getByRole('menuitem', { name: /source note/i }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(openTabMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'note',
@@ -279,7 +273,7 @@ describe('CalendarTaskPopover', () => {
           entityId: 'note-1'
         })
       )
-    })
+    )
     expect(onDismiss).toHaveBeenCalled()
 
     rerender(<CalendarTaskPopover taskId="missing" anchorRect={baseAnchor} onDismiss={vi.fn()} />)

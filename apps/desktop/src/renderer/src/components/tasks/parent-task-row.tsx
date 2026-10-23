@@ -270,9 +270,7 @@ export const ParentTaskRow = ({
             <div className="flex shrink-0 items-center justify-center">
               <SelectionCheckbox
                 state={isCheckedForSelection ? 'checked' : 'unchecked'}
-                onToggle={() => {
-                  onToggleSelect(task.id)
-                }}
+                onToggle={() => onToggleSelect(task.id)}
                 alwaysVisible={isSelectionMode}
                 label={`Select ${task.title}`}
               />
@@ -313,9 +311,7 @@ export const ParentTaskRow = ({
               statuses={project.statuses}
               isCompleted={isCompleted}
               onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
-              onToggleComplete={() => {
-                onToggleComplete(task.id)
-              }}
+              onToggleComplete={() => onToggleComplete(task.id)}
               disabled={isDragging}
             />
           )}

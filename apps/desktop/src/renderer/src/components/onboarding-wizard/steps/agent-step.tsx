@@ -52,9 +52,7 @@ export function startSmartConnectionsDownload(): void {
     .then((result) => {
       if (!result.success) log.warn('Smart connections model did not load', result.error)
     })
-    .catch((error: unknown) => {
-      log.warn('Starting the smart connections download failed', error)
-    })
+    .catch((error: unknown) => log.warn('Starting the smart connections download failed', error))
 }
 
 /** Brand marks (LobeHub icons, MIT). Ollama and LM Studio are one-color, so they invert in dark. */
@@ -147,16 +145,12 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
                   aria-checked={selected}
                   data-wizard-option
                   disabled={!ready}
-                  onClick={() => {
-                    dispatch({ type: 'update', patch: { agent: backend } })
-                  }}
+                  onClick={() => dispatch({ type: 'update', patch: { agent: backend } })}
                   // A radio follows focus, so arrowing through the list picks as it goes.
                   onFocus={
                     selected
                       ? undefined
-                      : () => {
-                          dispatch({ type: 'update', patch: { agent: backend } })
-                        }
+                      : () => dispatch({ type: 'update', patch: { agent: backend } })
                   }
                   className="flex h-full min-w-0 grow items-center gap-3 rounded-md ps-2.5 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                 >
@@ -183,9 +177,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
                   ) : noneFound ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        install(backend)
-                      }}
+                      onClick={() => install(backend)}
                       className="flex items-center gap-1 rounded-sm text-xs font-semibold text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {t(backend === 'local_openai_compatible' ? `${K}.setUp` : `${K}.install`)}

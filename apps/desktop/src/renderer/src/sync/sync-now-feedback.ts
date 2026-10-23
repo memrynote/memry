@@ -21,9 +21,7 @@ export function announceSyncNowResult(result: TriggerSyncResult, t: ErrorsT): vo
         duration: 10000,
         action: {
           label: t('sync.openAccountSettings'),
-          onClick: () => {
-            requestOpenSettings('account')
-          }
+          onClick: () => requestOpenSettings('account')
         }
       })
       return

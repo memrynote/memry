@@ -81,12 +81,7 @@ vi.mock('@/components/tasks/task-row', () => ({
       {renderTitle?.()}
       {interactive && (
         <>
-          <button
-            type="button"
-            onClick={() => {
-              onToggleComplete(task.id)
-            }}
-          >
+          <button type="button" onClick={() => onToggleComplete(task.id)}>
             toggle
           </button>
           <button type="button" onClick={() => onUpdateTask?.(task.id, { priority: 'urgent' })}>
@@ -200,16 +195,14 @@ describe('taskBlock with no tasks row behind it', () => {
     renderBlock(makeBlock({ taskId: 'nonexistent' }))
 
     // #when the lookup settles
-    await waitFor(() => {
-      expect(mocks.get).toHaveBeenCalledWith('nonexistent')
-    })
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledWith('nonexistent'))
 
     // #then the block says so instead of pretending to be a task
-    await waitFor(() => {
+    await waitFor(() =>
       expect(
         screen.getByText('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskDeleted')
       ).toBeInTheDocument()
-    })
+    )
     expect(screen.queryByTestId('task-row')).toBeNull()
   })
 
@@ -223,9 +216,9 @@ describe('taskBlock with no tasks row behind it', () => {
     renderBlock(makeBlock({ taskId: 'task-1' }))
 
     // #then the row stays fully interactive
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('task-row').getAttribute('data-interactive')).toBe('true')
-    })
+    )
     expect(screen.getByText('toggle')).toBeInTheDocument()
     expect(screen.getByText('project')).toBeInTheDocument()
   })

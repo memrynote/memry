@@ -54,9 +54,7 @@ function Row({
         type="button"
         data-where-used-row=""
         className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-start outline-none hover:bg-surface-active focus-visible:bg-surface-active"
-        onClick={(event) => {
-          onOpen(host, { beside: event.shiftKey })
-        }}
+        onClick={(event) => onOpen(host, { beside: event.shiftKey })}
         onKeyDown={(event) => {
           if (event.key !== 'Enter' || !event.shiftKey) return
           event.preventDefault()
@@ -80,9 +78,7 @@ function Row({
         aria-label={openBeside}
         title={openBeside}
         className="absolute end-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-secondary opacity-0 outline-none transition-opacity hover:bg-surface hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-foreground/60 group-focus-within:opacity-100 group-hover:opacity-100"
-        onClick={() => {
-          onOpen(host, { beside: true })
-        }}
+        onClick={() => onOpen(host, { beside: true })}
       >
         <Columns2 className="size-4" aria-hidden="true" />
       </button>
@@ -138,9 +134,7 @@ export function PortalWhereUsedPopover({
       // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
       rows()[0]?.focus()
     })
-    return () => {
-      cancelAnimationFrame(frame)
-    }
+    return () => cancelAnimationFrame(frame)
   }, [anchorEl, hosts])
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -164,9 +158,7 @@ export function PortalWhereUsedPopover({
         data-testid="portal-where-used"
         aria-label={t('portalFlows.whereUsed.aria')}
         onKeyDown={onKeyDown}
-        onOpenAutoFocus={(event) => {
-          event.preventDefault()
-        }}
+        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <Section
           label={links.length > 0 ? t('portalFlows.whereUsed.portals') : null}

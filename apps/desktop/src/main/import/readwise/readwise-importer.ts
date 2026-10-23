@@ -135,9 +135,7 @@ export const readwiseImporter: Importer = {
         signal: ctx.signal,
         // The runner writes the activity line for an import run.
         logActivity: false,
-        reading: () => {
-          ctx.status(IMPORT_STATUS.readwiseFetching)
-        },
+        reading: () => ctx.status(IMPORT_STATUS.readwiseFetching),
         planned: (count) => {
           total = count
           ctx.setPhase('importing')
@@ -147,9 +145,7 @@ export const readwiseImporter: Importer = {
           total += count
           ctx.reportProgress(completed, total)
         },
-        writing: (title) => {
-          ctx.status(importingItemStatus(title))
-        },
+        writing: (title) => ctx.status(importingItemStatus(title)),
         book: (event) => {
           if (event.result === 'failed') ctx.reportFailed(event.title, event.reason)
           else if (event.result === 'skipped')

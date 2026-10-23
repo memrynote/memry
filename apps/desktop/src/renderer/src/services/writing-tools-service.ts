@@ -17,7 +17,7 @@ export const writingToolsService = {
    * no spelling data will arrive.
    */
   claimEditorContextMenu(): boolean {
-    return window.api?.writingTools?.claimEditorContextMenu?.()
+    return window.api?.writingTools?.claimEditorContextMenu?.() === true
   },
   onEditorContextMenu(callback: (spelling: EditorContextMenuSpelling) => void): () => void {
     return window.api?.onEditorContextMenu?.(callback) ?? (() => {})

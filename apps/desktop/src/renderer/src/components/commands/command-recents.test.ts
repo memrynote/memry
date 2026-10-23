@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { COMMAND_RECENTS_KEY, readCommandRecents, recordCommandRecent } from './command-recents'
 
-beforeEach(() => {
-  localStorage.clear()
-})
+beforeEach(() => localStorage.clear())
 
 describe('command recents', () => {
   it('lists the latest first, once each', () => {

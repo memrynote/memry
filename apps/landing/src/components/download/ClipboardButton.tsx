@@ -42,9 +42,7 @@ export function ClipboardButton({
   const flash = (next: Exclude<Status, 'idle'>) => {
     setStatus(next)
     if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
-    resetTimer.current = window.setTimeout(() => {
-      setStatus('idle')
-    }, RESET_MS)
+    resetTimer.current = window.setTimeout(() => setStatus('idle'), RESET_MS)
   }
 
   const run = async () => {

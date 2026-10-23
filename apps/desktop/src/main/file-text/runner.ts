@@ -388,7 +388,7 @@ export class FileTextRunner {
       if (result.method === 'unreadable' && readAgain.has(part)) keptOldText = true
       else saveExtractedPart(db, file, part, result.method, result.text)
     }
-    const finish: FinishJob = (status, error) => {
+    const finish: FinishJob = (status, error) =>
       finishFileTextJob(
         db,
         file,
@@ -400,7 +400,6 @@ export class FileTextRunner {
             }
           : { status, error, ocrLanguages: languages.join('+') }
       )
-    }
     const resolved = await resolveVaultFile(this.deps.vaultPath, file.path)
     if (resolved.kind === 'outside') {
       finish('failed', `${normalizeRelativePath(file.path)} points outside the vault`)

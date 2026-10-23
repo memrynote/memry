@@ -38,17 +38,13 @@ describe('crdt body debts (#2297)', () => {
     ids: string[],
     reason: Parameters<typeof oweCrdtBodyDebts>[2],
     options: Parameters<typeof oweCrdtBodyDebts>[3] = {}
-  ) => {
-    oweCrdtBodyDebts(db(), ids, reason, options)
-  }
+  ) => oweCrdtBodyDebts(db(), ids, reason, options)
 
   beforeEach(() => {
     t = createTestDataDb()
     log.error.mockClear()
   })
-  afterEach(() => {
-    t.close()
-  })
+  afterEach(() => t.close())
 
   it('owes a note once, keeping the first reason and the lower cursor, and NULL wins', () => {
     owe(['n1'], 'feed_owed', { lowestCursor: 40, now: 1_000 })
@@ -268,9 +264,7 @@ describe('crdt body debts (#2297)', () => {
   it('survives a missing table, logging once', () => {
     t.sqlite.exec('DROP TABLE crdt_body_debts')
     const store = crdtBodyDebtStore(db())
-    expect(() => {
-      store.owe(['n1'], 'record')
-    }).not.toThrow()
+    expect(() => store.owe(['n1'], 'record')).not.toThrow()
     expect(store.settle(['n1'], 0).size).toBe(0)
     expect(store.list()).toEqual([])
     expect(store.generation()).toBe(0)
@@ -411,9 +405,7 @@ describe('0060_crdt_body_debts migration', () => {
       .run()
     sqlite.exec(fs.readFileSync(path.join(migrationsDir, '0060_crdt_body_debts.sql'), 'utf8'))
     migrate(db, { migrationsFolder: migrationsDir })
-    expect(() => {
-      migrate(db, { migrationsFolder: makePre0060Folder() })
-    }).not.toThrow()
+    expect(() => migrate(db, { migrationsFolder: makePre0060Folder() })).not.toThrow()
     expect(sqlite.prepare('SELECT note_id FROM crdt_body_debts').all()).toEqual([{ note_id: 'n1' }])
     sqlite.close()
   })

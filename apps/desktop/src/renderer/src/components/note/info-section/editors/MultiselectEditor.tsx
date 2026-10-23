@@ -121,9 +121,7 @@ export function MultiselectEditor({
               type="text"
               aria-label={t('properties.optionName')}
               value={newOptionName}
-              onChange={(e) => {
-                setNewOptionName(e.target.value)
-              }}
+              onChange={(e) => setNewOptionName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -144,9 +142,7 @@ export function MultiselectEditor({
           <Picker.Footer>
             <button
               type="button"
-              onClick={() => {
-                setIsCreating(true)
-              }}
+              onClick={() => setIsCreating(true)}
               className="flex items-center gap-2 w-full px-2 py-1.5 text-[13px] text-muted-foreground hover:bg-accent rounded-[5px]"
             >
               <Plus className="size-3.5" />

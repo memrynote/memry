@@ -162,9 +162,7 @@ export function AddPresetFieldsDialog({
                   value={otherName}
                   maxLength={50}
                   placeholder={t('tagFields.hub.dialog.namePlaceholder')}
-                  onChange={(e) => {
-                    setOtherName(e.target.value)
-                  }}
+                  onChange={(e) => setOtherName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && trimmedOther) void submit()
                   }}
@@ -173,13 +171,7 @@ export function AddPresetFieldsDialog({
             ) : null}
             <DialogFooter className="items-center sm:justify-between">
               {otherName === null ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setOtherName('')
-                  }}
-                  disabled={busy}
-                >
+                <Button variant="ghost" onClick={() => setOtherName('')} disabled={busy}>
                   {t('tagFields.hub.dialog.useAnotherName')}
                 </Button>
               ) : (

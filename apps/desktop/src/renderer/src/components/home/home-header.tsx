@@ -116,9 +116,7 @@ export function HomeHeader({
             data-testid="home-add-cover"
             aria-label={t('home.cover.add')}
             title={t('home.cover.add')}
-            onClick={(event) => {
-              onAddCover(coverPickerAnchorFrom(event))
-            }}
+            onClick={(event) => onAddCover(coverPickerAnchorFrom(event))}
             className="flex size-7.5 items-center justify-center rounded-full border border-border bg-card text-text-secondary transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
           >
             <Image className="size-4" aria-hidden="true" />
@@ -147,9 +145,7 @@ export function HomeHeader({
                 key={b.id}
                 data-testid="home-layout-item"
                 data-board-id={b.id}
-                onSelect={() => {
-                  onSelectBoard(b.id)
-                }}
+                onSelect={() => onSelectBoard(b.id)}
               >
                 <span className="flex-1 truncate">{b.name}</span>
                 {b.id === activeBoardId && (

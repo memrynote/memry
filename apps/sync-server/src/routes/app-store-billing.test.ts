@@ -65,9 +65,7 @@ beforeEach(() => {
   }
 })
 
-afterEach(() => {
-  sqlite.close()
-})
+afterEach(() => sqlite.close())
 
 const env = () => ({
   DB: sqlite.db,

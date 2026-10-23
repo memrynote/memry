@@ -33,9 +33,7 @@ describe('useGraphLayout', () => {
 
     const { result } = renderHook(() => useGraphLayout('global'), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.layout).toEqual(saved)
     expect(api.getLayout).toHaveBeenCalledWith('global')
   })
@@ -46,9 +44,7 @@ describe('useGraphLayout', () => {
 
     const { result } = renderHook(() => useGraphLayout('global'), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.layout).toBeNull()
   })
 })
@@ -59,13 +55,11 @@ describe('useGraphLayoutActions', () => {
     const { wrapper } = setup()
     const { result } = renderHook(() => useGraphLayoutActions('global'), { wrapper })
 
-    act(() => {
-      result.current.save(saved.nodes)
-    })
+    act(() => result.current.save(saved.nodes))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.saveLayout).toHaveBeenCalledWith({ viewKey: 'global', layout: saved })
-    })
+    )
   })
 
   it('runs writes in order, so a clear lands after an earlier save', async () => {
@@ -87,16 +81,12 @@ describe('useGraphLayoutActions', () => {
     client.setQueryData(graphLayoutKey('global'), saved)
     const { result } = renderHook(() => useGraphLayoutActions('global'), { wrapper })
 
-    act(() => {
-      result.current.save(saved.nodes)
-    })
+    act(() => result.current.save(saved.nodes))
     let cleared: Promise<void> = Promise.resolve()
     act(() => {
       cleared = result.current.clear()
     })
-    await waitFor(() => {
-      expect(api.saveLayout).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.saveLayout).toHaveBeenCalled())
     expect(api.clearLayout).not.toHaveBeenCalled()
 
     finishSave()
@@ -112,9 +102,7 @@ describe('useGraphLayoutActions', () => {
     const { wrapper } = setup()
     const { result } = renderHook(() => useGraphLayoutActions('global'), { wrapper })
 
-    act(() => {
-      result.current.save(saved.nodes)
-    })
+    act(() => result.current.save(saved.nodes))
     await act(() => result.current.clear())
 
     expect(api.clearLayout).toHaveBeenCalledWith('global')

@@ -98,8 +98,7 @@ const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> =
       const addr = server.address()
       if (!addr || typeof addr === 'string') {
         server.close()
-        reject(new Error('Failed to bind loopback server'))
-        return
+        return reject(new Error('Failed to bind loopback server'))
       }
       resolve({ server, port: addr.port })
     })
@@ -151,8 +150,7 @@ export function registerAuthOAuthHandlers(): void {
           const location = res.headers.location
           if (!location) {
             shutdownLoopbackServer()
-            reject(new Error('Failed to get OAuth URL from server'))
-            return
+            return reject(new Error('Failed to get OAuth URL from server'))
           }
           resolve(location)
         })

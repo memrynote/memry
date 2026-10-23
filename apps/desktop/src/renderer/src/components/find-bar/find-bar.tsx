@@ -71,9 +71,7 @@ export const FindBar = memo(function FindBar({
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => {
-            onQueryChange(e.target.value)
-          }}
+          onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={tPhaseF('phaseF.componentsFindBarFindBar.findReplaceAsk')}
           aria-label={tPhaseF('phaseF.componentsFindBarFindBar.findReplaceAsk')}

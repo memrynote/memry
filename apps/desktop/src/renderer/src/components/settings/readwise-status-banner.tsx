@@ -207,9 +207,7 @@ export function ReadwiseReconnectForm({
         autoCorrect="off"
         spellCheck={false}
         value={token}
-        onChange={(event) => {
-          setToken(event.target.value)
-        }}
+        onChange={(event) => setToken(event.target.value)}
         placeholder={t('import.dialog.readwise.tokenPlaceholder')}
         aria-invalid={error !== null}
         aria-describedby={error ? 'readwise-new-token-error' : undefined}

@@ -20,21 +20,15 @@ export function useVaultPagerCommands(paused: boolean): void {
 
   useAppCommands('vaultPager', {
     'nav.switchVault': {
-      run: () => {
-        requestVaultSwitcherOpen()
-      }
+      run: () => requestVaultSwitcherOpen()
     },
     'nav.nextVault': {
       enabled: !paused,
-      run: ({ source }) => {
-        pageBy(1, source)
-      }
+      run: ({ source }) => pageBy(1, source)
     },
     'nav.prevVault': {
       enabled: !paused,
-      run: ({ source }) => {
-        pageBy(-1, source)
-      }
+      run: ({ source }) => pageBy(-1, source)
     }
   })
 }

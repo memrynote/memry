@@ -27,13 +27,7 @@ vi.mock('./recovery-phrase-input', () => ({
     onBack: () => void
   }) => (
     <div>
-      <button
-        onClick={() => {
-          onSubmit('valid recovery phrase')
-        }}
-      >
-        submit-phrase
-      </button>
+      <button onClick={() => onSubmit('valid recovery phrase')}>submit-phrase</button>
       <button onClick={onBack}>back</button>
       {isLoading && <span>loading</span>}
       {error && <span data-testid="phrase-error">{error}</span>}
@@ -84,12 +78,10 @@ describe('VaultRecoveryDialog', () => {
     openInput()
     fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(hoisted.linkViaRecovery).toHaveBeenCalledWith('valid recovery phrase')
-    })
-    await waitFor(() => {
-      expect(onRecovered).toHaveBeenCalledTimes(1)
-    })
+    )
+    await waitFor(() => expect(onRecovered).toHaveBeenCalledTimes(1))
   })
 
   it('offers re-auth when the setup token has expired', async () => {
@@ -113,9 +105,7 @@ describe('VaultRecoveryDialog', () => {
     openInput()
     fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
 
-    await waitFor(() => {
-      expect(screen.getByTestId('phrase-error')).toHaveTextContent(/timed out/i)
-    })
+    await waitFor(() => expect(screen.getByTestId('phrase-error')).toHaveTextContent(/timed out/i))
     expect(onRecovered).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in again' }))
@@ -141,9 +131,9 @@ describe('VaultRecoveryDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
 
     // #then the control the message tells the user to use is actually present.
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument()
-    })
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Sign in again' }))
     expect(onSignOut).toHaveBeenCalledTimes(1)
   })
@@ -160,9 +150,9 @@ describe('VaultRecoveryDialog', () => {
     openInput()
     fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('phrase-error')).toHaveTextContent(/does not match/i)
-    })
+    )
     expect(screen.queryByRole('button', { name: 'Sign in again' })).not.toBeInTheDocument()
   })
 
@@ -201,9 +191,9 @@ describe('VaultRecoveryDialog', () => {
     openInput()
     fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('phrase-error')).toHaveTextContent(/does not match/i)
-    })
+    )
     expect(onRecovered).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: 'Sign in again' })).not.toBeInTheDocument()
   })

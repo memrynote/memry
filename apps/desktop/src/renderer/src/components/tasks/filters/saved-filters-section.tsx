@@ -52,9 +52,7 @@ export const SavedFiltersSection = ({
           <input
             type="text"
             value={filterName}
-            onChange={(e) => {
-              setFilterName(e.target.value)
-            }}
+            onChange={(e) => setFilterName(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={hasActiveFilters ? 'Save current filter...' : 'Set filters first'}
             disabled={!hasActiveFilters}
@@ -116,10 +114,8 @@ export const SavedFiltersSection = ({
                 {/* Filter name — click to apply */}
                 <button
                   type="button"
-                  onClick={() => {
-                    onApply(filter)
-                  }}
-                  className="flex-1 min-w-0 text-left focus:outline-none"
+                  onClick={() => onApply(filter)}
+                  className="flex-1 min-w-0 text-start focus:outline-none"
                 >
                   <span
                     className={cn(

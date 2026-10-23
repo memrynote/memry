@@ -539,9 +539,7 @@ describe('reminders service', () => {
       window as unknown as ElectronBrowserWindow
     ])
 
-    expect(() => {
-      notification?.emit('click')
-    }).not.toThrow()
+    expect(() => notification?.emit('click')).not.toThrow()
     expect(window.focus).toHaveBeenCalled()
     expect(window.webContents.send).toHaveBeenCalledWith(
       ReminderChannels.events.CLICKED,
@@ -572,9 +570,7 @@ describe('reminders service', () => {
 
     // A 'failed' delivery (e.g. unsigned macOS build) is logged, not rethrown.
     const deliveryError = new Error('notification delivery failed')
-    expect(() => {
-      notification?.emit('failed', {}, deliveryError)
-    }).not.toThrow()
+    expect(() => notification?.emit('failed', {}, deliveryError)).not.toThrow()
     expect(loggerMock.error).toHaveBeenCalledWith(
       'Desktop notification failed for reminder rem-failed:',
       deliveryError

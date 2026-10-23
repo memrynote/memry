@@ -270,9 +270,7 @@ export const useKeyboardShortcuts = (
     }
 
     window.addEventListener('keydown', handleKeyDown, capture)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, capture)
-    }
+    return () => window.removeEventListener('keydown', handleKeyDown, capture)
   }, [capture])
 }
 

@@ -17,9 +17,7 @@ const subscription = () => {
   return {
     subscribe,
     unsubscribe,
-    fire: () => {
-      listeners.forEach((cb) => cb({ id: 'b1' }))
-    }
+    fire: () => listeners.forEach((cb) => cb({ id: 'b1' }))
   }
 }
 
@@ -63,35 +61,27 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('useHomeBoards', () => {
   it('loads boards and defaults active to first', async () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.boards).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
     expect(result.current.activeBoardId).toBe('b1')
   })
 
   it('updateWidgets calls api.update', async () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.boards).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
     await act(() => result.current.updateWidgets('b1', []))
     expect(window.api.homePages.update).toHaveBeenCalledWith({ id: 'b1', widgets: [] })
   })
 
   it('renameBoard calls api.update with the new name only', async () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.boards).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
     await act(() => result.current.renameBoard('b1', 'Planning'))
     expect(window.api.homePages.update).toHaveBeenCalledWith({ id: 'b1', name: 'Planning' })
   })
 
   it('reorderBoards calls api.reorder with the new id order', async () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.boards).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
     await act(() => result.current.reorderBoards(['b2', 'b1']))
     expect(window.api.homePages.reorder).toHaveBeenCalledWith(['b2', 'b1'])
   })
@@ -105,19 +95,13 @@ describe('useHomeBoards', () => {
     ['deleted', () => deleted]
   ])('refetches when a remote %s event arrives', async (_name, get) => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.boards).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
     const listMock = vi.mocked(window.api.homePages.list)
     listMock.mockClear()
 
-    act(() => {
-      get().fire()
-    })
+    act(() => get().fire())
 
-    await waitFor(() => {
-      expect(listMock).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(listMock).toHaveBeenCalled())
   })
 
   // The tab title is rendered from a second `useHomeBoards()` mounted above the
@@ -129,13 +113,9 @@ describe('useHomeBoards', () => {
     vi.mocked(window.api.homePages.list).mockResolvedValue([board, second])
     const { result: page } = renderHook(() => useHomeBoards(), { wrapper })
     const { result: elsewhere } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(elsewhere.current.boards).toHaveLength(2)
-    })
+    await waitFor(() => expect(elsewhere.current.boards).toHaveLength(2))
 
-    act(() => {
-      page.current.setActiveBoardId('b2')
-    })
+    act(() => page.current.setActiveBoardId('b2'))
 
     expect(elsewhere.current.activeBoardId).toBe('b2')
     expect(elsewhere.current.activeBoard?.name).toBe('Work')
@@ -143,9 +123,7 @@ describe('useHomeBoards', () => {
 
   it('unsubscribes from all three events on unmount', async () => {
     const { result, unmount } = renderHook(() => useHomeBoards(), { wrapper })
-    await waitFor(() => {
-      expect(result.current.boards).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
 
     unmount()
 

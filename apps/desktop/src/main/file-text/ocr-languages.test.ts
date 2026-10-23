@@ -77,9 +77,7 @@ function stalled(): {
       started()
       const body = new ReadableStream({
         start: (controller) =>
-          init?.signal?.addEventListener('abort', () => {
-            controller.error(init.signal?.reason)
-          })
+          init?.signal?.addEventListener('abort', () => controller.error(init.signal?.reason))
       })
       return Promise.resolve(new Response(body))
     }

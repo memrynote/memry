@@ -41,9 +41,7 @@ describe('registerHomePageHandlers — lazy DB resolution', () => {
     handleMock.mockClear()
 
     // If the fix regresses, requireDatabase() is called eagerly here → throws
-    expect(() => {
-      registerHomePageHandlers()
-    }).not.toThrow()
+    expect(() => registerHomePageHandlers()).not.toThrow()
 
     // All 10 channels must be registered
     expect(handleMock.mock.calls.length).toBe(10)

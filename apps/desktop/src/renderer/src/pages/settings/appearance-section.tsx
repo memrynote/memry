@@ -133,9 +133,7 @@ function useSteppedDraft(
       // Only ever release a draft that is still the one this call owns. A held
       // arrow key otherwise makes the displayed value jump backwards whenever a
       // slow write lands after a newer preview.
-      const releaseDraft = (): void => {
-        setDraft((cur) => (cur === value ? null : cur))
-      }
+      const releaseDraft = (): void => setDraft((cur) => (cur === value ? null : cur))
 
       // A step out and back onto the saved value writes nothing. Re-saving it
       // would cost an IPC round trip, a config.json rewrite and an encrypted
@@ -206,9 +204,7 @@ function Stepper({
           type="button"
           aria-label={labels.decrease}
           disabled={value <= min}
-          onClick={() => {
-            onStep(-1)
-          }}
+          onClick={() => onStep(-1)}
           className={STEP_BUTTON}
         >
           <Minus className="size-3" />
@@ -223,9 +219,7 @@ function Stepper({
           type="button"
           aria-label={labels.increase}
           disabled={value >= max}
-          onClick={() => {
-            onStep(1)
-          }}
+          onClick={() => onStep(1)}
           className={STEP_BUTTON}
         >
           <Plus className="size-3" />
@@ -600,12 +594,8 @@ export function AppearanceSettings() {
               value={fontSizePx}
               min={FONT_SIZE_PX_MIN}
               max={FONT_SIZE_PX_MAX}
-              onStep={(direction) => {
-                previewFontSizePx(stepFontSizePx(fontSizePx, direction))
-              }}
-              onReset={() => {
-                previewFontSizePx(FONT_SIZE_PX_DEFAULT)
-              }}
+              onStep={(direction) => previewFontSizePx(stepFontSizePx(fontSizePx, direction))}
+              onReset={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
               format={(px) => String(px)}
               labels={{
                 decrease: t('appearance.typography.fontSize.decrease'),
@@ -623,12 +613,8 @@ export function AppearanceSettings() {
               value={zoomFactor}
               min={ZOOM_FACTOR_MIN}
               max={ZOOM_FACTOR_MAX}
-              onStep={(direction) => {
-                previewZoomFactor(stepZoomFactor(zoomFactor, direction))
-              }}
-              onReset={() => {
-                previewZoomFactor(ZOOM_FACTOR_DEFAULT)
-              }}
+              onStep={(direction) => previewZoomFactor(stepZoomFactor(zoomFactor, direction))}
+              onReset={() => previewZoomFactor(ZOOM_FACTOR_DEFAULT)}
               format={(factor) => `${zoomPercent(factor)}%`}
               labels={{
                 decrease: t('appearance.zoom.decrease'),

@@ -65,9 +65,7 @@ describe('useKeyboardShortcuts', () => {
       const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test' }]))
 
       expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), false)
     })
@@ -76,9 +74,9 @@ describe('useKeyboardShortcuts', () => {
       const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
       const action = vi.fn()
 
-      const { unmount } = renderHook(() => {
+      const { unmount } = renderHook(() =>
         useKeyboardShortcuts([{ key: 'a', action, description: 'Test' }])
-      })
+      )
 
       unmount()
 
@@ -98,9 +96,8 @@ describe('useKeyboardShortcuts', () => {
       // Callers that build the array inline rebuild the array whenever tab
       // state changes, so the hook receives a new identity on every render.
       const { rerender, unmount } = renderHook(
-        ({ description }: { description: string }) => {
-          useKeyboardShortcuts([{ key: 'a', action, description }])
-        },
+        ({ description }: { description: string }) =>
+          useKeyboardShortcuts([{ key: 'a', action, description }]),
         { initialProps: { description: 'render-0' } }
       )
 
@@ -126,9 +123,8 @@ describe('useKeyboardShortcuts', () => {
       const secondAction = vi.fn()
 
       const { rerender } = renderHook(
-        ({ action }: { action: () => void }) => {
-          useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-        },
+        ({ action }: { action: () => void }) =>
+          useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]),
         { initialProps: { action: firstAction } }
       )
 
@@ -146,9 +142,8 @@ describe('useKeyboardShortcuts', () => {
       const action = vi.fn()
 
       const { rerender } = renderHook(
-        ({ allowed }: { allowed: boolean }) => {
-          useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when: () => allowed }])
-        },
+        ({ allowed }: { allowed: boolean }) =>
+          useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when: () => allowed }]),
         { initialProps: { allowed: false } }
       )
 
@@ -174,9 +169,7 @@ describe('useKeyboardShortcuts', () => {
     it('should trigger action for matching key', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('a'))
@@ -188,9 +181,7 @@ describe('useKeyboardShortcuts', () => {
     it('should be case insensitive for key matching', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'A', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'A', action, description: 'Test A' }]))
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('a'))
@@ -202,9 +193,7 @@ describe('useKeyboardShortcuts', () => {
     it('should not trigger action for non-matching key', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('b'))
@@ -216,9 +205,7 @@ describe('useKeyboardShortcuts', () => {
     it('should prevent default and stop propagation on match', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       const event = createKeyboardEvent('a')
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
@@ -241,9 +228,9 @@ describe('useKeyboardShortcuts', () => {
     it('should match meta modifier', () => {
       const action = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([{ key: 's', modifiers: { meta: true }, action, description: 'Save' }])
-      })
+      )
 
       // Without meta/ctrl - should not match
       act(() => {
@@ -263,11 +250,11 @@ describe('useKeyboardShortcuts', () => {
     it('should match ctrl modifier', () => {
       const action = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([
           { key: 'Tab', modifiers: { ctrl: true }, action, description: 'Next Tab' }
         ])
-      })
+      )
 
       // Without ctrl - should not match
       act(() => {
@@ -285,11 +272,11 @@ describe('useKeyboardShortcuts', () => {
     it('should match shift modifier', () => {
       const action = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([
           { key: 'Tab', modifiers: { shift: true }, action, description: 'Prev Tab' }
         ])
-      })
+      )
 
       // Without shift - should not match
       act(() => {
@@ -307,9 +294,9 @@ describe('useKeyboardShortcuts', () => {
     it('should match alt modifier', () => {
       const action = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([{ key: 'n', modifiers: { alt: true }, action, description: 'Alt N' }])
-      })
+      )
 
       // Without alt - should not match
       act(() => {
@@ -327,9 +314,7 @@ describe('useKeyboardShortcuts', () => {
     it('should reject unexpected modifier keys', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       // With shift - should not match (no shift expected)
       act(() => {
@@ -353,9 +338,7 @@ describe('useKeyboardShortcuts', () => {
     it('should not trigger shortcuts in input fields by default', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       const input = document.createElement('input')
       document.body.appendChild(input)
@@ -374,9 +357,9 @@ describe('useKeyboardShortcuts', () => {
     it('should trigger shortcuts in input fields when allowInInput is true', () => {
       const action = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', allowInInput: true }])
-      })
+      )
 
       const input = document.createElement('input')
       document.body.appendChild(input)
@@ -395,9 +378,7 @@ describe('useKeyboardShortcuts', () => {
     it('should always allow Escape in input fields', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'Escape', action, description: 'Close' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'Escape', action, description: 'Close' }]))
 
       const input = document.createElement('input')
       document.body.appendChild(input)
@@ -416,9 +397,7 @@ describe('useKeyboardShortcuts', () => {
     it('should not trigger shortcuts in textarea', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       const textarea = document.createElement('textarea')
       document.body.appendChild(textarea)
@@ -437,9 +416,7 @@ describe('useKeyboardShortcuts', () => {
     it('should not trigger shortcuts in contentEditable', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       // Create a mock element with isContentEditable property
       const mockTarget = {
@@ -463,16 +440,12 @@ describe('useKeyboardShortcuts', () => {
   // ==========================================================================
 
   describe('vault switch', () => {
-    afterEach(() => {
-      resetVaultSwitchState()
-    })
+    afterEach(() => resetVaultSwitchState())
 
     it('should not trigger actions while a vault switch is pending', () => {
       const action = vi.fn()
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A' }]))
 
       beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
       const event = createKeyboardEvent('a')
@@ -495,9 +468,7 @@ describe('useKeyboardShortcuts', () => {
       const action = vi.fn()
       const when = vi.fn(() => false)
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when }]))
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('a'))
@@ -511,9 +482,7 @@ describe('useKeyboardShortcuts', () => {
       const action = vi.fn()
       const when = vi.fn(() => true)
 
-      renderHook(() => {
-        useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when }])
-      })
+      renderHook(() => useKeyboardShortcuts([{ key: 'a', action, description: 'Test A', when }]))
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('a'))
@@ -533,12 +502,12 @@ describe('useKeyboardShortcuts', () => {
       const action1 = vi.fn()
       const action2 = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([
           { key: 'a', action: action1, description: 'First' },
           { key: 'a', action: action2, description: 'Second' }
         ])
-      })
+      )
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('a'))
@@ -553,13 +522,13 @@ describe('useKeyboardShortcuts', () => {
       const actionB = vi.fn()
       const actionC = vi.fn()
 
-      renderHook(() => {
+      renderHook(() =>
         useKeyboardShortcuts([
           { key: 'a', action: actionA, description: 'Test A' },
           { key: 'b', action: actionB, description: 'Test B' },
           { key: 'c', action: actionC, description: 'Test C' }
         ])
-      })
+      )
 
       act(() => {
         window.dispatchEvent(createKeyboardEvent('b'))

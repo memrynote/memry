@@ -48,21 +48,13 @@ describe('useSimilarNotes', () => {
     mocks.getSimilar.mockResolvedValue({ status: 'ready', notes: [similar] })
     const { result } = renderHook(() => useSimilarNotes('a'), { wrapper })
 
-    await waitFor(() => {
-      expect(result.current).toEqual([similar])
-    })
+    await waitFor(() => expect(result.current).toEqual([similar]))
     expect(mocks.getSimilar).toHaveBeenCalledTimes(1)
 
-    act(() => {
-      mocks.updatedListeners.forEach((l) => l({ id: 'other', changes: { title: 'x' } }))
-    })
-    act(() => {
-      mocks.updatedListeners.forEach((l) => l({ id: 'other', changes: { content: 'x' } }))
-    })
+    act(() => mocks.updatedListeners.forEach((l) => l({ id: 'other', changes: { title: 'x' } })))
+    act(() => mocks.updatedListeners.forEach((l) => l({ id: 'other', changes: { content: 'x' } })))
 
-    await waitFor(() => {
-      expect(mocks.getSimilar).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.getSimilar).toHaveBeenCalledTimes(2))
   })
 
   it('asks nothing while embeddings are off', () => {
@@ -84,9 +76,7 @@ describe('useTagSuggestions', () => {
     mocks.getTagSuggestions.mockResolvedValue({ status: 'ready', tags })
 
     const { result } = renderHook(() => useTagSuggestions('a'), { wrapper })
-    await waitFor(() => {
-      expect(result.current).toEqual(tags)
-    })
+    await waitFor(() => expect(result.current).toEqual(tags))
 
     const skipped = renderHook(() => useTagSuggestions('z', { enabled: false }), { wrapper })
     expect(skipped.result.current).toEqual([])
@@ -96,9 +86,7 @@ describe('useTagSuggestions', () => {
   it('treats a no-embedding answer as nothing to show', async () => {
     mocks.getTagSuggestions.mockResolvedValue({ status: 'no-embedding', tags: [] })
     const { result } = renderHook(() => useTagSuggestions('a'), { wrapper })
-    await waitFor(() => {
-      expect(mocks.getTagSuggestions).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.getTagSuggestions).toHaveBeenCalled())
     expect(result.current).toEqual([])
   })
 })

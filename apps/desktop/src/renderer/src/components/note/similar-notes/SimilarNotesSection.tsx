@@ -44,9 +44,7 @@ export function SimilarNotesSection({
     >
       <button
         type="button"
-        onClick={() => {
-          setIsCollapsed(!isCollapsed)
-        }}
+        onClick={() => setIsCollapsed(!isCollapsed)}
         className={cn(
           'flex items-center gap-1.5 self-start rounded',
           'cursor-pointer hover:opacity-80 transition-opacity',
@@ -80,9 +78,7 @@ export function SimilarNotesSection({
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    onOpen(note)
-                  }}
+                  onClick={() => onOpen(note)}
                   className={cn(
                     'flex min-w-0 flex-1 items-center gap-1.5 px-1.5 py-1',
                     'rounded text-start cursor-pointer',
@@ -107,9 +103,7 @@ export function SimilarNotesSection({
                   {onLink ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        onLink(note)
-                      }}
+                      onClick={() => onLink(note)}
                       aria-label={t('similarNotes.addLinkAria', { title: note.title })}
                       title={t('similarNotes.addLink')}
                       className={cn(
@@ -124,9 +118,7 @@ export function SimilarNotesSection({
                   {onAddToCanvas ? (
                     <AddToCanvasPicker
                       noteTitle={note.title}
-                      onPick={(canvas) => {
-                        onAddToCanvas(note, canvas)
-                      }}
+                      onPick={(canvas) => onAddToCanvas(note, canvas)}
                     />
                   ) : null}
                 </div>

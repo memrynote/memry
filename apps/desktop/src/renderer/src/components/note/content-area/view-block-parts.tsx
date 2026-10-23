@@ -104,24 +104,14 @@ export function SourcePicker({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem
-          className="gap-2"
-          onSelect={() => {
-            onChange({ kind: 'vault' })
-          }}
-        >
+        <DropdownMenuItem className="gap-2" onSelect={() => onChange({ kind: 'vault' })}>
           <Globe className="size-3.5 text-muted-foreground" aria-hidden="true" />
           <span className="truncate">{allNotes}</span>
           {source?.kind === 'vault' ? (
             <Check className="ms-auto size-3.5 text-tint" aria-hidden="true" />
           ) : null}
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="gap-2"
-          onSelect={() => {
-            onChange({ kind: 'journal' })
-          }}
-        >
+        <DropdownMenuItem className="gap-2" onSelect={() => onChange({ kind: 'journal' })}>
           <BookOpen className="size-3.5 text-muted-foreground" aria-hidden="true" />
           <span className="truncate">{t('editor.chart.sourceJournal')}</span>
           {source?.kind === 'journal' ? (
@@ -142,9 +132,7 @@ export function SourcePicker({
                 <DropdownMenuItem
                   key={folder.path}
                   className="gap-2"
-                  onSelect={() => {
-                    onChange({ kind: 'folder', path: folder.path })
-                  }}
+                  onSelect={() => onChange({ kind: 'folder', path: folder.path })}
                 >
                   <span className="truncate">{folder.path}</span>
                   {source?.kind === 'folder' && source.path === folder.path ? (
@@ -168,9 +156,7 @@ export function SourcePicker({
                 <DropdownMenuItem
                   key={tag.tag}
                   className="gap-2"
-                  onSelect={() => {
-                    onChange({ kind: 'tag', tag: tag.tag })
-                  }}
+                  onSelect={() => onChange({ kind: 'tag', tag: tag.tag })}
                 >
                   <span className="truncate">#{tag.tag}</span>
                   {source?.kind === 'tag' && foldTag(source.tag) === foldTag(tag.tag) ? (
@@ -257,7 +243,7 @@ export function OpenSourceButton({
       variant="ghost"
       size="sm"
       className="h-7 px-2 text-muted-foreground"
-      onClick={() => {
+      onClick={() =>
         openSidebarItem(
           sourcePageItem(
             definition,
@@ -265,7 +251,7 @@ export function OpenSourceButton({
             t('editor.chart.sourceJournal')
           )
         )
-      }}
+      }
     >
       <ExternalLink />
       {t('editor.viewBlock.openAsTab')}

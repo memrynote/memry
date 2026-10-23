@@ -52,9 +52,7 @@ async function startChild(options: { ignoreSigterm: boolean }): Promise<ChildPro
   })
   children.push(child)
   await new Promise<void>((resolve, reject) => {
-    child.stdout?.once('data', () => {
-      resolve()
-    })
+    child.stdout?.once('data', () => resolve())
     child.once('error', reject)
   })
   return child
@@ -73,9 +71,7 @@ function isAlive(pid: number): boolean {
 
 function waitForExit(child: ChildProcess, budgetMs: number): Promise<'exited' | 'timed-out'> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      resolve('timed-out')
-    }, budgetMs)
+    const timer = setTimeout(() => resolve('timed-out'), budgetMs)
     child.once('exit', () => {
       clearTimeout(timer)
       resolve('exited')
@@ -184,9 +180,7 @@ describe('createEscalatingKill', () => {
 
     // The throw still propagates to the caller's own catch, but the escalation
     // was armed first, so the child is not left unreachable.
-    expect(() => {
-      createEscalatingKill(child)()
-    }).toThrow('EPERM')
+    expect(() => createEscalatingKill(child)()).toThrow('EPERM')
     vi.advanceTimersByTime(900)
 
     expect((child.kill as ReturnType<typeof vi.fn>).mock.calls).toEqual([['SIGTERM'], ['SIGKILL']])

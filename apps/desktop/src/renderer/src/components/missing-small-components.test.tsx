@@ -118,12 +118,7 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   TagAutocomplete: ({ onTagsChange }: { onTagsChange: (tags: string[]) => void }) => {
     mocks.onTagsChange = onTagsChange
     return (
-      <button
-        type="button"
-        onClick={() => {
-          onTagsChange(['focus', 'work'])
-        }}
-      >
+      <button type="button" onClick={() => onTagsChange(['focus', 'work'])}>
         pick tags
       </button>
     )

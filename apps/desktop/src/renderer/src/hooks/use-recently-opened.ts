@@ -80,8 +80,6 @@ export function useRecordRecentlyOpened(): void {
       )
     }, DWELL_MS)
 
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
   }, [itemType, itemId, queryClient])
 }

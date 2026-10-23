@@ -94,12 +94,8 @@ export function StickyCapture(): React.JSX.Element {
 
   useEffect(() => {
     if (!deleted) return
-    const timer = window.setTimeout(() => {
-      setDeleted(null)
-    }, DELETE_UNDO_MS)
-    return () => {
-      window.clearTimeout(timer)
-    }
+    const timer = window.setTimeout(() => setDeleted(null), DELETE_UNDO_MS)
+    return () => window.clearTimeout(timer)
   }, [deleted])
 
   useEffect(() => {
@@ -127,18 +123,14 @@ export function StickyCapture(): React.JSX.Element {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [sent, kinds, draft, deleted, tuck, send, removeDraft, undoDelete])
 
   // Clicking away tucks the sticky.
   useEffect(() => {
     const onBlur = (): void => void tuck()
     window.addEventListener('blur', onBlur)
-    return () => {
-      window.removeEventListener('blur', onBlur)
-    }
+    return () => window.removeEventListener('blur', onBlur)
   }, [tuck])
 
   useEffect(() => {
@@ -150,9 +142,7 @@ export function StickyCapture(): React.JSX.Element {
       if (height > 0) void window.api.sticky.resize(Math.ceil(height))
     })
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
   const undoSend = useCallback(async () => {
@@ -220,9 +210,7 @@ export function StickyCapture(): React.JSX.Element {
                 <span className="flex-1 truncate text-destructive">{sendError}</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSendError('')
-                  }}
+                  onClick={() => setSendError('')}
                   aria-label={t('sticky.dismissError')}
                   className="no-drag shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
                 >

@@ -67,46 +67,24 @@ function TaskRow({
         draggable && 'touch-none',
         isDragging && 'opacity-40'
       )}
-      onClick={() => {
-        onNavigate(task.id, task.projectId)
-      }}
+      onClick={() => onNavigate(task.id, task.projectId)}
     >
       <div className="flex items-center gap-2 w-full">
         {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- dnd-kit attributes/listeners spread above supply the role and keyboard handlers */}
-        <div
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-          }}
-        >
+        <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           <InlineStatusPopover
             statusId={task.statusId ?? ''}
             statuses={statuses}
             isCompleted={isCompleted}
-            onStatusChange={(sid) => {
-              onStatusChange(task.id, sid)
-            }}
-            onToggleComplete={() => {
-              onToggleComplete(task.id, isCompleted)
-            }}
+            onStatusChange={(sid) => onStatusChange(task.id, sid)}
+            onToggleComplete={() => onToggleComplete(task.id, isCompleted)}
           />
         </div>
         {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- dnd-kit attributes/listeners spread above supply the role and keyboard handlers */}
-        <div
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-          }}
-        >
+        <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           <InlinePriorityPopover
             priority={priority}
-            onPriorityChange={(p) => {
-              onPriorityChange(task.id, p)
-            }}
+            onPriorityChange={(p) => onPriorityChange(task.id, p)}
           />
         </div>
         <span

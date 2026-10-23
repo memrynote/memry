@@ -135,11 +135,11 @@ describe('the file text runner against files swapped for outside links (#3095)',
       }
 
       start()
-      await vi.waitFor(() => {
+      await vi.waitFor(() =>
         expect(getFileTextJob(db, { noteId: 'md-1', source: 'chart.html' })?.status).toMatch(
           /done|failed/
         )
-      })
+      )
 
       expect(race.target).toBe('')
       expect(getExtractedText(db, 'md-1')).not.toContain('outside secret')
@@ -169,11 +169,11 @@ describe('the file text runner against files swapped for outside links (#3095)',
       }
 
       start()
-      await vi.waitFor(() => {
+      await vi.waitFor(() =>
         expect(getFileTextJob(db, { noteId: 'md-1', source: 'shot.png' })?.status).toMatch(
           /done|failed/
         )
-      })
+      )
 
       expect(race.target).toBe('')
       expect(JSON.stringify(db.all(sql`SELECT text FROM extracted_text`))).not.toContain(

@@ -27,9 +27,7 @@ const useSidebarRowDrag = (): boolean => {
     // window's capture listener and React's own root listener, so ending the
     // drag synchronously here unmounts the zones before their onDrop runs.
     const stop = (): void => {
-      setTimeout(() => {
-        setDragging(false)
-      }, 0)
+      setTimeout(() => setDragging(false), 0)
     }
 
     window.addEventListener('dragenter', start, true)
@@ -121,12 +119,8 @@ export const NativeSplitDropZones = ({
               event.dataTransfer.dropEffect = 'move'
               setHovered(zone)
             }}
-            onDragLeave={() => {
-              setHovered((current) => (current === zone ? null : current))
-            }}
-            onDrop={(event) => {
-              handleDrop(event, zone)
-            }}
+            onDragLeave={() => setHovered((current) => (current === zone ? null : current))}
+            onDrop={(event) => handleDrop(event, zone)}
           >
             <div
               className={cn(

@@ -210,13 +210,7 @@ vi.mock('@/components/sidebar/sortable-project-list', () => ({
   }) => (
     <div>
       {projects.map((project) => (
-        <button
-          key={project.id}
-          type="button"
-          onClick={() => {
-            onProjectClick(project.id)
-          }}
-        >
+        <button key={project.id} type="button" onClick={() => onProjectClick(project.id)}>
           {project.name}
         </button>
       ))}

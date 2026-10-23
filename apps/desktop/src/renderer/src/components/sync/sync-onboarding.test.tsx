@@ -49,9 +49,7 @@ vi.mock('@/components/ui/input-otp', () => ({
         aria-label={ariaLabel}
         value={value}
         disabled={disabled}
-        onChange={(event) => {
-          onChange(event.target.value)
-        }}
+        onChange={(event) => onChange(event.target.value)}
       />
       {children}
     </div>
@@ -270,9 +268,7 @@ describe('sync onboarding components', () => {
     expect(createUrl).toHaveBeenCalledTimes(1)
     const text = await new Promise<string>((resolve) => {
       const reader = new FileReader()
-      reader.addEventListener('load', () => {
-        resolve(String(reader.result))
-      })
+      reader.addEventListener('load', () => resolve(String(reader.result)))
       reader.readAsText(saved as unknown as Blob)
     })
     const words = phrase.split(' ')

@@ -78,12 +78,7 @@ vi.mock('./graph-events', () => ({
       >
         clear hover
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onFocusNode('note-a')
-        }}
-      >
+      <button type="button" onClick={() => onFocusNode('note-a')}>
         focus local
       </button>
     </div>

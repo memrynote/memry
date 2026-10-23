@@ -507,9 +507,7 @@ describe('tab persistence hooks', () => {
     expect(storage.save).not.toHaveBeenCalled()
 
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
 
     mocks.tabsState = state({ activeGroupId: 'group-1' })
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
@@ -532,9 +530,7 @@ describe('tab persistence hooks', () => {
     vi.setSystemTime(CLOCK_START)
 
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
-    applyStateChanges(() => {
-      rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
-    })
+    applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
 
     // Mount plus 20 tab-state changes: the tree must not be walked once per change.
     expect(mocks.serializeCalls).toBe(0)
@@ -543,9 +539,7 @@ describe('tab persistence hooks', () => {
     act(() => vi.advanceTimersByTime(25))
 
     expect(mocks.serializeCalls).toBe(1)
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(expectedPersisted(CLOCK_START + 25))
   })
 
@@ -560,9 +554,7 @@ describe('tab persistence hooks', () => {
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(vi.mocked(storage.save).mock.calls[0][0].savedAt).toBe(CLOCK_START + 25)
 
     // `isModified` flips on every editor dirty/clean transition but is stripped
@@ -575,9 +567,7 @@ describe('tab persistence hooks', () => {
     mocks.tabsState = unchanged
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    await act(async () => {
-      vi.advanceTimersByTime(25)
-    })
+    await act(async () => vi.advanceTimersByTime(25))
 
     // The tree is still walked — that is how the payload is compared at all —
     // but nothing reaches storage.
@@ -592,9 +582,7 @@ describe('tab persistence hooks', () => {
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
 
     const written = vi.mocked(storage.save).mock.calls[1][0]
     expect(written.savedAt).toBe(CLOCK_START + 75)
@@ -614,16 +602,12 @@ describe('tab persistence hooks', () => {
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
 
     // The rejected save must be handled, not left as an unhandled rejection:
     // the user has to learn their session stopped being saved now, not at the
     // next launch when the restored layout turns out to be stale.
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
     expect(mocks.toastError.mock.calls[0][0]).toBe('Your open tabs are no longer being saved')
     expect(mocks.toastError.mock.calls[0][1]).toMatchObject({
       description: expect.stringContaining('too large to store')
@@ -637,9 +621,7 @@ describe('tab persistence hooks', () => {
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
     expect(storage.save).toHaveBeenLastCalledWith(
       expect.objectContaining({
         tabGroups: expect.objectContaining({
@@ -664,23 +646,15 @@ describe('tab persistence hooks', () => {
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(1)
-    })
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
     expect(mocks.toastError.mock.calls[0][1]).toMatchObject({
       description: 'storage backend offline'
     })
 
-    applyStateChanges(() => {
-      rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
-    })
+    applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
     act(() => vi.advanceTimersByTime(25))
-    await waitFor(() => {
-      expect(storage.save).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
 
     // Every debounced save keeps failing, but the user is told once, not once
     // per keystroke-sized tab-state change.
@@ -698,9 +672,7 @@ describe('tab persistence hooks', () => {
     vi.setSystemTime(CLOCK_START)
 
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
-    applyStateChanges(() => {
-      rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
-    })
+    applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
 
     const unloadAdds = addSpy.mock.calls.filter(([type]) => type === 'beforeunload')
     const unloadRemovals = removeSpy.mock.calls.filter(([type]) => type === 'beforeunload')
@@ -748,9 +720,7 @@ describe('tab persistence hooks', () => {
     const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
 
     // Neither quit path may throw — an exception here would stop the app closing.
-    expect(() => {
-      act(() => mocks.pendingSave?.())
-    }).not.toThrow()
+    expect(() => act(() => mocks.pendingSave?.())).not.toThrow()
     expect(() => act(() => window.dispatchEvent(new Event('beforeunload')))).not.toThrow()
 
     setItem.mockRestore()
@@ -781,9 +751,7 @@ describe('tab persistence hooks', () => {
 
     render(withQueryClient(<SessionRestoreProbe storage={storage} />))
 
-    await waitFor(() => {
-      expect(mocks.toastWarning).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.toastWarning).toHaveBeenCalledTimes(1))
     expect(mocks.toastWarning.mock.calls[0][0]).toBe(
       'Your last session was not saved when Memry closed'
     )
@@ -795,11 +763,11 @@ describe('tab persistence hooks', () => {
     // reported it, so the launch after that is quiet.
     mocks.dispatch.mockClear()
     render(withQueryClient(<SessionRestoreProbe storage={storage} />))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'RESTORE_SESSION' })
       )
-    })
+    )
     expect(mocks.toastWarning).toHaveBeenCalledTimes(1)
 
     // A refusal that is not about space explains itself differently.
@@ -808,9 +776,7 @@ describe('tab persistence hooks', () => {
     failAgain.mockRestore()
 
     render(withQueryClient(<SessionRestoreProbe storage={storage} />))
-    await waitFor(() => {
-      expect(mocks.toastWarning).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.toastWarning).toHaveBeenCalledTimes(2))
     expect(mocks.toastWarning.mock.calls[1][1]).toMatchObject({
       description: expect.stringContaining('could not store your tabs on exit')
     })
@@ -824,11 +790,11 @@ describe('tab persistence hooks', () => {
     }
 
     render(withQueryClient(<SessionRestoreProbe storage={storage} />))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'RESTORE_SESSION' })
       )
-    })
+    )
     expect(sessionSnapshot?.isRestoring).toBe(false)
 
     mocks.dispatch.mockClear()
@@ -836,7 +802,7 @@ describe('tab persistence hooks', () => {
       settings: { ...state().settings, restoreSessionOnStart: false }
     })
     render(withQueryClient(<SessionRestoreProbe storage={storage} />))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'OPEN_TAB',
@@ -846,17 +812,17 @@ describe('tab persistence hooks', () => {
           })
         })
       )
-    })
+    )
 
     // A vault entered by an in-app switch comes back whole: "restore session
     // on start" governs launches, not switches.
     mocks.dispatch.mockClear()
     render(withQueryClient(<SessionRestoreProbe storage={storage} restoreFullSession />))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'RESTORE_SESSION' })
       )
-    })
+    )
     expect(mocks.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'OPEN_TAB' }))
 
     const failingStorage: TabStorage = {
@@ -865,9 +831,7 @@ describe('tab persistence hooks', () => {
       clear: vi.fn()
     }
     render(withQueryClient(<SessionRestoreProbe storage={failingStorage} />))
-    await waitFor(() => {
-      expect(sessionSnapshot?.restoreError?.message).toBe('restore failed')
-    })
+    await waitFor(() => expect(sessionSnapshot?.restoreError?.message).toBe('restore failed'))
 
     mocks.dispatch.mockClear()
     render(withQueryClient(<ManualPersistenceProbe storage={storage} />))
@@ -933,11 +897,11 @@ describe('tab session persistence startup order', () => {
     mocks.flagsLoading = false
     rerender(tree())
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'RESTORE_SESSION' })
       )
-    })
+    )
 
     const restoreCall = mocks.dispatch.mock.calls.find(
       (call) => call[0]?.type === 'RESTORE_SESSION'
@@ -947,9 +911,7 @@ describe('tab session persistence startup order', () => {
 
     // Saving resumes once the restore has landed, and what it writes is the
     // restored session rather than the default it started from.
-    await waitFor(() => {
-      expect(sessionSnapshot?.isRestoring).toBe(false)
-    })
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
     act(() => vi.advanceTimersByTime(100))
 
     const written = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as PersistedTabState
@@ -1071,17 +1033,13 @@ describe('tab session persistence is scoped per vault', () => {
 
     // --- Vault A ------------------------------------------------------------
     const inVaultA = render(probe(VAULT_A))
-    await waitFor(() => {
-      expect(restorePayload()).toBeDefined()
-    })
+    await waitFor(() => expect(restorePayload()).toBeDefined())
     expect(restorePayload()?.tabGroups?.['group-1'].tabs.map((item) => item.id)).toEqual([
       'pin-1',
       'note-a'
     ])
 
-    await waitFor(() => {
-      expect(sessionSnapshot?.isRestoring).toBe(false)
-    })
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
     act(() => vi.advanceTimersByTime(100))
     expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
 
@@ -1093,9 +1051,7 @@ describe('tab session persistence is scoped per vault', () => {
     mocks.tabsState = startupState()
 
     const inVaultB = render(probe(VAULT_B))
-    await waitFor(() => {
-      expect(sessionSnapshot?.isRestoring).toBe(false)
-    })
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
 
     // A vault that has never been opened starts on Home, and says so by not
     // restoring anything at all.
@@ -1118,9 +1074,7 @@ describe('tab session persistence is scoped per vault', () => {
     mocks.tabsState = startupState()
 
     render(probe(VAULT_A))
-    await waitFor(() => {
-      expect(restorePayload()).toBeDefined()
-    })
+    await waitFor(() => expect(restorePayload()).toBeDefined())
 
     const restored = restorePayload()?.tabGroups?.['group-1'].tabs
     expect(restored?.map((item) => item.id)).toEqual(['pin-1', 'note-a'])
@@ -1135,9 +1089,7 @@ describe('tab session persistence is scoped per vault', () => {
 
     // Nobody loses their tabs to the upgrade: the vault the app reopens is the
     // vault they were left in, so it takes them over.
-    await waitFor(() => {
-      expect(restorePayload()).toBeDefined()
-    })
+    await waitFor(() => expect(restorePayload()).toBeDefined())
     expect(restorePayload()?.tabGroups?.['group-1'].tabs.map((item) => item.id)).toEqual([
       'pin-1',
       'note-legacy'
@@ -1151,9 +1103,7 @@ describe('tab session persistence is scoped per vault', () => {
     mocks.dispatch.mockClear()
     mocks.tabsState = startupState()
     render(probe(VAULT_B))
-    await waitFor(() => {
-      expect(sessionSnapshot?.isRestoring).toBe(false)
-    })
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
     expect(restorePayload()).toBeUndefined()
     expect(localStorage.getItem(keyB)).toBeNull()
   })
@@ -1162,9 +1112,7 @@ describe('tab session persistence is scoped per vault', () => {
     localStorage.setItem(keyA, JSON.stringify(sessionFor('note-a')))
 
     const inVaultA = render(probe(VAULT_A))
-    await waitFor(() => {
-      expect(sessionSnapshot?.isRestoring).toBe(false)
-    })
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
     act(() => vi.advanceTimersByTime(100))
     expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
 

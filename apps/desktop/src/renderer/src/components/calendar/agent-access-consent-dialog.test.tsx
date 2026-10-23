@@ -39,16 +39,14 @@ describe('AgentAccessConsentDialog per provider (#1394)', () => {
     expect(screen.getByText('Let AI read your subscribed calendar events?')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Allow' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(setProvider).toHaveBeenCalledWith({
         provider: 'ics',
         updates: { agentReadEventsConsent: true }
       })
-    })
+    )
     expect(setGoogle).not.toHaveBeenCalled()
-    await waitFor(() => {
-      expect(screen.queryByTestId('agent-access-consent-dialog')).toBeNull()
-    })
+    await waitFor(() => expect(screen.queryByTestId('agent-access-consent-dialog')).toBeNull())
   })
 
   it('keeps Google’s original prompt and settings channel', async () => {
@@ -56,9 +54,7 @@ describe('AgentAccessConsentDialog per provider (#1394)', () => {
 
     expect(await screen.findByText('Let AI read your Google Calendar events?')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: "Don't allow" }))
-    await waitFor(() => {
-      expect(setGoogle).toHaveBeenCalledWith({ agentReadEventsConsent: false })
-    })
+    await waitFor(() => expect(setGoogle).toHaveBeenCalledWith({ agentReadEventsConsent: false }))
     expect(setProvider).not.toHaveBeenCalled()
   })
 
@@ -74,9 +70,7 @@ describe('AgentAccessConsentDialog per provider (#1394)', () => {
     consent = { google: false, ics: true }
     render(<AgentAccessConsentDialog providerIds={['google', 'ics', 'microsoft']} />)
 
-    await waitFor(() => {
-      expect(window.api.settings.getCalendarProviderSettings).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.settings.getCalendarProviderSettings).toHaveBeenCalled())
     expect(screen.queryByTestId('agent-access-consent-dialog')).toBeNull()
   })
 })

@@ -216,9 +216,7 @@ describe('FilePage', () => {
 
     expect(await screen.findByText('disk offline')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'phaseF.pagesFile.tryAgain' }))
-    await waitFor(() => {
-      expect(mocks.getFile).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.getFile).toHaveBeenCalledTimes(2))
 
     mocks.getFile.mockResolvedValueOnce(null)
     renderWithProviders(<FilePage fileId="missing" />)

@@ -529,9 +529,7 @@ function FolderRow({
             isExpanded={item.isExpanded}
             hasChildren={item.hasChildren}
             onIconChange={(icon) => onSetFolderIcon?.(item.folder.path, icon)}
-            onToggleExpand={() => {
-              onToggleExpand(item.id)
-            }}
+            onToggleExpand={() => onToggleExpand(item.id)}
             pickerOpen={iconPickerFolderPath === item.folder.path}
             onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.folder.path : null)}
           />
@@ -553,12 +551,10 @@ function FolderRow({
                 }
                 stopInlineRenameKeyPropagation(e)
               }}
-              onBlur={(e) => {
+              onBlur={(e) =>
                 handleInlineRenameBlur(e, () => onFolderRenameSubmit?.(item.folder.path))
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              }
+              onClick={(e) => e.stopPropagation()}
               disabled={isFolderRenaming}
               className={RENAME_INPUT_CLASS}
             />
@@ -610,19 +606,11 @@ function FolderRow({
               {t('tree.actions.newFolder')}
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() => {
-                onSetSubtreeExpanded(item.folder.path, true)
-              }}
-            >
+            <ContextMenuItem onClick={() => onSetSubtreeExpanded(item.folder.path, true)}>
               <ChevronsUp className="me-2 h-4 w-4" />
               {t('tree.actions.expandSubfolders')}
             </ContextMenuItem>
-            <ContextMenuItem
-              onClick={() => {
-                onSetSubtreeExpanded(item.folder.path, false)
-              }}
-            >
+            <ContextMenuItem onClick={() => onSetSubtreeExpanded(item.folder.path, false)}>
               <ChevronsDown className="me-2 h-4 w-4" />
               {t('tree.actions.collapseSubfolders')}
             </ContextMenuItem>
@@ -976,12 +964,10 @@ function NoteRow({
                 }
                 stopInlineRenameKeyPropagation(e)
               }}
-              onBlur={(e) => {
+              onBlur={(e) =>
                 handleInlineRenameBlur(e, () => onRenameSubmit?.(item.note.id, item.note.path))
-              }}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              }
+              onClick={(e) => e.stopPropagation()}
               disabled={isRenaming}
               className={RENAME_INPUT_CLASS}
             />
@@ -1251,9 +1237,7 @@ export function VirtualizedNotesTree({
       // One frame later the virtualizer has been re-rendered with that row in
       // its count, and can scroll to an index it would otherwise clamp away.
       if (index !== -1) {
-        requestAnimationFrame(() => {
-          virtualizer.scrollToIndex(index, { align: 'center' })
-        })
+        requestAnimationFrame(() => virtualizer.scrollToIndex(index, { align: 'center' }))
       }
     },
     [tree, expandedIds, virtualizer]

@@ -382,9 +382,7 @@ export const useDragHandlers = ({
       setDroppedPriorities(newDropped)
 
       if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
-      priorityTimerRef.current = setTimeout(() => {
-        setDroppedPriorities(new Map())
-      }, 2500)
+      priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
 
       toast.success(t('toasts.drag.prioritySet', { count: taskIds.length, priority: label }))
     },
@@ -730,9 +728,7 @@ export const useDragHandlers = ({
         setDroppedPriorities(newDropped)
 
         if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
-        priorityTimerRef.current = setTimeout(() => {
-          setDroppedPriorities(new Map())
-        }, 2500)
+        priorityTimerRef.current = setTimeout(() => setDroppedPriorities(new Map()), 2500)
       }
 
       const resolvedMessage = message as { single: string; multiple: string } | null

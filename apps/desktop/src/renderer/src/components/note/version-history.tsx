@@ -302,9 +302,7 @@ function VersionHistorySession({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setShowPreview(!showPreview)
-            }}
+            onClick={() => setShowPreview(!showPreview)}
             disabled={!selectedVersion}
           >
             {showPreview ? <EyeOff className="me-2 h-4 w-4" /> : <Eye className="me-2 h-4 w-4" />}
@@ -447,9 +445,7 @@ function VersionHistorySession({
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => {
-                            setRestoreDialogOpen(true)
-                          }}
+                          onClick={() => setRestoreDialogOpen(true)}
                         >
                           <RotateCcw className="me-2 h-4 w-4" />
                           {t('versionHistory.restore')}

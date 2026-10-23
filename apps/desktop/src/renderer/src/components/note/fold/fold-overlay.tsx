@@ -52,9 +52,7 @@ function ParagraphLine({
       aria-label={
         paragraph.open ? t('fold.view.paragraphFold') : t('fold.view.paragraphOpenAction')
       }
-      onClick={() => {
-        dispatch({ type: 'toggleParagraph', hash: paragraph.hash })
-      }}
+      onClick={() => dispatch({ type: 'toggleParagraph', hash: paragraph.hash })}
       data-fold-paragraph={paragraph.hash}
       className={cn(
         'block w-full text-start text-base leading-7',
@@ -99,9 +97,7 @@ function SectionHeading({ section, dispatch }: { section: SectionView; dispatch:
         type="button"
         aria-expanded
         aria-label={t('fold.view.unfoldSection', { heading: section.heading })}
-        onClick={() => {
-          dispatch({ type: 'toggleSection', hash: section.hash })
-        }}
+        onClick={() => dispatch({ type: 'toggleSection', hash: section.hash })}
         className={cn('rounded-sm text-start', FOCUS_CLASS)}
       >
         {section.heading}
@@ -152,9 +148,7 @@ function Card({ card, dispatch }: { card: TopicCard; dispatch: Dispatch }) {
             type="button"
             aria-expanded={false}
             aria-label={t('fold.view.unfoldSection', { heading })}
-            onClick={() => {
-              dispatch({ type: 'toggleSection', hash: card.hash })
-            }}
+            onClick={() => dispatch({ type: 'toggleSection', hash: card.hash })}
             className={cn('rounded-sm text-start', FOCUS_CLASS)}
           >
             {heading}
@@ -171,9 +165,7 @@ function Card({ card, dispatch }: { card: TopicCard; dispatch: Dispatch }) {
             type="button"
             aria-label={t('fold.view.jumpToParagraph', { topic: chip.label })}
             data-fold-paragraph={chip.paragraphHash}
-            onClick={() => {
-              dispatch({ type: 'jump', hash: chip.paragraphHash })
-            }}
+            onClick={() => dispatch({ type: 'jump', hash: chip.paragraphHash })}
             className={cn(
               'rounded-full bg-surface px-[9px] py-[3px] text-xs leading-4 text-text-secondary hover:bg-surface-active',
               FOCUS_CLASS

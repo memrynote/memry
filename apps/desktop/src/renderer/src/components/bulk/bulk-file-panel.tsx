@@ -180,9 +180,7 @@ const BulkFilePanelContent = ({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedFolder, itemCount, handleFileItems])
 
   const handleFolderSelect = useCallback((folder: Folder): void => {
@@ -249,12 +247,12 @@ const BulkFilePanelContent = ({
         >
           {isLoading ? (
             <>
-              <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
+              <Loader2 className="size-4 animate-spin me-2" aria-hidden="true" />
               {t('bulk.filePanel.filing')}
             </>
           ) : (
             <>
-              {canFile && <Check className="size-4 mr-2" aria-hidden="true" />}
+              {canFile && <Check className="size-4 me-2" aria-hidden="true" />}
               {t('bulk.filePanel.submit', { count: itemCount })}
             </>
           )}

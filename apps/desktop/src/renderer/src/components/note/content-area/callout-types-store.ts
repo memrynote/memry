@@ -16,9 +16,7 @@ let started = false
 export function publishCalloutTypes(definitions: readonly CalloutTypeDefinition[]): void {
   snapshot = definitions
   setCalloutTypeDefinitions(definitions)
-  listeners.forEach((listener) => {
-    listener()
-  })
+  listeners.forEach((listener) => listener())
 }
 
 export function getCalloutTypes(): readonly CalloutTypeDefinition[] {
@@ -32,9 +30,7 @@ export function startCalloutTypesSync(): void {
   window.api.settings
     .getCalloutTypes()
     .then(publishCalloutTypes)
-    .catch((err: unknown) => {
-      log.warn('Failed to load callout types', err)
-    })
+    .catch((err: unknown) => log.warn('Failed to load callout types', err))
   window.api.onSettingsChanged((event) => {
     if (event.key === 'editor.calloutTypes') {
       publishCalloutTypes(event.value as CalloutTypeDefinition[])

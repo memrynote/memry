@@ -851,43 +851,23 @@ function createWindow(): void {
     read: () => readWindowBounds(mainWindow),
     write: setWindowBounds
   })
-  mainWindow.on('resize', () => {
-    boundsPersister.schedule()
-  })
-  mainWindow.on('move', () => {
-    boundsPersister.schedule()
-  })
-  mainWindow.on('maximize', () => {
-    boundsPersister.schedule()
-  })
-  mainWindow.on('unmaximize', () => {
-    boundsPersister.schedule()
-  })
-  mainWindow.on('enter-full-screen', () => {
-    boundsPersister.schedule()
-  })
-  mainWindow.on('leave-full-screen', () => {
-    boundsPersister.schedule()
-  })
+  mainWindow.on('resize', () => boundsPersister.schedule())
+  mainWindow.on('move', () => boundsPersister.schedule())
+  mainWindow.on('maximize', () => boundsPersister.schedule())
+  mainWindow.on('unmaximize', () => boundsPersister.schedule())
+  mainWindow.on('enter-full-screen', () => boundsPersister.schedule())
+  mainWindow.on('leave-full-screen', () => boundsPersister.schedule())
   // `close` can arrive after the window is already hidden (tray) or minimized,
   // where the platform no longer reports the maximized state; capture the last
   // visible state up front so the flush has something trustworthy to fall back on.
-  mainWindow.on('hide', () => {
-    boundsPersister.flush()
-  })
-  mainWindow.on('minimize', () => {
-    boundsPersister.flush()
-  })
-  mainWindow.on('close', () => {
-    boundsPersister.flush()
-  })
+  mainWindow.on('hide', () => boundsPersister.flush())
+  mainWindow.on('minimize', () => boundsPersister.flush())
+  mainWindow.on('close', () => boundsPersister.flush())
 
   // Registered after the bounds flush so geometry is still persisted on a close
   // that the tray intercepts.
   initTray({ getMainWindow: () => mainWindow })
-  mainWindow.on('close', (event) => {
-    handleMainWindowClose(event, mainWindow)
-  })
+  mainWindow.on('close', (event) => handleMainWindowClose(event, mainWindow))
 
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
     if (mainWindow.isDestroyed()) return
@@ -951,9 +931,7 @@ function createWindow(): void {
     mainLog.warn('ready-to-show did not fire within 10s; revealing window as fallback')
     revealMainWindow('fallback-timeout')
   }, 10_000)
-  mainWindow.on('closed', () => {
-    clearTimeout(fallbackShowTimer)
-  })
+  mainWindow.on('closed', () => clearTimeout(fallbackShowTimer))
 
   // A hung renderer looks the same to the user as a hung main process; log
   // which one it was and for how long (#2556).
@@ -1107,9 +1085,10 @@ async function loadPreBootCopy(): Promise<PreBootCopy> {
     const instance = await Promise.race([
       createMainI18n({ locale: resolveOsLocale(app.getLocale()) }),
       new Promise<never>((_resolve, reject) =>
-        setTimeout(() => {
-          reject(new Error('pre-boot i18n load timed out'))
-        }, PRE_BOOT_I18N_TIMEOUT_MS)
+        setTimeout(
+          () => reject(new Error('pre-boot i18n load timed out')),
+          PRE_BOOT_I18N_TIMEOUT_MS
+        )
       )
     ])
     const t = instance.getFixedT(null, 'system')
@@ -1168,9 +1147,7 @@ async function showInstallingUpdateWindowAndExit(): Promise<void> {
   // Scheduled BEFORE the copy lookup on purpose: this budget is how long the old
   // build is allowed to stay alive, and outliving it is exactly what makes
   // Squirrel abort (Code=-9) and retry. Localizing the splash must not extend it.
-  setTimeout(() => {
-    app.exit(0)
-  }, INSTALLING_SPLASH_EXIT_MS)
+  setTimeout(() => app.exit(0), INSTALLING_SPLASH_EXIT_MS)
   const copy = await loadPreBootCopy()
   const splash = new BrowserWindow({
     width: 380,
@@ -1185,9 +1162,7 @@ async function showInstallingUpdateWindowAndExit(): Promise<void> {
     center: true,
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
   })
-  splash.once('ready-to-show', () => {
-    splash.show()
-  })
+  splash.once('ready-to-show', () => splash.show())
   void splash.loadURL(
     `data:text/html;charset=utf-8,${encodeURIComponent(installingSplashHtml(copy))}`
   )
@@ -1236,9 +1211,7 @@ function ensureStartupWindow(startupError: unknown): void {
     backgroundColor: '#f6f5f0',
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
   })
-  errorWindow.once('ready-to-show', () => {
-    errorWindow.show()
-  })
+  errorWindow.once('ready-to-show', () => errorWindow.show())
   // Same failure class can stop 'ready-to-show' firing; reveal anyway after a beat.
   setTimeout(() => {
     if (!errorWindow.isDestroyed()) errorWindow.show()
@@ -1509,9 +1482,7 @@ const appReady = app.whenReady().then(async () => {
     })
   }
   applyAppMenu(true)
-  setKeyboardOverridesListener(() => {
-    applyAppMenu()
-  })
+  setKeyboardOverridesListener(() => applyAppMenu())
 
   // Initialize telemetry runtime before handlers so registerTelemetryHandlers
   // can resolve `getTelemetryRuntime()` to the live instance.
@@ -1572,9 +1543,7 @@ const appReady = app.whenReady().then(async () => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => {
-    mainLog.debug('pong')
-  })
+  ipcMain.on('ping', () => mainLog.debug('pong'))
 
   // Window control IPC handlers
   registerTitleBarOverlayIpc()
@@ -1597,9 +1566,7 @@ const appReady = app.whenReady().then(async () => {
     if (!win) return
     flushWindow(win)
       .then(() => createCloseSnapshots())
-      .then(() => {
-        win.close()
-      })
+      .then(() => win.close())
       .catch((err: unknown) => {
         // The window silently refuses to close AND edits may be unsaved —
         // both symptoms arrive as support reports with no trail otherwise.
@@ -1837,10 +1804,8 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       })
-      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch(
-        (err: unknown) => {
-          mainLog.error('capture server failed to start', err)
-        }
+      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch((err: unknown) =>
+        mainLog.error('capture server failed to start', err)
       )
     })
     .catch((err: unknown) => {

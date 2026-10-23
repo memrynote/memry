@@ -274,9 +274,7 @@ export function CalendarShell({
                   <Checkbox
                     aria-label={label}
                     checked={selectedVisualTypes.includes(visualType)}
-                    onCheckedChange={() => {
-                      onToggleVisualType(visualType)
-                    }}
+                    onCheckedChange={() => onToggleVisualType(visualType)}
                   />
                 </label>
               )
@@ -311,9 +309,7 @@ export function CalendarShell({
                     aria-label={source.title}
                     checked={selectedImportedSourceIds.includes(source.id)}
                     disabled={!showImportedCalendars}
-                    onCheckedChange={() => {
-                      onToggleImportedSource(source.id)
-                    }}
+                    onCheckedChange={() => onToggleImportedSource(source.id)}
                   />
                 </label>
               ))}
@@ -394,9 +390,7 @@ export function CalendarShell({
             view === 'timeline' ? (
               <TimelineZoomControl
                 zoom={timelineSettings.zoom}
-                onChange={(zoom) => {
-                  onTimelineSettingsChange((current) => ({ ...current, zoom }))
-                }}
+                onChange={(zoom) => onTimelineSettingsChange((current) => ({ ...current, zoom }))}
               />
             ) : null
           }

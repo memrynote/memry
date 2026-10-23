@@ -116,9 +116,7 @@ export const TaskSubissuesSection = ({
             </button>
             <button
               type="button"
-              onClick={() => {
-                onOpenSubtask(sub.id)
-              }}
+              onClick={() => onOpenSubtask(sub.id)}
               className="flex min-w-0 grow items-center gap-2 text-start"
             >
               {title}
@@ -141,9 +139,7 @@ export const TaskSubissuesSection = ({
               ref={inputRef}
               type="text"
               value={title}
-              onChange={(e) => {
-                setTitle(e.target.value)
-              }}
+              onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && title.trim()) {
                   onAddSubtask(title.trim())

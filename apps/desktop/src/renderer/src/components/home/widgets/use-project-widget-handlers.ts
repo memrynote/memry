@@ -66,9 +66,7 @@ export function useProjectWidgetHandlers({
   )
 
   const handleOpenEvent = useCallback(
-    (event: ProjectLinkedEvent) => {
-      openLinkedEvent(event, openTab, Date.now())
-    },
+    (event: ProjectLinkedEvent) => openLinkedEvent(event, openTab, Date.now()),
     [openTab]
   )
 
@@ -76,12 +74,8 @@ export function useProjectWidgetHandlers({
     (noteId: string, icon: string | null) => {
       void notesService
         .update({ id: noteId, emoji: icon })
-        .then(() => {
-          hub.refresh()
-        })
-        .catch((error: unknown) => {
-          log.error('Failed to set note icon', extractErrorMessage(error))
-        })
+        .then(() => hub.refresh())
+        .catch((error: unknown) => log.error('Failed to set note icon', extractErrorMessage(error)))
     },
     [hub]
   )
@@ -170,13 +164,9 @@ export function useProjectWidgetHandlers({
       onNoteIconChange: handleNoteIconChange,
       onOpenFile: handleOpenNote,
       onOpenEvent: handleOpenEvent,
-      onAddTask: () => {
-        onOpenProjectPage('tasks')
-      },
+      onAddTask: () => onOpenProjectPage('tasks'),
       onAddNote: () => void handleAddNote(),
-      onAddFile: () => {
-        onOpenProjectPage('files')
-      },
+      onAddFile: () => onOpenProjectPage('files'),
       onAddEvent: handleAddEvent
     }),
     [

@@ -258,9 +258,7 @@ async function publish(topic, { dryRun, adopt }) {
   const key = N.youtube.playlist
   const listTitle = C.playlists[key].title
   const ids = readIds()
-  const save = () => {
-    fs.writeFileSync(IDS, `${JSON.stringify(ids, null, 2)}\n`)
-  }
+  const save = () => fs.writeFileSync(IDS, `${JSON.stringify(ids, null, 2)}\n`)
 
   let call, ch
   const token = dryRun ? undefined : await accessToken()

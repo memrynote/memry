@@ -126,9 +126,7 @@ function FilePreview({ state, media }: { state: FileState; media: boolean }): Re
         alt=""
         draggable={false}
         loading="lazy"
-        onError={() => {
-          setFailed(true)
-        }}
+        onError={() => setFailed(true)}
         className="min-h-0 w-full flex-1 bg-muted object-cover"
       />
     )
@@ -139,9 +137,7 @@ function FilePreview({ state, media }: { state: FileState; media: boolean }): Re
         src={src}
         preload="metadata"
         muted
-        onError={() => {
-          setFailed(true)
-        }}
+        onError={() => setFailed(true)}
         className="min-h-0 w-full flex-1 bg-muted object-cover"
       />
     )

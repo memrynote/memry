@@ -88,9 +88,7 @@ export function GraphViewsMenu({
           {views.map((view) => (
             <DropdownMenuItem
               key={view.id}
-              onSelect={() => {
-                onApply(view)
-              }}
+              onSelect={() => onApply(view)}
               className="flex items-center gap-2"
             >
               <Check
@@ -117,12 +115,7 @@ export function GraphViewsMenu({
           ))}
           <DropdownMenuSeparator />
           {activeView && isModified && (
-            <DropdownMenuItem
-              onSelect={() => {
-                onUpdate(activeView)
-              }}
-              className="gap-2"
-            >
+            <DropdownMenuItem onSelect={() => onUpdate(activeView)} className="gap-2">
               <Save className="size-3 shrink-0" />
               <span className="min-w-0 truncate text-[12px]">
                 {t('views.update', { name: activeView.name })}
@@ -130,9 +123,7 @@ export function GraphViewsMenu({
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
-            onSelect={() => {
-              setSaveOpen(true)
-            }}
+            onSelect={() => setSaveOpen(true)}
             className="gap-2"
             data-testid="graph-views-save-as"
           >
@@ -151,9 +142,7 @@ export function GraphViewsMenu({
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
             autoFocus
             value={name}
-            onChange={(event) => {
-              setName(event.target.value)
-            }}
+            onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault()
@@ -165,12 +154,7 @@ export function GraphViewsMenu({
             data-testid="graph-views-save-name"
           />
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSaveOpen(false)
-              }}
-            >
+            <Button variant="ghost" onClick={() => setSaveOpen(false)}>
               {t('views.cancel')}
             </Button>
             <Button

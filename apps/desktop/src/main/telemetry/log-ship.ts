@@ -279,9 +279,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
       ;(log.transports as unknown as MutableTransports).logShip = null
       logShipInstance = null
     },
-    ingestForwarded: (record, workerName) => {
-      handleRecord(record, 'worker', workerName)
-    },
+    ingestForwarded: (record, workerName) => handleRecord(record, 'worker', workerName),
     recentLines: () => snapshotRing()
   }
 

@@ -53,7 +53,7 @@ async function instrumentFocus(page: Page): Promise<void> {
         on: describe(this),
         stack: (new Error().stack || '').split('\n').slice(2, 8).join(' <- ')
       })
-      origFocus.apply(this, args)
+      return origFocus.apply(this, args)
     }
     document.addEventListener(
       'focusout',

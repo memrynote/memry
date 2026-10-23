@@ -261,9 +261,7 @@ describe('generalized write engine (#1393)', () => {
       `${WRITER}:account-a`,
       () =>
         new Promise<string>((resolve) => {
-          releaseSlow = () => {
-            resolve('slow done')
-          }
+          releaseSlow = () => resolve('slow done')
         })
     )
 

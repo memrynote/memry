@@ -85,8 +85,6 @@ export function getColumnSlashMenuItems(
     subtext: labels[label].subtext,
     aliases: ['columns', 'column', ...aliases, 'side by side', 'layout'],
     group: labels.group,
-    onItemClick: () => {
-      insertColumnList(editor, count)
-    }
+    onItemClick: () => insertColumnList(editor, count)
   }))
 }

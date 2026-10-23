@@ -160,16 +160,14 @@ describe('AddFieldPopover new fields', () => {
       await user.type(within(popover).getByRole('textbox', { name: 'Field name' }), '  Birthday ')
       await user.click(within(popover).getByRole('button', { name: label }))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(api.editSchema).toHaveBeenCalledWith({
           kind: 'add-field',
           tag: 'person',
           field: { name: 'Birthday', type }
         })
-      })
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      })
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     }
   )
 
@@ -180,13 +178,13 @@ describe('AddFieldPopover new fields', () => {
     const popover = await openPopover(user)
     await user.type(within(popover).getByRole('textbox', { name: 'Field name' }), 'Nickname{Enter}')
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.editSchema).toHaveBeenCalledWith({
         kind: 'add-field',
         tag: 'person',
         field: { name: 'Nickname', type: 'text' }
       })
-    })
+    )
   })
 
   it('ignores Enter on an empty name', async () => {
@@ -226,9 +224,7 @@ describe('AddFieldPopover new fields', () => {
     await user.type(within(popover).getByRole('textbox', { name: 'Field name' }), 'Birthday')
     await user.click(within(popover).getByRole('button', { name: 'Date' }))
 
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('schema conflict')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('schema conflict'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
@@ -239,9 +235,7 @@ describe('AddFieldPopover new fields', () => {
     let popover = await openPopover(user)
     await user.type(within(popover).getByRole('textbox', { name: 'Field name' }), 'Draft')
     await user.keyboard('{Escape}')
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     popover = await openPopover(user)
     expect(within(popover).getByRole('textbox', { name: 'Field name' })).toHaveValue('')
@@ -267,7 +261,7 @@ describe('AddFieldPopover relation fields', () => {
     await user.type(within(popover).getByRole('textbox'), 'Staff')
     await user.click(submit)
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.editSchema).toHaveBeenCalledWith({
         kind: 'add-field',
         tag: 'person',
@@ -277,10 +271,8 @@ describe('AddFieldPopover relation fields', () => {
           relation: { target: 'company', many: true, inverse: 'Staff' }
         }
       })
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('drops the half-built relation when cancelled', async () => {
@@ -292,9 +284,7 @@ describe('AddFieldPopover relation fields', () => {
     await user.click(within(popover).getByRole('button', { name: /^Relation/ }))
     await user.click(within(popover).getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(api.editSchema).not.toHaveBeenCalled()
   })
 })
@@ -342,13 +332,13 @@ describe('AddFieldPopover reusing vault properties', () => {
     await user.type(within(popover).getByRole('textbox', { name: 'Field name' }), 'sour')
     await user.click(await within(popover).findByRole('button', { name: /^SourceURL/ }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.editSchema).toHaveBeenCalledWith({
         kind: 'add-field',
         tag: 'person',
         field: { name: 'Source', type: 'url' }
       })
-    })
+    )
   })
 
   it('reuses a legacy rating property as a number field', async () => {
@@ -359,13 +349,13 @@ describe('AddFieldPopover reusing vault properties', () => {
     await user.type(within(popover).getByRole('textbox', { name: 'Field name' }), 'scor')
     await user.click(await within(popover).findByRole('button', { name: /^ScoreNumber/ }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.editSchema).toHaveBeenCalledWith({
         kind: 'add-field',
         tag: 'person',
         field: { name: 'Score', type: 'number' }
       })
-    })
+    )
   })
 
   it('does not load vault properties until the popover opens', async () => {
@@ -417,9 +407,7 @@ describe('AddFieldPopover shared property step', () => {
       )
     ).toBeInTheDocument()
     await user.click(within(mood).getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     const weird = await typeExistingName(user, 'weird', 'Select')
     expect(
@@ -449,13 +437,13 @@ describe('AddFieldPopover shared property step', () => {
     const popover = await typeExistingName(user, 'SOURCE', 'Number')
     await user.click(within(popover).getByRole('button', { name: 'Share Source' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.editSchema).toHaveBeenCalledWith({
         kind: 'add-field',
         tag: 'person',
         field: { name: 'Source', type: 'number' }
       })
-    })
+    )
   })
 
   it('offers a tag-prefixed alternative name that becomes a brand-new field', async () => {
@@ -468,13 +456,13 @@ describe('AddFieldPopover shared property step', () => {
     expect(within(popover).getByRole('textbox')).toHaveValue('Person stage')
     await user.click(within(popover).getByRole('button', { name: 'Add field' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.editSchema).toHaveBeenCalledWith({
         kind: 'add-field',
         tag: 'person',
         field: { name: 'Person stage', type: 'select' }
       })
-    })
+    )
   })
 
   it('routes a shared relation through the relation card', async () => {
@@ -498,9 +486,7 @@ describe('AddFieldPopover shared property step', () => {
     const popover = await typeExistingName(user, 'stage', 'Select')
     await user.click(within(popover).getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(api.editSchema).not.toHaveBeenCalled()
   })
 

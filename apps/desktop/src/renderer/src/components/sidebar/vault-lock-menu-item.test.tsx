@@ -54,9 +54,7 @@ describe('VaultLockMenuItem (#2606)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock folder' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Folder not found: Gone')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Folder not found: Gone'))
     expect(screen.getByRole('button', { name: 'Lock folder' })).toBeInTheDocument()
   })
 })

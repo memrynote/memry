@@ -151,9 +151,7 @@ describe('withSecondaryActions', () => {
 })
 
 describe('slash menu recents', () => {
-  afterEach(() => {
-    localStorage.clear()
-  })
+  afterEach(() => localStorage.clear())
 
   it('keeps the three most recent ids, newest first, without duplicates', () => {
     for (const id of ['a', 'b', 'c', 'a', 'd']) recordSlashMenuRecent(id)

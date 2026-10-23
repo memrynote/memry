@@ -365,11 +365,7 @@ export async function runJournalDayMerges(
         fallbackClientId(foreignId, deviceId)
       ),
     purgeDoc: (id) => provider.purge(id),
-    removeRow: (id) => {
-      removeJournalRow(db, id)
-    },
-    enqueueDelete: (id, payload) => {
-      journalSync.enqueueRecoveredDelete(id, payload)
-    }
+    removeRow: (id) => removeJournalRow(db, id),
+    enqueueDelete: (id, payload) => journalSync.enqueueRecoveredDelete(id, payload)
   })
 }

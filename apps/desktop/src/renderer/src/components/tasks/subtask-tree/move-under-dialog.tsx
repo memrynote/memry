@@ -121,13 +121,7 @@ export const MoveUnderDialog = ({
           <CommandList className="max-h-[360px] p-1.5">
             <CommandEmpty>{t('subtaskTree.moveUnder.empty')}</CommandEmpty>
             {!needle && task?.parentId && (
-              <CommandItem
-                value={TOP_LEVEL}
-                onSelect={() => {
-                  choose(null)
-                }}
-                className="gap-2.5"
-              >
+              <CommandItem value={TOP_LEVEL} onSelect={() => choose(null)} className="gap-2.5">
                 <span
                   className="size-2 shrink-0 rounded-xs"
                   style={{ backgroundColor: project?.color }}
@@ -144,9 +138,7 @@ export const MoveUnderDialog = ({
                 key={place.id}
                 value={place.id ?? TOP_LEVEL}
                 disabled={place.disabled}
-                onSelect={() => {
-                  choose(place.id)
-                }}
+                onSelect={() => choose(place.id)}
                 className="gap-2.5"
                 data-testid="move-under-place"
               >

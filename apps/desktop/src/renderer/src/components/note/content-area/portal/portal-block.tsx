@@ -113,9 +113,7 @@ function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void
       event.preventDefault()
     }
     frame.addEventListener('mousedown', claim)
-    return () => {
-      frame.removeEventListener('mousedown', claim)
-    }
+    return () => frame.removeEventListener('mousedown', claim)
   }, [frameRef])
 }
 

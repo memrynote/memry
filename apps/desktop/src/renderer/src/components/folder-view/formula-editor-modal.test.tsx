@@ -65,13 +65,7 @@ vi.mock('@/components/ui/autocomplete-dropdown', () => ({
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double mirrors the real widget ARIA role
       <div role="listbox">
         {suggestions.map((suggestion, index) => (
-          <button
-            type="button"
-            key={suggestion.label}
-            onClick={() => {
-              onSelect(index)
-            }}
-          >
+          <button type="button" key={suggestion.label} onClick={() => onSelect(index)}>
             {suggestion.label}
           </button>
         ))}

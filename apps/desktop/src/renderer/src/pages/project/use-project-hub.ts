@@ -197,9 +197,7 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [projectId, reloadToken])
 
-  const refresh = useCallback(() => {
-    setReloadToken((token) => token + 1)
-  }, [])
+  const refresh = useCallback(() => setReloadToken((token) => token + 1), [])
 
   // The overview note reports its new id the moment it creates or clears one.
   // Applying it locally keeps the rail from showing the "create" affordance

@@ -24,12 +24,10 @@ const notes = vi.hoisted(() => ({ updateNoteCommand: vi.fn(async () => undefined
 
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn((channel: string, handler: unknown) => {
+    handle: vi.fn((channel: string, handler: unknown) =>
       mockIpcMain.handle(channel, handler as Parameters<typeof mockIpcMain.handle>[1])
-    }),
-    removeHandler: vi.fn((channel: string) => {
-      mockIpcMain.removeHandler(channel)
-    })
+    ),
+    removeHandler: vi.fn((channel: string) => mockIpcMain.removeHandler(channel))
   },
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))

@@ -83,9 +83,7 @@ export function useWeekInfiniteScroll({
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -133,9 +131,7 @@ export function useWeekInfiniteScroll({
       notifyVisibleDayStart(nextStart)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      el.removeEventListener('scroll', onScroll)
-    }
+    return () => el.removeEventListener('scroll', onScroll)
   }, [columnWidth, notifyVisibleDayStart])
 
   useEffect(() => {
@@ -148,9 +144,7 @@ export function useWeekInfiniteScroll({
       el.scrollLeft += event.deltaY
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => {
-      el.removeEventListener('wheel', onWheel)
-    }
+    return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
   const scrollToDay = useCallback(

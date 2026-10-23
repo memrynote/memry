@@ -138,19 +138,13 @@ export function TemplatesSettings() {
                 <TemplateRow
                   key={template.id}
                   template={template}
-                  onSelect={() => {
-                    handleEditTemplate(template.id, template.name)
-                  }}
-                  onEdit={() => {
-                    handleEditTemplate(template.id, template.name)
-                  }}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
                   onDuplicate={() => {
                     setDuplicateId(template.id)
                     setDuplicateName(t('templates.copySuffix', { name: template.name }))
                   }}
-                  onDelete={() => {
-                    setDeleteConfirm(template.id)
-                  }}
+                  onDelete={() => setDeleteConfirm(template.id)}
                 />
               ))
             )}
@@ -162,12 +156,8 @@ export function TemplatesSettings() {
                 <TemplateRow
                   key={template.id}
                   template={template}
-                  onSelect={() => {
-                    handleEditTemplate(template.id, template.name)
-                  }}
-                  onEdit={() => {
-                    handleEditTemplate(template.id, template.name)
-                  }}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
                   onDuplicate={() => {
                     setDuplicateId(template.id)
                     setDuplicateName(t('templates.copySuffix', { name: template.name }))
@@ -180,12 +170,7 @@ export function TemplatesSettings() {
         </>
       )}
 
-      <AlertDialog
-        open={!!deleteConfirm}
-        onOpenChange={() => {
-          setDeleteConfirm(null)
-        }}
-      >
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('templates.dialogs.delete.title')}</AlertDialogTitle>
@@ -205,12 +190,7 @@ export function TemplatesSettings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={!!duplicateId}
-        onOpenChange={() => {
-          setDuplicateId(null)
-        }}
-      >
+      <AlertDialog open={!!duplicateId} onOpenChange={() => setDuplicateId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('templates.dialogs.duplicate.title')}</AlertDialogTitle>
@@ -221,9 +201,7 @@ export function TemplatesSettings() {
           <div className="py-4">
             <Input
               value={duplicateName}
-              onChange={(e) => {
-                setDuplicateName(e.target.value)
-              }}
+              onChange={(e) => setDuplicateName(e.target.value)}
               placeholder={t('templates.dialogs.duplicate.placeholder')}
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- the duplicate dialog exists to type a name, so its input takes focus on open
               autoFocus
@@ -319,20 +297,13 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
+                onClick={(e) => e.stopPropagation()}
                 className="p-1 rounded-sm text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <MoreHorizontal className="size-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-            >
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="w-4 h-4 me-2" />
                 {t('templates.actions.edit')}

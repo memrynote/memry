@@ -247,9 +247,7 @@ export function SortableColumnHeader({
         <div
           {...attributes}
           {...listeners}
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
+          onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.stopPropagation()
@@ -279,17 +277,11 @@ export function SortableColumnHeader({
             autoFocus
             value={editValue}
             aria-label={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.editColumnName')}
-            onChange={(e) => {
-              setEditValue(e.target.value)
-            }}
-            onFocus={(e) => {
-              e.currentTarget.select()
-            }}
+            onChange={(e) => setEditValue(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            onClick={(e) => {
-              e.stopPropagation()
-            }}
+            onClick={(e) => e.stopPropagation()}
             className={cn(
               'flex-1 min-w-0 px-1 py-0.5 -mx-1 -my-0.5',
               'bg-background border border-primary rounded text-sm',
@@ -317,9 +309,7 @@ export function SortableColumnHeader({
         tabIndex={0}
         onMouseDown={handleResize}
         onTouchStart={handleResize}
-        onClick={(e) => {
-          e.stopPropagation()
-        }}
+        onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
             e.preventDefault()

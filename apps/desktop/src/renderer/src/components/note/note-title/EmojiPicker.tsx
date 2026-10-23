@@ -71,9 +71,7 @@ export function EmojiPicker({
       }
     })
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [isOpen, activeTab])
 
   // When embedded, the host (Popover) owns dismissal — avoid a double handler.
@@ -144,9 +142,7 @@ export function EmojiPicker({
       <div className="flex shrink-0 border-b border-border">
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('emoji')
-          }}
+          onClick={() => setActiveTab('emoji')}
           className={cn(
             'flex-1 px-4 py-2 text-sm font-medium transition-colors',
             activeTab === 'emoji'
@@ -158,9 +154,7 @@ export function EmojiPicker({
         </button>
         <button
           type="button"
-          onClick={() => {
-            setActiveTab('icons')
-          }}
+          onClick={() => setActiveTab('icons')}
           className={cn(
             'flex-1 px-4 py-2 text-sm font-medium transition-colors',
             activeTab === 'icons'
@@ -173,9 +167,7 @@ export function EmojiPicker({
         {allowCustom && (
           <button
             type="button"
-            onClick={() => {
-              setActiveTab('custom')
-            }}
+            onClick={() => setActiveTab('custom')}
             className={cn(
               'flex-1 px-4 py-2 text-sm font-medium transition-colors',
               activeTab === 'custom'

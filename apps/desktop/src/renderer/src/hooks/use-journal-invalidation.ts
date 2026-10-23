@@ -36,15 +36,9 @@ export function useJournalChangeInvalidation(
       }
     }
 
-    const unsubCreated = onJournalEntryCreated((e) => {
-      invalidate(e.date)
-    })
-    const unsubUpdated = onJournalEntryUpdated((e) => {
-      invalidate(e.date)
-    })
-    const unsubDeleted = onJournalEntryDeleted((e) => {
-      invalidate(e.date)
-    })
+    const unsubCreated = onJournalEntryCreated((e) => invalidate(e.date))
+    const unsubUpdated = onJournalEntryUpdated((e) => invalidate(e.date))
+    const unsubDeleted = onJournalEntryDeleted((e) => invalidate(e.date))
 
     return () => {
       unsubCreated()

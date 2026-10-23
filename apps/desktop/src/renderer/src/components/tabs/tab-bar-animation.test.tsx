@@ -94,14 +94,9 @@ describe('tab enter/exit animation', () => {
     expect(screen.getByText('Second')).toBeInTheDocument()
 
     // ...and once the exit finishes it is gone.
-    await waitFor(
-      () => {
-        expect(screen.queryByText('Second')).not.toBeInTheDocument()
-      },
-      {
-        timeout: 3000
-      }
-    )
+    await waitFor(() => expect(screen.queryByText('Second')).not.toBeInTheDocument(), {
+      timeout: 3000
+    })
     expect(screen.getByText('First')).toBeInTheDocument()
   })
 
@@ -121,14 +116,9 @@ describe('tab enter/exit animation', () => {
     rerender(<TabBarWithDrag groupId="group-1" />)
 
     expect(screen.getByText('PinnedB')).toBeInTheDocument()
-    await waitFor(
-      () => {
-        expect(screen.queryByText('PinnedB')).not.toBeInTheDocument()
-      },
-      {
-        timeout: 3000
-      }
-    )
+    await waitFor(() => expect(screen.queryByText('PinnedB')).not.toBeInTheDocument(), {
+      timeout: 3000
+    })
     expect(screen.getByText('PinnedA')).toBeInTheDocument()
   })
 

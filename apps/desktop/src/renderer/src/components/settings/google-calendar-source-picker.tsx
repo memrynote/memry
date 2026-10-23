@@ -76,9 +76,7 @@ export function GoogleCalendarSourcePicker({
               checked={source.isSelected}
               disabled={isUpdating}
               isDefault={defaultRemoteId !== null && source.remoteId === defaultRemoteId}
-              onCheckedChange={(checked) => {
-                onToggleSource(source.id, checked)
-              }}
+              onCheckedChange={(checked) => onToggleSource(source.id, checked)}
               trailing={
                 <>
                   <span

@@ -57,10 +57,6 @@ export function getLegacyCanvasVaultKey(db: DataDb, vaultId: string): Promise<Ui
 
 export function disposeCanvasVaultKey(): void {
   if (!vaultKeyPromise) return
-  void vaultKeyPromise
-    .then((key) => {
-      secureCleanup(key)
-    })
-    .catch(() => {})
+  void vaultKeyPromise.then((key) => secureCleanup(key)).catch(() => {})
   vaultKeyPromise = null
 }

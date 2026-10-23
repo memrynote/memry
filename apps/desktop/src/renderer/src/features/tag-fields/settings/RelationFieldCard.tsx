@@ -59,12 +59,7 @@ export function RelationFieldCard({
         <span className="text-xs text-text-secondary">
           {t('tagFields.settings.relation.target')}
         </span>
-        <Select
-          value={target ?? undefined}
-          onValueChange={(value) => {
-            setTarget(value)
-          }}
-        >
+        <Select value={target ?? undefined} onValueChange={(value) => setTarget(value)}>
           <SelectTrigger className="h-8" aria-label={t('tagFields.settings.relation.target')}>
             {target ? (
               <div className="min-w-0">
@@ -116,9 +111,7 @@ export function RelationFieldCard({
         <Input
           id={inverseId}
           value={inverse}
-          onChange={(event) => {
-            setInverse(event.target.value)
-          }}
+          onChange={(event) => setInverse(event.target.value)}
           placeholder={tagDisplayName(tagName)}
           className="h-8"
         />

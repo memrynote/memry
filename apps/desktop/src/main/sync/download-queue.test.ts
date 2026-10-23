@@ -43,9 +43,7 @@ function makeManualDownload(): ManualDownload {
       calls.push(_id)
       return new Promise<DownloadResult>((resolve, reject) => {
         pending.set(_id, {
-          resolve: () => {
-            resolve(makeResult(_id))
-          },
+          resolve: () => resolve(makeResult(_id)),
           reject
         })
       })
@@ -371,9 +369,9 @@ describe('DownloadQueue', () => {
     const fn = vi.fn((_id: string, targetPath: string) => {
       transfers++
       return new Promise<DownloadResult>((resolve) => {
-        pending.set(targetPath, () => {
+        pending.set(targetPath, () =>
           resolve({ filePath: targetPath, manifest: { id: _id } as DownloadResult['manifest'] })
-        })
+        )
       })
     })
     const q = new DownloadQueue(fn as unknown as ConstructorParameters<typeof DownloadQueue>[0])

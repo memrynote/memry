@@ -75,9 +75,7 @@ describe('useBookmarks', () => {
         hasMore: false
       })
       const { result } = renderHook(() => useBookmarks(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.bookmarks).toHaveLength(1)
-      })
+      await waitFor(() => expect(result.current.bookmarks).toHaveLength(1))
 
       let finish: (value: unknown) => void = () => {}
       ;(window.api.bookmarks.list as ReturnType<typeof vi.fn>).mockReturnValue(

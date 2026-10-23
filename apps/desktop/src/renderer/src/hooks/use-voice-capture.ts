@@ -85,9 +85,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
    */
   const releaseStream = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        track.stop()
-      })
+      streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
     setStream(null)
@@ -112,9 +110,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
     }
 
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        track.stop()
-      })
+      streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
     setStream(null)
@@ -211,12 +207,8 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
     }
   }, [releaseStream, stopRecording])
 
-  const stop = useCallback(() => {
-    stopRecording(false)
-  }, [stopRecording])
-  const cancel = useCallback(() => {
-    stopRecording(true)
-  }, [stopRecording])
+  const stop = useCallback(() => stopRecording(false), [stopRecording])
+  const cancel = useCallback(() => stopRecording(true), [stopRecording])
 
   useEffect(() => {
     return () => {

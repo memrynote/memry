@@ -207,9 +207,7 @@ describe('recordUploadedAttachment', () => {
   })
 
   it('is a silent no-op for a note that exists in neither store', () => {
-    expect(() => {
-      recordUploadedAttachment('ghost', 'att-1')
-    }).not.toThrow()
+    expect(() => recordUploadedAttachment('ghost', 'att-1')).not.toThrow()
 
     // No row is created, and the caller (the upload success path in
     // ipc/sync-attachment-handlers.ts) gets no signal that the reference was
@@ -339,9 +337,7 @@ describe('recordDownloadedFileSize', () => {
   })
 
   it('is a silent no-op for an unknown note', () => {
-    expect(() => {
-      recordDownloadedFileSize('ghost', 512)
-    }).not.toThrow()
+    expect(() => recordDownloadedFileSize('ghost', 512)).not.toThrow()
     expect(getNoteMetadataById(dataDb, 'ghost')).toBeUndefined()
   })
 })

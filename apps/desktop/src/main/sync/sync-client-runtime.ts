@@ -13,10 +13,6 @@ import { trackMainLog } from '../telemetry/diagnostics'
  */
 setSyncClientLoggerFactory((scope) => createLogger(scope))
 setSyncClientTelemetrySink({
-  trackEvent: (name, options) => {
-    trackMainEvent(name, options)
-  },
-  trackLog: (level, options) => {
-    trackMainLog(level, options)
-  }
+  trackEvent: (name, options) => trackMainEvent(name, options),
+  trackLog: (level, options) => trackMainLog(level, options)
 })

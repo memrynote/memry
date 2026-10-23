@@ -5,9 +5,7 @@ import { getCalloutTypes, publishCalloutTypes } from './callout-types-store'
 
 const mytype = { name: 'mytype', label: 'My type', color: '#ff8800', icon: 'star' }
 
-afterEach(() => {
-  publishCalloutTypes([])
-})
+afterEach(() => publishCalloutTypes([]))
 
 describe('renderer callout types (#3207)', () => {
   it('publishing makes the markdown parser claim the type', () => {

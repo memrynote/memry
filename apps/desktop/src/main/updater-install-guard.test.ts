@@ -106,9 +106,7 @@ describe('marker IO', () => {
     mocks.app.getPath.mockImplementation((name: string) => `/userdata/${name}`)
   })
 
-  afterAll(() => {
-    setPlatform(realPlatform)
-  })
+  afterAll(() => setPlatform(realPlatform))
 
   it('writes the marker with the initiating version to userData', async () => {
     const { writePendingInstallMarker } = await load()
@@ -149,9 +147,7 @@ describe('isPendingInstallInFlight', () => {
     mocks.child_process.execFileSync.mockReturnValue('54321\n')
   })
 
-  afterAll(() => {
-    setPlatform(realPlatform)
-  })
+  afterAll(() => setPlatform(realPlatform))
 
   it('returns true and queries pgrep for the ShipIt process only after cheap checks pass', async () => {
     const { isPendingInstallInFlight } = await load()

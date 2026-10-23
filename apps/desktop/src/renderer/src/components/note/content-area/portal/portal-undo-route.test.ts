@@ -149,9 +149,7 @@ describe('undo from the portal window', () => {
 
     pressKey(win.view, 'Enter')
     win.view.dispatch(win.view.state.tr.insertText('x'))
-    await vi.waitFor(() => {
-      expect(JSON.parse(fenceOf()).blocks).toEqual(['chd1', 'new111'])
-    })
+    await vi.waitFor(() => expect(JSON.parse(fenceOf()).blocks).toEqual(['chd1', 'new111']))
     const placed = fenceOf()
 
     press(win.view, 'z')

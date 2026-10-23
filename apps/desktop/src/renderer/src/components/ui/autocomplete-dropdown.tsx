@@ -103,9 +103,7 @@ export function AutocompleteDropdown({
                 'transition-colors',
                 isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
               )}
-              onClick={() => {
-                onSelect(index)
-              }}
+              onClick={() => onSelect(index)}
               onMouseEnter={() => {
                 // Optional: could update selectedIndex on hover
               }}

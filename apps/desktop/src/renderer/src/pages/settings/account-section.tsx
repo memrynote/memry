@@ -349,7 +349,7 @@ export function AccountSettings() {
       // Explicit !== false: blobs written by older versions have no key and
       // must read as "on" (the shipped default).
       .then((settings) => {
-        setAttachmentAutoDownload(settings.attachmentAutoDownload)
+        setAttachmentAutoDownload(settings.attachmentAutoDownload !== false)
       })
       .catch(() => {
         /* keep the default-on optimistic value */
@@ -620,9 +620,7 @@ export function AccountSettings() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setShowLinkingQr(true)
-              }}
+              onClick={() => setShowLinkingQr(true)}
               className="h-6 px-2 text-xs/4"
             >
               {t('devices.linkNew')}
@@ -780,9 +778,7 @@ export function AccountSettings() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setShowSignOutDialog(true)
-            }}
+            onClick={() => setShowSignOutDialog(true)}
             className="h-7 shrink-0 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
           >
             {t('account.security.signOut.action')}
@@ -817,11 +813,7 @@ export function AccountSettings() {
 
       <Dialog open={showLinkingQr} onOpenChange={setShowLinkingQr}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">
-          <QrLinking
-            onCancel={() => {
-              setShowLinkingQr(false)
-            }}
-          />
+          <QrLinking onCancel={() => setShowLinkingQr(false)} />
         </DialogContent>
       </Dialog>
 

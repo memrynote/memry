@@ -74,9 +74,7 @@ export function InPageReviewPointer({
         toolCallId: pending.toolCallId,
         decision: { kind: 'allow' }
       })
-      .finally(() => {
-        setAccepting(false)
-      })
+      .finally(() => setAccepting(false))
   }
 
   return (

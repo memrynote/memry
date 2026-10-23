@@ -22,8 +22,6 @@ describe('FeaturesSection', () => {
     render(<FeaturesSection />)
     const tasksSwitch = await screen.findByRole('switch', { name: /tasks/i })
     fireEvent.click(tasksSwitch)
-    await waitFor(() => {
-      expect(setFeaturesSettings).toHaveBeenCalledWith({ tasks: false })
-    })
+    await waitFor(() => expect(setFeaturesSettings).toHaveBeenCalledWith({ tasks: false }))
   })
 })

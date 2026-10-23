@@ -110,9 +110,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
       if (pickerOpenRef.current) return
       setHovered(null)
     }
-    const remeasure = (): void => {
-      setTick((value) => value + 1)
-    }
+    const remeasure = (): void => setTick((value) => value + 1)
 
     containerEl.addEventListener('pointerover', handlePointerOver)
     containerEl.addEventListener('pointerleave', handlePointerLeave)
@@ -158,9 +156,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
     void navigator.clipboard.writeText(code).then(() => {
       setCopied(true)
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
-      copiedTimerRef.current = setTimeout(() => {
-        setCopied(false)
-      }, COPIED_FEEDBACK_MS)
+      copiedTimerRef.current = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS)
     })
   }, [placement])
 
@@ -203,9 +199,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
             onBlur={() => {
               pickerOpenRef.current = false
             }}
-            onChange={(event) => {
-              handleLanguageChange(event.target.value)
-            }}
+            onChange={(event) => handleLanguageChange(event.target.value)}
           >
             {languages.map(([key, { name }]) => (
               <option key={key} value={key}>
@@ -225,9 +219,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
         // mousedown keeps the editor from taking focus back and scrolling the
         // caret into view, but on the <select> it also stops the native
         // dropdown from opening at all.
-        onMouseDown={(event) => {
-          event.preventDefault()
-        }}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={handleCopy}
       >
         {copied ? (

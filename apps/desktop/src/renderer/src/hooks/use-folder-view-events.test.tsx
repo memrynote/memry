@@ -84,9 +84,7 @@ describe('useFolderViewEvents', () => {
     // A typing session: the editor autosaves on a 1s debounce, and every save
     // emits notes:updated.
     for (let i = 0; i < 5; i++) {
-      act(() => {
-        mocks.noteListeners.updated()
-      })
+      act(() => mocks.noteListeners.updated())
       await settle(1000)
     }
 
@@ -113,9 +111,7 @@ describe('useFolderViewEvents', () => {
       const { listNotes } = renderHarness()
       await settle()
 
-      act(() => {
-        mocks.noteListeners[event]()
-      })
+      act(() => mocks.noteListeners[event]())
       await settle()
 
       expect(listNotes).toHaveBeenCalledTimes(2)
@@ -126,12 +122,8 @@ describe('useFolderViewEvents', () => {
     const { listNotes } = renderHarness()
     await settle()
 
-    act(() => {
-      mocks.noteListeners.updated()
-    })
-    act(() => {
-      mocks.noteListeners.created()
-    })
+    act(() => mocks.noteListeners.updated())
+    act(() => mocks.noteListeners.created())
     await settle(PAST_THE_COALESCING_WINDOW_MS)
 
     expect(listNotes).toHaveBeenCalledTimes(2)
@@ -144,9 +136,7 @@ describe('useFolderViewEvents', () => {
     // refetch — assert on the invalidation the timer would still fire.
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-    act(() => {
-      mocks.noteListeners.updated()
-    })
+    act(() => mocks.noteListeners.updated())
     unmount()
     await settle(PAST_THE_COALESCING_WINDOW_MS)
 

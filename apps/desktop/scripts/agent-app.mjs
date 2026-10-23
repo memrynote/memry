@@ -217,10 +217,7 @@ async function stop() {
 
 function status() {
   const state = readState()
-  if (!state) {
-    console.log('Not running.')
-    return
-  }
+  if (!state) return console.log('Not running.')
   console.log(JSON.stringify({ ...state, alive: isAlive(state.pid) }, null, 2))
 }
 

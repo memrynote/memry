@@ -57,15 +57,9 @@ export const QuickOptionsBar = ({
           <button
             key={option.label}
             type="button"
-            onClick={() => {
-              handleClick(option.label)
-            }}
-            onKeyDown={(e) => {
-              handleKeyDown(e, option.label)
-            }}
-            onMouseDown={(e) => {
-              e.preventDefault()
-            }} // Prevent input blur
+            onClick={() => handleClick(option.label)}
+            onKeyDown={(e) => handleKeyDown(e, option.label)}
+            onMouseDown={(e) => e.preventDefault()} // Prevent input blur
             className={cn(
               'px-2 py-0.5 rounded-full',
               'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',

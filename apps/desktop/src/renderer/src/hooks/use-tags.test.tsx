@@ -39,9 +39,7 @@ describe('useTags', () => {
   it('loads tags, subscribes to tag events, and exposes sorted searches', async () => {
     const { result } = renderHook(() => useTags())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.tags).toHaveLength(5)
     expect(result.current.searchTags('').map((tag) => tag.name)).toEqual([
@@ -77,9 +75,7 @@ describe('useTags', () => {
     })
 
     const { result } = renderHook(() => useTags())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     api.tags.getAllWithCounts.mockResolvedValueOnce({
       tags: [{ name: 'refreshed', count: 1 }]
@@ -88,9 +84,7 @@ describe('useTags', () => {
       onChanged?.()
     })
 
-    await waitFor(() => {
-      expect(result.current.tags).toEqual([{ name: 'refreshed', count: 1 }])
-    })
+    await waitFor(() => expect(result.current.tags).toEqual([{ name: 'refreshed', count: 1 }]))
 
     await act(async () => {
       await result.current.mergeTag('source', 'target')
@@ -107,9 +101,7 @@ describe('useTags', () => {
 
     const { result } = renderHook(() => useTags())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.error).toBe('tag load failed')
     expect(result.current.tags).toEqual([])
   })

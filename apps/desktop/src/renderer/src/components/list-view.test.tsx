@@ -80,31 +80,16 @@ vi.mock('@/components/inbox', () => ({
       <span>
         {period} {isExiting ? 'exiting' : 'stable'}
       </span>
-      <button
-        type="button"
-        onClick={() => {
-          onPreview(item.id)
-        }}
-      >
+      <button type="button" onClick={() => onPreview(item.id)}>
         {item.title}
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onArchive(item.id)
-        }}
-      >
+      <button type="button" onClick={() => onArchive(item.id)}>
         archive {item.id}
       </button>
       <button type="button" onClick={() => onSnooze?.(item.id, '2026-05-11T10:00:00.000Z')}>
         snooze {item.id}
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onRetryTranscription(item.id)
-        }}
-      >
+      <button type="button" onClick={() => onRetryTranscription(item.id)}>
         retry {item.id}
       </button>
       {isQuickFileActive && (
@@ -113,9 +98,7 @@ vi.mock('@/components/inbox', () => ({
           <input
             aria-label={`quick query ${item.id}`}
             value={quickFileQuery}
-            onChange={(event) => {
-              onQuickFileQueryChange(event.target.value)
-            }}
+            onChange={(event) => onQuickFileQueryChange(event.target.value)}
           />
           <span>folders {folders.length}</span>
           <span>highlight {quickFileHighlightedIndex}</span>
@@ -125,12 +108,7 @@ vi.mock('@/components/inbox', () => ({
           <button type="button" onClick={onQuickFileArrowUp}>
             previous folder
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              onQuickFileFolderSelect(folders[2])
-            }}
-          >
+          <button type="button" onClick={() => onQuickFileFolderSelect(folders[2])}>
             choose archive
           </button>
           <button type="button" onClick={onQuickFileSubmit}>
@@ -244,9 +222,7 @@ describe('ListView', () => {
     const user = userEvent.setup()
     const props = renderListView()
 
-    await waitFor(() => {
-      expect(window.api.notes.getFolders).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.notes.getFolders).toHaveBeenCalled())
 
     await user.keyboard('f')
     await waitFor(() => expect(screen.getByText('quick file item-1')).toBeInTheDocument())
@@ -306,9 +282,7 @@ describe('ListView', () => {
     const user = userEvent.setup()
     const props = renderListView()
 
-    await waitFor(() => {
-      expect(window.api.notes.getFolders).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(window.api.notes.getFolders).toHaveBeenCalled())
 
     await user.keyboard('f')
     await waitFor(() => expect(screen.getByText('quick file item-1')).toBeInTheDocument())

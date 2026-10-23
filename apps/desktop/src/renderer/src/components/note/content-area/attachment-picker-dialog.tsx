@@ -336,9 +336,7 @@ export function AttachmentPickerDialog({
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
               autoFocus
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-              }}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder={t(`editor.attachmentPicker.placeholder.${kind}`)}
               className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               data-testid="attachment-picker-search"

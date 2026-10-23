@@ -17,9 +17,7 @@ vi.mock('../../database/queries/projects', () => ({
   listProjectsByNames: (...a: unknown[]) => listProjectsByNames(...a),
   listNoteProjectLinkIds: (...a: unknown[]) => listNoteProjectLinkIds(...a),
   insertProjectLink: (...a: unknown[]) => insertProjectLink(...a),
-  deleteProjectLink: (...a: unknown[]) => {
-    deleteProjectLink(...a)
-  }
+  deleteProjectLink: (...a: unknown[]) => deleteProjectLink(...a)
 }))
 vi.mock('../../sync/sync-intents', () => ({
   commitLocalChange: (

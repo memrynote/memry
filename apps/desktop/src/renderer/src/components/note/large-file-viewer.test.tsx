@@ -111,9 +111,7 @@ async function findInFile(query: string): Promise<HTMLElement> {
   // The bar focuses and selects its input on the next frame, exactly as the
   // note find bar does. Typing before that lands would have the selection
   // swallow the first character.
-  await waitFor(() => {
-    expect(input).toHaveFocus()
-  })
+  await waitFor(() => expect(input).toHaveFocus())
   await userEvent.type(input, query)
   return input
 }
@@ -145,9 +143,7 @@ async function openReady(
   const rendered = render(
     <LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={fileBytes} />
   )
-  await waitFor(() => {
-    expect(mocks.open).toHaveBeenCalled()
-  })
+  await waitFor(() => expect(mocks.open).toHaveBeenCalled())
   emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes, lineCount })
   return rendered
 }
@@ -240,9 +236,7 @@ describe('LargeFileViewer', () => {
 
     // #when
     render(<LargeFileViewer noteId="note-1" reason={undefined} measuredBytes={undefined} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 4_000_000, lineCount: 300 })
 
     // #then — the file still opens and still carries the badge. The main
@@ -264,9 +258,7 @@ describe('LargeFileViewer', () => {
         linePage(input.startLine, input.count, 500)
     )
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={18_700_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledTimes(1))
 
     // #when the session goes away before it was ever ready — the file changed
     // on disk, or the main process made room
@@ -280,9 +272,7 @@ describe('LargeFileViewer', () => {
     // #then the viewer reopens rather than showing a dead end. A page fetch is
     // the only other thing that would notice, and a viewer that never became
     // ready never fetches a page.
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledTimes(2))
     emitIndex({ sessionId: 'session-2', status: 'ready', fileBytes: 18_700_000, lineCount: 500 })
     expect(await screen.findByText('row 0')).toBeInTheDocument()
   })
@@ -325,9 +315,7 @@ describe('LargeFileViewer', () => {
       fileBytes: 1_000_000
     } satisfies LargeFileOpenResult)
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={1_000_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
 
     // #when
     emitIndex({
@@ -340,9 +328,7 @@ describe('LargeFileViewer', () => {
     // #then — a progress bar with a real value, so a multi-second scan on a
     // 2 GB file reads as work rather than as a hang
     const bar = await screen.findByRole('progressbar')
-    await waitFor(() => {
-      expect(bar).toHaveAttribute('aria-valuenow', '25')
-    })
+    await waitFor(() => expect(bar).toHaveAttribute('aria-valuenow', '25'))
   })
 
   it('explains a file past the viewer ceiling instead of failing bare', async () => {
@@ -378,9 +364,7 @@ describe('LargeFileViewer', () => {
       fileBytes: 5_000
     } satisfies LargeFileOpenResult)
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={5_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
 
     // #when
     emitIndex({ sessionId: 'session-1', status: 'error', message: 'EIO' })
@@ -416,9 +400,7 @@ describe('LargeFileViewer', () => {
       lineCount: 2
     } satisfies LargeFileLinesResult)
     render(<LargeFileViewer noteId="note-1" reason="block-bytes" measuredBytes={5_000_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
 
     // #when
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 5_000_000, lineCount: 2 })
@@ -443,9 +425,7 @@ describe('LargeFileViewer', () => {
       lineCount: 1
     } satisfies LargeFileLinesResult)
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={66_200_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
 
     // #when
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 66_200_000, lineCount: 1 })
@@ -517,9 +497,7 @@ describe('LargeFileViewer', () => {
       lineCount: 2
     } satisfies LargeFileLinesResult)
     render(<LargeFileViewer noteId="note-1" reason="block-bytes" measuredBytes={5_000_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
 
     // #when
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 5_000_000, lineCount: 2 })
@@ -556,9 +534,9 @@ describe('LargeFileViewer', () => {
     // #and the rows on screen measure themselves again. Clearing alone would
     // strand them on the estimate — a row whose own box the browser has already
     // settled never fires its own observer a second time.
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.measureElement.mock.calls.length).toBeGreaterThan(measuredBefore)
-    })
+    )
   })
 
   it('reopens after the main process let the session go', async () => {
@@ -577,13 +555,9 @@ describe('LargeFileViewer', () => {
 
     // #when
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={900_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 900_000, lineCount: 120 })
-    await waitFor(() => {
-      expect(opens).toBe(2)
-    })
+    await waitFor(() => expect(opens).toBe(2))
     emitIndex({ sessionId: 'session-2', status: 'ready', fileBytes: 900_000, lineCount: 120 })
 
     // #then — a dead session is reopened rather than shown as an error. The
@@ -606,9 +580,7 @@ describe('LargeFileViewer', () => {
       linePage(input.startLine, input.count, 70)
     )
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={600_000} />)
-    await waitFor(() => {
-      expect(release).not.toBeNull()
-    })
+    await waitFor(() => expect(release).not.toBeNull())
 
     // #when the ready event lands first, then the open resolves
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 600_000, lineCount: 70 })
@@ -642,16 +614,12 @@ describe('LargeFileViewer', () => {
       })
     )
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={40_000_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 40_000_000, lineCount })
 
     const fetchesOfFirstPage = () =>
       mocks.readLines.mock.calls.filter(([input]) => input.startLine === 0).length
-    await waitFor(() => {
-      expect(fetchesOfFirstPage()).toBe(1)
-    })
+    await waitFor(() => expect(fetchesOfFirstPage()).toBe(1))
 
     // #when the viewport travels far enough that the pages behind it are more
     // than the cache's byte budget — 16 pages of ~1.6 M characters each
@@ -663,9 +631,7 @@ describe('LargeFileViewer', () => {
     // go. Counting pages never would have: 17 pages is well inside any page
     // count, and is 27 M characters of text held in the renderer.
     await scrollTo(0, lineCount)
-    await waitFor(() => {
-      expect(fetchesOfFirstPage()).toBe(2)
-    })
+    await waitFor(() => expect(fetchesOfFirstPage()).toBe(2))
   })
 
   it('pages on from where a short page ended rather than from a fixed stride', async () => {
@@ -686,9 +652,7 @@ describe('LargeFileViewer', () => {
       })
     )
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={69_420_544} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 69_420_544, lineCount })
 
     // #then — the rows past the first short page are filled in. A page whose
@@ -730,9 +694,7 @@ describe('LargeFileViewer', () => {
       }
     )
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={40_000_000} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 40_000_000, lineCount })
     expect(await screen.findByText('row 50 v1')).toBeInTheDocument()
 
@@ -764,9 +726,7 @@ describe('LargeFileViewer', () => {
       lineCount: 1
     } satisfies LargeFileLinesResult)
     render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={69_420_544} />)
-    await waitFor(() => {
-      expect(mocks.open).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
     emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 69_420_544, lineCount: 1 })
 
     // #then — the row is drawn short, and says so
@@ -777,9 +737,7 @@ describe('LargeFileViewer', () => {
     await userEvent.click(showRest)
 
     // #then it is all there, and the control is gone
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('TAIL-MARKER')
-    })
+    await waitFor(() => expect(document.body.textContent).toContain('TAIL-MARKER'))
     expect(
       screen.queryByRole('button', { name: /show the rest of this line/i })
     ).not.toBeInTheDocument()
@@ -823,9 +781,7 @@ describe('LargeFileViewer', () => {
     const { unmount } = render(
       <LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={900_000} />
     )
-    await waitFor(() => {
-      expect(release).not.toBeNull()
-    })
+    await waitFor(() => expect(release).not.toBeNull())
 
     // #when
     unmount()
@@ -833,9 +789,7 @@ describe('LargeFileViewer', () => {
 
     // #then — the handle is released. Nobody is left to close it otherwise, and
     // it would be pinned for the life of the app.
-    await waitFor(() => {
-      expect(mocks.close).toHaveBeenCalledWith('session-late')
-    })
+    await waitFor(() => expect(mocks.close).toHaveBeenCalledWith('session-late'))
   })
 
   it('releases the file handle when the viewer goes away', async () => {
@@ -848,9 +802,7 @@ describe('LargeFileViewer', () => {
 
     // #then the session is released — one OS file handle per file ever opened
     // is not something a long-running app can carry
-    await waitFor(() => {
-      expect(mocks.close).toHaveBeenCalledWith('session-1')
-    })
+    await waitFor(() => expect(mocks.close).toHaveBeenCalledWith('session-1'))
   })
 
   it('finds inside the file on the same shortcut the rest of the app uses', async () => {
@@ -872,9 +824,9 @@ describe('LargeFileViewer', () => {
 
     // #then — the search runs in the main process over the open session, and
     // the count is the file's, not the handful of rows on screen
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.search).toHaveBeenCalledWith({ sessionId: 'session-1', query: 'row 7' })
-    })
+    )
     expect(await screen.findByText('1/2')).toBeInTheDocument()
   })
 
@@ -885,9 +837,7 @@ describe('LargeFileViewer', () => {
 
     // #when the pass reports what it has so far
     await findInFile('row')
-    await waitFor(() => {
-      expect(mocks.search).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mocks.search).toHaveBeenCalled())
     emitSearchProgress({
       sessionId: 'session-1',
       query: 'row',
@@ -962,9 +912,7 @@ describe('LargeFileViewer', () => {
 
     // #then — a hit 3 500 rows down is unreachable without this
     expect(await screen.findByText('2/2')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(mocks.scrollToIndex).toHaveBeenCalledWith(3_500, expect.anything())
-    })
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(3_500, expect.anything()))
   })
 
   it('wraps backwards from the first hit rather than stopping at it', async () => {
@@ -1008,9 +956,7 @@ describe('LargeFileViewer', () => {
     await userEvent.type(input, '{Escape}')
 
     // #then
-    await waitFor(() => {
-      expect(screen.queryByText('ow 1', { selector: 'mark' })).toBeNull()
-    })
+    await waitFor(() => expect(screen.queryByText('ow 1', { selector: 'mark' })).toBeNull())
     expect(input.closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true')
 
     // #and reopening starts from nothing rather than the last search
@@ -1027,9 +973,7 @@ describe('LargeFileViewer', () => {
     let answer = (): void => {}
     mocks.search.mockReturnValue(
       new Promise((resolve) => {
-        answer = () => {
-          resolve(null)
-        }
+        answer = () => resolve(null)
       })
     )
     const input = await findInFile('row')
@@ -1037,15 +981,11 @@ describe('LargeFileViewer', () => {
     expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
 
     // #when
-    act(() => {
-      answer()
-    })
+    act(() => answer())
 
     // #then — the bar settles rather than spinning on a count that will never
     // arrive. The next keystroke searches the reopened session.
-    await waitFor(() => {
-      expect(within(bar).getByText('0')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
     expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
 
@@ -1055,9 +995,7 @@ describe('LargeFileViewer', () => {
     let fail = (): void => {}
     mocks.search.mockReturnValue(
       new Promise((_resolve, reject) => {
-        fail = () => {
-          reject(new Error('EBADF'))
-        }
+        fail = () => reject(new Error('EBADF'))
       })
     )
     const input = await findInFile('row')
@@ -1065,15 +1003,11 @@ describe('LargeFileViewer', () => {
     expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
 
     // #when
-    act(() => {
-      fail()
-    })
+    act(() => fail())
 
     // #then — "searching" that never ends is the one state the bar must not
     // get stuck in, because it reads as "still counting" forever
-    await waitFor(() => {
-      expect(within(bar).getByText('0')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
     expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
 
@@ -1114,14 +1048,10 @@ describe('LargeFileViewer', () => {
 
       const openedAt = performance.now()
       render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={66_200_000} />)
-      await waitFor(() => {
-        expect(mocks.open).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.open).toHaveBeenCalled())
       emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 66_200_000, lineCount })
       const viewer = await screen.findByTestId('large-file-viewer')
-      await waitFor(() => {
-        expect(viewer.textContent?.length ?? 0).toBeGreaterThan(100_000)
-      })
+      await waitFor(() => expect(viewer.textContent?.length ?? 0).toBeGreaterThan(100_000))
       const firstPaintMs = performance.now() - openedAt
 
       const scrolledAt = performance.now()
@@ -1145,9 +1075,7 @@ describe('LargeFileViewer', () => {
     let supersede = (): void => {}
     mocks.search.mockReturnValue(
       new Promise((resolve) => {
-        supersede = () => {
-          resolve({ status: 'cancelled', query: 'row' })
-        }
+        supersede = () => resolve({ status: 'cancelled', query: 'row' })
       })
     )
     const input = await findInFile('row')
@@ -1155,15 +1083,11 @@ describe('LargeFileViewer', () => {
     expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
 
     // #when
-    act(() => {
-      supersede()
-    })
+    act(() => supersede())
 
     // #then — a query this bar did not replace has to settle here, or the bar
     // counts forever against a pass that is not running
-    await waitFor(() => {
-      expect(within(bar).getByText('0')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
     expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
 })

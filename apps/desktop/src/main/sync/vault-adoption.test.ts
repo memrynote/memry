@@ -211,9 +211,7 @@ describe('adoptVaultLocally', () => {
     const joinerOwnUuid = getOrCreateVaultUuid(db)
     db.run('DROP TABLE settings')
 
-    expect(() => {
-      adoptVaultLocally(db, INITIATOR_UUID)
-    }).toThrow()
+    expect(() => adoptVaultLocally(db, INITIATOR_UUID)).toThrow()
 
     expect(getPendingCrdtStoreRename(INITIATOR_UUID)).toBe(joinerOwnUuid)
   })

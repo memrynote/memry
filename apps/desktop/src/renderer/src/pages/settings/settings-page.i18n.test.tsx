@@ -157,9 +157,7 @@ describe('SettingsPage', () => {
   it('keeps legacy section targets working', () => {
     function OpenLegacy({ section }: { section: string }) {
       const { open } = useSettingsModal()
-      useEffect(() => {
-        open(section)
-      }, [open, section])
+      useEffect(() => open(section), [open, section])
       return null
     }
 
@@ -178,9 +176,7 @@ describe('SettingsPage', () => {
     const user = userEvent.setup()
     function OpenLegacy() {
       const { open } = useSettingsModal()
-      useEffect(() => {
-        open('tasks')
-      }, [open])
+      useEffect(() => open('tasks'), [open])
       return null
     }
 
@@ -206,9 +202,7 @@ describe('SettingsPage', () => {
     const user = userEvent.setup()
     function Open() {
       const { open } = useSettingsModal()
-      useEffect(() => {
-        open('general')
-      }, [open])
+      useEffect(() => open('general'), [open])
       return null
     }
 
@@ -231,9 +225,7 @@ describe('SettingsPage', () => {
     const user = userEvent.setup()
     function Open() {
       const { open } = useSettingsModal()
-      useEffect(() => {
-        open('general')
-      }, [open])
+      useEffect(() => open('general'), [open])
       return null
     }
 

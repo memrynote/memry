@@ -132,9 +132,7 @@ export function VaultPickerStep({
               <label className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5 cursor-pointer hover:bg-muted/50">
                 <Checkbox
                   checked={isChecked}
-                  onCheckedChange={() => {
-                    toggle(vault.vaultUuid)
-                  }}
+                  onCheckedChange={() => toggle(vault.vaultUuid)}
                   aria-label={vault.vaultUuid}
                 />
                 <span className="flex-1 text-start text-sm">

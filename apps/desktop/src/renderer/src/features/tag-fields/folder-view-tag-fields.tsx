@@ -148,9 +148,9 @@ export function TagMentionedIn({ tag }: { tag: ResolvedTag | null }): React.JSX.
   return (
     <MentionedInSection
       tag={tag}
-      onOpen={(id, title) => {
+      onOpen={(id, title) =>
         openSidebarItem({ type: 'note', title, path: `/notes/${id}`, entityId: id })
-      }}
+      }
     />
   )
 }

@@ -41,12 +41,7 @@ export const TagsChip = ({
   const overflow = tags.length - visible.length
 
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(next) => {
-        onOpenChange('tags', next)
-      }}
-    >
+    <Popover open={isOpen} onOpenChange={(next) => onOpenChange('tags', next)}>
       <PopoverTrigger asChild>
         <PropertyChip
           icon={
@@ -84,9 +79,7 @@ export const TagsChip = ({
         onKeyDown={stopKeyPropagation}
         // The field focuses its own input; Radix would otherwise land on the
         // first pill's remove button.
-        onOpenAutoFocus={(event) => {
-          event.preventDefault()
-        }}
+        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here */}
         <TagAutocomplete tags={tags} onTagsChange={onChange} variant="row" autoFocus />

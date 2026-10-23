@@ -50,9 +50,7 @@ export async function resolveOpenVaultBinding(
   bindVaultForSync(db, userId)
   setVaultBindingState({ status: 'bound' })
   log.info('Vault bound by user choice', { choice })
-  void startSyncRuntime().catch((err: unknown) => {
-    log.warn('Sync start after binding failed', err)
-  })
+  void startSyncRuntime().catch((err: unknown) => log.warn('Sync start after binding failed', err))
   void refreshVaultDirectory({ force: true }).catch(() => {})
   return { success: true, state: getVaultBindingState() }
 }

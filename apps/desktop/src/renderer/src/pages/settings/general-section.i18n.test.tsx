@@ -132,9 +132,9 @@ describe('GeneralSettings i18n', () => {
     expect(screen.getByRole('radio', { name: '12h' })).toHaveAttribute('data-state', 'on')
 
     await user.click(screen.getByRole('radio', { name: '24h' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ clockFormat: '24h' })
-    })
+    )
   })
 
   it('uses the settings namespace fallback when locale changes fail', async () => {
@@ -192,60 +192,52 @@ describe('GeneralSettings i18n', () => {
     const toggle = (name: string) => user.click(screen.getByRole('switch', { name }))
 
     await toggle('Launch at login')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ startOnBoot: true })
-    })
+    )
 
     await toggle('Restore tabs on start')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
-    })
+    )
 
     await toggle('Open pages in a new tab')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ openPagesInNewTab: false })
-    })
+    )
 
     await toggle('Keep running in menu bar when closed')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ minimizeToTray: true })
-    })
+    )
 
     await toggle('Create inside the selected folder')
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({
         createInSelectedFolder: false
       })
-    })
+    )
 
     await toggle('Share anonymous usage metrics')
-    await waitFor(() => {
-      expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false)
-    })
+    await waitFor(() => expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false))
 
     // The two persisted updater flags keep their own switches.
     await toggle('Automatically download updates')
-    await waitFor(() => {
-      expect(api.updater.setAutoDownload).toHaveBeenCalledWith(true)
-    })
+    await waitFor(() => expect(api.updater.setAutoDownload).toHaveBeenCalledWith(true))
     expect(api.updater.setAutoCheck).not.toHaveBeenCalled()
 
     await toggle('Automatically check for updates')
-    await waitFor(() => {
-      expect(api.updater.setAutoCheck).toHaveBeenCalledWith(false)
-    })
+    await waitFor(() => expect(api.updater.setAutoCheck).toHaveBeenCalledWith(false))
 
     const selects = screen.getAllByRole('combobox')
     await user.click(selects[2])
     await user.click(await screen.findByRole('option', { name: 'Always' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ tabCloseButton: 'always' })
-    })
+    )
 
     await user.click(screen.getByRole('button', { name: 'Restart to Install' }))
-    await waitFor(() => {
-      expect(api.updater.quitAndInstall).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.updater.quitAndInstall).toHaveBeenCalled())
   })
 
   it('runs updater check/download branches and reports unsupported update checks', async () => {
@@ -277,9 +269,7 @@ describe('GeneralSettings i18n', () => {
     const available = renderGeneral(i18n)
     await screen.findByText('Version v2026-05-06.2 available')
     await user.click(screen.getByRole('button', { name: 'Download Update' }))
-    await waitFor(() => {
-      expect(api.updater.downloadUpdate).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.updater.downloadUpdate).toHaveBeenCalled())
     available.unmount()
 
     api.updater.getState = vi.fn().mockResolvedValue({
@@ -298,9 +288,9 @@ describe('GeneralSettings i18n', () => {
     renderGeneral(i18n)
     await screen.findByText('Not checked yet')
     await user.click(screen.getByRole('button', { name: 'Check now' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith('memrynote v2026-05-06 is up to date')
-    })
+    )
   })
 
   it('opens the incident report dialog from the diagnostic report button when telemetry is on', async () => {

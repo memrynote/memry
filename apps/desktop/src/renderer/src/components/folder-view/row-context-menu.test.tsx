@@ -48,12 +48,7 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
     hasEmoji: boolean
   }) => (
     <div data-testid="emoji-picker" data-has-emoji={String(hasEmoji)}>
-      <button
-        type="button"
-        onClick={() => {
-          onSelect('🚀')
-        }}
-      >
+      <button type="button" onClick={() => onSelect('🚀')}>
         pick-rocket
       </button>
       <button type="button" onClick={onRemove}>

@@ -299,9 +299,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       }),
       stderr: textToStream(() => stderr),
       pid: nextLocalRunPid--,
-      kill: () => {
-        controller.abort()
-      },
+      kill: () => controller.abort(),
       waitExit: async () => exitCode,
       cleanup: async () => {}
     }

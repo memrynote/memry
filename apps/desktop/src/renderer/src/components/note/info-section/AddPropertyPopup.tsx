@@ -101,13 +101,9 @@ export function AddPropertyPopup({
             <input
               type="text"
               value={propertyName}
-              onChange={(e) => {
-                setPropertyName(e.target.value)
-              }}
+              onChange={(e) => setPropertyName(e.target.value)}
               onKeyDown={handleInputKeyDown}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
+              onClick={(e) => e.stopPropagation()}
               placeholder={t('properties.namePlaceholder')}
               className="flex-1 min-w-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/40 outline-none"
               aria-label={t('properties.nameAria')}

@@ -146,9 +146,7 @@ const clearOverlay = (page) =>
     if (!d) return
     d.style.transition = 'opacity .35s'
     d.style.opacity = '0'
-    setTimeout(() => {
-      d.remove()
-    }, 400)
+    setTimeout(() => d.remove(), 400)
   })
 
 const FONT = `font-family: ui-sans-serif, -apple-system, 'SF Pro Text', sans-serif;`

@@ -108,15 +108,11 @@ describe('the Home board asks for one day', () => {
   // fix: the two old windows agreed on the start and differed only at the end.
   it('the header and the widget request the same window', async () => {
     renderWith(<Header />)
-    await waitFor(() => {
-      expect(requestedRanges).toHaveLength(1)
-    })
+    await waitFor(() => expect(requestedRanges).toHaveLength(1))
     cleanup()
 
     renderWith(<CalendarWidget config={{}} size="M" />)
-    await waitFor(() => {
-      expect(requestedRanges).toHaveLength(2)
-    })
+    await waitFor(() => expect(requestedRanges).toHaveLength(2))
 
     const [header, widget] = requestedRanges
     expect(widget).toEqual(header)
@@ -125,9 +121,7 @@ describe('the Home board asks for one day', () => {
   it('shares one query key, so the board fetches the day once', async () => {
     renderBoard()
 
-    await waitFor(() => {
-      expect(screen.queryByLabelText(/loading/i)).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByLabelText(/loading/i)).not.toBeInTheDocument())
     expect(mockGetRange).toHaveBeenCalledTimes(1)
   })
 

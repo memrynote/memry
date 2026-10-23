@@ -74,9 +74,7 @@ describe('reading tag schemas', () => {
     const { result } = renderHook(() => [useTagSchemas(), useTagSchemas()], { wrapper })
 
     expect(result.current[0].isLoading).toBe(true)
-    await waitFor(() => {
-      expect(result.current[0].data?.tags.person.name).toBe('Person')
-    })
+    await waitFor(() => expect(result.current[0].data?.tags.person.name).toBe('Person'))
 
     expect(result.current[1].data).toBe(result.current[0].data)
     expect(api.tags.getSchemaSnapshot).toHaveBeenCalledTimes(1)
@@ -94,9 +92,7 @@ describe('reading tag schemas', () => {
     )
     expect(result.current.person).toBeNull()
 
-    await waitFor(() => {
-      expect(result.current.person?.name).toBe('Person')
-    })
+    await waitFor(() => expect(result.current.person?.name).toBe('Person'))
     expect(result.current.unicode?.name).toBe('Ünal')
     expect(result.current.missing).toBeNull()
     expect(result.current.empty).toBeNull()
@@ -124,9 +120,7 @@ describe('reading tag schemas', () => {
       { wrapper }
     )
 
-    await waitFor(() => {
-      expect(result.current.ada).not.toBeNull()
-    })
+    await waitFor(() => expect(result.current.ada).not.toBeNull())
     expect(result.current.ada).toEqual({
       tag: 'person',
       name: 'Person',
@@ -144,9 +138,7 @@ describe('reading tag schemas', () => {
     const { result } = renderHook(() => useObjectIdentityLookup(), { wrapper })
     expect(result.current('ada-1')).toBeNull()
 
-    await waitFor(() => {
-      expect(result.current('ada-1')?.name).toBe('Person')
-    })
+    await waitFor(() => expect(result.current('ada-1')?.name).toBe('Person'))
     expect(result.current('nope')).toBeNull()
     expect(objectIdentityOf(undefined, 'ada-1')).toBeNull()
   })
@@ -164,9 +156,7 @@ describe('editing tag schemas', () => {
     const { result } = renderHook(() => ({ edit: useEditTagSchema(), schemas: useTagSchemas() }), {
       wrapper
     })
-    await waitFor(() => {
-      expect(result.current.schemas.data).toBeDefined()
-    })
+    await waitFor(() => expect(result.current.schemas.data).toBeDefined())
     const command = {
       kind: 'add-field',
       tag: 'book',
@@ -180,9 +170,7 @@ describe('editing tag schemas', () => {
 
     expect(api.tags.editSchema).toHaveBeenCalledWith(command)
     expect(returned?.snapshot).toBe(after)
-    await waitFor(() => {
-      expect(result.current.schemas.data?.tags.book?.name).toBe('Book')
-    })
+    await waitFor(() => expect(result.current.schemas.data?.tags.book?.name).toBe('Book'))
     expect(api.tags.getSchemaSnapshot).toHaveBeenCalledTimes(1)
   })
 
@@ -191,9 +179,7 @@ describe('editing tag schemas', () => {
     const { result } = renderHook(() => ({ edit: useEditTagSchema(), schemas: useTagSchemas() }), {
       wrapper
     })
-    await waitFor(() => {
-      expect(result.current.schemas.data).toBeDefined()
-    })
+    await waitFor(() => expect(result.current.schemas.data).toBeDefined())
 
     await expect(
       act(() => result.current.edit({ kind: 'remove-field', tag: 'person', name: 'Role' }))
@@ -210,9 +196,7 @@ describe('keeping the snapshot fresh', () => {
     'reloads after %s, once for a burst of events',
     async (source) => {
       const { result } = renderHook(() => useTagSchemas(), { wrapper })
-      await waitFor(() => {
-        expect(result.current.data).toBeDefined()
-      })
+      await waitFor(() => expect(result.current.data).toBeDefined())
       api.tags.getSchemaSnapshot.mockResolvedValue({
         ...snapshot(),
         tags: { ...snapshot().tags, book: tag('book', { name: 'Book' }) }
@@ -224,9 +208,7 @@ describe('keeping the snapshot fresh', () => {
         changed(source)()
       })
 
-      await waitFor(() => {
-        expect(result.current.data?.tags.book?.name).toBe('Book')
-      })
+      await waitFor(() => expect(result.current.data?.tags.book?.name).toBe('Book'))
       expect(api.tags.getSchemaSnapshot).toHaveBeenCalledTimes(2)
     }
   )
@@ -238,9 +220,7 @@ describe('keeping the snapshot fresh', () => {
     api.onPropertyDefinitionChanged.mockReturnValue(offDefinitions)
     const first = renderHook(() => useTagSchemas(), { wrapper })
     const second = renderHook(() => useTagSchemas(), { wrapper })
-    await waitFor(() => {
-      expect(first.result.current.data).toBeDefined()
-    })
+    await waitFor(() => expect(first.result.current.data).toBeDefined())
     expect(api.onTagsChanged).toHaveBeenCalledTimes(1)
     expect(api.onPropertyDefinitionChanged).toHaveBeenCalledTimes(1)
 

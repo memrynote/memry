@@ -117,9 +117,7 @@ export function CanvasRow({
     id: 'reveal',
     label: fileActions.revealInFolder,
     icon: FolderOpen,
-    onSelect: () => {
-      onRevealInFinder(canvas)
-    }
+    onSelect: () => onRevealInFinder(canvas)
   }
   const deleteEntry: CanvasMenuEntry = {
     kind: 'item',
@@ -127,9 +125,7 @@ export function CanvasRow({
     label: t('button.delete'),
     icon: Trash2,
     destructive: true,
-    onSelect: () => {
-      onDelete(canvas)
-    }
+    onSelect: () => onDelete(canvas)
   }
 
   // Nothing offered for an unreadable canvas may pretend the document is
@@ -163,18 +159,14 @@ export function CanvasRow({
           id: 'rename',
           label: t('canvas.actions.rename'),
           icon: Pencil,
-          onSelect: () => {
-            onRename(canvas)
-          }
+          onSelect: () => onRename(canvas)
         },
         {
           kind: 'item',
           id: 'duplicate',
           label: t('canvas.actions.duplicate'),
           icon: Copy,
-          onSelect: () => {
-            onDuplicate(canvas)
-          }
+          onSelect: () => onDuplicate(canvas)
         },
         // The wiki link itself, not the file path: a path resolves to nothing in
         // the editor, and what the writer wants is something they can paste into
@@ -199,9 +191,7 @@ export function CanvasRow({
           id: 'set-icon',
           label: t('canvas.actions.setIcon'),
           icon: Smile,
-          onSelect: () => {
-            menus.setPickerOpen(true)
-          }
+          onSelect: () => menus.setPickerOpen(true)
         },
         ...(canvas.icon
           ? [
@@ -210,9 +200,7 @@ export function CanvasRow({
                 id: 'remove-icon',
                 label: t('canvas.actions.removeIcon'),
                 icon: X,
-                onSelect: () => {
-                  onSetIcon(canvas, null)
-                }
+                onSelect: () => onSetIcon(canvas, null)
               }
             ]
           : []),
@@ -229,18 +217,14 @@ export function CanvasRow({
               label: t('canvas.actions.moveToRoot'),
               depth: 0,
               disabled: canvas.folder === null,
-              onSelect: () => {
-                onMove(canvas, null)
-              }
+              onSelect: () => onMove(canvas, null)
             },
             ...folderOptions.map((option) => ({
               id: option.path,
               label: option.name,
               depth: option.depth,
               disabled: isSameCanvasFolder(option.path, canvas.folder),
-              onSelect: () => {
-                onMove(canvas, option.path)
-              }
+              onSelect: () => onMove(canvas, option.path)
             }))
           ]
         },
@@ -250,9 +234,7 @@ export function CanvasRow({
           id: 'open-external',
           label: t('canvas.actions.openExternal'),
           icon: ExternalLink,
-          onSelect: () => {
-            onOpenExternal(canvas)
-          }
+          onSelect: () => onOpenExternal(canvas)
         },
         revealEntry,
         { kind: 'separator', id: 'sep-bookmark' },
@@ -298,9 +280,7 @@ export function CanvasRow({
           data-row-key={rowKey}
           className="flex items-center gap-1"
           style={{ paddingInlineStart: `${depth * CANVAS_ROW_INDENT_PX}px` }}
-          onClick={() => {
-            onOpen(canvas)
-          }}
+          onClick={() => onOpen(canvas)}
           onMouseDown={handleMiddleClick}
           onKeyDown={handleKeyDown}
           // A row that cannot open must say why before it is clicked, not after.
@@ -324,9 +304,7 @@ export function CanvasRow({
             <IconPickerButton
               leading={CANVAS_ICON_SPACER}
               hasIcon={!!canvas.icon}
-              onIconChange={(icon) => {
-                onSetIcon(canvas, icon)
-              }}
+              onIconChange={(icon) => onSetIcon(canvas, icon)}
               ariaLabel={t('canvas.actions.setIcon')}
               pickerOpen={menus.pickerOpen}
               onPickerOpenChange={menus.setPickerOpen}

@@ -38,9 +38,7 @@ describe('block usage from other notes', () => {
     addNote('a', 'Lecture')
     addNote('b', 'Exam prep')
   })
-  afterEach(() => {
-    dbResult.close()
-  })
+  afterEach(() => dbResult.close())
 
   it('counts a [[Note#^anchor]] link from another note, by title or path form, for that block only', () => {
     setBlockLinkRefs(dbResult.db, 'a', [{ note: 'cell biology', anchor: 'chl-7f2a' }])

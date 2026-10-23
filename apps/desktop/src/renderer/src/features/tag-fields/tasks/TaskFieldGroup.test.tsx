@@ -31,12 +31,7 @@ vi.mock('@/components/note/info-section/editors', async (importOriginal) => ({
       <span>
         relation target={String(targetTag)} many={String(many)} value={value.join(',')}
       </span>
-      <button
-        type="button"
-        onClick={() => {
-          onChange([])
-        }}
-      >
+      <button type="button" onClick={() => onChange([])}>
         clear-relation
       </button>
     </div>
@@ -147,9 +142,7 @@ const cardOf = (title: string): HTMLElement =>
   screen.getByText(title).closest('section') as HTMLElement
 
 async function snapshotLoaded(): Promise<void> {
-  await vi.waitFor(() => {
-    expect(api.tags.getSchemaSnapshot).toHaveBeenCalled()
-  })
+  await vi.waitFor(() => expect(api.tags.getSchemaSnapshot).toHaveBeenCalled())
   await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
 }
 

@@ -251,12 +251,8 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
           timers.delete(noteId)
           // get() hashes the new body and queues only chunks with no cached result.
           void get(noteId)
-            .then(() => {
-              deps.onUpdated(noteId)
-            })
-            .catch((error: unknown) => {
-              logger.warn('Fold regeneration failed', { noteId, error })
-            })
+            .then(() => deps.onUpdated(noteId))
+            .catch((error: unknown) => logger.warn('Fold regeneration failed', { noteId, error }))
         }, idleMs)
       )
     },

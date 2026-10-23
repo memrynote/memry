@@ -185,15 +185,11 @@ function TagTreeItem({
   React.useLayoutEffect(() => {
     const el = labelRef.current
     if (!el) return
-    const measure = (): void => {
-      setIsLabelTruncated(el.scrollWidth > el.clientWidth)
-    }
+    const measure = (): void => setIsLabelTruncated(el.scrollWidth > el.clientWidth)
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- node.name/inputs re-measure or re-render the external action slot
   }, [node.name])
 
@@ -408,14 +404,14 @@ export function SidebarTagList({
             variant="ghost"
             size="icon"
             className="h-5 w-5"
-            onClick={() => {
+            onClick={() =>
               openSidebarItem({
                 type: 'tags',
                 title: tPhaseF('tags.hubTitle'),
                 path: '/tags',
                 icon: 'tag'
               })
-            }}
+            }
             aria-label={tPhaseF('tags.openHub')}
           >
             <Tags className="h-3 w-3" />
@@ -434,9 +430,7 @@ export function SidebarTagList({
           <SidebarSortPicker
             surface="tags"
             mode={sortBy}
-            onModeChange={(next) => {
-              handleSortChange(next)
-            }}
+            onModeChange={(next) => handleSortChange(next)}
             labels={sortLabels.labels}
             // `common`, not the `notes` namespace tPhaseF is bound to — the
             // section labels live alongside the sort strings.
@@ -567,9 +561,7 @@ export function SidebarTagList({
             type="text"
             aria-label={tPhaseF('phaseF.componentsSidebarSidebarTagList.filterTags')}
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-            }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder={tPhaseF('phaseF.componentsSidebarSidebarTagList.filterTags')}
             className="w-full h-6 px-2 text-[11px] rounded-md border bg-transparent placeholder:text-muted-foreground focus:outline-none"
@@ -599,9 +591,7 @@ export function SidebarTagList({
                     clears AA on that surface too. */}
                 <button
                   type="button"
-                  onClick={() => {
-                    handleToggle(`${CATEGORY_KEY_PREFIX}${group.id}`)
-                  }}
+                  onClick={() => handleToggle(`${CATEGORY_KEY_PREFIX}${group.id}`)}
                   className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide text-sidebar-section-heading hover:bg-muted transition-colors"
                   aria-label={isGroupExpanded ? t('action.collapse') : t('action.expand')}
                 >
@@ -628,9 +618,7 @@ export function SidebarTagList({
                     {hasMoreInGroup && !searchQuery && (
                       <button
                         type="button"
-                        onClick={() => {
-                          toggleShowAllForGroup(group.id)
-                        }}
+                        onClick={() => toggleShowAllForGroup(group.id)}
                         // 11px is small text under WCAG AA. `--sidebar-muted`
                         // was 1.87:1 on the paper sidebar and hovering made it
                         // 3.18:1 — still under 4.5:1. This is a control rather

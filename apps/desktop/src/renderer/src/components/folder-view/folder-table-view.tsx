@@ -1272,9 +1272,7 @@ export function FolderTableView({
                   <tr
                     key={`tasks:${item.noteId}`}
                     data-index={virtualRow.index}
-                    ref={(node) => {
-                      rowVirtualizer.measureElement(node)
-                    }}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
                     style={{
                       display: 'flex',
                       width: '100%',
@@ -1317,9 +1315,7 @@ export function FolderTableView({
                   <tr
                     data-index={virtualRow.index}
                     data-row-id={row.original.id}
-                    ref={(node) => {
-                      rowVirtualizer.measureElement(node)
-                    }}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
                     style={{
                       display: 'flex',
                       width: '100%',
@@ -1343,16 +1339,14 @@ export function FolderTableView({
                     )}
                     // A row, or the selection it belongs to, drops onto a canvas as cards.
                     draggable
-                    onDragStart={(e) => {
+                    onDragStart={(e) =>
                       startCanvasRowsDrag(e, dragRefsForRow(notes, row.original.id, selectedRowIds))
-                    }}
-                    onClick={(e) => {
-                      handleRowClick(rowIndex, row.original.id, e)
-                    }}
+                    }
+                    onClick={(e) => handleRowClick(rowIndex, row.original.id, e)}
                     onDoubleClick={() => onNoteOpen?.(row.original.id)}
-                    onMouseDown={(e) => {
+                    onMouseDown={(e) =>
                       handleMiddleClick(e, () => onOpenInBackgroundTab?.(row.original.id))
-                    }}
+                    }
                   >
                     {/* Leading per-row checkbox (reveals on hover or while a selection is active) */}
                     <td
@@ -1361,9 +1355,7 @@ export function FolderTableView({
                     >
                       <SelectionCheckbox
                         state={isSelected ? 'checked' : 'unchecked'}
-                        onToggle={() => {
-                          toggleRowSelection(row.original.id)
-                        }}
+                        onToggle={() => toggleRowSelection(row.original.id)}
                         alwaysVisible={selectionActive}
                         label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectRow')}
                       />
@@ -1377,9 +1369,7 @@ export function FolderTableView({
                           <NoteTaskChevron
                             noteTitle={row.original.title}
                             isExpanded={expandedNoteIds.has(row.original.id)}
-                            onToggle={() => {
-                              toggleNoteTasks(row.original.id)
-                            }}
+                            onToggle={() => toggleNoteTasks(row.original.id)}
                           />
                         )}
                       </td>

@@ -105,9 +105,7 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
 
   useEffect(() => {
     syncInlineHoverClass(review.hoveredMarkId)
-    return () => {
-      syncInlineHoverClass(null)
-    }
+    return () => syncInlineHoverClass(null)
   }, [review.hoveredMarkId])
 
   return (

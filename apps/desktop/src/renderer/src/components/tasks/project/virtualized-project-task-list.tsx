@@ -346,9 +346,7 @@ export const VirtualizedProjectTaskList = ({
         <TaskEmptyState
           variant="project"
           projectName={project.name}
-          onAddTask={() => {
-            handleQuickAdd('New Task')
-          }}
+          onAddTask={() => handleQuickAdd('New Task')}
         />
       </div>
     )

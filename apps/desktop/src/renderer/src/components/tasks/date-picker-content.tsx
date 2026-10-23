@@ -113,9 +113,7 @@ export function DatePickerContent({
               <button
                 key={preset.label}
                 type="button"
-                onClick={() => {
-                  onSelect(preset.date)
-                }}
+                onClick={() => onSelect(preset.date)}
                 className={cn(
                   'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
                   isActive ? 'bg-accent' : 'hover:bg-accent'
@@ -138,9 +136,7 @@ export function DatePickerContent({
           {showRemoveDate && (
             <button
               type="button"
-              onClick={() => {
-                onSelect(null)
-              }}
+              onClick={() => onSelect(null)}
               className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
             >
               <span className="text-[12px] text-destructive leading-4">
@@ -165,9 +161,7 @@ export function DatePickerContent({
                 <input
                   type="time"
                   value={time ?? ''}
-                  onChange={(e) => {
-                    onTimeChange?.(e.target.value || null)
-                  }}
+                  onChange={(e) => onTimeChange?.(e.target.value || null)}
                   aria-label={tPhaseF('phaseF.componentsTasksDatePickerContent.time')}
                   className={cn(
                     'bg-transparent text-[12px] leading-4 text-foreground',
@@ -175,9 +169,7 @@ export function DatePickerContent({
                   )}
                   // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
                   autoFocus={editing}
-                  onBlur={() => {
-                    setEditing(false)
-                  }}
+                  onBlur={() => setEditing(false)}
                 />
                 <span className="text-[11px] text-text-tertiary leading-3.5">
                   {time ? formatTime(time, clockFormat) : ''}

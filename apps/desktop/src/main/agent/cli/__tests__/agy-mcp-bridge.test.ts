@@ -15,12 +15,7 @@ let server: http.Server | null = null
 afterEach(async () => {
   const running = server
   server = null
-  if (running)
-    await new Promise<void>((resolve) =>
-      running.close(() => {
-        resolve()
-      })
-    )
+  if (running) await new Promise<void>((resolve) => running.close(() => resolve()))
 })
 
 async function startServer(
@@ -38,11 +33,7 @@ async function startServer(
     })
   })
   server = created
-  await new Promise<void>((resolve) =>
-    created.listen(0, '127.0.0.1', () => {
-      resolve()
-    })
-  )
+  await new Promise<void>((resolve) => created.listen(0, '127.0.0.1', () => resolve()))
   const { port } = created.address() as AddressInfo
   return { url: `http://127.0.0.1:${port}/mcp`, captured }
 }

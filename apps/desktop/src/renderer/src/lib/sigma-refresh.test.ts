@@ -69,9 +69,7 @@ describe('useRepaintSigmaWhenContainerRegainsWidth', () => {
     const observer = captureResizeObserver()
     const { container, setWidth } = containerWithWidth(0)
     const { sigma, refresh } = fakeSigma(container)
-    renderHook(() => {
-      useRepaintSigmaWhenContainerRegainsWidth(sigma)
-    })
+    renderHook(() => useRepaintSigmaWhenContainerRegainsWidth(sigma))
 
     // #when the observer reports while still 0px, nothing renders
     observer.fire()
@@ -92,9 +90,7 @@ describe('useRepaintSigmaWhenContainerRegainsWidth', () => {
     const observer = captureResizeObserver()
     const { container } = containerWithWidth(640)
     const { sigma, refresh } = fakeSigma(container)
-    renderHook(() => {
-      useRepaintSigmaWhenContainerRegainsWidth(sigma)
-    })
+    renderHook(() => useRepaintSigmaWhenContainerRegainsWidth(sigma))
 
     observer.fire()
 
@@ -105,9 +101,7 @@ describe('useRepaintSigmaWhenContainerRegainsWidth', () => {
     const observer = captureResizeObserver()
     const { container } = containerWithWidth(640)
     const { sigma } = fakeSigma(container)
-    const { unmount } = renderHook(() => {
-      useRepaintSigmaWhenContainerRegainsWidth(sigma)
-    })
+    const { unmount } = renderHook(() => useRepaintSigmaWhenContainerRegainsWidth(sigma))
 
     unmount()
 

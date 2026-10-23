@@ -100,9 +100,7 @@ async function runChild(storeDir: string | null = STORE_DIR): Promise<number | u
   await import('./crdt-preflight-child')
   // Every path must terminate: the parent only has a 10s timeout to fall back
   // on, and a child that neither exits nor crashes stalls CRDT startup.
-  await vi.waitFor(() => {
-    expect(exitSpy).toHaveBeenCalled()
-  })
+  await vi.waitFor(() => expect(exitSpy).toHaveBeenCalled())
   return exitSpy.mock.calls[0]?.[0]
 }
 

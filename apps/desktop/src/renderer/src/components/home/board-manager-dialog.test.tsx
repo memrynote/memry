@@ -80,9 +80,7 @@ describe('BoardManagerDialog', () => {
     await user.click(screen.getAllByTestId('board-manager-delete')[1])
     expect(onDelete).toHaveBeenCalledWith('b2')
 
-    screen.getAllByTestId('board-manager-delete').forEach((b) => {
-      expect(b).toBeEnabled()
-    })
+    screen.getAllByTestId('board-manager-delete').forEach((b) => expect(b).toBeEnabled())
   })
 
   it('disables delete when a single board is left', () => {

@@ -66,11 +66,10 @@ export function CalloutTypesGroup() {
   }
 
   const error = draft ? nameError(draft.definition) : null
-  const edit = (patch: Partial<CalloutTypeDefinition>) => {
+  const edit = (patch: Partial<CalloutTypeDefinition>) =>
     setDraft(
       (current) => current && { ...current, definition: { ...current.definition, ...patch } }
     )
-  }
 
   return (
     <SettingsGroup
@@ -81,9 +80,7 @@ export function CalloutTypesGroup() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setDraft({ definition: EMPTY, isNew: true })
-            }}
+            onClick={() => setDraft({ definition: EMPTY, isNew: true })}
           >
             <Plus aria-hidden />
             {t('editor.calloutTypes.add')}
@@ -109,9 +106,7 @@ export function CalloutTypesGroup() {
               variant="ghost"
               size="icon-sm"
               aria-label={t('editor.calloutTypes.edit', { name: definition.label })}
-              onClick={() => {
-                setDraft({ definition, isNew: false })
-              }}
+              onClick={() => setDraft({ definition, isNew: false })}
             >
               <Pencil aria-hidden />
             </Button>
@@ -144,9 +139,7 @@ export function CalloutTypesGroup() {
                 disabled={!draft.isNew}
                 maxLength={32}
                 placeholder={t('editor.calloutTypes.namePlaceholder')}
-                onChange={(event) => {
-                  edit({ name: event.target.value.toLowerCase() })
-                }}
+                onChange={(event) => edit({ name: event.target.value.toLowerCase() })}
               />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs/4 text-muted-foreground">
@@ -154,9 +147,7 @@ export function CalloutTypesGroup() {
               <Input
                 value={draft.definition.label}
                 maxLength={CALLOUT_LABEL_MAX_LENGTH}
-                onChange={(event) => {
-                  edit({ label: event.target.value })
-                }}
+                onChange={(event) => edit({ label: event.target.value })}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs/4 text-muted-foreground">
@@ -165,9 +156,7 @@ export function CalloutTypesGroup() {
                 type="color"
                 value={draft.definition.color}
                 className="h-7.5 w-12 cursor-pointer rounded-[7px] border border-input bg-transparent"
-                onChange={(event) => {
-                  edit({ color: event.target.value })
-                }}
+                onChange={(event) => edit({ color: event.target.value })}
               />
             </label>
           </div>
@@ -194,9 +183,7 @@ export function CalloutTypesGroup() {
                     'flex size-8 items-center justify-center rounded-md border',
                     selected ? 'border-ring bg-accent' : 'border-transparent hover:bg-accent'
                   )}
-                  onClick={() => {
-                    edit({ icon: id })
-                  }}
+                  onClick={() => edit({ icon: id })}
                 >
                   <Icon className="size-4" style={{ color: draft.definition.color }} aria-hidden />
                 </button>
@@ -204,14 +191,7 @@ export function CalloutTypesGroup() {
             })}
           </div>
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setDraft(null)
-              }}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setDraft(null)}>
               {t('editor.calloutTypes.cancel')}
             </Button>
             <Button type="submit" size="sm" disabled={error !== null}>

@@ -683,9 +683,7 @@ export const CaptureBar = ({
                 options={noteOptions}
                 selectedIndex={pickerIndex}
                 onSelect={selectNote}
-                onClose={() => {
-                  setPickerDismissed(true)
-                }}
+                onClose={() => setPickerDismissed(true)}
               />
             )}
           </div>
@@ -717,9 +715,7 @@ export const CaptureBar = ({
                 <button
                   type="button"
                   tabIndex={-1}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                  }}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={openDetail}
                   className="flex items-center gap-1 text-[9px] text-text-tertiary transition-colors hover:text-text-secondary"
                 >

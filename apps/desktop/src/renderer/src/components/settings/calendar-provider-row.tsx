@@ -246,9 +246,7 @@ export function CalendarCheckRow({
             id={id}
             checked={checked}
             disabled={disabled}
-            onCheckedChange={(next) => {
-              onCheckedChange(next === true)
-            }}
+            onCheckedChange={(next) => onCheckedChange(next === true)}
             aria-label={title}
           />
           {color !== undefined && (

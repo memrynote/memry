@@ -154,9 +154,7 @@ export async function startFakeDeepSeek(input: FakeDeepSeekOptions = {}): Promis
         res.write(chunk({}, 'stop'))
       }
       res.end('data: [DONE]\n\n')
-    })().catch((error: unknown) => {
-      send(res, 500, { error: { message: String(error) } })
-    })
+    })().catch((error: unknown) => send(res, 500, { error: { message: String(error) } }))
   })
 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))

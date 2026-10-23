@@ -96,9 +96,9 @@ describe('VaultOnboarding flows', () => {
         'phaseF.componentsVaultOnboarding.flow.namePlaceholder'
       )
       fireEvent.change(input, { target: { value: 'Work' } })
-      await waitFor(() => {
+      await waitFor(() =>
         expect(screen.getByRole('button', { name: /flow\.createVault/ })).toBeEnabled()
-      })
+      )
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /flow\.createVault/ }))
       })

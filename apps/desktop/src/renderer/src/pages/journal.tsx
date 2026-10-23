@@ -356,12 +356,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   useEffect(() => {
     if (isDataPending) {
-      const timer = setTimeout(() => {
-        setShowLoadingSpinner(true)
-      }, 150)
-      return () => {
-        clearTimeout(timer)
-      }
+      const timer = setTimeout(() => setShowLoadingSpinner(true), 150)
+      return () => clearTimeout(timer)
     }
     return undefined
   }, [isDataPending])
@@ -531,9 +527,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       focusAtEndRef.current?.(event.clientY)
     }
     marqueeZoneEl.addEventListener('mousedown', handler)
-    return () => {
-      marqueeZoneEl.removeEventListener('mousedown', handler)
-    }
+    return () => marqueeZoneEl.removeEventListener('mousedown', handler)
   }, [marqueeZoneEl])
 
   const { activeHeadingId } = useActiveHeading({
@@ -681,9 +675,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
   }, [currentViewState, selectedDate, navigateToYear, navigateToDay])
 
-  const handleTodayClick = useCallback(() => {
-    navigateToDay(today)
-  }, [today, navigateToDay])
+  const handleTodayClick = useCallback(() => navigateToDay(today), [today, navigateToDay])
 
   const handlePreviousDay = useCallback(() => {
     const prevDay = addDays(selectedDateObj, -1)
@@ -755,9 +747,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Editor Handlers
   const handleMarkdownChange = useCallback(
-    (markdown: string) => {
-      updateContent(markdown)
-    },
+    (markdown: string) => updateContent(markdown),
     [updateContent]
   )
   const review = useCriticMarkupReview({
@@ -1177,9 +1167,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       }
     }
     document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [currentViewState, handleNextDay, handlePreviousDay, navigateBack])
 
   const handleErrorRecover = useCallback(() => {
@@ -1237,30 +1225,14 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 isMindMapOpen={isMindMapOpen}
                 isLocalGraphOpen={isLocalGraphOpen}
                 lockAction={lockAction}
-                onPrevious={() => {
-                  runJournal('journal.previous')
-                }}
-                onNext={() => {
-                  runJournal('journal.next')
-                }}
-                onToggleFullWidth={() => {
-                  runJournal('journal.toggleFullWidth')
-                }}
-                onBookmarkToggle={() => {
-                  runJournal('journal.toggleBookmark')
-                }}
-                onToggleMindMap={() => {
-                  runJournal('journal.toggleMindMap')
-                }}
-                onVersionHistory={() => {
-                  runJournal('journal.versionHistory')
-                }}
-                onExport={() => {
-                  runJournal('journal.export')
-                }}
-                onOpenSettings={() => {
-                  openSettingsModal('journal')
-                }}
+                onPrevious={() => runJournal('journal.previous')}
+                onNext={() => runJournal('journal.next')}
+                onToggleFullWidth={() => runJournal('journal.toggleFullWidth')}
+                onBookmarkToggle={() => runJournal('journal.toggleBookmark')}
+                onToggleMindMap={() => runJournal('journal.toggleMindMap')}
+                onVersionHistory={() => runJournal('journal.versionHistory')}
+                onExport={() => runJournal('journal.export')}
+                onOpenSettings={() => openSettingsModal('journal')}
                 onMenuAction={runMenuAction}
               />
             </div>
@@ -1369,9 +1341,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             hideAddTag={journalTags.length > 0}
                             onAddName={
                               entryId && !entry?.aliases?.length
-                                ? () => {
-                                    requestNoteNameInput(entryId)
-                                  }
+                                ? () => requestNoteNameInput(entryId)
                                 : undefined
                             }
                             disabled={isLocked}
@@ -1473,9 +1443,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           <div className="mt-6" data-marquee-ignore>
                             <LocalGraphPanel
                               noteId={entryId}
-                              onClose={() => {
-                                setIsLocalGraphOpen(false)
-                              }}
+                              onClose={() => setIsLocalGraphOpen(false)}
                               onOpenFullGraph={() => {
                                 openTab({
                                   type: 'graph',
@@ -1551,9 +1519,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       <JournalYearView
                         year={currentViewState.year}
                         monthStats={monthStats}
-                        onMonthClick={(month) => {
-                          navigateToMonth(currentViewState.year, month)
-                        }}
+                        onMonthClick={(month) => navigateToMonth(currentViewState.year, month)}
                         className="flex-1"
                       />
                     </div>
@@ -1606,9 +1572,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         {/* Dialogs */}
         <WikiLinkCreateDialog
           targetTitle={pendingWikiLinkCreate}
-          onClose={() => {
-            setPendingWikiLinkCreate(null)
-          }}
+          onClose={() => setPendingWikiLinkCreate(null)}
           onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
         />
         {entry && (

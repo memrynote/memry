@@ -58,16 +58,7 @@ export function ReadwiseTakeoverSection({
   }
 
   const banner = (
-    <ReadwiseStatusBanner
-      status={status}
-      onSyncHere={
-        asking
-          ? undefined
-          : () => {
-              setAsking(true)
-            }
-      }
-    />
+    <ReadwiseStatusBanner status={status} onSyncHere={asking ? undefined : () => setAsking(true)} />
   )
   if (!asking) return <div className="flex min-w-0 flex-col gap-3">{banner}</div>
 

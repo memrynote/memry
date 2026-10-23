@@ -144,9 +144,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   }, [isExpanded, isFadingOut, activeHeadingId])
 
   useEffect(() => {
-    return () => {
-      clearAllTimeouts()
-    }
+    return () => clearAllTimeouts()
   }, [clearAllTimeouts])
 
   const hasOutline = headings.length > 0
@@ -263,9 +261,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                       type="button"
                       key={heading.id}
                       data-heading-id={heading.id}
-                      onClick={() => {
-                        handleClick(heading.id)
-                      }}
+                      onClick={() => handleClick(heading.id)}
                       className={cn(
                         'flex items-center rounded-sm py-[3px] px-1.5 gap-1.5 text-start',
                         'transition-colors duration-150',

@@ -78,9 +78,7 @@ describe('useNoteProjectTaskMove', () => {
 
     // t2 is a subtask (it follows its parent), t3 is already in Work, and t9 is
     // only linked to the note rather than written in it.
-    await waitFor(() => {
-      expect(result.current.prompt).not.toBeNull()
-    })
+    await waitFor(() => expect(result.current.prompt).not.toBeNull())
     expect(result.current.prompt).toEqual({
       projectId: 'work',
       projectName: 'Work',
@@ -144,9 +142,7 @@ describe('useNoteProjectTaskMove', () => {
       result.current.handlePropertyChange('project', ['Work'])
     })
 
-    await waitFor(() => {
-      expect(mocks.getLinkedTasks).toHaveBeenCalledWith('note-1')
-    })
+    await waitFor(() => expect(mocks.getLinkedTasks).toHaveBeenCalledWith('note-1'))
     expect(result.current.prompt).toBeNull()
   })
 
@@ -163,17 +159,13 @@ describe('useNoteProjectTaskMove', () => {
     act(() => {
       result.current.handlePropertyChange('project', ['Work'])
     })
-    await waitFor(() => {
-      expect(result.current.prompt).not.toBeNull()
-    })
+    await waitFor(() => expect(result.current.prompt).not.toBeNull())
 
     act(() => {
       result.current.confirmMove()
     })
 
-    await waitFor(() => {
-      expect(result.current.prompt).toBeNull()
-    })
+    await waitFor(() => expect(result.current.prompt).toBeNull())
     expect(mocks.update.mock.calls.map(([input]) => input)).toEqual([
       { id: 't1', projectId: 'work' },
       { id: 't2', projectId: 'work' },
@@ -193,9 +185,7 @@ describe('useNoteProjectTaskMove', () => {
     act(() => {
       result.current.handlePropertyChange('project', ['Work'])
     })
-    await waitFor(() => {
-      expect(result.current.prompt).not.toBeNull()
-    })
+    await waitFor(() => expect(result.current.prompt).not.toBeNull())
 
     act(() => {
       result.current.confirmMove()
@@ -203,9 +193,7 @@ describe('useNoteProjectTaskMove', () => {
 
     // A child left behind is the parent/child split the subtask loop exists
     // to prevent, so it must not end in a success toast.
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(toast.success).not.toHaveBeenCalled()
   })
 
@@ -217,9 +205,7 @@ describe('useNoteProjectTaskMove', () => {
     act(() => {
       result.current.handlePropertyChange('project', ['Work'])
     })
-    await waitFor(() => {
-      expect(result.current.prompt).not.toBeNull()
-    })
+    await waitFor(() => expect(result.current.prompt).not.toBeNull())
 
     act(() => {
       result.current.cancelMove()

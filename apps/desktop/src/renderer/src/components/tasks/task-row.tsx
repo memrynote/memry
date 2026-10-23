@@ -70,9 +70,7 @@ const pickerProps = (
   control
     ? {
         open: control.open === id,
-        onOpenChange: (open) => {
-          control.onOpenChange(id, open)
-        }
+        onOpenChange: (open) => control.onOpenChange(id, open)
       }
     : {}
 
@@ -185,20 +183,11 @@ export const TaskRow = ({
     >
       {isSelectionMode && showSelection && (
         // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
-        <div
-          className="shrink-0"
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
-        >
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <SelectionCheckbox
             checked={isCheckedForSelection}
-            onChange={() => {
-              onToggleSelect?.(task.id)
-            }}
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation()
-            }}
+            onChange={() => onToggleSelect?.(task.id)}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
             aria-label={`Select ${task.title}`}
           />
         </div>
@@ -209,9 +198,7 @@ export const TaskRow = ({
         statuses={project.statuses}
         isCompleted={isCompleted}
         onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
-        onToggleComplete={() => {
-          onToggleComplete(task.id)
-        }}
+        onToggleComplete={() => onToggleComplete(task.id)}
         disabled={!interactive}
         {...pickerProps(pickerControl, 'status')}
       />
@@ -256,12 +243,7 @@ export const TaskRow = ({
 
       {path ? null : showProjectBadge && onProjectChange && interactive ? (
         // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
-        <div
-          className="shrink-0"
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
-        >
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <InteractiveProjectBadge
             projectId={task.projectId}
             projects={projects}

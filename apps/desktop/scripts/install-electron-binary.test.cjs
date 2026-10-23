@@ -129,9 +129,7 @@ function settled(child) {
     let output = ''
     child.stdout.on('data', (chunk) => (output += chunk))
     child.stderr.on('data', (chunk) => (output += chunk))
-    child.on('close', (code) => {
-      resolve({ code, output })
-    })
+    child.on('close', (code) => resolve({ code, output }))
   })
 }
 

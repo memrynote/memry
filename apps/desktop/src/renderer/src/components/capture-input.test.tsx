@@ -71,9 +71,7 @@ vi.mock('./voice-recorder', () => ({
         <div data-testid="voice-recorder" className={className}>
           <button
             type="button"
-            onClick={() => {
-              onRecordingComplete(new Blob(['audio'], { type: 'audio/webm' }), 31)
-            }}
+            onClick={() => onRecordingComplete(new Blob(['audio'], { type: 'audio/webm' }), 31)}
           >
             complete voice
           </button>
@@ -126,14 +124,14 @@ describe('CaptureInput', () => {
     })
     await user.click(screen.getByRole('button', { name: 'captureNote' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.captureText).toHaveBeenCalledWith({
         content: 'First line\nsecond line',
         title: 'First line...',
         force: false,
         source: 'inline'
       })
-    })
+    )
     // One ICU message carries the title — no split HTML entity, no fragments.
     expect(screen.getByText('duplicateNotice:title=Existing captured thought')).toBeInTheDocument()
     // The duplicate is unresolved, so the text has to survive in the field.
@@ -141,18 +139,16 @@ describe('CaptureInput', () => {
 
     await user.click(screen.getByRole('button', { name: 'captureAnyway' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.captureText).toHaveBeenLastCalledWith({
         content: 'First line\nsecond line',
         title: 'First line...',
         force: true,
         source: 'inline'
       })
-    })
+    )
     expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
-    await waitFor(() => {
-      expect(screen.getByLabelText('captureInput')).toHaveValue('')
-    })
+    await waitFor(() => expect(screen.getByLabelText('captureInput')).toHaveValue(''))
   })
 
   it('normalizes URL captures and reports failed results', async () => {
@@ -165,13 +161,13 @@ describe('CaptureInput', () => {
     await user.type(screen.getByLabelText('captureInput'), 'example.com/path')
     await user.click(screen.getByRole('button', { name: 'captureLink' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.captureLink).toHaveBeenCalledWith({
         url: 'https://example.com/path',
         force: false,
         source: 'inline'
       })
-    })
+    )
     expect(onCaptureError).toHaveBeenCalledWith('network down')
   })
 
@@ -189,14 +185,14 @@ describe('CaptureInput', () => {
     })
     fireEvent.change(input, { target: { files: [image] } })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.captureImage).toHaveBeenCalledWith({
         data: expect.any(ArrayBuffer),
         filename: 'image.png',
         mimeType: 'image/png',
         source: 'inline'
       })
-    })
+    )
     expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
 
     const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' })
@@ -257,7 +253,7 @@ describe('CaptureInput', () => {
 
     await user.click(screen.getByRole('button', { name: 'complete voice' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.captureVoice).toHaveBeenCalledWith({
         data: expect.any(ArrayBuffer),
         duration: 31,
@@ -265,14 +261,14 @@ describe('CaptureInput', () => {
         transcribe: true,
         source: 'inline'
       })
-    })
+    )
     expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
     await user.click(screen.getByRole('button', { name: 'cancel voice' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'cancel voice' })).not.toBeInTheDocument()
-    })
+    )
   })
 
   it('opens AI settings instead of recording when voice capture is not ready', async () => {

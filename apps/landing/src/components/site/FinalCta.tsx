@@ -96,9 +96,7 @@ export function FinalCta({
             {secondary && (
               <Link
                 to={secondary.to}
-                onClick={() => {
-                  trackLandingEvent('landing_nav_click', secondary.event)
-                }}
+                onClick={() => trackLandingEvent('landing_nav_click', secondary.event)}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-4 text-[14px] font-medium leading-[18px] text-ink transition-colors duration-200 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
               >
                 {secondary.label}

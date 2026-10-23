@@ -189,9 +189,7 @@ describe('EventKit bridge client (#1405)', () => {
     changes.onChanged(first)
     const unsubscribe = changes.onChanged(second)
     unsubscribe()
-    await vi.waitFor(() => {
-      expect(first).toHaveBeenCalledTimes(1)
-    })
+    await vi.waitFor(() => expect(first).toHaveBeenCalledTimes(1))
     expect(second).not.toHaveBeenCalled()
   })
 

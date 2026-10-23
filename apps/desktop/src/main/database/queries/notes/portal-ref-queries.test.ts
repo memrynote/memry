@@ -41,9 +41,7 @@ describe('portal references', () => {
     ])
   })
 
-  afterEach(() => {
-    dbResult.close()
-  })
+  afterEach(() => dbResult.close())
 
   it('lists each host once as an incoming portal reference', () => {
     expect(getIncomingReferences(dbResult.db, 'src')).toEqual([

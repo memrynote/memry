@@ -25,9 +25,7 @@ export function TagEditor({
     setDraft('')
     setActive(-1)
   }
-  const add = () => {
-    commit(draft)
-  }
+  const add = () => commit(draft)
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <svg
@@ -46,9 +44,7 @@ export function TagEditor({
           key={tag}
           type="button"
           disabled={disabled}
-          onClick={() => {
-            onChange(tags.filter((x) => x !== tag))
-          }}
+          onClick={() => onChange(tags.filter((x) => x !== tag))}
           className="group inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:border-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 disabled:opacity-60"
         >
           {tag}
@@ -113,9 +109,7 @@ export function TagEditor({
                   e.preventDefault()
                   commit(m)
                 }}
-                onMouseEnter={() => {
-                  setActive(i)
-                }}
+                onMouseEnter={() => setActive(i)}
                 className={
                   'cursor-pointer truncate px-2.5 py-1 text-[12px] text-text-secondary ' +
                   (i === active ? 'bg-surface-active text-foreground' : '')

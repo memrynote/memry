@@ -48,9 +48,7 @@ describe('wiki-target-resolution vectors against the index', () => {
     }
   })
 
-  afterAll(() => {
-    index.close()
-  })
+  afterAll(() => index.close())
 
   it.each(vectors.resolution.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const match = resolveLinkTargets(index.db, [c.query]).get(c.query)

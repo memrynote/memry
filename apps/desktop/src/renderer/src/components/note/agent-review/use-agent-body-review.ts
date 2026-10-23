@@ -138,9 +138,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
     let timer: ReturnType<typeof setTimeout> | null = null
     const bump = (): void => {
       if (timer) clearTimeout(timer)
-      timer = setTimeout(() => {
-        setRevision((value) => value + 1)
-      }, REFRESH_DEBOUNCE_MS)
+      timer = setTimeout(() => setRevision((value) => value + 1), REFRESH_DEBOUNCE_MS)
     }
     const unsubscribers =
       target.kind === 'note'
@@ -274,15 +272,11 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
     submitting: live.submitting,
     changeCount,
     flushDraftRef,
-    startEdit: () => {
-      update({ mode: 'edit' })
-    },
+    startEdit: () => update({ mode: 'edit' }),
     showDiff: () => {
       // The draft editor unmounts on the switch and its teardown flush is
       // ignored (see DraftEditor), so the last keystrokes are taken first.
-      void (flushDraftRef.current?.() ?? Promise.resolve()).then(() => {
-        update({ mode: 'diff' })
-      })
+      void (flushDraftRef.current?.() ?? Promise.resolve()).then(() => update({ mode: 'diff' }))
     },
     setDraft: (markdown) => {
       draftRef.current = markdown
@@ -297,9 +291,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
         draftEpoch: live.draftEpoch + 1
       })
     },
-    keepDraft: () => {
-      update({ baseChanged: false })
-    },
+    keepDraft: () => update({ baseChanged: false }),
     accept: () => decide('accept'),
     reject: () => decide('reject')
   }

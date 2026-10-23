@@ -88,9 +88,7 @@ export function PortalDeleteDialog({ request, onChoose }: PortalDeleteDialogProp
             </AlertDialogCancel>
             <AlertDialogAction
               className={buttonVariants({ variant: 'destructive' })}
-              onClick={() => {
-                onChoose('everywhere')
-              }}
+              onClick={() => onChoose('everywhere')}
             >
               {t('portalFlows.deleteGuard.everywhere')}
             </AlertDialogAction>

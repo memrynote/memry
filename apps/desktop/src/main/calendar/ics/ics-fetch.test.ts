@@ -152,11 +152,7 @@ describe('fetchIcsFeed against a hostile feed server', () => {
 
   afterAll(async () => {
     server.closeAllConnections()
-    await new Promise<void>((resolve) =>
-      server.close(() => {
-        resolve()
-      })
-    )
+    await new Promise<void>((resolve) => server.close(() => resolve()))
   })
 
   async function codeFor(path: string): Promise<string> {

@@ -267,9 +267,7 @@ export function MindMapView({
         log.warn('Failed to save the mind map as a canvas', err)
         toast.error(extractErrorMessage(err, t('mindMap.toolbar.saveFailed')))
       })
-      .finally(() => {
-        setSaving(false)
-      })
+      .finally(() => setSaving(false))
   }, [destinations, map, noteId, noteTitle, t])
 
   const actions = useMemo<MindMapToolbarAction[]>(

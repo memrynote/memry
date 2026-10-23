@@ -92,12 +92,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     void trackTelemetry('command_palette_opened', { surface: 'search', action: 'opened' })
     searchService
       .getStats()
-      .then((stats) => {
-        setItemCount(stats.totalIndexed)
-      })
-      .catch((err: unknown) => {
-        log.warn('Failed to load search stats', err)
-      })
+      .then((stats) => setItemCount(stats.totalIndexed))
+      .catch((err: unknown) => log.warn('Failed to load search stats', err))
   }, [open, loadReasons])
 
   // First stage of the search funnel (search_opened -> search_performed ->
@@ -152,22 +148,19 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   )
 
   const toggleType = useCallback(
-    (type: ContentType) => {
+    (type: ContentType) =>
       setFilters({
         ...filters,
         types: filters.types.includes(type)
           ? filters.types.filter((t) => t !== type)
           : [...filters.types, type]
-      })
-    },
+      }),
     [filters, setFilters]
   )
-  const toggleDate = (id: DatePresetId): void => {
+  const toggleDate = (id: DatePresetId): void =>
     setFilters({ ...filters, dateRange: activeDate === id ? null : datePresetRange(id) })
-  }
-  const removeTag = (tag: string): void => {
+  const removeTag = (tag: string): void =>
     setFilters({ ...filters, tags: filters.tags.filter((t) => t !== tag) })
-  }
   const pickTag = (tag: string): void => {
     setFilters({ ...filters, tags: [...filters.tags, tag] })
     back()
@@ -200,9 +193,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         itemIcon: item.metadata.type === 'note' ? (item.metadata.emoji ?? null) : null,
         searchQuery: query
       })
-      .catch((err: unknown) => {
-        log.warn('Failed to persist recent search', err)
-      })
+      .catch((err: unknown) => log.warn('Failed to persist recent search', err))
   }
 
   const toggleMatches = (item: SearchResultItemType): void => {
@@ -316,9 +307,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         key: `type:${type}`,
         icon: <Icon />,
         label: t(TYPE_LABEL_KEYS[type]),
-        onRemove: () => {
-          toggleType(type)
-        }
+        onRemove: () => toggleType(type)
       }
     }),
     ...(filters.dateRange
@@ -327,9 +316,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             key: 'date',
             icon: <Calendar />,
             label: activeDate ? t(DATE_LABEL_KEYS[activeDate]) : t('searchPalette.dates.custom'),
-            onRemove: () => {
-              setFilters({ ...filters, dateRange: null })
-            }
+            onRemove: () => setFilters({ ...filters, dateRange: null })
           }
         ]
       : []),
@@ -337,9 +324,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       key: `tag:${tag}`,
       icon: <Hash />,
       label: tag,
-      onRemove: () => {
-        removeTag(tag)
-      }
+      onRemove: () => removeTag(tag)
     }))
   ]
 
@@ -374,9 +359,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, toggleType, view, nextSection])
 
   // ---- Footer --------------------------------------------------------------
@@ -398,9 +381,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       ? {
           label: t('searchPalette.actions.filter'),
           keyLabel: '/',
-          onRun: () => {
-            setMode('filters')
-          }
+          onRun: () => setMode('filters')
         }
       : { label: t('searchPalette.actions.back'), keyLabel: '⌫', onRun: back }
   const secondary: SearchAction | null =
@@ -408,9 +389,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       ? {
           label: t('searchPalette.actions.nextSection'),
           keyLabel: '⇥',
-          onRun: () => {
-            nextSection(1)
-          }
+          onRun: () => nextSection(1)
         }
       : null
 
@@ -448,9 +427,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   return (
     <DialogPrimitive.Root
       open={open}
-      onOpenChange={(next) => {
-        next ? onOpenChange(true) : handleClose()
-      }}
+      onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 dark:bg-black/50" />
@@ -533,13 +510,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
                       query={query}
                       expanded={expandedTypes.includes(group.type)}
                       matches={matches}
-                      onExpand={(type) => {
+                      onExpand={(type) =>
                         setExpanded({
                           query,
                           types: [...expandedTypes, type],
                           notes: expandedNotes
                         })
-                      }}
+                      }
                       onSelect={handleSelect}
                       onOpenMatch={handleSelect}
                       onToggleMatches={toggleMatches}
@@ -551,12 +528,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
                     scopeLabels={filters.types.map((type) => t(TYPE_LABEL_KEYS[type]))}
                     hasFilters={hasFilters}
                     indexing={isIndexing}
-                    onSearchEverywhere={() => {
-                      setFilters({ ...filters, types: [] })
-                    }}
-                    onClearFilters={() => {
-                      setFilters({ types: [], tags: [], dateRange: null })
-                    }}
+                    onSearchEverywhere={() => setFilters({ ...filters, types: [] })}
+                    onClearFilters={() => setFilters({ types: [], tags: [], dateRange: null })}
                   />
                 )}
                 {view === 'error' && (

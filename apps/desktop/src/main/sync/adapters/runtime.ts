@@ -22,18 +22,10 @@ export class DesktopRuntime implements RuntimeAdapter {
   constructor(private readonly deps: DesktopRuntimeDeps) {
     const scoped = createLogger('SyncRuntimeAdapter')
     this.log = {
-      debug: (message, context) => {
-        scoped.debug(message, context)
-      },
-      info: (message, context) => {
-        scoped.info(message, context)
-      },
-      warn: (message, context) => {
-        scoped.warn(message, context)
-      },
-      error: (message, context) => {
-        scoped.error(message, context)
-      }
+      debug: (message, context) => scoped.debug(message, context),
+      info: (message, context) => scoped.info(message, context),
+      warn: (message, context) => scoped.warn(message, context),
+      error: (message, context) => scoped.error(message, context)
     }
   }
 

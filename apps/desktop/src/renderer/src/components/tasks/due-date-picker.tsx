@@ -390,9 +390,7 @@ export const DueDatePicker = ({
                 <button
                   key={option.id}
                   type="button"
-                  onClick={() => {
-                    handleQuickSelect(option.getDate)
-                  }}
+                  onClick={() => handleQuickSelect(option.getDate)}
                   className={cn(
                     'flex w-full items-center justify-between rounded-sm px-2 py-2 text-sm transition-colors',
                     'hover:bg-accent focus:bg-accent focus:outline-none'
@@ -421,9 +419,7 @@ export const DueDatePicker = ({
             <div className="p-1">
               <button
                 type="button"
-                onClick={() => {
-                  setShowCalendar(true)
-                }}
+                onClick={() => setShowCalendar(true)}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors',
                   'hover:bg-accent focus:bg-accent focus:outline-none'
@@ -509,9 +505,7 @@ export const DueDatePicker = ({
             {/* Back button */}
             <button
               type="button"
-              onClick={() => {
-                setShowCalendar(false)
-              }}
+              onClick={() => setShowCalendar(false)}
               className={cn(
                 'flex items-center gap-2 border-b border-border px-3 py-2 text-sm transition-colors',
                 'hover:bg-accent focus:bg-accent focus:outline-none'

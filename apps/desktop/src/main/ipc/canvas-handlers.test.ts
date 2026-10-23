@@ -114,9 +114,7 @@ describe('canvas handlers registration', () => {
     const handleMock = vi.mocked(ipcMain.handle)
     handleMock.mockClear()
 
-    expect(() => {
-      registerCanvasHandlers()
-    }).not.toThrow()
+    expect(() => registerCanvasHandlers()).not.toThrow()
 
     const registered = handleMock.mock.calls.map(([channel]) => channel)
     expect(registered.sort()).toEqual([...INVOKE_CHANNELS].sort())

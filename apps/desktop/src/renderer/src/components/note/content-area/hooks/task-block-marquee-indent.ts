@@ -194,9 +194,9 @@ function withTitle(block: DocBlock, title: string | undefined): DocBlock {
 
 function persistParent(taskId: string, parentId: string | null, parents: TaskParents): void {
   parents.set(taskId, parentId)
-  void tasksService.update({ id: taskId, parentId }).catch((err: unknown) => {
-    log.warn('tasks.update failed moving a task block', err)
-  })
+  void tasksService
+    .update({ id: taskId, parentId })
+    .catch((err: unknown) => log.warn('tasks.update failed moving a task block', err))
 }
 
 /**

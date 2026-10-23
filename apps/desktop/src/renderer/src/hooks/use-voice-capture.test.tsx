@@ -143,9 +143,7 @@ describe('useVoiceCapture cancel', () => {
   it('drops audio that arrives after unmounting mid-recording', async () => {
     const { unmount } = await startRecording()
 
-    act(() => {
-      unmount()
-    })
+    act(() => unmount())
     await flushRecorder()
 
     expect(onComplete).not.toHaveBeenCalled()

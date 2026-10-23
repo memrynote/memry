@@ -317,17 +317,13 @@ describe('Composer', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Continue with Google' }))
 
-    await waitFor(() => {
-      expect(mockConnectProvider).toHaveBeenCalledWith({ provider: 'google' })
-    })
+    await waitFor(() => expect(mockConnectProvider).toHaveBeenCalledWith({ provider: 'google' }))
   })
 
   it('hides the connected-tools tray once Google Calendar is linked', async () => {
     renderComposer('conversation-1')
 
-    await waitFor(() => {
-      expect(mockGetProviderStatus).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(mockGetProviderStatus).toHaveBeenCalled())
     expect(screen.queryByText('Connected tools')).not.toBeInTheDocument()
   })
 
@@ -390,9 +386,7 @@ describe('Composer', () => {
       await Promise.resolve()
     })
 
-    await waitFor(() => {
-      expect(screen.getByRole('textbox')).toHaveTextContent('call the vet')
-    })
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveTextContent('call the vet'))
     // The transcript filled the prompt, so the slot now shows send.
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
   })
@@ -403,9 +397,7 @@ describe('Composer', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Start voice dictation' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Microphone access denied')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Microphone access denied'))
     expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
   })
 
@@ -420,9 +412,7 @@ describe('Composer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Start voice dictation' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Stop voice dictation' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Whisper is unavailable')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Whisper is unavailable'))
     expect(await screen.findByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
   })
 
@@ -454,9 +444,9 @@ describe('Composer', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Computer access' }))
     closeMenus()
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.queryByRole('menuitem', { name: /web search/i })).not.toBeInTheDocument()
-    })
+    )
 
     await setPromptText('check the launch page')
     await submitPrompt()
@@ -485,9 +475,9 @@ describe('Composer', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Low' }))
     closeMenus()
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Opus · Low')
-    })
+    )
   })
 
   it('passes the selected Claude effort with the prompt', async () => {
@@ -636,9 +626,9 @@ describe('Composer', () => {
 
     await openModelSubmenu()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.5' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('GPT-5.5 · Medium')
-    })
+    )
 
     await openSettingsMenu()
     openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
@@ -701,9 +691,9 @@ describe('Composer', () => {
 
     // The model id names its own reasoning tier, so a separate effort row
     // would contradict the pick.
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Gemini 3.1 Pro (High)')
-    })
+    )
     expect(screen.getByTestId('agent-model-trigger')).not.toHaveTextContent('·')
     await openSettingsMenu()
     expect(screen.queryByRole('menuitem', { name: /^effort/i })).not.toBeInTheDocument()
@@ -747,9 +737,9 @@ describe('Composer', () => {
     // Opening the menu loads the Codex catalogue, which the default derives from.
     await openSettingsMenu()
     closeMenus()
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('GPT-5.6 · Medium')
-    })
+    )
 
     await setPromptText('create a task')
     await submitPrompt()
@@ -774,9 +764,9 @@ describe('Composer', () => {
     expect(await screen.findByRole('menuitem', { name: 'llama3' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'llama3' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('llama3')
-    })
+    )
 
     await setPromptText('summarize offline')
     await submitPrompt()
@@ -804,11 +794,11 @@ describe('Composer', () => {
 
     await openModelSubmenu()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'deepseek-chat' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent(
         'deepseek-chat · Default depth'
       )
-    })
+    )
 
     await openSettingsMenu()
     openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
@@ -877,9 +867,9 @@ describe('Composer', () => {
 
     await openModelSubmenu()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'deepseek-chat' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('deepseek-chat')
-    })
+    )
 
     await openSettingsMenu()
     const webSearch = screen.getByRole('menuitem', { name: /web search/i })
@@ -932,9 +922,9 @@ describe('Composer', () => {
     fireEvent.change(search, { target: { value: 'opus-6' } })
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Use "opus-6"' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('opus-6 · Extra High')
-    })
+    )
 
     await setPromptText('try the new model')
     await submitPrompt()
@@ -1014,9 +1004,7 @@ describe('Composer', () => {
 
     fireEvent.pointerDown(promptSurface!)
 
-    await waitFor(() => {
-      expect(textbox).toHaveFocus()
-    })
+    await waitFor(() => expect(textbox).toHaveFocus())
     await userEvent.keyboard('hello')
 
     expect(textbox).toHaveTextContent('hello')

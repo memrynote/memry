@@ -14,9 +14,7 @@ export function useMeasuredWidth<T extends HTMLElement>(): [RefObject<T | null>,
       setWidth(Math.floor(entry.contentRect.width))
     })
     observer.observe(element)
-    return () => {
-      observer.disconnect()
-    }
+    return () => observer.disconnect()
   }, [])
   return [ref, width]
 }

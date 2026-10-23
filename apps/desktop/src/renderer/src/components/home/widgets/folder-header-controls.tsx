@@ -58,9 +58,9 @@ export function FolderHeaderControls({
                 key={folder.path}
                 // Switching folders drops the saved-view selection — viewName belongs to the
                 // previous folder and would not exist in the new one.
-                onSelect={() => {
+                onSelect={() =>
                   onChange({ ...config, folderPath: folder.path, viewName: undefined })
-                }}
+                }
                 className="gap-2"
               >
                 <Folder
@@ -105,9 +105,7 @@ export function FolderHeaderControls({
             {views.map((view) => (
               <DropdownMenuItem
                 key={view.name}
-                onSelect={() => {
-                  onChange({ ...config, viewName: view.name })
-                }}
+                onSelect={() => onChange({ ...config, viewName: view.name })}
                 className="gap-2"
               >
                 <span className="truncate">{getViewDisplayName(view.name)}</span>

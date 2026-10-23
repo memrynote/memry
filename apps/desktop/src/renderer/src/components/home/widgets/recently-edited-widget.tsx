@@ -50,7 +50,7 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
               data-testid="recent-note"
               data-note-id={n.id}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
-              onClick={() => {
+              onClick={() =>
                 openTab({
                   type: 'note',
                   title: n.title,
@@ -62,7 +62,7 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
                   isDeleted: false,
                   isPreview: true
                 })
-              }}
+              }
             >
               {n.emoji ? (
                 <NoteIconDisplay value={n.emoji} className="shrink-0 text-base leading-none" />

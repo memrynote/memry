@@ -25,9 +25,7 @@ function ActionButton({
     <button
       type="button"
       tabIndex={-1}
-      onMouseDown={(e) => {
-        e.preventDefault()
-      }}
+      onMouseDown={(e) => e.preventDefault()}
       onClick={action.onRun}
       className={cn(
         'flex h-7 items-center gap-1.5 rounded-md px-1.5 text-xs leading-4 transition-colors',

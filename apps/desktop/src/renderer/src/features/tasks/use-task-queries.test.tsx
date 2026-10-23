@@ -161,9 +161,7 @@ describe('useTaskWorkspaceData', () => {
       wrapper: createWrapper(queryClient)
     })
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
 
     expect(result.current.projects[0]).toMatchObject({
       id: 'project-1',
@@ -189,15 +187,11 @@ describe('useTaskWorkspaceData', () => {
       completedCount: 1
     })
 
-    act(() => {
-      mocks.listeners.taskCreated()
-    })
+    act(() => mocks.listeners.taskCreated())
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.tasks() })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
 
-    act(() => {
-      mocks.listeners.itemSyncedProject()
-    })
+    act(() => mocks.listeners.itemSyncedProject())
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
 
     unmount()
@@ -215,9 +209,7 @@ describe('useTaskWorkspaceData', () => {
       wrapper: createWrapper(queryClient)
     })
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
 
     // Entering `syncing` is not a completion — reconciling here would refetch
@@ -236,9 +228,7 @@ describe('useTaskWorkspaceData', () => {
       wrapper: createWrapper(queryClient)
     })
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
 
     // Status churn without a sync (offline flapping, pause/resume) must not
@@ -260,21 +250,15 @@ describe('useTaskWorkspaceData', () => {
       wrapper: createWrapper(queryClient)
     })
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(3)
-    })
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
     const callsAfterLoad = vi.mocked(tasksService.list).mock.calls.length
 
-    act(() => {
-      focusManager.setFocused(false)
-    })
-    act(() => {
-      focusManager.setFocused(true)
-    })
+    act(() => focusManager.setFocused(false))
+    act(() => focusManager.setFocused(true))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(vi.mocked(tasksService.list).mock.calls.length).toBeGreaterThan(callsAfterLoad)
-    })
+    )
   })
 
   it('does not load or subscribe when disabled', () => {

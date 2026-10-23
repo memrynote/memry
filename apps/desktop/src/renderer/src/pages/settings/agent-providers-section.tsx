@@ -149,9 +149,7 @@ export function AgentProvidersSection({
         }
       })()
     }, 600)
-    return () => {
-      clearTimeout(handle)
-    }
+    return () => clearTimeout(handle)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- settings and apiKey are the debounce trigger; the effect reads them through the latest saved snapshot
   }, [dirty, settings, apiKey])
 
@@ -388,9 +386,7 @@ export function AgentProvidersSection({
                 <Input
                   aria-label={t('agentProviders.fields.baseUrl.label')}
                   value={settings.baseUrl}
-                  onChange={(event) => {
-                    updateSetting('baseUrl', event.target.value)
-                  }}
+                  onChange={(event) => updateSetting('baseUrl', event.target.value)}
                   className="h-7 w-64 font-mono text-xs"
                 />
               </FieldRow>
@@ -402,9 +398,7 @@ export function AgentProvidersSection({
                   <Switch
                     aria-label={t('agentProviders.fields.allowNonLoopback.label')}
                     checked={settings.allowNonLoopback}
-                    onCheckedChange={(checked) => {
-                      updateSetting('allowNonLoopback', checked)
-                    }}
+                    onCheckedChange={(checked) => updateSetting('allowNonLoopback', checked)}
                     className={ACCENT_SWITCH}
                   />
                 </FieldRow>
@@ -424,9 +418,7 @@ export function AgentProvidersSection({
                 <Input
                   aria-label={t('agentProviders.fields.model.label')}
                   value={settings.model}
-                  onChange={(event) => {
-                    updateSetting('model', event.target.value)
-                  }}
+                  onChange={(event) => updateSetting('model', event.target.value)}
                   className="h-7 w-48 font-mono text-xs"
                 />
               </FieldRow>
@@ -436,9 +428,7 @@ export function AgentProvidersSection({
                     <button
                       key={model}
                       type="button"
-                      onClick={() => {
-                        updateSetting('model', model)
-                      }}
+                      onClick={() => updateSetting('model', model)}
                       className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs/4 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {model}
@@ -459,9 +449,7 @@ export function AgentProvidersSection({
                   value={apiKey}
                   type="password"
                   placeholder={t('agentProviders.v2.localModel.optional')}
-                  onChange={(event) => {
-                    updateApiKey(event.target.value)
-                  }}
+                  onChange={(event) => updateApiKey(event.target.value)}
                   className="h-7 w-48 font-mono text-xs"
                 />
               </FieldRow>
@@ -473,9 +461,7 @@ export function AgentProvidersSection({
                   <SegmentedControl<AgentLocalThinking>
                     label={t('agentProviders.fields.thinking.label')}
                     value={settings.thinking ?? 'default'}
-                    onChange={(value) => {
-                      updateSetting('thinking', value)
-                    }}
+                    onChange={(value) => updateSetting('thinking', value)}
                     options={[
                       { value: 'default', label: t('agentProviders.fields.thinking.default') },
                       { value: 'off', label: t('agentProviders.fields.thinking.off') }
@@ -602,9 +588,7 @@ function AgentMemoryGroup(): React.JSX.Element {
           type="button"
           className={cn(QUIET_ACTION, 'text-destructive hover:text-destructive')}
           aria-label={t('agentProviders.memory.clear')}
-          onClick={() => {
-            setConfirming(true)
-          }}
+          onClick={() => setConfirming(true)}
           disabled={status.state === 'clearing'}
         >
           {t('agentProviders.memory.clearAction')}

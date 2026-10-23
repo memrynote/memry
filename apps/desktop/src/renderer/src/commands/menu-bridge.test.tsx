@@ -29,9 +29,7 @@ beforeEach(() => {
     api: {
       onMenuCommand: (callback: (event: AppMenuCommandEvent) => void) => {
         // Main and the renderer ship together, so only a test sends an id the type forbids.
-        send = (payload) => {
-          callback(payload as AppMenuCommandEvent)
-        }
+        send = (payload) => callback(payload as AppMenuCommandEvent)
         return () => {}
       },
       windowClose: mocks.windowClose
@@ -43,14 +41,10 @@ describe('native menu bridge', () => {
   it('runs the owner of the command a menu item names', async () => {
     render(<AppCommandOwners />)
 
-    await act(async () => {
-      send({ command: 'app.closeWindow' })
-    })
+    await act(async () => send({ command: 'app.closeWindow' }))
     expect(mocks.windowClose).toHaveBeenCalledTimes(1)
 
-    await act(async () => {
-      send({ command: 'app.checkForUpdates' })
-    })
+    await act(async () => send({ command: 'app.checkForUpdates' }))
     expect(mocks.checkForUpdates).toHaveBeenCalledTimes(1)
   })
 
@@ -62,9 +56,7 @@ describe('native menu bridge', () => {
   ])('View → Theme: %s switches to %s', async (command, theme) => {
     render(<AppCommandOwners />)
 
-    await act(async () => {
-      send({ command })
-    })
+    await act(async () => send({ command }))
     expect(mocks.updateSettings).toHaveBeenCalledWith({ theme })
   })
 
@@ -72,18 +64,14 @@ describe('native menu bridge', () => {
     mocks.updateSettings.mockResolvedValue(false)
     render(<AppCommandOwners />)
 
-    await act(async () => {
-      send({ command: 'view.themeDark' })
-    })
+    await act(async () => send({ command: 'view.themeDark' }))
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
   })
 
   it('logs an id this build does not know and runs nothing', async () => {
     render(<AppCommandOwners />)
 
-    await act(async () => {
-      send({ command: 'file.closeTab' })
-    })
+    await act(async () => send({ command: 'file.closeTab' }))
 
     expect(mocks.logger.warn).toHaveBeenCalledWith('Ignored unknown menu command', {
       command: 'file.closeTab'
@@ -95,9 +83,7 @@ describe('native menu bridge', () => {
     render(<AppCommandOwners />)
 
     // `note.find` needs a note tab; with none mounted it is a no-op, as before.
-    await act(async () => {
-      send({ command: 'note.find' })
-    })
+    await act(async () => send({ command: 'note.find' }))
     expect(mocks.logger.warn).not.toHaveBeenCalled()
   })
 })

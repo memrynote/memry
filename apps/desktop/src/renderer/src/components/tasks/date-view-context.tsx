@@ -92,9 +92,7 @@ export const TaskPathTitle = ({
           event.stopPropagation()
           dateView.openPath(task)
         }}
-        onKeyDown={(event) => {
-          event.stopPropagation()
-        }}
+        onKeyDown={(event) => event.stopPropagation()}
         className="w-fit max-w-full truncate text-start text-[11px] leading-3.5 text-text-tertiary hover:text-text-secondary hover:underline focus-visible:underline focus-visible:outline-none"
       >
         {label}

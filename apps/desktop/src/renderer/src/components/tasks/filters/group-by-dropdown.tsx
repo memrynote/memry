@@ -138,9 +138,7 @@ export const GroupByDropdown = ({
                 <button
                   type="button"
                   aria-label={t('filters.sortAscending')}
-                  onClick={() => {
-                    handleSetDirection('asc')
-                  }}
+                  onClick={() => handleSetDirection('asc')}
                   className={cn(
                     'flex items-center justify-center w-[22px] h-5 shrink-0 transition-colors',
                     sort.direction === 'asc' ? 'bg-foreground/8' : 'hover:bg-foreground/5'
@@ -156,9 +154,7 @@ export const GroupByDropdown = ({
                 <button
                   type="button"
                   aria-label={t('filters.sortDescending')}
-                  onClick={() => {
-                    handleSetDirection('desc')
-                  }}
+                  onClick={() => handleSetDirection('desc')}
                   className={cn(
                     'flex items-center justify-center w-[22px] h-5 shrink-0 transition-colors',
                     sort.direction === 'desc' ? 'bg-foreground/8' : 'hover:bg-foreground/5'

@@ -501,9 +501,7 @@ describe('GraphPhysics', () => {
       graph.dropNode('b')
 
       expect(physics.sync()).toBe(true)
-      expect(() => {
-        physics.tick()
-      }).not.toThrow()
+      expect(() => physics.tick()).not.toThrow()
     })
 
     it('picks up a link added between existing nodes', () => {
@@ -535,9 +533,7 @@ describe('GraphPhysics', () => {
   it('handles an empty graph without throwing', () => {
     const physics = new GraphPhysics(new Graph())
 
-    expect(() => {
-      physics.tick()
-    }).not.toThrow()
+    expect(() => physics.tick()).not.toThrow()
     expect(physics.isSettled).toBe(true)
   })
 
@@ -681,9 +677,7 @@ describe('GraphPhysics', () => {
       graph.dropNode('n5')
       const before = graph.getNodeAttribute('n6', 'x')
 
-      expect(() => {
-        physics.tick()
-      }).not.toThrow()
+      expect(() => physics.tick()).not.toThrow()
       expect(graph.getNodeAttribute('n6', 'x')).not.toBe(before)
     })
 

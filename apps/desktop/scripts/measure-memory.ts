@@ -168,7 +168,7 @@ async function waitForIndexSettled(page: Page): Promise<number> {
   await page.waitForFunction(
     async () => {
       const status = await window.api.vault.getStatus()
-      return status?.isOpen && !status.isIndexing
+      return status?.isOpen === true && status.isIndexing === false
     },
     undefined,
     { timeout: INDEX_SETTLE_MS, polling: 500 }

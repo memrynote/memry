@@ -23,12 +23,8 @@ export function WritingRail({ mode, session, snapshot }: WritingRailProps) {
         mode={mode}
         alternativeCount={snapshot.alternatives.length}
         overflowCount={snapshot.overflow.length}
-        onSelect={(next) => {
-          session.setMode(next)
-        }}
-        onClose={() => {
-          session.setMode(null)
-        }}
+        onSelect={(next) => session.setMode(next)}
+        onClose={() => session.setMode(null)}
       />
       <WritingRailBody mode={mode} session={session} snapshot={snapshot} />
     </div>
@@ -72,9 +68,7 @@ function WritingRailTabs({
               type="button"
               role="tab"
               aria-selected={selected}
-              onClick={() => {
-                onSelect(tab.mode)
-              }}
+              onClick={() => onSelect(tab.mode)}
               className={cn(
                 'flex h-[26px] flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 selected

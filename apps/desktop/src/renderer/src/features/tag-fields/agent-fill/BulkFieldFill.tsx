@@ -159,12 +159,7 @@ export function BulkFieldFill({
   const percent = progress.total > 0 ? (progress.done / progress.total) * 100 : 0
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        next ? start() : close()
-      }}
-    >
+    <Popover open={open} onOpenChange={(next) => (next ? start() : close())}>
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -280,9 +275,9 @@ export function BulkFieldFill({
                             <button
                               type="button"
                               disabled={busy}
-                              onClick={() => {
+                              onClick={() =>
                                 setRows((prev) => prev.filter((r) => r.noteId !== row.noteId))
-                              }}
+                              }
                               aria-label={t('tagFields.fill.rejectRow', { title: row.title })}
                               className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-muted"
                             >
@@ -306,13 +301,7 @@ export function BulkFieldFill({
                 {t('tagFields.fill.found', { count: foundCount })}
               </span>
               {!running && rows.length > 0 && !oneByOne && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setOneByOne(true)
-                  }}
-                >
+                <Button variant="outline" size="sm" onClick={() => setOneByOne(true)}>
                   {t('tagFields.fill.reviewOneByOne')}
                 </Button>
               )}

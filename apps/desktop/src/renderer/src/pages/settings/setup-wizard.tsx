@@ -76,12 +76,8 @@ export function SetupWizard({
 
   useEffect(() => {
     if (!wizardExpiresAt) return
-    const timer = window.setInterval(() => {
-      setNow(Date.now())
-    }, 1000)
-    return () => {
-      window.clearInterval(timer)
-    }
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
   }, [wizardExpiresAt])
 
   useEffect(() => {
@@ -121,12 +117,8 @@ export function SetupWizard({
   }, [wizardStep, recoveryPhrase])
 
   useEffect(() => {
-    const resetLoadingTimer = window.setTimeout(() => {
-      setIsLoading(false)
-    }, 0)
-    return () => {
-      window.clearTimeout(resetLoadingTimer)
-    }
+    const resetLoadingTimer = window.setTimeout(() => setIsLoading(false), 0)
+    return () => window.clearTimeout(resetLoadingTimer)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- wizardStep is the trigger: reset loading whenever the step changes
   }, [wizardStep])
 
@@ -311,9 +303,7 @@ export function SetupWizard({
             email={email ?? ''}
             onVerify={handleOtpVerify}
             onResend={handleResendOtp}
-            onBack={() => {
-              setWizardStep('sign-in')
-            }}
+            onBack={() => setWizardStep('sign-in')}
             isVerifying={isLoading}
             isResending={isResending}
             error={wizardError}
@@ -325,9 +315,7 @@ export function SetupWizard({
       {wizardStep === 'recovery-display' && activePhrase && (
         <RecoveryPhraseDisplay
           phrase={activePhrase}
-          onContinue={() => {
-            setWizardStep('recovery-confirm')
-          }}
+          onContinue={() => setWizardStep('recovery-confirm')}
         />
       )}
 
@@ -335,9 +323,7 @@ export function SetupWizard({
         <RecoveryPhraseConfirm
           phrase={activePhrase}
           onConfirmed={handleConfirmRecovery}
-          onBack={() => {
-            setWizardStep('recovery-display')
-          }}
+          onBack={() => setWizardStep('recovery-display')}
         />
       )}
 
@@ -368,29 +354,21 @@ export function SetupWizard({
 
       {wizardStep === 'linking-choice' && (
         <LinkingChoiceStep
-          onChooseQr={() => {
-            setWizardStep('linking-scan')
-          }}
-          onChooseRecovery={() => {
-            setWizardStep('recovery-input')
-          }}
+          onChooseQr={() => setWizardStep('linking-scan')}
+          onChooseRecovery={() => setWizardStep('recovery-input')}
         />
       )}
 
       {wizardStep === 'linking-scan' && (
         <LinkingCodeEntry
-          onLinked={(sessionId, verificationCode) => {
+          onLinked={(sessionId, verificationCode) =>
             setWizardStep('linking-pending', {
               linkingSessionId: sessionId,
               verificationCode
             })
-          }}
-          onError={(error) => {
-            setWizardError(error)
-          }}
-          onBack={() => {
-            setWizardStep('linking-choice')
-          }}
+          }
+          onError={(error) => setWizardError(error)}
+          onBack={() => setWizardStep('linking-choice')}
         />
       )}
 
@@ -401,15 +379,9 @@ export function SetupWizard({
           onComplete={() => {
             linkingCompleted()
           }}
-          onPickVaults={(vaults) => {
-            setWizardStep('linking-vault-picker', { vaults })
-          }}
-          onError={(error) => {
-            setWizardError(error)
-          }}
-          onCancel={() => {
-            setWizardStep('linking-choice')
-          }}
+          onPickVaults={(vaults) => setWizardStep('linking-vault-picker', { vaults })}
+          onError={(error) => setWizardError(error)}
+          onCancel={() => setWizardStep('linking-choice')}
         />
       )}
 
@@ -417,9 +389,7 @@ export function SetupWizard({
         <VaultPickerStep
           sessionId={wizardLinkingSessionId}
           vaults={wizardVaults ?? []}
-          onError={(error) => {
-            setWizardError(error)
-          }}
+          onError={(error) => setWizardError(error)}
         />
       )}
 
@@ -427,9 +397,7 @@ export function SetupWizard({
         (isStartingFresh ? (
           <StartFreshPanel
             onConfirm={handleStartFresh}
-            onCancel={() => {
-              setIsStartingFresh(false)
-            }}
+            onCancel={() => setIsStartingFresh(false)}
           />
         ) : (
           <>
@@ -437,15 +405,9 @@ export function SetupWizard({
               onSubmit={handleRecoverySubmit}
               isLoading={isLoading}
               error={wizardError}
-              onBack={() => {
-                setWizardStep('linking-choice')
-              }}
+              onBack={() => setWizardStep('linking-choice')}
             />
-            <StartFreshTrigger
-              onClick={() => {
-                setIsStartingFresh(true)
-              }}
-            />
+            <StartFreshTrigger onClick={() => setIsStartingFresh(true)} />
           </>
         ))}
     </div>

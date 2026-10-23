@@ -583,9 +583,7 @@ describe('MessageStream', () => {
       />
     )
 
-    await waitFor(() => {
-      expect(mockGetNote).toHaveBeenCalledWith('note-1')
-    })
+    await waitFor(() => expect(mockGetNote).toHaveBeenCalledWith('note-1'))
     const link = screen.getByRole('link', { name: 'Plain' })
     expect(link.querySelector('[data-agent-link-icon="note-default"]')).not.toBeNull()
   })

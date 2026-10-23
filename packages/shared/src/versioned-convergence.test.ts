@@ -176,10 +176,7 @@ function run(seed: number, scenario: Scenario, rules: Rules): boolean {
     const row = server.row
     if (!row) return
     if (device.kind === 'echoesLastCapture') device.capturedFromLastPull = row.value
-    if (device.kind === 'thisBuild') {
-      applyThisBuild(device, row)
-      return
-    }
+    if (device.kind === 'thisBuild') return applyThisBuild(device, row)
     const order = compareClocks(device.clock, row.clock)
     if (order === 'after') return
     if (order === 'concurrent') {

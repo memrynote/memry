@@ -177,9 +177,7 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
       onCanvasFolderDeleted(scheduleRefresh)
     ]
     return () => {
-      unsubscribes.forEach((unsubscribe) => {
-        unsubscribe()
-      })
+      unsubscribes.forEach((unsubscribe) => unsubscribe())
       if (refreshWindow.current) clearTimeout(refreshWindow.current)
     }
   }, [scheduleRefresh])

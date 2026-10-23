@@ -1185,12 +1185,8 @@ describe('dirty-recovery', () => {
     })
 
     describe.each(FIXTURES)('$type', (fixture) => {
-      beforeEach(() => {
-        fixture.init()
-      })
-      afterEach(() => {
-        fixture.reset()
-      })
+      beforeEach(() => fixture.init())
+      afterEach(() => fixture.reset())
 
       const pushed = (): { operation?: string; raw: string; clock: unknown } => {
         const queued = queue.peek(1)[0]
@@ -1348,9 +1344,7 @@ describe('dirty-recovery', () => {
       }
     })
 
-    afterEach(() => {
-      resetVaultLockSyncService()
-    })
+    afterEach(() => resetVaultLockSyncService())
 
     const queuedLockRows = () =>
       db

@@ -125,9 +125,7 @@ describe('cancelling a turn before the backend produces its run handle', () => {
       backend,
       backendOptions: { backend: 'local_openai_compatible', model: MODEL, toolsEnabled: true },
       reachedBackend: probeEntered.promise,
-      release: () => {
-        releaseProbe.open()
-      }
+      release: () => releaseProbe.open()
     })
 
     expect(signals).toHaveLength(1)
@@ -242,9 +240,7 @@ async function runCancelledTurn(input: {
       attachments: [],
       backendOptions: input.backendOptions
     }
-  ).finally(() => {
-    runtime.releaseTurnLock(CONVERSATION_ID)
-  })
+  ).finally(() => runtime.releaseTurnLock(CONVERSATION_ID))
 
   await input.reachedBackend
   runtime.cancelTurn(CONVERSATION_ID)
@@ -301,9 +297,7 @@ function createFakeChild(): {
 
   return {
     entered: entered.promise,
-    release: () => {
-      release.open()
-    },
+    release: () => release.open(),
     killCount: () => kills,
     spawn: async () => {
       entered.open()
@@ -400,9 +394,7 @@ function createConversationStore(): ConversationStore {
 function gate(): { promise: Promise<void>; open: () => void } {
   let open!: () => void
   const promise = new Promise<void>((resolve) => {
-    open = () => {
-      resolve()
-    }
+    open = () => resolve()
   })
   return { promise, open }
 }

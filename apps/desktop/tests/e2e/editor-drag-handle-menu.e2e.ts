@@ -141,9 +141,7 @@ test.describe('Drag handle menu E2E', () => {
     )
 
     const target = page.locator('.bn-block-content', { hasText: /^Line 20$/ })
-    await target.evaluate((el) => {
-      el.scrollIntoView({ block: 'center' })
-    })
+    await target.evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await target.hover()
     await page.locator('[data-test="dragHandle"]').first().click()
     const turnInto = page.getByRole('menuitem', { name: 'Turn into' }).first()

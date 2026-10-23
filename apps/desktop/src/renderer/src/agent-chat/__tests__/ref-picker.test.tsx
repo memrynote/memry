@@ -37,9 +37,7 @@ function renderTypeablePicker(query: string) {
   return {
     props,
     unmount,
-    retype: (next: string) => {
-      rerender(<RefPicker {...props} query={next} />)
-    }
+    retype: (next: string) => rerender(<RefPicker {...props} query={next} />)
   }
 }
 

@@ -23,9 +23,7 @@ const mocks = vi.hoisted(() => {
       ),
       getTextCursorPosition: vi.fn(() => ({ block: state.selection[state.selection.length - 1] })),
       focus: vi.fn(),
-      transact: vi.fn((fn: () => void) => {
-        fn()
-      }),
+      transact: vi.fn((fn: () => void) => fn()),
       updateBlock: vi.fn()
     }
   }

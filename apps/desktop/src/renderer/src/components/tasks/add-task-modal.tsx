@@ -328,9 +328,7 @@ function AddTaskModalSession({
           <Checkbox
             id="create-another"
             checked={createAnother}
-            onCheckedChange={(checked) => {
-              setCreateAnother(checked === true)
-            }}
+            onCheckedChange={(checked) => setCreateAnother(checked === true)}
           />
           <label
             htmlFor="create-another"

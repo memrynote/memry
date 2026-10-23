@@ -136,19 +136,12 @@ export const SortableSubtaskRow = ({
 
           <span className="flex min-w-0 grow items-center gap-2">
             {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
-            <span
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-              className="flex shrink-0"
-            >
+            <span onClick={(e) => e.stopPropagation()} className="flex shrink-0">
               <InteractiveStatusIcon
                 type={statusType}
                 color={statusColor}
                 isCompleted={isCompleted}
-                onClick={() => {
-                  onToggleComplete(subtask.id)
-                }}
+                onClick={() => onToggleComplete(subtask.id)}
               />
             </span>
 

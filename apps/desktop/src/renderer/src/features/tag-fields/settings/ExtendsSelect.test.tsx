@@ -98,13 +98,13 @@ describe('ExtendsSelect', () => {
     await user.click(screen.getByRole('combobox', { name: 'Extends' }))
     await user.click(await screen.findByRole('option', { name: 'contact' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editSchema).toHaveBeenCalledWith({
         kind: 'set-extends',
         tag: 'company',
         parent: 'contact'
       })
-    })
+    )
   })
 
   it('stops extending when Nothing is picked', async () => {
@@ -114,13 +114,13 @@ describe('ExtendsSelect', () => {
     await user.click(screen.getByRole('combobox', { name: 'Extends' }))
     await user.click(await screen.findByRole('option', { name: 'Nothing' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(editSchema).toHaveBeenCalledWith({
         kind: 'set-extends',
         tag: 'person',
         parent: null
       })
-    })
+    )
   })
 
   it('does nothing when the current parent is picked again', async () => {
@@ -155,9 +155,7 @@ describe('ExtendsSelect', () => {
     await user.click(screen.getByRole('combobox', { name: 'Extends' }))
     await user.click(await screen.findByRole('option', { name: 'contact' }))
 
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('cycle detected')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('cycle detected'))
   })
 
   it('cannot be opened for a read-only tag', () => {

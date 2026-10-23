@@ -20,13 +20,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
   const createNewNote = useCreateNewNote()
   const [open, setOpen] = useState(false)
 
-  useEffect(
-    () =>
-      registerNewTabMenu(groupId, () => {
-        setOpen(true)
-      }),
-    [groupId]
-  )
+  useEffect(() => registerNewTabMenu(groupId, () => setOpen(true)), [groupId])
 
   const handleNewJournal = useCallback(() => {
     openTab(

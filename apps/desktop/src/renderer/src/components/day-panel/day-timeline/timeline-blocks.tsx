@@ -73,9 +73,8 @@ function useBlockResize(
   }, [])
   const pendingEndMin = pending?.baseEndMin === placed.endMin ? pending.endMin : null
   const setPendingEndMin = useCallback(
-    (endMin: number | null) => {
-      setPending(endMin === null ? null : { baseEndMin: placed.endMin, endMin })
-    },
+    (endMin: number | null) =>
+      setPending(endMin === null ? null : { baseEndMin: placed.endMin, endMin }),
     [placed.endMin]
   )
 
@@ -150,9 +149,7 @@ export function TimelineTaskBlock({
     data: { type: 'calendar-task', sourceType: 'calendar', taskId }
   })
   const handleResize = useCallback(
-    (minutes: number) => {
-      onResize(taskId, minutes)
-    },
+    (minutes: number) => onResize(taskId, minutes),
     [onResize, taskId]
   )
   const { pendingEndMin, onPointerDown, consumeResizeClick } = useBlockResize(
@@ -203,9 +200,7 @@ export function TimelineTaskBlock({
         role="checkbox"
         aria-checked={false}
         aria-label={t('dayTimeline.completeTask', { title: placed.title })}
-        onPointerDown={(event) => {
-          event.stopPropagation()
-        }}
+        onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation()
           onComplete(taskId)

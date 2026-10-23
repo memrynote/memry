@@ -82,8 +82,8 @@ export function useAppearanceSync(): ReturnType<typeof useGeneralSettings> {
   useEffect(() => {
     if (isLoading) return
     const root = document.documentElement
-    root.toggleAttribute('data-pointer-cursors', settings.pointerCursors)
-    root.toggleAttribute('data-font-smoothing', settings.fontSmoothing)
+    root.toggleAttribute('data-pointer-cursors', settings.pointerCursors === true)
+    root.toggleAttribute('data-font-smoothing', settings.fontSmoothing === true)
     if (settings.reduceMotion === 'on') root.setAttribute('data-reduce-motion', 'on')
     else root.removeAttribute('data-reduce-motion')
   }, [isLoading, settings.pointerCursors, settings.fontSmoothing, settings.reduceMotion])

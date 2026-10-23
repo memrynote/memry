@@ -70,9 +70,7 @@ describe('CodeBlockToolbar', () => {
 
     // #then
     expect(writeText).toHaveBeenCalledWith('Get-ChildItem')
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'copied' })).toBeTruthy()
-    })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'copied' })).toBeTruthy())
   })
 
   it('places itself in the block’s block-start / inline-end corner', () => {

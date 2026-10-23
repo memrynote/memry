@@ -93,9 +93,7 @@ export function CalendarHeatmap({
           // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="img"
           aria-label={ariaLabel}
-          onPointerLeave={() => {
-            setHover(null)
-          }}
+          onPointerLeave={() => setHover(null)}
         >
           {monthLabels.map(({ col, label }) => (
             <text
@@ -134,9 +132,7 @@ export function CalendarHeatmap({
                   hover === i ? 'stroke-foreground' : openable ? 'cursor-pointer' : undefined
                 }
                 strokeWidth={hover === i ? 1.5 : 0}
-                onPointerEnter={() => {
-                  setHover(i)
-                }}
+                onPointerEnter={() => setHover(i)}
                 onClick={openable ? () => onOpenDay?.(day) : undefined}
               />
             )

@@ -28,9 +28,7 @@ beforeEach(() => {
 describe('tag categories through the real tags service', () => {
   it('creates, renames and deletes a category with the argument shape the IPC expects', async () => {
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.categories).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.categories).toHaveLength(1))
 
     await act(() => result.current.createCategory('Blog'))
     await act(() => result.current.renameCategory('cat-1', 'Projects'))
@@ -43,9 +41,7 @@ describe('tag categories through the real tags service', () => {
 
   it('reloads the categories after one is created', async () => {
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.categories).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.categories).toHaveLength(1))
     api.tags.listCategories.mockResolvedValue({
       success: true,
       categories: [
@@ -61,17 +57,11 @@ describe('tag categories through the real tags service', () => {
 
   it('reloads the categories when another window changes them', async () => {
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.categories).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.categories).toHaveLength(1))
     api.tags.listCategories.mockResolvedValue({ success: true, categories: [] })
 
-    act(() => {
-      categoriesChanged()
-    })
+    act(() => categoriesChanged())
 
-    await waitFor(() => {
-      expect(result.current.categories).toHaveLength(0)
-    })
+    await waitFor(() => expect(result.current.categories).toHaveLength(0))
   })
 })

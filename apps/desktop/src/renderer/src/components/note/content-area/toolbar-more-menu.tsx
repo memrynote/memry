@@ -103,9 +103,7 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
               key={value}
               icon={<Icon size={15} />}
               checked={state.alignment === value}
-              onClick={() => {
-                setAlignment(value)
-              }}
+              onClick={() => setAlignment(value)}
             >
               {dict.formatting_toolbar[dictKey].tooltip}
             </Components.Generic.Menu.Item>
@@ -136,9 +134,7 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
           <Components.Generic.Menu.Item
             icon={<Pin size={15} />}
             checked={isPinned}
-            onClick={() => {
-              onPinnedChange(!isPinned)
-            }}
+            onClick={() => onPinnedChange(!isPinned)}
           >
             {t('editor.toolbar.pinToTop')}
           </Components.Generic.Menu.Item>

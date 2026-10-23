@@ -52,12 +52,7 @@ export function usePropertySection({
   const clearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Drop the pending "newly added" highlight timer when the section unmounts
-  useEffect(
-    () => () => {
-      clearTimeout(clearTimerRef.current)
-    },
-    []
-  )
+  useEffect(() => () => clearTimeout(clearTimerRef.current), [])
 
   const properties: Property[] = useMemo(() => {
     return backendProperties.map((prop) => ({
@@ -108,9 +103,7 @@ export function usePropertySection({
         const uniqueName = getUniquePropertyName(newProp.name, existingNames)
         clearTimeout(clearTimerRef.current)
         setNewlyAddedPropertyId(uniqueName)
-        clearTimerRef.current = setTimeout(() => {
-          setNewlyAddedPropertyId(null)
-        }, 2000)
+        clearTimerRef.current = setTimeout(() => setNewlyAddedPropertyId(null), 2000)
         await addProperty(
           newProp.name,
           defaultValue,

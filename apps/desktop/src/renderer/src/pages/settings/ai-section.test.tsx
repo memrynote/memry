@@ -287,9 +287,7 @@ describe('AISettings', () => {
     await act(async () => {
       voiceCallbacks[0]({ phase: 'ready' })
     })
-    await waitFor(() => {
-      expect(api.settings.getVoiceModelStatus).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(api.settings.getVoiceModelStatus).toHaveBeenCalledTimes(2))
   })
 
   it('saves the voice memo naming mode', async () => {
@@ -360,15 +358,11 @@ describe('AISettings', () => {
     const languageSelect = await screen.findByRole('combobox', { name: 'Spoken language' })
     await userEvent.click(languageSelect)
     await userEvent.click(await screen.findByRole('option', { name: 'German' }))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('language rejected')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('language rejected'))
 
     await userEvent.click(languageSelect)
     await userEvent.click(await screen.findByRole('option', { name: 'French' }))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('language exploded')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('language exploded'))
     expect(languageSelect).toHaveTextContent('Default')
   })
 
@@ -509,16 +503,12 @@ describe('AISettings', () => {
       embeddingCallbacks[0]({ phase: 'complete', current: 5, total: 5 })
       vi.advanceTimersByTime(1000)
     })
-    await waitFor(() => {
-      expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(2))
 
     await act(async () => {
       embeddingCallbacks[0]({ phase: 'ready' })
     })
-    await waitFor(() => {
-      expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(3)
-    })
+    await waitFor(() => expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(3))
 
     await act(async () => {
       voiceCallbacks[0]({ phase: 'error' })

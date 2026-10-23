@@ -105,9 +105,7 @@ describe('LinkedHereOrBacklinks', () => {
     expect(screen.getByTestId('linked-here-pending')).toBeInTheDocument()
     expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
 
-    await act(async () => {
-      resolveSnapshot(snapshot)
-    })
+    await act(async () => resolveSnapshot(snapshot))
 
     expect(await screen.findByTestId('linked-here')).toBeInTheDocument()
     expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
@@ -143,9 +141,7 @@ describe('LinkedHereSection', () => {
     mockGroups([])
     renderWithClient(<LinkedHereSection noteId="person-1" />)
 
-    await waitFor(() => {
-      expect(api.tags.getLinkedHere).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.tags.getLinkedHere).toHaveBeenCalled())
     expect(screen.queryByTestId('linked-here')).not.toBeInTheDocument()
   })
 
@@ -195,9 +191,7 @@ describe('LinkedHereSection', () => {
     expect(api.tags.getLinkedHere).toHaveBeenCalledWith({ noteId: 'person-1', limitPerGroup: 500 })
 
     await userEvent.click(screen.getByRole('button', { name: '4' }))
-    await waitFor(() => {
-      expect(screen.queryByText('Note 4')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Note 4')).not.toBeInTheDocument())
   })
 
   it('shows a relation group by label and field; its count opens the filtered tag table', async () => {
@@ -301,11 +295,10 @@ describe('LinkedHereSection', () => {
     renderWithClient(<LinkedHereSection noteId="person-1" />)
     expect(await screen.findByText('Note 1')).toBeInTheDocument()
     const before = api.tags.getLinkedHere.mock.calls.length
-    const emit = (): void => {
+    const emit = (): void =>
       api[channel].mock.calls.forEach(([cb]) =>
         (cb as (event: unknown) => void)({ id: 'person-1', changes: {} })
       )
-    }
 
     mockGroups([{ kind: 'mentions', total: 1, items: [note(9)] }])
     act(() => {
@@ -330,9 +323,7 @@ describe('LinkedHereSection', () => {
         <LinkedHereSection noteId="person-1" />
       </QueryClientProvider>
     )
-    await waitFor(() => {
-      expect(api.tags.getLinkedHere).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.tags.getLinkedHere).toHaveBeenCalled())
 
     view.unmount()
 

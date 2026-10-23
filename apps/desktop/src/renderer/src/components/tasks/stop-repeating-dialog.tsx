@@ -85,9 +85,7 @@ export const StopRepeatingDialog = ({
               type="radio"
               name="stopOption"
               checked={selectedOption === 'keep'}
-              onChange={() => {
-                setSelectedOption('keep')
-              }}
+              onChange={() => setSelectedOption('keep')}
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">
@@ -116,9 +114,7 @@ export const StopRepeatingDialog = ({
               type="radio"
               name="stopOption"
               checked={selectedOption === 'delete'}
-              onChange={() => {
-                setSelectedOption('delete')
-              }}
+              onChange={() => setSelectedOption('delete')}
               className="mt-0.5 size-4 accent-destructive"
             />
             <div className="flex flex-col gap-0.5">

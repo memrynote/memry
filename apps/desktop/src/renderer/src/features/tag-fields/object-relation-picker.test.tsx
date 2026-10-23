@@ -84,13 +84,13 @@ describe('ObjectRelationPicker', () => {
 
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('Mathematician · Acme')).toBeInTheDocument()
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.tags.searchObjects).toHaveBeenLastCalledWith({
         query: 'a',
         limit: 12,
         tag: 'person'
       })
-    })
+    )
 
     await userEvent.click(screen.getByRole('option', { name: /Alan Turing/ }))
 
@@ -169,17 +169,13 @@ describe('ObjectRelationPicker', () => {
       content: '',
       tags: ['person']
     })
-    await waitFor(() => {
-      expect(onSelect).toHaveBeenCalledWith('memry://note/new-1')
-    })
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('memry://note/new-1'))
   })
 
   it('creates an untitled object with Enter when nothing matches and the query is empty', async () => {
     mockSearch([])
     const { onSelect } = renderPicker()
-    await waitFor(() => {
-      expect(api.tags.searchObjects).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(api.tags.searchObjects).toHaveBeenCalled())
 
     await userEvent.type(screen.getByRole('textbox'), '{Enter}')
 
@@ -188,9 +184,7 @@ describe('ObjectRelationPicker', () => {
       content: '',
       tags: ['person']
     })
-    await waitFor(() => {
-      expect(onSelect).toHaveBeenCalledWith('memry://note/new-1')
-    })
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('memry://note/new-1'))
   })
 
   it('tells the user when creating fails and selects nothing', async () => {
@@ -200,9 +194,7 @@ describe('ObjectRelationPicker', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /New person/ }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('vault locked')
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('vault locked'))
     expect(onSelect).not.toHaveBeenCalled()
   })
 

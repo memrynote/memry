@@ -284,9 +284,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
       let releasePreflight = (): void => {}
       preflight.gate = new Promise<void>((resolve) => {
-        releasePreflight = () => {
-          resolve()
-        }
+        releasePreflight = () => resolve()
       })
 
       const provider = getCrdtProvider()
@@ -340,9 +338,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       storeState.inMemorySessions = 3
       let releasePreflight = (): void => {}
       preflight.gate = new Promise<void>((resolve) => {
-        releasePreflight = () => {
-          resolve()
-        }
+        releasePreflight = () => resolve()
       })
       const init = getCrdtProvider().initPersistence()
 

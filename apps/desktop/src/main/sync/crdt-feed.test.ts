@@ -21,9 +21,7 @@ function makeDoc() {
   const fragment = { delete: vi.fn(), length: 3 }
   return {
     getXmlFragment: vi.fn(() => fragment),
-    transact: vi.fn((fn: () => void) => {
-      fn()
-    }),
+    transact: vi.fn((fn: () => void) => fn()),
     _fragment: fragment
   }
 }
@@ -36,9 +34,7 @@ function makeTagDoc(initialTags: string[] = ['work', 'daily']) {
   }
   return {
     getArray: vi.fn(() => tagArray),
-    transact: vi.fn((fn: () => void) => {
-      fn()
-    }),
+    transact: vi.fn((fn: () => void) => fn()),
     _tagArray: tagArray
   }
 }

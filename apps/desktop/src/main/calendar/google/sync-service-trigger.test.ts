@@ -187,9 +187,7 @@ describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
     syncNowMock.mockRejectedValueOnce(new Error('network down'))
 
     // #when the trigger is called
-    expect(() => {
-      triggerGoogleCalendarSyncNow('resume')
-    }).not.toThrow()
+    expect(() => triggerGoogleCalendarSyncNow('resume')).not.toThrow()
 
     // #then the rejection is caught (no unhandled rejection)
     await Promise.resolve()

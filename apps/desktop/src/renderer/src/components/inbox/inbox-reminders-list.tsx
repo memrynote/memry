@@ -87,9 +87,7 @@ function Section({ title, count, children }: SectionProps): React.JSX.Element {
     <section>
       <button
         type="button"
-        onClick={() => {
-          setIsCollapsed((prev) => !prev)
-        }}
+        onClick={() => setIsCollapsed((prev) => !prev)}
         className="flex items-center gap-1.5 w-full text-start py-2 px-2 cursor-pointer group"
       >
         <ChevronRight
@@ -129,9 +127,7 @@ function ReminderRow({
   return (
     <button
       type="button"
-      onClick={() => {
-        onOpen(entry)
-      }}
+      onClick={() => onOpen(entry)}
       className={cn(
         'group flex w-full items-center gap-2.5 px-2 py-1.5 rounded-md text-start',
         'transition-colors duration-150 hover:bg-muted cursor-pointer'

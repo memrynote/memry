@@ -51,9 +51,8 @@ const mount = (props: PaneProps): ReactNode => (
   </>
 )
 
-const activate = (): void => {
+const activate = (): void =>
   act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
-}
 
 beforeEach(() => {
   resetCommandStoreForTests()

@@ -45,9 +45,7 @@ describe('useTagCategories', () => {
   it('groups tags under their category and leaves the rest uncategorized', async () => {
     const { result } = renderHook(() => useTagCategories())
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.categories).toHaveLength(1)
     expect(result.current.categories[0].tags.map((t) => t.tag)).toEqual(['meetings'])
@@ -56,9 +54,7 @@ describe('useTagCategories', () => {
 
   it('never returns to the loading state once loaded, so a create updates in place', async () => {
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     // Hold the post-create refetch open, so if the hook flipped isLoading
     // back on we'd observe it here rather than racing past it. The hub
@@ -68,7 +64,7 @@ describe('useTagCategories', () => {
     listCategories.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          releaseRefetch = () => {
+          releaseRefetch = () =>
             resolve({
               success: true,
               categories: [
@@ -76,22 +72,17 @@ describe('useTagCategories', () => {
                 { id: 'cat-2', name: 'Blog', sortOrder: 1, tagCount: 0 }
               ]
             })
-          }
         })
     )
 
     const created = result.current.createCategory('Blog')
-    await waitFor(() => {
-      expect(releaseRefetch).toBeDefined()
-    })
+    await waitFor(() => expect(releaseRefetch).toBeDefined())
     expect(result.current.isLoading).toBe(false)
 
     releaseRefetch?.()
     await created
 
-    await waitFor(() => {
-      expect(result.current.categories).toHaveLength(2)
-    })
+    await waitFor(() => expect(result.current.categories).toHaveLength(2))
     expect(result.current.isLoading).toBe(false)
   })
 
@@ -99,9 +90,7 @@ describe('useTagCategories', () => {
     listCategories.mockResolvedValue({ success: true, categories: [] })
 
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.categories).toHaveLength(0)
     expect(result.current.uncategorized.map((t) => t.tag).sort()).toEqual(['idea', 'meetings'])
@@ -111,9 +100,7 @@ describe('useTagCategories', () => {
     listCategories.mockResolvedValue({ success: false, error: 'boom' })
 
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.error).toBe('boom')
-    })
+    await waitFor(() => expect(result.current.error).toBe('boom'))
   })
 
   it('refetches categories when a tag is created but filing it into a category fails', async () => {
@@ -121,9 +108,7 @@ describe('useTagCategories', () => {
     reorder.mockResolvedValue({ success: false, error: 'boom' })
 
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     const listCategoriesCallsBefore = listCategories.mock.calls.length
 
@@ -132,13 +117,11 @@ describe('useTagCategories', () => {
     // The tag's visibility in the hub comes from useNoteTagsQuery's data, not
     // from listCategories, so refetchNoteTags is the call that actually makes
     // the newly-created tag show up.
-    await waitFor(() => {
-      expect(refetchNoteTags).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(refetchNoteTags).toHaveBeenCalled())
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(listCategories.mock.calls.length).toBeGreaterThan(listCategoriesCallsBefore)
-    })
+    )
   })
 
   it('creates a tag from the hub with the casing the user typed, and refetches so it lands without a restart', async () => {
@@ -146,9 +129,7 @@ describe('useTagCategories', () => {
     reorder.mockResolvedValue({ success: true })
 
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await result.current.createTag('Reading', 'emerald', null)
 
@@ -156,9 +137,7 @@ describe('useTagCategories', () => {
     expect(reorder).toHaveBeenCalledWith({
       tags: [{ tag: 'Reading', categoryId: null, sortOrder: 0 }]
     })
-    await waitFor(() => {
-      expect(refetchNoteTags).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(refetchNoteTags).toHaveBeenCalled())
     expect(result.current.error).toBeNull()
   })
 
@@ -166,15 +145,11 @@ describe('useTagCategories', () => {
     updateTagColor.mockResolvedValue({ success: false, error: 'disk is full' })
 
     const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await result.current.createTag('Reading', 'emerald', null)
 
-    await waitFor(() => {
-      expect(result.current.error).toBe('disk is full')
-    })
+    await waitFor(() => expect(result.current.error).toBe('disk is full'))
     expect(reorder).not.toHaveBeenCalled()
   })
 })

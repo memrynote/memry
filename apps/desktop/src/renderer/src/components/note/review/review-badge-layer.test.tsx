@@ -269,9 +269,7 @@ describe('ReviewBadgeLayer', () => {
     // dispatch, then let the event keep bubbling to the dismiss handler. Without
     // the isConnected guard, target.closest('.critic-review-flyout') misses on the
     // detached node and the flyout is wrongly dismissed.
-    pencil.addEventListener('pointerdown', () => {
-      pencil.remove()
-    })
+    pencil.addEventListener('pointerdown', () => pencil.remove())
     fireEvent.pointerDown(pencil)
 
     expect(document.querySelector('.critic-review-flyout')).not.toBeNull()

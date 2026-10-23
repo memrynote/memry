@@ -197,9 +197,7 @@ export class WritingToolsSession {
       getGhosts: () => this.ghostRecords,
       describeAlternative: (id, shownText) => this.describeAlternative(id, shownText),
       formatHint: this.formatHint,
-      onViewUpdate: () => {
-        this.onViewUpdate()
-      }
+      onViewUpdate: () => this.onViewUpdate()
     })
     const unregister = registerEditorPlugin(editor, plugin)
 

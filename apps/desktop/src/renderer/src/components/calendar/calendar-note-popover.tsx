@@ -64,7 +64,7 @@ export function CalendarNotePopover({
   // Timed items (`note_date`) also show the time of day.
   const dateLabel = format(
     new Date(item.startAt),
-    !item.isAllDay ? 'EEE d MMM · HH:mm' : 'EEE d MMM'
+    item.isAllDay === false ? 'EEE d MMM · HH:mm' : 'EEE d MMM'
   )
   const metaLine = item.descriptionPreview ? `${item.descriptionPreview} · ${dateLabel}` : dateLabel
 
@@ -95,9 +95,7 @@ export function CalendarNotePopover({
         variant="ghost"
         size="sm"
         className="justify-start"
-        onClick={() => {
-          onOpenNote(noteId, anchorId)
-        }}
+        onClick={() => onOpenNote(noteId, anchorId)}
       >
         {t('notePopover.open')}
       </Button>

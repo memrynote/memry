@@ -169,9 +169,7 @@ describe('PDF display choice (#2517)', () => {
     fireEvent.click(await screen.findByText('editor.attachmentPicker.display.link'))
     fireEvent.click(await screen.findByTestId('attachment-picker-row'))
 
-    await waitFor(() => {
-      expect(onInsert).toHaveBeenCalledWith({ ...pdfResult, display: 'link' })
-    })
+    await waitFor(() => expect(onInsert).toHaveBeenCalledWith({ ...pdfResult, display: 'link' }))
   })
 
   it('starts on the Settings default', async () => {
@@ -181,9 +179,7 @@ describe('PDF display choice (#2517)', () => {
 
     fireEvent.click(await screen.findByTestId('attachment-picker-row'))
 
-    await waitFor(() => {
-      expect(onInsert).toHaveBeenCalledWith({ ...pdfResult, display: 'link' })
-    })
+    await waitFor(() => expect(onInsert).toHaveBeenCalledWith({ ...pdfResult, display: 'link' }))
   })
 
   it('only offers the choice for PDFs', async () => {
@@ -230,9 +226,7 @@ describe('AttachmentPickerDialog', () => {
 
     fireEvent.click(await screen.findByTestId('attachment-picker-row'))
 
-    await waitFor(() => {
-      expect(onInsert).toHaveBeenCalledWith(result)
-    })
+    await waitFor(() => expect(onInsert).toHaveBeenCalledWith(result))
     expect(insertExistingAttachment).toHaveBeenCalledWith('note-b', 'note-a', PDF.filename)
     expect(uploadAttachment).not.toHaveBeenCalled()
   })
@@ -255,9 +249,7 @@ describe('AttachmentPickerDialog', () => {
     listVaultAttachments.mockRejectedValue(new Error('nope'))
     renderDialog()
 
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(screen.queryAllByTestId('attachment-picker-row')).toHaveLength(0)
   })
 
@@ -268,9 +260,7 @@ describe('AttachmentPickerDialog', () => {
 
     fireEvent.click(await screen.findByTestId('attachment-picker-row'))
 
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(onInsert).not.toHaveBeenCalled()
   })
 
@@ -308,7 +298,7 @@ describe('AttachmentPickerDialog', () => {
       target: { files: [new File(['x'], 'slide.png', { type: 'image/png' })] }
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(onInsert).toHaveBeenCalledWith({
         url: '../attachments/note-b/zzzzzz-slide.png',
         name: 'slide.png',
@@ -316,7 +306,7 @@ describe('AttachmentPickerDialog', () => {
         mimeType: 'image/png',
         type: 'image'
       })
-    })
+    )
     expect(uploadAttachment).toHaveBeenCalledTimes(1)
     expect(insertExistingAttachment).not.toHaveBeenCalled()
   })
@@ -330,9 +320,7 @@ describe('AttachmentPickerDialog', () => {
       target: { files: [new File(['x'], 'huge.zip', { type: 'application/zip' })] }
     })
 
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(onInsert).not.toHaveBeenCalled()
   })
 
@@ -344,9 +332,9 @@ describe('AttachmentPickerDialog', () => {
       target: { files: [new File(['x'], 'holiday.avi', { type: 'video/x-msvideo' })] }
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith('editor.attachmentPicker.unsupportedVideo')
-    })
+    )
     expect(uploadAttachment).not.toHaveBeenCalled()
     expect(onInsert).not.toHaveBeenCalled()
   })
@@ -367,9 +355,7 @@ describe('AttachmentPickerDialog', () => {
       target: { files: [new File(['x'], 'demo.mp4', { type: 'video/mp4' })] }
     })
 
-    await waitFor(() => {
-      expect(onInsert).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(onInsert).toHaveBeenCalled())
     expect(uploadAttachment).toHaveBeenCalledTimes(1)
   })
 })

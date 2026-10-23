@@ -48,9 +48,7 @@ let publishedNotes: NoteListItem[] = []
 
 const subscribers = new Set<() => void>()
 const emit = (): void => {
-  subscribers.forEach((fn) => {
-    fn()
-  })
+  subscribers.forEach((fn) => fn())
 }
 
 /** Re-render every consumer when the fake queries republish. */
@@ -330,16 +328,12 @@ const renameFolderTo = async (name: string, nextName: string): Promise<void> => 
   const input = screen.getByRole('textbox', { name: /rename/i })
   // The input focuses itself a frame after mounting; typing before that lands
   // its `select()` mid-word.
-  await waitFor(() => {
-    expect(input).toHaveFocus()
-  })
+  await waitFor(() => expect(input).toHaveFocus())
 
   await user.clear(input)
   await user.type(input, `${nextName}{Enter}`)
 
-  await waitFor(() => {
-    expect(screen.queryByRole('textbox', { name: /rename/i })).toBeNull()
-  })
+  await waitFor(() => expect(screen.queryByRole('textbox', { name: /rename/i })).toBeNull())
 }
 
 const deleteFolderNamed = async (name: string): Promise<void> => {
@@ -349,9 +343,7 @@ const deleteFolderNamed = async (name: string): Promise<void> => {
 
   await user.click(within(rows[0]).getByRole('button', { name: /^delete$/i }))
   await user.click(await screen.findByTestId('confirm-delete'))
-  await waitFor(() => {
-    expect(screen.queryByTestId('confirm-delete')).toBeNull()
-  })
+  await waitFor(() => expect(screen.queryByTestId('confirm-delete')).toBeNull())
 }
 
 const notesInVault = (): string[] => vault.notes.map((n) => n.path).sort()
@@ -366,9 +358,7 @@ const folderNodePaths = (container: HTMLElement): string[] =>
 /** The notes list resolves a microtask after mount; wait for the first paint. */
 const renderSettled = async () => {
   const utils = renderTree()
-  await waitFor(() => {
-    expect(folderRows('Projcts')).toHaveLength(1)
-  })
+  await waitFor(() => expect(folderRows('Projcts')).toHaveLength(1))
   return utils
 }
 
@@ -404,9 +394,7 @@ describe('folder rename → rename → delete', () => {
 
       await renameFolderTo('Projcts', 'Projects')
 
-      await waitFor(() => {
-        expect(folderRows('Projects')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Projects')).toHaveLength(1))
       expect(folderRows('Projcts')).toHaveLength(0)
     })
 
@@ -415,9 +403,7 @@ describe('folder rename → rename → delete', () => {
 
       await renameFolderTo('Projcts', 'Projects')
 
-      await waitFor(() => {
-        expect(folderNodePaths(container)).toContain('Projects')
-      })
+      await waitFor(() => expect(folderNodePaths(container)).toContain('Projects'))
       expect(folderNodePaths(container)).not.toContain('Projcts')
 
       // `publishedNotes` is what the notes query last handed the tree. The old
@@ -431,16 +417,12 @@ describe('folder rename → rename → delete', () => {
       await renderSettled()
 
       await renameFolderTo('Projcts', 'Projects')
-      await waitFor(() => {
-        expect(folderRows('Projects')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Projects')).toHaveLength(1))
 
       await renameFolderTo('Projects', 'Project Notes')
 
       expect(mocks.renameFolder).toHaveBeenLastCalledWith('Projects', 'Project Notes')
-      await waitFor(() => {
-        expect(folderRows('Project Notes')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Project Notes')).toHaveLength(1))
       expect(vault.folders.map((f) => f.path)).toEqual(['Project Notes'])
     })
 
@@ -448,9 +430,7 @@ describe('folder rename → rename → delete', () => {
       await renderSettled()
 
       await renameFolderTo('Projcts', 'Projects')
-      await waitFor(() => {
-        expect(folderRows('Projects')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Projects')).toHaveLength(1))
 
       await deleteFolderNamed('Projects')
 
@@ -465,19 +445,13 @@ describe('folder rename → rename → delete', () => {
       const { container } = await renderSettled()
 
       await renameFolderTo('Projcts', 'Projects')
-      await waitFor(() => {
-        expect(folderNodePaths(container)).toEqual(['Projects'])
-      })
+      await waitFor(() => expect(folderNodePaths(container)).toEqual(['Projects']))
 
       await renameFolderTo('Projects', 'Project Notes')
-      await waitFor(() => {
-        expect(folderNodePaths(container)).toEqual(['Project Notes'])
-      })
+      await waitFor(() => expect(folderNodePaths(container)).toEqual(['Project Notes']))
 
       await deleteFolderNamed('Project Notes')
-      await waitFor(() => {
-        expect(folderNodePaths(container)).toEqual([])
-      })
+      await waitFor(() => expect(folderNodePaths(container)).toEqual([]))
 
       expect(notesInVault()).toEqual(extraNotes.map((n) => n.path).sort())
     })
@@ -495,9 +469,7 @@ describe('folder rename → rename → delete', () => {
 
       await renameFolderTo('Projcts', 'Projects')
 
-      await waitFor(() => {
-        expect(folderRows('Projects')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Projects')).toHaveLength(1))
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
     })
@@ -506,14 +478,10 @@ describe('folder rename → rename → delete', () => {
       await renderSettled()
 
       await renameFolderTo('Projcts', 'Projects')
-      await waitFor(() => {
-        expect(folderRows('Projects')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Projects')).toHaveLength(1))
       await renameFolderTo('Projects', 'Project Notes')
 
-      await waitFor(() => {
-        expect(folderRows('Project Notes')).toHaveLength(1)
-      })
+      await waitFor(() => expect(folderRows('Project Notes')).toHaveLength(1))
       expect(folderRows('Projects')).toHaveLength(0)
       expect(folderRows('Projcts')).toHaveLength(0)
     })

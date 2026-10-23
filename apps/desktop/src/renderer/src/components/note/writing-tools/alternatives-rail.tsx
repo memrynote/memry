@@ -88,15 +88,9 @@ export function AlternativesRail({ session, snapshot }: AlternativesRailProps) {
             <AddAlternativeInput
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
               autoFocus={snapshot.focusAlternativeId === draft.id}
-              onSubmit={(text) => {
-                session.submitDraft(text)
-              }}
-              onCancel={() => {
-                session.cancelDraft()
-              }}
-              onFocused={() => {
-                session.clearFocusAlternative()
-              }}
+              onSubmit={(text) => session.submitDraft(text)}
+              onCancel={() => session.cancelDraft()}
+              onFocused={() => session.clearFocusAlternative()}
             />
           </div>
         )}
@@ -147,12 +141,8 @@ function AlternativeCard({
       className="critic-review-card writing-rail-card"
       data-hovered={hovered ? 'true' : 'false'}
       style={{ top }}
-      onPointerEnter={() => {
-        session.hoverAlternative(alternative.id)
-      }}
-      onPointerLeave={() => {
-        session.hoverAlternative(null)
-      }}
+      onPointerEnter={() => session.hoverAlternative(alternative.id)}
+      onPointerLeave={() => session.hoverAlternative(null)}
     >
       <p className="writing-rail-card-title" title={alternative.original}>
         {alternative.original}
@@ -162,9 +152,7 @@ function AlternativeCard({
           label={t('writingTools.alternatives.original')}
           text={alternative.original}
           shown={shownVariantId === null}
-          onActivate={() => {
-            session.activateVariant(alternative.id, null)
-          }}
+          onActivate={() => session.activateVariant(alternative.id, null)}
         />
         {alternative.variants.map((variant) => (
           <AlternativeRow
@@ -172,32 +160,22 @@ function AlternativeCard({
             text={variant.text}
             source={variant.source}
             shown={shownVariantId === variant.id}
-            onActivate={() => {
-              session.activateVariant(alternative.id, variant.id)
-            }}
-            onRemove={() => {
-              session.removeVariant(alternative.id, variant.id)
-            }}
+            onActivate={() => session.activateVariant(alternative.id, variant.id)}
+            onRemove={() => session.removeVariant(alternative.id, variant.id)}
           />
         ))}
       </ul>
       <AddAlternativeInput
         // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus={focusInput}
-        onSubmit={(text) => {
-          session.addVariant(alternative.id, text)
-        }}
-        onFocused={() => {
-          session.clearFocusAlternative()
-        }}
+        onSubmit={(text) => session.addVariant(alternative.id, text)}
+        onFocused={() => session.clearFocusAlternative()}
       />
       {hasAiVariants && (
         <button
           type="button"
           className="mt-1.5 text-xs text-text-tertiary underline-offset-2 hover:text-foreground hover:underline focus-visible:underline"
-          onClick={() => {
-            session.removeAiVariants(alternative.id)
-          }}
+          onClick={() => session.removeAiVariants(alternative.id)}
         >
           {t('writingTools.alternatives.removeSuggestions')}
         </button>
@@ -305,9 +283,7 @@ function AddAlternativeInput({
     <input
       ref={inputRef}
       value={value}
-      onChange={(event) => {
-        setValue(event.target.value)
-      }}
+      onChange={(event) => setValue(event.target.value)}
       onKeyDown={handleKeyDown}
       onBlur={() => {
         if (!value.trim()) onCancel?.()

@@ -41,9 +41,7 @@ const settle = async (): Promise<void> => {
 // hide a handler that wrongly clears its sibling's results.
 const rejectsLate = (message: string) => () =>
   new Promise((_resolve, reject) => {
-    setTimeout(() => {
-      reject(new Error(message))
-    }, 10)
+    setTimeout(() => reject(new Error(message)), 10)
   })
 
 describe('useRelatedItemSearch', () => {
@@ -65,9 +63,7 @@ describe('useRelatedItemSearch', () => {
   it('lists recent notes and canvases for the empty query', async () => {
     const { result } = renderHook(() => useRelatedItemSearch(true, '', 'Untitled canvas'))
 
-    await waitFor(() => {
-      expect(result.current.notes).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.notes).toHaveLength(1))
 
     expect(result.current.notes[0]).toMatchObject({ kind: 'note', id: 'n1', title: 'Recent note' })
     expect(result.current.canvases[0]).toMatchObject({ kind: 'canvas', id: 'c1', title: 'Roadmap' })
@@ -92,9 +88,7 @@ describe('useRelatedItemSearch', () => {
 
     const { result } = renderHook(() => useRelatedItemSearch(true, 'ancient', 'Untitled canvas'))
 
-    await waitFor(() => {
-      expect(result.current.notes).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.notes).toHaveLength(1))
 
     expect(result.current.notes[0]).toMatchObject({ id: 'old-note', title: 'An ancient note' })
     expect(searchService.query).toHaveBeenCalledWith(
@@ -108,9 +102,7 @@ describe('useRelatedItemSearch', () => {
 
     const { result } = renderHook(() => useRelatedItemSearch(true, '', 'Untitled canvas'))
 
-    await waitFor(() => {
-      expect(result.current.canvases).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.canvases).toHaveLength(1))
     expect(result.current.canvases[0].title).toBe('Untitled canvas')
   })
 
@@ -119,9 +111,7 @@ describe('useRelatedItemSearch', () => {
 
     const { result } = renderHook(() => useRelatedItemSearch(true, '', 'Untitled canvas'))
 
-    await waitFor(() => {
-      expect(result.current.notes).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.notes).toHaveLength(1))
     // Both sources have to have settled before this means anything: the whole
     // point is that the canvas rejection does not go back and clear the notes.
     await settle()
@@ -135,9 +125,7 @@ describe('useRelatedItemSearch', () => {
 
     const { result } = renderHook(() => useRelatedItemSearch(true, '', 'Untitled canvas'))
 
-    await waitFor(() => {
-      expect(result.current.canvases).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.canvases).toHaveLength(1))
     await settle()
 
     expect(result.current.canvases).toHaveLength(1)
@@ -151,9 +139,7 @@ describe('useRelatedItemSearch', () => {
 
     const { result } = renderHook(() => useRelatedItemSearch(true, 'road', 'Untitled canvas'))
 
-    await waitFor(() => {
-      expect(result.current.canvases).toHaveLength(1)
-    })
+    await waitFor(() => expect(result.current.canvases).toHaveLength(1))
     expect(result.current.canvases[0].id).toBe('c1')
   })
 })

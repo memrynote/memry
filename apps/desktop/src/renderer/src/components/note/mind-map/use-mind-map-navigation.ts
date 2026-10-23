@@ -146,9 +146,7 @@ export function useMindMapNavigation({
   )
 
   const activateNode = useCallback<MindMapNodeActivation>(
-    (node) => {
-      activateMindMapNode(node, { navigateToBlock, openNote, openTask, expandBranch })
-    },
+    (node) => activateMindMapNode(node, { navigateToBlock, openNote, openTask, expandBranch }),
     [navigateToBlock, openNote, openTask, expandBranch]
   )
 

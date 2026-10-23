@@ -148,7 +148,7 @@ export async function waitForVaultReady(page: Page, timeout = 45000): Promise<vo
   await page.waitForFunction(
     async () => {
       const status = await window.api.vault.getStatus()
-      return status?.isOpen
+      return status?.isOpen === true
     },
     undefined,
     { timeout, polling: 250 }
@@ -676,9 +676,7 @@ export async function openSettingsView(
   section: string,
   timeout?: number
 ): Promise<void> {
-  await page.evaluate((requested) => {
-    window.api.quickCapture.openSettings(requested)
-  }, section)
+  await page.evaluate((requested) => window.api.quickCapture.openSettings(requested), section)
   await expect(page.getByTestId('settings-view')).toBeVisible({ timeout })
 }
 

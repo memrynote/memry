@@ -35,12 +35,8 @@ export function SyncSection() {
     if (hashToken) return
     api
       .authedJson<{ checkoutToken: string }>('/auth/checkout-token', { method: 'POST' })
-      .then((r) => {
-        setMintedToken(r.checkoutToken)
-      })
-      .catch(() => {
-        setError(true)
-      })
+      .then((r) => setMintedToken(r.checkoutToken))
+      .catch(() => setError(true))
   }, [api, hashToken])
 
   // Without this the panel is a pure first-purchase screen and would happily sell a second,
@@ -49,12 +45,8 @@ export function SyncSection() {
     api
       .authedJson<BillingStatus>('/auth/billing')
       .then(setBilling)
-      .catch(() => {
-        setBilling(null)
-      })
-      .finally(() => {
-        setBillingLoaded(true)
-      })
+      .catch(() => setBilling(null))
+      .finally(() => setBillingLoaded(true))
   }, [api])
 
   const previewPlanChange = useCallback(

@@ -34,12 +34,7 @@ describe('useRecordRecentlyOpened', () => {
 
   it('records a note that stays in front past the dwell', () => {
     activeTab.current = { type: 'note', entityId: 'n1' }
-    renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    renderHook(() => useRecordRecentlyOpened(), { wrapper })
 
     expect(record).not.toHaveBeenCalled()
     act(() => {
@@ -52,12 +47,7 @@ describe('useRecordRecentlyOpened', () => {
   // tabs would fill the trail with notes you never looked at.
   it('does not record a note you tab straight past', () => {
     activeTab.current = { type: 'note', entityId: 'n1' }
-    const { rerender } = renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    const { rerender } = renderHook(() => useRecordRecentlyOpened(), { wrapper })
 
     act(() => {
       vi.advanceTimersByTime(500)
@@ -74,12 +64,7 @@ describe('useRecordRecentlyOpened', () => {
 
   it('throttles repeat visits to the same note', () => {
     activeTab.current = { type: 'note', entityId: 'n1' }
-    const { rerender } = renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    const { rerender } = renderHook(() => useRecordRecentlyOpened(), { wrapper })
     act(() => {
       vi.advanceTimersByTime(2000)
     })
@@ -101,12 +86,7 @@ describe('useRecordRecentlyOpened', () => {
 
   it('records the same note again once the throttle window has passed', () => {
     activeTab.current = { type: 'note', entityId: 'n1' }
-    const { rerender } = renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    const { rerender } = renderHook(() => useRecordRecentlyOpened(), { wrapper })
     act(() => {
       vi.advanceTimersByTime(2000)
     })
@@ -130,12 +110,7 @@ describe('useRecordRecentlyOpened', () => {
   // you looked at", so the trail has to carry them too (Aurelie, 22 Aug 2026).
   it('records a canvas that stays in front past the dwell', () => {
     activeTab.current = { type: 'canvas', entityId: 'c1' }
-    renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    renderHook(() => useRecordRecentlyOpened(), { wrapper })
 
     expect(record).not.toHaveBeenCalled()
     act(() => {
@@ -148,12 +123,7 @@ describe('useRecordRecentlyOpened', () => {
   // with a just-opened note must still be written.
   it('throttles per item type, not per bare id', () => {
     activeTab.current = { type: 'note', entityId: 'x1' }
-    const { rerender } = renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    const { rerender } = renderHook(() => useRecordRecentlyOpened(), { wrapper })
     act(() => {
       vi.advanceTimersByTime(2000)
     })
@@ -172,12 +142,7 @@ describe('useRecordRecentlyOpened', () => {
 
   it('ignores tabs that carry no recordable entity', () => {
     activeTab.current = { type: 'home' }
-    renderHook(
-      () => {
-        useRecordRecentlyOpened()
-      },
-      { wrapper }
-    )
+    renderHook(() => useRecordRecentlyOpened(), { wrapper })
     act(() => {
       vi.advanceTimersByTime(5000)
     })

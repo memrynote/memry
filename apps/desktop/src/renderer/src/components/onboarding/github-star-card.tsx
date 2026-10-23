@@ -88,9 +88,7 @@ export function GithubStarCard(): React.JSX.Element | null {
           onClick={() => {
             settle()
             setState('thanks')
-            thanksTimer.current = setTimeout(() => {
-              setState('hidden')
-            }, THANKS_MS)
+            thanksTimer.current = setTimeout(() => setState('hidden'), THANKS_MS)
           }}
           className="flex h-[26px] items-center gap-1.5 rounded-md bg-foreground px-2.5 text-xs font-medium text-background hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tint-ring)]"
         >

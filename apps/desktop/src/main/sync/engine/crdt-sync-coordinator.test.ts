@@ -1351,9 +1351,8 @@ describe('CrdtSyncCoordinator', () => {
       expect(rows()).toEqual([['note-local', 'local_only', 0]])
     })
 
-    const failing = (noteId: string, lastFailedAt: number) => {
+    const failing = (noteId: string, lastFailedAt: number) =>
       store().owe([noteId], 'pull_failed', { failed: true, now: lastFailedAt })
-    }
 
     // #2297 review A-2, B-M1
     it('#then the drain defers a failing debt, and a sweep re-owe does not extend its backoff', () => {

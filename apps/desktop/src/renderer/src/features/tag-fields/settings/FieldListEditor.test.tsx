@@ -184,14 +184,14 @@ describe('FieldListEditor reordering', () => {
     await user.keyboard('{ArrowDown}')
     await user.keyboard(' ')
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(tagsApi.editSchema).toHaveBeenCalledWith({
         kind: 'move-field',
         tag: 'person',
         name: 'Role',
         toIndex: 1
       })
-    })
+    )
   })
 
   it('reports a failed move', async () => {
@@ -205,9 +205,7 @@ describe('FieldListEditor reordering', () => {
     await user.keyboard('{ArrowDown}')
     await user.keyboard(' ')
 
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('offline')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('offline'))
   })
 
   it('does nothing when a field is dropped where it started', async () => {
@@ -241,9 +239,7 @@ describe('FieldListEditor remove', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(tagsApi.editSchema).not.toHaveBeenCalled()
   })
 
@@ -255,16 +251,14 @@ describe('FieldListEditor remove', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Remove field' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(tagsApi.editSchema).toHaveBeenCalledWith({
         kind: 'remove-field',
         tag: 'person',
         name: 'Role'
       })
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('keeps the dialog open and reports the failure when the removal is rejected', async () => {
@@ -277,9 +271,7 @@ describe('FieldListEditor remove', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove field' })
     )
 
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('disk full')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('disk full'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })
@@ -343,21 +335,17 @@ describe('FieldListEditor rename', () => {
     await user.clear(input)
     await user.type(input, 'Job title{Enter}')
 
-    await waitFor(() => {
-      expect(tagsApi.editSchema).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(tagsApi.editSchema).toHaveBeenCalledTimes(1))
     expect(tagsApi.editSchema).toHaveBeenCalledWith({
       kind: 'rename-field',
       from: 'Role',
       to: 'Job title',
       runId: expect.any(String)
     })
-    await waitFor(() => {
+    await waitFor(() =>
       expect(toastMock.success).toHaveBeenCalledWith('Renamed Role to Job title in 8 items.')
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('warns when locked notes or notes that already had the new name were skipped', async () => {
@@ -375,9 +363,7 @@ describe('FieldListEditor rename', () => {
     await user.type(input, 'Job title')
     await user.click(within(dialog).getByRole('button', { name: 'Rename' }))
 
-    await waitFor(() => {
-      expect(toastMock.warning).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(toastMock.warning).toHaveBeenCalledTimes(1))
     const message = toastMock.warning.mock.calls[0][0] as string
     expect(message).toContain('Renamed Role to Job title in 3 items.')
     expect(message).toContain('2 locked notes finish when they are unlocked.')
@@ -410,24 +396,16 @@ describe('FieldListEditor rename', () => {
     expect(input).toBeDisabled()
 
     const { runId } = tagsApi.editSchema.mock.calls[0][0] as { runId: string }
-    act(() => {
-      emit({ runId: 'someone-elses-run', done: 1, total: 99 })
-    })
+    act(() => emit({ runId: 'someone-elses-run', done: 1, total: 99 }))
     expect(within(dialog).getByText('0 / 7')).toBeInTheDocument()
-    act(() => {
-      emit({ runId, done: 5, total: 7 })
-    })
+    act(() => emit({ runId, done: 5, total: 7 }))
     expect(within(dialog).getByText('5 / 7')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-    await act(async () => {
-      finish({ snapshot: emptySnapshot, rename: { notes: 7, tasks: 0 } })
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await act(async () => finish({ snapshot: emptySnapshot, rename: { notes: 7, tasks: 0 } }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('reports a failed rename and lets the user retry', async () => {
@@ -442,9 +420,7 @@ describe('FieldListEditor rename', () => {
     await user.type(input, 'Job title')
     await user.click(within(dialog).getByRole('button', { name: 'Rename' }))
 
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('vault locked')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('vault locked'))
     expect(within(dialog).queryByText('Renaming in notes')).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Rename' })).toBeEnabled()
   })
@@ -458,9 +434,7 @@ describe('FieldListEditor rename', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' })
     )
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(tagsApi.editSchema).not.toHaveBeenCalled()
   })
 })
@@ -485,17 +459,15 @@ describe('FieldListEditor relation settings', () => {
     await user.type(inverse, '  Staff  ')
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(tagsApi.editSchema).toHaveBeenCalledWith({
         kind: 'set-relation',
         tag: 'person',
         name: 'Employer',
         relation: { target: 'company', many: true, inverse: 'Staff' }
       })
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('repoints the relation to another tag from the picker', async () => {
@@ -508,14 +480,14 @@ describe('FieldListEditor relation settings', () => {
     await user.click(await screen.findByRole('option', { name: 'person' }))
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(tagsApi.editSchema).toHaveBeenCalledWith(
         expect.objectContaining({
           kind: 'set-relation',
           relation: { target: 'person', many: false, inverse: 'People' }
         })
       )
-    })
+    )
   })
 
   it('keeps the dialog open and reports the failure when saving the relation fails', async () => {
@@ -528,9 +500,7 @@ describe('FieldListEditor relation settings', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save' })
     )
 
-    await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith('conflict')
-    })
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('conflict'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
@@ -542,9 +512,7 @@ describe('FieldListEditor relation settings', () => {
     await screen.findByRole('dialog')
     await user.keyboard('{Escape}')
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(tagsApi.editSchema).not.toHaveBeenCalled()
   })
 
@@ -560,9 +528,7 @@ describe('FieldListEditor relation settings', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(tagsApi.editSchema).not.toHaveBeenCalled()
   })
 })

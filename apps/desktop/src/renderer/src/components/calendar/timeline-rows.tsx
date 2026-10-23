@@ -248,9 +248,7 @@ function RowFrame({
       onPointerDown={(event) => {
         if (event.button === 0) onSelect()
       }}
-      onDoubleClick={(event) => {
-        onOpen(event.currentTarget.getBoundingClientRect())
-      }}
+      onDoubleClick={(event) => onOpen(event.currentTarget.getBoundingClientRect())}
     >
       <div
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
@@ -397,29 +395,21 @@ export function TimelineTaskRowView({
         placement={placement}
         solid={solid}
         done={isCompleted}
-        onPointerDown={(event) => {
-          onBarPointerDown(event, 'move')
-        }}
+        onPointerDown={(event) => onBarPointerDown(event, 'move')}
         className="cursor-grab gap-1.5 ps-[11px] pe-2.5 active:cursor-grabbing"
       >
         {!placement.clippedStart && (
           <ResizeHandle
             side="start"
             visible={solid}
-            onPointerDown={(event) => {
-              onBarPointerDown(event, 'resize-start')
-            }}
+            onPointerDown={(event) => onBarPointerDown(event, 'resize-start')}
           />
         )}
         {fits && !isDragging && (
           <span
             className="flex shrink-0 items-center"
-            onPointerDown={(event) => {
-              event.stopPropagation()
-            }}
-            onDoubleClick={(event) => {
-              event.stopPropagation()
-            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
           >
             <CalendarTaskStatus
               taskId={task.id}
@@ -435,9 +425,7 @@ export function TimelineTaskRowView({
           <ResizeHandle
             side="end"
             visible={solid}
-            onPointerDown={(event) => {
-              onBarPointerDown(event, 'resize-end')
-            }}
+            onPointerDown={(event) => onBarPointerDown(event, 'resize-end')}
           />
         )}
       </ChipBar>
@@ -448,9 +436,7 @@ export function TimelineTaskRowView({
       <div
         data-testid="timeline-task-milestone"
         data-kind="due"
-        onPointerDown={(event) => {
-          onBarPointerDown(event, 'move')
-        }}
+        onPointerDown={(event) => onBarPointerDown(event, 'move')}
         className="absolute top-0 flex h-full cursor-grab items-center justify-center active:cursor-grabbing"
         style={{ ...vars, insetInlineStart: placement.from * dayWidth, width: dayWidth }}
       >
@@ -460,16 +446,12 @@ export function TimelineTaskRowView({
             <ResizeHandle
               side="start"
               visible={solid}
-              onPointerDown={(event) => {
-                onBarPointerDown(event, 'resize-start')
-              }}
+              onPointerDown={(event) => onBarPointerDown(event, 'resize-start')}
             />
             <ResizeHandle
               side="end"
               visible={solid}
-              onPointerDown={(event) => {
-                onBarPointerDown(event, 'resize-end')
-              }}
+              onPointerDown={(event) => onBarPointerDown(event, 'resize-end')}
             />
           </>
         )}
@@ -503,9 +485,7 @@ export function TimelineTaskRowView({
         // is an outline here instead.
         solid={false}
         done={isCompleted}
-        onPointerDown={(event) => {
-          onBarPointerDown(event, 'move')
-        }}
+        onPointerDown={(event) => onBarPointerDown(event, 'move')}
         className={cn(
           'cursor-grab rounded-e-none bg-transparent! ps-[11px] pe-2.5 active:cursor-grabbing',
           '[--timeline-fade-to:right] rtl:[--timeline-fade-to:left]',
@@ -621,12 +601,8 @@ export function TimelineTaskRowView({
           <span
             className="relative flex shrink-0 justify-center"
             style={{ width: 18, marginInlineStart: row.depth === 1 ? 56 : 4 }}
-            onPointerDown={(event) => {
-              event.stopPropagation()
-            }}
-            onDoubleClick={(event) => {
-              event.stopPropagation()
-            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
           >
             <CalendarTaskStatus
               taskId={task.id}
@@ -662,12 +638,8 @@ export function TimelineTaskRowView({
       trackProps={
         row.shape.kind === 'none'
           ? {
-              onPointerMove: (event) => {
-                setHoverDay(dayFromPointer(event))
-              },
-              onPointerLeave: () => {
-                setHoverDay(null)
-              },
+              onPointerMove: (event) => setHoverDay(dayFromPointer(event)),
+              onPointerLeave: () => setHoverDay(null),
               onPointerDown: (event) => {
                 if (event.button !== 0) return
                 onSelect()

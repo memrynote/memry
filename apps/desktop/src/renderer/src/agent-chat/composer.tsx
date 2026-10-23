@@ -220,13 +220,9 @@ export function Composer({
   }
 
   useEffect(() => {
-    const focusTimer = window.setTimeout(() => {
-      promptEditorRef.current?.focus()
-    }, 0)
+    const focusTimer = window.setTimeout(() => promptEditorRef.current?.focus(), 0)
 
-    return () => {
-      window.clearTimeout(focusTimer)
-    }
+    return () => window.clearTimeout(focusTimer)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- conversationId is an intentional trigger: refocus the prompt on conversation switch
   }, [conversationId])
 
@@ -691,19 +687,13 @@ export function Composer({
                 localConfigured={localConfigured}
                 localModelIds={localModelIds}
                 onOpenChange={handleSettingsMenuOpenChange}
-                onToggleWebSearch={() => {
-                  setWebSearchEnabled((value) => !value)
-                }}
-                onToggleIncludeCurrentNote={() => {
-                  setIncludeCurrentNote((value) => !value)
-                }}
+                onToggleWebSearch={() => setWebSearchEnabled((value) => !value)}
+                onToggleIncludeCurrentNote={() => setIncludeCurrentNote((value) => !value)}
                 onSelectAccessMode={setAccessMode}
                 onSelectReasoning={selectReasoning}
                 onSelectCliModel={selectCliModel}
                 onSelectLocalModel={selectLocalModel}
-                onOpenProviderSettings={() => {
-                  openSettings('agent-providers')
-                }}
+                onOpenProviderSettings={() => openSettings('agent-providers')}
               />
             </div>
             <div className="flex shrink-0 items-center gap-1.5">

@@ -25,9 +25,7 @@ const press = (target: Element, init: KeyboardEventInit): KeyboardEvent => {
 /** A widget that handles every key itself, as Excalidraw's canvas does for ⌘[ and ⌘]. */
 function swallowingWidget(): HTMLElement {
   const widget = document.createElement('div')
-  widget.addEventListener('keydown', (event) => {
-    event.stopPropagation()
-  })
+  widget.addEventListener('keydown', (event) => event.stopPropagation())
   document.body.append(widget)
   return widget
 }

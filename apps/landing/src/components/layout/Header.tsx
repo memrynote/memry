@@ -44,9 +44,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
     <a
       href={href}
       className={className}
-      onClick={() => {
-        trackLandingEvent(eventName, analyticsTarget('nav', label))
-      }}
+      onClick={() => trackLandingEvent(eventName, analyticsTarget('nav', label))}
     >
       {label}
     </a>
@@ -54,9 +52,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
     <Link
       to={href}
       className={className}
-      onClick={() => {
-        trackLandingEvent(eventName, analyticsTarget('nav', label))
-      }}
+      onClick={() => trackLandingEvent(eventName, analyticsTarget('nav', label))}
     >
       {label}
     </Link>
@@ -203,9 +199,8 @@ function DropdownItem({ item }: { item: LandingDropdownItem }) {
       </span>
     </>
   )
-  const handleClick = () => {
+  const handleClick = () =>
     trackLandingEvent('landing_nav_click', analyticsTarget('dropdown', item.label))
-  }
 
   return item.disabled ? (
     <button type="button" className={className} aria-disabled="true" tabIndex={-1}>
@@ -468,9 +463,7 @@ export function Header() {
             <GitHubStarWidget iconOnly className="md:hidden" />
             <Link
               to={accountHref}
-              onClick={() => {
-                trackLandingEvent('landing_nav_click', accountTarget)
-              }}
+              onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
               className="hidden min-h-[34px] items-center justify-center rounded-[9px] bg-terracotta px-3.5 text-xs font-medium leading-4 text-white shadow-[0_0_0_4px_rgb(255_103_26/0.16)] transition-colors duration-200 hover:bg-terracotta/90 md:inline-flex"
             >
               {accountLabel}

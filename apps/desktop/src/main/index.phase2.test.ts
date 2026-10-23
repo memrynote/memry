@@ -1611,9 +1611,7 @@ describe('main index phase2 exports', () => {
       state: 'second-state'
     })
 
-    expect(() => {
-      openUrlHandler({ preventDefault }, 'not a valid url')
-    }).not.toThrow()
+    expect(() => openUrlHandler({ preventDefault }, 'not a valid url')).not.toThrow()
   })
 
   it('routes billing deep links through checkout and reconciliation handlers', async () => {
@@ -1919,9 +1917,7 @@ describe('main index phase2 exports', () => {
     const failLoadHandler = quickWindow.webContents.on.mock.calls.find(
       ([event]) => event === 'did-fail-load'
     )?.[1] as (_event: unknown, code: number, description: string) => void
-    expect(() => {
-      failLoadHandler({}, -3, 'aborted')
-    }).not.toThrow()
+    expect(() => failLoadHandler({}, -3, 'aborted')).not.toThrow()
   })
 
   it('routes quick capture settings to the main window before closing the capture window', async () => {

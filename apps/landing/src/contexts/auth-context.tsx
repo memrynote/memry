@@ -14,9 +14,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       createSyncApi({
         baseUrl: SYNC_SERVER_URL,
         storage,
-        onSessionCleared: () => {
-          setIsSignedIn(false)
-        }
+        onSessionCleared: () => setIsSignedIn(false)
       }),
     [storage]
   )
@@ -37,9 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSignedIn,
       storage,
       api,
-      refreshSignedIn: () => {
-        setIsSignedIn(Boolean(storage.getSession()))
-      },
+      refreshSignedIn: () => setIsSignedIn(Boolean(storage.getSession())),
       signOutLocal: () => {
         storage.clearSession()
         setIsSignedIn(false)

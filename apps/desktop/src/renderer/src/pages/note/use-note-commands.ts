@@ -139,32 +139,18 @@ export function useNoteCommands(input: NoteCommandInput): {
     'note.find': { run: input.openFind, enabled: note !== null },
     // Unlabeled: the palette says "Export to PDF…", as the native File menu does.
     'note.exportPdf': {
-      run: () => {
-        dialog.show('export')
-      },
+      run: () => dialog.show('export'),
       enabled: note !== null
     },
-    'note.localGraph': item('note.localGraph', () => {
-      input.setIsLocalGraphOpen((open) => !open)
-    }),
-    'note.versionHistory': item('note.versionHistory', () => {
-      dialog.show('versionHistory')
-    }),
-    'note.applyTemplate': item(
-      'note.applyTemplate',
-      () => {
-        dialog.show('applyTemplate')
-      },
-      hasEditor
-    ),
+    'note.localGraph': item('note.localGraph', () => input.setIsLocalGraphOpen((open) => !open)),
+    'note.versionHistory': item('note.versionHistory', () => dialog.show('versionHistory')),
+    'note.applyTemplate': item('note.applyTemplate', () => dialog.show('applyTemplate'), hasEditor),
     'note.insertTemplate': item(
       'note.insertTemplate',
       () => input.openTemplateInsertRef.current?.(),
       hasEditor
     ),
-    'note.saveAsTemplate': item('note.saveAsTemplate', () => {
-      dialog.show('saveAsTemplate')
-    }),
+    'note.saveAsTemplate': item('note.saveAsTemplate', () => dialog.show('saveAsTemplate')),
     'note.newFromNote': item('note.newFromNote', () => createNoteFromNote(noteId ?? '')),
     'note.toggleFullWidth': item('note.toggleFullWidth', () => input.setFullWidth(!isFullWidth)),
     'note.toggleMindMap': item(
@@ -174,23 +160,13 @@ export function useNoteCommands(input: NoteCommandInput): {
     ),
     // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     'note.rename': item('note.rename', rename, canEdit),
-    'note.addName': item(
-      'note.addName',
-      () => {
-        requestNoteNameInput(noteId ?? '')
-      },
-      canEdit
-    ),
-    'note.moveToFolder': item('note.moveToFolder', () => {
-      dialog.show('move')
-    }),
+    'note.addName': item('note.addName', () => requestNoteNameInput(noteId ?? ''), canEdit),
+    'note.moveToFolder': item('note.moveToFolder', () => dialog.show('move')),
     'note.copyPath': item('note.copyPath', files.copyPath),
     'note.revealInFinder': item('note.revealInFinder', files.revealInFinder),
     'note.revealInSidebar': item('note.revealInSidebar', files.revealInSidebar),
     'note.openExternal': item('note.openExternal', files.openExternal),
-    'note.attachments': item('note.attachments', () => {
-      dialog.show('attachments')
-    }),
+    'note.attachments': item('note.attachments', () => dialog.show('attachments')),
     'note.toggleLocalOnly': item(
       'note.toggleLocalOnly',
       () => input.setLocalOnly(!isLocalOnly),
@@ -204,24 +180,18 @@ export function useNoteCommands(input: NoteCommandInput): {
     'note.toggleBookmark': item('note.toggleBookmark', async () => {
       await input.toggleBookmark()
     }),
-    'note.setReminder': item('note.setReminder', () => {
-      dialog.show('reminder')
-    }),
+    'note.setReminder': item('note.setReminder', () => dialog.show('reminder')),
     // Unlabeled: the palette says "Refresh Readwise Book Info", so a search for
     // Readwise finds both. A Readwise note offers them on the pulling device only (D16).
     'note.readwiseReimport': {
-      run: () => {
-        dialog.show('readwiseReimport')
-      },
+      run: () => dialog.show('readwiseReimport'),
       enabled: ready && readwise.isLinked && readwise.pullsHere
     },
     'note.readwiseRefresh': {
       run: readwise.refresh,
       enabled: ready && readwise.isLinked && readwise.pullsHere
     },
-    'note.delete': item('note.delete', () => {
-      dialog.show('delete')
-    })
+    'note.delete': item('note.delete', () => dialog.show('delete'))
   }
 
   useTabCommands('note', commands)

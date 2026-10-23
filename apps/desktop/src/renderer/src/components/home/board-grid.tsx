@@ -115,15 +115,11 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
                   size={size}
                   title={t(def.titleKey)}
                   icon={def.icon}
-                  onRemove={() => {
-                    onChange(removeWidget(board, w.id))
-                  }}
+                  onRemove={() => onChange(removeWidget(board, w.id))}
                   HeaderFilter={def.HeaderFilter}
                   HeaderCount={def.HeaderCount}
                   Footer={def.Footer}
-                  onConfigChange={(cfg) => {
-                    onChange(updateWidgetConfig(board, w.id, cfg))
-                  }}
+                  onConfigChange={(cfg) => onChange(updateWidgetConfig(board, w.id, cfg))}
                   content={<def.Component config={w.config} size={size} />}
                 />
               ) : (

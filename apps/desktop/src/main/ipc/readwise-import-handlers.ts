@@ -42,9 +42,9 @@ let stopBroadcasting: (() => void) | null = null
 
 export function registerReadwiseImportHandlers(): void {
   stopBroadcasting?.()
-  stopBroadcasting = onReadwiseStatusChanged(() => {
+  stopBroadcasting = onReadwiseStatusChanged(() =>
     broadcastToAllWindows(ReadwiseImportChannels.events.STATUS_CHANGED)
-  })
+  )
 
   registerCommand(
     ReadwiseImportChannels.invoke.STATUS,

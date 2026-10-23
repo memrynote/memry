@@ -401,9 +401,9 @@ describe('POST /diagnostics/report — account identity', () => {
     )
 
   const reportDistinctId = async (fetchSpy: ReturnType<typeof vi.fn>): Promise<string> => {
-    await vi.waitFor(() => {
+    await vi.waitFor(() =>
       expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith('/v1/logs'))).toBe(true)
-    })
+    )
     const call = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
     const record = JSON.parse((call?.[1] as RequestInit | undefined)?.body as string)
       .resourceLogs[0].scopeLogs[0].logRecords[0]

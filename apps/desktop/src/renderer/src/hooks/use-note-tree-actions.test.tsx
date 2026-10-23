@@ -209,9 +209,7 @@ describe('useNoteTreeActions', () => {
   it('opens selected notes, folders, and creates notes/folders in the selected folder', async () => {
     const { result, deps, mutations } = renderActions()
 
-    act(() => {
-      result.current.handleSelectionChange(['work-a'])
-    })
+    act(() => result.current.handleSelectionChange(['work-a']))
     expect(deps.setSelectedIds).toHaveBeenCalledWith(['work-a'])
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -222,9 +220,7 @@ describe('useNoteTreeActions', () => {
       })
     )
 
-    act(() => {
-      result.current.handleSelectionChange(['other'])
-    })
+    act(() => result.current.handleSelectionChange(['other']))
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({
         type: 'file',
@@ -234,9 +230,7 @@ describe('useNoteTreeActions', () => {
       })
     )
 
-    act(() => {
-      result.current.handleOpenFolderView('Work/Nested')
-    })
+    act(() => result.current.handleOpenFolderView('Work/Nested'))
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({ type: 'folder', title: 'Nested', path: '/folder/Work%2FNested' })
     )
@@ -274,15 +268,11 @@ describe('useNoteTreeActions', () => {
     const { result, queryClient } = renderActions({ mutations })
     queryClient.setQueryData(['notes', 'note', 'work-a'], { id: 'work-a', title: 'A' })
 
-    act(() => {
-      result.current.handleRenameClick(workA)
-    })
+    act(() => result.current.handleRenameClick(workA))
     expect(result.current.renamingNoteId).toBe('work-a')
     expect(result.current.renameValue).toBe('A')
 
-    act(() => {
-      result.current.handleRenameInputChange('work-a', 'Renamed')
-    })
+    act(() => result.current.handleRenameInputChange('work-a', 'Renamed'))
     expect(mocks.updateTabTitleByEntityId).toHaveBeenLastCalledWith('work-a', 'Renamed')
     expect(queryClient.getQueryData<any>(['notes', 'note', 'work-a'])?.title).toBe('Renamed')
 
@@ -296,24 +286,16 @@ describe('useNoteTreeActions', () => {
     expect(result.current.renamingNoteId).toBeNull()
 
     mutations.renameNote.mutateAsync.mockRejectedValueOnce(new Error('rename failed'))
-    act(() => {
-      result.current.handleRenameClick(workA)
-    })
-    act(() => {
-      result.current.handleRenameInputChange('work-a', 'Broken')
-    })
+    act(() => result.current.handleRenameClick(workA))
+    act(() => result.current.handleRenameInputChange('work-a', 'Broken'))
     await act(async () => {
       await result.current.handleRenameSubmit('work-a', workA.path)
     })
     expect(mocks.updateTabTitleByEntityId).toHaveBeenLastCalledWith('work-a', 'A')
     expect(toast.error).toHaveBeenCalledWith('rename failed')
 
-    act(() => {
-      result.current.handleRenameClick(workA)
-    })
-    act(() => {
-      result.current.handleRenameCancel('work-a')
-    })
+    act(() => result.current.handleRenameClick(workA))
+    act(() => result.current.handleRenameCancel('work-a'))
     expect(result.current.renamingNoteId).toBeNull()
     expect(result.current.renameValue).toBe('')
   })
@@ -323,27 +305,19 @@ describe('useNoteTreeActions', () => {
       selectedIds: ['work-a', 'folder-Work/Nested']
     })
 
-    act(() => {
-      result.current.handleRenameFolderClick('Work/Nested')
-    })
-    act(() => {
-      result.current.setFolderRenameValue('Ideas')
-    })
+    act(() => result.current.handleRenameFolderClick('Work/Nested'))
+    act(() => result.current.setFolderRenameValue('Ideas'))
     await act(async () => {
       await result.current.handleFolderRenameSubmit('Work/Nested')
     })
     expect(notesService.renameFolder).toHaveBeenCalledWith('Work/Nested', 'Work/Ideas')
     expect(deps.refreshFolders).toHaveBeenCalled()
 
-    act(() => {
-      result.current.handleDeleteClick(workA)
-    })
+    act(() => result.current.handleDeleteClick(workA))
     expect(result.current.notesToDelete).toEqual([workA])
     expect(result.current.foldersToDelete).toEqual([])
 
-    act(() => {
-      result.current.handleBulkDelete()
-    })
+    act(() => result.current.handleBulkDelete())
     expect(result.current.notesToDelete).toEqual([workA])
     expect(result.current.foldersToDelete).toEqual(['Work/Nested'])
 
@@ -384,9 +358,7 @@ describe('useNoteTreeActions', () => {
     vi.mocked(notesService.getFolderConfig).mockResolvedValue({ icon: '📁', template: 'old-tpl' })
     const { result } = renderActions({ setFolderTemplateNames })
 
-    act(() => {
-      result.current.handleSetFolderTemplate('Work')
-    })
+    act(() => result.current.handleSetFolderTemplate('Work'))
     expect(result.current.folderToConfigureTemplate).toBe('Work')
 
     await act(async () => {
@@ -463,9 +435,7 @@ describe('useNoteTreeActions', () => {
     })
     expect(selected.deps.setSelectedIds).toHaveBeenCalledWith([])
 
-    await waitFor(() => {
-      expect(result.current.isMoving).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isMoving).toBe(false))
   })
 
   it('says so when a dropped folder cannot be moved (#2206)', async () => {
@@ -491,9 +461,7 @@ describe('useNoteTreeActions', () => {
     mocks.openPagesInNewTab = false
     const { result, mutations: _mutations } = renderActions()
 
-    act(() => {
-      result.current.handleSelectionChange(['work-a'])
-    })
+    act(() => result.current.handleSelectionChange(['work-a']))
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({ entityId: 'work-a' }),
       {
@@ -550,34 +518,22 @@ describe('useNoteTreeActions', () => {
     })
     expect(deps.createFolderMutation).toHaveBeenCalledWith('Untitled Folder 2')
 
-    act(() => {
-      result.current.handleRenameClick(workA)
-    })
-    act(() => {
-      result.current.handleRenameInputChange('work-a', '   ')
-    })
+    act(() => result.current.handleRenameClick(workA))
+    act(() => result.current.handleRenameInputChange('work-a', '   '))
     await act(async () => {
       await result.current.handleRenameSubmit('work-a', workA.path)
     })
     expect(result.current.renamingNoteId).toBeNull()
 
-    act(() => {
-      result.current.handleRenameFolderClick('Work/Nested')
-    })
-    act(() => {
-      result.current.setFolderRenameValue('Nested')
-    })
+    act(() => result.current.handleRenameFolderClick('Work/Nested'))
+    act(() => result.current.setFolderRenameValue('Nested'))
     await act(async () => {
       await result.current.handleFolderRenameSubmit('Work/Nested')
     })
     expect(notesService.renameFolder).not.toHaveBeenCalledWith('Work/Nested', 'Work/Nested')
 
-    act(() => {
-      result.current.handleRenameFolderClick('Work/Nested')
-    })
-    act(() => {
-      result.current.handleFolderRenameCancel()
-    })
+    act(() => result.current.handleRenameFolderClick('Work/Nested'))
+    act(() => result.current.handleFolderRenameCancel())
     expect(result.current.renamingFolderPath).toBeNull()
 
     await act(async () => {
@@ -598,18 +554,14 @@ describe('useNoteTreeActions', () => {
       selectedIds: ['folder-Work']
     })
 
-    act(() => {
-      result.current.handleSetFolderTemplate('Work')
-    })
+    act(() => result.current.handleSetFolderTemplate('Work'))
     await act(async () => {
       await result.current.handleFolderTemplateSelect(null)
     })
     expect(result.current.folderToConfigureTemplate).toBeNull()
 
     vi.mocked(notesService.setFolderConfig).mockRejectedValueOnce(new Error('template failed'))
-    act(() => {
-      result.current.handleSetFolderTemplate('Work')
-    })
+    act(() => result.current.handleSetFolderTemplate('Work'))
     await act(async () => {
       await result.current.handleFolderTemplateSelect('tpl-1')
     })
@@ -697,19 +649,13 @@ describe('useNoteTreeActions', () => {
     it('asks before a rename takes an entry off the date format, and stops on cancel', async () => {
       const { result, mutations } = renderJournalActions()
 
-      act(() => {
-        result.current.handleRenameClick(entry)
-      })
-      act(() => {
-        result.current.handleRenameInputChange('j-entry', 'Retro')
-      })
+      act(() => result.current.handleRenameClick(entry))
+      act(() => result.current.handleRenameInputChange('j-entry', 'Retro'))
       let submit!: Promise<void>
       act(() => {
         submit = result.current.handleRenameSubmit('j-entry', entry.path)
       })
-      await waitFor(() => {
-        expect(result.current.journalConfirm).toBe('leave')
-      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('leave'))
 
       await act(async () => {
         result.current.resolveJournalConfirm(false)
@@ -718,18 +664,12 @@ describe('useNoteTreeActions', () => {
       expect(mutations.renameNote.mutateAsync).not.toHaveBeenCalled()
       expect(result.current.journalConfirm).toBeNull()
 
-      act(() => {
-        result.current.handleRenameClick(entry)
-      })
-      act(() => {
-        result.current.handleRenameInputChange('j-entry', 'Retro')
-      })
+      act(() => result.current.handleRenameClick(entry))
+      act(() => result.current.handleRenameInputChange('j-entry', 'Retro'))
       act(() => {
         submit = result.current.handleRenameSubmit('j-entry', entry.path)
       })
-      await waitFor(() => {
-        expect(result.current.journalConfirm).toBe('leave')
-      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('leave'))
       await act(async () => {
         result.current.resolveJournalConfirm(true)
         await submit
@@ -751,9 +691,7 @@ describe('useNoteTreeActions', () => {
           position: 'inside'
         })
       })
-      await waitFor(() => {
-        expect(result.current.journalConfirm).toBe('join')
-      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('join'))
       await act(async () => {
         result.current.resolveJournalConfirm(true)
         await move
@@ -784,12 +722,8 @@ describe('useNoteTreeActions', () => {
     it('renames the journal folder without asking: main follows it', async () => {
       const { result } = renderJournalActions()
 
-      act(() => {
-        result.current.handleRenameFolderClick('Daily')
-      })
-      act(() => {
-        result.current.setFolderRenameValue('Diary')
-      })
+      act(() => result.current.handleRenameFolderClick('Daily'))
+      act(() => result.current.setFolderRenameValue('Diary'))
       await act(async () => {
         await result.current.handleFolderRenameSubmit('Daily')
       })
@@ -801,9 +735,7 @@ describe('useNoteTreeActions', () => {
       const { result, mutations } = renderJournalActions()
 
       mocks.confirmNoteDelete.mockResolvedValueOnce(false)
-      act(() => {
-        result.current.handleDeleteClick(entry)
-      })
+      act(() => result.current.handleDeleteClick(entry))
       await act(async () => {
         await result.current.handleDeleteConfirm()
       })
@@ -815,9 +747,7 @@ describe('useNoteTreeActions', () => {
     it('deletes a journal entry as a journal, by date', async () => {
       const { result, mutations } = renderJournalActions()
 
-      act(() => {
-        result.current.handleDeleteClick(entry)
-      })
+      act(() => result.current.handleDeleteClick(entry))
       await act(async () => {
         await result.current.handleDeleteConfirm()
       })

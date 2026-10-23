@@ -123,9 +123,7 @@ export function NoteAttachmentsDialog({
         )
         setRows([])
       })
-      .finally(() => {
-        setLoading(false)
-      })
+      .finally(() => setLoading(false))
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [open, noteId, getOriginalNames])
 
@@ -185,9 +183,7 @@ export function NoteAttachmentsDialog({
                     className="size-7"
                     title={fileActions.revealInFolder}
                     aria-label={fileActions.revealInFolder}
-                    onClick={() => {
-                      reveal(row)
-                    }}
+                    onClick={() => reveal(row)}
                   >
                     <FolderOpen className="h-4 w-4" />
                   </Button>
@@ -197,9 +193,7 @@ export function NoteAttachmentsDialog({
                     className="size-7"
                     title={fileActions.openInDefaultApp}
                     aria-label={fileActions.openInDefaultApp}
-                    onClick={() => {
-                      openExternal(row)
-                    }}
+                    onClick={() => openExternal(row)}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>

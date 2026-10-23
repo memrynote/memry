@@ -38,9 +38,8 @@ const mount = (scope: ViewScope): ReactNode => (
   </TabIdentityProvider>
 )
 
-const activate = (): void => {
+const activate = (): void =>
   act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
-}
 
 beforeEach(() => {
   resetCommandStoreForTests()

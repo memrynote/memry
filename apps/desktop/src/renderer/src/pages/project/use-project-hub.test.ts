@@ -165,9 +165,7 @@ describe('useProjectHub', () => {
 
     const { result } = renderHook(() => useProjectHub('p1'))
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.homeNoteId).toBeNull()
     expect(result.current.notes).toEqual([])
   })
@@ -182,14 +180,10 @@ describe('useProjectHub', () => {
 
     const { result } = renderHook(() => useProjectHub('p1'))
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.homeNoteId).toBeNull()
 
-    act(() => {
-      result.current.setHomeNoteId('note-9')
-    })
+    act(() => result.current.setHomeNoteId('note-9'))
     expect(result.current.homeNoteId).toBe('note-9')
   })
 
@@ -215,9 +209,7 @@ describe('useProjectHub', () => {
     vi.mocked(tasksService.getProject).mockResolvedValue(null as never)
 
     const { result } = renderHook(() => useProjectHub('p1'))
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     const rows = flattenTasksByStatus(
       result.current.tasks,

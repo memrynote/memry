@@ -74,9 +74,7 @@ function Owners({
       activeGroupId: 'group-1',
       activeTabType: folderTab ?? 'note'
     })
-    return () => {
-      undo.forEach((fn) => fn())
-    }
+    return () => undo.forEach((fn) => fn())
   }, [onProject, folderTab])
   return null
 }
@@ -96,19 +94,12 @@ function Harness({
   const [open, setOpen] = useState(initiallyOpen)
   const [projectOpen, setProjectOpen] = useState(false)
   useEffect(() => {
-    openPalette = () => {
-      setOpen(true)
-    }
+    openPalette = () => setOpen(true)
   }, [])
   return (
     <>
       <button type="button">Editor</button>
-      <Owners
-        onProject={() => {
-          setProjectOpen(true)
-        }}
-        folderTab={folderTab}
-      />
+      <Owners onProject={() => setProjectOpen(true)} folderTab={folderTab} />
       <CommandsPalette
         open={open}
         onOpenChange={(next) => {
@@ -209,9 +200,7 @@ describe('CommandsPalette', () => {
     await user.keyboard('{Enter}')
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
-    await waitFor(() => {
-      expect(runs.toggleSidebar).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(runs.toggleSidebar).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     expect(JSON.parse(localStorage.getItem(COMMAND_RECENTS_KEY) ?? '[]')).toEqual([
       'view.toggleSidebar'
@@ -234,12 +223,8 @@ describe('CommandsPalette', () => {
     render(<Harness initiallyOpen={false} />)
     const user = userEvent.setup()
     const editor = screen.getByRole('button', { name: 'Editor' })
-    act(() => {
-      editor.focus()
-    })
-    act(() => {
-      openPalette()
-    })
+    act(() => editor.focus())
+    act(() => openPalette())
 
     const seen: { paletteOpen: boolean; focus: Element | null }[] = []
     runs.toggleSidebar.mockImplementation(() =>
@@ -251,29 +236,21 @@ describe('CommandsPalette', () => {
     await user.type(input(), 'side')
     await user.keyboard('{Enter}')
 
-    await waitFor(() => {
-      expect(seen).toHaveLength(1)
-    })
+    await waitFor(() => expect(seen).toHaveLength(1))
     expect(seen[0]).toEqual({ paletteOpen: false, focus: editor })
   })
 
   it('hands focus to what the command opens, instead of taking it back', async () => {
     render(<Harness initiallyOpen={false} />)
     const user = userEvent.setup()
-    act(() => {
-      screen.getByRole('button', { name: 'Editor' }).focus()
-    })
-    act(() => {
-      openPalette()
-    })
+    act(() => screen.getByRole('button', { name: 'Editor' }).focus())
+    act(() => openPalette())
 
     await user.type(input(), 'new proj')
     await user.keyboard('{Enter}')
 
     const field = await screen.findByLabelText('Project name')
-    await waitFor(() => {
-      expect(field).toHaveFocus()
-    })
+    await waitFor(() => expect(field).toHaveFocus())
     // Past anything the palette's own close could still do.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
@@ -285,18 +262,12 @@ describe('CommandsPalette', () => {
     render(<Harness initiallyOpen={false} />)
     const user = userEvent.setup()
     const editor = screen.getByRole('button', { name: 'Editor' })
-    act(() => {
-      editor.focus()
-    })
-    act(() => {
-      openPalette()
-    })
+    act(() => editor.focus())
+    act(() => openPalette())
 
     await user.keyboard('{Escape}')
 
-    await waitFor(() => {
-      expect(editor).toHaveFocus()
-    })
+    await waitFor(() => expect(editor).toHaveFocus())
   })
 
   it('runs nothing when dismissed with Escape', async () => {
@@ -318,9 +289,7 @@ describe('CommandsPalette', () => {
 
     await user.click(screen.getByRole('button', { name: /Search notes/ }))
 
-    await waitFor(() => {
-      expect(runs.search).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(runs.search).toHaveBeenCalledTimes(1))
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 })

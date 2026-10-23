@@ -84,29 +84,22 @@ function scanOnWorker(
         return
       }
       if (message.type === 'done') {
-        finish(() => {
+        finish(() =>
           resolve({
             checkpoints: message.checkpoints,
             stride: message.stride,
             lineCount: message.lineCount,
             fileBytes: message.fileBytes
           })
-        })
+        )
         return
       }
-      if (message.type === 'error')
-        finish(() => {
-          reject(new Error(message.message))
-        })
+      if (message.type === 'error') finish(() => reject(new Error(message.message)))
     })
 
-    worker.on('error', (err: unknown) => {
-      finish(() => reject(asError(err)))
-    })
+    worker.on('error', (err: unknown) => finish(() => reject(asError(err))))
     worker.on('exit', (code) => {
-      finish(() => {
-        reject(new Error(`Line-index worker exited with code ${code}`))
-      })
+      finish(() => reject(new Error(`Line-index worker exited with code ${code}`)))
     })
   })
 }

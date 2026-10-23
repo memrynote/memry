@@ -194,9 +194,8 @@ export const api = {
     subscribe<MainInvokePayload>(MAIN_INVOKE_CHANNEL, (payload) => {
       void callback(payload)
     }),
-  respondToMainInvoke: (requestId: string, response: unknown) => {
+  respondToMainInvoke: (requestId: string, response: unknown) =>
     send(`${MAIN_INVOKE_RESPONSE_CHANNEL_PREFIX}${requestId}`, response)
-  }
 }
 
 if (process.contextIsolated) {

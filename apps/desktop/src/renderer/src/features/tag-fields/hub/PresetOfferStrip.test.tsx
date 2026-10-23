@@ -91,9 +91,7 @@ describe('PresetOfferStrip', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Add' }))
 
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Added #person')
-    })
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Added #person'))
     expect(api.tags.editSchema).toHaveBeenCalledWith({ kind: 'add-preset', preset: 'person' })
   })
 
@@ -103,12 +101,8 @@ describe('PresetOfferStrip', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Add' }))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('schema is locked')
-    })
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled()
-    })
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('schema is locked'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled())
   })
 
   it('disables every action while one is running', async () => {
@@ -118,9 +112,7 @@ describe('PresetOfferStrip', () => {
 
     await userEvent.click(screen.getAllByRole('button', { name: 'Add' })[0])
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Not now' })).toBeDisabled()
-    })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Not now' })).toBeDisabled())
     for (const button of screen.getAllByRole('button', { name: 'Add' })) {
       expect(button).toBeDisabled()
     }
@@ -129,9 +121,7 @@ describe('PresetOfferStrip', () => {
       snapshot: snapshotOf([offer('person', { state: 'added' }), offer('company')]),
       tag: 'person'
     })
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Not now' })).toBeEnabled()
-    })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Not now' })).toBeEnabled())
   })
 
   it('dismisses the strip with Not now', async () => {
@@ -139,9 +129,9 @@ describe('PresetOfferStrip', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Not now' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.tags.editSchema).toHaveBeenCalledWith({ kind: 'dismiss-preset-offer' })
-    })
+    )
   })
 
   it('opens the merge dialog for a tag that exists without the preset, and adds the fields from it', async () => {
@@ -165,11 +155,9 @@ describe('PresetOfferStrip', () => {
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add fields' }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(api.tags.editSchema).toHaveBeenCalledWith({ kind: 'add-preset', preset: 'company' })
-    })
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

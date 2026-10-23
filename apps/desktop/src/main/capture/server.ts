@@ -53,9 +53,7 @@ function readBody(req: http.IncomingMessage): Promise<string> {
       }
       chunks.push(c)
     })
-    req.on('end', () => {
-      resolve(Buffer.concat(chunks).toString())
-    })
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()))
     req.on('error', reject)
   })
 }
@@ -283,9 +281,7 @@ function listen(port: number): Promise<number> {
       next.removeListener('error', reject)
       // Keep a lifetime error handler: without one, any later server 'error'
       // event is unhandled and crashes the process.
-      next.on('error', (err) => {
-        log.error('capture server error', err)
-      })
+      next.on('error', (err) => log.error('capture server error', err))
       log.info(`capture server on 127.0.0.1:${port}`)
       resolve(port)
     })
@@ -327,21 +323,13 @@ export async function startCaptureServer(
 
 export async function stopCaptureServer(): Promise<void> {
   return new Promise((resolve) => {
-    if (!server) {
-      resolve()
-      return
-    }
+    if (!server) return resolve()
     const closing = server
     server = null
     currentPort = null
-    if (!closing.listening) {
-      resolve()
-      return
-    }
+    if (!closing.listening) return resolve()
     // Destroy open keep-alive connections so the port is immediately reclaimable
     closing.closeAllConnections?.()
-    closing.close(() => {
-      resolve()
-    })
+    closing.close(() => resolve())
   })
 }

@@ -126,13 +126,7 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
   }) => (
     <div data-testid="emoji-picker">
       {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- test double for a third-party control; label is irrelevant to the assertions */}
-      <button
-        type="button"
-        data-testid="emoji-pick"
-        onClick={() => {
-          onSelect('📌')
-        }}
-      />
+      <button type="button" data-testid="emoji-pick" onClick={() => onSelect('📌')} />
       {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- test double for a third-party control; label is irrelevant to the assertions */}
       <button type="button" data-testid="emoji-remove" onClick={onRemove} />
     </div>
@@ -171,9 +165,7 @@ function renderTree(props: Partial<React.ComponentProps<typeof CanvasTree>> = {}
 }
 
 async function rowsRendered(): Promise<HTMLElement[]> {
-  await waitFor(() => {
-    expect(screen.getAllByTestId('canvas-tree-row').length).toBeGreaterThan(0)
-  })
+  await waitFor(() => expect(screen.getAllByTestId('canvas-tree-row').length).toBeGreaterThan(0))
   return screen.getAllByTestId('canvas-tree-row')
 }
 
@@ -257,16 +249,12 @@ describe('CanvasTree', () => {
     setData([])
     const empty = renderTree()
     expect(screen.getByText('loading')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('empty')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
     empty.unmount()
 
     mocks.canvas.list.mockRejectedValue(new Error('ipc down'))
     renderTree()
-    await waitFor(() => {
-      expect(screen.getByText('loadFailed')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('loadFailed')).toBeInTheDocument())
   })
 
   it('renders folders before canvases', async () => {
@@ -294,9 +282,7 @@ describe('CanvasTree', () => {
     expect(actions.tabIndex).toBeGreaterThanOrEqual(0)
     expect(isRevealed(actions)).toBe(false)
 
-    act(() => {
-      actions.focus()
-    })
+    act(() => actions.focus())
 
     expect(actions).toHaveFocus()
     expect(isRevealed(actions)).toBe(true)
@@ -320,9 +306,7 @@ describe('CanvasTree', () => {
       const menu = await openActionsMenu('Alpha', 'canvasMenu')
       fireEvent.click(within(menu).getByText('duplicate'))
 
-      await waitFor(() => {
-        expect(mocks.canvas.duplicate).toHaveBeenCalledWith('c1')
-      })
+      await waitFor(() => expect(mocks.canvas.duplicate).toHaveBeenCalledWith('c1'))
       expect(onCanvasClick).not.toHaveBeenCalled()
     })
 
@@ -373,9 +357,9 @@ describe('CanvasTree', () => {
     const row = screen.getByText('Work').closest('[data-testid="canvas-tree-row"]') as HTMLElement
     await pickIcon(row)
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.folder.setIcon).toHaveBeenCalledWith({ path: 'Work', icon: '📌' })
-    })
+    )
     // A toggle would have expanded the folder and reported it as the target.
     expect(onTargetFolderChange).not.toHaveBeenCalled()
     expect(screen.queryByText('Beta')).not.toBeInTheDocument()
@@ -468,9 +452,7 @@ describe('CanvasTree', () => {
     expect(mocks.canvas.delete).not.toHaveBeenCalled()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'delete' }))
-    await waitFor(() => {
-      expect(mocks.canvas.delete).toHaveBeenCalledWith('c1')
-    })
+    await waitFor(() => expect(mocks.canvas.delete).toHaveBeenCalledWith('c1'))
   })
 
   it('moves a canvas via the Move to folder submenu', async () => {
@@ -540,9 +522,7 @@ describe('CanvasTree', () => {
     expect(within(dialog).getByText(/deleteFolderConfirmBody:2/)).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'delete' }))
-    await waitFor(() => {
-      expect(mocks.folder.delete).toHaveBeenCalledWith({ path: 'Work' })
-    })
+    await waitFor(() => expect(mocks.folder.delete).toHaveBeenCalledWith({ path: 'Work' }))
   })
 
   it('persists folder expansion per path', async () => {
@@ -552,16 +532,12 @@ describe('CanvasTree', () => {
 
     expect(screen.queryByText('Beta')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Work'))
-    await waitFor(() => {
-      expect(screen.getByText('Beta')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Beta')).toBeInTheDocument())
     expect(localStorage.getItem('sidebar-canvas-tree-expanded')).toContain('Work')
 
     first.unmount()
     renderTree()
-    await waitFor(() => {
-      expect(screen.getByText('Beta')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Beta')).toBeInTheDocument())
   })
 
   it('surfaces a typed folder failure in the field, and keeps the user in it', async () => {
@@ -589,9 +565,7 @@ describe('CanvasTree', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'A canvas folder with that name already exists here.'
     )
-    await waitFor(() => {
-      expect(input).toHaveFocus()
-    })
+    await waitFor(() => expect(input).toHaveFocus())
   })
 
   it('creates a canvas inside the folder it was asked from', async () => {
@@ -619,9 +593,7 @@ describe('CanvasTree', () => {
     /** What the main process emits once the canvas exists on disk. */
     function refreshed(canvases: CanvasSummary[], folders: CanvasFolder[]): void {
       setData(canvases, folders)
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
     }
 
     it('opens the new canvas for naming, in the folder it just expanded', async () => {
@@ -631,9 +603,7 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.click(within(openRowMenu('Work')).getByText('newCanvasHere'))
-      await waitFor(() => {
-        expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' })
-      })
+      await waitFor(() => expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' }))
 
       // Work was collapsed, so without the expansion the new row — and the
       // field on it — never renders at all.
@@ -647,9 +617,9 @@ describe('CanvasTree', () => {
 
       fireEvent.change(input, { target: { value: 'Plan' } })
       fireEvent.keyDown(input, { key: 'Enter' })
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.canvas.update).toHaveBeenCalledWith({ id: 'c9', title: 'Plan' })
-      })
+      )
     })
 
     it('clears a filter that would hide the canvas it just created', async () => {
@@ -665,14 +635,10 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.change(screen.getByLabelText('filterPlaceholder'), { target: { value: 'beta' } })
-      await waitFor(() => {
-        expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument())
 
       fireEvent.click(within(openRowMenu('Work')).getByText('newCanvasHere'))
-      await waitFor(() => {
-        expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' })
-      })
+      await waitFor(() => expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' }))
 
       refreshed(
         [
@@ -696,12 +662,12 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.click(within(openRowMenu('Work')).getByText('newFolder'))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({
           parent: 'Work',
           name: 'Untitled Folder'
         })
-      })
+      )
 
       refreshed([], [folder('Work'), folder('Work/Untitled Folder')])
 
@@ -722,16 +688,12 @@ describe('CanvasTree', () => {
       await rowsRendered()
 
       fireEvent.change(screen.getByLabelText('filterPlaceholder'), { target: { value: 'alpha' } })
-      await waitFor(() => {
-        expect(screen.queryByText('Beta')).not.toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.queryByText('Beta')).not.toBeInTheDocument())
 
       await act(async () => {
         ref.current?.createFolder()
       })
-      await waitFor(() => {
-        expect(mocks.folder.create).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.folder.create).toHaveBeenCalled())
 
       refreshed(
         [canvas({ id: 'c1', title: 'Alpha' }), canvas({ id: 'c2', title: 'Beta' })],
@@ -750,14 +712,12 @@ describe('CanvasTree', () => {
       setData([], [])
       mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder canvas') })
       renderTree()
-      await waitFor(() => {
-        expect(screen.getByText('empty')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
 
       fireEvent.click(screen.getByRole('button', { name: 'newFolder' }))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
-      })
+      )
 
       refreshed([], [folder('Untitled Folder canvas')])
 
@@ -766,30 +726,24 @@ describe('CanvasTree', () => {
 
       fireEvent.change(input, { target: { value: 'Work' } })
       fireEvent.keyDown(input, { key: 'Enter' })
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.rename).toHaveBeenCalledWith({
           path: 'Untitled Folder canvas',
           name: 'Work'
         })
-      })
+      )
     })
   })
 
   it('refreshes on all six events and unsubscribes on unmount', async () => {
     setData([])
     const { unmount } = renderTree()
-    await waitFor(() => {
-      expect(screen.getByText('empty')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
     expect(mocks.subscriptions).toHaveLength(6)
 
     setData([canvas({ id: 'c1', title: 'Fresh' })])
-    mocks.subscriptions.forEach((cb) => {
-      cb()
-    })
-    await waitFor(() => {
-      expect(screen.getByText('Fresh')).toBeInTheDocument()
-    })
+    mocks.subscriptions.forEach((cb) => cb())
+    await waitFor(() => expect(screen.getByText('Fresh')).toBeInTheDocument())
 
     unmount()
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(6)
@@ -884,9 +838,7 @@ describe('CanvasTree', () => {
       fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
       await commitName('Studio')
 
-      await waitFor(() => {
-        expect(mocks.toastError).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
       expect(mocks.folder.rename).not.toHaveBeenCalled()
     })
   })
@@ -930,9 +882,7 @@ describe('CanvasTree', () => {
 
       typeFilter('roadmap')
 
-      await waitFor(() => {
-        expect(screen.getByText('Roadmap')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('Roadmap')).toBeInTheDocument())
       expect(screen.getByText('Work')).toBeInTheDocument()
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       expect(screen.queryByText('Personal')).not.toBeInTheDocument()
@@ -945,9 +895,7 @@ describe('CanvasTree', () => {
 
       typeFilter('personal')
 
-      await waitFor(() => {
-        expect(screen.getByText('Groceries')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument())
       expect(screen.queryByText('Work')).not.toBeInTheDocument()
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
     })
@@ -959,9 +907,7 @@ describe('CanvasTree', () => {
 
       typeFilter('zzz')
 
-      await waitFor(() => {
-        expect(screen.getByText('filterNoMatches')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('filterNoMatches')).toBeInTheDocument())
       expect(screen.getByLabelText('filterPlaceholder')).toBeInTheDocument()
     })
 
@@ -976,16 +922,12 @@ describe('CanvasTree', () => {
       // Filtering opens Work — but that must not be mistaken for the user's own
       // expansion state, nor persisted as it.
       typeFilter('roadmap')
-      await waitFor(() => {
-        expect(screen.getByText('Roadmap')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('Roadmap')).toBeInTheDocument())
       expect(localStorage.getItem('sidebar-canvas-tree-expanded')).not.toContain('Work')
 
       typeFilter('')
 
-      await waitFor(() => {
-        expect(screen.getByText('Groceries')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument())
       expect(screen.queryByText('Roadmap')).not.toBeInTheDocument()
     })
   })
@@ -1010,9 +952,7 @@ describe('CanvasTree', () => {
 
     // Expanded, the rows themselves say it; a badge would be a second answer.
     fireEvent.click(screen.getByText('Work'))
-    await waitFor(() => {
-      expect(screen.getByText('Q3')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Q3')).toBeInTheDocument())
     expect(within(rowOf('Work')).queryByTestId('canvas-folder-count')).not.toBeInTheDocument()
     // The nested folder is still closed, so it states its own.
     expect(within(rowOf('Q3')).getByTestId('canvas-folder-count')).toHaveTextContent('1')
@@ -1030,9 +970,7 @@ describe('CanvasTree', () => {
     const empty = await screen.findByTestId('canvas-folder-empty')
     fireEvent.click(within(empty).getByText('newCanvasHere'))
 
-    await waitFor(() => {
-      expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' })
-    })
+    await waitFor(() => expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: 'Work' }))
   })
 
   it('keeps a renamed folder expanded by re-keying its stored expansion', async () => {
@@ -1041,19 +979,13 @@ describe('CanvasTree', () => {
     await rowsRendered()
 
     fireEvent.click(screen.getByText('Work'))
-    await waitFor(() => {
-      expect(screen.getByText('Beta')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Beta')).toBeInTheDocument())
 
     // What the main process emits after `canvasFolder:rename`.
     setData([canvas({ id: 'c1', title: 'Beta', folder: 'Studio' })], [folder('Studio')])
-    mocks.folderUpdated.forEach((cb) => {
-      cb({ folder: folder('Studio'), previousPath: 'Work' })
-    })
+    mocks.folderUpdated.forEach((cb) => cb({ folder: folder('Studio'), previousPath: 'Work' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Studio')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Studio')).toBeInTheDocument())
     // Expansion is keyed by path: without re-keying, the folder the user just
     // renamed would shut itself — and stay shut across restarts.
     expect(screen.getByText('Beta')).toBeInTheDocument()
@@ -1075,26 +1007,22 @@ describe('CanvasTree', () => {
     fireEvent.click(within(openRowMenu('Work')).getByText('rename'))
     await commitName('CON')
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.folder.rename).toHaveBeenCalledWith({ path: 'Work', name: 'CON' })
-    })
+    )
 
     // What the main process emits once the directory exists under its real name.
     setData([], [folder('CON canvas')])
-    mocks.subscriptions.forEach((cb) => {
-      cb()
-    })
+    mocks.subscriptions.forEach((cb) => cb())
 
-    await waitFor(() => {
-      expect(rowByKey('folder:CON canvas')).not.toBeNull()
-    })
+    await waitFor(() => expect(rowByKey('folder:CON canvas')).not.toBeNull())
     // The row the prediction named was never rendered — nothing to focus.
     expect(rowByKey('folder:CON')).toBeNull()
-    await waitFor(() => {
+    await waitFor(() =>
       expect(
         rowByKey('folder:CON canvas')?.querySelector('[data-slot="sidebar-menu-button"]')
       ).toHaveFocus()
-    })
+    )
   })
 
   describe('creating a folder at the root', () => {
@@ -1107,26 +1035,22 @@ describe('CanvasTree', () => {
         [],
         paths.map((path) => folder(path))
       )
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
     }
 
     it('offers it from the empty state, so a vault with nothing is not a dead end', async () => {
       setData([], [])
       mocks.folder.create.mockResolvedValue({ folder: folder('Untitled Folder') })
       renderTree()
-      await waitFor(() => {
-        expect(screen.getByText('empty')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
 
       fireEvent.click(screen.getByRole('button', { name: 'newFolder' }))
 
       // Created straight away under a default name — no dialog stands between
       // asking for a folder and having one.
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
-      })
+      )
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       folderArrived('Untitled Folder')
@@ -1136,12 +1060,12 @@ describe('CanvasTree', () => {
       fireEvent.change(input, { target: { value: 'Work' } })
       fireEvent.keyDown(input, { key: 'Enter' })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.rename).toHaveBeenCalledWith({
           path: 'Untitled Folder',
           name: 'Work'
         })
-      })
+      )
     })
 
     it('steps the default name past the siblings that already took it', async () => {
@@ -1161,12 +1085,12 @@ describe('CanvasTree', () => {
         ref.current?.createFolder()
       })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({
           parent: null,
           name: 'Untitled Folder 3'
         })
-      })
+      )
     })
 
     it('offers a new canvas from the empty state too', async () => {
@@ -1174,15 +1098,11 @@ describe('CanvasTree', () => {
       mocks.canvas.create.mockResolvedValue({ id: 'c9', title: null, folder: null })
       const onCanvasClick = vi.fn()
       renderTree({ onCanvasClick })
-      await waitFor(() => {
-        expect(screen.getByText('empty')).toBeInTheDocument()
-      })
+      await waitFor(() => expect(screen.getByText('empty')).toBeInTheDocument())
 
       fireEvent.click(screen.getByRole('button', { name: 'newCanvas' }))
 
-      await waitFor(() => {
-        expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: null })
-      })
+      await waitFor(() => expect(mocks.canvas.create).toHaveBeenCalledWith({ folder: null }))
     })
 
     it('exposes a root-level createFolder to its host', async () => {
@@ -1203,20 +1123,20 @@ describe('CanvasTree', () => {
         ref.current?.createFolder()
       })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Untitled Folder' })
-      })
+      )
 
       folderArrived('Work', 'Untitled Folder')
       fireEvent.change(await nameField(), { target: { value: 'Personal' } })
       fireEvent.keyDown(await nameField(), { key: 'Enter' })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.rename).toHaveBeenCalledWith({
           path: 'Untitled Folder',
           name: 'Personal'
         })
-      })
+      )
     })
   })
 
@@ -1258,9 +1178,9 @@ describe('CanvasTree', () => {
       expect(mocks.folder.move).not.toHaveBeenCalled()
 
       fireEvent.click(within(submenu).getByText('Personal'))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
-      })
+      )
     })
 
     /**
@@ -1284,28 +1204,24 @@ describe('CanvasTree', () => {
       const submenu = await screen.findByTestId('canvas-folder-move-menu')
       fireEvent.click(within(submenu).getByText('Personal'))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
-      })
+      )
 
       // What the main process emits once the directory has moved on disk.
       setData([], [folder('Personal'), folder('Personal/Work canvas')])
-      mocks.subscriptions.forEach((cb) => {
-        cb()
-      })
+      mocks.subscriptions.forEach((cb) => cb())
 
-      await waitFor(() => {
-        expect(rowByKey('folder:Personal/Work canvas')).not.toBeNull()
-      })
+      await waitFor(() => expect(rowByKey('folder:Personal/Work canvas')).not.toBeNull())
       // The row the prediction named was never rendered — nothing to focus.
       expect(rowByKey('folder:Personal/Work')).toBeNull()
-      await waitFor(() => {
+      await waitFor(() =>
         expect(
           rowByKey('folder:Personal/Work canvas')?.querySelector(
             '[data-slot="sidebar-menu-button"]'
           )
         ).toHaveFocus()
-      })
+      )
     })
 
     it('mints the row first for a folder that has none', async () => {
@@ -1321,9 +1237,9 @@ describe('CanvasTree', () => {
       const submenu = await screen.findByTestId('canvas-folder-move-menu')
       fireEvent.click(within(submenu).getByText('Personal'))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(mocks.folder.move).toHaveBeenCalledWith({ path: 'Work', parent: 'Personal' })
-      })
+      )
       expect(mocks.folder.create).toHaveBeenCalledWith({ parent: null, name: 'Work' })
       expect(mocks.folder.create.mock.invocationCallOrder[0]).toBeLessThan(
         mocks.folder.move.mock.invocationCallOrder[0]
@@ -1345,9 +1261,7 @@ describe('CanvasTree', () => {
 
     // Only one of the three survives the filter, so the FILTERED node reports 1.
     fireEvent.change(screen.getByLabelText('filterPlaceholder'), { target: { value: 'roadmap' } })
-    await waitFor(() => {
-      expect(screen.getByText('Roadmap')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('Roadmap')).toBeInTheDocument())
 
     fireEvent.click(within(openRowMenu('Work')).getByText('delete'))
 
@@ -1361,9 +1275,7 @@ describe('CanvasTree', () => {
     const onCountChange = vi.fn()
     renderTree({ onCountChange })
 
-    await waitFor(() => {
-      expect(onCountChange).toHaveBeenCalledWith(2)
-    })
+    await waitFor(() => expect(onCountChange).toHaveBeenCalledWith(2))
   })
 
   describe('note-owned canvases', () => {
@@ -1383,9 +1295,7 @@ describe('CanvasTree', () => {
 
       expect(rows.map((row) => row.dataset.rowKey)).toEqual(['folder:Work', 'canvas:c1'])
       expect(screen.getByTestId('canvas-folder-count')).toHaveTextContent('1')
-      await waitFor(() => {
-        expect(onCountChange).toHaveBeenCalledWith(2)
-      })
+      await waitFor(() => expect(onCountChange).toHaveBeenCalledWith(2))
       expect(onCountChange).not.toHaveBeenCalledWith(4)
     })
 

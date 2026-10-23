@@ -77,9 +77,7 @@ export function IconPickerButton({
         <PopoverTrigger asChild>
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-            }}
+            onClick={(e) => e.stopPropagation()}
             className="flex h-5 w-5 items-center justify-center rounded text-base leading-none"
             aria-label={ariaLabel}
           >
@@ -97,9 +95,7 @@ export function IconPickerButton({
           // so the panel is shifted fully back into view every time.
           sticky="always"
           className="w-auto border-0 bg-transparent p-0 shadow-none"
-          onClick={(e) => {
-            e.stopPropagation()
-          }}
+          onClick={(e) => e.stopPropagation()}
         >
           <Suspense fallback={null}>
             <LazyEmojiPicker

@@ -102,9 +102,7 @@ describe('broadcastToAllWindows', () => {
     const after = makeLiveWindow()
     windows.push(before.win, makeDestroyedWindow(), after.win)
 
-    expect(() => {
-      broadcastToAllWindows('sync:event', { id: 1 })
-    }).not.toThrow()
+    expect(() => broadcastToAllWindows('sync:event', { id: 1 })).not.toThrow()
 
     expect(before.send).toHaveBeenCalledWith('sync:event', { id: 1 })
     expect(after.send).toHaveBeenCalledWith('sync:event', { id: 1 })
@@ -115,9 +113,7 @@ describe('broadcastToAllWindows', () => {
     const dead = makeDeadContentsWindow()
     windows.push(dead.win, live.win)
 
-    expect(() => {
-      broadcastToAllWindows('sync:event', { id: 1 })
-    }).not.toThrow()
+    expect(() => broadcastToAllWindows('sync:event', { id: 1 })).not.toThrow()
 
     expect(dead.send).not.toHaveBeenCalled()
     expect(live.send).toHaveBeenCalledWith('sync:event', { id: 1 })
@@ -132,9 +128,7 @@ describe('broadcastToAllWindows', () => {
     const after = makeLiveWindow()
     windows.push(before.win, throwing.win, after.win)
 
-    expect(() => {
-      broadcastToAllWindows('sync:event', { id: 1 })
-    }).not.toThrow()
+    expect(() => broadcastToAllWindows('sync:event', { id: 1 })).not.toThrow()
 
     expect(before.send).toHaveBeenCalledWith('sync:event', { id: 1 })
     expect(after.send).toHaveBeenCalledWith('sync:event', { id: 1 })

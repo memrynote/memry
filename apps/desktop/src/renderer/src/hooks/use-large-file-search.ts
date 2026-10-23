@@ -204,12 +204,8 @@ export function useLargeFileSearch(sessionId: string | null): LargeFileSearch {
     [flushPending, hits.length]
   )
 
-  const next = useCallback(() => {
-    step(1)
-  }, [step])
-  const prev = useCallback(() => {
-    step(-1)
-  }, [step])
+  const next = useCallback(() => step(1), [step])
+  const prev = useCallback(() => step(-1), [step])
 
   useEffect(() => {
     return () => {

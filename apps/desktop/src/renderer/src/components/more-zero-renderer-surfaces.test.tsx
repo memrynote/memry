@@ -151,9 +151,7 @@ describe('more zero-covered renderer surfaces', () => {
     await waitFor(() => expect(screen.getByText('huge:alpha-icon')).toBeInTheDocument())
 
     const { result } = renderHook(() => useHugeIconPicker())
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.icons.map((icon) => icon.name)).toEqual([
       'AlphaIcon',
       'BetaTestIcon',
@@ -161,18 +159,14 @@ describe('more zero-covered renderer surfaces', () => {
       'CircleIcon'
     ])
 
-    act(() => {
-      result.current.setSearch('beta test')
-    })
+    act(() => result.current.setSearch('beta test'))
     expect(result.current.icons.map((icon) => icon.name)).toEqual(['BetaTestIcon'])
 
     const onSelect = vi.fn()
     render(<HugeIconGrid onSelect={onSelect} />)
     await waitFor(() => expect(screen.getByDisplayValue('')).toBeInTheDocument())
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'calendar 2' } })
-    await waitFor(() => {
-      expect(mocks.scrollToIndex).toHaveBeenCalledWith(0)
-    })
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(0))
     fireEvent.click(screen.getByTitle('Calendar2'))
     expect(onSelect).toHaveBeenCalledWith('Calendar2Icon')
   })

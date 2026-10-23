@@ -380,9 +380,7 @@ function TemplateEditorSurface({
           <div className="flex items-center gap-3">
             <IconPickerButton
               hasIcon={fields.icon !== null}
-              onIconChange={(icon) => {
-                setFields({ icon })
-              }}
+              onIconChange={(icon) => setFields({ icon })}
               ariaLabel={t('templateEditor.icon.label')}
             >
               {fields.icon ? (
@@ -419,9 +417,7 @@ function TemplateEditorSurface({
             <InfoSection
               properties={uiProperties}
               isExpanded={propertiesExpanded}
-              onToggleExpand={() => {
-                setPropertiesExpanded((prev) => !prev)
-              }}
+              onToggleExpand={() => setPropertiesExpanded((prev) => !prev)}
               onPropertyChange={handlePropertyChange}
               onPropertyNameChange={handlePropertyNameChange}
               onPropertyOrderChange={handlePropertyOrderChange}
@@ -453,9 +449,7 @@ function TemplateEditorSurface({
             placeholder={t('templateEditor.content.placeholder')}
             stickyToolbar={editorSettings.toolbarMode === 'sticky'}
             onStickyToolbarChange={(sticky) => void setToolbarMode(sticky ? 'sticky' : 'floating')}
-            onMarkdownChange={(markdown) => {
-              setFields({ content: markdown })
-            }}
+            onMarkdownChange={(markdown) => setFields({ content: markdown })}
             editable={!isBuiltIn}
             // A template is not a note: its checkboxes stay checkboxes until a
             // note is made from it, so no task row exists without a note.

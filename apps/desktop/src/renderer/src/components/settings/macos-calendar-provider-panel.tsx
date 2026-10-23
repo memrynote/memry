@@ -105,9 +105,7 @@ function MacosCalendarConnect({
       }
       setErrorCode(result.errorCode ?? 'sync_failed')
     },
-    onError: () => {
-      setErrorCode('sync_failed')
-    }
+    onError: () => setErrorCode('sync_failed')
   })
 
   return (
@@ -120,9 +118,7 @@ function MacosCalendarConnect({
           type="button"
           className={CALENDAR_BORDERED_BUTTON}
           disabled={connect.isPending}
-          onClick={() => {
-            connect.mutate()
-          }}
+          onClick={() => connect.mutate()}
         >
           {connect.isPending
             ? t('calendar.providers.connecting')
@@ -136,9 +132,7 @@ function MacosCalendarConnect({
         <PermissionProblem
           code={errorCode}
           checking={connect.isPending}
-          onCheckAgain={() => {
-            connect.mutate()
-          }}
+          onCheckAgain={() => connect.mutate()}
         />
       )}
     </div>
@@ -162,9 +156,7 @@ function MacosCalendarNotice({
     <PermissionProblem
       code={account.lastError}
       checking={recheck.isPending}
-      onCheckAgain={() => {
-        recheck.mutate()
-      }}
+      onCheckAgain={() => recheck.mutate()}
     />
   )
 }

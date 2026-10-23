@@ -44,15 +44,11 @@ export function useTagAndTags(primaryTag: string, andTags: string[]): UseTagAndT
   )
 
   const toggleTag = useCallback(
-    (tag: string): void => {
-      setAndTags(toggleAndTag(primaryTag, andTags, tag))
-    },
+    (tag: string): void => setAndTags(toggleAndTag(primaryTag, andTags, tag)),
     [andTags, primaryTag, setAndTags]
   )
 
-  const clearAndTags = useCallback((): void => {
-    setAndTags([])
-  }, [setAndTags])
+  const clearAndTags = useCallback((): void => setAndTags([]), [setAndTags])
 
   return { setAndTags, toggleTag, clearAndTags }
 }

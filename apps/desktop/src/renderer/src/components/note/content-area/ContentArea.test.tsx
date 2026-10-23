@@ -205,9 +205,7 @@ vi.mock('@blocknote/shadcn', () => ({
     <div data-testid="blocknote-view">
       <button
         type="button"
-        onClick={() => {
-          onChange(null, { getChanges: () => contentAreaMocks.editorChanges })
-        }}
+        onClick={() => onChange(null, { getChanges: () => contentAreaMocks.editorChanges })}
       >
         change
       </button>
@@ -409,12 +407,7 @@ vi.mock('./wiki-link-preview-card', () => ({
     onNoteClick?: (noteId: string) => void
   }) => (
     <div data-testid="wiki-preview">
-      <button
-        type="button"
-        onClick={() => {
-          onTagClick('alpha')
-        }}
-      >
+      <button type="button" onClick={() => onTagClick('alpha')}>
         tag alpha
       </button>
       <button type="button" onClick={() => onNoteClick?.('note-b')}>
@@ -715,9 +708,7 @@ describe('ContentArea', () => {
     unmount()
     // Teardown is deferred by a microtask so StrictMode's remount can cancel it,
     // then waits for the markdown flush.
-    await waitFor(() => {
-      expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(editor._tiptapEditor.destroy).toHaveBeenCalledTimes(1))
     expect(win.ProseMirror).toBeUndefined()
   })
 
@@ -744,9 +735,7 @@ describe('ContentArea', () => {
 
     const expected = serializeCriticMarkup('Typed on close', marks)
     expect(expected).not.toBe('Typed on close')
-    await waitFor(() => {
-      expect(onMarkdownChange).toHaveBeenCalledWith(expected)
-    })
+    await waitFor(() => expect(onMarkdownChange).toHaveBeenCalledWith(expected))
     expect(onPlainMarkdownChange).not.toHaveBeenCalled()
   })
 
@@ -774,7 +763,7 @@ describe('ContentArea', () => {
       options?: never
     ) {
       if (!isReactRootListener(listener)) live.add(key(this, type, listener, options))
-      addEventListener.call(this, type, listener, options)
+      return addEventListener.call(this, type, listener, options)
     }
     EventTarget.prototype.removeEventListener = function (
       this: EventTarget,
@@ -783,7 +772,7 @@ describe('ContentArea', () => {
       options?: never
     ) {
       live.delete(key(this, type, listener, options))
-      removeEventListener.call(this, type, listener, options)
+      return removeEventListener.call(this, type, listener, options)
     }
 
     const liveFrames = new Set<number>()
@@ -986,9 +975,7 @@ describe('ContentArea', () => {
     ])
 
     fireEvent.contextMenu(screen.getByText('checklist target'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
     expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'standalone' }),
       expect.objectContaining({ type: 'taskBlock' })
@@ -1026,7 +1013,7 @@ describe('ContentArea', () => {
       />
     )
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([
         expect.objectContaining({
           id: 'add-1',
@@ -1036,7 +1023,7 @@ describe('ContentArea', () => {
           end: 10
         })
       ])
-    })
+    )
   })
 
   // The note is open on two devices. The checkbox typed on one reaches the
@@ -1096,9 +1083,7 @@ describe('ContentArea', () => {
 
     fireEvent.click(screen.getByText('change'))
 
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(2))
     expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
       id: 'task-demoted',
       parentId: 'parent-task'
@@ -1115,12 +1100,10 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.bulkDelete).not.toHaveBeenCalled()
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete task' }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.tasksService.bulkDelete).toHaveBeenCalledWith(['existing-task'])
-    })
-    await waitFor(() => {
-      expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
-    })
+    )
+    await waitFor(() => expect(screen.queryByTestId('task-removal-dialog')).toBeNull())
     // Closing after delete must not also run keep.
     expect(contentAreaMocks.tasksService.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ id: 'existing-task' })
@@ -1136,9 +1119,7 @@ describe('ContentArea', () => {
       { id: 'task-demoted', parentId: 'sub-task' }
     ])
     render(<ContentArea noteId="note-1" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.getLinkedTasks).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.getLinkedTasks).toHaveBeenCalled())
     await act(async () => {})
 
     // #when the scan sees its block under parent-task with a stale prop
@@ -1170,9 +1151,9 @@ describe('ContentArea', () => {
         subtaskCandidate: { blockId: 'sub-check', parentTaskId: 'parent-task' }
       })
       fireEvent.click(screen.getByText('change'))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.blocks.get('sub-check').props.taskId).toBe('created-task')
-      })
+      )
       // The id is on the block now: the next change takes it as the baseline.
       contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce(
         emptyIntents(new Set(['created-task']))
@@ -1182,9 +1163,7 @@ describe('ContentArea', () => {
 
     it('makes a checkbox that continues a plain list plain, off the undo stack', () => {
       const meta = vi.fn()
-      contentAreaMocks.editor.transact = vi.fn((fn: (tr: unknown) => void) => {
-        fn({ setMeta: meta })
-      })
+      contentAreaMocks.editor.transact = vi.fn((fn: (tr: unknown) => void) => fn({ setMeta: meta }))
       render(<ContentArea noteId="note-1" />)
 
       contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
@@ -1216,9 +1195,9 @@ describe('ContentArea', () => {
       fireEvent.click(screen.getByText('change'))
 
       expect(block.props.plain).toBe(true)
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('created-task')
-      })
+      )
       expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
     })
 
@@ -1235,18 +1214,16 @@ describe('ContentArea', () => {
         subtaskCandidate: { blockId: 'sub-check', parentTaskId: 'parent-task' }
       })
       fireEvent.click(screen.getByText('change'))
-      await waitFor(() => {
-        expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-      })
+      await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
 
       const block = contentAreaMocks.blocks.get('sub-check')
       block.type = 'checkListItem'
       block.props = { checked: false }
       resolveCreate({ success: true, task: { id: 'late-task', title: 'Sub task' } })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('late-task')
-      })
+      )
       expect(block.type).toBe('checkListItem')
       expect(block.props.plain).toBe(true)
     })
@@ -1281,9 +1258,9 @@ describe('ContentArea', () => {
       const block = contentAreaMocks.blocks.get('sub-check')
       expect(block.type).toBe('checkListItem')
       expect(block.props.plain).toBe(true)
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.delete).toHaveBeenCalledWith('created-task')
-      })
+      )
 
       // And the removal that follows is not asked about.
       contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce(emptyIntents(new Set()))
@@ -1321,12 +1298,12 @@ describe('ContentArea', () => {
       expect(within(dialog).getByText('Task removed from this note')).toBeInTheDocument()
 
       fireEvent.click(within(dialog).getByRole('button', { name: 'Keep in Tasks' }))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
           id: 'existing-task',
           linkedNoteIds: ['other-note']
         })
-      })
+      )
       expect(contentAreaMocks.tasksService.bulkDelete).not.toHaveBeenCalled()
       expect(contentAreaMocks.tasksService.delete).not.toHaveBeenCalled()
     })
@@ -1346,20 +1323,20 @@ describe('ContentArea', () => {
       fireEvent.click(screen.getByText('change'))
       const dialog = await screen.findByTestId('task-removal-dialog')
       fireEvent.click(within(dialog).getByRole('button', { name: 'Keep in Tasks' }))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
           id: 'existing-task',
           linkedNoteIds: []
         })
-      })
+      )
 
       fireEvent.click(screen.getByText('change'))
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.update).toHaveBeenLastCalledWith({
           id: 'existing-task',
           linkedNoteIds: ['note-1']
         })
-      })
+      )
     })
 
     it('treats a cut as a move: no prompt, no delete, the note unlinked', async () => {
@@ -1370,12 +1347,12 @@ describe('ContentArea', () => {
       fireEvent.cut(screen.getByTestId('blocknote-view'))
       fireEvent.click(screen.getByText('change'))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.tasksService.update).toHaveBeenCalledWith({
           id: 'existing-task',
           linkedNoteIds: ['other-note']
         })
-      })
+      )
       expect(screen.queryByTestId('task-removal-dialog')).toBeNull()
       expect(contentAreaMocks.tasksService.delete).not.toHaveBeenCalled()
     })
@@ -1407,7 +1384,7 @@ describe('ContentArea', () => {
       })
     )
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledWith(
         'https://youtu.be/video-1',
         'youtu.be',
@@ -1415,7 +1392,7 @@ describe('ContentArea', () => {
         'icon.png',
         'YouTube'
       )
-    })
+    )
 
     contentAreaMocks.pasteSelect?.('embed', 'https://youtu.be/video-1')
     expect(contentAreaMocks.editor.insertBlocks).toHaveBeenCalledWith(
@@ -1472,7 +1449,7 @@ describe('ContentArea', () => {
 
     // The preview fetch re-finds the mention by walking the document, which
     // also has to see into the table, and enriches it in place.
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledWith(
         'https://youtu.be/video-1',
         'youtu.be',
@@ -1480,7 +1457,7 @@ describe('ContentArea', () => {
         'icon.png',
         'YouTube'
       )
-    })
+    )
     expect(tableBlock.content.rows[1].cells[0][0]).toMatchObject({
       type: 'linkMention',
       props: { title: 'Video' }
@@ -1558,9 +1535,7 @@ describe('ContentArea', () => {
     ).rejects.toThrow('Cannot upload')
 
     rerender(<ContentArea noteId="note-upload" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.blockNoteOptions).toBeTruthy()
-    })
+    await waitFor(() => expect(contentAreaMocks.blockNoteOptions).toBeTruthy())
 
     contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
       success: false,
@@ -1583,9 +1558,7 @@ describe('ContentArea', () => {
 
   it('returns full file-block props for a file block and a bare url for an image block', async () => {
     render(<ContentArea noteId="note-upload" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.blockNoteOptions).toBeTruthy()
-    })
+    await waitFor(() => expect(contentAreaMocks.blockNoteOptions).toBeTruthy())
 
     createBlock('pdf-block', { type: 'file', props: {} })
     createBlock('image-block', { type: 'image', props: {} })
@@ -1637,9 +1610,7 @@ describe('ContentArea', () => {
       settings: { convertChecklistsToTasks: true, pdfDisplayMode: 'link' } as never
     }
     render(<ContentArea noteId="note-upload" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.blockNoteOptions).toBeTruthy()
-    })
+    await waitFor(() => expect(contentAreaMocks.blockNoteOptions).toBeTruthy())
     createBlock('pdf-block', { type: 'file', props: {} })
     contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
       success: true,
@@ -1864,9 +1835,9 @@ describe('ContentArea', () => {
 
     fireEvent.keyDown(grid, { key: 'Escape' })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.queryByRole('application', { name: /table size/i })).not.toBeInTheDocument()
-    })
+    )
     expect(contentAreaMocks.editor.focus).toHaveBeenCalled()
     expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalled()
   })
@@ -1995,9 +1966,7 @@ describe('ContentArea', () => {
 
   it('keeps the per-template rows out of the cold menu and offers one row to open the picker', async () => {
     render(<ContentArea noteId="note-1" />)
-    await waitFor(async () => {
-      expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes'])
-    })
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
 
     const cold = await slashItems('')
 
@@ -2008,7 +1977,7 @@ describe('ContentArea', () => {
   it('describes each per-template row with the template it inserts', async () => {
     render(<ContentArea noteId="note-1" />)
 
-    await waitFor(async () => {
+    await waitFor(async () =>
       expect(await slashItems('meeting')).toEqual([
         expect.objectContaining({
           title: 'Meeting Notes',
@@ -2016,21 +1985,19 @@ describe('ContentArea', () => {
           subtext: 'Agenda and actions'
         })
       ])
-    })
+    )
   })
 
   it('inserts the template named by its own row at the block the caret was on', async () => {
     render(<ContentArea noteId="note-1" />)
-    await waitFor(async () => {
-      expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes'])
-    })
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
 
     const [row] = await slashItems('meeting')
     await act(async () => {
       row.onItemClick()
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.insertTemplateBlocks).toHaveBeenCalledWith(
         expect.objectContaining({
           content: '# {{title}}\n\nAgenda',
@@ -2040,7 +2007,7 @@ describe('ContentArea', () => {
           placement: 'replace-if-empty'
         })
       )
-    })
+    )
   })
 
   it('opens the picker from the slash row and inserts the template it returns', async () => {
@@ -2053,9 +2020,7 @@ describe('ContentArea', () => {
       content: 'Wins'
     })
     render(<ContentArea noteId="note-1" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.templatesService.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
     const row = (await slashItems('')).find((item) => item.title === 'Insert template content…')
     await act(async () => {
@@ -2066,19 +2031,17 @@ describe('ContentArea', () => {
       fireEvent.click(screen.getByRole('button', { name: /Apply Template/i }))
     })
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.insertTemplateBlocks).toHaveBeenCalledWith(
         expect.objectContaining({ content: 'Wins', referenceBlockId: 'url-block' })
       )
-    })
+    )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('closes the picker without inserting when it is dismissed', async () => {
     render(<ContentArea noteId="note-1" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.templatesService.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
     const row = (await slashItems('')).find((item) => item.title === 'Insert template content…')
     await act(async () => {
@@ -2095,61 +2058,47 @@ describe('ContentArea', () => {
   it('reports a template that cannot be read, inserts nothing, and keeps the note intact', async () => {
     contentAreaMocks.templatesService.get.mockResolvedValue(null)
     render(<ContentArea noteId="note-1" />)
-    await waitFor(async () => {
-      expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes'])
-    })
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
 
     const [row] = await slashItems('meeting')
     await act(async () => {
       row.onItemClick()
     })
 
-    await waitFor(() => {
-      expect(contentAreaMocks.toastError).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.toastError).toHaveBeenCalled())
     expect(contentAreaMocks.insertTemplateBlocks).not.toHaveBeenCalled()
   })
 
   it('reports a template whose body has nothing to insert', async () => {
     contentAreaMocks.insertTemplateBlocks.mockResolvedValue({ ok: false, reason: 'empty' })
     render(<ContentArea noteId="note-1" />)
-    await waitFor(async () => {
-      expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes'])
-    })
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
 
     const [row] = await slashItems('meeting')
     await act(async () => {
       row.onItemClick()
     })
 
-    await waitFor(() => {
-      expect(contentAreaMocks.toastError).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.toastError).toHaveBeenCalled())
   })
 
   it('reports an insert that throws instead of leaving the caret in a half-applied note', async () => {
     contentAreaMocks.insertTemplateBlocks.mockRejectedValue(new Error('parse blew up'))
     render(<ContentArea noteId="note-1" />)
-    await waitFor(async () => {
-      expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes'])
-    })
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
 
     const [row] = await slashItems('meeting')
     await act(async () => {
       row.onItemClick()
     })
 
-    await waitFor(() => {
-      expect(contentAreaMocks.toastError).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.toastError).toHaveBeenCalled())
   })
 
   it('opens the template picker at the caret when the note menu asks for it', async () => {
     const openTemplateInsert = { current: null } as React.RefObject<(() => void) | null>
     render(<ContentArea noteId="note-1" openTemplateInsertRef={openTemplateInsert} />)
-    await waitFor(() => {
-      expect(openTemplateInsert.current).toBeTypeOf('function')
-    })
+    await waitFor(() => expect(openTemplateInsert.current).toBeTypeOf('function'))
 
     await act(async () => {
       openTemplateInsert.current?.()
@@ -2167,9 +2116,7 @@ describe('ContentArea', () => {
     })
     const openTemplateInsert = { current: null } as React.RefObject<(() => void) | null>
     render(<ContentArea noteId="note-1" openTemplateInsertRef={openTemplateInsert} />)
-    await waitFor(() => {
-      expect(openTemplateInsert.current).toBeTypeOf('function')
-    })
+    await waitFor(() => expect(openTemplateInsert.current).toBeTypeOf('function'))
 
     await act(async () => {
       openTemplateInsert.current?.()
@@ -2193,9 +2140,7 @@ describe('ContentArea', () => {
         }
       })
     render(<ContentArea noteId="note-1" />)
-    await waitFor(() => {
-      expect(contentAreaMocks.templatesService.list).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
     await act(async () => {
       await Promise.resolve()
     })
@@ -2221,7 +2166,7 @@ describe('ContentArea', () => {
       expect.objectContaining({ type: 'taskBlock' })
     )
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
         expect.objectContaining({
           // `#urgent` is a tag now, so it leaves the title and lands on the task.
@@ -2230,7 +2175,7 @@ describe('ContentArea', () => {
           linkedNoteIds: ['note-1']
         })
       )
-    })
+    )
   })
 
   // y-prosemirror renders the Y.Doc into the view while it mounts, before
@@ -2321,9 +2266,7 @@ describe('ContentArea', () => {
     fireEvent.contextMenu(screen.getByText('checklist target'))
 
     // #then the note's project wins over the settings default and the inbox
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
     expect(contentAreaMocks.tasksService.listForItem).toHaveBeenCalledWith('note', 'note-1')
     expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: 'project-2' })
@@ -2377,9 +2320,9 @@ describe('ContentArea', () => {
         for (const listener of contentAreaMocks.editorSettingsListeners) listener()
       })
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.blocks.get('standalone').props.taskId).toBe('created-task')
-      })
+      )
       expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Standalone', tags: ['urgent'] })
       )
@@ -2404,9 +2347,9 @@ describe('ContentArea', () => {
 
       fireEvent.contextMenu(screen.getByText('checklist target'))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(contentAreaMocks.blocks.get('standalone').props.taskId).toBe('created-task')
-      })
+      )
     })
   })
 
@@ -2428,15 +2371,13 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
 
     fireEvent.contextMenu(screen.getByText('obsidian checklist target'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.complete).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.complete).toHaveBeenCalled())
 
     // `- [ ] Buy milk {task:id}` against a non-null completedAt is exactly what
     // the markdown reconciler undoes on the next save of the note.
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.blocks.get('obsidian-check').props.checked).toBe(true)
-    })
+    )
   })
 
   it('keeps the block wired to its task when the completion call is rejected', async () => {
@@ -2445,24 +2386,20 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
 
     fireEvent.contextMenu(screen.getByText('obsidian checklist target'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
 
     // The row exists. A block left on `taskId: ''` renders a task nothing on
     // disk or in the database can ever find again.
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.blocks.get('obsidian-check').props.taskId).toBe('created-task')
-    })
+    )
   })
 
   it('drops a tag longer than the task contract takes', async () => {
     render(<ContentArea noteId="note-1" />)
 
     fireEvent.contextMenu(screen.getByText('long tag checklist target'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
 
     const { tags } = contentAreaMocks.tasksService.create.mock.calls[0][0]
     // `TaskCreateSchema` caps a tag at 50 characters and the list at 20. An
@@ -2479,9 +2416,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
 
     fireEvent.click(screen.getByText('change'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
 
     expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2629,16 +2564,14 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     fireEvent.click(screen.getByText('change'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
-    })
+    )
     expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'nested-line' }),
       expect.objectContaining({ type: 'taskBlock' })
     )
-    await waitFor(() => {
-      expect(nested.type).toBe('checkListItem')
-    })
+    await waitFor(() => expect(nested.type).toBe('checkListItem'))
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
     expect(nested.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
   })
@@ -2662,16 +2595,12 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     fireEvent.click(screen.getByText('change'))
 
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalled())
     expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'nested-line' }),
       expect.objectContaining({ type: 'taskBlock' })
     )
-    await waitFor(() => {
-      expect(nested.type).toBe('checkListItem')
-    })
+    await waitFor(() => expect(nested.type).toBe('checkListItem'))
     expect(nested.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
   })
 
@@ -2691,12 +2620,10 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     fireEvent.click(screen.getByText('change'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
-    })
-    await waitFor(() => {
-      expect(nested.type).toBe('checkListItem')
-    })
+    )
+    await waitFor(() => expect(nested.type).toBe('checkListItem'))
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
     expect(nested.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
   })
@@ -2720,9 +2647,9 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     fireEvent.click(screen.getByText('change'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.tasksService.get).toHaveBeenCalledWith('parent-task')
-    })
+    )
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
@@ -2908,17 +2835,15 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
 
     fireEvent.click(screen.getByText('change'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalledTimes(1))
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('change'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Draft title' })
       )
-    })
+    )
     expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
   })
 
@@ -2929,15 +2854,11 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
 
     fireEvent.click(screen.getByText('change'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalledTimes(1))
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('change'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
   })
 
   it('creates a draft task once even when onChange fires repeatedly', async () => {
@@ -2948,9 +2869,7 @@ describe('ContentArea', () => {
     fireEvent.click(screen.getByText('change'))
     fireEvent.click(screen.getByText('change'))
     fireEvent.click(screen.getByText('change'))
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
 
     await act(async () => {
       await Promise.resolve()
@@ -2988,9 +2907,7 @@ describe('ContentArea', () => {
       releaseProjects({ projects: [{ id: 'project-1', name: 'Inbox', isDefault: true }] })
       await Promise.resolve()
     })
-    await waitFor(() => {
-      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(contentAreaMocks.tasksService.create).toHaveBeenCalledTimes(1))
 
     // The second onChange saw a different title, so the attempt key alone would
     // have let it through; only the in-flight guard holds it back.
@@ -3020,9 +2937,9 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     fireEvent.click(screen.getByText('change'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(contentAreaMocks.blocks.get('draft').props.taskId).toBe('created-task')
-    })
+    )
     expect(contentAreaMocks.blocks.get('draft').props.checked).toBe(true)
   })
 

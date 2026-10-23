@@ -92,9 +92,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
 
     await engine.fullSync()
 
-    await vi.waitFor(() => {
-      expect(pull).toHaveBeenCalledOnce()
-    })
+    await vi.waitFor(() => expect(pull).toHaveBeenCalledOnce())
   })
 
   it('keeps a wake at or below LAST_CURSOR dropped after the full sync', async () => {
@@ -131,9 +129,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
     })
 
     internals(engine).handleWsMessage(frame('note-w', 12))
-    await vi.waitFor(() => {
-      expect(pullDone).toBeDefined()
-    })
+    await vi.waitFor(() => expect(pullDone).toBeDefined())
     pullDone()
     await new Promise((resolve) => setTimeout(resolve, 0))
 
@@ -141,9 +137,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
     ctx.fullSyncActive = false
     fullSyncRunner.flushPendingCrdtPulls()
 
-    await vi.waitFor(() => {
-      expect(paid).toHaveBeenCalledWith(['note-a'], expect.anything())
-    })
+    await vi.waitFor(() => expect(paid).toHaveBeenCalledWith(['note-a'], expect.anything()))
   })
 
   // #2421 ruling 3 (A-6, B-4): the 60 s tick pull pays what it owed.
@@ -160,9 +154,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
 
     internals(engine).runPullTick()
 
-    await vi.waitFor(() => {
-      expect(paid).toHaveBeenCalledWith(['note-owed'], expect.anything())
-    })
+    await vi.waitFor(() => expect(paid).toHaveBeenCalledWith(['note-owed'], expect.anything()))
     await engine.stop({ skipFinalPush: true })
   })
 
@@ -212,9 +204,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
 
     await engine.fullSync()
 
-    await vi.waitFor(() => {
-      expect(pull).toHaveBeenCalledTimes(2)
-    })
+    await vi.waitFor(() => expect(pull).toHaveBeenCalledTimes(2))
   })
 
   // #2421 round 2 ruling 3 (A N-9): a reconnect a full sync refuses pulls
@@ -233,9 +223,7 @@ describe('SyncEngine crdt_updated wake and debt flush (#2421 review)', () => {
 
     await engine.fullSync()
 
-    await vi.waitFor(() => {
-      expect(pull).toHaveBeenCalledOnce()
-    })
+    await vi.waitFor(() => expect(pull).toHaveBeenCalledOnce())
   })
 
   // #2421 ruling 6 (A-4, B-6): a session-only debt store cannot back a claim.

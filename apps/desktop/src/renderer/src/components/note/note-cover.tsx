@@ -215,9 +215,7 @@ export const NoteCover = memo(function NoteCover({
     [updateDraft]
   )
 
-  const zoomBy = (delta: number) => {
-    updateDraft({ zoom: clampCoverZoom(applied.zoom + delta) })
-  }
+  const zoomBy = (delta: number) => updateDraft({ zoom: clampCoverZoom(applied.zoom + delta) })
 
   const washId = cover.kind === 'wash' ? cover.id : coverWashForSeed(washSeed)
   // Scaled around the focal point, so zooming keeps the chosen subject in place.
@@ -351,9 +349,7 @@ export const NoteCover = memo(function NoteCover({
           data-testid="note-cover-reposition-hint"
           // The band treats a press as the start of a drag, so a press that
           // lands on save or cancel must not also move the focal point.
-          onPointerDown={(event) => {
-            event.stopPropagation()
-          }}
+          onPointerDown={(event) => event.stopPropagation()}
           className={cn(
             'absolute bottom-3 end-3 flex items-center gap-0.5',
             'rounded-lg border border-border bg-background/92 p-0.5'
@@ -367,9 +363,7 @@ export const NoteCover = memo(function NoteCover({
               a bound the click is already a no-op through the clamp. */}
           <button
             type="button"
-            onClick={() => {
-              zoomBy(-ZOOM_STEP)
-            }}
+            onClick={() => zoomBy(-ZOOM_STEP)}
             aria-disabled={applied.zoom <= MIN_COVER_ZOOM}
             aria-label={t('cover.zoomOut')}
             className={cn(TOOLBAR_BUTTON_CLASS, 'px-1.5 aria-disabled:opacity-50')}
@@ -379,9 +373,7 @@ export const NoteCover = memo(function NoteCover({
           </button>
           <button
             type="button"
-            onClick={() => {
-              zoomBy(ZOOM_STEP)
-            }}
+            onClick={() => zoomBy(ZOOM_STEP)}
             aria-disabled={applied.zoom >= MAX_COVER_ZOOM}
             aria-label={t('cover.zoomIn')}
             className={cn(TOOLBAR_BUTTON_CLASS, 'px-1.5 aria-disabled:opacity-50')}

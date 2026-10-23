@@ -28,9 +28,7 @@ export const NoteRow = ({
       leading={
         <IconPickerButton
           hasIcon={!!note.emoji}
-          onIconChange={(icon) => {
-            onIconChange(note.id, icon)
-          }}
+          onIconChange={(icon) => onIconChange(note.id, icon)}
           ariaLabel={t('projectHub.rows.setNoteIcon', { title: note.title })}
         >
           {note.emoji ? (
@@ -40,9 +38,7 @@ export const NoteRow = ({
           )}
         </IconPickerButton>
       }
-      onOpen={() => {
-        onOpen(note.id)
-      }}
+      onOpen={() => onOpen(note.id)}
       openLabel={t('projectHub.rows.openNote', { title: note.title })}
       trailing={
         <>
@@ -52,9 +48,7 @@ export const NoteRow = ({
           {onUnpin ? (
             <button
               type="button"
-              onClick={() => {
-                onUnpin(note.id)
-              }}
+              onClick={() => onUnpin(note.id)}
               aria-label={t('projectHub.rail.unpinNote', { title: note.title })}
               className="rounded-sm p-1 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
             >

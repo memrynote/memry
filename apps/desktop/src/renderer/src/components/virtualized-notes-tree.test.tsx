@@ -386,9 +386,7 @@ describe('VirtualizedNotesTree', () => {
     expect(openFolderView.tabIndex).toBeGreaterThanOrEqual(0)
     expect(isRevealed(reveal!)).toBe(false)
 
-    act(() => {
-      openFolderView.focus()
-    })
+    act(() => openFolderView.focus())
 
     expect(openFolderView).toHaveFocus()
     expect(isRevealed(reveal!)).toBe(true)

@@ -60,9 +60,7 @@ function flushFrames(): void {
   const pending = frameCallbacks
   frameCallbacks = []
   act(() => {
-    pending.forEach(({ cb }) => {
-      cb(0)
-    })
+    pending.forEach(({ cb }) => cb(0))
   })
 }
 
@@ -97,15 +95,11 @@ describe('useEditorDragDrop dragover throttling', () => {
 
     // #when — a burst of dragover events arrives inside a single frame
     act(() => {
-      events.forEach((event) => {
-        result.current.handleDragOver(event)
-      })
+      events.forEach((event) => result.current.handleDragOver(event))
     })
 
     // #then — the drop is still accepted, but nothing has been measured yet
-    events.forEach((event) => {
-      expect(event.preventDefault).toHaveBeenCalled()
-    })
+    events.forEach((event) => expect(event.preventDefault).toHaveBeenCalled())
     expect(measureCount).toBe(0)
     expect(frameCallbacks).toHaveLength(1)
 

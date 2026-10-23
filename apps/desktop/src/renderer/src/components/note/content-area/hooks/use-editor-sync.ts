@@ -614,9 +614,7 @@ export function useEditorSync({
       // `isYSyncRender`), so it waits until that render has returned. The
       // promotion's own change event runs the rest of this handler.
       if (isYSyncRender(editor)) {
-        queueMicrotask(() => {
-          promoteSyncedWikiLinks(editor)
-        })
+        queueMicrotask(() => promoteSyncedWikiLinks(editor))
         return
       }
       editor.replaceBlocks(editor.document, normalized.blocks)

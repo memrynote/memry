@@ -15,7 +15,5 @@ export const vaultActivityApi = {
 
 export const vaultActivityEvents = {
   onVaultActivityChanged: (callback: () => void): (() => void) =>
-    subscribe<void>(VaultActivityChannels.events.CHANGED, () => {
-      callback()
-    })
+    subscribe<void>(VaultActivityChannels.events.CHANGED, () => callback())
 }

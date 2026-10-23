@@ -152,9 +152,7 @@ export function ImportSettings({ focusTarget, focusRequestId }: ImportSettingsPr
           placeholder={t('import.v2.searchPlaceholder')}
           aria-label={t('import.v2.searchPlaceholder')}
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           className="ps-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
@@ -177,9 +175,7 @@ export function ImportSettings({ focusTarget, focusRequestId }: ImportSettingsPr
               <li key={item.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActive(item)
-                  }}
+                  onClick={() => setActive(item)}
                   data-testid={`import-source-${item.id}`}
                   className="group flex w-full items-center gap-3 min-h-13 py-2.5 text-start focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
                 >

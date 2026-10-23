@@ -19,7 +19,7 @@ const PRIORITY_LABELS: Record<Priority, string> = {
 }
 
 const BackButton = ({ onClick }: { onClick: () => void }): React.JSX.Element => (
-  <button type="button" onClick={onClick} className="shrink-0 p-0.5 -ml-0.5 text-text-tertiary">
+  <button type="button" onClick={onClick} className="shrink-0 p-0.5 -ms-0.5 text-text-tertiary">
     <ChevronLeft size={12} />
   </button>
 )
@@ -76,7 +76,7 @@ export function PriorityPanel({
         <span className="text-[13px] text-foreground font-medium leading-4">
           {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsPriorityPanel.priority')}
         </span>
-        <span className="text-[11px] ml-auto text-foreground leading-3.5">
+        <span className="text-[11px] ms-auto text-foreground leading-3.5">
           {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsPriorityPanel.is')}
         </span>
       </div>
@@ -93,9 +93,7 @@ export function PriorityPanel({
             <button
               key={p}
               type="button"
-              onClick={() => {
-                onTogglePriority(p)
-              }}
+              onClick={() => onTogglePriority(p)}
               className={cn(
                 'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
                 checked ? 'bg-accent' : 'hover:bg-accent'
@@ -113,7 +111,7 @@ export function PriorityPanel({
               </span>
               <span
                 className={cn(
-                  'ml-auto text-[11px] leading-3.5 tabular-nums',
+                  'ms-auto text-[11px] leading-3.5 tabular-nums',
                   checked ? 'text-text-secondary' : 'text-text-tertiary'
                 )}
               >

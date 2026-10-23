@@ -174,9 +174,7 @@ describe('applyTraySetting', () => {
   it('#given the desktop has no tray host #when the setting is turned on #then it degrades instead of throwing', () => {
     mocks.trayThrows = true
 
-    expect(() => {
-      applyTraySetting(true)
-    }).not.toThrow()
+    expect(() => applyTraySetting(true)).not.toThrow()
     expect(shouldHideOnClose()).toBe(false)
   })
 })

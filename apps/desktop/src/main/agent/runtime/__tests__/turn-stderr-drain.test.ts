@@ -364,9 +364,10 @@ describe('agent turns against a CLI that floods stderr', () => {
 async function withDeadline<T>(label: string, work: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const deadline = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => {
-      reject(new Error(`${label} did not complete within ${DEADLINE_MS}ms`))
-    }, DEADLINE_MS)
+    timer = setTimeout(
+      () => reject(new Error(`${label} did not complete within ${DEADLINE_MS}ms`)),
+      DEADLINE_MS
+    )
   })
   try {
     // Promise.race keeps a handler attached to `work`, so a later settlement of
@@ -411,9 +412,7 @@ function floodingCli(
         throw new Error('Claude subprocess stdio unavailable')
       }
       const exitCodePromise = new Promise<number>((resolve) => {
-        proc.once('exit', (code) => {
-          resolve(code ?? 0)
-        })
+        proc.once('exit', (code) => resolve(code ?? 0))
       })
 
       return {

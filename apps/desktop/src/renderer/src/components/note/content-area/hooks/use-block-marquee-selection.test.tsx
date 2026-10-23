@@ -684,9 +684,7 @@ function setupNote(specs: ReadonlyArray<BlockSpec>): {
     trigger,
     blockContainer,
     blockContainerRef: { current: blockContainer },
-    cleanup: () => {
-      trigger.remove()
-    }
+    cleanup: () => trigger.remove()
   }
 }
 

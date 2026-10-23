@@ -49,12 +49,7 @@ vi.mock('./calendar-toolbar', () => ({
   }) => (
     <div>
       {extraActions}
-      <button
-        type="button"
-        onClick={() => {
-          onCreateEvent({ x: 1, y: 2, width: 3, height: 4 })
-        }}
-      >
+      <button type="button" onClick={() => onCreateEvent({ x: 1, y: 2, width: 3, height: 4 })}>
         create
       </button>
       <button type="button" onClick={onPrevious}>
@@ -66,12 +61,7 @@ vi.mock('./calendar-toolbar', () => ({
       <button type="button" onClick={onNext}>
         next
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onViewChange('month')
-        }}
-      >
+      <button type="button" onClick={() => onViewChange('month')}>
         month
       </button>
     </div>
@@ -98,9 +88,9 @@ vi.mock('./calendar-week-view', () => ({
     <div data-testid="week-view">
       <button
         type="button"
-        onClick={() => {
+        onClick={() =>
           onSelectItem({ id: 'event-1', title: 'Event' }, { x: 0, y: 1, width: 2, height: 3 })
-        }}
+        }
       >
         select week item
       </button>
@@ -143,12 +133,7 @@ vi.mock('./calendar-year-view', () => ({
       <button type="button" onClick={() => onAnchorChange?.('2027-01-01')}>
         change anchor
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onViewChange('day')
-        }}
-      >
+      <button type="button" onClick={() => onViewChange('day')}>
         open day
       </button>
     </div>
@@ -168,7 +153,7 @@ vi.mock('./calendar-event-popover', () => ({
     <div data-testid="event-popover">
       <button
         type="button"
-        onClick={() => {
+        onClick={() =>
           onDraftChange({
             title: 'Changed',
             description: '',
@@ -178,7 +163,7 @@ vi.mock('./calendar-event-popover', () => ({
             targetCalendarId: null,
             projectId: null
           })
-        }}
+        }
       >
         change draft
       </button>
@@ -205,28 +190,13 @@ vi.mock('./calendar-inbox-snooze-popover', () => ({
     onUnsnooze: (itemId: string) => void
   }) => (
     <div data-testid="snooze-popover">
-      <button
-        type="button"
-        onClick={() => {
-          onOpenInInbox('inbox-1')
-        }}
-      >
+      <button type="button" onClick={() => onOpenInInbox('inbox-1')}>
         open inbox
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onUnsnooze('inbox-1')
-        }}
-      >
+      <button type="button" onClick={() => onUnsnooze('inbox-1')}>
         unsnooze inbox
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          onReschedule('inbox-1', '2026-05-15T09:00:00.000Z')
-        }}
-      >
+      <button type="button" onClick={() => onReschedule('inbox-1', '2026-05-15T09:00:00.000Z')}>
         reschedule inbox
       </button>
       <button type="button" onClick={onDismiss}>
@@ -309,9 +279,7 @@ describe('CalendarShell', () => {
     render(<CalendarShell {...props} />)
 
     await user.click(screen.getByRole('button', { name: 'filter.refresh-google-calendars' }))
-    await waitFor(() => {
-      expect(calendarApi.refreshGoogleCalendarProvider).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(calendarApi.refreshGoogleCalendarProvider).toHaveBeenCalledTimes(1))
 
     await user.click(screen.getByRole('checkbox', { name: 'filter.memry-items' }))
     await user.click(screen.getByRole('checkbox', { name: 'filter.imported-calendars' }))
@@ -380,15 +348,11 @@ describe('CalendarShell', () => {
     rerender(<CalendarShell {...createProps({ view: 'day' })} />)
     expect(screen.getByTestId('day-view')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'filter.refresh-google-calendars' }))
-    await waitFor(() => {
-      expect(calendarApi.refreshGoogleCalendarProvider).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(calendarApi.refreshGoogleCalendarProvider).toHaveBeenCalledTimes(1))
 
     calendarApi.refreshGoogleCalendarProvider.mockRejectedValueOnce(new Error('network down'))
     await user.click(screen.getByRole('button', { name: 'filter.refresh-google-calendars' }))
-    await waitFor(() => {
-      expect(calendarApi.refreshGoogleCalendarProvider).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(calendarApi.refreshGoogleCalendarProvider).toHaveBeenCalledTimes(2))
 
     rerender(<CalendarShell {...createProps({ view: 'month' })} />)
     expect(screen.getByTestId('month-view')).toBeInTheDocument()

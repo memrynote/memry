@@ -140,9 +140,7 @@ export function useTimelineDrag({
         lastX = e.clientX
         finish(true)
       }
-      const cancel = (): void => {
-        finish(false)
-      }
+      const cancel = (): void => finish(false)
       const key = (e: KeyboardEvent): void => {
         if (e.key !== 'Escape') return
         e.preventDefault()

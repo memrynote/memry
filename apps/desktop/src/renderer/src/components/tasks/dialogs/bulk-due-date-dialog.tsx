@@ -88,12 +88,7 @@ export const BulkDueDateDialog = ({
         <div className="py-4">
           {/* Calendar */}
           <div className="flex justify-center">
-            <DatePickerCalendar
-              selected={selectedDate}
-              onSelect={(d) => {
-                setSelectedDate(d)
-              }}
-            />
+            <DatePickerCalendar selected={selectedDate} onSelect={(d) => setSelectedDate(d)} />
           </div>
 
           {/* Include completed checkbox */}
@@ -102,9 +97,7 @@ export const BulkDueDateDialog = ({
               <Checkbox
                 id="include-completed"
                 checked={includeCompleted}
-                onCheckedChange={(checked) => {
-                  setIncludeCompleted(checked === true)
-                }}
+                onCheckedChange={(checked) => setIncludeCompleted(checked === true)}
               />
               <Label
                 htmlFor="include-completed"

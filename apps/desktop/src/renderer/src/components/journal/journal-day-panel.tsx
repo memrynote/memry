@@ -116,9 +116,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
       onTaskDeleted(refresh),
       onTaskCompleted(refresh)
     ]
-    return () => {
-      unsubs.forEach((fn) => fn())
-    }
+    return () => unsubs.forEach((fn) => fn())
   }, [date, isToday, queryClient])
 
   const handleToggleComplete = useCallback(async (id: string, isCompleted: boolean) => {
@@ -245,9 +243,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
       <button
         type="button"
         className="flex items-center justify-between w-full"
-        onClick={() => {
-          setIsCollapsed((v) => !v)
-        }}
+        onClick={() => setIsCollapsed((v) => !v)}
       >
         <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold shrink-0 text-[11px]">
           {isToday ? t('date.relative.today') : formatShortDate(date, i18n.language)}

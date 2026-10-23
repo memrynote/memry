@@ -76,9 +76,7 @@ export function SearchFilterMenu({
               <SearchRow
                 key={type}
                 value={filterTypeValue(type)}
-                onSelect={() => {
-                  onToggleType(type)
-                }}
+                onSelect={() => onToggleType(type)}
                 icon={<Icon />}
                 trailing={<SearchKbd>{`${MOD_KEY}${TYPE_SHORTCUTS[type]}`}</SearchKbd>}
                 endLane={<ActiveMark active={activeTypes.includes(type)} />}
@@ -95,9 +93,7 @@ export function SearchFilterMenu({
             <SearchRow
               key={id}
               value={filterDateValue(id)}
-              onSelect={() => {
-                onToggleDate(id)
-              }}
+              onSelect={() => onToggleDate(id)}
               icon={<Calendar />}
               trailing={datePresetSpan(id, locale)}
               endLane={<ActiveMark active={activeDate === id} />}

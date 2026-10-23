@@ -118,9 +118,7 @@ describe('useFindInPage', () => {
     vi.spyOn(input, 'focus')
     vi.spyOn(input, 'select')
 
-    act(() => {
-      result.current.open()
-    })
+    act(() => result.current.open())
     expect(result.current.isOpen).toBe(true)
     expect(input.focus).toHaveBeenCalled()
     expect(input.select).toHaveBeenCalled()
@@ -131,26 +129,18 @@ describe('useFindInPage', () => {
     expect(result.current.currentIndex).toBe(0)
     expect(CSS.highlights.set).toHaveBeenCalledWith('find-matches', expect.anything())
 
-    act(() => {
-      result.current.next()
-    })
+    act(() => result.current.next())
     expect(result.current.currentIndex).toBe(1)
-    act(() => {
-      result.current.next()
-    })
+    act(() => result.current.next())
     expect(result.current.currentIndex).toBe(0)
-    act(() => {
-      result.current.prev()
-    })
+    act(() => result.current.prev())
     expect(result.current.currentIndex).toBe(1)
 
     typeQuery(hook, 'missing')
     expect(result.current.matchCount).toBe(0)
     expect(result.current.currentIndex).toBe(-1)
 
-    act(() => {
-      result.current.close()
-    })
+    act(() => result.current.close())
     expect(result.current.isOpen).toBe(false)
     expect(result.current.query).toBe('')
     expect(result.current.matchCount).toBe(0)
@@ -181,9 +171,7 @@ describe('useFindInPage', () => {
     })
     expect(result.current.matchCount).toBe(3)
 
-    act(() => {
-      result.current.close()
-    })
+    act(() => result.current.close())
     rerender({ enabled: false })
     act(() => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true }))
@@ -204,9 +192,7 @@ describe('useFindInPage', () => {
     it('opens on the requested match instead of the first', () => {
       const { result } = renderHook(() => useFindInPage(ref))
 
-      act(() => {
-        result.current.openAt('beta', 1)
-      })
+      act(() => result.current.openAt('beta', 1))
 
       expect(result.current.isOpen).toBe(true)
       expect(result.current.query).toBe('beta')
@@ -218,9 +204,7 @@ describe('useFindInPage', () => {
       container.innerHTML = '<p>alpha</p>'
       const { result } = renderHook(() => useFindInPage(ref))
 
-      act(() => {
-        result.current.openAt('alpha', 2)
-      })
+      act(() => result.current.openAt('alpha', 2))
       expect(result.current.currentIndex).toBe(0)
 
       await act(async () => {
@@ -235,9 +219,7 @@ describe('useFindInPage', () => {
 
     it('stays on the match when an edit re-runs the search', async () => {
       const { result } = renderHook(() => useFindInPage(ref))
-      act(() => {
-        result.current.openAt('beta', 1)
-      })
+      act(() => result.current.openAt('beta', 1))
 
       await act(async () => {
         container.append(document.createTextNode(' gamma'))
@@ -250,9 +232,7 @@ describe('useFindInPage', () => {
 
     it('closes on the first click into the document when search opened it', () => {
       const { result } = renderHook(() => useFindInPage(ref))
-      act(() => {
-        result.current.openAt('beta', 0)
-      })
+      act(() => result.current.openAt('beta', 0))
 
       act(() => {
         container.dispatchEvent(new Event('pointerdown'))
@@ -264,9 +244,7 @@ describe('useFindInPage', () => {
 
     it('stays open on a click when the user opened it with the shortcut', () => {
       const { result } = renderHook(() => useFindInPage(ref))
-      act(() => {
-        result.current.open()
-      })
+      act(() => result.current.open())
       typeQuery({ result } as Hook, 'beta')
 
       act(() => {
@@ -278,9 +256,7 @@ describe('useFindInPage', () => {
 
     it('stays open on a click once the user has edited the query', () => {
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.openAt('beta', 0)
-      })
+      act(() => hook.result.current.openAt('beta', 0))
       typeQuery(hook, 'alpha')
 
       act(() => {
@@ -293,13 +269,9 @@ describe('useFindInPage', () => {
     it('forgets an unmet request once the user moves on', async () => {
       container.innerHTML = '<p>alpha alpha</p>'
       const { result } = renderHook(() => useFindInPage(ref))
-      act(() => {
-        result.current.openAt('alpha', 5)
-      })
+      act(() => result.current.openAt('alpha', 5))
 
-      act(() => {
-        result.current.next()
-      })
+      act(() => result.current.next())
       await act(async () => {
         container.append(document.createTextNode(' alpha alpha alpha alpha'))
         await Promise.resolve()
@@ -317,9 +289,7 @@ describe('useFindInPage', () => {
       container.innerHTML = '<p>alpha beta gamma alpha</p>'.repeat(200)
 
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
 
       const prefixes = ['a', 'al', 'alp', 'alph', 'alpha']
       for (const prefix of prefixes) {
@@ -348,9 +318,7 @@ describe('useFindInPage', () => {
 
     it('pins the exact match set produced by the trailing keystroke', () => {
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
 
       act(() => {
         hook.result.current.setQuery('alph')
@@ -374,17 +342,13 @@ describe('useFindInPage', () => {
 
     it('cancels the pending search when the bar is closed', () => {
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
 
       act(() => {
         hook.result.current.setQuery('alpha')
         vi.advanceTimersByTime(KEYSTROKE_GAP_MS)
       })
-      act(() => {
-        hook.result.current.close()
-      })
+      act(() => hook.result.current.close())
       act(() => vi.advanceTimersByTime(5000))
 
       expect(treeWalks).toBe(0)
@@ -393,9 +357,7 @@ describe('useFindInPage', () => {
       expect(highlights.has('find-matches')).toBe(false)
 
       // Reopening starts clean rather than resurrecting the cancelled search.
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
       act(() => vi.advanceTimersByTime(5000))
       expect(treeWalks).toBe(0)
       expect(hook.result.current.matchCount).toBe(0)
@@ -404,9 +366,7 @@ describe('useFindInPage', () => {
     it('flushes the pending search before next/prev so navigation uses the current query', () => {
       container.innerHTML = '<p>one two two three three three</p>'
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
 
       typeQuery(hook, 'two')
       expect(hook.result.current.matchCount).toBe(2)
@@ -418,9 +378,7 @@ describe('useFindInPage', () => {
         hook.result.current.setQuery('three')
         vi.advanceTimersByTime(KEYSTROKE_GAP_MS)
       })
-      act(() => {
-        hook.result.current.next()
-      })
+      act(() => hook.result.current.next())
 
       expect(treeWalks).toBe(2)
       expect(hook.result.current.matchCount).toBe(3)
@@ -433,9 +391,7 @@ describe('useFindInPage', () => {
       act(() => vi.advanceTimersByTime(5000))
       expect(treeWalks).toBe(2)
 
-      act(() => {
-        hook.result.current.prev()
-      })
+      act(() => hook.result.current.prev())
       expect(hook.result.current.currentIndex).toBe(0)
       expect(describeRanges(highlights.get('find-current'))).toEqual([
         'one two two three three three[12-17]'
@@ -447,9 +403,7 @@ describe('useFindInPage', () => {
         hook.result.current.setQuery('two')
         vi.advanceTimersByTime(KEYSTROKE_GAP_MS)
       })
-      act(() => {
-        hook.result.current.prev()
-      })
+      act(() => hook.result.current.prev())
 
       expect(treeWalks).toBe(3)
       expect(hook.result.current.matchCount).toBe(2)
@@ -461,9 +415,7 @@ describe('useFindInPage', () => {
 
     it('re-runs the search when the note is edited or swapped under an open bar', async () => {
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
       typeQuery(hook, 'alpha')
       expect(hook.result.current.matchCount).toBe(2)
 
@@ -492,9 +444,7 @@ describe('useFindInPage', () => {
 
     it('cancels the pending search on unmount', () => {
       const hook = renderHook(() => useFindInPage(ref))
-      act(() => {
-        hook.result.current.open()
-      })
+      act(() => hook.result.current.open())
       act(() => {
         hook.result.current.setQuery('alpha')
         vi.advanceTimersByTime(KEYSTROKE_GAP_MS)

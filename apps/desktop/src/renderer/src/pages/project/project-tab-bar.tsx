@@ -92,9 +92,7 @@ export const ProjectTabBar = ({
                 data-tab={key}
                 aria-selected={isActive}
                 tabIndex={isActive ? 0 : -1}
-                onClick={() => {
-                  onChange(key)
-                }}
+                onClick={() => onChange(key)}
                 className={cn(
                   'relative flex h-6 items-center gap-1.25 rounded-[5px] px-2.5 transition-colors duration-150',
                   'focus-visible:outline-none active:scale-[0.97]',

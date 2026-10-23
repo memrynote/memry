@@ -195,9 +195,7 @@ function setupDb() {
     insert: mocks.dbInsert
   }
   const db = {
-    transaction: vi.fn((fn: (txArg: typeof tx) => void) => {
-      fn(tx)
-    }),
+    transaction: vi.fn((fn: (txArg: typeof tx) => void) => fn(tx)),
     insert: mocks.dbInsert,
     delete: mocks.dbDelete,
     // The vault's current-device row, read by ensureDeviceRowForVault.

@@ -120,15 +120,11 @@ describe('ImportDialog i18n', () => {
     renderDialog(markdownItem)
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose file…' }))
-    await waitFor(() => {
-      expect(pickFiles).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(pickFiles).toHaveBeenCalledTimes(1))
     expect(pickFiles.mock.calls[0][0].directory).toBeFalsy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose folder…' }))
-    await waitFor(() => {
-      expect(pickFiles).toHaveBeenCalledTimes(2)
-    })
+    await waitFor(() => expect(pickFiles).toHaveBeenCalledTimes(2))
     expect(pickFiles.mock.calls[1][0].directory).toBe(true)
   })
 
@@ -168,9 +164,7 @@ describe('ImportDialog i18n', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Choose folder…' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('1 file selected')).toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.getByText('1 file selected')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Start import' })).toBeEnabled()
   })
 })
@@ -241,15 +235,11 @@ describe('ImportDialog folder picker (Apple Notes)', () => {
     fireEvent.click(personalRow.querySelector('[role="checkbox"]')!)
 
     const startButton = screen.getByText('Start import').closest('button')!
-    await waitFor(() => {
-      expect(startButton).not.toBeDisabled()
-    })
+    await waitFor(() => expect(startButton).not.toBeDisabled())
     fireEvent.pointerDown(startButton)
     fireEvent.click(startButton)
 
-    await waitFor(() => {
-      expect(start).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
     const payload = start.mock.calls[0][0]
     expect(payload.importerId).toBe('apple-notes')
     expect(payload.sourcePaths).toEqual(['/Users/k/group.com.apple.notes'])
@@ -291,9 +281,7 @@ describe('ImportDialog summary — skipped reasons', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Select Apple Notes folder…' }))
     const startButton = await screen.findByRole('button', { name: 'Start import' })
-    await waitFor(() => {
-      expect(startButton).toBeEnabled()
-    })
+    await waitFor(() => expect(startButton).toBeEnabled())
     fireEvent.click(startButton)
     await screen.findByText('Import complete')
   }
@@ -432,16 +420,12 @@ describe('ImportDialog account-based importer (OneNote)', () => {
     // Panel loads the tree and preselects; Start becomes enabled.
     await screen.findByText('Ideas')
     const startButton = screen.getByText('Start import').closest('button')!
-    await waitFor(() => {
-      expect(startButton).not.toBeDisabled()
-    })
+    await waitFor(() => expect(startButton).not.toBeDisabled())
 
     fireEvent.pointerDown(startButton)
     fireEvent.click(startButton)
 
-    await waitFor(() => {
-      expect(start).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
     const payload = start.mock.calls[0][0]
     expect(payload.importerId).toBe('onenote')
     expect(payload.sourcePaths).toEqual([])

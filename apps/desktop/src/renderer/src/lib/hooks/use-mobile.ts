@@ -6,9 +6,7 @@ const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 function subscribe(onChange: () => void): () => void {
   const mql = window.matchMedia(QUERY)
   mql.addEventListener('change', onChange)
-  return () => {
-    mql.removeEventListener('change', onChange)
-  }
+  return () => mql.removeEventListener('change', onChange)
 }
 
 function getSnapshot(): boolean {

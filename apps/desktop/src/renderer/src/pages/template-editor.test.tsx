@@ -107,9 +107,7 @@ vi.mock('@/components/note/note-title', () => ({
       aria-label="template title"
       value={title}
       disabled={disabled}
-      onChange={(event) => {
-        onTitleChange(event.target.value)
-      }}
+      onChange={(event) => onTitleChange(event.target.value)}
     />
   )
 }))
@@ -130,31 +128,13 @@ vi.mock('@/components/note/tags-row', () => ({
   }) => (
     <div>
       tags {tags.map((tag) => tag.name).join(',')}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          onAddTag('work')
-        }}
-      >
+      <button type="button" disabled={disabled} onClick={() => onAddTag('work')}>
         add tag
       </button>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          onCreateTag('newtag', 'amber')
-        }}
-      >
+      <button type="button" disabled={disabled} onClick={() => onCreateTag('newtag', 'amber')}>
         create tag
       </button>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          onRemoveTag(tags[0]?.id ?? '')
-        }}
-      >
+      <button type="button" disabled={disabled} onClick={() => onRemoveTag(tags[0]?.id ?? '')}>
         remove tag
       </button>
     </div>
@@ -178,18 +158,14 @@ vi.mock('@/components/note/info-section', () => ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => {
-          onPropertyChange(properties[0]?.id ?? '', 'changed')
-        }}
+        onClick={() => onPropertyChange(properties[0]?.id ?? '', 'changed')}
       >
         change property
       </button>
       <button
         type="button"
         disabled={disabled}
-        onClick={() => {
-          onDeleteProperty(properties[0]?.id ?? '')
-        }}
+        onClick={() => onDeleteProperty(properties[0]?.id ?? '')}
       >
         delete property
       </button>
@@ -208,9 +184,7 @@ vi.mock('@/components/note/ghost-affordance-row', () => ({
     <button
       type="button"
       disabled={disabled}
-      onClick={() => {
-        onAddProperty({ name: 'Status', type: 'text' })
-      }}
+      onClick={() => onAddProperty({ name: 'Status', type: 'text' })}
     >
       add property
     </button>
@@ -234,9 +208,7 @@ vi.mock('@/components/note/content-area', () => ({
       data-run-side-effects={String(runSideEffects ?? true)}
       defaultValue={initialContent}
       disabled={!editable}
-      onChange={(event) => {
-        onMarkdownChange(event.target.value)
-      }}
+      onChange={(event) => onMarkdownChange(event.target.value)}
     />
   )
 }))
@@ -251,13 +223,7 @@ vi.mock('@/components/icon-picker-button', () => ({
     ariaLabel: string
     onIconChange: (icon: string | null) => void
   }) => (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={() => {
-        onIconChange('📘')
-      }}
-    >
+    <button type="button" aria-label={ariaLabel} onClick={() => onIconChange('📘')}>
       {children}
     </button>
   )
@@ -318,9 +284,7 @@ describe('TemplateEditorPage', () => {
     expect(createTemplate).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: /create template/i }))
-    await waitFor(() => {
-      expect(createTemplate).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(createTemplate).toHaveBeenCalledTimes(1))
   })
 
   it('adopts the new id on the tab and flips the button to Update', async () => {
@@ -330,9 +294,9 @@ describe('TemplateEditorPage', () => {
     await user.type(screen.getByLabelText('template title'), 'Meeting')
     await user.click(screen.getByRole('button', { name: /create template/i }))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(setTabEntity).toHaveBeenCalledWith('tab-1', 'tpl-1', '/templates/tpl-1')
-    })
+    )
     expect(await screen.findByRole('button', { name: /^update$/i })).toBeInTheDocument()
   })
 
@@ -342,9 +306,7 @@ describe('TemplateEditorPage', () => {
 
     await user.type(screen.getByLabelText('template title'), 'Meeting')
     await user.click(screen.getByRole('button', { name: /create template/i }))
-    await waitFor(() => {
-      expect(setTabEntity).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(setTabEntity).toHaveBeenCalled())
 
     // The tab adopts the id, so this page re-renders with a templateId it did
     // not open with. Keying the surface off that id would remount it and throw
@@ -363,9 +325,7 @@ describe('TemplateEditorPage', () => {
 
     await user.type(screen.getByLabelText('template title'), 'M')
 
-    await waitFor(() => {
-      expect(updateTabTitle).toHaveBeenCalledWith('tab-1', 'M')
-    })
+    await waitFor(() => expect(updateTabTitle).toHaveBeenCalledWith('tab-1', 'M'))
     expect(registerCloseGuard).toHaveBeenCalledWith('tab-1', expect.any(Object))
   })
 
@@ -375,9 +335,7 @@ describe('TemplateEditorPage', () => {
 
     await user.type(screen.getByLabelText('template title'), 'M')
 
-    await waitFor(() => {
-      expect(updateTabTitle).toHaveBeenCalledWith('tab-1', 'M')
-    })
+    await waitFor(() => expect(updateTabTitle).toHaveBeenCalledWith('tab-1', 'M'))
     expect(setTabModified).toHaveBeenCalledWith('tab-1', true)
   })
 
@@ -389,9 +347,7 @@ describe('TemplateEditorPage', () => {
     await user.type(title, 'M')
     await user.clear(title)
 
-    await waitFor(() => {
-      expect(updateTabTitle).toHaveBeenLastCalledWith('tab-1', 'New Template')
-    })
+    await waitFor(() => expect(updateTabTitle).toHaveBeenLastCalledWith('tab-1', 'New Template'))
   })
 
   it('registers a close guard that reports the draft as dirty', async () => {
@@ -423,9 +379,9 @@ describe('TemplateEditorPage', () => {
     expect(screen.queryByRole('button', { name: /^update$/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /duplicate & edit/i }))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(duplicateTemplate).toHaveBeenCalledWith('tpl-builtin', expect.any(String))
-    })
+    )
   })
 
   it('preserves a select property type when only the title is edited', async () => {
@@ -443,9 +399,7 @@ describe('TemplateEditorPage', () => {
     await user.type(screen.getByLabelText('template title'), ' Notes')
     await user.click(screen.getByRole('button', { name: /^update$/i }))
 
-    await waitFor(() => {
-      expect(updateTemplate).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(updateTemplate).toHaveBeenCalled())
     expect(updateTemplate.mock.calls.at(-1)?.[0].properties).toEqual([
       { name: 'Status', type: 'select', value: 'todo', options: ['todo', 'done'] }
     ])
@@ -470,11 +424,11 @@ describe('TemplateEditorPage', () => {
       expect(updateTemplate).not.toHaveBeenCalled()
       unmount()
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(updateTemplate).toHaveBeenCalledWith(
           expect.objectContaining({ id: 'tpl-1', name: 'Meeting Notes' })
         )
-      })
+      )
     })
 
     it('keeps the cache the tab remounts from in step with every write', async () => {
@@ -485,12 +439,12 @@ describe('TemplateEditorPage', () => {
       await user.type(screen.getByLabelText('template title'), ' Notes')
       await user.click(screen.getByRole('button', { name: /^update$/i }))
 
-      await waitFor(() => {
+      await waitFor(() =>
         expect(setQueryData).toHaveBeenCalledWith(['template-editor', 'tpl-1'], {
           id: 'tpl-1',
           name: 'Meeting'
         })
-      })
+      )
     })
 
     it('does not write edits the close prompt discarded', async () => {

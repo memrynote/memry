@@ -104,9 +104,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             <ContextMenuTrigger asChild disabled={!canNavBack}>
               <button
                 type="button"
-                onClick={() => {
-                  navBack()
-                }}
+                onClick={() => navBack()}
                 onMouseDown={openEntryInNewTab(backEntries[0])}
                 disabled={!canNavBack}
                 aria-disabled={!canNavBack}
@@ -126,9 +124,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
               {backEntries.map((e) => (
                 <ContextMenuItem
                   key={`${e.tab.id}-${e.steps}`}
-                  onSelect={() => {
-                    goBackSteps(e.steps)
-                  }}
+                  onSelect={() => goBackSteps(e.steps)}
                 >
                   <TabIcon
                     type={e.tab.type}
@@ -146,9 +142,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             <ContextMenuTrigger asChild disabled={!canNavForward}>
               <button
                 type="button"
-                onClick={() => {
-                  navForward()
-                }}
+                onClick={() => navForward()}
                 onMouseDown={openEntryInNewTab(forwardEntries[0])}
                 disabled={!canNavForward}
                 aria-disabled={!canNavForward}
@@ -168,9 +162,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
               {forwardEntries.map((e) => (
                 <ContextMenuItem
                   key={`${e.tab.id}-${e.steps}`}
-                  onSelect={() => {
-                    goForwardSteps(e.steps)
-                  }}
+                  onSelect={() => goForwardSteps(e.steps)}
                 >
                   <TabIcon
                     type={e.tab.type}

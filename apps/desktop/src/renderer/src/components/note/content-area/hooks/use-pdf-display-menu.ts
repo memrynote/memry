@@ -34,9 +34,7 @@ export function usePdfDisplayMenu({
   defaultDisplay
 }: UsePdfDisplayMenuParams) {
   const [state, setState] = useState<PdfDisplayMenuState | null>(null)
-  const close = useCallback(() => {
-    setState(null)
-  }, [])
+  const close = useCallback(() => setState(null), [])
 
   const open = useCallback(
     (blockId: string) => {

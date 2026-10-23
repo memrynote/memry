@@ -58,9 +58,7 @@ describe('InboxSettings section', () => {
     render(<InboxSettings />)
     fireEvent.click(screen.getByTestId('inbox-review-test'))
     expect(sendTestInboxReviewNotification).toHaveBeenCalledTimes(1)
-    await waitFor(() => {
-      expect(toastSuccess).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1))
     expect(toastError).not.toHaveBeenCalled()
   })
 
@@ -68,9 +66,7 @@ describe('InboxSettings section', () => {
     sendTestInboxReviewNotification.mockResolvedValueOnce({ supported: false })
     render(<InboxSettings />)
     fireEvent.click(screen.getByTestId('inbox-review-test'))
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledTimes(1)
-    })
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
     expect(toastSuccess).not.toHaveBeenCalled()
   })
 })

@@ -54,13 +54,7 @@ export const TagsRow = memo(function TagsRow({
           key={tag.id}
           tag={tag}
           onRemove={disabled ? undefined : onRemoveTag}
-          onClick={
-            onTagClick
-              ? () => {
-                  onTagClick(tag)
-                }
-              : undefined
-          }
+          onClick={onTagClick ? () => onTagClick(tag) : undefined}
           disabled={disabled}
         />
       ))}

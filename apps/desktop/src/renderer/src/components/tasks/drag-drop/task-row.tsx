@@ -279,9 +279,7 @@ const TaskRowComponent = ({
           <div className="flex shrink-0 items-center justify-center">
             <SelectionCheckbox
               state={isCheckedForSelection ? 'checked' : 'unchecked'}
-              onToggle={() => {
-                onToggleSelect?.(task.id)
-              }}
+              onToggle={() => onToggleSelect?.(task.id)}
               alwaysVisible={isSelectionMode}
               label={`Select ${task.title}`}
             />
@@ -298,9 +296,7 @@ const TaskRowComponent = ({
             onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
             onToggleComplete={() => {
               setIsExiting(true)
-              setTimeout(() => {
-                onToggleComplete(task.id)
-              }, EXIT_ANIMATION_DURATION)
+              setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
             }}
             disabled={isDragging}
           />

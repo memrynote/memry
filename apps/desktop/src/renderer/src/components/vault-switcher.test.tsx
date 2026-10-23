@@ -37,12 +37,7 @@ vi.mock('@/components/ui/picker', async () => {
     const onOpenChange = React.useContext(OpenChangeContext)
     return (
       // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
-      <div
-        data-testid="picker-trigger"
-        onClick={() => {
-          onOpenChange(true)
-        }}
-      >
+      <div data-testid="picker-trigger" onClick={() => onOpenChange(true)}>
         {children}
       </div>
     )
@@ -54,12 +49,7 @@ vi.mock('@/components/ui/picker', async () => {
   Picker.Item = ({ value, label }: { value: string; label: string }) => {
     const onValueChange = React.useContext(PickerContext)
     return (
-      <button
-        type="button"
-        onClick={() => {
-          onValueChange(value)
-        }}
-      >
+      <button type="button" onClick={() => onValueChange(value)}>
         {label}
       </button>
     )
@@ -144,9 +134,7 @@ describe('VaultSwitcher delete from account', () => {
     render(<VaultSwitcher />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
-    await waitFor(() => {
-      expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old')
-    })
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
   })
 
   it('drops a local vault from the list once it is deleted from the account', async () => {
@@ -155,9 +143,7 @@ describe('VaultSwitcher delete from account', () => {
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Old')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Old')).not.toBeInTheDocument())
     expect(document.querySelector('[data-active-vault="true"]')).toHaveTextContent('Active')
   })
 
@@ -168,18 +154,16 @@ describe('VaultSwitcher delete from account', () => {
 
     fireEvent.click(screen.getByTestId('picker-trigger'))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Old')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Old')).not.toBeInTheDocument())
   })
 
   it('offers delete on a cloud-only vault', async () => {
     render(<VaultSwitcher />)
     fireEvent.click(screen.getByLabelText('Delete Cloud from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
-    await waitFor(() => {
+    await waitFor(() =>
       expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-cloud')
-    })
+    )
   })
 
   it('never offers delete on the active vault', async () => {
@@ -193,9 +177,7 @@ describe('VaultSwitcher delete from account', () => {
     render(<VaultSwitcher />)
     fireEvent.click(await screen.findByLabelText('Remove Old from list'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))
-    await waitFor(() => {
-      expect(screen.queryByText('Old')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Old')).not.toBeInTheDocument())
     expect(window.api.vault.remove).toHaveBeenCalledWith('/vaults/Old')
     expect(window.api.vault.deleteFromAccount).not.toHaveBeenCalled()
   })
@@ -236,9 +218,7 @@ describe('VaultSwitcher missing vault folder', () => {
     fireEvent.click(await screen.findByLabelText('Remove Gone from list'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Gone')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Gone')).not.toBeInTheDocument())
     expect(window.api.vault.remove).toHaveBeenCalledWith('/vaults/Gone')
   })
 
@@ -248,9 +228,7 @@ describe('VaultSwitcher missing vault folder', () => {
     fireEvent.keyDown(await screen.findByLabelText('Remove Gone from list'), { key: 'Enter' })
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))
 
-    await waitFor(() => {
-      expect(screen.queryByText('Gone')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByText('Gone')).not.toBeInTheDocument())
     expect(mocks.switchVault).not.toHaveBeenCalled()
   })
 
@@ -259,9 +237,7 @@ describe('VaultSwitcher missing vault folder', () => {
     fireEvent.keyDown(await screen.findByLabelText('Delete Old from account'), { key: 'Enter' })
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
 
-    await waitFor(() => {
-      expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old')
-    })
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
     expect(mocks.switchVault).not.toHaveBeenCalled()
   })
 })
@@ -324,12 +300,12 @@ describe('VaultSwitcher sandbox vault', () => {
     render(<VaultSwitcher />)
     fireEvent.click(await screen.findByText('phaseF.componentsVaultSwitcher.trySandbox'))
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(mocks.switchVault).toHaveBeenCalledWith(
         SANDBOX_PATH,
         expect.objectContaining({ icon: 'icon:CodesandboxIcon' })
       )
-    })
+    )
     expect(window.api.vault.prepareSandbox).toHaveBeenCalledWith(false)
   })
 
@@ -341,9 +317,7 @@ describe('VaultSwitcher sandbox vault', () => {
 
     fireEvent.click(screen.getByLabelText('phaseF.componentsVaultSwitcher.resetSandbox'))
 
-    await waitFor(() => {
-      expect(window.api.vault.prepareSandbox).toHaveBeenCalledWith(true)
-    })
+    await waitFor(() => expect(window.api.vault.prepareSandbox).toHaveBeenCalledWith(true))
     expect(mocks.switchVault).not.toHaveBeenCalled()
   })
 

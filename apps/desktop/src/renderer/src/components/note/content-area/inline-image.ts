@@ -157,9 +157,9 @@ export function renderInlineImage(
   wrap.className = 'inline-image-wrap'
   wrap.contentEditable = 'false'
   wrap.appendChild(img)
-  attachResizeGrip(wrap, img, (next) => {
+  attachResizeGrip(wrap, img, (next) =>
     updateInlineContent(createInlineImageContent(src, alt, next))
-  })
+  )
 
   return { dom: wrap }
 }

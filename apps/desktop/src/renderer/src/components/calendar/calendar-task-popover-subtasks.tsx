@@ -59,9 +59,7 @@ export function CalendarTaskPopoverSubtasks({
               <label className="flex h-7 cursor-pointer items-center gap-2.5 rounded-[5px] px-2 hover:bg-accent">
                 <Checkbox
                   checked={done}
-                  onCheckedChange={() => {
-                    onToggleSubtask(s.id)
-                  }}
+                  onCheckedChange={() => onToggleSubtask(s.id)}
                   aria-label={done ? t('task-popover.mark-not-done') : t('task-popover.mark-done')}
                   className="size-3.5 rounded-[4px]"
                 />

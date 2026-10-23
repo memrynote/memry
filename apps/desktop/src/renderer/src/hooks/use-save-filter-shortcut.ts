@@ -24,8 +24,6 @@ export function useSaveFilterShortcut({
 
   useEffect(() => {
     document.addEventListener('keydown', handler)
-    return () => {
-      document.removeEventListener('keydown', handler)
-    }
+    return () => document.removeEventListener('keydown', handler)
   }, [handler])
 }
