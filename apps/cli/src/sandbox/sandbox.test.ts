@@ -11,6 +11,7 @@ import { PropertyDefinitionsFileSchema } from '@memry/contracts/property-types'
 import { TagSchemaWire, type TagSchemaStored } from '@memry/contracts/tag-schema'
 import { ViewConfigSchema } from '@memry/contracts/folder-view-api'
 import { isCoverValue } from '@memry/shared/cover-image'
+import { extractAnchor, parsePortalDefinition } from '@memry/shared/portal-block'
 
 import { generateSandbox } from './generate.ts'
 
@@ -160,6 +161,7 @@ test('sandbox generates a linked, populated vault', async () => {
 
       await assertTagsWithFields(vault, data, notes)
       await assertNotes101(vault)
+      await assertPortals(vault, notes)
     } finally {
       data.close()
     }
@@ -189,7 +191,7 @@ async function assertNotes101(vault: string): Promise<void> {
   const lessons = (await fs.readdir(path.join(vault, 'Notes 101'))).filter((n) =>
     /^\d\d .*\.md$/.test(n)
   )
-  assert.equal(lessons.length, 14)
+  assert.equal(lessons.length, 15)
   for (const [index, name] of lessons.sort().entries()) {
     assert.ok(name.startsWith(String(index).padStart(2, '0') + ' '), `${name} is numbered in order`)
     const { data } = matter(await fs.readFile(path.join(vault, 'Notes 101', name), 'utf8'))
@@ -198,6 +200,38 @@ async function assertNotes101(vault: string): Promise<void> {
   const guide = await fs.readdir(path.join(vault, 'Start here'))
   for (const title of MOVED_FROM_START_HERE) {
     assert.ok(!guide.includes(`${title}.md`), `${title} moved out of Start here`)
+  }
+}
+
+/** Every portal in the lesson names a real note and real anchors in it. */
+async function assertPortals(vault: string, notes: NoteRow[]): Promise<void> {
+  const lesson = matter(
+    await fs.readFile(path.join(vault, 'Notes 101', '14 Portals.md'), 'utf8')
+  ).content
+  const fences = [...lesson.matchAll(/```memry-portal\n([\s\S]*?)\n```/g)].map((m) => m[1])
+  assert.equal(fences.length, 7)
+  // An anchor shorter than four characters is not an anchor: the editor would show it as text.
+  for (const note of notes.filter((n) => n.path.startsWith('Notes 101/Portal examples/'))) {
+    const body = await fs.readFile(path.join(vault, note.path), 'utf8')
+    for (const line of body.split('\n').filter((l) => /\^\S+$/.test(l))) {
+      assert.ok(extractAnchor(line), `${note.title}: "${line.trim()}" ends in a valid anchor`)
+    }
+  }
+  for (const text of fences) {
+    const parsed = parsePortalDefinition(text)
+    assert.ok(parsed.ok, `portal fence reads: ${text}`)
+    const { target } = parsed.definition
+    if (target.kind === 'search') continue
+    const source = notes.find((n) => n.id === target.note)
+    assert.ok(source, `portal points at a note of this vault: ${target.note}`)
+    if (target.kind === 'note') continue
+    const body = await fs.readFile(path.join(vault, source.path), 'utf8')
+    const anchors = new Set(body.split('\n').flatMap((line) => extractAnchor(line) ?? []))
+    const named = [
+      ...target.blocks,
+      ...Object.entries(target.open).flatMap(([anchor, o]) => [anchor, ...o.ids])
+    ]
+    for (const anchor of named) assert.ok(anchors.has(anchor), `${source.title} has ^${anchor}`)
   }
 }
 

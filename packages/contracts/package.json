@@ -64,6 +64,7 @@
     "./recents-api": "./src/recents-api.ts",
     "./vault-activity-api": "./src/vault-activity-api.ts",
     "./search-api": "./src/search-api.ts",
+    "./portals-api": "./src/portals-api.ts",
     "./search-types": "./src/search-api.ts",
     "./settings-schemas": "./src/settings-schemas.ts",
     "./settings-sync": "./src/settings-sync.ts",

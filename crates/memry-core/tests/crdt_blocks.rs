@@ -326,6 +326,35 @@ fn a_block_that_is_not_a_table_is_not_a_table() {
     assert!(extract_table(&document, "nope").expect("read").is_none());
 }
 
+/// A `memry-portal` fence is an ordinary code block (§12.6.3): the walk must
+/// hand it over as `codeBlock` with its `language` and the JSON as text, so a
+/// shell can find it without any portal-specific node shape.
+#[test]
+fn a_portal_fence_crosses_as_a_code_block_with_its_language() {
+    let json = r#"{"note":"n1","block":"chl-7f2a"}"#;
+    let document = built(|txn, body| {
+        let container = body.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+        container.insert_attribute(txn, "id", "portal-1");
+        let code = container.push_back(txn, XmlElementPrelim::empty("codeBlock"));
+        code.insert_attribute(txn, "language", "memry-portal");
+        code.push_back(txn, XmlTextPrelim::new(json));
+    });
+
+    let blocks = extract_blocks(&document).expect("blocks");
+    let fence = blocks.first().expect("a block");
+    assert_eq!(fence.kind, "codeBlock");
+    assert!(
+        fence
+            .props
+            .iter()
+            .any(|p| p.name == "language" && p.value == "memry-portal"),
+        "{:?}",
+        fence.props
+    );
+    let text: String = fence.inline.iter().map(|run| run.text.as_str()).collect();
+    assert_eq!(text, json);
+}
+
 // MARK: - Building a document
 
 /// Authors an update in a separate `Doc` and applies the bytes through the

@@ -6,6 +6,7 @@ import { projects } from '@memry/db-schema/schema/projects'
 import type { GraphNode, GraphEdge, GraphDataResponse } from '@memry/contracts/graph-api'
 import type { DataDb, IndexDb } from '../types'
 import { getCanvasEdgesTouching, listCanvasEdges, type CanvasEdgeRow } from './canvas-edges'
+import { listPortalEdges } from './notes/portal-ref-queries'
 
 const NODE_COLORS: Record<GraphNode['type'], string> = {
   note: 'var(--graph-node-note)',
@@ -27,6 +28,16 @@ const CANVAS_GRAPH_TYPES = ['note', 'task', 'project'] as const
  */
 function canvasPairKey(edge: Pick<CanvasEdgeRow, 'sourceId' | 'targetId'>): string {
   return `${edge.sourceId}\u0000${edge.targetId}`
+}
+
+function portalGraphEdge(edge: { hostNoteId: string; sourceNoteId: string }): GraphEdge {
+  return {
+    id: `${edge.hostNoteId}-${edge.sourceNoteId}-portal`,
+    source: edge.hostNoteId,
+    target: edge.sourceNoteId,
+    type: 'portal',
+    weight: 1
+  }
 }
 
 function canvasGraphEdge(edge: Pick<CanvasEdgeRow, 'sourceId' | 'targetId'>): GraphEdge {
@@ -244,6 +255,12 @@ export function getGraphData(indexDb: IndexDb, dataDb: DataDb): GraphDataRespons
       type: 'relation',
       weight: 1
     })
+  }
+
+  for (const edge of listPortalEdges(indexDb)) {
+    if (edge.hostNoteId === edge.sourceNoteId) continue
+    if (!nodeIds.has(edge.hostNoteId) || !nodeIds.has(edge.sourceNoteId)) continue
+    edges.push(portalGraphEdge(edge))
   }
 
   const allTaskNotes = dataDb
@@ -556,6 +573,26 @@ function collectIncidentEdges(
         type: 'relation',
         weight: 1
       }
+    })
+  }
+
+  const portalRows = new Map<string, { hostNoteId: string; sourceNoteId: string }>()
+  for (const batch of chunk(noteIds)) {
+    for (const row of [
+      ...listPortalEdges(indexDb, batch),
+      ...listPortalEdges(indexDb, undefined, batch)
+    ]) {
+      if (row.hostNoteId !== row.sourceNoteId) {
+        portalRows.set(`${row.hostNoteId}\u0000${row.sourceNoteId}`, row)
+      }
+    }
+  }
+
+  for (const [rowKey, row] of portalRows) {
+    candidates.push({
+      rowKey: `portal\u0000${rowKey}`,
+      requiresBothNodes: true,
+      edge: portalGraphEdge(row)
     })
   }
 

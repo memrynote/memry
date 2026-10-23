@@ -179,7 +179,8 @@ describe('small zero-line renderer surfaces', () => {
       />
     )
     const existingOption = screen.getByRole('option', { name: 'Existing Note' })
-    expect(existingOption.querySelector('svg')).toBeNull()
+    // A note without an icon of its own gets the generic note glyph (NoteMenuIcon).
+    expect(existingOption.querySelector('svg')).not.toBeNull()
 
     fireEvent.click(screen.getByText('Existing Note'))
     fireEvent.click(screen.getByText('create'))

@@ -31,6 +31,7 @@ import { remindersApi, reminderEvents } from './api/reminders'
 import { inboxEvents } from './api/inbox'
 import { folderViewApi, folderViewEvents } from './api/folder-view'
 import { recentsApi } from './api/recents'
+import { portalsApi } from './api/portals'
 import { vaultActivityApi, vaultActivityEvents } from './api/vault-activity'
 import { searchApi, graphApi, searchEvents } from './api/search'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api/sync-identity'
@@ -128,6 +129,7 @@ export const api = {
   bookmarks: bookmarksApi,
   graph: graphApi,
   recents: recentsApi,
+  portals: portalsApi,
   vaultActivity: vaultActivityApi,
   search: searchApi,
   quickCapture: quickCaptureApi,

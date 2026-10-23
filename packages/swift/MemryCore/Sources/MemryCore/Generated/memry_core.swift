@@ -5378,6 +5378,16 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func notesTagged(tag: String) throws  -> [NoteSummary]
     
     /**
+     * What a `memry-portal` fence shows of this (source) note.
+     *
+     * `definition_json` is the fence body. A note this vault does not hold is
+     * `MissingNote`; an unreadable definition is `Invalid`; the rest is
+     * resolved by the core so a shell only renders `blocks`. Chapter 12
+     * §12.6.3 and `portal-resolve.json` pin the rules.
+     */
+    func portalSlice(id: String, definitionJson: String) throws  -> PortalSlice
+    
+    /**
      * One note and its body, or `nil` when this vault holds no live note by
      * that id.
      *
@@ -5734,6 +5744,25 @@ open func notesTagged(tag: String)throws  -> [NoteSummary]  {
     uniffi_memry_core_fn_method_notes_notes_tagged(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(tag),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * What a `memry-portal` fence shows of this (source) note.
+     *
+     * `definition_json` is the fence body. A note this vault does not hold is
+     * `MissingNote`; an unreadable definition is `Invalid`; the rest is
+     * resolved by the core so a shell only renders `blocks`. Chapter 12
+     * §12.6.3 and `portal-resolve.json` pin the rules.
+     */
+open func portalSlice(id: String, definitionJson: String)throws  -> PortalSlice  {
+    return try  FfiConverterTypePortalSlice_lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_portal_slice(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(definitionJson),uniffiCallStatus
     )
 })
 }
@@ -21169,6 +21198,63 @@ public func FfiConverterTypeParsedDate_lower(_ value: ParsedDate) -> RustBuffer 
 
 
 /**
+ * The blocks a portal shows, in document order.
+ */
+public struct PortalSlice: Equatable, Hashable {
+    public var status: PortalStatus
+    public var blocks: [Block]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(status: PortalStatus, blocks: [Block]) {
+        self.status = status
+        self.blocks = blocks
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PortalSlice: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePortalSlice: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PortalSlice {
+        return
+            try PortalSlice(
+                status: FfiConverterTypePortalStatus.read(from: &buf), 
+                blocks: FfiConverterSequenceTypeBlock.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PortalSlice, into buf: inout [UInt8]) {
+        FfiConverterTypePortalStatus.write(value.status, into: &buf)
+        FfiConverterSequenceTypeBlock.write(value.blocks, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePortalSlice_lift(_ buf: RustBuffer) throws -> PortalSlice {
+    return try FfiConverterTypePortalSlice.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePortalSlice_lower(_ value: PortalSlice) -> RustBuffer {
+    return FfiConverterTypePortalSlice.lower(value)
+}
+
+
+/**
  * A project editor's contents: the **whole** form, as it stands when saved.
  *
  * On update every text field is the form's value, so `nil` description or
@@ -29121,6 +29207,98 @@ public func FfiConverterTypeNotificationPermission_lower(_ value: NotificationPe
 
 
 /**
+ * Why a portal shows what it shows.
+ */
+
+public enum PortalStatus: Equatable, Hashable {
+    
+    case ok
+    /**
+     * The source note is not in this vault.
+     */
+    case missingNote
+    /**
+     * No block of the source note carries the anchor.
+     */
+    case missingBlock
+    /**
+     * The fence JSON cannot be read as a portal definition.
+     */
+    case invalid
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PortalStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePortalStatus: FfiConverterRustBuffer {
+    typealias SwiftType = PortalStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PortalStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .ok
+        
+        case 2: return .missingNote
+        
+        case 3: return .missingBlock
+        
+        case 4: return .invalid
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PortalStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .ok:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .missingNote:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .missingBlock:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .invalid:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePortalStatus_lift(_ buf: RustBuffer) throws -> PortalStatus {
+    return try FfiConverterTypePortalStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePortalStatus_lower(_ value: PortalStatus) -> RustBuffer {
+    return FfiConverterTypePortalStatus.lower(value)
+}
+
+
+
+/**
  * Why a property write was refused, as the shell meets it.
  *
  * A separate type from [`crate::domain::properties::PropertyError`] rather
@@ -34416,6 +34594,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_notes_tagged() != 60547) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_portal_slice() != 40009) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_read() != 37060) {

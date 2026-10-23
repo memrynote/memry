@@ -134,7 +134,11 @@ export interface CanvasLinkVia {
  * Older builds only knew `property`; a renderer must tolerate kinds it does
  * not know by falling back to the plain title.
  */
-export type LinkVia = { kind: 'property'; propertyName: string } | CanvasLinkVia
+export type LinkVia =
+  | { kind: 'property'; propertyName: string }
+  | CanvasLinkVia
+  /** The source note shows the target through a portal block. */
+  | { kind: 'portal' }
 
 export interface NoteLink {
   sourceId: string

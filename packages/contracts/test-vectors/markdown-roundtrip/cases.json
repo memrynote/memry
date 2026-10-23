@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 265,
+    "exportedCaseCount": 275,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 275,
+    "caseCount": 285,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -978,6 +978,76 @@
       "canonical": null,
       "pending": null,
       "sha256": "bbe6d8e4f1afc6b9e7c75074a35abfa54da76c080ce035a8da5b819687ec456c"
+    },
+    {
+      "name": "memry-portal fence targeting a whole note",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\"\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e032c0d9f534d1f1e09c403404e1912915be1e64e4d91224604302fb8f9ff150"
+    },
+    {
+      "name": "memry-portal fence with a collapsed root",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ]\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7a68013187ad752411eefbeca056010d2379af0f614749a08b22709473ba78f4"
+    },
+    {
+      "name": "memry-portal fence with several roots",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\",\n    \"p8m2qa\"\n  ]\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "fd659b3525b13df1cca51158b3810fffb6ab89a91db8d00b6277734da8c75ae0"
+    },
+    {
+      "name": "memry-portal fence with show-mode open",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ],\n  \"open\": {\n    \"k3x9a2\": {\n      \"show\": [\n        \"n4c8x1\"\n      ]\n    }\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4bd82f59b2267d8f6d2bdefcce9ac7ae6a6e106d1146e6ca1e34a91a7d236143"
+    },
+    {
+      "name": "memry-portal fence with hide-mode and nested open",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ],\n  \"open\": {\n    \"k3x9a2\": {\n      \"hide\": [\n        \"b9x1\"\n      ]\n    },\n    \"n4c8x1\": {\n      \"hide\": []\n    }\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "a247dbedd42ad6f42f6ab83208b54f34b9c868e2ff35e3c778a29b833fad05ee"
+    },
+    {
+      "name": "memry-portal fence on a whole note with a hide list",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"hide\": [\n    \"k3x9a2\",\n    \"p8m2qa\"\n  ]\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "979ddd6965d7a07e80d5ec92b8e218b738c0e61ec263c242ef2ba325c179a946"
+    },
+    {
+      "name": "memry-portal search fence",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"search\": {\n    \"text\": \"exam\",\n    \"tag\": \"bio\",\n    \"limit\": 50\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ca2fa088c84bf445fd437757d3269dc3a725522149c6fc0183c2bc3454c5e3bb"
+    },
+    {
+      "name": "memry-portal fence keeps keys a build does not know",
+      "markdown": "```memry-portal\n{\n  \"v\": 1,\n  \"note\": \"9f1c2d3e-0000-4000-8000-000000000001\",\n  \"blocks\": [\n    \"k3x9a2\"\n  ],\n  \"layout\": {\n    \"future\": true\n  }\n}\n```",
+      "canonical": null,
+      "pending": null,
+      "sha256": "24914e1149528634b4231930c7d2d8b82da1ca9565990482305ee720bb332b7e"
+    },
+    {
+      "name": "memry-portal fence between paragraphs",
+      "markdown": "Before\n\n```memry-portal\n{\"v\":1,\"note\":\"n1\"}\n```\n\nAfter",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b27e46cbb14eae7625fdf7c65dfbf3ea558945c1e0ed9e3e3ed1532f2c80afe3"
+    },
+    {
+      "name": "a block whose text ends with an anchor",
+      "markdown": "Read this chapter ^chl-7f2a",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b1bde1eabed32c4039cf2a0853641dd418f0ab765c87263b1a5d147c16fca883"
     },
     {
       "name": "asterisk bullets",

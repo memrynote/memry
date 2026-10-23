@@ -71,6 +71,36 @@ function renderUnlistedLanguageAsPlainText(
 }
 
 /**
+ * Only a language the picker lists is handed to the highlighter.
+ *
+ * `meta.highlight` returns `props.language` as is, and shiki is asked to load
+ * that grammar. Fences with a Memry-owned tag (`memry-portal`, `memry-view`)
+ * and any tag the picker lacks have none, so every highlight pass logged a
+ * `ShikiError: Language ... is not included`. They render as plain text instead,
+ * and `props.language` keeps its value, so the fence is written back unchanged.
+ */
+function highlightListedLanguagesOnly(
+  spec: CodeBlockSpec,
+  options: CodeBlockOptions
+): CodeBlockSpec {
+  const supported = options.supportedLanguages
+  const meta = spec.implementation.meta
+  if (!supported || !meta?.highlight) return spec
+  const highlight = meta.highlight
+  return {
+    ...spec,
+    implementation: {
+      ...spec.implementation,
+      meta: {
+        ...meta,
+        highlight: (block) =>
+          Object.hasOwn(supported, block.props.language) ? highlight(block) : undefined
+      }
+    }
+  }
+}
+
+/**
  * A `<pre><code>` with no language class, which is what an untagged fence
  * parses to, keeps no language instead of taking the schema default. Without
  * this every bare ``` came back as ```javascript, and each pipeline cleared it
@@ -156,7 +186,10 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
     ...defaultBlockSpecs,
     codeBlock: renderCodeLanguageViews(
       renderUnlistedLanguageAsPlainText(
-        parseUntaggedFenceAsUntagged(createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS)),
+        highlightListedLanguagesOnly(
+          parseUntaggedFenceAsUntagged(createCodeBlockSpec(impl.codeBlock ?? CODE_BLOCK_DEFAULTS)),
+          impl.codeBlock ?? CODE_BLOCK_DEFAULTS
+        ),
         impl.codeBlock ?? CODE_BLOCK_DEFAULTS
       ),
       impl.codeBlockViews

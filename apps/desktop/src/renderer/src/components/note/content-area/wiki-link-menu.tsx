@@ -6,6 +6,7 @@ import type { SuggestionMenuProps } from '@blocknote/react'
 import { FileAudio, FileText, Hash, PenTool, Plus, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { NoteMenuIcon } from './note-menu-icon'
 
 type WikiLinkFileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 type WikiLinkInsertMode = 'wikiLink' | 'embed'
@@ -20,6 +21,8 @@ interface SuggestionBase {
 }
 
 interface NoteFields {
+  /** The note's own icon: an emoji, `icon:<Name>` or `custom:<id>`. */
+  emoji?: string | null
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
@@ -225,6 +228,9 @@ export function WikiLinkMenu({
             ) : null}
             {item.type === 'canvas' ? (
               <PenTool className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+            ) : null}
+            {item.type === 'note' || item.type === 'noteName' ? (
+              <NoteMenuIcon icon={item.emoji} className="size-4" />
             ) : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
               {item.type === 'create' ? (

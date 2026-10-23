@@ -258,3 +258,72 @@ function wikiLinkTargets(text: string): string[] {
   }
   return targets
 }
+
+export interface BlockLinkTarget {
+  /**
+   * The note half: a title, alias or path as written, or `memry://note/<id>`
+   * for a link that names the note by id (canonical form, no query).
+   */
+  note: string
+  /** The block anchor, without the `^`. */
+  anchor: string
+}
+
+const MEMRY_NOTE_URI = /^memry:\/\/note\/([^/?#\s]+)/i
+
+/** The note half of a link to a block: `memry://note/<id>?label=…` becomes `memry://note/<id>`. */
+function canonicalNoteHalf(raw: string): string {
+  const half = raw.trim()
+  const uri = MEMRY_NOTE_URI.exec(half)
+  return uri ? `memry://note/${uri[1]}` : half
+}
+
+/** A markdown link destination: `<…>` or a run without spaces, then an optional title. */
+const MARKDOWN_LINK =
+  /(!?)\[(?:[^\]\\]|\\.)*\]\(\s*(<[^>\n]*>|[^)\s]+)(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/g
+
+/** A markdown destination that is another note, not a web or mail address. */
+function isNoteDestination(destination: string): boolean {
+  return MEMRY_NOTE_URI.test(destination) || !/^[a-z][a-z0-9+.-]*:/i.test(destination)
+}
+
+function markdownBlockLinkTargets(text: string): string[] {
+  const targets: string[] = []
+  for (const match of text.matchAll(MARKDOWN_LINK)) {
+    if (match[1]) continue
+    let destination = match[2]
+    if (destination.startsWith('<')) destination = destination.slice(1, -1)
+    try {
+      destination = decodeURIComponent(destination)
+    } catch {
+      // A malformed escape: read the destination as written.
+    }
+    if (isNoteDestination(destination)) targets.push(destination)
+  }
+  return targets
+}
+
+/**
+ * The links to a block in a note body, one per (note half, anchor):
+ * - `[[Note#^anchor]]`, with the note as a title, alias or path (`Labs/Lab 4`)
+ * - `[[memry://note/<id>#^anchor]]`
+ * - `[text](memry://note/<id>#^anchor)` and `[text](Folder/Note.md#^anchor)`
+ *
+ * `extractWikiLinks` keeps only the note half, so the block is lost there; the
+ * usage count of a block needs it. An id-form link yields `memry://note/<id>`
+ * as its note half, which names the note exactly where a title would only
+ * resolve through the index.
+ */
+export function extractBlockLinks(content: string): BlockLinkTarget[] {
+  const blanked = blankMarkdownCode(content)
+  const seen = new Map<string, BlockLinkTarget>()
+  for (const target of [...wikiLinkTargets(blanked), ...markdownBlockLinkTargets(blanked)]) {
+    const { note, heading } = splitWikiTarget(target)
+    if (!note || heading === null || !isBlockReference(heading)) continue
+    const anchor = heading.slice(1).trim()
+    if (!anchor) continue
+    const half = canonicalNoteHalf(note)
+    seen.set(`${half}\u0000${anchor}`, { note: half, anchor })
+  }
+  return [...seen.values()]
+}

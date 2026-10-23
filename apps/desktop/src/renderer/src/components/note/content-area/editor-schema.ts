@@ -12,6 +12,8 @@ import { createMathBlock } from './math-block'
 import { createWhiteboardBlock } from './whiteboard-block'
 import { createViewBlockSpec } from './view-block'
 import { VIEW_BLOCK_LANGUAGE } from '@memry/shared/view-block'
+import { createPortalBlockSpec } from './portal'
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
@@ -37,7 +39,12 @@ export const editorSchema = createMemrySchema({
   // A ```` ```memry-view ```` fence is drawn as a live list of notes (#2488).
   // Presentation only: the node stays a code block, which is what lets main,
   // mobile and older builds carry it without knowing it exists.
-  codeBlockViews: { [VIEW_BLOCK_LANGUAGE]: createViewBlockSpec().implementation.render },
+  // A ```` ```memry-portal ```` fence is drawn as a live window onto another
+  // note or block, the same way.
+  codeBlockViews: {
+    [VIEW_BLOCK_LANGUAGE]: createViewBlockSpec().implementation.render,
+    [PORTAL_BLOCK_LANGUAGE]: createPortalBlockSpec().implementation.render
+  },
   // No `...defaultBlockSpecs` here: the factory already spreads them, and
   // respreading them after it would put BlockNote's plain `codeBlock` back over
   // the syntax-highlighting one the factory installs. Pass overrides only.

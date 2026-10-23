@@ -35,6 +35,7 @@ import {
   Hierarchy,
   Image,
   Info,
+  Layers,
   LayoutTemplate,
   Link,
   List,
@@ -47,6 +48,7 @@ import {
   Music,
   PenTool,
   Quote,
+  Search,
   Sigma,
   Smile,
   Sparkles,
@@ -54,7 +56,6 @@ import {
   Video,
   type AppIcon
 } from '@/lib/icons'
-import { isMac } from '@/lib/shortcut-catalog'
 import { cn } from '@/lib/utils'
 import { recordSlashMenuRecent, type SlashMenuItem } from './slash-menu-model'
 
@@ -90,6 +91,8 @@ const ICONS: Readonly<Record<string, AppIcon>> = {
   diagram: Hierarchy,
   whiteboard: PenTool,
   view: Database,
+  portal: Layers,
+  search_portal: Search,
   emoji: Smile,
   insert_template: LayoutTemplate,
   image: Image,
@@ -270,9 +273,6 @@ export function SlashMenu({
 
   if (items.length === 0 && !showEmpty) return null
 
-  const selected = selectedIndex === undefined ? undefined : items[selectedIndex]
-  const secondaryKey = isMac ? '⌘↵' : 'Ctrl ↵'
-
   const rows: ReactNode[] = []
   let currentGroup: string | undefined
   items.forEach((item, index) => {
@@ -313,7 +313,7 @@ export function SlashMenu({
         >
           <RowIcon id={item.id} />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-foreground">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-normal leading-4 text-foreground">
           <Title item={item} />
         </span>
         {item.matchedAlias ? (
@@ -363,7 +363,7 @@ export function SlashMenu({
                       aria-hidden
                     />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-foreground">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-normal leading-4 text-foreground">
                     {fallback.label}
                     {fallback.target ? (
                       <span className="font-semibold"> “{fallback.target}”</span>
@@ -377,26 +377,10 @@ export function SlashMenu({
           rows
         )}
       </div>
-      {(selected || fallbacks.length > 0) && (
-        <div className="flex h-9 shrink-0 items-center gap-3 border-t border-border bg-surface pe-2 ps-3">
-          <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
-            {selected?.subtext ?? ''}
-          </span>
-          {selected?.secondary ? (
-            <>
-              <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
-                {selected.secondary.label}
-                <Key>{secondaryKey}</Key>
-              </span>
-              <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />
-            </>
-          ) : null}
-          <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-foreground">
-            {selected ? t('editor.slashMenu.actions.insert') : t('editor.slashMenu.actions.open')}
-            <Key>↵</Key>
-          </span>
-        </div>
-      )}
+      <div className="flex h-8 shrink-0 items-center justify-end gap-1.5 border-t border-border px-3 text-xs text-text-secondary">
+        {t('editor.slashMenu.close')}
+        <Key>{'Esc'}</Key>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  extractBlockLinks,
   extractWikiLinks,
   splitWikiTarget,
   isBlockReference,
@@ -382,5 +383,59 @@ describe('wikiPathStem / noteLinkStem', () => {
   it('drops only the markdown extension from a note path', () => {
     expect(noteLinkStem('Folder/Note.md')).toBe('Folder/Note')
     expect(noteLinkStem('Docs/spec.pdf')).toBe('Docs/spec.pdf')
+  })
+})
+
+describe('extractBlockLinks', () => {
+  it('keeps the note half and the anchor of each [[Note#^anchor]] link', () => {
+    expect(
+      extractBlockLinks(
+        'See [[Cell Biology#^chl-7f2a]] and [[Cell Biology#^chl-7f2a|again]], [[Labs/Lab 4#^abcd]].'
+      )
+    ).toEqual([
+      { note: 'Cell Biology', anchor: 'chl-7f2a' },
+      { note: 'Labs/Lab 4', anchor: 'abcd' }
+    ])
+  })
+
+  it('reads a memry://note/<id> wiki link as that note, dropping a label query', () => {
+    expect(
+      extractBlockLinks('[[memry://note/abc123#^blk1]] [[memry://note/abc123?label=Lab#^blk1|x]]')
+    ).toEqual([{ note: 'memry://note/abc123', anchor: 'blk1' }])
+  })
+
+  it('reads markdown links to a block by id, path or title', () => {
+    expect(
+      extractBlockLinks(
+        [
+          '[a](memry://note/abc123#^blk1)',
+          '[b](memry://note/abc123?label=Lab#^blk2)',
+          '[c](Labs/Lab%204.md#^blk3)',
+          '[d](<Cell Biology#^blk4>)',
+          '[e](Note "title"#^x)'
+        ].join(' ')
+      )
+    ).toEqual([
+      { note: 'memry://note/abc123', anchor: 'blk1' },
+      { note: 'memry://note/abc123', anchor: 'blk2' },
+      { note: 'Labs/Lab 4.md', anchor: 'blk3' },
+      { note: 'Cell Biology', anchor: 'blk4' }
+    ])
+  })
+
+  it('ignores web links, images, heading links and block links in code', () => {
+    expect(
+      extractBlockLinks(
+        '[w](https://x.com/p#^abc) ![i](Note.png#^abc) [h](memry://note/n1#Heading) `[c](memry://note/n1#^code1)`'
+      )
+    ).toEqual([])
+  })
+
+  it('ignores heading links, plain links, self links and code', () => {
+    expect(
+      extractBlockLinks(
+        '[[Note#Heading]] [[Note]] [[#^self1]] `[[Note#^code1]]`\n```\n[[N#^fenced]]\n```'
+      )
+    ).toEqual([])
   })
 })

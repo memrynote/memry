@@ -85,6 +85,7 @@ import {
   parseViewName
 } from './folder-view-state'
 import { useFolderViewCommands } from './folder-view/use-folder-view-commands'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import { useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
@@ -737,6 +738,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [notesToMove, removeNotesOptimistically, refresh]
   )
 
+  const noteDeleteGuard = useNoteDeleteGuard()
   const deleteTasksChoice = useNoteTasksChoice(deleteDialogOpen, notesToDelete)
   const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
 
@@ -744,6 +746,12 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const handleDeleteConfirm = useCallback(async () => {
     if (notesToDelete.length === 0) return
     const taskIds = carriedTaskIdsToDelete
+
+    // Other notes that show or link these get a say before they go.
+    const proceed = await noteDeleteGuard.confirmNoteDelete(
+      notesToDelete.map((id) => ({ id, title: notes.find((n) => n.id === id)?.title ?? '' }))
+    )
+    if (!proceed) return
 
     setIsDeleting(true)
 
@@ -793,6 +801,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [
     notesToDelete,
+    notes,
+    noteDeleteGuard,
     carriedTaskIdsToDelete,
     removeNotesOptimistically,
     refresh,
@@ -1427,6 +1437,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {noteDeleteGuard.dialog}
 
       {/* Move to Folder Dialog - Phase 27 */}
       <MoveToFolderDialog
