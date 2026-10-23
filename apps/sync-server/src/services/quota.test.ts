@@ -61,12 +61,14 @@ describe('checkQuota', () => {
     await expect(checkQuota(db as unknown as D1Database, 'user-1', 200)).rejects.toThrow(
       'Storage quota exceeded'
     )
+    let e: unknown
     try {
       await checkQuota(db as unknown as D1Database, 'user-1', 200)
-    } catch (e) {
-      expect((e as { statusCode: number }).statusCode).toBe(413)
-      expect((e as { code: string }).code).toBe('STORAGE_QUOTA_EXCEEDED')
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as { statusCode: number }).statusCode).toBe(413)
+    expect((e as { code: string }).code).toBe('STORAGE_QUOTA_EXCEEDED')
   })
 
   it('should throw 413 when additional bytes exactly exceed limit', async () => {
@@ -113,11 +115,13 @@ describe('checkQuota', () => {
     await expect(checkQuota(db as unknown as D1Database, 'nonexistent', 100)).rejects.toThrow(
       'User not found'
     )
+    let e: unknown
     try {
       await checkQuota(db as unknown as D1Database, 'nonexistent', 100)
-    } catch (e) {
-      expect((e as { statusCode: number }).statusCode).toBe(404)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as { statusCode: number }).statusCode).toBe(404)
   })
 })
 

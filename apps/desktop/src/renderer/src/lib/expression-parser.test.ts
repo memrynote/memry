@@ -962,24 +962,28 @@ describe('expression-parser', () => {
 
     describe('ParseError properties', () => {
       it('should include position in error', () => {
+        let e: unknown
         try {
           parseExpression('1 + @ 2')
           expect.fail('Should have thrown')
-        } catch (e) {
-          expect(e).toBeInstanceOf(ParseError)
-          expect((e as ParseError).position).toBeDefined()
-          expect(typeof (e as ParseError).position).toBe('number')
+        } catch (thrown) {
+          e = thrown
         }
+        expect(e).toBeInstanceOf(ParseError)
+        expect((e as ParseError).position).toBeDefined()
+        expect(typeof (e as ParseError).position).toBe('number')
       })
 
       it('should include descriptive message', () => {
+        let e: unknown
         try {
           parseExpression('1 +')
           expect.fail('Should have thrown')
-        } catch (e) {
-          expect(e).toBeInstanceOf(ParseError)
-          expect((e as ParseError).message).toBeTruthy()
+        } catch (thrown) {
+          e = thrown
         }
+        expect(e).toBeInstanceOf(ParseError)
+        expect((e as ParseError).message).toBeTruthy()
       })
     })
   })

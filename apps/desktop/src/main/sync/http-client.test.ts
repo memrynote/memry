@@ -719,15 +719,17 @@ describe('http-client', () => {
       )
 
       // #when / #then
+      let err: unknown
       try {
         await syncFetch('GET', '/api/test')
         expect.unreachable()
-      } catch (err) {
-        expect(err).toBeInstanceOf(RateLimitError)
-        const rle = err as RateLimitError
-        expect(rle.retryAfter).toBeGreaterThan(25)
-        expect(rle.retryAfter).toBeLessThanOrEqual(30)
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(RateLimitError)
+      const rle = err as RateLimitError
+      expect(rle.retryAfter).toBeGreaterThan(25)
+      expect(rle.retryAfter).toBeLessThanOrEqual(30)
     })
   })
 })

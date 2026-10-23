@@ -249,11 +249,13 @@ describe('revokeDevice', () => {
       revokeDevice(db as unknown as D1Database, 'nonexistent', 'user-1')
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       await revokeDevice(db as unknown as D1Database, 'nonexistent', 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
-      expect((e as AppError).statusCode).toBe(404)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
+    expect((e as AppError).statusCode).toBe(404)
   })
 })

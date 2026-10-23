@@ -185,11 +185,13 @@ describe('resolveAttachment', () => {
 
   it('throws NOT_FOUND for an unknown note id', () => {
     expect(() => resolveAttachment('missing', '../attachments/n1/f.pdf')).toThrowError(NoteError)
+    let err: unknown
     try {
       resolveAttachment('missing', '../attachments/n1/f.pdf')
-    } catch (err) {
-      expect((err as NoteError).code).toBe(NoteErrorCode.NOT_FOUND)
+    } catch (thrown) {
+      err = thrown
     }
+    expect((err as NoteError).code).toBe(NoteErrorCode.NOT_FOUND)
   })
 
   it('accepts a legacy absolute memry-file url inside this vault', () => {

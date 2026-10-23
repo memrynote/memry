@@ -22,14 +22,16 @@ describe('assertSpatialCanvasEnabled', () => {
     mocks.getFeaturesSettings.mockReturnValue({ spatialCanvas: false })
     const { assertSpatialCanvasEnabled } = await import('../canvas-flag')
 
+    let error: unknown
     try {
       assertSpatialCanvasEnabled()
       expect.unreachable('should have thrown')
-    } catch (error) {
-      expect(error).toBeInstanceOf(AgentToolError)
-      expect((error as AgentToolError).code).toBe('PERMISSION_DENIED')
-      expect((error as AgentToolError).message).toMatch(/Settings → Features/)
+    } catch (thrown) {
+      error = thrown
     }
+    expect(error).toBeInstanceOf(AgentToolError)
+    expect((error as AgentToolError).code).toBe('PERMISSION_DENIED')
+    expect((error as AgentToolError).message).toMatch(/Settings → Features/)
   })
 
   it('treats a canvas.* operation as gated and anything else as not', async () => {

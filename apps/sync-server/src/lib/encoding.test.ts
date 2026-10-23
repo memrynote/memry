@@ -37,13 +37,15 @@ describe('safeBase64Decode', () => {
     // #when / #then
     expect(() => safeBase64Decode(invalid)).toThrow(AppError)
 
+    let e: unknown
     try {
       safeBase64Decode(invalid)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
-      expect((e as AppError).statusCode).toBe(400)
-      expect((e as AppError).message).toBe('Malformed base64 input')
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
+    expect((e as AppError).statusCode).toBe(400)
+    expect((e as AppError).message).toBe('Malformed base64 input')
   })
 })
 
@@ -61,11 +63,13 @@ describe('verifyEd25519', () => {
     // #when / #then
     await expect(verifyEd25519(badKey, validSig, payload)).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       await verifyEd25519(badKey, validSig, payload)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
   })
 
   it('should throw on malformed base64 signature', async () => {
@@ -77,10 +81,12 @@ describe('verifyEd25519', () => {
     // #when / #then
     await expect(verifyEd25519(validKey, badSig, payload)).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       await verifyEd25519(validKey, badSig, payload)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
   })
 })

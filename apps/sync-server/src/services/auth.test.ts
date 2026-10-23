@@ -217,6 +217,7 @@ describe('rotateRefreshToken', () => {
     })
 
     // #when / #then
+    let e: unknown
     try {
       await rotateRefreshToken(
         db as unknown as D1Database,
@@ -226,11 +227,12 @@ describe('rotateRefreshToken', () => {
         'pem-key'
       )
       expect.fail('Should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(AppError)
-      expect((e as AppError).statusCode).toBe(401)
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
+    } catch (thrown) {
+      e = thrown
     }
+    expect(e).toBeInstanceOf(AppError)
+    expect((e as AppError).statusCode).toBe(401)
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
   })
 
   it('should retry with fresh tokens when UNIQUE constraint fails during rotation', async () => {
@@ -325,6 +327,7 @@ describe('rotateRefreshToken', () => {
       .mockRejectedValueOnce(uniqueError)
 
     // #when / #then
+    let e: unknown
     try {
       await rotateRefreshToken(
         db as unknown as D1Database,
@@ -334,11 +337,12 @@ describe('rotateRefreshToken', () => {
         'pem-key'
       )
       expect.fail('Should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(AppError)
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_TOKEN_ROTATION_FAILED)
-      expect((e as AppError).statusCode).toBe(500)
+    } catch (thrown) {
+      e = thrown
     }
+    expect(e).toBeInstanceOf(AppError)
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_TOKEN_ROTATION_FAILED)
+    expect((e as AppError).statusCode).toBe(500)
     expect(db.batch).toHaveBeenCalledTimes(3)
   })
 })
