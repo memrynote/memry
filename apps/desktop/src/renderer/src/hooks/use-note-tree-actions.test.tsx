@@ -489,7 +489,7 @@ describe('useNoteTreeActions', () => {
   // own behaviour is covered in tab-crud-reducer.test.ts.
   it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {
     mocks.openPagesInNewTab = false
-    const { result, mutations } = renderActions()
+    const { result, mutations: _mutations } = renderActions()
 
     act(() => {
       result.current.handleSelectionChange(['work-a'])

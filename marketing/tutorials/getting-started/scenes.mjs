@@ -332,7 +332,7 @@ export const scenes = {
     await sleep(800)
   },
 
-  async search({ page, rec, at, zoom, sleep }) {
+  async search({ page: _page, rec, at, zoom, sleep }) {
     await at('Command K finds', -0.3)
     await rec.key('ControlOrMeta+k')
     await sleep(500)
@@ -374,7 +374,7 @@ export const after = {
     await rec.key('Escape')
     await sleep(400)
   },
-  async note({ rec, sleep }) {
+  async note({ rec: _rec, sleep }) {
     await sleep(600)
   },
   async link({ unzoom }) {
@@ -386,7 +386,7 @@ export const after = {
   async inbox({ unzoom }) {
     unzoom()
   },
-  async journal({ page, rec, unzoom, sleep }) {
+  async journal({ page, rec: _rec, unzoom, sleep }) {
     unzoom()
     await sleep(600)
     await page.locator('[aria-label="Day Panel"]').click()

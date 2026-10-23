@@ -362,7 +362,7 @@ test.describe('Block marquee selection', () => {
     ])
     await page.waitForTimeout(400)
 
-    const zone = await getMarqueeZoneBox(page)
+    const _zone = await getMarqueeZoneBox(page)
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 

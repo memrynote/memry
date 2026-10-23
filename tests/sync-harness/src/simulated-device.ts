@@ -62,7 +62,7 @@ export class SimulatedDevice {
     type: SyncItemType,
     itemId: string,
     content: Record<string, unknown>,
-    changedFields?: string[]
+    _changedFields?: string[]
   ): Promise<SyncItem> {
     await initCrypto()
 
@@ -85,7 +85,7 @@ export class SimulatedDevice {
   async updateItem(
     itemId: string,
     fields: Record<string, unknown>,
-    changedFields?: string[]
+    _changedFields?: string[]
   ): Promise<SyncItem> {
     const existing = this.items.get(itemId)
     if (!existing) throw new Error(`Item ${itemId} not found on device ${this.identity.deviceId}`)

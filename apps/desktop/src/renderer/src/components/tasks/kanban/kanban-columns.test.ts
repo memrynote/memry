@@ -184,7 +184,7 @@ describe('buildColumnConfig', () => {
       const tasks = [createTask({ projectId: 'project-a', statusId: 'pa-backlog' })]
 
       // #when
-      const config = buildColumnConfig(tasks, projects, 'view', 'project-a', 'dueDate')
+      const _config = buildColumnConfig(tasks, projects, 'view', 'project-a', 'dueDate')
 
       // #then — default mode uses project columns, not dueDate columns,
       // because dueDate sort should produce dueDate columns

@@ -6,8 +6,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   // Types
-  DateParts,
-  MonthStat,
   type JournalDateLabels,
   // Date Generation Functions (T111)
   getTodayString,

@@ -18,7 +18,7 @@ import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/v
 // Test Helpers
 // ============================================================================
 
-const mockPlatform = (platform: string) => {
+const _mockPlatform = (platform: string) => {
   Object.defineProperty(navigator, 'platform', {
     value: platform,
     configurable: true

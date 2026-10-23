@@ -32,7 +32,7 @@ const EDITOR_CONTAINER = '.bn-container'
 const EDITABLE_SELECTOR = `${EDITOR_CONTAINER} [contenteditable="true"]`
 const BLOCK_SELECTOR = '.bn-block[data-id]'
 const HIGHLIGHTED_SELECTOR = '.marquee-block-highlight'
-const OVERLAY_SELECTOR = '.marquee-overlay'
+const _OVERLAY_SELECTOR = '.marquee-overlay'
 const TASK_BLOCK_SELECTOR = '[data-content-type="taskBlock"]'
 
 async function focusEditor(page: Page) {
@@ -42,13 +42,6 @@ async function focusEditor(page: Page) {
   await editable.waitFor({ state: 'visible', timeout: 10000 })
   await editable.click()
   return editable
-}
-
-async function typeBlocks(page: Page, lines: string[]): Promise<void> {
-  for (let i = 0; i < lines.length; i += 1) {
-    await page.keyboard.type(lines[i])
-    if (i < lines.length - 1) await page.keyboard.press('Enter')
-  }
 }
 
 async function getBlockBox(page: Page, index: number) {

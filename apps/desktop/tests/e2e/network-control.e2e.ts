@@ -7,10 +7,8 @@ test.describe('Network control', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
-
     const [triggerA, triggerB] = await Promise.all([
       pageA.evaluate(() => window.api.syncOps.triggerSync()),
       pageB.evaluate(() => window.api.syncOps.triggerSync())

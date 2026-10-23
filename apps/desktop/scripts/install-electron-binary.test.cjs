@@ -240,7 +240,7 @@ test(
 )
 
 test('a failed download leaves the previous install intact', { skip: unsupported }, async () => {
-  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir, install }) => {
+  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir: _tmpDir, install }) => {
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
     const seed = await settled(install(workingBin))
     assert.equal(seed.code, 0, seed.output)

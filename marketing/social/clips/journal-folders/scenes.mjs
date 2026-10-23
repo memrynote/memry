@@ -54,7 +54,7 @@ export const scenes = {
     await rec.glide(300, 560, 900)
     await rec.glide(c.x + 40, c.y - 60, 1100)
   },
-  async open({ rec, page, zoom, unzoom, sleep }) {
+  async open({ rec, page, zoom, unzoom: _unzoom, sleep }) {
     await rec.click(gear(page))
     await page.getByRole('button', { name: 'Modules', exact: true }).waitFor()
     await sleep(200)

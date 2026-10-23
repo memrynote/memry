@@ -13,10 +13,10 @@ import { createNoteWithBody, getNoteFileBodyById } from './utils/note-sync-helpe
 
 const EDITOR_SELECTOR =
   '[aria-label="Rich text editor"] [contenteditable="true"], .bn-editor[contenteditable="true"], .bn-editor'
-const MARQUEE_ZONE_SELECTOR = '.marquee-zone'
-const BLOCK_SELECTOR = '.bn-block[data-id]'
-const MARQUEE_HIGHLIGHT_SELECTOR = '.marquee-block-highlight'
-const MARQUEE_OVERLAY_SELECTOR = '.marquee-overlay'
+const _MARQUEE_ZONE_SELECTOR = '.marquee-zone'
+const _BLOCK_SELECTOR = '.bn-block[data-id]'
+const _MARQUEE_HIGHLIGHT_SELECTOR = '.marquee-block-highlight'
+const _MARQUEE_OVERLAY_SELECTOR = '.marquee-overlay'
 
 test.describe('CriticMarkup review flows', () => {
   test.setTimeout(120000)

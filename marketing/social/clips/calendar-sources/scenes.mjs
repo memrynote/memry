@@ -65,7 +65,7 @@ export const scenes = {
       await rec.glide(c.x - 180, c.y, 650)
     }
   },
-  async paste({ rec, page, zoom, at, sleep }) {
+  async paste({ rec, page, zoom, at: _at, sleep }) {
     zoom(950, 650, 1.6)
     await rec.click(page.getByRole('button', { name: 'Subscribed calendars', exact: true }), {
       dx: -180

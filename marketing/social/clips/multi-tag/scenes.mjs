@@ -25,7 +25,7 @@ export const scenes = {
     await rec.glide(c.x + 200, c.y + 120, 900)
     await rec.glide(c.x + 30, c.y, 1100)
   },
-  async open({ rec, page, zoom, sleep, at }) {
+  async open({ rec, page, zoom, sleep: _sleep, at }) {
     zoom(300, 300, 1.5)
     await rec.click(tag(page, 'client'))
     await page

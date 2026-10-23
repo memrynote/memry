@@ -2,7 +2,7 @@
 // the sidebar's Bookmarks section and in Home's Bookmarks widget (empty before, "No bookmarks yet").
 import { expandFolder, expandSection, settle } from '../../engine/kit.mjs'
 
-const side = (page, text) =>
+const _side = (page, text) =>
   page.locator('nav, aside, [data-sidebar]').getByText(text, { exact: true }).first()
 
 export async function setup({ page }) {

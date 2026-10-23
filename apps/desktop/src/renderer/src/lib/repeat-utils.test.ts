@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import i18next from 'i18next'
-import type { RepeatConfig, RepeatFrequency, MonthlyType } from '@/data/task-model'
+import type { RepeatConfig, RepeatFrequency } from '@/data/task-model'
 import type { RepeatLabelTranslator } from './repeat-utils'
 import {
   // Constants (T099)
