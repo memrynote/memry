@@ -1,5 +1,5 @@
 import type { MemryApp } from '../app-core/memry-app.ts'
-import { getFlag, print, type CliIo, type ParsedCli } from '../run.ts'
+import { getFlag, print, type CliIo, type ParsedCli } from '../cli-support.ts'
 
 /** `import` commands: bring files from other apps into the vault. */
 export async function runImport(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {

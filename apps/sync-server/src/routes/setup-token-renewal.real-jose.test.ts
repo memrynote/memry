@@ -42,8 +42,7 @@ interface DeviceKeys {
   privateKey: CryptoKey
 }
 
-const toBase64 = (bytes: ArrayBuffer): string =>
-  btoa(String.fromCharCode(...new Uint8Array(bytes)))
+const toBase64 = (bytes: ArrayBuffer): string => btoa(String.fromCharCode(...new Uint8Array(bytes)))
 
 const createDeviceKeys = async (): Promise<DeviceKeys> => {
   const { privateKey, publicKey } = await generateKeyPair(ALGORITHM, {
@@ -69,8 +68,7 @@ const signChallenge = async (
     )
   )
 
-const decodeJti = (token: string): string =>
-  JSON.parse(atob(token.split('.')[1]!)).jti as string
+const decodeJti = (token: string): string => JSON.parse(atob(token.split('.')[1]!)).jti as string
 
 /** Records every consumed_setup_tokens insert so single-use can be asserted. */
 const createEnv = (

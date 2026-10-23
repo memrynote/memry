@@ -106,6 +106,7 @@ export function TagRenameDialog({
             }}
             onKeyDown={handleKeyDown}
             disabled={submitting}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
             autoFocus
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? 'tag-rename-error' : undefined}

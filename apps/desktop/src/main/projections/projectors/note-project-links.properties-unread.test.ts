@@ -11,6 +11,7 @@ import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import type { ProjectionEvent } from '../types'
+import type * as LocalMutationsModule from '../../sync/local-mutations'
 
 let dataDb: TestDatabaseResult
 
@@ -31,7 +32,7 @@ vi.mock('../../projections', () => ({
 
 const mockLocalMutation = vi.fn()
 vi.mock('../../sync/local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../sync/local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 

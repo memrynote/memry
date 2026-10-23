@@ -13,6 +13,7 @@ import type { Canvas } from '@/services/canvas-service'
 const mocks = vi.hoisted(() => ({
   flags: { spatialCanvas: false },
   flagsLoading: false,
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
   get: vi.fn<(id: string) => Promise<Canvas | null>>()
 }))
 

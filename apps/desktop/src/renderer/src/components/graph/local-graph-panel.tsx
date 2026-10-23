@@ -183,7 +183,7 @@ export function LocalGraphPanel({
     }),
     // Frozen on purpose: a new settings object makes SigmaContainer rebuild the
     // renderer. Reducers that change afterwards are pushed by LocalSigmaSettingsSync.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     []
   )
 
@@ -295,16 +295,17 @@ function useLiveLocalGraph(
     // variables every node and edge attribute was built from.
     if (applied && applied.data === data && applied.themeKey === themeKey) return
     appliedRef.current = { data, themeKey }
-    /* eslint-disable react-you-might-not-need-an-effect/no-event-handler,
+    /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler,
        react-you-might-not-need-an-effect/no-chain-state-updates,
        react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: the
        graphology instance Sigma is bound to is mutated here, and the counter only records that
        its node or edge set moved so the simulation can be rebuilt. Refilling during render
        would fire graphology's change events mid-render. */
     if (refillGraph(graph, buildGraphologyGraph(data))) {
+      // oxlint-disable-next-line react/set-state-in-effect -- genuine external sync: graphology instance mutation; the counter only records that it changed
       setLayoutRevision((current) => current + 1)
     }
-    /* eslint-enable react-you-might-not-need-an-effect/no-event-handler,
+    /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler,
        react-you-might-not-need-an-effect/no-chain-state-updates,
        react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   }, [graph, data, themeKey])

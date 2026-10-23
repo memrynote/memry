@@ -9,7 +9,8 @@ import {
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
-import TagsHubPage from './tags-hub'
+import { TagsHubPage } from './tags-hub'
+import type * as CoreModule from '@dnd-kit/core'
 
 const mockUseTagCategories = vi.hoisted(() =>
   vi.fn(() => ({
@@ -62,7 +63,7 @@ const dndMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@dnd-kit/core', async () => {
-  const actual = await vi.importActual<typeof import('@dnd-kit/core')>('@dnd-kit/core')
+  const actual = await vi.importActual<typeof CoreModule>('@dnd-kit/core')
   return {
     ...actual,
     DndContext: (props: {

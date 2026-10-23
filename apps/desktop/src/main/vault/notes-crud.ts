@@ -324,7 +324,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   const frontmatter: NoteFrontmatter = {}
   if (mergedTags.length > 0) frontmatter.tags = mergedTags
 
-  const properties = { ...templateProperties, ...(input.properties ?? {}) }
+  const properties = { ...templateProperties, ...input.properties }
   if (Object.keys(properties).length > 0) {
     Object.assign(frontmatter, writePropertiesToRoot(frontmatter, properties))
   }
@@ -518,7 +518,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
   // just ticked in the app. Fire and forget otherwise — the note must render
   // immediately, and the task events that follow refresh the affected rows.
   if (!hasPendingWriteback(id)) {
-    void reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err) => {
+    void reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err: unknown) => {
       logger.warn('Failed to reconcile task checkboxes on note open', { id, error: err })
     })
   }

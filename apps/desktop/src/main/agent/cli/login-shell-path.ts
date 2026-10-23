@@ -36,7 +36,7 @@ export type RunShellProbe = (shell: string, args: string[]) => Promise<string>
 export function parseShellPath(stdout: string, marker: string = PATH_MARKER): string | null {
   const line = stdout
     .split(/\r?\n/)
-    .reverse()
+    .toReversed()
     .find((candidate) => candidate.includes(marker))
   if (line === undefined) {
     return null
@@ -95,11 +95,10 @@ const runShellProbe: RunShellProbe = (shell, args) =>
     })
     child.on('error', (error) => settle(() => reject(error)))
     child.on('close', (code) => {
-      settle(() =>
-        code === 0
-          ? resolve(stdout)
-          : reject(Object.assign(new Error(`login shell exited ${code}`), { code }))
-      )
+      settle(() => {
+        if (code === 0) resolve(stdout)
+        else reject(Object.assign(new Error(`login shell exited ${code}`), { code }))
+      })
     })
   })
 

@@ -6,7 +6,7 @@
  * Uses InboxListSection and InboxListItem components.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
@@ -35,10 +35,12 @@ interface ListViewProps {
   isPreviewOpen?: boolean
 }
 
+const EMPTY_ITEM_IDS: Set<string> = new Set()
+
 const ListView = ({
   items,
   selectedItemIds,
-  exitingItemIds = new Set(),
+  exitingItemIds = EMPTY_ITEM_IDS,
   density = 'comfortable',
   onPreview,
   onArchive,
@@ -74,7 +76,7 @@ const ListView = ({
     [updateItem]
   )
 
-  const flatItems = groupedItems.flatMap((group) => group.items)
+  const flatItems = useMemo(() => groupedItems.flatMap((group) => group.items), [groupedItems])
 
   // Track last selected item for shift-click range selection
   const lastSelectedIdRef = useRef<string | null>(null)

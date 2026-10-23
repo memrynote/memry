@@ -38,6 +38,7 @@ export function StickyEdgeTab(): React.JSX.Element {
   }, [])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- IPC read on mount and on drafts-changed subscription
     void load()
     return window.api.sticky.onDraftsChanged(() => void load())
   }, [load])

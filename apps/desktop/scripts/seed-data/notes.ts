@@ -3051,9 +3051,9 @@ export const NOTES: NoteFile[] = SPECS.map((spec) => {
       ...(FOLDER_AREAS[spec.relativePath.split('/')[0]]
         ? { area: FOLDER_AREAS[spec.relativePath.split('/')[0]] }
         : {}),
-      ...(spec.customProps ?? {}),
+      ...spec.customProps,
       ...(FINISHED_ON.has(spec.id) ? { finished: FINISHED_ON.get(spec.id) } : {}),
-      ...(EXTRA_PROPS[spec.id] ?? {})
+      ...EXTRA_PROPS[spec.id]
     },
     body: spec.body,
     modified

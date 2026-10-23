@@ -2,6 +2,11 @@
 // (docs/protocol/12-note-body-format.md). Each form here is the one desktop's
 // serializer writes back unchanged, so opening a sandbox note never rewrites it.
 import { serializeDateMentionToken, type RemindOffset } from '@memry/shared/date-mention'
+import {
+  PORTAL_BLOCK_LANGUAGE,
+  serializePortalDefinition,
+  type PortalTarget
+} from '@memry/shared/portal-block'
 
 import type { Clock } from './clock.ts'
 import { canvasId, need, type AssetName, type SandboxContext } from './context.ts'
@@ -38,6 +43,19 @@ export interface Body {
   /** Note-relative path of an attachment, for `cover` and table cells. */
   ref(name: string): string
   canvas(canvasKey: string): string
+  /**
+   * A portal fence (docs/protocol/12-note-body-format.md §12.6.3). `roots` are the anchors
+   * of blocks in the source note; `open` says which of their children it shows.
+   */
+  portal(
+    noteKey: string,
+    roots: string[],
+    open?: Record<string, { show: string[] } | { hide: string[] }>
+  ): string
+  /** A portal to a whole note. */
+  portalNote(noteKey: string): string
+  /** A portal to the blocks a text search finds. */
+  portalSearch(text: string, limit?: number): string
   uri: {
     note(noteKey: string): string
     task(taskKey: string): string
@@ -80,6 +98,15 @@ export function table(rows: string[][]): string {
   return [line(rows[0]), line(widths.map((w) => '-'.repeat(w))), ...rows.slice(1).map(line)].join(
     '\n'
   )
+}
+
+/** The fence exactly as the editor writes it, through the shared serializer. */
+function portalFence(target: PortalTarget): string {
+  return [
+    `\`\`\`${PORTAL_BLOCK_LANGUAGE}`,
+    serializePortalDefinition({ v: 1, target, raw: {} }),
+    '```'
+  ].join('\n')
 }
 
 export function createBody(
@@ -139,6 +166,23 @@ export function createBody(
     },
     ref: (name) => file(name).ref,
     canvas: (key) => `![whiteboard](memry://canvas/${canvasId(ctx, key)})`,
+    portal: (key, roots, open = {}) =>
+      portalFence({
+        kind: 'blocks',
+        note: need(ctx.notes, key, 'note').id,
+        blocks: roots,
+        open: Object.fromEntries(
+          Object.entries(open).map(([anchor, entry]) => [
+            anchor,
+            'show' in entry
+              ? { mode: 'show' as const, ids: entry.show }
+              : { mode: 'hide' as const, ids: entry.hide }
+          ])
+        )
+      }),
+    portalNote: (key) =>
+      portalFence({ kind: 'note', note: need(ctx.notes, key, 'note').id, hide: [] }),
+    portalSearch: (text, limit = 20) => portalFence({ kind: 'search', text, limit }),
     uri: {
       note: (key) => `memry://note/${need(ctx.notes, key, 'note').id}`,
       task: (key) => `memry://task/${need(ctx.tasks, key, 'task').id}`,

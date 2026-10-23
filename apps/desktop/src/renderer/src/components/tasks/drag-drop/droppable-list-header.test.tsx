@@ -1,14 +1,14 @@
-import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { DroppableListHeader } from './droppable-list-header'
+import type * as CoreModule from '@dnd-kit/core'
 
 const useDroppableMock = vi.fn()
 const useDragContextMock = vi.fn()
 
 vi.mock('@dnd-kit/core', async () => {
-  const actual = await vi.importActual<typeof import('@dnd-kit/core')>('@dnd-kit/core')
+  const actual = await vi.importActual<typeof CoreModule>('@dnd-kit/core')
   return {
     ...actual,
     useDroppable: (options: unknown) => {

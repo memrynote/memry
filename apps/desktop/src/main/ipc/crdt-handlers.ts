@@ -49,7 +49,7 @@ function hookWindowClose(win: BrowserWindow): void {
     windowsHookedForClose.delete(windowId)
     void getCrdtProvider()
       .forgetWindow(windowId)
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.error('Failed to release CRDT docs for a closed window', { windowId, error: err })
       })
   })

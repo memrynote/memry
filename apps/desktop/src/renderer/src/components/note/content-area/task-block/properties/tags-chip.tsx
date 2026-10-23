@@ -81,6 +81,7 @@ export const TagsChip = ({
         // first pill's remove button.
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
+        {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here */}
         <TagAutocomplete tags={tags} onTagsChange={onChange} variant="row" autoFocus />
       </PopoverContent>
     </Popover>

@@ -1,7 +1,7 @@
 name: Bug
 description: Report something broken in MemryNote.
-title: "[Bug]: "
-labels: ["bug"]
+title: '[Bug]: '
+labels: ['bug']
 body:
   - type: markdown
     attributes:
@@ -66,7 +66,7 @@ body:
     attributes:
       label: Environment
       description: App version, OS, vault/sync state, browser if relevant.
-      placeholder: "macOS ..., Memry ..."
+      placeholder: 'macOS ..., Memry ...'
     validations:
       required: false
   - type: textarea

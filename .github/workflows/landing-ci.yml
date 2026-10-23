@@ -68,7 +68,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck landing
-        run: pnpm --filter @memry/landing exec tsc --noEmit
+        run: pnpm --filter @memry/landing typecheck
 
       - name: Test landing
         run: pnpm --filter @memry/landing test

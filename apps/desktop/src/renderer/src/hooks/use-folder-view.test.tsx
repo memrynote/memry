@@ -73,11 +73,11 @@ vi.mock('@/services/tags-service', () => ({
 }))
 
 function emitTagNotesChanged(event: { tag: string }): void {
-  for (const callback of [...mocks.tagNotesChangedCallbacks]) callback(event)
+  for (const callback of Array.from(mocks.tagNotesChangedCallbacks)) callback(event)
 }
 
 function emitTagsChanged(): void {
-  for (const callback of [...mocks.tagsChangedCallbacks]) callback()
+  for (const callback of Array.from(mocks.tagsChangedCallbacks)) callback()
 }
 
 const firstPage = [

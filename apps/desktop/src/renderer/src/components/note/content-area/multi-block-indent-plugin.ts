@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 /**
  * Tab / Shift+Tab over a selection that spans more than one block.
@@ -99,7 +99,7 @@ function moveBlocks(
   let moved = 0
   editor.transact((tr: Transaction) => {
     const original = tr.selection
-    const ordered = direction === 'indent' ? ids : [...ids].reverse()
+    const ordered = direction === 'indent' ? ids : [...ids].toReversed()
     for (const id of ordered) {
       if (moveOne(editor, tr, id, direction, taskOptions)) moved += 1
     }

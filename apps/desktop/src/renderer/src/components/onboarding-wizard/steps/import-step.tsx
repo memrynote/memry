@@ -27,10 +27,10 @@ const ROW =
   'flex w-full items-center gap-3 rounded-[10px] px-3 text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none'
 
 /** Shown up front: the sources most people bring, plus whatever is installed. */
-const FEATURED = ['apple-notes', 'notion']
+const FEATURED = new Set(['apple-notes', 'notion'])
 
 function baseName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() ?? path
+  return path.split(/[\\/]/).findLast(Boolean) ?? path
 }
 
 function useImportSources(): { importers: ImporterMeta[]; sources: OnboardingSources | null } {
@@ -41,11 +41,11 @@ function useImportSources(): { importers: ImporterMeta[]; sources: OnboardingSou
     window.api.import
       .list()
       .then((list) => !cancelled && setImporters(list.filter((meta) => !meta.accountBased)))
-      .catch((error) => log.warn('Listing importers failed', error))
+      .catch((error: unknown) => log.warn('Listing importers failed', error))
     window.api.onboarding
       .detectSources()
       .then((found) => !cancelled && setSources(found))
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.warn('Detecting import sources failed', error)
         if (!cancelled) setSources({ obsidianVaults: [], installedApps: [] })
       })
@@ -95,7 +95,10 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
   const remove = (key: string): void => setImports(chosen.filter((choice) => choice.key !== key))
 
   const pick = async (meta: ImporterMeta): Promise<void> => {
-    if (isChosen(meta.id)) return remove(meta.id)
+    if (isChosen(meta.id)) {
+      remove(meta.id)
+      return
+    }
     try {
       const result = await window.api.import.pickFiles({
         label: meta.fileSpec.label,
@@ -124,7 +127,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
 
   const visible = importers.filter((meta) => isImporterVisible(meta.id, state.draft.features))
   const installed = new Set(sources?.installedApps ?? [])
-  const featured = visible.filter((meta) => FEATURED.includes(meta.id) || installed.has(meta.id))
+  const featured = visible.filter((meta) => FEATURED.has(meta.id) || installed.has(meta.id))
   const others = visible.filter((meta) => !featured.includes(meta))
   const vaults = sources?.obsidianVaults ?? []
 
@@ -141,6 +144,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
       <button
         key={meta.id}
         type="button"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="checkbox"
         aria-checked={!!choice}
         data-wizard-option
@@ -197,6 +201,7 @@ export function ImportStep({ state, dispatch }: StepProps): React.JSX.Element {
                 <button
                   key={vault.path}
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
                   role="checkbox"
                   aria-checked={isChosen(`obsidian:${vault.path}`)}
                   data-wizard-option

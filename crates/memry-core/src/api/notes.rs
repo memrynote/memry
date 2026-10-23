@@ -19,6 +19,7 @@ use crate::domain::reads::{
     TaskCard, TemplateSummary,
 };
 use crate::domain::wiki_suggest::{self, WikiLinkCandidates};
+use crate::portal::{PortalSlice, PortalStatus, resolve_portal};
 use crate::storage::Db;
 
 /// The read-only content surface over one opened vault.
@@ -195,6 +196,23 @@ impl Notes {
         self.db
             .call_blocking(|conn| Ok(reads::note_blocks(conn, &id)))
             .map_err(CrdtError::from)?
+    }
+
+    /// What a `memry-portal` fence shows of this (source) note.
+    ///
+    /// `definition_json` is the fence body. A note this vault does not hold is
+    /// `MissingNote`; an unreadable definition is `Invalid`; the rest is
+    /// resolved by the core so a shell only renders `blocks`. Chapter 12
+    /// §12.6.3 and `portal-resolve.json` pin the rules.
+    pub fn portal_slice(
+        &self,
+        id: String,
+        definition_json: String,
+    ) -> Result<PortalSlice, CrdtError> {
+        Ok(match self.blocks(id)? {
+            None => PortalSlice::empty(PortalStatus::MissingNote),
+            Some(blocks) => resolve_portal(&definition_json, blocks),
+        })
     }
 
     /// One table's rows, cells and column widths, by the `blockContainer` id

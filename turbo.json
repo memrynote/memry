@@ -21,20 +21,6 @@
       "dependsOn": ["^test"],
       "inputs": ["**/*.ts", "**/*.tsx", "**/*.test.*", "package.json", "vitest.config.*"],
       "outputs": []
-    },
-    "lint": {
-      "cache": true,
-      "dependsOn": ["^lint"],
-      "inputs": [
-        "**/*.ts",
-        "**/*.tsx",
-        "**/*.js",
-        "**/*.jsx",
-        "eslint.config.*",
-        ".eslintrc*",
-        "package.json"
-      ],
-      "outputs": []
     }
   }
 }

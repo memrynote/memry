@@ -81,6 +81,7 @@ const OptionItem = ({
         'w-full flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
         isSelected ? 'bg-accent' : 'hover:bg-accent'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="option"
       aria-selected={isSelected}
     >
@@ -187,6 +188,7 @@ export const AutocompleteDropdown = ({
         'animate-in fade-in-0 zoom-in-95 duration-100',
         className
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="listbox"
       aria-label={`${type} options`}
     >

@@ -61,6 +61,18 @@ describe('useWikiLinkSuggestions', () => {
     })
   })
 
+  it('carries a note’s own emoji onto its suggestion row', async () => {
+    mocks.listNotes.mockResolvedValue({
+      notes: [{ id: 'note-9', title: 'Genome', path: 'notes/Genome.md', emoji: '🧬' }]
+    })
+    const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+    let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      items = await result.current.getWikiLinkItems('Genome')
+    })
+    expect(items.find((item) => item.id === 'note-9')).toMatchObject({ type: 'note', emoji: '🧬' })
+  })
+
   it('loads, caches, filters, aliases, and creates missing wiki-link suggestions', async () => {
     const editor = { insertInlineContent: vi.fn() }
     const { result } = renderHook(() => useWikiLinkSuggestions(editor))

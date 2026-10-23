@@ -93,7 +93,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   const lineCount = state.status === 'ready' ? state.lineCount : 0
   // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
   // known library limitation the React Compiler can't memoize around.
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: lineCount,
     getScrollElement: () => scrollRef.current,
@@ -179,7 +179,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
     virtualizer.scrollToIndex(currentHit.line, { align: 'center' })
     // The virtualizer identity changes every render; the hit is what moves the
     // viewport.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [currentHit])
 
   if (state.status === 'too-large') {
@@ -357,6 +357,7 @@ function ScanProgress({
           {t('page.largeFile.viewer.preparing', { size: formatBytes(fileBytes) })}
         </p>
         <div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}

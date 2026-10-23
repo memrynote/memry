@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  NetworkMonitor,
-  NetworkMonitorDeps,
-  OFFLINE_POLL_INTERVAL_MS,
-  ONLINE_POLL_INTERVAL_MS
-} from './network'
+import type { NetworkMonitorDeps } from './network'
+import { NetworkMonitor, OFFLINE_POLL_INTERVAL_MS, ONLINE_POLL_INTERVAL_MS } from './network'
 
 interface MockDeps extends NetworkMonitorDeps {
   triggerResume: () => void

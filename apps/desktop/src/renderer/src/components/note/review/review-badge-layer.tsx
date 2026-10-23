@@ -231,7 +231,7 @@ export function ReviewBadgeLayer({
       top: Math.max(0, (review.activeDraft.top ?? 0) - containerOffset + 24),
       insetInlineStart: 0
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
+    // oxlint-disable-next-line react/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
   }, [active, containerRef, review.activeDraft])
 
   // Paint the drafted selection like an existing comment while composing.
@@ -244,7 +244,7 @@ export function ReviewBadgeLayer({
     return () => {
       CSS.highlights.delete(DRAFT_HIGHLIGHT_NAME)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
+    // oxlint-disable-next-line react/exhaustive-deps -- review identity changes every render; activeDraft is the trigger
   }, [active, review.activeDraft])
 
   // Mirror the rail's inline-hover sync while it is unmounted.
@@ -328,6 +328,7 @@ export function ReviewBadgeLayer({
       {showDraftFlyout && draftPanel && (
         <div
           className="critic-review-flyout critic-review-flyout-draft"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="dialog"
           aria-label={t('comments.railAria')}
           style={{ top: draftPanel.top, insetInlineStart: draftPanel.insetInlineStart }}
@@ -343,6 +344,7 @@ export function ReviewBadgeLayer({
       {panel && panelMarks.length > 0 && (
         <div
           className="critic-review-flyout"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="dialog"
           aria-label={t('comments.railAria')}
           style={{ top: panel.top, insetInlineStart: panel.insetInlineStart }}

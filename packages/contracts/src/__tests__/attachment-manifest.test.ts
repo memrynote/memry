@@ -59,7 +59,7 @@ const reader = {
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, wrapped, null, nonce, key),
   decrypt: async (ciphertext: Uint8Array, nonce: Uint8Array, key: Uint8Array) =>
     sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(null, ciphertext, null, nonce, key)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
 } as any
 
 describe('attachment-manifest vectors', () => {
@@ -74,6 +74,7 @@ describe('attachment-manifest vectors', () => {
   })
 
   for (const entry of vectors.cases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     describe(entry.name, () => {
       it('decrypts to its manifest', async () => {
         const { manifest, fileKey } = await decryptAttachmentManifest(

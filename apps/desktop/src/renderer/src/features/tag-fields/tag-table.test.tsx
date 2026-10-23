@@ -270,6 +270,7 @@ describe('RelationPickerCell', () => {
     const onSave = vi.fn()
     const onRowClick = vi.fn()
     const view = renderWithProviders(
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
       <div onClick={onRowClick}>
         <RelationPickerCell value={value} target="company" many={many} onSave={onSave} />
       </div>

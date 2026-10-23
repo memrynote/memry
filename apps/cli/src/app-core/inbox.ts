@@ -18,7 +18,7 @@ import { inboxItems, inboxItemTags, settings as settingsTable } from '@memry/db-
 import type { DataDb } from './database.ts'
 import { createId } from '@memry/app-core/ids'
 import type { NotesService } from './notes.ts'
-import type { TasksService } from '@memry/app-core/tasks'
+import type { TasksService } from '@memry/app-core/tasks-types'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -410,7 +410,9 @@ export function createInboxService({
           return Number.isFinite(createdAt) && createdAt >= cutoffMs
         })
 
-      const timeHeatmap = Array.from({ length: 24 }, () => new Array<number>(7).fill(0))
+      const timeHeatmap = Array.from({ length: 24 }, () =>
+        Array.from<number>({ length: 7 }).fill(0)
+      )
       const typeCounts = new Map<string, number>()
       const domainCounts = new Map<string, number>()
 

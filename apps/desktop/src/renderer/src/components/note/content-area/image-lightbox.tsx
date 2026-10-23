@@ -52,6 +52,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
           <DialogPrimitive.Title className="sr-only">
             {t('editor.imageLightbox.title')}
           </DialogPrimitive.Title>
+          {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
           <img
             src={src}
             alt={alt}

@@ -42,6 +42,7 @@ export function VaultStep({ dispatch }: StepProps): React.JSX.Element {
     return (
       <>
         {heading}
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior */}
         <div className="flex justify-center py-10" role="status">
           <Loader2 className="size-4 animate-spin text-text-tertiary motion-reduce:animate-none" />
         </div>

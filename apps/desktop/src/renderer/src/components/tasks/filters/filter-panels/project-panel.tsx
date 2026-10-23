@@ -58,7 +58,7 @@ export function ProjectPanel({
           <span className="text-[13px] text-muted-foreground/60 leading-4">
             {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsProjectPanel.noProject')}
           </span>
-          {selectedProjectIds.length === 0 && <CheckMark className="ml-auto text-primary" />}
+          {selectedProjectIds.length === 0 && <CheckMark className="ms-auto text-primary" />}
         </button>
         {visibleProjects.map((project) => {
           const selected = selectedProjectIds.includes(project.id)
@@ -84,7 +84,7 @@ export function ProjectPanel({
               >
                 {project.name}
               </span>
-              {selected && <CheckMark className="ml-auto text-primary" />}
+              {selected && <CheckMark className="ms-auto text-primary" />}
             </button>
           )
         })}

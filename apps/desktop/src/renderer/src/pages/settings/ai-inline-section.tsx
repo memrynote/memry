@@ -93,6 +93,7 @@ function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- provider and baseUrl are the re-probe triggers; the probe reads them through the main process
   }, [provider, baseUrl])
 
   return models

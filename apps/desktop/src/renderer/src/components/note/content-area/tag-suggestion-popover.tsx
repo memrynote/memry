@@ -180,6 +180,7 @@ export function TagSuggestionPopover({
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
       style={{ top: position.top, left: position.left }}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="listbox"
       aria-label={t('menus.tags.aria')}
     >
@@ -201,6 +202,7 @@ export function TagSuggestionPopover({
               setVisible(false)
             }}
             onMouseEnter={() => setSelectedIndex(index)}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
             role="option"
             aria-selected={isSelected}
           >

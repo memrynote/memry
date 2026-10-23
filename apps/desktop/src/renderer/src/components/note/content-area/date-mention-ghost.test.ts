@@ -155,20 +155,18 @@ describe('resolveTabAction', () => {
   it('inserts a pill when the query is already complete (nothing left to fill)', () => {
     const action = resolveTabAction('today', now)
     expect(action?.kind).toBe('pill')
-    if (action?.kind === 'pill') {
-      expect(action.value.remind).toBe('none')
-      expect(action.value.hasTime).toBe(false)
-      expect(new Date(action.value.dateISO).getDate()).toBe(17)
-    }
+    if (action?.kind !== 'pill') throw new Error('expected: action?.kind === "pill"')
+    expect(action.value.remind).toBe('none')
+    expect(action.value.hasTime).toBe(false)
+    expect(new Date(action.value.dateISO).getDate()).toBe(17)
   })
 
   it('inserts a pill with a time for a complete dated time', () => {
     const action = resolveTabAction('today 12:00', now)
     expect(action?.kind).toBe('pill')
-    if (action?.kind === 'pill') {
-      expect(action.value.hasTime).toBe(true)
-      expect(new Date(action.value.dateISO).getHours()).toBe(12)
-    }
+    if (action?.kind !== 'pill') throw new Error('expected: action?.kind === "pill"')
+    expect(action.value.hasTime).toBe(true)
+    expect(new Date(action.value.dateISO).getHours()).toBe(12)
   })
 
   it('returns null for a non-date query', () => {
@@ -190,19 +188,17 @@ describe('resolveTabAction', () => {
   it('inserts a timed pill for a complete "<date> at <time>" phrase', () => {
     const action = resolveTabAction('today at 23:00', now)
     expect(action?.kind).toBe('pill')
-    if (action?.kind === 'pill') {
-      expect(action.value.hasTime).toBe(true)
-      expect(new Date(action.value.dateISO).getHours()).toBe(23)
-    }
+    if (action?.kind !== 'pill') throw new Error('expected: action?.kind === "pill"')
+    expect(action.value.hasTime).toBe(true)
+    expect(new Date(action.value.dateISO).getHours()).toBe(23)
   })
 
   it('inserts a timed pill for a 24-hour hour written with a meridiem', () => {
     const action = resolveTabAction('next monday at 14pm', now)
     expect(action?.kind).toBe('pill')
-    if (action?.kind === 'pill') {
-      expect(action.value.hasTime).toBe(true)
-      expect(new Date(action.value.dateISO).getHours()).toBe(14)
-    }
+    if (action?.kind !== 'pill') throw new Error('expected: action?.kind === "pill"')
+    expect(action.value.hasTime).toBe(true)
+    expect(new Date(action.value.dateISO).getHours()).toBe(14)
   })
 })
 

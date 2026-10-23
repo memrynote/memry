@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 /**
  * Task-block indent/outdent primitives: the one owner of Tab and Shift+Tab on a
@@ -196,7 +196,7 @@ function persistParent(taskId: string, parentId: string | null, parents: TaskPar
   parents.set(taskId, parentId)
   void tasksService
     .update({ id: taskId, parentId })
-    .catch((err) => log.warn('tasks.update failed moving a task block', err))
+    .catch((err: unknown) => log.warn('tasks.update failed moving a task block', err))
 }
 
 /**

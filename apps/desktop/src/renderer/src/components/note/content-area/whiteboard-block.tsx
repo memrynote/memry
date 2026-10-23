@@ -295,8 +295,10 @@ export function WhiteboardBlockRenderer({ block }: { block: WhiteboardNode }): R
   return (
     <WhiteboardFrame>
       {header}
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
       <div
         className="whiteboard-surface relative h-[420px] w-full overflow-hidden rounded-xl border border-border"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="group"
         aria-label={t('editor.whiteboard.surfaceLabel', { title: displayTitle })}
         data-whiteboard-editing={editing ? 'true' : undefined}
@@ -345,6 +347,7 @@ export function WhiteboardBlockRenderer({ block }: { block: WhiteboardNode }): R
  */
 function WhiteboardFrame({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
     <div
       className="whiteboard-block my-2 w-full"
       contentEditable={false}

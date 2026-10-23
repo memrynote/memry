@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { EventEmitter } from 'events'
+import type { EventEmitter } from 'events'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { NetworkError } from './http-client'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
@@ -518,11 +518,9 @@ describe('SyncEngine', () => {
         // @ts-expect-error accessing private for test
         await engine.reconnectSync(THIRTY_MINUTES_MS)
 
-        const changesCall = getServerMock.mock.calls.find((c) =>
-          String(c[0]).includes('/sync/changes')
-        )
+        const changesCall = getServerMock.mock.calls.find((c) => c[0].includes('/sync/changes'))
         expect(changesCall).toBeDefined()
-        expect(String(changesCall![0])).toContain('cursor=12345')
+        expect(changesCall![0]).toContain('cursor=12345')
 
         vi.restoreAllMocks()
       })

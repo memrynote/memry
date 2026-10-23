@@ -40,7 +40,8 @@
  * @module canvas/reconcile
  */
 
-import { Dirent, existsSync, readdirSync, renameSync } from 'fs'
+import type { Dirent } from 'fs'
+import { existsSync, readdirSync, renameSync } from 'fs'
 import path from 'path'
 import { and, eq, isNull, ne } from 'drizzle-orm'
 import {

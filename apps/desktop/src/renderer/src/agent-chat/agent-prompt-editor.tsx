@@ -513,7 +513,7 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
 
     // Init-only by contract (see `richTextMarks`), and memoising also stops
     // `StarterKit.configure` from handing `useEditor` a fresh array every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     const extensions = useMemo(() => buildPromptExtensions(richTextMarks ?? false, placeholder), [])
 
     const editor = useEditor({
@@ -565,7 +565,7 @@ export const AgentPromptEditor = forwardRef<AgentPromptEditorHandle, AgentPrompt
 
     useEffect(() => {
       // Tiptap exposes editable state through the editor instance after initialization.
-      // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent
+      // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent
       editor?.setEditable(!disabled)
     }, [disabled, editor])
 

@@ -54,6 +54,7 @@ export function WikiLinkDisplayPanel({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer handler only stops propagation/handles pointer; keyboard path exists on a child control
     <div
       data-testid="wiki-link-display-panel"
       className="flex w-[300px] flex-col gap-3.5 p-4"

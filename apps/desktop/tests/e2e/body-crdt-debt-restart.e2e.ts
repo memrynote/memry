@@ -74,9 +74,8 @@ test.describe('Body CRDT durable debts (#2297)', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     const title = `Debt Restart ${Date.now()}`
     const renamed = `${title} renamed`
     const initialBody = 'note body from A'

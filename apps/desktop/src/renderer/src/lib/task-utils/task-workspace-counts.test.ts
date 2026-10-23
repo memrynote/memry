@@ -200,7 +200,7 @@ describe('getTaskWorkspaceCounts', () => {
   })
 
   it('counts subtasks listed before their parent', () => {
-    const reversed = baselineTasks().reverse()
+    const reversed = baselineTasks().toReversed()
 
     expect(getTaskWorkspaceCounts(reversed, projects, ALL_VIEW_IDS).viewCounts.all).toBe(10)
     expectMatchesFilters(reversed)

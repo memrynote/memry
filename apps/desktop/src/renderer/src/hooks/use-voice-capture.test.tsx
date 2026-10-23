@@ -58,6 +58,7 @@ describe('useVoiceCapture cancel', () => {
   const capture: { current: VoiceCapture | null } = { current: null }
 
   function Harness(): null {
+    // oxlint-disable-next-line react/immutability -- test harness writes the latest hook result into a ref for assertions
     capture.current = useVoiceCapture({ onComplete, onError })
     return null
   }

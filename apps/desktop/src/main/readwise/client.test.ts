@@ -65,7 +65,7 @@ describe('verifyToken', () => {
     const error = await verifyToken(TOKEN).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ReadwiseError)
     expect((error as ReadwiseError).code).toBe('invalid-token')
-    expect(String((error as Error).message)).not.toContain(TOKEN)
+    expect((error as Error).message).not.toContain(TOKEN)
   })
 
   it('maps a 5xx to server and a thrown fetch to network', async () => {
@@ -125,7 +125,14 @@ describe('exportPages', () => {
     fetchMock.mockImplementation(
       (_url: string, init: RequestInit) =>
         new Promise((_resolve, reject) => {
-          init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
+          init.signal?.addEventListener(
+            'abort',
+            () => {
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
+              reject(init.signal?.reason)
+            },
+            { once: true }
+          )
         })
     )
     const pending = collect(
@@ -240,8 +247,12 @@ describe('rate limiting', () => {
 describe('readwiseGet', () => {
   it('only ever talks to readwise.io, whatever the path', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
-    await expect(readwiseGet({ token: TOKEN, path: '//evil.example/x' })).rejects.toThrow()
-    await expect(readwiseGet({ token: TOKEN, path: 'https://evil.example/x' })).rejects.toThrow()
+    await expect(readwiseGet({ token: TOKEN, path: '//evil.example/x' })).rejects.toThrow(
+      'Readwise requests must stay on readwise.io'
+    )
+    await expect(readwiseGet({ token: TOKEN, path: 'https://evil.example/x' })).rejects.toThrow(
+      'Readwise requests must stay on readwise.io'
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

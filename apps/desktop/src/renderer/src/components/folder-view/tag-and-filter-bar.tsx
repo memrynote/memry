@@ -116,6 +116,7 @@ export function TagAndFilterBar({
     <div
       className="flex flex-wrap items-center gap-1.5 border-b border-border px-4 py-1.5"
       data-testid="tag-and-filter-bar"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- labelled toolbar group; fieldset/details would change layout and semantics
       role="group"
       aria-label={t('tagAndFilter.regionLabel')}
     >
@@ -214,6 +215,7 @@ export function TagAndFilterBar({
             <DialogDescription>{selection.join(' + ')}</DialogDescription>
           </DialogHeader>
           <Input
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
             autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}

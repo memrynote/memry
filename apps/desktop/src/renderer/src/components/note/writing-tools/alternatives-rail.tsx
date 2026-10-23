@@ -86,6 +86,7 @@ export function AlternativesRail({ session, snapshot }: AlternativesRailProps) {
               {draft.original}
             </p>
             <AddAlternativeInput
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
               autoFocus={snapshot.focusAlternativeId === draft.id}
               onSubmit={(text) => session.submitDraft(text)}
               onCancel={() => session.cancelDraft()}
@@ -165,6 +166,7 @@ function AlternativeCard({
         ))}
       </ul>
       <AddAlternativeInput
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus={focusInput}
         onSubmit={(text) => session.addVariant(alternative.id, text)}
         onFocused={() => session.clearFocusAlternative()}

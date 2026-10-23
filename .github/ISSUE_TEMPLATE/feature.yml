@@ -1,7 +1,7 @@
 name: Feature
 description: Propose a new MemryNote capability.
-title: "[Feature]: "
-labels: ["enhancement", "needs-design"]
+title: '[Feature]: '
+labels: ['enhancement', 'needs-design']
 body:
   - type: markdown
     attributes:
@@ -12,7 +12,7 @@ body:
     attributes:
       label: Problem
       description: What user problem or workflow gap does this solve?
-      placeholder: "I want to..."
+      placeholder: 'I want to...'
     validations:
       required: true
   - type: textarea
@@ -20,7 +20,7 @@ body:
     attributes:
       label: Proposed behavior
       description: What should MemryNote do?
-      placeholder: "When I..., Memry should..."
+      placeholder: 'When I..., Memry should...'
     validations:
       required: true
   - type: dropdown

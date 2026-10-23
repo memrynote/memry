@@ -177,7 +177,7 @@ describe('buildReminderPanel', () => {
     })
 
     expect(upcoming.map((e) => e.timeMs)).toEqual(
-      [...upcoming.map((e) => e.timeMs)].sort((a, b) => a - b)
+      upcoming.map((e) => e.timeMs).sort((a, b) => a - b)
     )
     expect(upcoming[0].timeMs).toBeLessThan(upcoming[1].timeMs)
     expect(past[0].timeMs).toBeGreaterThan(past[1].timeMs)

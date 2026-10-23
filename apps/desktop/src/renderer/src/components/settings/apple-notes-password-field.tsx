@@ -113,6 +113,7 @@ export function AppleNotesPasswordField({
       </form>
       {shown && (
         <p
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="status"
           className={
             shown.tone === 'bad' ? 'text-xs/4 text-destructive' : 'text-xs/4 text-muted-foreground'

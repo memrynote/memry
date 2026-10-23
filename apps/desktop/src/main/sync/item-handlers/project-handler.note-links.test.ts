@@ -12,6 +12,7 @@ import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as LocalMutationsModule from '../local-mutations'
 
 let dataDb: TestDatabaseResult
 let indexDb: TestDatabaseResult
@@ -23,7 +24,7 @@ vi.mock('../../database', () => ({
 
 const mockLocalMutation = vi.fn()
 vi.mock('../local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 

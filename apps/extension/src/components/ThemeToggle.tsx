@@ -1,23 +1,5 @@
 import { useState } from 'react'
-
-type Theme = 'light' | 'dark'
-
-const STORAGE_KEY = 'memry-theme'
-
-function systemTheme(): Theme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function storedTheme(): Theme {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  return saved === 'light' || saved === 'dark' ? saved : systemTheme()
-}
-
-// Called once in main.tsx before render so a saved choice paints with no flash.
-export function applyStoredTheme(): void {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved
-}
+import { STORAGE_KEY, storedTheme, type Theme } from '@/lib/theme'
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(storedTheme)

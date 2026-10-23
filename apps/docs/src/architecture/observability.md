@@ -1119,7 +1119,7 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   free text are salted-hashed on the client (correlatable, like the id fields above); the server's
   re-redaction pass has no salt, so it masks them to a fixed `<id>` instead. A fixed field allowlist
   (`level, scope, action, errorCode, appVersion, buildChannel, platform, arch, origin, workerName,
-reason, phase, mode, status, kind, result`, plus numeric metric keys like
+  reason, phase, mode, status, kind, result`, plus numeric metric keys like
   `durationMs`/`itemCount`) ships verbatim; most other field values run through the same redaction as
   the message.
 - **Updater backends**: `initializeUpdater()` picks one backend at init and keeps it for the
@@ -1319,7 +1319,7 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   | worker stderr tail                                      | `error.stack`           | `stack` (logs)               |
 
   The message suffix is a bounded `[reason=… pid=… uptime=…ms release=… cache=… cache_bytes=…
-load=… crashes=…]` block appended only when a context was resolved, so every other
+  load=… crashes=…]` block appended only when a context was resolved, so every other
   `child-process-gone` family's message is byte-identical to before. The stderr tail is the closest
   thing to a stack trace this family can produce — the process that died is not the one reporting,
   so `stack` is otherwise always empty. It is captured into a bounded per-worker ring buffer,

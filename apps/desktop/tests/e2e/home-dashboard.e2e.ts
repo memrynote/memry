@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, some vars intentionally unused
 /**
  * Home Dashboard E2E Tests
  *
@@ -802,7 +801,7 @@ test.describe('Home Dashboard — H: edge cases', () => {
 
     const boards = await listBoards(page)
     const board = boards[0]
-    const known = board.widgets.filter((w) => w.type === 'recently-edited')[0]
+    const known = board.widgets.find((w) => w.type === 'recently-edited')
     expect(known).toBeTruthy()
 
     // Write a board whose widgets include an unknown type alongside a known one.

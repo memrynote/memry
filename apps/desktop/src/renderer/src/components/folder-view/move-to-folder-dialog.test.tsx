@@ -27,6 +27,7 @@ vi.mock('@/components/ui/dialog', () => ({
     children: React.ReactNode
     onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>
   }) => (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-interactions -- test double mirrors the real widget ARIA role; test double for a dialog; key handler forwards the test hook
     <div role="dialog" onKeyDown={onKeyDown}>
       {children}
     </div>

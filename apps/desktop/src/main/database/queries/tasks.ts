@@ -110,7 +110,7 @@ export function listTasks(db: DataDb, options: ListTasksOptions = {}): Task[] {
     offset = 0
   } = options
 
-  const conditions: SQL<unknown>[] = []
+  const conditions: SQL[] = []
 
   if (projectId) {
     conditions.push(eq(tasks.projectId, projectId))
@@ -202,7 +202,7 @@ export function countTasks(
 ): number {
   const { projectId, includeCompleted = false, includeArchived = false } = options
 
-  const conditions: SQL<unknown>[] = []
+  const conditions: SQL[] = []
 
   if (projectId) {
     conditions.push(eq(tasks.projectId, projectId))
@@ -315,7 +315,7 @@ export function getTasksByDueDate(
   date: string,
   includeCompleted: boolean = true
 ): Task[] {
-  const conditions: SQL<unknown>[] = [eq(tasks.dueDate, date), isNull(tasks.archivedAt)]
+  const conditions: SQL[] = [eq(tasks.dueDate, date), isNull(tasks.archivedAt)]
 
   if (!includeCompleted) {
     conditions.push(isNull(tasks.completedAt))
@@ -634,7 +634,7 @@ export function getAllTaskTags(db: DataDb): { tag: string; count: number }[] {
     .groupBy(tagFoldOf(taskTags.tag))
     .orderBy(desc(count()))
     .all()
-    .map((row) => ({ tag: row.tag, count: Number(row.count) }))
+    .map((row) => ({ tag: row.tag, count: row.count }))
 }
 
 // ============================================================================
@@ -838,7 +838,7 @@ export function getNextTaskPosition(
   projectId: string,
   parentId?: string | null
 ): number {
-  const conditions: SQL<unknown>[] = [eq(tasks.projectId, projectId)]
+  const conditions: SQL[] = [eq(tasks.projectId, projectId)]
 
   if (parentId !== undefined) {
     if (parentId === null) {

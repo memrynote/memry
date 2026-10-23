@@ -119,8 +119,10 @@ export function EmojiPicker({
   if (!isOpen) return null
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- handler only stops propagation or handles pointer for an enclosing widget; keyboard path is on the child control
     <div
       ref={pickerRef}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="dialog"
       aria-modal="true"
       aria-label={t('menus.emoji.aria')}

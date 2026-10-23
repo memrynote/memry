@@ -38,9 +38,8 @@ test.describe('Custom template sync', () => {
   test('T1: a template created on A appears on B', async ({
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     const name = `T1 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, '## Blockers')
@@ -52,8 +51,11 @@ test.describe('Custom template sync', () => {
     expect(await getTemplateContent(pageB, id)).toBe('## Blockers')
   })
 
-  test('T2: an edit on A propagates to B', async ({ pageA, pageB, bootstrappedSyncPair }) => {
-    void bootstrappedSyncPair
+  test('T2: an edit on A propagates to B', async ({
+    pageA,
+    pageB,
+    bootstrappedSyncPair: _bootstrappedSyncPair
+  }) => {
     const name = `T2 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, 'v1')
@@ -67,8 +69,11 @@ test.describe('Custom template sync', () => {
     expect(await getTemplateContent(pageB, id)).toBe('v2')
   })
 
-  test('T3: a delete on A tombstones on B', async ({ pageA, pageB, bootstrappedSyncPair }) => {
-    void bootstrappedSyncPair
+  test('T3: a delete on A tombstones on B', async ({
+    pageA,
+    pageB,
+    bootstrappedSyncPair: _bootstrappedSyncPair
+  }) => {
     const name = `T3 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, 'v1')
@@ -89,9 +94,8 @@ test.describe('Custom template sync', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     const name = `T4 Standup ${Date.now()}`
 
     const id = await createTemplate(pageA, name, 'base')
@@ -118,9 +122,8 @@ test.describe('Custom template sync', () => {
   test('T6: built-ins exist on both devices and never duplicate', async ({
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await syncBothAndWait(pageA, pageB)
 
     for (const page of [pageA, pageB]) {
@@ -134,9 +137,7 @@ test.describe('Custom template sync', () => {
 legacyTest.describe('Legacy template migration', () => {
   legacyTest(
     'T5: a pre-sync template file on A is migrated and reaches B',
-    async ({ pageA, pageB, bootstrappedSyncPair }) => {
-      void bootstrappedSyncPair
-
+    async ({ pageA, pageB, bootstrappedSyncPair: _bootstrappedSyncPair }) => {
       // A's vault had the file on disk before launch; openVault should have
       // imported it with clock NULL, and seedUnclocked should have pushed it.
       legacyExpect(await listTemplateNames(pageA)).toContain(LEGACY_TEMPLATE_NAME)

@@ -13,7 +13,8 @@
  *    minted, which outlive the userData dir (see keychain-cleanup.ts)
  */
 
-import { _electron as electron, ElectronApplication, Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
+import { _electron as electron } from '@playwright/test'
 import { spawnSync } from 'child_process'
 import { createRequire } from 'node:module'
 import * as fs from 'fs'
@@ -193,7 +194,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     ...(opts.deviceId ? { MEMRY_DEVICE: opts.deviceId } : {}),
     ...(opts.syncServerUrl ? { SYNC_SERVER_URL: opts.syncServerUrl } : {}),
     ...(isCI && { ELECTRON_DISABLE_SANDBOX: '1' }),
-    ...(opts.extraEnv ?? {})
+    ...opts.extraEnv
   }
   delete env.ELECTRON_RUN_AS_NODE
 
@@ -261,7 +262,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     await destroyElectronApp(app, [userDataDir], opts.deviceId)
     const tail = mainLogs.slice(-40).join('').slice(-4000)
     const baseMsg = err instanceof Error ? err.message : String(err)
-    throw new Error(`${baseMsg}\n--- main process output ---\n${tail}\n--- end ---`)
+    throw new Error(`${baseMsg}\n--- main process output ---\n${tail}\n--- end ---`, { cause: err })
   }
 }
 

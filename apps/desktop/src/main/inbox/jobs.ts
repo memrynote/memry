@@ -537,7 +537,7 @@ export function listInboxJobs(
   } = {}
 ): InboxJobContract[] {
   const db = requireDatabase()
-  const conditions: SQL<unknown>[] = []
+  const conditions: SQL[] = []
 
   if (options.itemIds?.length) {
     conditions.push(inArray(inboxJobs.itemId, options.itemIds))

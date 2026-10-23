@@ -3,11 +3,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ProjectWidget } from './project-widget'
 import type { ProjectHubData } from '@/pages/project/use-project-hub'
+import type * as UseProjectHubModule from '@/pages/project/use-project-hub'
 
 const hubMock = vi.fn()
 
 vi.mock('@/pages/project/use-project-hub', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/pages/project/use-project-hub')>()),
+  ...(await importOriginal<typeof UseProjectHubModule>()),
   useProjectHub: (projectId: string | undefined) => hubMock(projectId)
 }))
 

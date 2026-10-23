@@ -152,9 +152,11 @@ export const KanbanBoard = ({
   const _showProjectOnCards = (selectedType as string) === 'weekday'
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
     <div
       ref={boardRef}
       className="flex h-full flex-col outline-none"
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scroll container must be keyboard focusable to scroll with arrow keys
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={() => boardRef.current?.focus()}

@@ -14,7 +14,7 @@
   "scripts": {
     "sandbox": "node bin/sandbox.mjs",
     "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts src/app-core/*.test.ts src/sandbox/*.test.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "dependencies": {
     "@memry/app-core": "workspace:*",

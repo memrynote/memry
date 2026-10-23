@@ -450,6 +450,7 @@ describe('foreign markdown round-trip, main pipeline', () => {
   ]
 
   for (const [group, cases] of groups) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     describe(group, () => {
       it.each(cases)('$name (house style)', async ({ markdown, canonical }) => {
         const once = await roundTripCanonical(markdown)
@@ -626,7 +627,7 @@ describe('foreign markdown round-trip, main pipeline', () => {
       '* Two items here',
       '    * Nested item',
       '',
-      `${'This is _em_ and __strong__ prose written elsewhere. '.repeat(40)}`,
+      'This is _em_ and __strong__ prose written elsewhere. '.repeat(40),
       '',
       '---',
       ''

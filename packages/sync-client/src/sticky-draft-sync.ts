@@ -33,7 +33,8 @@ export class StickyDraftSyncService {
   constructor(deps: StickyDraftSyncDeps) {
     const load = (draftId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(stickyDrafts).where(eq(stickyDrafts.id, draftId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'sticky_draft',

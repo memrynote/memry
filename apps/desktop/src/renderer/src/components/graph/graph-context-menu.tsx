@@ -344,6 +344,7 @@ function PickerShell({
         </button>
         <input
           // The picker opens from an explicit menu click, so taking focus is expected.
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
           autoFocus
           value={value}
           placeholder={placeholder}

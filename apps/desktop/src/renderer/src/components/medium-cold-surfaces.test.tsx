@@ -68,7 +68,10 @@ vi.mock('@/components/ui/dialog', () => ({
     <div>
       <button onClick={() => onOpenChange(true)}>open recovery dialog</button>
       <button onClick={() => onOpenChange(false)}>close recovery dialog</button>
-      {open ? <div role="dialog">{children}</div> : null}
+      {open ? (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double for the Radix dialog, which renders role=dialog on a div
+        <div role="dialog">{children}</div>
+      ) : null}
     </div>
   ),
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -258,6 +261,7 @@ describe('medium cold renderer surfaces', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const onSelect = vi.fn()
     const onInputChange = vi.fn()
+    // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
     const inputRef = { current: null as NaturalDateInputRef | null }
 
     parseNaturalDate.mockReturnValueOnce({

@@ -76,7 +76,7 @@ export function AppleNotesFolderPanel({
         setSelected(new Set(allFolderIds(result)))
         setIncludeUnfiled(true)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (active) setError(extractErrorMessage(err, t('import.dialog.appleNotes.foldersError')))
       })
       .finally(() => {

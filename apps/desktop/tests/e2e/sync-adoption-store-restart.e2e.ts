@@ -54,10 +54,9 @@ test.describe('CRDT store after vault adoption (#2424)', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair,
+    bootstrappedSyncPair: _bootstrappedSyncPair,
     syncBootstrap
   }) => {
-    void bootstrappedSyncPair
     const body = 'merged before the restart'
 
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])

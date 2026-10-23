@@ -50,6 +50,7 @@ export function TagChipContent({ tag, className }: TagChipContentProps): React.J
       <span className="min-w-0 truncate">{tag.tag}</span>
       {hasFields ? (
         <List
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="img"
           aria-label={t('tagFields.hub.hasFields')}
           className="size-3 shrink-0 opacity-70"

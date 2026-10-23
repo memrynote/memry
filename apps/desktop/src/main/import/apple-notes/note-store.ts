@@ -132,7 +132,7 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
     if (tempPath) {
       await fs.rm(path.dirname(tempPath), { recursive: true, force: true }).catch(() => {})
     }
-    if (isAccessDenied(error)) throw new Error(ACCESS_DENIED_HINT)
+    if (isAccessDenied(error)) throw new Error(ACCESS_DENIED_HINT, { cause: error })
     if (errorCode(error) === 'ENOENT') {
       throw new Error(
         `Apple Notes database not found at ${dbPath}. Open the Notes app once to ` +

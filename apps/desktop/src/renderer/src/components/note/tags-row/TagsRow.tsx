@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { cn } from '@/lib/utils'
-import { TagChip, Tag } from './TagChip'
+import type { Tag } from './TagChip'
+import { TagChip } from './TagChip'
 import { AddTagButton } from './AddTagButton'
 import { TagInputPopup, type TagFieldHints } from './TagInputPopup'
 import { useT } from '@memry/i18n/renderer'
@@ -43,6 +44,7 @@ export const TagsRow = memo(function TagsRow({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="list"
       aria-label={t('tagsRow.aria')}
       className={cn('flex min-h-8 flex-wrap items-center gap-2', className)}

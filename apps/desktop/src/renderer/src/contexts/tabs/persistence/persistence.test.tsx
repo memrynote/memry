@@ -18,6 +18,7 @@ import {
 import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
 import { STORAGE_KEY, tabStateStorageKey, type PersistedTabState, type TabStorage } from './types'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
+import type * as SerializationModule from './serialization'
 
 const mocks = vi.hoisted(() => ({
   tabsState: null as TabSystemState | null,
@@ -52,7 +53,7 @@ vi.mock('sonner', () => ({
 // Counts full tab-tree serializations so the auto-save tests can assert how many
 // times the tree is walked, independently of how long the debounce waits.
 vi.mock('./serialization', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./serialization')>()
+  const actual = await importOriginal<typeof SerializationModule>()
   return {
     ...actual,
     serializeTabState: (state: TabSystemState) => {
@@ -292,12 +293,14 @@ function SessionRestoreProbe({
   autoRestore?: boolean
   restoreFullSession?: boolean
 }) {
+  // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
   sessionSnapshot = useSessionRestore({ storage, autoRestore, restoreFullSession })
   return null
 }
 
 let manualSnapshot: ReturnType<typeof useManualPersistence> | null = null
 function ManualPersistenceProbe({ storage }: { storage: TabStorage }) {
+  // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
   manualSnapshot = useManualPersistence(storage)
   return null
 }
@@ -348,6 +351,7 @@ function StartupProbe({
   vaultPath?: string | null
   debounceMs: number
 }) {
+  // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
   sessionSnapshot = useTabSessionPersistence({ storage, vaultPath, debounceMs })
   return null
 }
@@ -563,9 +567,7 @@ describe('tab persistence hooks', () => {
     mocks.tabsState = unchanged
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    await act(async () => {
-      vi.advanceTimersByTime(25)
-    })
+    await act(async () => vi.advanceTimersByTime(25))
 
     // The tree is still walked — that is how the payload is compared at all —
     // but nothing reaches storage.

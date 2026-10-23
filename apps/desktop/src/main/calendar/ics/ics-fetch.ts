@@ -13,7 +13,8 @@ export interface IcsValidators {
 }
 
 export type IcsFetchResult =
-  { status: 'not_modified' } | { status: 'ok'; body: string; validators: IcsValidators }
+  | { status: 'not_modified' }
+  | { status: 'ok'; body: string; validators: IcsValidators }
 
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>
 

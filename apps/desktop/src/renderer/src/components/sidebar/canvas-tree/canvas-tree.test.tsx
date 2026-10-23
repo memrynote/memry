@@ -125,7 +125,9 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
     onRemove: () => void
   }) => (
     <div data-testid="emoji-picker">
+      {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- test double for a third-party control; label is irrelevant to the assertions */}
       <button type="button" data-testid="emoji-pick" onClick={() => onSelect('📌')} />
+      {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- test double for a third-party control; label is irrelevant to the assertions */}
       <button type="button" data-testid="emoji-remove" onClick={onRemove} />
     </div>
   )

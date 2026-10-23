@@ -327,7 +327,7 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath) => this.debouncedChange?.(filePath))
-      .on('unlink', (filePath) => void this.handleFileDelete(filePath))
+      .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
       .on('ready', () => {
@@ -1089,13 +1089,13 @@ export class VaultWatcher {
       cached.id,
       parsed.content,
       writingFrontmatterOf(parsed.frontmatter)
-    ).catch((err) => {
+    ).catch((err: unknown) => {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
     })
 
     // Markdown wins: a `- [x]`/`- [ ]` flipped outside the app is the user's
     // intent for that task, so the DB row follows the file.
-    reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err) => {
+    reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err: unknown) => {
       logger.warn('Failed to reconcile task checkboxes from external edit', {
         noteId: cached.id,
         error: err

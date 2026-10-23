@@ -117,7 +117,7 @@ const CRLF_FOREIGN_BODY = [
   'Broad Title',
   '===========',
   '',
-  `Intro with __bold__ and *em* text.${'   '}`,
+  `Intro with __bold__ and *em* text.   `,
   'Second line after a hard break.',
   '',
   '',
@@ -148,7 +148,7 @@ const CRLF_FOREIGN_BODY = [
   '    indented code line 1',
   '    indented code line 2',
   '',
-  `Tail paragraph with a break.${'  '}`,
+  `Tail paragraph with a break.  `,
   'Final line.',
   ''
 ].join('\r\n')
@@ -357,9 +357,8 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Hard Break ${Date.now()}`
@@ -396,9 +395,8 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Reference Link ${Date.now()}`
@@ -445,9 +443,8 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Kanban Settings ${Date.now()}`
@@ -499,9 +496,8 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Spelling ${Date.now()}`
@@ -555,9 +551,8 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign CRLF ${Date.now()}`

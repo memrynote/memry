@@ -14,6 +14,10 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 import { createSearchProjector } from '../projections/projectors/search-projector'
 import * as projections from '../projections'
 import { createFtsTable } from '../database/fts'
+import type * as IndexModule from './index'
+import type * as DatabaseModule from '../database'
+import type * as NotesModule from './notes'
+import type * as UnlinkedMentionsModule from './unlinked-mentions'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -59,10 +63,10 @@ describe('unlinked mentions (#3320)', () => {
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
-  let vaultIndex: typeof import('./index')
-  let database: typeof import('../database')
-  let notes: typeof import('./notes')
-  let mentions: typeof import('./unlinked-mentions')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let notes: typeof NotesModule
+  let mentions: typeof UnlinkedMentionsModule
 
   beforeEach(async () => {
     // Create fresh test fixtures

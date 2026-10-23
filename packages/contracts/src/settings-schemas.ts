@@ -545,7 +545,9 @@ export type CalendarWritableProviderSettings = z.infer<
 
 /** What `settings:getCalendarProviderSettings` returns for any provider. */
 export type CalendarProviderSettings =
-  CalendarGoogleSettings | CalendarProviderBaseSettings | CalendarWritableProviderSettings
+  | CalendarGoogleSettings
+  | CalendarProviderBaseSettings
+  | CalendarWritableProviderSettings
 
 export const CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS: CalendarProviderBaseSettings = {
   agentReadEventsConsent: null

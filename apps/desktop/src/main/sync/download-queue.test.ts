@@ -42,7 +42,10 @@ function makeManualDownload(): ManualDownload {
       void opts?.pace?.()
       calls.push(_id)
       return new Promise<DownloadResult>((resolve, reject) => {
-        pending.set(_id, { resolve: () => resolve(makeResult(_id)), reject })
+        pending.set(_id, {
+          resolve: () => resolve(makeResult(_id)),
+          reject
+        })
       })
     }
   )

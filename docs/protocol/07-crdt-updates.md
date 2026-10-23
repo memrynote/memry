@@ -349,7 +349,7 @@ below keeps that blob from being replaced by one that does not hold them.
    with `error.blockingCursor` (the stored snapshot's cursor, from a re-read of
    the row; the refusal wrote nothing, so the read is not a race), or in a
    batch `{ accepted: false, reason: "CRDT_SNAPSHOT_NOT_COVERED",
-blockingCursor }`. There is no success answer for a refused write: a
+   blockingCursor }`. There is no success answer for a refused write: a
    revision it named would be recorded as held and sent as the next base.
 7. **An ambiguous commit.** D1 can throw after the batch committed (a lost
    connection, an isolate reset). The rows are re-read: a row naming this
@@ -579,7 +579,7 @@ snapshot endpoint under the §7.13.2 gate.
   `data` is base64 of the **packed envelope** of chapter 04 §4.11;
 - the batch response is
   `{ notes: Record<noteId, { updates, hasMore }>, snapshotMeta?: Record<noteId,
-{ sequenceNum, revision, signerDeviceId }> }`;
+  { sequenceNum, revision, signerDeviceId }> }`;
 - the snapshot response is
   `{ snapshot, sequenceNum, signerDeviceId, revision? }`, with `snapshot` null
   when absent.
@@ -1305,7 +1305,7 @@ Per page of a declaring run
     no cursor, so its `done` stands. Detecting this needs a server signal, such
     as a feed epoch, which this part does not have.
   - `done` is also what lets a snapshot push claim `coversThrough =
-LAST_CURSOR` (§7.7.1): only then has every body row below the cursor
+    LAST_CURSOR` (§7.7.1): only then has every body row below the cursor
     either landed or left its note flagged. A CRDT store whose epoch does not
     match the data DB's deletes the key too (§7.7.1).
 - **Bootstrap.** A run from cursor 0 (a bootstrap, a manifest re-pull, the

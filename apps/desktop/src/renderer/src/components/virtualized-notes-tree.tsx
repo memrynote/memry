@@ -1267,7 +1267,7 @@ export function VirtualizedNotesTree({
     if (!path) return
 
     revealedRenameIdRef.current = renamingId
-    /* eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state -- genuine external sync: scrolling the virtualizer is an imperative side effect on a DOM scroll container, not state derivable during render, and rename mode is entered from the parent's action hook rather than from an event this component sees */
+    /* oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state -- genuine external sync: scrolling the virtualizer is an imperative side effect on a DOM scroll container, not state derivable during render, and rename mode is entered from the parent's action hook rather than from an event this component sees */
     revealRow(renamingId, path)
   }, [renamingFolderPath, renamingNoteId, noteMap, revealRow])
 

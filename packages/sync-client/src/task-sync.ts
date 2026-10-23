@@ -73,7 +73,8 @@ export class TaskSyncService {
       getDeviceId: deps.getDeviceId,
       load: (taskId) =>
         deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
         const changedFields = extra[0]
         const existingClock = (local.clock as VectorClock) ?? {}

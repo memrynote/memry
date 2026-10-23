@@ -118,11 +118,13 @@ function RowSelect<T extends string>({
         </span>
       </button>
       {open && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         <div role="listbox" className="mt-1 rounded-md border p-1">
           {options.map((o) => (
             <button
               key={o.value}
               type="button"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
               role="option"
               aria-selected={o.value === value}
               onClick={() => {

@@ -26,7 +26,7 @@ export function UnsentNotesList(): React.JSX.Element | null {
       .then((result) => {
         if (!cancelled) setData(result)
       })
-      .catch((err) => log.warn('Could not list notes with unsent changes', err))
+      .catch((err: unknown) => log.warn('Could not list notes with unsent changes', err))
     return () => {
       cancelled = true
     }

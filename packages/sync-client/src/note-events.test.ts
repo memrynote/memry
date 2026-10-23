@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 
-
 import { emitNoteUpdated } from './note-events'
 
 describe('emitNoteUpdated', () => {

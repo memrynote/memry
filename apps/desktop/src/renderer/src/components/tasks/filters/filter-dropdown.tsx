@@ -4,9 +4,14 @@ import { useState, useCallback, useMemo } from 'react'
 import { ChevronRight } from '@/lib/icons'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
-import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
+import type {
+  TaskFilters,
+  Project,
+  Status,
+  DueDateFilterType,
+  SavedFilter
+} from '@/data/tasks-data'
 import type { Priority, Task } from '@/data/task-model'
-import type { SavedFilter } from '@/data/tasks-data'
 
 import { PriorityPanel } from './filter-panels/priority-panel'
 import { StatusPanel } from './filter-panels/status-panel'
@@ -109,6 +114,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   )
 }
 
+const NO_STATUSES: Status[] = []
+
 export const FilterDropdown = ({
   open,
   onOpenChange,
@@ -125,7 +132,7 @@ export const FilterDropdown = ({
   onApplySavedFilter,
   onSaveFilter,
   onToggleStarFilter,
-  statuses: statusesProp = [],
+  statuses: statusesProp = NO_STATUSES,
   children
 }: FilterDropdownProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')

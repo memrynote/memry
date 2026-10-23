@@ -65,7 +65,7 @@ function useDetail(item: SearchResultItemType): Detail | null | undefined {
     let cancelled = false
     const timer = setTimeout(() => {
       void loadDetail(item)
-        .catch((err) => {
+        .catch((err: unknown) => {
           log.warn('Failed to load search preview', { key, err })
           return null
         })
@@ -79,6 +79,7 @@ function useDetail(item: SearchResultItemType): Detail | null | undefined {
       clearTimeout(timer)
     }
   }, [key, item])
+  // oxlint-disable-next-line react/refs -- external cache owned by this hook; re-render is triggered through state when it fills
   return cache.current.get(key)
 }
 
@@ -89,6 +90,7 @@ function MetaLine({ parts }: { parts: React.ReactNode[] }): React.JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pt-0.5 text-xs leading-4 text-text-tertiary">
       {shown.map((part, i) => (
+        // oxlint-disable-next-line react/no-array-index-key -- positional rows built from filtered parts; no ids
         <span key={i} className="flex items-center gap-2">
           {i > 0 && <Dot />}
           {part}
@@ -136,6 +138,7 @@ function Matches({ lines, query }: { lines: string[]; query: string }): React.JS
         <SearchCount value={found.total} />
       </div>
       {found.lines.map((line, i) => (
+        // oxlint-disable-next-line react/no-array-index-key -- positional rows built from filtered parts; no ids
         <div key={i} className="flex min-h-7 items-center gap-2.5">
           <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-border" />
           <HighlightedText
@@ -386,7 +389,11 @@ export function SearchPreview({
             query={query}
             meta={[
               edited,
-              isFile && <span className="uppercase">{meta.type === 'note' && meta.fileType}</span>,
+              isFile && (
+                <span key="file-type" className="uppercase">
+                  {meta.type === 'note' && meta.fileType}
+                </span>
+              ),
               !isFile && words ? t('searchPalette.preview.words', { count: words }) : null,
               ...meta.tags
                 .slice(0, 4)

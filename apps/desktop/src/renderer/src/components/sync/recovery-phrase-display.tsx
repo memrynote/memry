@@ -79,6 +79,7 @@ export function RecoveryPhraseDisplay({
       >
         {words.map((word, i) => (
           <li
+            // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
             key={`${i}-${word}`}
             className="flex h-[34px] w-[112px] items-center gap-2 rounded-[7px] bg-surface px-3 @[540px]:w-[132px]"
             aria-label={t('setup.recovery.wordAria', { index: i + 1, word })}
@@ -123,6 +124,7 @@ export function RecoveryPhraseDisplay({
           {t('setup.recovery.download')}
         </Button>
         <Button
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
           autoFocus
           onClick={onContinue}
           className="h-[38px] gap-2.5 pe-2.5 ps-4 text-sm font-semibold shadow-none"

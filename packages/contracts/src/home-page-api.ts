@@ -77,7 +77,8 @@ export const HomePageSetCoverSchema = z.object({
 export type HomePageCoverFailure = UnsplashDownloadFailureReason | DownloadAttachmentFromUrlFailure
 
 export type HomePageSetCoverResult =
-  { ok: true; page: HomePage } | { ok: false; reason: HomePageCoverFailure }
+  | { ok: true; page: HomePage }
+  | { ok: false; reason: HomePageCoverFailure }
 
 /** Only the framing fields that changed; see `CoverFraming` in `@memry/shared/cover-image`. */
 export const HomePageSetCoverFramingSchema = z.object({

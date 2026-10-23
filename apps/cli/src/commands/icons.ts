@@ -1,5 +1,12 @@
 import type { MemryApp } from '../app-core/memry-app.ts'
-import { getFlag, hasFlag, print, requireFirst, type CliIo, type ParsedCli } from '../run.ts'
+import {
+  getFlag,
+  hasFlag,
+  print,
+  requireFirst,
+  type CliIo,
+  type ParsedCli
+} from '../cli-support.ts'
 
 /** `icons` commands: the vault's custom icon library. */
 export async function runIcons(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {

@@ -1,7 +1,7 @@
 import { READWISE_CATEGORIES, type ReadwiseSetOptionsInput } from '@memry/contracts/import-channels'
 import type { MemryApp } from '../app-core/memry-app.ts'
 import { READWISE_DESKTOP_ONLY_COMMANDS } from '../app-core/readwise.ts'
-import { getFlag, getFlagList, print, type CliIo, type ParsedCli } from '../run.ts'
+import { getFlag, getFlagList, print, type CliIo, type ParsedCli } from '../cli-support.ts'
 
 function parseSwitch(value: string | undefined, flag: string): boolean | undefined {
   if (value === undefined) return undefined

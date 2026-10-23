@@ -38,7 +38,7 @@ export function useOccurrences(
     const timer = setTimeout(() => {
       void Promise.all(
         missing.map(async (item) => {
-          const markdown = await loadBodyMarkdown(item).catch((err) => {
+          const markdown = await loadBodyMarkdown(item).catch((err: unknown) => {
             log.warn('Failed to read a note body for search matches', { id: item.id, err })
             return null
           })
@@ -53,7 +53,7 @@ export function useOccurrences(
       clearTimeout(timer)
     }
     // `missing` is derived from `missingToken`; listing it would re-arm the timer on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [missingToken, needle])
 
   const itemsToken = items.map(keyOf).join('|')
@@ -65,6 +65,6 @@ export function useOccurrences(
     }
     return found
     // `items` is derived from `itemsToken`; `version` marks a finished load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [itemsToken, needle, version])
 }

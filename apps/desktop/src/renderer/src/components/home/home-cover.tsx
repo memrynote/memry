@@ -56,6 +56,7 @@ const UNSPLASH_FAILURES = new Set<string>([
 ] satisfies UnsplashDownloadFailureReason[])
 
 /** Main's failure set spans every source; each picker tab names only its own. */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 function narrowFailure<T extends string>(reason: HomePageCoverFailure, known: Set<string>): T {
   return (known.has(reason) ? reason : 'failed') as T
 }

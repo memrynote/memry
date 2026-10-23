@@ -257,7 +257,7 @@ export const InboxDetailPanel = ({
           suggestedTags: topSuggestion?.suggestedTags || [],
           actualTags: tags
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           log.error('Failed to track suggestion', error)
         })
     }
@@ -569,6 +569,7 @@ export const InboxDetailPanel = ({
                   <div
                     onMouseDown={handleResizeStart}
                     className="relative h-2 -my-1 shrink-0 cursor-row-resize group z-10 focus-visible:outline-none"
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- splitter handle with pointer/keyboard resize handlers; <hr> cannot carry them
                     role="separator"
                     aria-orientation="horizontal"
                     aria-label={t('detail.resizeFiling')}

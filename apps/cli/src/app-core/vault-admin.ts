@@ -135,7 +135,7 @@ export function createVaultAdminService({
         }
       }
       return entries
-        .reverse()
+        .toReversed()
         .filter((entry) => filter !== 'problems' || isProblem(entry))
         .slice(0, limit)
     },

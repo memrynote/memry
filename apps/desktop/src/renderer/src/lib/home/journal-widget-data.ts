@@ -17,7 +17,9 @@ export interface UpcomingDay {
 }
 
 export type RelativeDayLabel =
-  { kind: 'today' } | { kind: 'yesterday' } | { kind: 'date'; text: string }
+  | { kind: 'today' }
+  | { kind: 'yesterday' }
+  | { kind: 'date'; text: string }
 
 function toLocalIso(d: Date): string {
   const y = d.getFullYear()

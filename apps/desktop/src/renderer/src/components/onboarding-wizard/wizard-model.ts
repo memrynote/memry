@@ -35,7 +35,8 @@ export interface ImportChoice {
 
 /** Where the new vault goes. `existing` adopts a folder the user picked. */
 export type FolderChoice =
-  { kind: 'new'; parent: string; name: string } | { kind: 'existing'; path: string }
+  | { kind: 'new'; parent: string; name: string }
+  | { kind: 'existing'; path: string }
 
 export interface WizardDraft {
   theme: ThemeChoice

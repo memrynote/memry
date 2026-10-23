@@ -5,6 +5,7 @@ import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
+import type * as PathsModule from '../lib/paths'
 
 type PreflightVerdict = {
   ok: boolean
@@ -25,10 +26,11 @@ const fsHooks = vi.hoisted(() => ({
 }))
 
 vi.mock('fs', async (importActual) => {
-  const actual = await importActual<typeof import('fs')>()
+  const actual = await importActual<typeof fs>()
   fsHooks.realRenameSync = actual.renameSync
-  const renameSync = (from: string, to: string): void =>
-    (fsHooks.renameSync ?? actual.renameSync)(from, to)
+  const renameSync = (from: string, to: string): void => {
+    ;(fsHooks.renameSync ?? actual.renameSync)(from, to)
+  }
   const cpSync = (from: string, to: string, options?: Parameters<typeof actual.cpSync>[2]): void =>
     fsHooks.cpSync ? fsHooks.cpSync(from, to) : actual.cpSync(from, to, options)
   return { ...actual, default: { ...actual, renameSync, cpSync }, renameSync, cpSync }
@@ -233,7 +235,7 @@ vi.mock('../vault/notes', () => ({
 // The file is opened through the real vault check, then read through the
 // `safeRead` fake at the mapped path; `stat` is real, as before.
 vi.mock('../lib/paths', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const actual = await importOriginal<typeof PathsModule>()
   const { OutsideVaultError } = await import('../lib/errors')
   const fsp = await import('fs/promises')
   return {
@@ -530,7 +532,7 @@ describe('CrdtProvider', () => {
 
     await expect(
       provider.mergeRemoteUpdate('note-2', makeRemoteUpdate('from the feed'))
-    ).rejects.toThrow()
+    ).rejects.toThrow('No open doc to merge a change-feed body into')
     expect(store.storeUpdate).not.toHaveBeenCalled()
   })
 
@@ -539,7 +541,9 @@ describe('CrdtProvider', () => {
     const inMemory = new CrdtProvider()
     const update = makeRemoteUpdate('from the feed')
 
-    await expect(inMemory.mergeRemoteUpdate('note-2', update)).rejects.toThrow()
+    await expect(inMemory.mergeRemoteUpdate('note-2', update)).rejects.toThrow(
+      'No CRDT store to hold a change-feed body'
+    )
   })
 
   // #2297 review (A-M6, B-7): this device's own snapshot comes back through the

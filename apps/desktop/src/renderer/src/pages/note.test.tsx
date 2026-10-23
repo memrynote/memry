@@ -7,6 +7,10 @@ import { isNewNoteTitlePending, markNewNoteTitlePending } from '@/lib/new-note-t
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import type React from 'react'
+import type * as ReactQueryModule from '@tanstack/react-query'
+import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
+import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
+import type * as BacklinksModule from '@/components/note/backlinks'
 
 // The reveal action's label branches on platform. Pin macOS so these
 // assertions read the Finder wording whatever host the suite runs on.
@@ -50,7 +54,8 @@ const mocks = vi.hoisted(() => ({
   handlePropertyNameChange: vi.fn(),
   handlePropertyOrderChange: vi.fn(),
   propertyOnBlocked: null as
-    ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void) | null,
+    | ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void)
+    | null,
   setPropertiesCollapsed: vi.fn(),
   togglePropertiesCollapsed: vi.fn(),
   toggleBookmark: vi.fn(),
@@ -86,7 +91,8 @@ const mocks = vi.hoisted(() => ({
   onRenamed: vi.fn(),
   deletedHandler: null as ((event: { id: string }) => void) | null,
   updatedHandler: null as
-    ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void) | null,
+    | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
+    | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
   findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
@@ -130,7 +136,7 @@ vi.mock('@/lib/logger', () => ({
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  const actual = await importOriginal<typeof ReactQueryModule>()
   return {
     ...actual,
     useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries })
@@ -187,7 +193,7 @@ vi.mock('@/hooks/use-notes-query', () => ({
 }))
 
 vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  ...(await importOriginal<typeof UseTagSchemasModule>()),
   useTagSchemas: () => ({ data: undefined, isLoading: false }),
   useResolvedTag: () => null,
   useObjectIdentity: () => null,
@@ -512,7 +518,7 @@ vi.mock('@/components/note', () => ({
       mocks.contentAreaMounts += 1
       onEditorReady?.(editor)
       return () => onEditorReady?.(null)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // oxlint-disable-next-line react/exhaustive-deps
     }, [])
     return (
       <div>
@@ -672,7 +678,7 @@ vi.mock('@/components/note/info-section', () => ({
 }))
 
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
+  ...(await importOriginal<typeof VaultLocksStoreModule>()),
   useIsNoteLocked: () => mocks.isNoteLocked,
   useHasOwnNoteLock: () => mocks.hasOwnNoteLock ?? mocks.isNoteLocked,
   setVaultLock: mocks.setVaultLock
@@ -687,7 +693,7 @@ vi.mock('@/components/note/ghost-affordance-row', () => ({
 }))
 
 vi.mock('@/components/note/backlinks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/components/note/backlinks')>()),
+  ...(await importOriginal<typeof BacklinksModule>()),
   // Fetches through its own service hook; covered by UnlinkedMentionsSection.test.tsx.
   UnlinkedMentionsSection: () => null,
   BacklinksSection: ({

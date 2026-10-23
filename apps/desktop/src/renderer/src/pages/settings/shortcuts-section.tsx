@@ -98,7 +98,9 @@ function ShortcutRow({
       stop()
       void onRebind(entry.id, newBinding)
     },
-    { onCancel: () => setConflict(null) }
+    {
+      onCancel: () => setConflict(null)
+    }
   )
   const { isCapturing, captureRef, cancel: stopCapture } = capture
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHookWithProviders, act, wait } from '@tests/utils/hook-test-wrapper'
 import { useSearch } from './use-search'
 import type { SearchReason } from '@memry/contracts/search-api'

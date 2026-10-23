@@ -25,7 +25,7 @@ import { handleEditorPaste } from './table-cell-paste'
 // Uses the default BlockNote schema: the custom schema's extra specs drag
 // react-pdf into jsdom.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 // jsdom ships neither, and the copy and paste paths read both.
 class FakeDataTransfer {
@@ -62,8 +62,12 @@ beforeEach(() => {
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
+    reader.onload = () => {
+      resolve(String(reader.result))
+    }
+    reader.onerror = () => {
+      reject(reader.error)
+    }
     reader.readAsText(blob)
   })
 }
@@ -308,6 +312,7 @@ describe('writeBlockClipboard', () => {
   })
 
   it('surfaces a failed clipboard write to the caller', async () => {
+    // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     vi.stubGlobal('ClipboardItem', class {})
     vi.stubGlobal('navigator', {
       ...navigator,

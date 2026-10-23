@@ -110,8 +110,11 @@ vi.mock('@/components/ui/select', () => ({
 
 vi.mock('@/components/ui/switch', () => ({
   Switch: ({ checked, onCheckedChange, onClick }: any) => (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- minimal Switch test double; only click behavior is under test
     <span
+      // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- test double keeps aria-pressed, which the assertions read
       role="switch"
+      // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- test double keeps aria-pressed, which the assertions read
       aria-pressed={checked}
       onClick={(event) => {
         onClick?.(event)

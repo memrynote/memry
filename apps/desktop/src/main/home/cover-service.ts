@@ -69,7 +69,8 @@ export interface HomeCoverDeps {
 }
 
 export type SetHomeCoverResult =
-  { ok: true; row: HomePageRow } | { ok: false; reason: HomePageCoverFailure }
+  | { ok: true; row: HomePageRow }
+  | { ok: false; reason: HomePageCoverFailure }
 
 type FramingChanges = z.infer<typeof HomePageSetCoverFramingSchema>['changes']
 

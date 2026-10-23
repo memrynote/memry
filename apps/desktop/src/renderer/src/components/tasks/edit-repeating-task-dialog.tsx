@@ -65,6 +65,7 @@ export const EditRepeatingTaskDialog = ({
 
         <div className="flex flex-col gap-3 py-4">
           {/* This occurrence only */}
+          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- label wraps its radio input; rule cannot see the nested control through the wrapper text */}
           <label
             className={cn(
               'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',
@@ -92,6 +93,7 @@ export const EditRepeatingTaskDialog = ({
           </label>
 
           {/* This and all future */}
+          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- label wraps its radio input; rule cannot see the nested control through the wrapper text */}
           <label
             className={cn(
               'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',

@@ -168,24 +168,24 @@ export const FilingSection = ({
   const hasAISuggestions = aiEnabled && aiSuggestions.length > 0
 
   // Track whether auto-selection already fired for this item
-  const didAutoSelectFolder = useRef(false)
-  const lastAutoSelectItemId = useRef(item?.id)
-  if (lastAutoSelectItemId.current !== item?.id) {
-    lastAutoSelectItemId.current = item?.id
-    didAutoSelectFolder.current = false
-  }
+  const autoSelectedItemId = useRef<string | null | undefined>(undefined)
+  const currentItemId = item?.id ?? null
 
   // Auto-select top AI-suggested folder (once per item). Wrapping the
   // parent-callback invocation in `void` keeps it asynchronous from the
   // linter's perspective — calling parent callbacks straight from an effect
   // would otherwise trip no-pass-data-to-parent.
   useEffect(() => {
-    if (!didAutoSelectFolder.current && suggestedFolders.length > 0 && !selectedFolder) {
-      didAutoSelectFolder.current = true
+    if (
+      autoSelectedItemId.current !== currentItemId &&
+      suggestedFolders.length > 0 &&
+      !selectedFolder
+    ) {
+      autoSelectedItemId.current = currentItemId
       const top = suggestedFolders[0]
       void Promise.resolve().then(() => onFolderSelect(top))
     }
-  }, [suggestedFolders, selectedFolder, onFolderSelect])
+  }, [currentItemId, suggestedFolders, selectedFolder, onFolderSelect])
 
   // Derive display info for the folder dropdown trigger
   const displayFolder = selectedFolder
@@ -307,6 +307,7 @@ export const FilingSection = ({
           >
             <ImageIcon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- labelled group of chips; fieldset would change layout
               role="group"
               aria-label={t('detail.imageFilingModeLabel')}
               className="flex gap-0.5 rounded-[7px] bg-surface-active/70 p-0.5"
@@ -406,6 +407,7 @@ export const FilingSection = ({
                     }
                   }}
                   className="h-5 p-0 border-0 bg-transparent text-[13px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent focus-visible:ring-0 shadow-none"
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
                   autoFocus
                 />
               </div>

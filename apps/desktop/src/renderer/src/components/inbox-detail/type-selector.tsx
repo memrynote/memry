@@ -46,6 +46,7 @@ export const TypeSelector = ({ value, onChange }: TypeSelectorProps): React.JSX.
               <span key={type} className="flex">
                 <button
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- radiogroup of styled buttons; native radios would change visuals
                   role="radio"
                   aria-checked={selected}
                   onClick={() => onChange(type)}

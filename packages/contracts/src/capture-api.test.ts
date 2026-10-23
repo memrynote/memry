@@ -47,7 +47,8 @@ describe('ArticleCaptureSchema', () => {
       force: true
     })
     expect(r.success).toBe(true)
-    if (r.success) expect(r.data.screenshotDataUrl).toBe('data:image/png;base64,AAAA')
+    if (!r.success) throw new Error('expected the check above to hold')
+    expect(r.data.screenshotDataUrl).toBe('data:image/png;base64,AAAA')
   })
 })
 

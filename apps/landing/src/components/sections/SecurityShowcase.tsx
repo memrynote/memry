@@ -126,6 +126,7 @@ export function SecurityShowcase() {
             </span>
             <div className="select-none space-y-1 font-mono text-lg leading-relaxed text-terracotta/60">
               {scrambled.map((line, i) => (
+                // oxlint-disable-next-line react/no-array-index-key -- decorative scrambled lines; positional, never reordered
                 <p key={i} aria-hidden="true">
                   {line}
                 </p>

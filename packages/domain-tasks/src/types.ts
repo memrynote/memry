@@ -18,7 +18,12 @@ export interface RepeatConfig {
  * write a shape this one does not model.
  */
 export type TaskFieldValue =
-  string | number | boolean | null | TaskFieldValue[] | { [key: string]: TaskFieldValue }
+  | string
+  | number
+  | boolean
+  | null
+  | TaskFieldValue[]
+  | { [key: string]: TaskFieldValue }
 
 export type TaskFields = Record<string, Exclude<TaskFieldValue, null>>
 

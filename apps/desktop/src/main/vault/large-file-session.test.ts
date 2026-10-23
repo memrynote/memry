@@ -253,7 +253,7 @@ describe('large-file session', () => {
     mocks.buildLineIndex.mockResolvedValue(indexFor(body))
     const fsp = await import('fs/promises')
     const originalReadFile = fsp.default.readFile
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     ;(fsp.default as any).readFile = () => {
       throw new Error('ERR_STRING_TOO_LONG')
     }
@@ -269,7 +269,7 @@ describe('large-file session', () => {
       // asks for the file as one string
       expect(page?.lines).toEqual(['row 10', 'row 11'])
     } finally {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       ;(fsp.default as any).readFile = originalReadFile
     }
   })
@@ -426,11 +426,7 @@ describe('large-file session', () => {
     await new Promise((resolve) => setImmediate(resolve))
 
     // #then the viewer that has been sitting on "Preparing…" gets its answer
-    expect(
-      indexEvents()
-        .filter((event) => event.sessionId === slowId)
-        .at(-1)
-    ).toMatchObject({
+    expect(indexEvents().findLast((event) => event.sessionId === slowId)).toMatchObject({
       status: 'ready',
       lineCount: 3
     })
@@ -453,11 +449,7 @@ describe('large-file session', () => {
     // #then the consumer still holding the old id is told. Waiting for it to
     // find out on its next page fetch only works once it is showing pages —
     // a session dropped while still indexing never gets a page fetch at all.
-    expect(
-      indexEvents()
-        .filter((event) => event.sessionId === sessionId)
-        .at(-1)
-    ).toMatchObject({
+    expect(indexEvents().findLast((event) => event.sessionId === sessionId)).toMatchObject({
       sessionId,
       status: 'closed'
     })

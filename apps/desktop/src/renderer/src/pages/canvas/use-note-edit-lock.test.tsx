@@ -38,8 +38,12 @@ vi.mock('@/sync/yjs-ipc-provider', () => ({
       }
       return Promise.resolve()
     }
-    destroy(): void {}
-    resumeRebind(): void {}
+    destroy(): void {
+      /* intentional no-op */
+    }
+    resumeRebind(): void {
+      /* intentional no-op */
+    }
   }
 }))
 
@@ -125,7 +129,7 @@ function Probe({ noteId }: { noteId: string }): React.JSX.Element {
       </button>
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
           // openTab takes Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>, so every
           // other Tab field is required — see contexts/tabs/types.ts.
           openTab(
@@ -142,7 +146,7 @@ function Probe({ noteId }: { noteId: string }): React.JSX.Element {
             },
             { groupId: secondaryGroupId }
           )
-        }
+        }}
       >
         open-note
       </button>

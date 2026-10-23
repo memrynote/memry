@@ -28,6 +28,7 @@ const vectors = loadVectorFile<{ meta: { caseCount: number }; cases: Case[] }>(
 function check(c: Case, input: Record<string, unknown>): void {
   switch (c.kind) {
     case 'canonical':
+      /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
       expect(canonicalJson(input.value)).toBe(c.expected.canonical)
       return
     case 'order':
@@ -61,15 +62,18 @@ function check(c: Case, input: Record<string, unknown>): void {
           input.patch as Record<string, JsonValue>,
           input.clockTotal as number
         )
+        /* oxlint-enable vitest/no-conditional-expect */
       ).toEqual(c.expected.value)
       return
     case 'stamp-value':
+      /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
       expect(stampVersionedValue(input.previous, input.edited as VersionedObject)).toEqual(
         c.expected.value
       )
       return
     case 'plain':
       expect(plainVersionedMap(input.stored)).toEqual(c.expected.plain)
+      /* oxlint-enable vitest/no-conditional-expect */
       return
     default:
       throw new Error(`${c.name}: unknown case kind ${c.kind}`)

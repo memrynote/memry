@@ -1199,7 +1199,7 @@ describe('SyncEngine', () => {
     it('#then a close mid-initial-pull stops between pages instead of running the pull out', async () => {
       vi.useFakeTimers()
       let changePages = 0
-      const getSpy = vi
+      const _getSpy = vi
         .spyOn(await import('./http-client'), 'getFromServer')
         .mockImplementation(async (path: string) => {
           // One page per timer slice: the vault streams in slowly, like a real

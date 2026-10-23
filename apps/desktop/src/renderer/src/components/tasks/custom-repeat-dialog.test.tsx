@@ -28,6 +28,7 @@ vi.mock('@/components/ui/dialog', () => ({
     </div>
   ),
   DialogContent: ({ children }: { children: React.ReactNode }) => (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
     <div role="dialog">{children}</div>
   ),
   DialogHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header>,

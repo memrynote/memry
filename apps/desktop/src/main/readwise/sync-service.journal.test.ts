@@ -9,9 +9,13 @@
 import { sql } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setSetting } from '../database/queries/settings'
-import { planJournalDay, readDaySection, type JournalBook } from '@memry/importers/readwise'
+import {
+  planJournalDay,
+  readDaySection,
+  type JournalBook,
+  type ReadwiseBook
+} from '@memry/importers/readwise'
 import { book, highlight } from '@memry/importers/readwise/fixtures'
-import type { ReadwiseBook } from '@memry/importers/readwise'
 import * as Y from 'yjs'
 import { readwiseHighlights } from '@memry/db-schema/schema/readwise-highlights'
 import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
@@ -30,6 +34,20 @@ import {
   stopProjectionRuntime
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../notes/runtime-effects'
+import type * as DomainModule from '../notes/domain'
+import type * as ImportedNoteModule from '../import/_shared/imported-note'
+import type * as UpdateEntryModule from '../journal/update-entry'
+import type * as SyncServiceModule from '../readwise/sync-service'
+import type * as SyncStateModule from '../readwise/sync-state'
+import type * as SecretsModule from '../readwise/secrets'
+import type * as SettingsModule from '../readwise/settings'
+import type * as CrdtProviderModule from '../sync/crdt-provider'
+import type * as RegistryModule from '../import/registry'
+import type * as HighlightsIndexModule from '../readwise/highlights-index'
+import type * as RuntimeEffectsModule2 from '../journal/runtime-effects'
+import type * as JournalModule from '../vault/journal'
+import type * as CreateEntryModule from '../journal/create-entry'
 
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
@@ -54,7 +72,7 @@ vi.mock('../secrets/secret-storage', () => ({
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -64,11 +82,11 @@ vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
 }))
 vi.mock('../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 vi.mock('../import/_shared/imported-note', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../import/_shared/imported-note')>()
+  const actual = await importOriginal<typeof ImportedNoteModule>()
   return { ...actual, createImportedNote: vi.fn(actual.createImportedNote) }
 })
 vi.mock('../journal/runtime-effects', () => ({
@@ -80,7 +98,7 @@ vi.mock('../journal/runtime-effects', () => ({
 }))
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
 vi.mock('../journal/update-entry', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../journal/update-entry')>()
+  const actual = await importOriginal<typeof UpdateEntryModule>()
   return {
     ...actual,
     updateJournalEntry: vi.fn(actual.updateJournalEntry),
@@ -116,20 +134,20 @@ describe('Readwise journal highlights', () => {
   let vault: TestVaultResult
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
-  let engine: typeof import('../readwise/sync-service')
-  let domain: typeof import('../notes/domain')
-  let state: typeof import('../readwise/sync-state')
-  let secrets: typeof import('../readwise/secrets')
-  let settings: typeof import('../readwise/settings')
-  let imported: typeof import('../import/_shared/imported-note')
-  let crdtProvider: typeof import('../sync/crdt-provider')
-  let registry: typeof import('../import/registry')
+  let engine: typeof SyncServiceModule
+  let domain: typeof DomainModule
+  let state: typeof SyncStateModule
+  let secrets: typeof SecretsModule
+  let settings: typeof SettingsModule
+  let imported: typeof ImportedNoteModule
+  let crdtProvider: typeof CrdtProviderModule
+  let registry: typeof RegistryModule
   let readwise: ReadwiseStub
-  let highlightsIndex: typeof import('../readwise/highlights-index')
-  let journalEffects: typeof import('../journal/runtime-effects')
-  let journal: typeof import('../vault/journal')
-  let journalOwner: typeof import('../journal/update-entry')
-  let journalCreate: typeof import('../journal/create-entry')
+  let highlightsIndex: typeof HighlightsIndexModule
+  let journalEffects: typeof RuntimeEffectsModule2
+  let journal: typeof JournalModule
+  let journalOwner: typeof UpdateEntryModule
+  let journalCreate: typeof CreateEntryModule
 
   const db = () => asClientDb(dataDb.db)
   const resetWrites = () => {

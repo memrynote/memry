@@ -2,7 +2,8 @@ import { foldTag } from '@memry/shared/tag-fold'
 import { useState, useCallback, useMemo } from 'react'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
-import { TagChip, Tag } from './TagChip'
+import type { Tag } from './TagChip'
+import { TagChip } from './TagChip'
 import { defaultTagColorName } from './tag-colors'
 import { useT } from '@memry/i18n/renderer'
 import { CornerDownLeft, List, Plus } from '@/lib/icons'
@@ -188,6 +189,7 @@ export function TagInputPopup({
           )}
 
           {fieldRows.length > 0 && (
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             <div className="flex flex-col gap-0.5 px-1 pb-1" role="listbox">
               {fieldRows.map((row, index) => (
                 <FieldTagRow
@@ -294,6 +296,7 @@ function FieldTagRow({
   return (
     <button
       type="button"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="option"
       aria-selected={active}
       onClick={onPick}

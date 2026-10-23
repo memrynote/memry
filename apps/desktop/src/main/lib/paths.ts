@@ -132,7 +132,9 @@ export function safeJoin(basePath: string, ...segments: string[]): string | null
 }
 
 export type VaultFileResolution =
-  { kind: 'inside'; path: string } | { kind: 'outside' } | { kind: 'missing' }
+  | { kind: 'inside'; path: string }
+  | { kind: 'outside' }
+  | { kind: 'missing' }
 
 function placeInVault(
   vaultPath: string,
@@ -225,12 +227,10 @@ export async function openVaultFile(
       throw new OutsideVaultError(relativePath)
     }
     const joined = path.join(vaultPath, relativePath)
-    const handle = await open(joined, openFlags(), OPEN_MODE).catch(
-      (err: NodeJS.ErrnoException) => {
-        if (err.code === 'ENOENT') return null
-        throw err
-      }
-    )
+    const handle = await open(joined, openFlags(), OPEN_MODE).catch((err: unknown) => {
+      if (err instanceof Error && 'code' in err && err.code === 'ENOENT') return null
+      throw err
+    })
     if (handle === null) return null
     let now: VaultFileResolution
     try {

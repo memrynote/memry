@@ -33,6 +33,7 @@ export function CalendarTaskPopoverMoveRow({
   now
 }: CalendarTaskPopoverMoveRowProps): React.JSX.Element {
   const { t } = useT('calendar')
+  // oxlint-disable-next-line react/purity -- now prop defaults to the wall clock on each render so snooze options stay current
   const opts = computeSnoozeOptions({ now: now ?? new Date(), isAllDay })
 
   return (

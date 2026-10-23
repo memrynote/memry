@@ -189,6 +189,7 @@ export function ThemeStep({ state, dispatch }: StepProps): React.JSX.Element {
             <button
               key={id}
               type="button"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="radio"
               aria-checked={selected}
               data-wizard-option
@@ -282,6 +283,7 @@ export function ModulesStep({
       <button
         key={key}
         type="button"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="checkbox"
         aria-checked={on}
         data-wizard-option
@@ -313,6 +315,7 @@ export function ModulesStep({
         className="flex-row flex-wrap justify-center gap-x-4 gap-y-0.5 pt-6"
       >
         {MODULE_COLUMNS.map((column, index) => (
+          // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
           <div key={index} className="flex w-[260px] flex-col gap-0.5">
             {index === 0 && (
               <div className={MODULE_ROW}>

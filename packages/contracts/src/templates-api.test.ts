@@ -124,11 +124,10 @@ describe('TemplateCreateSchema', () => {
   it('should validate minimal input with defaults', () => {
     const result = TemplateCreateSchema.safeParse({ name: 'My Template' })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.tags).toEqual([])
-      expect(result.data.properties).toEqual([])
-      expect(result.data.content).toBe('')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.tags).toEqual([])
+    expect(result.data.properties).toEqual([])
+    expect(result.data.content).toBe('')
   })
 
   it('should validate full input', () => {
@@ -266,9 +265,8 @@ describe('FolderConfigSchema', () => {
   it('should validate empty object with defaults', () => {
     const result = FolderConfigSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.inherit).toBe(true)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.inherit).toBe(true)
   })
 
   it('should validate full config', () => {

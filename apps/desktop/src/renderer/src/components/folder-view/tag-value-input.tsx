@@ -116,6 +116,7 @@ export function TagValueInput({
           <Input
             ref={inputRef}
             type="text"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox/listbox pattern over a custom popup; native select/datalist cannot render these rows
             role="combobox"
             aria-label={placeholder}
             aria-expanded={showList}
@@ -153,6 +154,7 @@ export function TagValueInput({
       >
         <ul
           id={listId}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- ARIA combobox/listbox pattern over a custom popup; native select/datalist cannot render these rows; ARIA listbox pattern for the custom suggestion popup
           role="listbox"
           aria-label={t('phaseF.componentsFolderViewFilterRow.tagSuggestions')}
         >
@@ -163,6 +165,7 @@ export function TagValueInput({
                 <button
                   id={`${listId}-${index}`}
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA combobox/listbox pattern over a custom popup; native select/datalist cannot render these rows
                   role="option"
                   aria-selected={index === activeIndex}
                   onClick={() => commit(tag)}

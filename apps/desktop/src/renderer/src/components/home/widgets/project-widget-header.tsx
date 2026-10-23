@@ -47,6 +47,7 @@ export function ProjectWidgetTabs({
   )
 
   return (
+    // oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- tablist container is not focusable by design; roving tabindex lives on the tabs
     <div
       ref={listRef}
       role="tablist"

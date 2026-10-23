@@ -134,7 +134,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
       void notesService
         .update({ id: noteId, emoji: icon })
         .then(() => hub.refresh())
-        .catch((error) => log.error('Failed to set note icon', extractErrorMessage(error)))
+        .catch((error: unknown) => log.error('Failed to set note icon', extractErrorMessage(error)))
     },
     [hub]
   )
@@ -287,6 +287,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const tabCounts = useMemo(
     () => ({
       ...hub.counts,
+      // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
       all: allSource ? buildAllRows({ ...allSource, now: new Date(), showDone }).length : 0
     }),
     [hub.counts, allSource, showDone]

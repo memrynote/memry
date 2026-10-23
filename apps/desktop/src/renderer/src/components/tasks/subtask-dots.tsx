@@ -116,6 +116,7 @@ export const SubtaskDots = ({
       <div className="flex gap-0.5">
         {Array.from({ length: total }).map((_, i) => (
           <div
+            // oxlint-disable-next-line react/no-array-index-key -- one dot per subtask position, no identity
             key={i}
             className={cn(
               'w-1.5 h-1.5 rounded-full transition-colors',

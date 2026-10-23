@@ -11,7 +11,12 @@
  */
 
 export type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
 
 export type VersionedObject = Readonly<{ [key: string]: JsonValue }>
 

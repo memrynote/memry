@@ -211,11 +211,13 @@ const ShortcutCombo = ({ keys }: { keys: string[] }): React.JSX.Element => {
     <span className="inline-flex items-center gap-1">
       {keys.map((key, index) =>
         key === 'then' ? (
+          // oxlint-disable-next-line react/no-array-index-key -- static shortcut table; index disambiguates repeated keys/titles and the list never reorders
           <span key={`${key}-${index}`} className="px-0.5 text-[11px] text-muted-foreground/70">
             {t('shortcuts.then')}
           </span>
         ) : (
           <kbd
+            // oxlint-disable-next-line react/no-array-index-key -- static shortcut table; index disambiguates repeated keys/titles and the list never reorders
             key={`${key}-${index}`}
             className={cn(
               'inline-flex min-w-6 items-center justify-center rounded border border-border',
@@ -274,6 +276,7 @@ export const KeyboardShortcutsDialog = ({
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {shortcutGroups.map((group, groupIndex) => (
               <section
+                // oxlint-disable-next-line react/no-array-index-key -- static shortcut table; index disambiguates repeated keys/titles and the list never reorders
                 key={`${group.title}-${groupIndex}`}
                 className="rounded-lg border border-border bg-card/60 p-4 shadow-sm"
               >
@@ -288,6 +291,7 @@ export const KeyboardShortcutsDialog = ({
                 <div className="space-y-2">
                   {group.shortcuts.map((shortcut, shortcutIndex) => (
                     <div
+                      // oxlint-disable-next-line react/no-array-index-key -- static shortcut table; index disambiguates repeated keys/titles and the list never reorders
                       key={`${shortcut.description}-${shortcutIndex}`}
                       className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/45"
                     >

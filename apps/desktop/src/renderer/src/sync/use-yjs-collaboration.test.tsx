@@ -134,9 +134,7 @@ describe('useYjsCollaboration', () => {
 
     const { result, unmount } = renderHook(() => useYjsCollaboration({ noteId: 'note-missing' }))
 
-    await waitFor(() => {
-      expect(result.current.isReady).toBe(true)
-    })
+    await waitFor(() => expect(result.current.isReady).toBe(true))
 
     expect(result.current.fragment).toBeNull()
     expect(result.current.provider).toBeNull()
@@ -321,7 +319,9 @@ describe('useYjsCollaboration', () => {
     const { result, rerender } = renderHook((props) => useYjsCollaboration(props), {
       initialProps: { noteId: 'note-strict', enabled: true }
     })
-    await waitFor(() => expect(result.current.isReady).toBe(true))
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true)
+    })
     const doc = result.current.doc
 
     // Toggling `enabled` off and on inside one act is the same cleanup + setup

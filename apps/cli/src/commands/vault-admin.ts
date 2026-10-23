@@ -7,7 +7,7 @@ import {
   requireFirst,
   type CliIo,
   type ParsedCli
-} from '../run.ts'
+} from '../cli-support.ts'
 
 const usage =
   'Usage: memrynote [--vault <path>] vault reindex|set-icon <icon|null>|activity list|clear|locks list|set'

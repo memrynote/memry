@@ -12,7 +12,6 @@ import {
   parseExpression,
   validateExpression,
   ParseError,
-  type ASTNode,
   type LiteralNode,
   type IdentifierNode,
   type MemberNode,
@@ -898,8 +897,12 @@ describe('expression-parser', () => {
       })
 
       it('should throw on null-like input', () => {
-        expect(() => parseExpression(null as unknown as string)).toThrow()
-        expect(() => parseExpression(undefined as unknown as string)).toThrow()
+        expect(() => parseExpression(null as unknown as string)).toThrow(
+          'Expression cannot be empty'
+        )
+        expect(() => parseExpression(undefined as unknown as string)).toThrow(
+          'Expression cannot be empty'
+        )
       })
     })
 
@@ -958,24 +961,28 @@ describe('expression-parser', () => {
 
     describe('ParseError properties', () => {
       it('should include position in error', () => {
+        let e: unknown
         try {
           parseExpression('1 + @ 2')
           expect.fail('Should have thrown')
-        } catch (e) {
-          expect(e).toBeInstanceOf(ParseError)
-          expect((e as ParseError).position).toBeDefined()
-          expect(typeof (e as ParseError).position).toBe('number')
+        } catch (thrown) {
+          e = thrown
         }
+        expect(e).toBeInstanceOf(ParseError)
+        expect((e as ParseError).position).toBeDefined()
+        expect(typeof (e as ParseError).position).toBe('number')
       })
 
       it('should include descriptive message', () => {
+        let e: unknown
         try {
           parseExpression('1 +')
           expect.fail('Should have thrown')
-        } catch (e) {
-          expect(e).toBeInstanceOf(ParseError)
-          expect((e as ParseError).message).toBeTruthy()
+        } catch (thrown) {
+          e = thrown
         }
+        expect(e).toBeInstanceOf(ParseError)
+        expect((e as ParseError).message).toBeTruthy()
       })
     })
   })

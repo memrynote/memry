@@ -97,7 +97,7 @@ describe('readwise device-local state', () => {
     const queued = result.sqlite.prepare('SELECT type, item_id FROM sync_queue').all()
     expect(queued).toEqual([expect.objectContaining({ type: 'settings' })])
     expect(JSON.stringify(queued)).not.toContain('readwise')
-    expect(RECORD_SYNC_ITEM_TYPES.some((t) => String(t).includes('readwise'))).toBe(false)
+    expect(RECORD_SYNC_ITEM_TYPES.some((t) => t.includes('readwise'))).toBe(false)
   })
 })
 

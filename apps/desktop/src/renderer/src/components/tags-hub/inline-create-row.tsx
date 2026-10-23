@@ -133,6 +133,7 @@ export function InlineCreateRow({
             <PopoverContent align="start" className="w-auto p-2">
               <div className="space-y-1.5">
                 {COLOR_ROWS.map((row, rowIndex) => (
+                  // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                   <div key={rowIndex} className="flex gap-1.5">
                     {row.map((colorName) => (
                       <button

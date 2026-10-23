@@ -106,11 +106,11 @@ export const PrioritySelect = ({
             <kbd className="inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-0.5 text-[10px]">
               ↓
             </kbd>
-            <span className="ml-1">{tPhaseF('phaseF.componentsTasksPrioritySelect.navigate')}</span>
-            <kbd className="ml-2 inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-1 text-[10px]">
+            <span className="ms-1">{tPhaseF('phaseF.componentsTasksPrioritySelect.navigate')}</span>
+            <kbd className="ms-2 inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-1 text-[10px]">
               ↵
             </kbd>
-            <span className="ml-1">{tPhaseF('phaseF.componentsTasksPrioritySelect.select')}</span>
+            <span className="ms-1">{tPhaseF('phaseF.componentsTasksPrioritySelect.select')}</span>
           </div>
         </Picker.Footer>
       </Picker.Content>

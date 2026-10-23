@@ -13,7 +13,8 @@ import { eq, and, isNotNull, lte, isNull } from 'drizzle-orm'
 import { createLogger } from '../lib/logger'
 import { registerMinuteTick, unregisterMinuteTick, hasMinuteTick } from '../lib/minute-tick'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getDatabase, requireDatabase } from '../database'
+import type { getDatabase } from '../database'
+import { requireDatabase } from '../database'
 import { getStatus } from '../vault'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
@@ -78,7 +79,7 @@ function resolveAttachmentUrl(path: string | null): string | null {
   if (!path) return null
   // Import dynamically to avoid circular dependency
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // oxlint-disable-next-line typescript/no-require-imports
     const { resolveAttachmentUrl: resolve } = require('./attachments')
     return resolve(path)
   } catch {

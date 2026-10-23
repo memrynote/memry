@@ -40,10 +40,16 @@ const STAGE_FOCUS: Record<ModuleKey, StageFocus> = {
 }
 
 /** Steps whose own forms own the keyboard; Enter and Esc stay with them. */
-const SELF_KEYED: StepId[] = ['account', 'ready', 'vault']
+const SELF_KEYED: ReadonlySet<StepId> = new Set(['account', 'ready', 'vault'])
 
 /** Steps whose Continue hint is a button that moves on, like their Enter key. */
-const HINT_CONTINUES: StepId[] = ['theme', 'modules', 'import', 'agent', 'storage']
+const HINT_CONTINUES: ReadonlySet<StepId> = new Set([
+  'theme',
+  'modules',
+  'import',
+  'agent',
+  'storage'
+])
 
 /** Hints before Continue and Back: the keys that move through the step's options. */
 const DEFAULT_CHOICE_HINTS: [string[], string][] = [[['↑', '↓'], 'choose']]
@@ -79,7 +85,7 @@ function useWizardKeys(state: WizardState, back: () => void): void {
         back()
         return
       }
-      if (event.key !== 'Enter' || SELF_KEYED.includes(state.step)) return
+      if (event.key !== 'Enter' || SELF_KEYED.has(state.step)) return
       // Enter on an option or on nothing focused continues, as the hint says.
       const target = event.target as HTMLElement | null
       if (target && target !== document.body && !target.hasAttribute('data-wizard-option')) return
@@ -115,7 +121,7 @@ export function OnboardingWizard(): React.JSX.Element {
   const props = { state, dispatch }
   const key = (name: string): string => t(`onboardingWizard.keys.${name}`)
   const backHint: KeyHint = { keys: ['esc'], label: key('back'), onPress: back }
-  const continueHint: KeyHint = HINT_CONTINUES.includes(state.step)
+  const continueHint: KeyHint = HINT_CONTINUES.has(state.step)
     ? {
         keys: ['↵'],
         label: key('continue'),
@@ -133,7 +139,7 @@ export function OnboardingWizard(): React.JSX.Element {
   const hints: KeyHint[] =
     state.step === 'welcome'
       ? []
-      : SELF_KEYED.includes(state.step)
+      : SELF_KEYED.has(state.step)
         ? [backHint]
         : [...lead, continueHint, backHint]
   // A module that is off has no pane to show: fall back to Home, or Journal without it.

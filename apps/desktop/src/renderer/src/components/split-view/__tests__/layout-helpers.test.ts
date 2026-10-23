@@ -19,12 +19,11 @@ describe('layout-helpers', () => {
       const result = insertSplitAtGroup(layout, 'g1', 'g2', 'horizontal')
 
       expect(result.type).toBe('split')
-      if (result.type === 'split') {
-        expect(result.direction).toBe('horizontal')
-        expect(result.ratio).toBe(0.5)
-        expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
-        expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g2' })
-      }
+      if (result.type !== 'split') throw new Error('expected: result.type === "split"')
+      expect(result.direction).toBe('horizontal')
+      expect(result.ratio).toBe(0.5)
+      expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
+      expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g2' })
     })
 
     it('creates vertical split from leaf', () => {
@@ -33,9 +32,8 @@ describe('layout-helpers', () => {
       const result = insertSplitAtGroup(layout, 'g1', 'g2', 'vertical')
 
       expect(result.type).toBe('split')
-      if (result.type === 'split') {
-        expect(result.direction).toBe('vertical')
-      }
+      if (result.type !== 'split') throw new Error('expected: result.type === "split"')
+      expect(result.direction).toBe('vertical')
     })
 
     it('inserts at nested position', () => {
@@ -50,15 +48,14 @@ describe('layout-helpers', () => {
       const result = insertSplitAtGroup(layout, 'g2', 'g3', 'vertical')
 
       expect(result.type).toBe('split')
-      if (result.type === 'split') {
-        expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
-        expect(result.second.type).toBe('split')
-        if (result.second.type === 'split') {
-          expect(result.second.direction).toBe('vertical')
-          expect(result.second.first).toEqual({ type: 'leaf', tabGroupId: 'g2' })
-          expect(result.second.second).toEqual({ type: 'leaf', tabGroupId: 'g3' })
-        }
-      }
+      if (result.type !== 'split') throw new Error('expected: result.type === "split"')
+      expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
+      expect(result.second.type).toBe('split')
+      if (result.second.type !== 'split')
+        throw new Error('expected: result.second.type === "split"')
+      expect(result.second.direction).toBe('vertical')
+      expect(result.second.first).toEqual({ type: 'leaf', tabGroupId: 'g2' })
+      expect(result.second.second).toEqual({ type: 'leaf', tabGroupId: 'g3' })
     })
 
     it('respects position=first', () => {
@@ -66,10 +63,9 @@ describe('layout-helpers', () => {
 
       const result = insertSplitAtGroup(layout, 'g1', 'g2', 'horizontal', 'first')
 
-      if (result.type === 'split') {
-        expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g2' })
-        expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g1' })
-      }
+      if (result.type !== 'split') throw new Error('expected: result.type === "split"')
+      expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g2' })
+      expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g1' })
     })
 
     it('returns layout unchanged for non-matching group', () => {
@@ -114,10 +110,10 @@ describe('layout-helpers', () => {
       const result = removeGroupFromLayout(layout, 'g2')
 
       expect(result).not.toBeNull()
-      if (result && result.type === 'split') {
-        expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
-        expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g3' })
-      }
+      if (!(result && result.type === 'split'))
+        throw new Error('expected: result && result.type === "split"')
+      expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
+      expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g3' })
     })
 
     it('returns null when removing the only leaf', () => {
@@ -217,9 +213,8 @@ describe('layout-helpers', () => {
 
       const result = updateRatioAtPath(layout, [], 0.7)
 
-      if (result.type === 'split') {
-        expect(result.ratio).toBe(0.7)
-      }
+      if (result.type !== 'split') throw new Error('expected: result.type === "split"')
+      expect(result.ratio).toBe(0.7)
     })
 
     it('updates ratio at nested path', () => {
@@ -239,10 +234,10 @@ describe('layout-helpers', () => {
 
       const result = updateRatioAtPath(layout, [1], 0.3)
 
-      if (result.type === 'split' && result.second.type === 'split') {
-        expect(result.second.ratio).toBe(0.3)
-        expect(result.ratio).toBe(0.5) // parent unchanged
-      }
+      if (!(result.type === 'split' && result.second.type === 'split'))
+        throw new Error('expected: result.type === "split" && result.second.type === "split"')
+      expect(result.second.ratio).toBe(0.3)
+      expect(result.ratio).toBe(0.5) // parent unchanged
     })
   })
 

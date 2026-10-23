@@ -199,6 +199,6 @@ describe('openPackFile', () => {
   it('closes the file handle when opening fails', async () => {
     const file = path.join(dir, 'bad.pack')
     await fs.writeFile(file, Buffer.alloc(10))
-    await expect(openPackFile(file)).rejects.toThrow()
+    await expect(openPackFile(file)).rejects.toThrow('pack too small')
   })
 })

@@ -17,6 +17,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
+import type * as CrdtWritebackModule from '../sync/crdt-writeback'
 
 const mocks = vi.hoisted(() => ({
   isWritebackIgnored: vi.fn(() => true),
@@ -41,7 +42,7 @@ vi.mock('../notes/runtime-effects', () => ({
   queueEmbeddedVaultFiles: vi.fn()
 }))
 vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sync/crdt-writeback')>()),
+  ...(await importOriginal<typeof CrdtWritebackModule>()),
   isWritebackIgnored: mocks.isWritebackIgnored
 }))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))

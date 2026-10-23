@@ -1166,7 +1166,7 @@ const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Resp
   })
 
   // Decode per note: an unusable payload is that note's result, not the batch's.
-  const results = new Array<SnapshotBatchOutcome | undefined>(parsed.snapshots.length)
+  const results = Array.from<SnapshotBatchOutcome | undefined>({ length: parsed.snapshots.length })
   const decoded: Array<{
     index: number
     noteId: string

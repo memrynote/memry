@@ -40,6 +40,7 @@ export function useTags() {
 
   useEffect(() => {
     mountedRef.current = true
+    // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
     void fetchTags()
     return () => {
       mountedRef.current = false

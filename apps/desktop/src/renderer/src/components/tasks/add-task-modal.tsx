@@ -238,6 +238,7 @@ function AddTaskModalSession({
         <div className="px-5 pt-4 pb-1">
           <input
             ref={titleInputRef}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
             autoFocus
             value={formData.title}
             onChange={handleTitleChange}

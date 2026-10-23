@@ -68,6 +68,13 @@ const RegularTabComponent = ({
     setActiveTab(tab.id, groupId)
   }, [setActiveTab, tab.id, groupId])
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      if (e.key === 'Enter' && e.target === e.currentTarget) handleClick()
+    },
+    [handleClick]
+  )
+
   const handleClose = useCallback(
     (e: React.MouseEvent): void => {
       e.stopPropagation()
@@ -110,6 +117,7 @@ const RegularTabComponent = ({
         className
       )}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

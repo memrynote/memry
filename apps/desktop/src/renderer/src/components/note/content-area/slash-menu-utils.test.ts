@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildTableContent, orderSlashMenuItemsByGroup } from './slash-menu-utils'
 
-const groups = <T extends { group?: string }>(items: T[]) => items.map((i) => i.group)
+const groups = (items: Array<{ group?: string }>) => items.map((i) => i.group)
 
 describe('orderSlashMenuItemsByGroup', () => {
   it('collapses non-contiguous duplicate groups into one contiguous run', () => {

@@ -223,14 +223,14 @@ export const markBootstrapFullText = (): void => {
     const durationMs = Date.now() - finished.startedAt
 
     void statsProvider()
-      .catch((error): BootstrapVaultStats => {
+      .catch((error: unknown): BootstrapVaultStats => {
         logger.debug('Bootstrap stats provider failed', { error })
         return { noteCount: null, vaultSizeBytes: null }
       })
       .then((stats) => {
         emitCompletion(finished, durationMs, stats)
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         logger.warn('Bootstrap completion emit failed', { error })
       })
   } catch (error) {

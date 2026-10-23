@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "email dev --dir emails --port 3006",
     "test:copy": "node scripts/check-campaign-copy.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "node ../../scripts/typecheck.mjs",
     "build": "email export --dir emails --outDir out"
   },
   "dependencies": {
@@ -19,6 +19,6 @@
     "@memry/typescript-config": "workspace:*",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
-    "typescript": "~5.9.3"
+    "typescript": "^7.0.2"
   }
 }

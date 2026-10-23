@@ -672,7 +672,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
         const service = getJournalSyncService()
         enqueueDeleteOrDefer(
           'journal',
-          service && { enqueueDelete: (id: string) => service.enqueueDelete(id, date) },
+          service && {
+            enqueueDelete: (id: string) => service.enqueueDelete(id, date)
+          },
           itemId
         )
       }

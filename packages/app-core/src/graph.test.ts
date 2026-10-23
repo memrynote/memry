@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { createGraphService } from './graph.ts'
 import type { NoteRecord, NotesService } from './service-types.ts'
-import type { TasksService } from './tasks.ts'
+import type { TasksService } from './tasks-types.ts'
 
 function note(id: string, title: string, content: string): NoteRecord {
   return {

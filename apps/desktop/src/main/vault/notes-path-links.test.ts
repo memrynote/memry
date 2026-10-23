@@ -12,6 +12,9 @@ import type { DataDb } from '@main/database/types'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as projections from '../projections'
+import type * as IndexModule from './index'
+import type * as DatabaseModule from '../database'
+import type * as NotesModule from './notes'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -61,9 +64,9 @@ describe('path-form wiki-links follow their target (#2562)', () => {
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
-  let vaultIndex: typeof import('./index')
-  let database: typeof import('../database')
-  let notes: typeof import('./notes')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let notes: typeof NotesModule
 
   beforeEach(async () => {
     // Create fresh test fixtures

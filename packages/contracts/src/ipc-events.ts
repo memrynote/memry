@@ -121,7 +121,11 @@ export interface QueueClearedEvent {
  * keeps retrying, so the session may still recover.
  */
 export type SessionExpiredReason =
-  'token_expired' | 'device_revoked' | 'server_error' | 'refresh_rejected' | 'credentials_missing'
+  | 'token_expired'
+  | 'device_revoked'
+  | 'server_error'
+  | 'refresh_rejected'
+  | 'credentials_missing'
 
 export interface SessionExpiredEvent {
   reason: SessionExpiredReason

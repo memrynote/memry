@@ -4,6 +4,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
+import type * as PathsModule from '../lib/paths'
 
 const mocks = vi.hoisted(() => ({
   yDocToMarkdown: vi.fn(),
@@ -84,7 +85,7 @@ vi.mock('@memry/shared/utc', () => ({
 }))
 
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: (_vault: string, relative: string) =>
     mocks.safeRead(mocks.toAbsolutePath(relative))
 }))

@@ -85,6 +85,7 @@ import {
   parseViewName
 } from './folder-view-state'
 import { useFolderViewCommands } from './folder-view/use-folder-view-commands'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import { useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import {
@@ -192,6 +193,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // past the first page must load every page or its later entries never show.
   useEffect(() => {
     if (hasMore) void loadMore()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [hasMore, loadMore, notes.length])
 
   // Get first note for formula preview in editor
@@ -322,7 +324,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     const query = columnSearchQuery.toLowerCase()
 
     // Get visible column IDs
-    const visibleIds = (activeView?.columns ?? DEFAULT_COLUMNS).map((c) => c.id)
+    const visibleIds = new Set((activeView?.columns ?? DEFAULT_COLUMNS).map((c) => c.id))
 
     // Find matching built-in columns
     const builtInMatches = builtInColumns
@@ -335,7 +337,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       .map((prop) => prop.name)
 
     // Only return columns that are currently visible
-    return [...builtInMatches, ...propMatches].filter((id) => visibleIds.includes(id))
+    return [...builtInMatches, ...propMatches].filter((id) => visibleIds.has(id))
   }, [columnSearchQuery, builtInColumns, availableProperties, activeView])
 
   // Breadcrumb trail starting at the real folder: ancestor folders › current folder
@@ -737,6 +739,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [notesToMove, removeNotesOptimistically, refresh]
   )
 
+  const noteDeleteGuard = useNoteDeleteGuard()
   const deleteTasksChoice = useNoteTasksChoice(deleteDialogOpen, notesToDelete)
   const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
 
@@ -744,6 +747,12 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const handleDeleteConfirm = useCallback(async () => {
     if (notesToDelete.length === 0) return
     const taskIds = carriedTaskIdsToDelete
+
+    // Other notes that show or link these get a say before they go.
+    const proceed = await noteDeleteGuard.confirmNoteDelete(
+      notesToDelete.map((id) => ({ id, title: notes.find((n) => n.id === id)?.title ?? '' }))
+    )
+    if (!proceed) return
 
     setIsDeleting(true)
 
@@ -793,6 +802,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     }
   }, [
     notesToDelete,
+    notes,
+    noteDeleteGuard,
     carriedTaskIdsToDelete,
     removeNotesOptimistically,
     refresh,
@@ -1011,6 +1022,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
                   style={{ backgroundColor: tagColors?.text }}
                 />
                 {tagSegments.map((segment, i) => (
+                  // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no identity beyond position
                   <Fragment key={i}>
                     {i > 0 && <span className="opacity-50">/</span>}
                     <span className="truncate">{segment}</span>
@@ -1042,6 +1054,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             <div className="relative w-48">
               <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of an inline editor/search field
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1311,7 +1324,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagRemove={handleTagRemove}
               onSetIcon={rowActions.onSetIcon}
               tagMetaMap={tagMetaMap}
-              onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
+              onPropertyUpdate={(...args) => handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
               onDisplayNameChange={(...args) => void updateDisplayName(...args)}
@@ -1349,7 +1362,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               onTagRemove={handleTagRemove}
               onSetIcon={rowActions.onSetIcon}
               tagMetaMap={tagMetaMap}
-              onPropertyUpdate={(...args) => void handlePropertyUpdate(...args)}
+              onPropertyUpdate={(...args) => handlePropertyUpdate(...args)}
               onColumnsChange={(...args) => void updateColumns(...args)}
               onSortingChange={(...args) => void updateSorting(...args)}
               onDisplayNameChange={(...args) => void updateDisplayName(...args)}
@@ -1427,6 +1440,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {noteDeleteGuard.dialog}
 
       {/* Move to Folder Dialog - Phase 27 */}
       <MoveToFolderDialog
@@ -1528,6 +1543,7 @@ function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): Re
       </div>
       {/* Row skeletons */}
       {Array.from({ length: rowCount }).map((_, i) => (
+        // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no identity beyond position
         <div key={i} className="flex gap-4">
           {columns.map((col) => (
             <Skeleton key={col.id} className="h-8" style={{ width: col.width ?? 150 }} />

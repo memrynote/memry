@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as ProjectionsModule from '../projections'
 
 const mocks = vi.hoisted(() => ({
   sent: [] as Array<{ channel: string; payload: unknown }>,
@@ -243,7 +244,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 }))
 
 vi.mock('../projections', async () => {
-  const actual = await vi.importActual<typeof import('../projections')>('../projections')
+  const actual = await vi.importActual<typeof ProjectionsModule>('../projections')
   return {
     // The real predicate: a mocked one would let a broken failure marker pass.
     isReconcileFailure: actual.isReconcileFailure,

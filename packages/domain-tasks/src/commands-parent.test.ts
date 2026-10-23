@@ -48,8 +48,10 @@ describe('createTasksCommands — where a task may sit', () => {
       const result = await commands.moveTask({ taskId, targetParentId: parentId, position: 0 })
       expect(result.success).toBe(expected)
       if (!expected) {
+        /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
         expect(result.error).toBe('errors:task.invalidParent')
         expect(repository.moveTask).not.toHaveBeenCalled()
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     }
   })

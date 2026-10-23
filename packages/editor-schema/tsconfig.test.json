@@ -6,6 +6,12 @@
   // assertion ever runs), so the tests being typechecked is part of the gate.
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    // tsconfig.json references this project so the oxlint type gate can find the
+    // program of the test files it excludes; a referenced project must be composite
+    // and cannot disable emit (nothing is emitted: the gate only checks).
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
     "types": ["node"]
   },
   "include": ["src/**/*", "vitest.config.ts"],

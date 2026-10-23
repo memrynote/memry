@@ -8,11 +8,8 @@ import {
 } from '@tests/utils/test-db'
 import { READWISE_OPTIONS_DEFAULTS } from '@memry/contracts/import-channels'
 import { SyncQueueManager } from '@memry/sync-client/queue'
-import {
-  SettingsSyncManager,
-  initSettingsSyncManager,
-  resetSettingsSyncManager
-} from '@memry/sync-client/settings-sync'
+import type { SettingsSyncManager } from '@memry/sync-client/settings-sync'
+import { initSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import type { DataDb } from '../database/types'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { getFullPassPending, setFullPassPending } from './sync-state'

@@ -700,6 +700,113 @@ The consequences are the reason for the shape:
   `{{date:YYYY-MM-DD}}` and the other tokens across the whole body, fence
   included, so a filter written against them is fixed when the entry is created.
 
+### 12.6.3 The portal block is a code fence
+
+**Normative.** A portal (a live window onto part of another note, or the blocks a
+search finds) is **not a block type** either. It is a `codeBlock` whose `language`
+is `memry-portal`, with its definition (format v1) as JSON
+(`packages/shared/src/portal-block.ts:223-232`):
+
+````
+```memry-portal
+{
+  "v": 1,
+  "note": "<noteId>",
+  "blocks": ["k3x9a2", "p8m2qa"],
+  "open": { "k3x9a2": { "show": ["n4c8x1"] } }
+}
+```
+````
+
+| Key      | Value                                                                                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v`      | `1`. A reader MUST accept an absent `v` as 1; a writer always emits it                                                                                                                             |
+| `note`   | the source note's id, not its path, so the portal survives a rename or move                                                                                                                        |
+| `blocks` | the **root** anchors (below), without the caret, in portal order, all in the source note. Entries that are not anchors, and repeats, are dropped on read. Absent or empty: the whole note          |
+| `hide`   | whole-note portals only (no `blocks`): the anchors of blocks the portal leaves out, with everything under them. Entries that are not anchors, and repeats, are dropped on read. Omitted when empty |
+| `open`   | which blocks show their children: a map from a block's anchor to `{ "hide": [anchors] }` or `{ "show": [anchors] }`. An entry that is neither is dropped on read                                   |
+| `search` | instead of `note`: `{ "text"?, "tag"?, "limit"? }`, at least one of `text` and `tag`; `limit` defaults to 50, at most 200. Carries no `blocks` or `open`                                           |
+
+Writers emit two-space JSON with the keys in the order `v`, `note`, `blocks`,
+`open`, then any key they do not manage; `open` is omitted when empty and `blocks`
+when the portal shows the whole note. A whole-note portal writes `v`, `note`, `hide`
+instead, `hide` omitted when empty (`packages/shared/src/portal-block.ts:197-232`). The search form is
+`{ "v": 1, "search": { ... } }` (`packages/shared/src/portal-block.ts:197-216`).
+
+**Open modes.** A block that is absent from `open` is **collapsed**: its children
+are not shown. `{"hide": [..]}` shows every child except the listed ones, so an
+empty list shows all of them. `{"show": [..]}` shows only the listed children. A
+block inserted through a picker is a root and collapsed, so it appears in `blocks`
+and not in `open` (`packages/shared/src/portal-block.ts:138-148`).
+
+**Anchors.** A block is addressable when its text ends with a space, a caret and
+an anchor, ` ^k3x9a2`. The anchor matches `[a-z0-9][a-z0-9-]{3,31}`, and the
+caret MUST follow whitespace or start the text, so `x^abcd` is not an anchor
+(`packages/shared/src/portal-block.ts:84-86`, `:112-115`). An anchor is ordinary text: it round-trips as any
+paragraph does (§12.6, `portalCases` in `packages/editor-schema/src/conformance.ts`),
+and `^id` text that already exists in a vault keeps the meaning it had. A writer
+stamps an anchor only on a block that must be referenced: one that becomes a root,
+one listed in a `hide` or `show` list, or one created through a portal in show-mode.
+
+**No schema change.** As for the view block (§12.6.1), the §12.9 registry is
+unchanged, there is no write-version floor, and no client can meet a node name
+it would delete. An older build shows the fence as code and writes the same
+bytes back.
+
+**Readers are tolerant.** A reader MUST keep keys it does not know and write
+them back when it rewrites the definition (`packages/shared/src/portal-block.ts:223-232`). A body that is not JSON
+or has no usable target is shown as invalid with its bytes left alone
+(`packages/shared/src/portal-block.ts:180-195`).
+
+**Visibility.** Given a note or blocks target and the source note's block list in
+document order (the `extract_blocks` shape, §12.11), a block's _parent_ is the
+nearest earlier block with a smaller depth (`packages/shared/src/portal-resolve.ts:82-90`). A block is **visible**
+if and only if it is a root, or its parent is visible, its parent's anchor is a
+key of `open`, and either that entry is `hide` and the block's anchor is not
+listed, or it is `show` and the block's anchor is listed. A block with no anchor
+can therefore be visible only as a root or under a `hide` entry
+(`packages/shared/src/portal-resolve.ts:91-106`). A note target (no `blocks`) shows every block except those its `hide` list
+removes: a block whose anchor is in `hide` (the first block in document order to own
+that anchor) and all its descendants, the blocks after it up to the next block at its
+depth or shallower. A `hide` entry that names no block changes nothing. A note target
+has no `open` and no folding (`packages/shared/src/portal-resolve.ts`, `resolveNote`).
+
+**Resolution.** A client computes the result as follows (`packages/shared/src/portal-resolve.ts:53-123`):
+
+1. A root's block is the **first** block in document order whose text, the
+   concatenation of its inline runs, ends with ` ^anchor`. A later block carrying
+   the same anchor owns nothing (`packages/shared/src/portal-resolve.ts:62-73`).
+2. A root anchor that matches no block is ignored. If none matches the status is
+   `missing-block` and no block is shown (`packages/shared/src/portal-resolve.ts:75-80`).
+3. The shown blocks are the visible blocks, in the source's document order,
+   whatever the order of `blocks`.
+4. A search target resolves `invalid`: its blocks are computed by the caller
+   (`packages/shared/src/portal-resolve.ts:57`).
+
+**Hidden counts.** Alongside the shown blocks a resolver returns two lists
+(`packages/shared/src/portal-resolve.ts:107-120`):
+
+- `hidden.siblings`: the blocks that share a parent with some root and are not
+  visible, in document order. For a note target with `hide`: the outermost hidden
+  blocks in document order (a block hidden only through a hidden ancestor is not
+  listed);
+- `hidden.children`: for each visible block with an anchor, keyed by that anchor,
+  its children that are not visible. Empty for a note target.
+
+A client draws "N hidden" rows from these. A visible block without an anchor has
+no key; a client stamps one before it can expand that block.
+
+`missing-note`, `locked`, `not-synced`, `cycle` (the source is already on the
+chain of notes being drawn) and `too-deep` (more than three portals nested,
+`PORTAL_MAX_DEPTH`, `packages/shared/src/portal-block.ts:47`) are decided by the caller before it has a block
+list. The Rust core (`crates/memry-core`, the `portal` module) implements the
+resolution over `Notes.blocks`, and the iOS app draws the resulting slice
+read-only with an action that opens the source note. Both are held to
+`packages/contracts/test-vectors/portal-resolve.json`, whose cases pin collapsed
+roots, several roots, show-mode, hide-mode, nested `open`, anchors split across
+inline runs, duplicate anchors, unknown keys, a missing block, and a note target's
+`hide` list (nested, unknown and duplicate anchors).
+
 ## 12.7 Inline grammar
 
 **Normative:**

@@ -52,7 +52,7 @@ const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
 
 /** Base64 to a binary string, one char per byte. */
 function atob(input: string): string {
-  const clean = String(input).replace(/[^A-Za-z0-9+/]/g, '')
+  const clean = input.replace(/[^A-Za-z0-9+/]/g, '')
   let out = ''
   let bits = 0
   let value = 0
@@ -69,7 +69,7 @@ function atob(input: string): string {
 
 /** A binary string, one char per byte, to base64. */
 function btoa(input: string): string {
-  const text = String(input)
+  const text = input
   let out = ''
   for (let i = 0; i < text.length; i += 3) {
     const a = text.charCodeAt(i)

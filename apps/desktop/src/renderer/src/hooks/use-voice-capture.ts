@@ -11,7 +11,11 @@ export type VoiceCaptureState = 'idle' | 'requesting-permission' | 'recording' |
  * with its own namespace/tone (inline recorder panel vs. composer toast).
  */
 export type VoiceCaptureErrorKind =
-  'permission-denied' | 'no-microphone' | 'access-failed' | 'start-failed' | 'recorder-failed'
+  | 'permission-denied'
+  | 'no-microphone'
+  | 'access-failed'
+  | 'start-failed'
+  | 'recorder-failed'
 
 export interface VoiceCaptureError {
   kind: VoiceCaptureErrorKind
@@ -60,6 +64,7 @@ function toCaptureError(cause: unknown): VoiceCaptureError {
  */
 export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
   const optionsRef = useRef(options)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   optionsRef.current = options
 
   const [state, setState] = useState<VoiceCaptureState>('idle')

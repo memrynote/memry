@@ -144,10 +144,9 @@ export function DayTimeline({
         </ul>
       )}
       <div className="relative">
-        <div
+        <section
           ref={scrollRef}
           data-testid="day-timeline-scroll"
-          role="region"
           aria-label={t('dayTimeline.label')}
           className="relative overflow-y-auto overscroll-contain rounded-md border border-border/40"
           style={{ height: VISIBLE_HOURS * H }}
@@ -215,7 +214,7 @@ export function DayTimeline({
               )}
             </div>
           </div>
-        </div>
+        </section>
         {hasDragContext && includeTasks && (
           <DropLayer
             date={date}

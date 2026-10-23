@@ -196,7 +196,7 @@ function InlineDiffApproval({
         setPreview(result)
         setCandidate(result.preview.body?.candidate ?? result.candidate)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (!cancelled) setError(extractErrorMessage(err, t('agentChat.diff.previewError')))
       })
 

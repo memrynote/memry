@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'
 import { useT } from '@memry/i18n/renderer'
 
+const EMPTY_FOLDERS: FolderType[] = []
+
 interface InlineQuickFileProps {
   query: string
   onQueryChange: (query: string) => void
@@ -24,7 +26,7 @@ const InlineQuickFile = ({
   onCancel,
   onArrowDown,
   onArrowUp,
-  filteredFolders = [],
+  filteredFolders = EMPTY_FOLDERS,
   onFolderSelect,
   className
 }: InlineQuickFileProps): React.JSX.Element => {

@@ -22,7 +22,10 @@ import {
   serializeBookmark,
   serializeCalloutBlock,
   setCalloutTypeDefinitions,
-  serializeYoutubeEmbed
+  serializeYoutubeEmbed,
+  DEFAULT_IMAGE_PREVIEW_WIDTH,
+  fileBlockCommentData,
+  parseFileBlockMarker
 } from '@memry/editor-schema/blocks'
 import {
   type Block,
@@ -44,11 +47,6 @@ import { serializeBlockColorsMarker } from '@memry/shared/block-colors'
 // Identity for foreign spellings is asserted in `foreign-markdown-roundtrip`
 // and the conformance corpus.
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
-import {
-  DEFAULT_IMAGE_PREVIEW_WIDTH,
-  fileBlockCommentData,
-  parseFileBlockMarker
-} from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
   it('returns empty markdown for an empty Yjs fragment', async () => {

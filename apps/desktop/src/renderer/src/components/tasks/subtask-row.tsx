@@ -32,6 +32,7 @@ export const SubtaskRow = ({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="button"
       tabIndex={onClick ? 0 : -1}
       onClick={() => onClick?.(subtask.id)}
@@ -42,15 +43,16 @@ export const SubtaskRow = ({
         }
       }}
       className={cn(
-        'flex items-center gap-2 border-l-[3px] border-l-transparent',
-        'py-1.5 pl-[44px] pr-3',
-        'hover:bg-muted cursor-pointer rounded-r-sm',
+        'flex items-center gap-2 border-s-[3px] border-s-transparent',
+        'py-1.5 ps-[44px] pe-3',
+        'hover:bg-muted cursor-pointer rounded-e-sm',
         'transition-colors duration-150',
         onClick && 'focus-visible:outline-none',
         className
       )}
       aria-label={`Subtask: ${subtask.title}${isCompleted ? ', completed' : ''}`}
     >
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
       <div onClick={(e) => e.stopPropagation()}>
         <InteractiveStatusIcon
           type={statusType}

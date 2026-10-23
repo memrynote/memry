@@ -49,7 +49,7 @@ function paragraph(content: unknown[]): Block[] {
 /** Save the blocks, load them back, and report the mention URLs that survived. */
 async function survivingUrls(editor: BlockNoteEditor, blocks: Block[]): Promise<string[]> {
   const markdown = await serializeBlocksPreservingBlanks(editor, blocks)
-  const reparsed = await editor.tryParseMarkdownToBlocks(markdown)
+  const reparsed = editor.tryParseMarkdownToBlocks(markdown)
   const { blocks: normalized } = normalizeLinkMentions(reparsed as Block[])
 
   const urls: string[] = []
@@ -114,7 +114,7 @@ describe('a link mention survives the markdown round trip', () => {
     const editor = createEditor()
     const url = "https://x.test/_*!~'()?a=b"
     const first = await serializeBlocksPreservingBlanks(editor, paragraph([mention(url)]))
-    const reparsed = await editor.tryParseMarkdownToBlocks(first)
+    const reparsed = editor.tryParseMarkdownToBlocks(first)
     const { blocks } = normalizeLinkMentions(reparsed as Block[])
     const second = await serializeBlocksPreservingBlanks(editor, blocks)
     expect(second).toBe(first)

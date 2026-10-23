@@ -43,6 +43,9 @@ pub fn vector_file(name: &str) -> Json {
         "record-envelope" => {
             include_str!("../../../../packages/contracts/test-vectors/record-envelope.json")
         }
+        "portal-resolve" => {
+            include_str!("../../../../packages/contracts/test-vectors/portal-resolve.json")
+        }
         "crdt-update" => {
             include_str!("../../../../packages/contracts/test-vectors/crdt-update.json")
         }

@@ -8,7 +8,7 @@ import {
   requireFirst,
   type CliIo,
   type ParsedCli
-} from '../run.ts'
+} from '../cli-support.ts'
 
 function requireProvider(parsed: ParsedCli): string {
   const provider = getFlag(parsed.flags, 'provider') ?? parsed.positionals[0]

@@ -131,7 +131,7 @@ describe('OCR engine', () => {
     vi.resetModules()
     const fresh = await import('./ocr-engine')
     const recognizeText = fresh.recognizeText
-    const crash = (): Promise<unknown> => recognizeText(source).catch((error: Error) => error)
+    const crash = (): Promise<unknown> => recognizeText(source).catch((error: unknown) => error)
     crashOnSpawn.value = true
     try {
       for (let i = 0; i < 3; i++) await crash()
@@ -155,6 +155,7 @@ describe('OCR engine', () => {
     workers[0].answer = () => {}
 
     const stuck = recognizeText(source)
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const outcome = expect(stuck).rejects.toThrow('OCR did not finish in time')
     await vi.advanceTimersByTimeAsync(180_000)
 

@@ -82,6 +82,7 @@ export function useSearch(): UseSearchReturn {
 
     const trimmed = state.query.trim()
     if (!trimmed) {
+      // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
       setState((prev) => ({
         ...prev,
         results: [],

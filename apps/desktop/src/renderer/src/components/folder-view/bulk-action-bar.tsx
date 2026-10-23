@@ -100,11 +100,14 @@ function Divider(): React.JSX.Element {
   return <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 }
 
+const EMPTY_ROWS: BulkActionRow[] = []
+const EMPTY_TAGS: string[] = []
+
 export function BulkActionBar({
   count,
   scope,
-  selectedRows = [],
-  availableTags = [],
+  selectedRows = EMPTY_ROWS,
+  availableTags = EMPTY_TAGS,
   tagMeta,
   onMove,
   onCopyLinks,
@@ -290,6 +293,7 @@ function AddTagButton({
       </PopoverTrigger>
       <PopoverContent align="center" className="w-56 p-1.5">
         <Input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}

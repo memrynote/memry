@@ -28,8 +28,11 @@
  * ProseMirror's parse rules (see BlockNoteSchema's `init`).
  */
 
-import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
-import type { CustomInlineContentImplementation } from '@blocknote/core'
+import {
+  createInlineContentSpec,
+  type InlineContentSpec,
+  type CustomInlineContentImplementation
+} from '@blocknote/core'
 
 export const inlineImageConfig = {
   type: 'inlineImage' as const,

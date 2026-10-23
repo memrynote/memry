@@ -43,8 +43,11 @@
  * what stops it answering yes anywhere the block still belongs.
  */
 
-import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
-import type { CustomInlineContentImplementation } from '@blocknote/core'
+import {
+  createInlineContentSpec,
+  type InlineContentSpec,
+  type CustomInlineContentImplementation
+} from '@blocknote/core'
 
 export const inlineCheckboxConfig = {
   type: 'inlineCheckbox' as const,

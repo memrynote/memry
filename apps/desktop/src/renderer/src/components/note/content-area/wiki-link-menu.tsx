@@ -6,6 +6,7 @@ import type { SuggestionMenuProps } from '@blocknote/react'
 import { FileAudio, FileText, Hash, PenTool, Plus, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { NoteMenuIcon } from './note-menu-icon'
 
 type WikiLinkFileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 type WikiLinkInsertMode = 'wikiLink' | 'embed'
@@ -20,6 +21,8 @@ interface SuggestionBase {
 }
 
 interface NoteFields {
+  /** The note's own icon: an emoji, `icon:<Name>` or `custom:<id>`. */
+  emoji?: string | null
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
@@ -91,6 +94,7 @@ export function WikiLinkMenu({
         'overflow-y-auto rounded-md border bg-popover p-1',
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="listbox"
       aria-label={t('menus.wiki.aria')}
     >
@@ -109,6 +113,7 @@ export function WikiLinkMenu({
             <div
               key={`${item.type}-${item.id}`}
               className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={false}
               aria-disabled
@@ -130,6 +135,7 @@ export function WikiLinkMenu({
               key={`${item.type}-${item.id}`}
               className={itemClassName}
               onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={isSelected}
             >
@@ -151,6 +157,7 @@ export function WikiLinkMenu({
               key={`${item.type}-${item.id}`}
               className={itemClassName}
               onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={isSelected}
             >
@@ -169,6 +176,7 @@ export function WikiLinkMenu({
             <div
               key={`${item.type}-${item.id}-${item.target}`}
               className={itemClassName}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={isSelected}
             >
@@ -217,6 +225,7 @@ export function WikiLinkMenu({
             key={`${item.type}-${item.id}-${item.target}`}
             className={itemClassName}
             onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             role="option"
             aria-selected={isSelected}
           >
@@ -225,6 +234,9 @@ export function WikiLinkMenu({
             ) : null}
             {item.type === 'canvas' ? (
               <PenTool className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+            ) : null}
+            {item.type === 'note' || item.type === 'noteName' ? (
+              <NoteMenuIcon icon={item.emoji} className="size-4" />
             ) : null}
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
               {item.type === 'create' ? (

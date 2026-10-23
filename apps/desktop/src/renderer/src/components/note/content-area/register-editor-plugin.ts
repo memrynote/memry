@@ -53,7 +53,7 @@ function getTiptapEditor(editor: unknown): TiptapEditorLike | undefined {
 function rearmEditorUndoManager(tiptap: TiptapEditorLike): void {
   const state = tiptap.state
   if (!state) return
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   rearmUndoManager(yUndoPluginKey.getState(state as any)?.undoManager)
 }
 

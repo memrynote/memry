@@ -175,6 +175,7 @@ export function TemplateSelector({
                 'placeholder:text-muted-foreground/50',
                 'transition-all duration-200'
               )}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
               autoFocus
             />
           </div>

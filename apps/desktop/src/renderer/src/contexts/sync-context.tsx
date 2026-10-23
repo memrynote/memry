@@ -308,6 +308,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   useEffect(() => {
     if (authState.status !== 'authenticated') {
       dispatch({ type: 'RESET' })
+      // oxlint-disable-next-line react/set-state-in-effect -- sign-out must drop the vault binding in the same pass as the reducer reset
       setVaultBinding(NEUTRAL_BINDING)
       return
     }
@@ -686,6 +687,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   // A session that comes back (sign-in, or main proving it was alive all
   // along) leaves nothing to prompt for.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- reauth prompt clears when the external auth state returns to authenticated
     if (authState.status === 'authenticated') setReauthRequired(false)
   }, [authState.status])
 

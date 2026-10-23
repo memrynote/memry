@@ -27,6 +27,7 @@ function docOf(pieces: (typeof INLINE_TAG_RENAME_CASES)[number]['pieces']): {
 
 describe('renameTagsInDoc shared cases', () => {
   for (const c of INLINE_TAG_RENAME_CASES) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(c.name, () => {
       const { doc, text } = docOf(c.pieces)
       renameTagsInDoc(doc, c.renames)

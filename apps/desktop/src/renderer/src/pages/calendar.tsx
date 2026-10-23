@@ -85,6 +85,7 @@ import { inboxService } from '@/services/inbox-service'
 import { reminderService } from '@/services/reminder-service'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { getI18n } from 'react-i18next'
+import type { CalendarEventReadOnlyMetadata } from '@/components/calendar/calendar-event-popover'
 
 const log = createLogger('CalendarPage')
 
@@ -302,7 +303,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     eventId: string | null
     draft: CalendarEventDraft
     anchorRect: AnchorRect
-    readOnlyMetadata?: import('@/components/calendar/calendar-event-popover').CalendarEventReadOnlyMetadata
+    readOnlyMetadata?: CalendarEventReadOnlyMetadata
   } | null>(null)
   const [inboxSnoozePopoverState, setInboxSnoozePopoverState] = useState<{
     item: CalendarProjectionItem
@@ -368,7 +369,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
     // anchorDate intentionally excluded: entering Day view seeds the date once; the
     // sync effect below keeps it in step while Day view is active.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [view, openForDayView, closeForDayView])
 
   useEffect(() => {
@@ -503,7 +504,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
 
   // Agent Chat links arrive as tab view state; bridge that external navigation signal
   // into Calendar's local view and popover state.
-  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
   useEffect(() => {
     if (!calendarFocusEventId || !calendarFocusDate || calendarFocusToken === null) return
     if (consumedCalendarNavigationRef.current === calendarFocusToken) return
@@ -545,7 +546,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       }
     })
   }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
-  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
 
   // Sidebar "Calendar" click asks for the new-event popover (same as the toolbar +).
   // The nonce re-fires this on every click, even when the tab is already open.
@@ -803,7 +804,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   // write back. Shares the focus token with the native-event effect above.
   const selectFocusedExternalItem = useEffectEvent(handleSelectItem)
   // Reacts to the tab's focus request, like the focus effects above.
-  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (!calendarFocusEventId || calendarFocusToken === null) return
     if (openedCalendarFocusRef.current === calendarFocusToken || rangeQuery.isLoading) return
@@ -820,7 +821,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       height: 1
     })
   }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
-  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
     const tCalendar = getI18n().getFixedT(null, 'calendar')
@@ -1037,7 +1038,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
             previous.dueDate,
             previous.dueTime,
             minutesBetween(previousStartAt, item.endAt)
-          ).catch((err) => {
+          ).catch((err: unknown) => {
             log.error('Failed to undo task reschedule', {
               taskId: item.sourceId,
               error: extractErrorMessage(err)
@@ -1060,7 +1061,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       // Register undo so Cmd+Z restores the previous time (handled globally in App.tsx).
       registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveEvent'), () => {
         void commitEventTimes(item.sourceId, previousStartAt, previousEndAt, item.isAllDay).catch(
-          (err) => {
+          (err: unknown) => {
             log.error('Failed to undo calendar event move', {
               eventId: item.sourceId,
               error: extractErrorMessage(err)

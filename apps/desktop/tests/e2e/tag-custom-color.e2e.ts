@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tag custom color E2E
  *

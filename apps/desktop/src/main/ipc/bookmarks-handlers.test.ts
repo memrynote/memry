@@ -70,7 +70,6 @@ import { registerBookmarksHandlers, unregisterBookmarksHandlers } from './bookma
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
 import * as bookmarkQueries from '@main/database/queries/bookmarks'
 import * as notesQueries from '@main/database/queries/notes'
-import * as tasksQueries from '@main/database/queries/tasks'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,

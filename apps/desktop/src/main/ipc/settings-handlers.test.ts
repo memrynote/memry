@@ -174,6 +174,7 @@ import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 
 const originalPlatform = process.platform
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 function invokeSyncHandler<T>(channel: string, ...args: unknown[]): T {
   const listener = syncListeners.get(channel)
   if (!listener) {
@@ -625,7 +626,7 @@ describe('settings-handlers', () => {
     registerSettingsHandlers()
     await expect(
       invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { summarizeAgent: 'nope' })
-    ).rejects.toThrow()
+    ).rejects.toThrow(/invalid_value/)
     expect(settingsQueries.setSetting).not.toHaveBeenCalledWith(
       {},
       'ai.summarizeAgent',
@@ -1376,7 +1377,7 @@ describe('settings-handlers', () => {
 
       await expect(
         invokeHandler(SettingsChannels.invoke.SET_GLOBAL_CAPTURE, { key: '', modifiers: {} })
-      ).rejects.toThrow()
+      ).rejects.toThrow(/too_small/)
       expect(saved().globalCapture).toEqual(J)
     })
 

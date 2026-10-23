@@ -61,6 +61,7 @@ export function AutocompleteDropdown({
         behavior: 'smooth'
       })
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- selectedIndex re-runs the scroll when the selection moves to a different row
   }, [selectedIndex, visible])
 
   if (!visible || suggestions.length === 0) {
@@ -79,6 +80,7 @@ export function AutocompleteDropdown({
       <div
         ref={listRef}
         className="max-h-48 overflow-y-auto py-1"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
         role="listbox"
         aria-label={tPhaseF('phaseF.componentsUiAutocompleteDropdown.suggestions')}
       >
@@ -87,9 +89,11 @@ export function AutocompleteDropdown({
           const isFunction = suggestion.type === 'function'
 
           return (
+            // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- pointer-only wrapper; keyboard access is provided by the inner controls; option focus is managed by the owning input via aria-activedescendant-style selection
             <div
               key={suggestion.label}
               ref={isSelected ? selectedRef : null}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
               role="option"
               aria-selected={isSelected}
               className={cn(

@@ -140,6 +140,7 @@ describe('vault read-only locks (#2606)', () => {
     expect(isNoteLocked('note-a')).toBe(true)
     expect(() => assertNoteWritable('note-a')).toThrow(VAULT_LOCKED_NOTE_MESSAGE)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('# A\n')
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect(isWritable(file)).toBe(false)
   })
 
@@ -374,6 +375,7 @@ describe('vault read-only locks (#2606)', () => {
     await setVaultLock({ kind: 'note', target: 'note-own', locked: true })
     await setVaultLock({ kind: 'folder', target: 'projects/sealed', locked: true })
     await setVaultLock({ kind: 'folder', target: 'projects', locked: true })
+    /* oxlint-disable vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted */
     if (!isWindows) expect([note, pdf].map(isWritable)).toEqual([false, false])
     await expect(beforeVaultFileWrite(pdf)).rejects.toThrow(VAULT_LOCKED_FOLDER_MESSAGE)
     await expect(beforeVaultFileWrite(note)).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
@@ -383,6 +385,7 @@ describe('vault read-only locks (#2606)', () => {
     expect(isWritable(note)).toBe(true)
     expect(isWritable(pdf)).toBe(true)
     if (!isWindows) expect([innerLocked, innerFolderFile].map(isWritable)).toEqual([false, false])
+    /* oxlint-enable vitest/no-conditional-expect */
     expect(mocks.broadcast).toHaveBeenLastCalledWith('vault-locks:changed', {
       notes: ['note-own'],
       folders: ['not-on-disk', 'projects/sealed']
@@ -402,6 +405,7 @@ describe('vault read-only locks (#2606)', () => {
       })
     )
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('a\n')
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect(isWritable(file)).toBe(false)
   })
 
@@ -420,6 +424,7 @@ describe('vault read-only locks (#2606)', () => {
 
     await vi.waitFor(() => {
       expect(getBaseline(asClientDb(data.db), 'note-a')).toBeDefined()
+      // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
       if (!isWindows) expect(isWritable(file)).toBe(false)
     })
   })
@@ -445,6 +450,7 @@ describe('vault read-only locks (#2606)', () => {
       return 'remote\n'
     })
 
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect(isWritable(file)).toBe(false)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('remote\n')
     expect(() => setFileReadOnlySync(path.join(vault, 'notes/missing.md'), true)).not.toThrow()
@@ -462,6 +468,7 @@ describe('vault read-only locks (#2606)', () => {
       })
     ).toThrow('ENOSPC')
 
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect(isWritable(file)).toBe(false)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('a\n')
   })
@@ -528,6 +535,7 @@ describe('vault read-only locks (#2606)', () => {
     await setVaultLock({ kind: 'note', target: 'note-a', locked: true })
     await setVaultLock({ kind: 'folder', target: 'archive', locked: true })
 
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect([own, viaFolder, other].map(isWritable)).toEqual([false, false, true])
     await expect(beforeVaultFileWrite(own)).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
     await expect(beforeVaultFileWrite(viaFolder)).rejects.toThrow(VAULT_LOCKED_NOTE_MESSAGE)
@@ -537,6 +545,7 @@ describe('vault read-only locks (#2606)', () => {
     await setVaultLock({ kind: 'folder', target: 'archive', locked: false })
 
     expect([own, viaFolder].map(isWritable)).toEqual([true, true])
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect([own, viaFolder].map(modeOf)).toEqual([0o644, 0o644])
   })
 
@@ -714,6 +723,7 @@ describe('vault read-only locks (#2606)', () => {
 
     settleRemoteNoteFileSync('note-a', file, 'archive/a.md', 'pulled\n')
 
+    // oxlint-disable-next-line vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted
     if (!isWindows) expect(isWritable(file)).toBe(false)
     expect(getBaseline(asClientDb(data.db), 'note-a')?.content).toBe('pulled\n')
 

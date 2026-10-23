@@ -172,6 +172,7 @@ export function TimelineTaskBlock({
       data-end={formatClockMinutes(endMin)}
       {...attributes}
       {...listeners}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- draggable block that also hosts nested controls; a native button cannot contain them
       role="button"
       tabIndex={0}
       aria-label={t('dayTimeline.openTask', { title: placed.title, range })}
@@ -195,6 +196,7 @@ export function TimelineTaskBlock({
     >
       <button
         type="button"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- icon-only completion toggle styled as a button; native checkbox input would change the visuals
         role="checkbox"
         aria-checked={false}
         aria-label={t('dayTimeline.completeTask', { title: placed.title })}

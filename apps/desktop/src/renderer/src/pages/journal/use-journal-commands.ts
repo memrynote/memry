@@ -10,7 +10,11 @@ import { useNoteFileActions } from '@/hooks/use-note-file-actions'
 
 /** The journal page's modal surfaces: one is open at a time. */
 export type JournalDialog =
-  'export' | 'saveAsTemplate' | 'versionHistory' | 'attachments' | 'delete'
+  | 'export'
+  | 'saveAsTemplate'
+  | 'versionHistory'
+  | 'attachments'
+  | 'delete'
 
 export type JournalCommandId = CommandIdsOf<'journal'>
 

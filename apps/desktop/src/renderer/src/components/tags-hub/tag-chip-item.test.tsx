@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TagChipContent } from './tag-chip-item'
+import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
 
 vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  ...(await importOriginal<typeof UseTagSchemasModule>()),
   useTagSchemas: () => ({ data: undefined, isLoading: false }),
   useResolvedTag: () => null,
   useObjectIdentity: () => null,

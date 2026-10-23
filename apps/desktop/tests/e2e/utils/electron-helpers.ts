@@ -4,7 +4,8 @@
  * Provides utilities for testing Electron applications with Playwright.
  */
 
-import { ElectronApplication, expect, Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
+import { expect } from '@playwright/test'
 import * as path from 'path'
 
 /**

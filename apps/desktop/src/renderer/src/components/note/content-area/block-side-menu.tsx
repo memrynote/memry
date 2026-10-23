@@ -17,14 +17,13 @@
  * @module note/content-area/block-side-menu
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- BlockNote's own default
+/* oxlint-disable typescript/no-explicit-any -- BlockNote's own default
    drag-handle items type the editor as `<any, any, any>`; narrowing here would
    make Memry's heterogeneous block schema unassignable at every call site. */
 
 import { useCallback, useMemo, type ComponentProps, type FC, type ReactNode } from 'react'
 import {
   BlockColorsItem,
-  RemoveBlockItem,
   SideMenu,
   SideMenuController,
   useBlockNoteEditor,
@@ -52,6 +51,11 @@ import { isMac } from '@/lib/shortcut-catalog'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { copyBlocksFromMenu } from './block-clipboard'
+import {
+  GuardedRemoveBlockItem,
+  HideInPortalItem,
+  PortalToBlockItem
+} from './portal-flows/portal-side-menu-items'
 import { getEditorSelectionFromState, getProseMirrorState } from './review-formatting-toolbar'
 import type { TemplateAnchor } from './insert-template'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
@@ -510,12 +514,14 @@ function MemryDragHandleMenu({
       <DuplicateItem />
       <InsertTemplateItem onRequestInsertTemplate={onRequestInsertTemplate} />
       <MoveToItem onRequestMove={onRequestMove} />
-      <RemoveBlockItem>
+      <PortalToBlockItem />
+      <HideInPortalItem />
+      <GuardedRemoveBlockItem>
         <span className="flex items-center gap-2">
           <Trash2 size={16} aria-hidden />
           {t('editor.blockMenu.delete')}
         </span>
-      </RemoveBlockItem>
+      </GuardedRemoveBlockItem>
       <Components.Generic.Menu.Divider />
       <CommentItem onAddComment={onAddComment} />
     </Components.Generic.Menu.Dropdown>

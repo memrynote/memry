@@ -57,9 +57,8 @@ describe('CrdtOpenDocSchema / CrdtCloseDocSchema', () => {
   it('rejects empty noteId', () => {
     const result = CrdtOpenDocSchema.safeParse({ noteId: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('noteId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('noteId')
   })
 
   it('rejects missing noteId', () => {
@@ -73,10 +72,9 @@ describe('CrdtApplyUpdateSchema', () => {
     const update = new Uint8Array([0, 127, 255])
     const result = CrdtApplyUpdateSchema.safeParse({ noteId: 'note-1', update })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.update).toBeInstanceOf(Uint8Array)
-      expect(result.data.update).toBe(update)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.update).toBeInstanceOf(Uint8Array)
+    expect(result.data.update).toBe(update)
   })
 
   it('accepts an empty update', () => {
@@ -88,9 +86,8 @@ describe('CrdtApplyUpdateSchema', () => {
   it('rejects a boxed number[] payload', () => {
     const result = CrdtApplyUpdateSchema.safeParse({ noteId: 'note-1', update: [0, 127, 255] })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path[0]).toBe('update')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path[0]).toBe('update')
   })
 
   it('rejects missing noteId', () => {
@@ -103,9 +100,8 @@ describe('CrdtSyncStep1Schema', () => {
     const stateVector = new Uint8Array([0, 1, 2])
     const result = CrdtSyncStep1Schema.safeParse({ noteId: 'note-1', stateVector })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.stateVector).toBe(stateVector)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.stateVector).toBe(stateVector)
   })
 
   it('rejects a non-binary stateVector', () => {
@@ -123,9 +119,8 @@ describe('CrdtSyncStep2Schema', () => {
     const diff = new Uint8Array([0, 10, 255])
     const result = CrdtSyncStep2Schema.safeParse({ noteId: 'note-1', diff })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.diff).toBe(diff)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.diff).toBe(diff)
   })
 
   it('rejects missing diff', () => {

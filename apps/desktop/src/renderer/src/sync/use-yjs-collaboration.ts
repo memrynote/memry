@@ -129,7 +129,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
       publish({ fragment, doc, provider, isReady: true })
       log.debug('Collaboration ready', { noteId })
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       if (destroyed) return
       log.error('Failed to connect collaboration', err)
       provider.destroy()
@@ -184,7 +184,7 @@ export function useYjsCollaboration(
   options: UseYjsCollaborationOptions
 ): UseYjsCollaborationReturn {
   const { noteId, enabled = true } = options
-  const consumerId = useRef<symbol>(Symbol('yjs-consumer')).current
+  const [consumerId] = useState<symbol>(() => Symbol('yjs-consumer'))
   const [activeState, setActiveState] = useState<ActiveYjsCollaborationState>(EMPTY_ACTIVE_STATE)
   // Defaults to true so a disabled/no-note mount and the sole consumer both own
   // their side effects (parity: task auto-conversion has never been gated).
@@ -209,6 +209,7 @@ export function useYjsCollaboration(
 
   useEffect(() => {
     if (!noteId || !enabled) {
+      // oxlint-disable-next-line react/set-state-in-effect -- resets owner state when the note is disabled; the effect synchronizes with the Y.Doc registry
       setIsSideEffectOwner(true)
       return
     }
@@ -395,5 +396,6 @@ export function useLiveFragmentQuery(): (noteId: string) => boolean {
     // `void claimFailedTick` in pages/canvas/canvas-card-overlay.tsx.
     void version
     return (noteId: string) => hasLiveFragment(scope, noteId)
+    // oxlint-disable-next-line react/memo-dependencies -- version is the cache key that forces a fresh closure per registry change
   }, [version, scope])
 }

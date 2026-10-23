@@ -49,9 +49,8 @@ describe('CaptureTextSchema', () => {
       content: ''
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('content')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('content')
   })
 
   it('should reject content over 50000 chars', () => {
@@ -284,9 +283,8 @@ describe('CaptureVoiceSchema', () => {
       format: 'webm'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.transcribe).toBe(true) // default
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.transcribe).toBe(true) // default
   })
 
   it('should validate ArrayBuffer data from renderer IPC', () => {
@@ -459,9 +457,8 @@ describe('CapturePdfSchema', () => {
       filename: 'document.pdf'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.extractText).toBe(true) // default
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.extractText).toBe(true) // default
   })
 
   it('should validate full input', () => {
@@ -506,13 +503,12 @@ describe('InboxListSchema', () => {
   it('should validate empty object with defaults', () => {
     const result = InboxListSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.includeSnoozed).toBe(false)
-      expect(result.data.sortBy).toBe('created')
-      expect(result.data.sortOrder).toBe('desc')
-      expect(result.data.limit).toBe(50)
-      expect(result.data.offset).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.includeSnoozed).toBe(false)
+    expect(result.data.sortBy).toBe('created')
+    expect(result.data.sortOrder).toBe('desc')
+    expect(result.data.limit).toBe(50)
+    expect(result.data.offset).toBe(0)
   })
 
   it('should validate full query', () => {

@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ProjectOverviewNote } from './project-overview-note'
+import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 
 const mocks = vi.hoisted(() => ({
   notesGet: vi.fn(),
@@ -15,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
+  ...(await importOriginal<typeof VaultLocksStoreModule>()),
   useIsNoteLocked: () => mocks.isNoteLocked
 }))
 

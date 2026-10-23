@@ -388,7 +388,7 @@ export function useFolderView({
    */
   const notesQuery = useInfiniteQuery({
     queryKey: folderViewKeys.notes(scope),
-    queryFn: async ({ pageParam = 0 }): Promise<ListWithPropertiesResponse> => {
+    queryFn: async ({ pageParam }): Promise<ListWithPropertiesResponse> => {
       // Fetch all available properties to avoid refetch when columns change
       // This is a trade-off: slightly larger payload vs better UX
       const result = await window.api.folderView.listWithProperties({
@@ -736,7 +736,7 @@ export function useFolderView({
         const existingConfig = configResult.config
 
         const updatedSummaries = {
-          ...(existingConfig.summaries ?? {})
+          ...existingConfig.summaries
         }
         if (config) {
           updatedSummaries[columnId] = config
@@ -821,7 +821,7 @@ export function useFolderView({
                 properties: {
                   ...existingConfig.properties,
                   [columnId]: {
-                    ...(existingConfig.properties?.[columnId] || {}),
+                    ...existingConfig.properties?.[columnId],
                     displayName
                   }
                 }
@@ -1189,7 +1189,7 @@ export function useFolderView({
       }
     })
     return unsubscribe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [scopeKey(scope), queryClient])
 
   useEffect(() => {
@@ -1200,7 +1200,7 @@ export function useFolderView({
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
     })
     return unsubscribe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [scopeKey(scope), queryClient])
 
   // ============================================================================

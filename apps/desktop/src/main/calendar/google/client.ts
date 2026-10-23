@@ -447,7 +447,7 @@ async function withAuthorizedResponse(
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      ...(input.init?.headers ?? {})
+      ...input.init?.headers
     }
   })
 

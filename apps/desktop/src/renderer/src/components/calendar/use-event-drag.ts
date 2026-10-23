@@ -81,11 +81,11 @@ export function computeResizedTimes(
  */
 export function isEventMovable(item: CalendarProjectionItem): boolean {
   const isDraggableSource = item.sourceType === 'event' || item.sourceType === 'task'
-  return isDraggableSource && Boolean(item.editability?.canMove) && !item.isAllDay
+  return isDraggableSource && item.editability?.canMove && !item.isAllDay
 }
 
 export function isEventResizable(item: CalendarProjectionItem): boolean {
-  return isEventMovable(item) && Boolean(item.editability?.canResize)
+  return isEventMovable(item) && item.editability?.canResize
 }
 
 function minutesOfDay(iso: string): number {

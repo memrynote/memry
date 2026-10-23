@@ -5,7 +5,7 @@ import {
 } from '@memry/contracts/calendar-api'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
-import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import type { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type { DataDb } from '../../database'
 import { emitCalendarChanged } from '../change-events'
 import { mapCalendarSource } from '../calendar-source-record'

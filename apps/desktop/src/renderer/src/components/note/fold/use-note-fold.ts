@@ -66,7 +66,9 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   // Crossing the length threshold refetches, so a note that grows past it gains
   // the control without reopening.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
     void refresh()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [refresh, long])
 
   useEffect(() => {
@@ -130,7 +132,10 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   )
 
   const foldedTo = useCallback(
-    (target: FoldLevel) => ({ enabled: foldable, run: () => setLevel(target) }),
+    (target: FoldLevel) => ({
+      enabled: foldable,
+      run: () => setLevel(target)
+    }),
     [foldable, setLevel]
   )
   useTabCommands('fold', {

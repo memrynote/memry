@@ -128,6 +128,7 @@ export function ModePreviewPicker({
   const palettes = resolveModePalettes(custom)
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- radio-card group; a fieldset would add default borders and layout
     <div role="group" aria-label={t('appearance.theme.colorMode.aria')} className="flex gap-2">
       {MODE_CARDS.map((mode) => {
         const label = t(MODE_LABEL_KEYS[mode])
@@ -563,7 +564,7 @@ export function AdvancedDisclosure({
       if (hit) revealRef.current(hit.target as Element)
     })
     // False positive: `open` only changes from the observer callback, not here.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
     observer.observe(body, { subtree: true, attributeFilter: ['data-search-hit'] })
     return () => observer.disconnect()
   }, [])

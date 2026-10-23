@@ -102,7 +102,7 @@ Main-process code that fans an event out to every open window — sync status, t
 
 The helper also contains a per-window delivery failure: a window that dies between the guard and the send is logged and skipped, so the remaining windows still receive the event and the throw never reaches a caller that is mid-transaction. Payload arity is forwarded as given, so a zero-payload broadcast such as `broadcastToAllWindows('quick-capture:open')` reaches the renderer with no payload argument.
 
-An ESLint `no-restricted-syntax` rule over `apps/desktop/src/main/**` rejects `for...of` and `.forEach` fan-out loops written directly against `BrowserWindow.getAllWindows()`, so the hand-rolled pattern cannot come back. Loops over a deliberate _subset_ of windows are a different thing and stay allowed — for example `crdt-provider` iterates a doc's own `windowIds` and must skip the source window to avoid an IPC echo, which a fan-out would break.
+The oxlint rule `memry/no-window-fanout` (`tools/oxlint/memry/`) over `apps/desktop/src/main/**` rejects `for...of` and `.forEach` fan-out loops written directly against `BrowserWindow.getAllWindows()`, so the hand-rolled pattern cannot come back. Loops over a deliberate _subset_ of windows are a different thing and stay allowed — for example `crdt-provider` iterates a doc's own `windowIds` and must skip the source window to avoid an IPC echo, which a fan-out would break.
 
 Picking a single window (focusing the app from a notification click, targeting the sender) is also not a fan-out. Those sites take the first _live_ window — `BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())` — rather than `getAllWindows()[0]`, which throws when the window at index 0 has been destroyed.
 

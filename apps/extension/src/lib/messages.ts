@@ -14,7 +14,8 @@ export type PairResponse = { ok: true } | { ok: false; error: string }
 // filedTo: the folder the desktop filed the clip into; null/absent = Inbox
 // (older desktops never send it).
 export type CaptureResponse =
-  { ok: true; itemId: string; filedTo?: string | null } | { ok: false; error: string }
+  | { ok: true; itemId: string; filedTo?: string | null }
+  | { ok: false; error: string }
 
 export type CaptureMode = 'article' | 'selection' | 'screenshot' | 'pdf'
 
@@ -49,7 +50,8 @@ export interface PageMetrics {
 export type ScreenshotResponse = { ok: true; dataUrl: string } | { ok: false; error: string }
 
 export type FetchPdfResponse =
-  { ok: true; dataUrl: string; filename: string } | { ok: false; error: string }
+  | { ok: true; dataUrl: string; filename: string }
+  | { ok: false; error: string }
 
 export interface FlushResponse {
   flushed: number

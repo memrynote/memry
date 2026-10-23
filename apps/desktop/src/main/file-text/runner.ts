@@ -70,7 +70,7 @@ const RETRY_FAILED_AFTER_MS = 24 * 60 * 60 * 1000
 /** Where a note's attachments live: `attachments/<noteId>/` (vault/attachments.ts). */
 const ATTACHMENTS_DIR = 'attachments'
 /** The HTML block's file types (ALLOWED_HTML_EXTENSIONS in vault/attachments.ts). */
-const HTML_EXTENSIONS = ['html', 'htm']
+const HTML_EXTENSIONS = new Set(['html', 'htm'])
 /**
  * The largest HTML block file parsed for text. The parse runs on the main
  * process and costs over 100x the file in memory, so a larger file is marked
@@ -141,7 +141,7 @@ function isOversizedHtml(file: TextFile, size: number): boolean {
 
 function attachmentKind(fileName: string): TextFileKind | null {
   const extension = getExtension(fileName)
-  if (HTML_EXTENSIONS.includes(extension.toLowerCase())) return 'html'
+  if (HTML_EXTENSIONS.has(extension.toLowerCase())) return 'html'
   const type = getFileType(extension)
   return type === 'pdf' || type === 'image' ? type : null
 }

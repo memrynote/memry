@@ -178,7 +178,7 @@ export const initializeTelemetryRuntime = (deps?: TelemetryRuntimeDeps): Telemet
   const intervalMs = deps?.flushIntervalMs ?? FLUSH_INTERVAL_MS
   if (intervalMs && Number.isFinite(intervalMs) && intervalMs > 0) {
     flushTimer = setInterval(() => {
-      void client.flush('interval').catch((error) => {
+      void client.flush('interval').catch((error: unknown) => {
         logger.warn('Scheduled telemetry flush failed', { error })
       })
     }, intervalMs)

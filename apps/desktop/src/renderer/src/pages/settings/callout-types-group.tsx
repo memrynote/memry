@@ -175,6 +175,7 @@ export function CalloutTypesGroup() {
                 <button
                   key={id}
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio swatch; a native radio input would change the visuals
                   role="radio"
                   aria-checked={selected}
                   aria-label={id}

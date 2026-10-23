@@ -203,7 +203,9 @@ describe('fts5 index corruption', () => {
       garbleSegments(sqlite)
 
       // #given search is broken: this is the throw the user never saw
-      expect(() => matchNotes(db)).toThrow()
+      expect(() => matchNotes(db)).toThrow(
+        /fts5: corruption found reading blob \d+ from table "fts_notes"/
+      )
 
       // #when the index is rebuilt from its canonical source
       resetFtsTable(db)

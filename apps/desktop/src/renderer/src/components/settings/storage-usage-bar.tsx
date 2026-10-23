@@ -80,6 +80,7 @@ export function StorageUsageBar() {
         {/* Segmented Bar */}
         <div
           className="h-2.5 w-full rounded-full overflow-hidden bg-muted flex"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="progressbar"
           aria-valuenow={used}
           aria-valuemax={limit}

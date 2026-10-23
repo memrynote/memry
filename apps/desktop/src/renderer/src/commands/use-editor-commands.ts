@@ -125,7 +125,10 @@ export function useEditorCommands(): void {
   const impls = Object.fromEntries(
     Object.entries(EDITOR_ACTIONS).map(([id, action]): [string, CommandImpl] => [
       id,
-      { enabled: hasEditor, run: () => runEditorAction(action) }
+      {
+        enabled: hasEditor,
+        run: () => runEditorAction(action)
+      }
     ])
   )
 
@@ -133,7 +136,11 @@ export function useEditorCommands(): void {
   // owner is not handling by hand, so `OwnerImpls` is satisfied.
   useAppCommands('editor', {
     ...(impls as Omit<OwnerImpls<'editor'>, HistoryCommandId>),
-    'editor.undo': { run: () => runHistoryCommand('undo') },
-    'editor.redo': { run: () => runHistoryCommand('redo') }
+    'editor.undo': {
+      run: () => runHistoryCommand('undo')
+    },
+    'editor.redo': {
+      run: () => runHistoryCommand('redo')
+    }
   })
 }

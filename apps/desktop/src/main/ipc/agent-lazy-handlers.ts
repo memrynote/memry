@@ -162,7 +162,7 @@ export function registerLazyAgentHandlers(): void {
   ipcMain.handle(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   ipcMain.handle(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
   ipcMain.handle(AgentChannels.invoke.GET_WINDOW_ID, (event) => {
-    void ensureLazyAgentServicesStarted().catch((error) => {
+    void ensureLazyAgentServicesStarted().catch((error: unknown) => {
       logger.warn('Failed to start lazy agent services', error)
     })
     return { windowId: resolveSenderWindowId(event.sender) }

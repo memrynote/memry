@@ -6,9 +6,15 @@ import { createSyncAdapterRegistry } from './registry'
 describe('SyncAdapterRegistry', () => {
   it('stores record and CRDT adapters by sync item type', () => {
     const taskLocal = {
-      enqueueCreate() {},
-      enqueueUpdate() {},
-      enqueueDelete() {}
+      enqueueCreate() {
+        /* intentional no-op */
+      },
+      enqueueUpdate() {
+        /* intentional no-op */
+      },
+      enqueueDelete() {
+        /* intentional no-op */
+      }
     }
     const noteRemote = {
       type: 'note' as const,

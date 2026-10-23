@@ -16,7 +16,12 @@ import { getI18n } from 'react-i18next'
 import { isSessionEndedReason } from '@memry/contracts/ipc-events'
 
 type AuthStatus =
-  'idle' | 'checking' | 'unauthenticated' | 'authenticating' | 'authenticated' | 'error'
+  | 'idle'
+  | 'checking'
+  | 'unauthenticated'
+  | 'authenticating'
+  | 'authenticated'
+  | 'error'
 
 export interface WizardVaultSummary {
   vaultUuid: string
@@ -430,7 +435,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
       )
       dispatch({ type: 'SET_ERROR', error: message })
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
@@ -494,7 +499,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
           getI18n().getFixedT(null, 'settings')('phaseI.errors.invalidVerificationCode')
         )
         dispatch({ type: 'SET_ERROR', error: message })
-        throw new Error(message)
+        throw new Error(message, { cause: err })
       }
     },
     [state.email]
@@ -520,7 +525,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToResendCode')
       )
       dispatch({ type: 'SET_ERROR', error: message })
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [state.email])
 
@@ -601,7 +606,8 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         extractErrorMessage(
           err,
           getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToConfirmRecoveryPhrase')
-        )
+        ),
+        { cause: err }
       )
     }
   }, [])

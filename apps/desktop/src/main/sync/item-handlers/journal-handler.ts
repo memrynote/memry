@@ -226,7 +226,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     // synchronous anyway.
     void getCrdtProvider()
       .purge(itemId)
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.error('Failed to purge the CRDT doc of a remotely deleted journal', {
           itemId,
           error: err

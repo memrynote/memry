@@ -105,9 +105,10 @@ const BUILT_ELEMENTS = [
   { type: 'rectangle', id: 'built-1' }
 ] as unknown as readonly MindMapElement[]
 
-function mountSurface(
-  initialFocusHref: string | null = null
-): { controls: () => MindMapControls; unmount: () => void } {
+function mountSurface(initialFocusHref: string | null = null): {
+  controls: () => MindMapControls
+  unmount: () => void
+} {
   let latest: MindMapControls | null = null
   const view = render(
     <MindMapCanvas

@@ -5,9 +5,9 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useTabActions } from '@/contexts/tabs'
 import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
 import { isReorderable } from '@/components/sidebar/sidebar-list-sort'
-import { notesKeys, useNoteMutations } from '@/hooks/use-notes-query'
+import { notesKeys } from '@/hooks/use-notes-query'
 import type { Note } from '@memry/contracts/notes-api'
-import type { NoteListItem } from '@/hooks/use-notes-query'
+import type { NoteListItem, useNoteMutations } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
 import { notesService } from '@/services/notes-service'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
@@ -30,6 +30,7 @@ import {
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
 import { deleteNoteTasks } from '@/components/note/delete-note-tasks'
 import { getI18n } from 'react-i18next'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import { journalService } from '@/services/journal-service'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
@@ -210,6 +211,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const [foldersToDelete, setFoldersToDelete] = useState<string[]>([])
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const noteDeleteGuard = useNoteDeleteGuard()
 
   // Inline rename state for notes
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
@@ -345,6 +347,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreating(false)
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
     [isCreating, createNewNote]
   )
 
@@ -628,6 +631,16 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     async (taskIds: string[] = []) => {
       if ((notesToDelete.length === 0 && foldersToDelete.length === 0) || isDeleting) return
 
+      // Other notes that show or link what goes (folders take their notes
+      // with them) get a say first.
+      const inFolders = [...deps.noteMap.values()].filter((note) =>
+        foldersToDelete.some((folder) => note.path.startsWith(`${folder}/`))
+      )
+      const proceed = await noteDeleteGuard.confirmNoteDelete(
+        [...notesToDelete, ...inFolders].map((note) => ({ id: note.id, title: note.title }))
+      )
+      if (!proceed) return
+
       setIsDeleting(true)
       try {
         // The tasks go only if every note they came from did: a note that
@@ -670,7 +683,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsDeleting(false)
       }
     },
-    [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree]
+    [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree, noteDeleteGuard]
   )
 
   // ---- External / Finder ----
@@ -1063,6 +1076,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     },
     [
       isMoving,
+      // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
       deps,
       calculateTargetFolder,
       handleReorderFoldersInParent,
@@ -1188,6 +1202,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     handleDeleteFolderClick,
     handleBulkDelete,
     handleDeleteConfirm,
+    deleteGuardDialog: noteDeleteGuard.dialog,
 
     // External
     handleOpenExternal,

@@ -99,6 +99,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
   }, [t])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- IPC fetch on mount
     void fetchDevices()
   }, [fetchDevices])
 
@@ -340,6 +341,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
             onChange={(e) => setNewName(e.target.value)}
             maxLength={100}
             placeholder={t('devices.dialogs.namePlaceholder')}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newName.trim()) void handleRename()

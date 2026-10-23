@@ -134,7 +134,11 @@ export interface CanvasLinkVia {
  * Older builds only knew `property`; a renderer must tolerate kinds it does
  * not know by falling back to the plain title.
  */
-export type LinkVia = { kind: 'property'; propertyName: string } | CanvasLinkVia
+export type LinkVia =
+  | { kind: 'property'; propertyName: string }
+  | CanvasLinkVia
+  /** The source note shows the target through a portal block. */
+  | { kind: 'portal' }
 
 export interface NoteLink {
   sourceId: string
@@ -401,7 +405,11 @@ export type DownloadAttachmentFromUrlInput = z.infer<typeof DownloadAttachmentFr
  * rather than to the photo itself, which answers with HTML.
  */
 export type DownloadAttachmentFromUrlFailure =
-  'not-an-image' | 'too-large' | 'offline' | 'failed' | 'write-failed'
+  | 'not-an-image'
+  | 'too-large'
+  | 'offline'
+  | 'failed'
+  | 'write-failed'
 
 export type DownloadAttachmentFromUrlResult =
   | {
@@ -579,7 +587,8 @@ export interface NoteCreateResponse {
 
 /** What adding a header tag did with that tag's template (`notes:update`). */
 export type NoteTagTemplateOutcome =
-  { kind: 'applied'; tag: string; undoToken: string } | { kind: 'offered'; tag: string }
+  | { kind: 'applied'; tag: string; undoToken: string }
+  | { kind: 'offered'; tag: string }
 
 export interface NoteUpdateResponse {
   success: boolean

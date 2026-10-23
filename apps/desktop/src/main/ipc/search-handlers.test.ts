@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import type * as Diagnostics from '../telemetry/diagnostics'

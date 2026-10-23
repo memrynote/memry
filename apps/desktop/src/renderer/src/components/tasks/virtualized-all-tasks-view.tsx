@@ -408,7 +408,7 @@ export const VirtualizedAllTasksView = ({
     // `void` keeps the call out of the synchronous setter path so the
     // no-pass-live-state-to-parent lint recognizes this as a side-effecting
     // sync call rather than a state pass-through.
-    void virtualizer.measure()
+    virtualizer.measure()
     return () => {}
   }, [
     expandedIds,

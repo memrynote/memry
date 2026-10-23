@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as schema from '@memry/db-schema/data-schema'
+import type * as SceneFileModule from './scene-file'
 
 vi.mock('./vault-key', () => ({
   getLegacyCanvasVaultKey: async () => {
@@ -16,7 +17,7 @@ vi.mock('./vault-key', () => ({
 // one right after the listing saw a plain file.
 const afterListing = vi.hoisted(() => ({ swap: (): void => {} }))
 vi.mock('./scene-file', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./scene-file')>()
+  const actual = await importOriginal<typeof SceneFileModule>()
   return {
     ...actual,
     listCanvasFiles: (vaultPath: string) => {

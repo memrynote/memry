@@ -18,7 +18,8 @@ export interface TextToolCall {
 }
 
 export type TextToolCallSegment =
-  { kind: 'text'; text: string } | { kind: 'call'; call: TextToolCall }
+  | { kind: 'text'; text: string }
+  | { kind: 'call'; call: TextToolCall }
 
 type StreamResult = Awaited<ReturnType<NonNullable<LanguageModelMiddleware['wrapStream']>>>
 type StreamPart = StreamResult['stream'] extends ReadableStream<infer Part> ? Part : never

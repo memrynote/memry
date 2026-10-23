@@ -5,7 +5,7 @@
  */
 import { TaskFieldsSchema } from '@memry/contracts/tasks-api'
 import type { JsonValue } from '@memry/shared/versioned'
-import { getFlag, getFlagList, hasFlag, parseCliValue } from '../run.ts'
+import { getFlag, getFlagList, hasFlag, parseCliValue } from '../cli-support.ts'
 
 /** `--duration <minutes>`: a positive whole number, or `null` to clear (update only). */
 export function parseDurationFlag(flags: Map<string, string[]>): number | null | undefined {

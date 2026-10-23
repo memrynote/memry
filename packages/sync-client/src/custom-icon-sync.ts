@@ -33,7 +33,8 @@ export class CustomIconSyncService {
   constructor(deps: CustomIconSyncDeps) {
     const load = (iconId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(customIcons).where(eq(customIcons.id, iconId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'custom_icon',

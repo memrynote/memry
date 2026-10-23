@@ -204,7 +204,7 @@ export async function deleteImportedTasks(
   }
 
   const domain = createDesktopTasksDomain(db, createTasksPublisher(), generateId)
-  for (const { id } of [...created].reverse()) {
+  for (const { id } of [...created].toReversed()) {
     try {
       await domain.deleteTask(id)
     } catch (error) {

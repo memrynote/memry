@@ -252,7 +252,7 @@ unlocked.
 | Monorepo           | pnpm workspaces + Turborepo                                             |
 | Unit / integration | Vitest (shared · main · main-integration · preload · renderer projects) |
 | E2E                | Playwright (drives the built Electron app in `out/`)                    |
-| Lint               | ESLint (flat config) + Prettier                                         |
+| Lint / format      | oxlint (type-aware, with a ratchet) + oxfmt                             |
 | Contracts          | Zod + generated IPC invoke map (`pnpm ipc:check`)                       |
 | Packaging          | electron-builder                                                        |
 | Updates            | Velopack on Windows, electron-updater elsewhere                         |
@@ -564,8 +564,8 @@ pnpm --filter @memry/desktop build:linux
 ## Verification gates
 
 ```bash
-pnpm lint                 # ESLint over apps/desktop
-pnpm typecheck            # shared packages, CLI, desktop, sync server
+pnpm lint                 # oxlint over the whole JS/TS repo
+pnpm typecheck            # TypeScript 7 (oxlint --type-check): shared packages, CLI, desktop, sync server
 pnpm test                 # package, CLI, desktop, sync-server, and landing tests
 pnpm test:e2e             # Playwright E2E (Electron)
 pnpm ipc:check            # renderer↔main contract integrity

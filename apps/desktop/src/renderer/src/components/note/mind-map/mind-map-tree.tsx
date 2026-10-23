@@ -145,6 +145,7 @@ function BranchItems({
               projections, so they cannot say different things. */}
           {branch.node.detail !== '' && <span> {branch.node.detail}</span>}
           {branch.children.length > 0 && (
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             <ul role="group">
               <BranchItems
                 branches={branch.children}

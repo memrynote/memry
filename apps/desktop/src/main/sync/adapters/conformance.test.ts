@@ -75,9 +75,7 @@ const createAdapters = (): SyncPlatformAdapters => {
     attachmentStore: new DesktopAttachmentStore(async (vaultId) =>
       path.join(scratch, 'attachments', vaultId)
     ),
-    vaultFileSystem: new DesktopVaultFileSystem(
-      directoryVaultRoots(path.join(scratch, 'vaults'))
-    ),
+    vaultFileSystem: new DesktopVaultFileSystem(directoryVaultRoots(path.join(scratch, 'vaults'))),
     deviceRegistration: new DesktopDeviceRegistration({
       deviceId: async () => 'conformance-device',
       deviceInfo: async () => ({

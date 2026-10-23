@@ -19,9 +19,8 @@ describe('GetPropertiesSchema', () => {
   it('rejects empty entityId', () => {
     const result = GetPropertiesSchema.safeParse({ entityId: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('entityId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('entityId')
   })
 
   it('rejects missing entityId', () => {
@@ -92,9 +91,8 @@ describe('RenamePropertySchema', () => {
       newName: 'state'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('oldName')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('oldName')
   })
 
   it('rejects empty newName', () => {

@@ -1,5 +1,5 @@
 // First import on purpose: sizes the libuv threadpool before anything can use
-// it (see uv-threadpool.ts — libuv reads the env var once, on first use).
+// the pool (see uv-threadpool.ts — libuv reads the env var once, on first use).
 import './uv-threadpool'
 // Second on purpose: Velopack's install/update hooks are command-line arguments
 // this process must handle before it does anything else (it may exit inside them).
@@ -747,7 +747,8 @@ const DEFAULT_MAIN_WINDOW_SIZE = { width: 1550, height: 900 } as const
 const VAULT_PICKER_WINDOW_SIZE = { width: 900, height: 720 } as const
 
 function getInitialMainWindowSize():
-  typeof DEFAULT_MAIN_WINDOW_SIZE | typeof VAULT_PICKER_WINDOW_SIZE {
+  | typeof DEFAULT_MAIN_WINDOW_SIZE
+  | typeof VAULT_PICKER_WINDOW_SIZE {
   if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') return VAULT_PICKER_WINDOW_SIZE
   return getCurrentVaultPath() ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
 }
@@ -1566,7 +1567,7 @@ const appReady = app.whenReady().then(async () => {
     flushWindow(win)
       .then(() => createCloseSnapshots())
       .then(() => win.close())
-      .catch((err) => {
+      .catch((err: unknown) => {
         // The window silently refuses to close AND edits may be unsaved —
         // both symptoms arrive as support reports with no trail otherwise.
         mainLog.error('Window close flush failed:', err)
@@ -1795,7 +1796,7 @@ const appReady = app.whenReady().then(async () => {
       startCaldavCalendarRunner()
       // macOS Calendar (#2374) exists only on macOS; nothing starts elsewhere.
       if (process.platform === 'darwin') startAppleCalendarRunner()
-      void startGoogleCalendarSyncRunner().catch((error) => {
+      void startGoogleCalendarSyncRunner().catch((error: unknown) => {
         mainLog.warn('Google Calendar sync runner failed to start:', error)
         trackMainLog('warn', {
           scope: 'Startup',
@@ -1803,11 +1804,11 @@ const appReady = app.whenReady().then(async () => {
           errorCode: error instanceof Error ? error.name : 'UnknownError'
         })
       })
-      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch((err) =>
+      void startCaptureServer({ requestPairConsent: showPairConsentDialog }).catch((err: unknown) =>
         mainLog.error('capture server failed to start', err)
       )
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       mainLog.error('autoOpenLastVault failed:', err)
       trackMainError('main_process', 'auto_open_last_vault_failed', err)
     })
@@ -1839,7 +1840,7 @@ const appReady = app.whenReady().then(async () => {
 // SQLite/logs) would otherwise reject unhandled, leaving createWindow() unreached:
 // process alive, no window, no taskbar entry, single-instance lock held. Guarantee
 // a visible window instead.
-void appReady.catch((error) => {
+void appReady.catch((error: unknown) => {
   ensureStartupWindow(error)
 })
 
@@ -2178,7 +2179,7 @@ async function flushDurabilityBeforeForcedExit(): Promise<void> {
   // them (#2522).
   const flushed = await completeWithin(
     Promise.all([
-      flushPendingWritebacks().catch((error) => {
+      flushPendingWritebacks().catch((error: unknown) => {
         shutdownLog.error('last-chance write-back flush failed', error)
       }),
       flushActivityLog()
@@ -2419,7 +2420,7 @@ app.on('before-quit', (event) => {
         app.quit()
       }
     })
-    .catch(async (error) => {
+    .catch(async (error: unknown) => {
       shutdownLog.error('error during cleanup:', error)
       // Same as the timeout path: the exit below outruns any log flush, so the
       // marker reports this shutdown failure on the next launch.

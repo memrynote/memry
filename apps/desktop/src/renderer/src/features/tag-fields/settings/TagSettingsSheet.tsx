@@ -67,7 +67,6 @@ export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React
 
   return (
     <aside
-      role="complementary"
       aria-label={t('tagFields.settings.title', { tag })}
       className="absolute inset-y-0 end-0 z-30 flex w-[440px] max-w-full flex-col border-s bg-background shadow-xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150"
     >

@@ -38,10 +38,8 @@ test.describe('Body CRDT durable outbox', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `Outbox Restart ${Date.now()}`
     const initialBody = 'shared note from A'
     const firstEdit = 'first quick edit'

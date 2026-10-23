@@ -179,6 +179,7 @@ export const SortableSubtaskList = ({
   return (
     <div
       id={`subtasks-${parent.id}`}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="group"
       aria-label={`Subtasks of ${parent.title}`}
       className={cn(className)}

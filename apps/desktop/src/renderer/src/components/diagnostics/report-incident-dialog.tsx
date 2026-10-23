@@ -90,7 +90,7 @@ export function ReportIncidentDialog({
         setError(extractErrorMessage(err, t('general.privacy.diagnostics.previewError')))
         setPhase('previewError')
       })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [open, trigger])
 
   const handleSend = useCallback(() => {
@@ -117,9 +117,7 @@ export function ReportIncidentDialog({
       })
   }, [report, phase, t])
 
-  const handleNotNow = useCallback(() => {
-    onOpenChange(false)
-  }, [onOpenChange])
+  const handleNotNow = useCallback(() => onOpenChange(false), [onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -159,6 +157,7 @@ export function ReportIncidentDialog({
                   <div className="space-y-2 font-mono text-xs">
                     {report.lines.map((line, index) => (
                       <div
+                        // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
                         key={`${line.ts}-${line.scope}-${index}`}
                         className="border-b border-border pb-2 last:border-0"
                       >
@@ -197,7 +196,13 @@ export function ReportIncidentDialog({
 
         <DialogFooter>
           {phase === 'sent' || phase === 'previewError' ? (
-            <Button onClick={() => onOpenChange(false)}>{tCommon('button.close')}</Button>
+            <Button
+              onClick={() => {
+                onOpenChange(false)
+              }}
+            >
+              {tCommon('button.close')}
+            </Button>
           ) : (
             <>
               <Button variant="outline" onClick={handleNotNow} disabled={phase === 'sending'}>

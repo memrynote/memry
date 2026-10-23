@@ -27,9 +27,9 @@ const WORKER = 'memry-sync-server-staging'
 
 const R2_DELETE_CONCURRENCY = 8
 
-const args = process.argv.slice(2)
-const SKIP_CONFIRM = args.includes('--yes') || args.includes('-y')
-const REDEPLOY = !args.includes('--no-redeploy')
+const args = new Set(process.argv.slice(2))
+const SKIP_CONFIRM = args.has('--yes') || args.has('-y')
+const REDEPLOY = !args.has('--no-redeploy')
 
 // Belt-and-suspenders: never run against anything that isn't staging.
 if (DB_NAME.includes('production') || WORKER.includes('production') || ENV !== 'staging') {
@@ -165,7 +165,7 @@ async function main() {
   if (tables.length) {
     console.log(`D1: dropping ${tables.length} table(s)...`)
     const dropSql = [...tables]
-      .reverse()
+      .toReversed()
       .map((t) => `DROP TABLE IF EXISTS "${t}";`)
       .join('\n')
     wrangler(['d1', 'execute', DB_NAME, '--env', ENV, '--remote', '--yes', '--command', dropSql])

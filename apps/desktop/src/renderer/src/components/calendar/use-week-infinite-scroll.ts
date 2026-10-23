@@ -90,6 +90,7 @@ export function useWeekInfiniteScroll({
     // `void` keeps the call out of the synchronous setter path so the
     // unnecessary-effect linter recognizes this as a side-effecting sync call
     // rather than a state pass-through.
+    // oxlint-disable-next-line typescript/no-meaningless-void-operator
     void virtualizer.measure()
     return () => {}
   }, [columnWidth, virtualizer])

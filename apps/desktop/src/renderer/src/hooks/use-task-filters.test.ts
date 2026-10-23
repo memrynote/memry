@@ -18,7 +18,7 @@ import {
   SAVED_FILTERS_KEY
 } from './use-task-filters'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
-import type { Task, Priority } from '@/data/task-model'
+import type { Task } from '@/data/task-model'
 import type { Project, TaskFilters, TaskSort } from '@/data/tasks-data'
 import { TaskFiltersSchema } from '@memry/contracts/saved-filters-api'
 
@@ -94,7 +94,7 @@ vi.mock('@/lib/task-utils', () => ({
   })
 }))
 
-import { applyFiltersAndSortWithContext, hasActiveFilters } from '@/lib/task-utils'
+import { applyFiltersAndSortWithContext } from '@/lib/task-utils'
 
 // ============================================================================
 // Test Data
@@ -203,9 +203,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('initial')
 
     // Advance timer
-    act(() => {
-      vi.advanceTimersByTime(300)
-    })
+    act(() => vi.advanceTimersByTime(300))
 
     expect(result.current).toBe('updated')
   })
@@ -747,16 +745,12 @@ describe('useFilteredAndSortedTasks', () => {
     rerender({ filters: { ...defaultFilters, search: 'query' } })
 
     const callCountBeforeDebounce = vi.mocked(applyFiltersAndSortWithContext).mock.calls.length
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    act(() => vi.advanceTimersByTime(100))
     expect(vi.mocked(applyFiltersAndSortWithContext).mock.calls.length).toBe(
       callCountBeforeDebounce
     )
 
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
+    act(() => vi.advanceTimersByTime(100))
 
     expect(applyFiltersAndSortWithContext).toHaveBeenCalledWith(
       mockTasks,

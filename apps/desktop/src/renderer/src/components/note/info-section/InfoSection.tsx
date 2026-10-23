@@ -17,7 +17,7 @@ import {
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Property, NewProperty, PropertyType } from './types'
+import type { Property, NewProperty, PropertyType } from './types'
 import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
@@ -206,6 +206,7 @@ export const InfoSection = memo(function InfoSection({
                     }
                     onDelete={property.isCustom ? handleDeleteProperty(property.id) : undefined}
                     disabled={disabled}
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
                     autoFocus={property.id === newlyAddedPropertyId}
                     isSortable={isSortable}
                     renderAction={

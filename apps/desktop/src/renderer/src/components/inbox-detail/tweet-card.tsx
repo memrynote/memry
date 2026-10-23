@@ -225,7 +225,7 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
             @{user.screen_name}
           </span>
         </div>
-        <div className="flex items-center ml-auto rounded-[10px] py-0.5 px-2 bg-[var(--accent-cyan)]/10">
+        <div className="flex items-center ms-auto rounded-[10px] py-0.5 px-2 bg-[var(--accent-cyan)]/10">
           <span className="text-[10px]/3.5 font-medium text-[var(--accent-cyan)]">
             {tPhaseF('phaseF.componentsInboxDetailTweetCard.xCom')}
           </span>
@@ -242,7 +242,7 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
         <div className="grid grid-cols-2 gap-1.5 rounded-lg overflow-hidden">
           {tweet.mediaDetails.slice(0, 4).map((media, i) => (
             <img
-              key={i}
+              key={media.media_url_https}
               src={media.media_url_https}
               alt={`Tweet media ${i + 1}`}
               className={cn(

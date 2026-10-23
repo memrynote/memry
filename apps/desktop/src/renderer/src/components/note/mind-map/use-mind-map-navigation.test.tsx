@@ -177,7 +177,7 @@ describe('useMindMapNavigation', () => {
     expect(scrolled).toEqual(fromMap)
   })
 
-  it('moves the open map\'s camera on an outline click, and leaves the map open', () => {
+  it("moves the open map's camera on an outline click, and leaves the map open", () => {
     const { close, focusBlock, view } = setup({ canFocus: true })
     renderBlock('b-alpha')
 

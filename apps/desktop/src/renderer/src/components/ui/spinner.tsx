@@ -9,6 +9,7 @@ function Spinner({ className, 'aria-label': ariaLabel, ...props }: React.Compone
 
   return (
     <Loader2Icon
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="status"
       aria-label={ariaLabel ?? t('state.loading')}
       className={cn('size-4 animate-spin', className)}

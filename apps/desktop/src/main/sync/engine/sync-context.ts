@@ -97,7 +97,9 @@ export type SyncSkipReason = SyncLockRefusal | 'no_credentials'
  * - `skipped`: it never started.
  */
 export type SyncRunOutcome =
-  { status: 'delivered' } | { status: 'incomplete' } | { status: 'skipped'; reason: SyncSkipReason }
+  | { status: 'delivered' }
+  | { status: 'incomplete' }
+  | { status: 'skipped'; reason: SyncSkipReason }
 
 export interface SyncContext {
   deps: SyncEngineDeps

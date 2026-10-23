@@ -131,7 +131,7 @@ export function LivePhysics({
     }
     // `options` is a static per-call-site literal; re-running on identity would
     // restart the simulation every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [graph, sigma, handleRef])
 
   // A save patched the graph while it stayed mounted. Fold the new nodes and
@@ -197,7 +197,7 @@ export function SettledPhysics({
       physicsRef.current = null
       physics.destroy()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [graph, sigma, handleRef])
 
   // Structural change on a patched graph: relax from where the nodes already sit
@@ -208,7 +208,7 @@ export function SettledPhysics({
     physics.reheat()
     settle(physics)
     if (sigma.getGraph() === graph) refreshSigmaIfMeasurable(sigma)
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- the ref holds the latest save callback (useLatest), not a DOM node; the settled positions only exist after this effect runs
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- the ref holds the latest save callback (useLatest), not a DOM node; the settled positions only exist after this effect runs
     onLayoutChangeRef.current?.(physics.snapshot())
   }, [revision, graph, sigma, onLayoutChangeRef])
 

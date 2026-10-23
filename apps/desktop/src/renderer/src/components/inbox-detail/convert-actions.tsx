@@ -94,7 +94,7 @@ const BARE_INPUT =
 
 // Presets shown inline for the reminder target; anything else goes through
 // the full picker behind "Custom…".
-const INLINE_REMINDER_PRESETS = ['later-today', 'tomorrow', 'next-week']
+const INLINE_REMINDER_PRESETS = new Set(['later-today', 'tomorrow', 'next-week'])
 
 export const ConvertActions = ({
   item,
@@ -241,7 +241,7 @@ export const ConvertActions = ({
     </Button>
   )
 
-  const inlinePresets = standardPresets.filter((p) => INLINE_REMINDER_PRESETS.includes(p.id))
+  const inlinePresets = standardPresets.filter((p) => INLINE_REMINDER_PRESETS.has(p.id))
 
   return (
     <>
@@ -429,6 +429,7 @@ export const ConvertActions = ({
               </span>
             </div>
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- labelled button group; fieldset would change layout
               role="group"
               aria-label={t('convert.remindAt')}
               className="flex flex-wrap gap-1 ps-[34px] pe-2"

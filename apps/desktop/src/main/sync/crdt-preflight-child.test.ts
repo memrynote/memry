@@ -17,6 +17,8 @@ import {
   PREFLIGHT_MARK_STARTED,
   PREFLIGHT_MARK_STORE_OPS
 } from '@memry/sync-client/crdt-preflight-protocol'
+import type * as FsModule from 'fs'
+import type * as ModuleModule from 'module'
 
 const mockWriteSync = vi.hoisted(() => vi.fn())
 const mockRmSync = vi.hoisted(() => vi.fn())
@@ -34,7 +36,7 @@ const mockRequire = vi.hoisted(() => {
 // stays real so yjs keeps working. The delete-shaped calls are stubbed purely
 // so the test can prove the child never reaches for them.
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   return {
     ...actual,
     writeSync: mockWriteSync,
@@ -48,7 +50,7 @@ vi.mock('fs', async (importOriginal) => {
 // binding is intercepted at the require boundary. Loading the real one here
 // would dlopen classic-level in the test runner.
 vi.mock('module', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('module')>()
+  const actual = await importOriginal<typeof ModuleModule>()
   return { ...actual, createRequire: () => mockRequire }
 })
 
@@ -258,7 +260,8 @@ describe('crdt-preflight-child', () => {
       mockRequire.resolve = (id: string) =>
         id === 'classic-level/package.json' ? `${packageRoot}/package.json` : yLeveldbEntry
       const loadModule = mockRequire.getMockImplementation() as
-        ((id: string) => unknown) | undefined
+        | ((id: string) => unknown)
+        | undefined
       mockRequire.mockImplementation((id: string) => {
         if (id === 'classic-level/package.json') return { version: '1.4.1' }
         if (id === 'node-gyp-build') {
@@ -363,11 +366,9 @@ describe('crdt-preflight-child', () => {
       )
       // Nothing past the open was attempted — the store markers would otherwise
       // claim a write and a read that never really ran.
-      expect(
-        marks()
-          .filter((line) => line.startsWith('@@'))
-          .at(-1)
-      ).toBe(`${PREFLIGHT_MARK_STORE_OPS.open}\n`)
+      expect(marks().findLast((line) => line.startsWith('@@'))).toBe(
+        `${PREFLIGHT_MARK_STORE_OPS.open}\n`
+      )
       expect(persistence.storeUpdate).not.toHaveBeenCalled()
     })
 
@@ -413,7 +414,7 @@ describe('crdt-preflight-child', () => {
   describe('against a real LevelDB store', () => {
     it('reports the held LOCK instead of dying on a null dereference', async () => {
       const { createRequire: realCreateRequire } =
-        await vi.importActual<typeof import('module')>('module')
+        await vi.importActual<typeof ModuleModule>('module')
       const realRequire = realCreateRequire(import.meta.url)
       // Mirror the child's own two-step resolution: `level` comes from
       // y-leveldb's directory, not ours. It matters — the repo carries two

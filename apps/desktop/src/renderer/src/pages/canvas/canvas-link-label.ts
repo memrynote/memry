@@ -32,7 +32,7 @@ export function linkBubbleLabel(href: string | null | undefined): string | null 
 
   // A folder's id is its path; the leaf is what the sidebar shows.
   if (parsed.kind === 'folder') {
-    return parsed.label ?? parsed.id.split('/').filter(Boolean).pop() ?? parsed.id
+    return parsed.label ?? parsed.id.split('/').findLast(Boolean) ?? parsed.id
   }
 
   return parsed.label

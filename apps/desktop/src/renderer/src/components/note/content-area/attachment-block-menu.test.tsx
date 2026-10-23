@@ -5,9 +5,8 @@
  */
 
 import { useRef, useState } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
 import { NoteFileUrlProvider } from './note-file-url-context'

@@ -47,7 +47,7 @@ describe('usePdfDisplayMenu', () => {
   })
 
   it('arrows move, Enter picks', async () => {
-    const { result, editor, container } = setup('embed')
+    const { result, editor, container: _container } = setup('embed')
     await openMenu(result)
 
     act(() => {
@@ -62,7 +62,7 @@ describe('usePdfDisplayMenu', () => {
   })
 
   it('Escape and click-away keep the inserted default', async () => {
-    const { result, editor, container } = setup('embed')
+    const { result, editor, container: _container } = setup('embed')
     await openMenu(result)
     act(() => {
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))

@@ -527,6 +527,7 @@
         "insert": "Insert",
         "open": "Open"
       },
+      "close": "Close menu",
       "matchesAlias": "matches",
       "noMatch": "No blocks match “{query}”",
       "fallback": {
@@ -783,7 +784,8 @@
     "expandSection": "Expand backlinks section",
     "showMore": "Show {count} more backlinks",
     "more": "{count} more",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Shown in a portal"
   },
   "unlinkedMentions": {
     "title": "Unlinked mentions",
@@ -2147,6 +2149,88 @@
   },
   "details": {
     "add": "Add details"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Show a note or block live from elsewhere"
+      },
+      "searchPortal": {
+        "title": "Search portal",
+        "subtext": "Live list of blocks matching a query"
+      }
+    },
+    "picker": {
+      "aria": "Choose a note or block to portal",
+      "notes": "Notes",
+      "blocks": "Blocks",
+      "loading": "Searching…",
+      "empty": "No notes or blocks match",
+      "hintInsert": "Insert portal",
+      "hintClose": "Close",
+      "keyEsc": "Esc",
+      "create": "Create note “{query}”",
+      "createFailed": "Could not create that note",
+      "stampFailed": "Could not prepare that block for a portal",
+      "retargetFailed": "Could not point the portal at that block"
+    },
+    "insert": {
+      "cycle": "A portal cannot show a note inside itself."
+    },
+    "copy": {
+      "done": "Portal copied. Paste it into any note.",
+      "failed": "Could not copy a portal to this block"
+    },
+    "menu": {
+      "copyAsPortal": "Copy as portal",
+      "hideInPortal": "Hide in this portal"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Used in # other place} other {Used in # other places}}"
+    },
+    "whereUsed": {
+      "aria": "Where this block is used",
+      "portals": "Portals",
+      "links": "Links",
+      "openBeside": "Open beside",
+      "loadFailed": "Could not load where this block is shown"
+    },
+    "hiddenBlocks": {
+      "title": "Hidden blocks",
+      "showAll": "Show all",
+      "search": "Search hidden blocks",
+      "showFailed": "Could not show this block"
+    },
+    "searchQuery": {
+      "titleNew": "Search portal",
+      "titleEdit": "Edit query",
+      "text": "Contains words",
+      "textPlaceholder": "Words in the block",
+      "tag": "Tag",
+      "tagPlaceholder": "exam",
+      "limit": "Limit",
+      "footer": "Limit {limit} results.",
+      "create": "Create",
+      "apply": "Apply"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Delete this block everywhere?",
+        "note": "Delete this note everywhere?"
+      },
+      "description": {
+        "block": "“{title}” also appears in {count, plural, one {# other note} other {# other notes}}.",
+        "note": "“{title}” is shown or linked in {count, plural, one {# other note} other {# other notes}}."
+      },
+      "manyNotes": "{count} notes",
+      "source": "{title} (source)",
+      "removeHere": "Hide here instead",
+      "cancel": "Cancel",
+      "everywhere": "Delete everywhere",
+      "undoToast": "{count, plural, one {The deleted block was shown in # other note.} other {The deleted block was shown in # other notes.}}",
+      "undo": "Undo"
+    }
   },
   "fold": {
     "level": {

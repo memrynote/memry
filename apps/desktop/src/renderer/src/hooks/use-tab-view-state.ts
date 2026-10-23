@@ -121,18 +121,24 @@ export function useTabViewState<T>({
   if (seededFor !== identityKey) {
     setSeededFor(identityKey)
     setSeenStored(stored)
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     unseenWritesRef.current = []
     const seeded = read()
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     valueRef.current = seeded
     setValue(seeded)
   } else if (seenStored !== stored) {
     setSeenStored(stored)
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     const echoed = unseenWritesRef.current.indexOf(stored)
     if (echoed >= 0) {
+      // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
       unseenWritesRef.current = unseenWritesRef.current.slice(echoed + 1)
     } else {
+      // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
       unseenWritesRef.current = []
       const seeded = read()
+      // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
       valueRef.current = seeded
       setValue(seeded)
     }

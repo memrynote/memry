@@ -70,6 +70,7 @@ export function CanvasPane({ p }: { p: Translate }): React.JSX.Element {
         <div className="absolute start-[139px] top-3 flex items-center gap-0.5 rounded-[9px] border border-border bg-surface p-[3px] shadow-[0_4px_14px_rgb(0_0_0/0.3)]">
           {TOOLS.map((paths, index) => (
             <span
+              // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
               key={index}
               className={cn(
                 'flex size-6 items-center justify-center rounded-md text-text-secondary',

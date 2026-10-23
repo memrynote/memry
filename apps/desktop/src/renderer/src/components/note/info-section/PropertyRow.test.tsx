@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertyRow } from './PropertyRow'
 import type { Property } from './types'
+import type * as EditorsModule from './editors'
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -76,7 +77,7 @@ vi.mock('@/services/notes-service', () => ({
 }))
 
 vi.mock('./editors', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./editors')>()
+  const actual = await importOriginal<typeof EditorsModule>()
   return {
     ProjectEditor: actual.ProjectEditor,
     RelationEditor: ({
@@ -321,6 +322,7 @@ describe('PropertyRow', () => {
       <PropertyRow
         property={property({ type: 'number', value: 3 })}
         onValueChange={onValueChange}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
       />
     )
@@ -331,6 +333,7 @@ describe('PropertyRow', () => {
       <PropertyRow
         property={property({ type: 'date', value: '2026-01-01T00:00:00Z' })}
         onValueChange={onValueChange}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
       />
     )
@@ -341,6 +344,7 @@ describe('PropertyRow', () => {
       <PropertyRow
         property={property({ type: 'url', value: 'https://example.com' })}
         onValueChange={onValueChange}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
         disabled
       />
@@ -377,6 +381,7 @@ describe('PropertyRow', () => {
       <PropertyRow
         property={property({ name: 'Priority', type: 'select', value: 'high' })}
         onValueChange={onValueChange}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
       />
     )
@@ -396,6 +401,7 @@ describe('PropertyRow', () => {
       <PropertyRow
         property={property({ name: 'Tags', type: 'multiselect', value: [] })}
         onValueChange={onValueChange}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
       />
     )
@@ -410,6 +416,7 @@ describe('PropertyRow', () => {
       <PropertyRow
         property={property({ name: 'Status', type: 'status', value: null })}
         onValueChange={onValueChange}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
       />
     )

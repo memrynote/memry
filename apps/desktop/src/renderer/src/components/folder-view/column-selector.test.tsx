@@ -111,6 +111,7 @@ vi.mock('./formula-editor-modal', () => ({
     onSave: (name: string, expression: string) => Promise<void>
   }) =>
     open ? (
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double mirrors the real widget ARIA role
       <div role="dialog">
         <span>formula editor {initialName || 'new'}</span>
         <button

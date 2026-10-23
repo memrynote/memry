@@ -18,7 +18,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { Property } from './types'
+import type { Property } from './types'
 import {
   TextEditor,
   NumberEditor,
@@ -170,20 +170,21 @@ function SelectPropertyRenderer({
   const { t } = useT('settings')
   const definition = getDefinition(property.name)
 
+  const definitionOptions = definition?.options
   const options: SelectOption[] = useMemo(() => {
-    if (!definition?.options) return []
+    if (!definitionOptions) return []
     try {
-      const parsed = JSON.parse(definition.options)
+      const parsed = JSON.parse(definitionOptions)
       if (Array.isArray(parsed)) return parsed
       return []
     } catch {
       return []
     }
-  }, [definition?.options])
+  }, [definitionOptions])
 
   const categories: StatusCategories | undefined = useMemo(
-    () => (property.type === 'status' ? parseStatusCategories(definition?.options) : undefined),
-    [property.type, definition?.options]
+    () => (property.type === 'status' ? parseStatusCategories(definitionOptions) : undefined),
+    [property.type, definitionOptions]
   )
 
   const handleAddOption = useCallback(
@@ -518,6 +519,7 @@ export function PropertyRow({
             aria-label={t('properties.editName')}
           />
         ) : (
+          // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer handler only stops propagation/handles pointer; keyboard path exists on a child control
           <span
             onClick={canRenameName ? handleStartNameEdit : undefined}
             className={cn(
@@ -547,6 +549,7 @@ export function PropertyRow({
 
       {/* Value */}
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="button"
         tabIndex={0}
         onClick={handleStartEdit}

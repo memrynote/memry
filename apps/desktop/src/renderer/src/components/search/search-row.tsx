@@ -18,10 +18,12 @@ export function HighlightedText({
     <span className={className}>
       {segments.map((seg, i) =>
         seg.highlight ? (
+          // oxlint-disable-next-line react/no-array-index-key -- segments are positional slices of one string
           <mark key={i} className="rounded-[3px] bg-[var(--tint-light)] text-inherit">
             {seg.text}
           </mark>
         ) : (
+          // oxlint-disable-next-line react/no-array-index-key -- segments are positional slices of one string
           <span key={i}>{seg.text}</span>
         )
       )}

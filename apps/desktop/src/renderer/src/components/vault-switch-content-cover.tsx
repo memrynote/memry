@@ -36,6 +36,7 @@ export function VaultSwitchContentCover() {
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="status"
       aria-live="polite"
       data-testid="vault-switch-content-cover"

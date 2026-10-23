@@ -22,6 +22,7 @@ import { mkdir } from 'fs/promises'
 import { pipeline } from 'stream/promises'
 import { join, extname } from 'path'
 import { isBotPageTitle } from './metadata-utils'
+import type { ReadableStream } from 'stream/web'
 
 export { extractDomain, isBotPageTitle, titleFromUrl } from './metadata-utils'
 
@@ -83,7 +84,7 @@ async function chromiumFetch(url: string, init: RequestInit): Promise<Response> 
   try {
     const { net } = await import('electron')
     if (typeof net?.fetch === 'function') {
-      return net.fetch(url, init)
+      return await net.fetch(url, init)
     }
   } catch {
     // not running inside Electron
@@ -349,7 +350,7 @@ export async function downloadImage(imageUrl: string, destDir: string): Promise<
     // Convert web stream to node stream and pipe to file
     const nodeStream = await import('stream')
     const { Readable } = nodeStream
-    const readable = Readable.fromWeb(response.body as import('stream/web').ReadableStream)
+    const readable = Readable.fromWeb(response.body as ReadableStream)
     const writeStream = createWriteStream(filePath)
 
     await pipeline(readable, writeStream)

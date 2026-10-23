@@ -23,7 +23,9 @@ class FakeContents {
     close: async (): Promise<void> => {}
   }
 
-  setWindowOpenHandler(): void {}
+  setWindowOpenHandler(): void {
+    /* intentional no-op */
+  }
   once(event: string, handler: (...args: unknown[]) => void): void {
     this.handlers.set(event, handler)
   }
@@ -44,6 +46,7 @@ class FakeContents {
   }
   executeJavaScript(script: string): Promise<unknown> {
     if (this.closed) throw new Error('Object has been destroyed')
+    // oxlint-disable-next-line typescript/no-implied-eval -- test double for Electron's executeJavaScript, which evaluates script text
     return new Function('window', `return ${script}`)({ memryPdfHost: this.host })
   }
 }
@@ -93,6 +96,7 @@ describe('PDF host', () => {
     await vi.waitFor(() => expect(views).toHaveLength(1))
     // pdfjs exceptions are not real Errors, so they cross the bridge as plain objects.
     views[0].webContents.host.open = () =>
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
       Promise.reject({ name: 'InvalidPDFException', message: 'Invalid PDF structure.' })
 
     await expect(opening).rejects.toThrow('Invalid PDF structure.')
@@ -136,6 +140,7 @@ describe('PDF host', () => {
     const contents = views[0].webContents
     contents.host.renderPage = () => new Promise(() => {})
 
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const outcome = expect(pdf.renderPage(1, 3300)).rejects.toThrow(
       'PDF host did not answer in time'
     )

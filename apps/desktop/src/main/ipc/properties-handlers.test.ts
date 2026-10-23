@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertiesChannels } from '@memry/contracts/properties-api'
+import type * as DomainNotesModule from '@memry/domain-notes'
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
@@ -54,7 +55,7 @@ vi.mock('../vault/journal', () => ({
 }))
 
 vi.mock('@memry/domain-notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/domain-notes')>()),
+  ...(await importOriginal<typeof DomainNotesModule>()),
   getCanonicalJournalByDate: mocks.getCanonicalJournalByDate
 }))
 

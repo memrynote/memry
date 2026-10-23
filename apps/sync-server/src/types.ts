@@ -1,4 +1,7 @@
 import type { SyncSubscription } from './lib/sync-types'
+import type { PackCompactionMessageBody } from './services/pack-compaction'
+import type { SyncEntitlement } from './services/entitlements'
+import type { ClientIdentity } from './lib/client-identity'
 
 export type Bindings = {
   DB: D1Database
@@ -67,7 +70,7 @@ export type Bindings = {
   // Pack compaction queue (#1839). Optional so local dev without Queues keeps
   // working: an absent binding makes enqueuePackCompaction a no-op and the
   // cron backfill still drains packs over time.
-  PACK_QUEUE?: Queue<import('./services/pack-compaction').PackCompactionMessageBody>
+  PACK_QUEUE?: Queue<PackCompactionMessageBody>
   // Socket items budget in bytes (#2300). Unset = 64 KiB; "0" turns every
   // changes_available frame back to hint-only. It can lower the cap, never raise it.
   SYNC_SOCKET_ITEMS_MAX_BYTES?: string
@@ -82,8 +85,8 @@ export type AppContext = {
     tokenJti?: string
     sessionNonce?: string
     vaultId?: string
-    syncEntitlement?: import('./services/entitlements').SyncEntitlement
+    syncEntitlement?: SyncEntitlement
     syncSubscription?: SyncSubscription
-    client?: import('./lib/client-identity').ClientIdentity
+    client?: ClientIdentity
   }
 }

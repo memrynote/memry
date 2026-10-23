@@ -30,7 +30,7 @@ interface SettingsCase {
   key: string
   loaded: Record<string, unknown>
   change: Record<string, unknown>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   render: () => { settings: any; isLoading: boolean }
   read: (settings: Record<string, unknown>) => unknown
   expected: unknown
@@ -154,6 +154,7 @@ describe('settings:changed echo dedupe (#1063)', () => {
   }
 
   for (const testCase of CASES) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     describe(testCase.name, () => {
       it('keeps state identity when the unchanged group is echoed back', async () => {
         const { result } = await mountLoaded(testCase)

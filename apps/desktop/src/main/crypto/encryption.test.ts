@@ -176,6 +176,7 @@ describe('encryption', () => {
     const encryptSpy = vi
       .spyOn(sodium, 'crypto_aead_xchacha20poly1305_ietf_encrypt')
       .mockImplementation(() => {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         throw 'forced string failure'
       })
 
@@ -210,6 +211,7 @@ describe('encryption', () => {
     const decryptSpy = vi
       .spyOn(sodium, 'crypto_aead_xchacha20poly1305_ietf_decrypt')
       .mockImplementation(() => {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         throw 'forced string failure'
       })
 

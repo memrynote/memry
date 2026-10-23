@@ -41,7 +41,8 @@ export class CalendarEventSyncService {
       getDeviceId: deps.getDeviceId,
       load: (id) =>
         deps.db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
         const changedFields = extra[0]
         const existingClock = (local.clock as VectorClock) ?? {}

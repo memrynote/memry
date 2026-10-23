@@ -1,5 +1,5 @@
 import type { SearchOptions, SearchResult } from '../app-core/memry-app.ts'
-import { getFlag, getFlagList, hasFlag, parseNumber, type ParsedCli } from '../run.ts'
+import { getFlag, getFlagList, hasFlag, parseNumber, type ParsedCli } from '../cli-support.ts'
 
 const searchKinds: readonly SearchResult['kind'][] = [
   'note',

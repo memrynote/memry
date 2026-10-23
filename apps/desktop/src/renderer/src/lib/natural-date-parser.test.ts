@@ -65,34 +65,30 @@ describe('Natural Date Parser', () => {
       it("should return today's date", () => {
         const result = parseNaturalDate('today')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-14')
-          expect(result.result.time).toBeNull()
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-14')
+        expect(result.result.time).toBeNull()
       })
 
       it('should handle uppercase', () => {
         const result = parseNaturalDate('TODAY')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-14')
       })
 
       it('should handle mixed case', () => {
         const result = parseNaturalDate('Today')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-14')
       })
 
       it('should handle leading/trailing whitespace', () => {
         const result = parseNaturalDate('  today  ')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-14')
       })
     })
 
@@ -100,26 +96,23 @@ describe('Natural Date Parser', () => {
       it("should return tomorrow's date", () => {
         const result = parseNaturalDate('tomorrow')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-15')
-          expect(result.result.time).toBeNull()
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-15')
+        expect(result.result.time).toBeNull()
       })
 
       it('should handle "tmrw" abbreviation', () => {
         const result = parseNaturalDate('tmrw')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-15')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-15')
       })
 
       it('should handle "tmr" abbreviation', () => {
         const result = parseNaturalDate('tmr')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-15')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-15')
       })
     })
 
@@ -127,10 +120,9 @@ describe('Natural Date Parser', () => {
       it("should return yesterday's date", () => {
         const result = parseNaturalDate('yesterday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-13')
-          expect(result.result.time).toBeNull()
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-13')
+        expect(result.result.time).toBeNull()
       })
     })
   })
@@ -150,58 +142,51 @@ describe('Natural Date Parser', () => {
       it('should return next Thursday for "thursday" (1 day ahead)', () => {
         const result = parseNaturalDate('thursday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-15')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-15')
       })
 
       it('should return next Friday for "friday" (2 days ahead)', () => {
         const result = parseNaturalDate('friday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-16')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-16')
       })
 
       it('should return next Saturday for "saturday" (3 days ahead)', () => {
         const result = parseNaturalDate('saturday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-17')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-17')
       })
 
       it('should return next Sunday for "sunday" (4 days ahead)', () => {
         const result = parseNaturalDate('sunday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-18')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-18')
       })
 
       it('should return next Monday for "monday" (5 days ahead)', () => {
         const result = parseNaturalDate('monday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-19')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-19')
       })
 
       it('should return next Tuesday for "tuesday" (6 days ahead)', () => {
         const result = parseNaturalDate('tuesday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-20')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-20')
       })
 
       it('should return next Wednesday for "wednesday" (7 days ahead)', () => {
         const result = parseNaturalDate('wednesday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          // Today is Wednesday, so "wednesday" means next Wednesday
-          expect(toDateString(result.result.date)).toBe('2026-01-21')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        // Today is Wednesday, so "wednesday" means next Wednesday
+        expect(toDateString(result.result.date)).toBe('2026-01-21')
       })
     })
 
@@ -211,9 +196,8 @@ describe('Natural Date Parser', () => {
         // "next friday" behavior: if dayIndex > currentDay, returns this week's occurrence
         const result = parseNaturalDate('next friday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-16')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-16')
       })
 
       it('should return following Monday for "next monday" (day already passed)', () => {
@@ -222,9 +206,8 @@ describe('Natural Date Parser', () => {
         // getNextDayOfWeek returns Jan 19, then +7 = Jan 26
         const result = parseNaturalDate('next monday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-26')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-26')
       })
 
       it('should return next week\'s Wednesday for "next wednesday"', () => {
@@ -232,9 +215,8 @@ describe('Natural Date Parser', () => {
         // getNextDayOfWeek returns Jan 21, then +7 = Jan 28
         const result = parseNaturalDate('next wednesday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-28')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-28')
       })
     })
 
@@ -243,50 +225,44 @@ describe('Natural Date Parser', () => {
       it('should return this Monday (Jan 12) for "last monday"', () => {
         const result = parseNaturalDate('last monday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-12')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-12')
       })
 
       it('should return previous Wednesday (Jan 7) for "last wednesday"', () => {
         const result = parseNaturalDate('last wednesday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-07')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-07')
       })
 
       it('should return last Friday (Jan 9) for "last friday"', () => {
         const result = parseNaturalDate('last friday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-09')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-09')
       })
 
       it('should return last Sunday (Jan 11) for "last sunday"', () => {
         const result = parseNaturalDate('last sunday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-11')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-11')
       })
 
       it('should parse a trailing time with "last monday 3pm"', () => {
         const result = parseNaturalDate('last monday 3pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-12')
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-12')
+        expect(result.result.time).toBe('15:00')
       })
 
       it('should return last week\'s Monday (Jan 5) for "last week"', () => {
         const result = parseNaturalDate('last week')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-05')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-05')
       })
 
       it('should return an error for bare "last"', () => {
@@ -299,17 +275,15 @@ describe('Natural Date Parser', () => {
       it('should return this week\'s Friday for "this friday"', () => {
         const result = parseNaturalDate('this friday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-16')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-16')
       })
 
       it('should return next Saturday for "this saturday"', () => {
         const result = parseNaturalDate('this saturday')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-17')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-17')
       })
     })
   })
@@ -323,33 +297,29 @@ describe('Natural Date Parser', () => {
       it('should add 1 day for "in 1 day"', () => {
         const result = parseNaturalDate('in 1 day')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-15')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-15')
       })
 
       it('should add 3 days for "in 3 days"', () => {
         const result = parseNaturalDate('in 3 days')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-17')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-17')
       })
 
       it('should add 7 days for "in 7 days"', () => {
         const result = parseNaturalDate('in 7 days')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-21')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-21')
       })
 
       it('should add 30 days for "in 30 days"', () => {
         const result = parseNaturalDate('in 30 days')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-13')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-13')
       })
     })
 
@@ -357,25 +327,22 @@ describe('Natural Date Parser', () => {
       it('should add 1 week for "in 1 week"', () => {
         const result = parseNaturalDate('in 1 week')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-21')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-21')
       })
 
       it('should add 2 weeks for "in 2 weeks"', () => {
         const result = parseNaturalDate('in 2 weeks')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-28')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-28')
       })
 
       it('should add 4 weeks for "in 4 weeks"', () => {
         const result = parseNaturalDate('in 4 weeks')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-11')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-11')
       })
     })
 
@@ -383,33 +350,29 @@ describe('Natural Date Parser', () => {
       it('should add 1 month for "in 1 month"', () => {
         const result = parseNaturalDate('in 1 month')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-14')
       })
 
       it('should add 3 months for "in 3 months"', () => {
         const result = parseNaturalDate('in 3 months')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-04-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-04-14')
       })
 
       it('should add 6 months for "in 6 months"', () => {
         const result = parseNaturalDate('in 6 months')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-07-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-07-14')
       })
 
       it('should handle year boundary for "in 12 months"', () => {
         const result = parseNaturalDate('in 12 months')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2027-01-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2027-01-14')
       })
     })
 
@@ -417,27 +380,24 @@ describe('Natural Date Parser', () => {
       it('should return next Monday for "next week"', () => {
         const result = parseNaturalDate('next week')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          // nextMonday from Wednesday Jan 14 = Monday Jan 19
-          expect(toDateString(result.result.date)).toBe('2026-01-19')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        // nextMonday from Wednesday Jan 14 = Monday Jan 19
+        expect(toDateString(result.result.date)).toBe('2026-01-19')
       })
 
       it('should return next Saturday for "this weekend"', () => {
         const result = parseNaturalDate('this weekend')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          // nextSaturday from Wednesday Jan 14 = Saturday Jan 17
-          expect(toDateString(result.result.date)).toBe('2026-01-17')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        // nextSaturday from Wednesday Jan 14 = Saturday Jan 17
+        expect(toDateString(result.result.date)).toBe('2026-01-17')
       })
 
       it('should return next Saturday for "weekend"', () => {
         const result = parseNaturalDate('weekend')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-17')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-17')
       })
     })
   })
@@ -451,51 +411,45 @@ describe('Natural Date Parser', () => {
       it('should parse "dec 25" as December 25', () => {
         const result = parseNaturalDate('dec 25')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "december 25" as December 25', () => {
         const result = parseNaturalDate('december 25')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "january 1" as January 1 next year (past this year)', () => {
         // Reference is Jan 15, so Jan 1 has passed
         const result = parseNaturalDate('january 1')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2027-01-01')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2027-01-01')
       })
 
       it('should parse "jan 20" as January 20 this year (future)', () => {
         const result = parseNaturalDate('jan 20')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-20')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-20')
       })
 
       it('should parse "jan 10" as January 10 next year (past this year)', () => {
         // Reference is Jan 14, so Jan 10 has passed
         const result = parseNaturalDate('jan 10')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2027-01-10')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2027-01-10')
       })
 
       it('should parse "feb 14" as February 14', () => {
         const result = parseNaturalDate('feb 14')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-14')
       })
 
       it('should parse all month abbreviations', () => {
@@ -517,9 +471,8 @@ describe('Natural Date Parser', () => {
         for (const { abbr, month } of months) {
           const result = parseNaturalDate(`${abbr} 20`)
           expect(isSuccess(result)).toBe(true)
-          if (isSuccess(result)) {
-            expect(result.result.date.getMonth() + 1).toBe(parseInt(month))
-          }
+          if (!isSuccess(result)) throw new Error('expected the check above to hold')
+          expect(result.result.date.getMonth() + 1).toBe(parseInt(month))
         }
       })
     })
@@ -528,41 +481,36 @@ describe('Natural Date Parser', () => {
       it('should parse "25 dec" as December 25', () => {
         const result = parseNaturalDate('25 dec')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "25th december" as December 25', () => {
         const result = parseNaturalDate('25th december')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "1st january" as January 1 next year', () => {
         const result = parseNaturalDate('1st january')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2027-01-01')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2027-01-01')
       })
 
       it('should parse "2nd february" as February 2', () => {
         const result = parseNaturalDate('2nd february')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-02')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-02')
       })
 
       it('should parse "3rd march" as March 3', () => {
         const result = parseNaturalDate('3rd march')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-03-03')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-03-03')
       })
     })
 
@@ -570,33 +518,29 @@ describe('Natural Date Parser', () => {
       it('should handle "1st"', () => {
         const result = parseNaturalDate('feb 1st')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.date.getDate()).toBe(1)
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.date.getDate()).toBe(1)
       })
 
       it('should handle "2nd"', () => {
         const result = parseNaturalDate('feb 2nd')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.date.getDate()).toBe(2)
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.date.getDate()).toBe(2)
       })
 
       it('should handle "3rd"', () => {
         const result = parseNaturalDate('feb 3rd')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.date.getDate()).toBe(3)
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.date.getDate()).toBe(3)
       })
 
       it('should handle "4th" through "31st"', () => {
         const result = parseNaturalDate('feb 15th')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.date.getDate()).toBe(15)
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.date.getDate()).toBe(15)
       })
     })
   })
@@ -610,33 +554,29 @@ describe('Natural Date Parser', () => {
       it('should parse "12/25" as December 25', () => {
         const result = parseNaturalDate('12/25')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "1/1" as January 1 next year (past)', () => {
         const result = parseNaturalDate('1/1')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2027-01-01')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2027-01-01')
       })
 
       it('should parse "2/14" as February 14', () => {
         const result = parseNaturalDate('2/14')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-14')
       })
 
       it('should parse "01/20" as January 20', () => {
         const result = parseNaturalDate('01/20')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-20')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-20')
       })
     })
 
@@ -644,17 +584,15 @@ describe('Natural Date Parser', () => {
       it('should parse "12-25" as December 25', () => {
         const result = parseNaturalDate('12-25')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "02-14" as February 14', () => {
         const result = parseNaturalDate('02-14')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-14')
       })
     })
 
@@ -662,25 +600,22 @@ describe('Natural Date Parser', () => {
       it('should parse "12/25/2026" as December 25, 2026', () => {
         const result = parseNaturalDate('12/25/2026')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should parse "01/01/2027" as January 1, 2027', () => {
         const result = parseNaturalDate('01/01/2027')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2027-01-01')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2027-01-01')
       })
 
       it('should parse "12-25-2025" as December 25, 2025 (past year)', () => {
         const result = parseNaturalDate('12-25-2025')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2025-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2025-12-25')
       })
     })
 
@@ -688,41 +623,36 @@ describe('Natural Date Parser', () => {
       it('should interpret "12/25/26" as 2026 (< 50 = 2000s)', () => {
         const result = parseNaturalDate('12/25/26')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-12-25')
       })
 
       it('should interpret "12/25/30" as 2030 (< 50 = 2000s)', () => {
         const result = parseNaturalDate('12/25/30')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2030-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2030-12-25')
       })
 
       it('should interpret "12/25/49" as 2049 (< 50 = 2000s)', () => {
         const result = parseNaturalDate('12/25/49')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2049-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2049-12-25')
       })
 
       it('should interpret "12/25/50" as 1950 (>= 50 = 1900s)', () => {
         const result = parseNaturalDate('12/25/50')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('1950-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('1950-12-25')
       })
 
       it('should interpret "12/25/99" as 1999 (>= 50 = 1900s)', () => {
         const result = parseNaturalDate('12/25/99')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('1999-12-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('1999-12-25')
       })
     })
   })
@@ -736,65 +666,57 @@ describe('Natural Date Parser', () => {
       it('should parse "today 3pm" as 15:00', () => {
         const result = parseNaturalDate('today 3pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:00')
       })
 
       it('should parse "today 3:30pm" as 15:30', () => {
         const result = parseNaturalDate('today 3:30pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:30')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:30')
       })
 
       it('should parse "today 12pm" as 12:00 (noon)', () => {
         const result = parseNaturalDate('today 12pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('12:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('12:00')
       })
 
       it('should parse "today 12am" as 00:00 (midnight)', () => {
         const result = parseNaturalDate('today 12am')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('00:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('00:00')
       })
 
       it('should parse "today 9am" as 09:00', () => {
         const result = parseNaturalDate('today 9am')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('09:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('09:00')
       })
 
       it('should parse "today 11:59pm" as 23:59', () => {
         const result = parseNaturalDate('today 11:59pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('23:59')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('23:59')
       })
 
       it('should handle space before am/pm: "today 3 pm"', () => {
         const result = parseNaturalDate('today 3 pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:00')
       })
 
       it('should handle uppercase AM/PM', () => {
         const result = parseNaturalDate('today 3PM')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:00')
       })
     })
 
@@ -802,33 +724,29 @@ describe('Natural Date Parser', () => {
       it('should parse "today 15:00" as 15:00', () => {
         const result = parseNaturalDate('today 15:00')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:00')
       })
 
       it('should parse "today 0:00" as 00:00', () => {
         const result = parseNaturalDate('today 0:00')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('00:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('00:00')
       })
 
       it('should parse "today 23:59" as 23:59', () => {
         const result = parseNaturalDate('today 23:59')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('23:59')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('23:59')
       })
 
       it('should parse "today 9:30" as 09:30', () => {
         const result = parseNaturalDate('today 9:30')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('09:30')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('09:30')
       })
     })
 
@@ -836,17 +754,15 @@ describe('Natural Date Parser', () => {
       it('should parse "today at 3pm" as 15:00', () => {
         const result = parseNaturalDate('today at 3pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:00')
       })
 
       it('should parse "today at 15:00" as 15:00', () => {
         const result = parseNaturalDate('today at 15:00')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.time).toBe('15:00')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.time).toBe('15:00')
       })
     })
   })
@@ -859,66 +775,59 @@ describe('Natural Date Parser', () => {
     it('should parse "tomorrow at 3pm"', () => {
       const result = parseNaturalDate('tomorrow at 3pm')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-01-15')
-        expect(result.result.time).toBe('15:00')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-01-15')
+      expect(result.result.time).toBe('15:00')
     })
 
     it('should parse "tomorrow 3pm" (without "at")', () => {
       const result = parseNaturalDate('tomorrow 3pm')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-01-15')
-        expect(result.result.time).toBe('15:00')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-01-15')
+      expect(result.result.time).toBe('15:00')
     })
 
     it('should parse "next friday 2:30pm"', () => {
       // From Wed Jan 14, "next friday" = Fri Jan 16 (Friday is ahead, so no +7)
       const result = parseNaturalDate('next friday 2:30pm')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-01-16')
-        expect(result.result.time).toBe('14:30')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-01-16')
+      expect(result.result.time).toBe('14:30')
     })
 
     it('should parse "dec 25 at 9am"', () => {
       const result = parseNaturalDate('dec 25 at 9am')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-12-25')
-        expect(result.result.time).toBe('09:00')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-12-25')
+      expect(result.result.time).toBe('09:00')
     })
 
     it('should parse "monday 8:30am"', () => {
       // From Wed Jan 14, "monday" = Mon Jan 19 (next Monday)
       const result = parseNaturalDate('monday 8:30am')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-01-19')
-        expect(result.result.time).toBe('08:30')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-01-19')
+      expect(result.result.time).toBe('08:30')
     })
 
     it('should parse "in 3 days 14:00"', () => {
       const result = parseNaturalDate('in 3 days 14:00')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-01-17')
-        expect(result.result.time).toBe('14:00')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-01-17')
+      expect(result.result.time).toBe('14:00')
     })
 
     it('should parse "12/25 10am"', () => {
       const result = parseNaturalDate('12/25 10am')
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(toDateString(result.result.date)).toBe('2026-12-25')
-        expect(result.result.time).toBe('10:00')
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(toDateString(result.result.date)).toBe('2026-12-25')
+      expect(result.result.time).toBe('10:00')
     })
   })
 
@@ -932,34 +841,30 @@ describe('Natural Date Parser', () => {
         // Reference: Jan 14. The 25th is in the future this month.
         const result = parseNaturalDate('25th')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-25')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-25')
       })
 
       it('should parse "10th" as 10th of next month (past this month)', () => {
         // Reference: Jan 14. The 10th has passed this month.
         const result = parseNaturalDate('10th')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-10')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-10')
       })
 
       it('should parse "1st" as 1st of next month', () => {
         const result = parseNaturalDate('1st')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-02-01')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-02-01')
       })
 
       it('should parse "31st" (may roll to next month with fewer days)', () => {
         const result = parseNaturalDate('31st')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.result.date.getDate()).toBe(31)
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.result.date.getDate()).toBe(31)
       })
 
       it('should parse "14th" as 14th of current month (today)', () => {
@@ -967,9 +872,8 @@ describe('Natural Date Parser', () => {
         // Since today == target, isBefore returns false, so it returns current month
         const result = parseNaturalDate('14th')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-14')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-14')
       })
     })
 
@@ -977,28 +881,25 @@ describe('Natural Date Parser', () => {
       it('should format displayText with full date', () => {
         const result = parseNaturalDate('tomorrow')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.displayText).toContain('Thursday')
-          expect(result.displayText).toContain('January')
-          expect(result.displayText).toContain('15')
-          expect(result.displayText).toContain('2026')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.displayText).toContain('Thursday')
+        expect(result.displayText).toContain('January')
+        expect(result.displayText).toContain('15')
+        expect(result.displayText).toContain('2026')
       })
 
       it('should format displayText with time', () => {
         const result = parseNaturalDate('tomorrow at 3pm')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.displayText).toContain('3:00 PM')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.displayText).toContain('3:00 PM')
       })
 
       it('should format morning time correctly', () => {
         const result = parseNaturalDate('tomorrow at 9am')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(result.displayText).toContain('9:00 AM')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(result.displayText).toContain('9:00 AM')
       })
     })
 
@@ -1006,9 +907,8 @@ describe('Natural Date Parser', () => {
       it('should handle multiple spaces', () => {
         const result = parseNaturalDate('in   3   days')
         expect(isSuccess(result)).toBe(true)
-        if (isSuccess(result)) {
-          expect(toDateString(result.result.date)).toBe('2026-01-17')
-        }
+        if (!isSuccess(result)) throw new Error('expected the check above to hold')
+        expect(toDateString(result.result.date)).toBe('2026-01-17')
       })
 
       it('should handle tabs and newlines', () => {
@@ -1047,25 +947,22 @@ describe('Natural Date Parser', () => {
     it('should return error for empty string', () => {
       const result = parseNaturalDate('')
       expect(isError(result)).toBe(true)
-      if (isError(result)) {
-        expect(result.error).toBe('Please enter a date')
-      }
+      if (!isError(result)) throw new Error('expected the check above to hold')
+      expect(result.error).toBe('Please enter a date')
     })
 
     it('should return error for whitespace only', () => {
       const result = parseNaturalDate('   ')
       expect(isError(result)).toBe(true)
-      if (isError(result)) {
-        expect(result.error).toBe('Please enter a date')
-      }
+      if (!isError(result)) throw new Error('expected the check above to hold')
+      expect(result.error).toBe('Please enter a date')
     })
 
     it('should return error for unrecognized format', () => {
       const result = parseNaturalDate('gibberish')
       expect(isError(result)).toBe(true)
-      if (isError(result)) {
-        expect(result.error).toBe("Couldn't understand this date")
-      }
+      if (!isError(result)) throw new Error('expected the check above to hold')
+      expect(result.error).toBe("Couldn't understand this date")
     })
 
     it('should return error for partial matches', () => {
@@ -1098,9 +995,8 @@ describe('Natural Date Parser', () => {
       const result = parseNaturalDate('tomorrow 25:00')
       // The regex won't match "25:00" as valid time, so date parses without time
       expect(isSuccess(result)).toBe(true)
-      if (isSuccess(result)) {
-        expect(result.result.time).toBeNull()
-      }
+      if (!isSuccess(result)) throw new Error('expected the check above to hold')
+      expect(result.result.time).toBeNull()
     })
 
     it('treats a 24-hour hour with a redundant meridiem as 24-hour', () => {
@@ -1264,9 +1160,8 @@ describe('parseNaturalDate — out-of-range offsets', () => {
   it('still accepts a small in-range offset', () => {
     const result = parseNaturalDate('in 3 days')
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(Number.isNaN(result.result.date.getTime())).toBe(false)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(Number.isNaN(result.result.date.getTime())).toBe(false)
   })
 
   it('rejects a far-future offset whose midnight is valid but overflows once a caller adds a time-of-day', () => {

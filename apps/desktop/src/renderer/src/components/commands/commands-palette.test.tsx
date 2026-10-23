@@ -1,10 +1,9 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RESOURCES } from '@memry/i18n/locales'
-import { publishActiveContext, registerCommands } from '@/commands/store'
-import { resetCommandStoreForTests } from '@/commands/store'
+import { publishActiveContext, registerCommands, resetCommandStoreForTests } from '@/commands/store'
 import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
 import { trackTelemetry } from '@/lib/telemetry'
 import { COMMAND_RECENTS_KEY } from './command-recents'
@@ -110,6 +109,7 @@ function Harness({
       />
       {/* Not a focus-trapping dialog: nothing but the order of events keeps its focus. */}
       {projectOpen && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- manually positioned popover surface; native <dialog> top-layer behavior would change stacking and focus handling
         <div role="dialog" aria-label="Project">
           <input aria-label="Project name" autoFocus />
         </div>

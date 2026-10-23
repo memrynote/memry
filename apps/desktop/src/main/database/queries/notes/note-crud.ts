@@ -150,7 +150,7 @@ export function listNotesFromCache(
     includeJournals = false
   } = options
 
-  const conditions: SQL<unknown>[] = []
+  const conditions: SQL[] = []
 
   if (!includeJournals) conditions.push(sql`${noteCache.date} IS NULL`)
 
@@ -234,7 +234,7 @@ export function listNoteCacheUnderFolder(
 }
 
 export function countNotes(db: IndexDb, folder?: string, includeJournals = false): number {
-  const conditions: SQL<unknown>[] = includeJournals ? [] : [sql`${noteCache.date} IS NULL`]
+  const conditions: SQL[] = includeJournals ? [] : [sql`${noteCache.date} IS NULL`]
 
   if (folder) {
     conditions.push(like(noteCache.path, `${folder}/%`))

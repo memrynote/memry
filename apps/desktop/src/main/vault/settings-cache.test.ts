@@ -3,8 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { getSetting } from '@main/database/queries/settings'
-import { setSetting } from '@main/database/queries/settings'
+import { getSetting, setSetting } from '@main/database/queries/settings'
 import {
   GENERAL_SETTINGS_DEFAULTS,
   EDITOR_SETTINGS_DEFAULTS
@@ -59,10 +58,10 @@ describe('populateSettingsCacheFromConfig', () => {
       }
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     populateSettingsCacheFromConfig(testDb.db as any, vaultPath)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     expect(generalRaw).toBeTruthy()
     const general = JSON.parse(generalRaw!)
@@ -73,7 +72,7 @@ describe('populateSettingsCacheFromConfig', () => {
     expect(general.colorTheme).toBe('gruvbox')
     expect(general.language).toBe('tr')
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const editorRaw = getSetting(testDb.db as any, 'editor')
     expect(editorRaw).toBeTruthy()
     const editor = JSON.parse(editorRaw!)
@@ -85,17 +84,17 @@ describe('populateSettingsCacheFromConfig', () => {
     vaultPath = createTempVault({
       preferences: { minimizeToTray: false }
     })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     setSetting(
       testDb.db as any,
       'general',
       JSON.stringify({ ...GENERAL_SETTINGS_DEFAULTS, minimizeToTray: true })
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     populateSettingsCacheFromConfig(testDb.db as any, vaultPath)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const general = JSON.parse(getSetting(testDb.db as any, 'general')!)
     expect(general.minimizeToTray).toBe(false)
   })
@@ -103,10 +102,10 @@ describe('populateSettingsCacheFromConfig', () => {
   it('#given no preferences in config #then writes defaults to SQLite', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     populateSettingsCacheFromConfig(testDb.db as any, vaultPath)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe(GENERAL_SETTINGS_DEFAULTS.theme)
@@ -122,7 +121,7 @@ describe('populateSettingsCacheFromConfig', () => {
     })
 
     // Pre-existing machine-local fields
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     setSetting(
       testDb.db as any,
       'general',
@@ -133,10 +132,10 @@ describe('populateSettingsCacheFromConfig', () => {
       })
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     populateSettingsCacheFromConfig(testDb.db as any, vaultPath)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe('dark')
@@ -162,7 +161,7 @@ describe('migrateSettingsToConfig', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 
     // Simulate pre-migration SQLite state
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     setSetting(
       testDb.db as any,
       'general',
@@ -172,7 +171,7 @@ describe('migrateSettingsToConfig', () => {
         accentColor: '#ef4444'
       })
     )
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     setSetting(
       testDb.db as any,
       'editor',
@@ -182,7 +181,7 @@ describe('migrateSettingsToConfig', () => {
       })
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     const prefs = readPreferences(vaultPath)
@@ -194,14 +193,14 @@ describe('migrateSettingsToConfig', () => {
   it('#given SQLite editor settings with spellCheck #then seeds it into config.json', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     setSetting(
       testDb.db as any,
       'editor',
       JSON.stringify({ ...EDITOR_SETTINGS_DEFAULTS, spellCheck: true })
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     expect(readPreferences(vaultPath).editor.spellCheck).toBe(true)
@@ -219,10 +218,10 @@ describe('migrateSettingsToConfig', () => {
       }
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe('white')
@@ -233,10 +232,10 @@ describe('migrateSettingsToConfig', () => {
   it('#given fresh vault with no SQLite data #then writes defaults everywhere', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe(GENERAL_SETTINGS_DEFAULTS.theme)
@@ -245,12 +244,12 @@ describe('migrateSettingsToConfig', () => {
   it('#given a fresh vault created after picking a language #then the vault keeps that language', () => {
     vaultPath = createTempVault({ excludePatterns: ['.git'] })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, 'tr')
 
     // The next launch reads the language from config.json, so it must say tr.
     expect(readPreferences(vaultPath).language).toBe('tr')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     expect(JSON.parse(getSetting(testDb.db as any, 'general')!).language).toBe('tr')
   })
 
@@ -261,16 +260,16 @@ describe('migrateSettingsToConfig', () => {
     // What writeCacheFromPreferences leaves behind on a fresh vault's first
     // launch. Every value is a default, which is what let the migration read its
     // own cache back and re-seed config.json on each subsequent launch.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     setSetting(testDb.db as any, 'general', JSON.stringify(GENERAL_SETTINGS_DEFAULTS))
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
     // writePreferences renames a fresh temp file over the config, so the inode
     // changes on every write even when the bytes come out identical.
     const inodeAfterFirst = fs.statSync(configPath).ino
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     expect(fs.statSync(configPath).ino).toBe(inodeAfterFirst)
@@ -283,23 +282,23 @@ describe('migrateSettingsToConfig', () => {
     // old guard only compared theme/fontSize/fontFamily/accentColor/language,
     // so a vault customised through any other field looked untouched.
     setSetting(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       testDb.db as any,
       'general',
       JSON.stringify({ ...GENERAL_SETTINGS_DEFAULTS, minimizeToTray: true })
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
     expect(readPreferences(vaultPath).minimizeToTray).toBe(true)
 
     writePreferences(vaultPath, { minimizeToTray: false })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     migrateSettingsToConfig(testDb.db as any, vaultPath, null)
 
     expect(readPreferences(vaultPath).minimizeToTray).toBe(false)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const general = JSON.parse(getSetting(testDb.db as any, 'general')!)
     expect(general.minimizeToTray).toBe(false)
   })
@@ -325,10 +324,10 @@ describe('writeCacheFromPreferences', () => {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     writeCacheFromPreferences(testDb.db as any, prefs)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
     expect(editor.spellCheck).toBe(true)
   })
@@ -339,10 +338,10 @@ describe('writeCacheFromPreferences', () => {
       editor: { ...VAULT_PREFERENCES_DEFAULTS.editor, convertChecklistsToTasks: false }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     writeCacheFromPreferences(testDb.db as any, prefs)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
     expect(editor.convertChecklistsToTasks).toBe(false)
   })
@@ -353,19 +352,19 @@ describe('writeCacheFromPreferences', () => {
       editor: { ...VAULT_PREFERENCES_DEFAULTS.editor, convertAgentChecklistsToTasks: true }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     writeCacheFromPreferences(testDb.db as any, prefs)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
     expect(editor.convertAgentChecklistsToTasks).toBe(true)
   })
 
   it('#given no spellCheck in config #then the cache writes it off', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     writeCacheFromPreferences(testDb.db as any, { ...VAULT_PREFERENCES_DEFAULTS })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
     expect(editor.spellCheck).toBe(false)
   })
@@ -380,14 +379,14 @@ describe('writeCacheFromPreferences', () => {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     writeCacheFromPreferences(testDb.db as any, prefs)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const general = JSON.parse(getSetting(testDb.db as any, 'general')!)
     expect(general.theme).toBe('dark')
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const editor = JSON.parse(getSetting(testDb.db as any, 'editor')!)
     expect(editor.width).toBe('full')
   })

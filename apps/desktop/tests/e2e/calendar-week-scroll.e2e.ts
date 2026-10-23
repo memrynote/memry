@@ -21,9 +21,9 @@ async function openCalendarWeekView(page: Page): Promise<void> {
 }
 
 async function scrollBy(page: Page, deltaX: number): Promise<void> {
-  await page
-    .getByTestId('calendar-week-scroll')
-    .evaluate((el, dx) => (el as HTMLElement).scrollBy({ left: dx, behavior: 'auto' }), deltaX)
+  await page.getByTestId('calendar-week-scroll').evaluate((el, dx) => {
+    ;(el as HTMLElement).scrollBy({ left: dx, behavior: 'auto' })
+  }, deltaX)
 }
 
 async function settledVisibleDayStart(page: Page): Promise<number> {

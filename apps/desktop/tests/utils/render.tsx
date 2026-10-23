@@ -3,10 +3,11 @@
  * Provides common providers and utilities.
  */
 
-import { ReactElement, ReactNode } from 'react'
-import { render, RenderOptions, RenderResult } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import type { RenderOptions, RenderResult } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { vi } from 'vitest'
+import type { vi } from 'vitest'
 import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { CalendarViewProvider } from '@/contexts/calendar-view-context'
 
@@ -169,9 +170,7 @@ export function resetMockApi(): void {
  * })
  * ```
  */
-export function configureMockApi(
-  config: Record<string, unknown | ((...args: unknown[]) => unknown)>
-): void {
+export function configureMockApi(config: Record<string, unknown>): void {
   const api = getMockApi()
   if (!api) return
 

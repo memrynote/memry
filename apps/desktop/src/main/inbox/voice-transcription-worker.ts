@@ -41,9 +41,9 @@ if (!parentPort) {
 
 installWorkerLogForwarding('VoiceTranscription')
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 let transcriber: any = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 let loadPromise: Promise<any> | null = null
 
 function getUserDataPath(): string {
@@ -125,7 +125,7 @@ async function loadVoicePipeline() {
     logger.info('Voice model ready')
     return transcriber
   })()
-    .catch((error) => {
+    .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
       transcriber = null
       emitProgress('error', 0, message)

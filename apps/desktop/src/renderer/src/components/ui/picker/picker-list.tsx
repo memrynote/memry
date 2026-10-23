@@ -22,6 +22,7 @@ export function PickerList({
     <div
       data-slot="picker-list"
       className={cn('flex flex-col p-1 min-h-0 overflow-y-auto', className)}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="listbox"
       {...props}
     >

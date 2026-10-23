@@ -90,7 +90,7 @@ export const scenes = {
     await list(page).filter({ hasText: 'Work' }).waitFor({ timeout: 20000 })
     await at(4.4)
   },
-  async arrive({ rec, page, sleep, at }) {
+  async arrive({ rec: _rec, page: _page, sleep, at }) {
     await sleep(600)
     await at(4.2)
   },

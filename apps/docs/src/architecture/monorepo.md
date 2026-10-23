@@ -92,8 +92,9 @@ pnpm run deploy:sync:staging     # deploy staging sync worker
 pnpm run deploy:sync:production  # deploy production sync worker
 
 # Verify
-pnpm lint               # ESLint flat config
-pnpm typecheck          # TypeScript across apps/packages
+pnpm lint               # oxlint, type-aware, with the lint ratchet
+pnpm typecheck          # TypeScript 7 via oxlint --type-check
+pnpm format:check       # oxfmt
 pnpm test               # app-core, CLI, desktop, and sync-server tests
 pnpm test:e2e           # Playwright E2E (Electron)
 pnpm ipc:check          # validate renderer/main contract types

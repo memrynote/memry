@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useRef } from 'react'
@@ -596,7 +596,7 @@ export function useEditorSync({
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [editor, externalContentRevision])
 
   // Debounced change handler

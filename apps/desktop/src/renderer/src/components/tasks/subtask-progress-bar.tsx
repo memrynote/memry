@@ -37,6 +37,7 @@ export const SubtaskProgressBar = ({
           'flex-1 rounded-full overflow-hidden bg-surface-active',
           size === 'sm' ? 'h-1.5 max-w-[120px]' : 'h-2 max-w-[160px]'
         )}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
         role="progressbar"
         aria-valuenow={percentage}
         aria-valuemin={0}

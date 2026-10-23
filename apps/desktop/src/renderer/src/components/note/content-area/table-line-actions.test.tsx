@@ -72,6 +72,7 @@ const components = { Generic: { Menu: { Item } } } as unknown as Components
 
 function renderActions(editor: BlockNoteEditor, text: string, axis: TableAxis): void {
   render(
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values -- renders once per test; no re-render churn to guard against
     <BlockNoteContext.Provider value={{ editor }}>
       <ComponentsContext.Provider value={components}>
         <TableLineActions cell={cellElement(editor, text)} axis={axis} />

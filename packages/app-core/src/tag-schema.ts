@@ -150,7 +150,7 @@ export function resolveTagSchemas(
       if (fields.length > 0) inherited.push({ from: ancestor, fields })
     }
     const effectiveFields = [...inherited]
-      .reverse()
+      .toReversed()
       .flatMap((group) => group.fields)
       .concat(own)
 
@@ -247,7 +247,8 @@ export type SchemaEditError =
   | { code: 'unreadable-schema' }
 
 export type SchemaEditResult =
-  { ok: true; next: TagSchemaStored; changed: boolean } | { ok: false; error: SchemaEditError }
+  | { ok: true; next: TagSchemaStored; changed: boolean }
+  | { ok: false; error: SchemaEditError }
 
 function storedField(field: NewFieldBody): TagFieldStored {
   return field.relation

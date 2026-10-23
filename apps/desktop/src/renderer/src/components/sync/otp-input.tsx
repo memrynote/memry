@@ -61,7 +61,7 @@ export function OtpInput({
   const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
 
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: the verification result arrives as props from the parent, not from an event this component sees. The rule's suggested key-remount is exactly what broke here: the key included the per-second `expiresIn`, so every countdown tick remounted the input and wiped half-typed codes. Keying on a failed attempt instead leaves typing untouched.
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react/set-state-in-effect -- genuine external sync: the verification result arrives as props from the parent, not from an event this component sees. The rule's suggested key-remount is exactly what broke here: the key included the per-second `expiresIn`, so every countdown tick remounted the input and wiped half-typed codes. Keying on a failed attempt instead leaves typing untouched.
     if (error && !isVerifying) setValue('')
   }, [error, isVerifying])
 
@@ -96,6 +96,7 @@ export function OtpInput({
           value={value}
           onChange={handleChange}
           disabled={isVerifying}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
           autoFocus
           aria-label={t('setup.otp.aria')}
         >
@@ -110,6 +111,7 @@ export function OtpInput({
             ))}
           </InputOTPGroup>
 
+          {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout */}
           <div className="flex items-center justify-center w-5" role="separator" aria-hidden="true">
             <div className="size-1 rounded-xs bg-muted-foreground/50" />
           </div>

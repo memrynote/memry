@@ -103,16 +103,17 @@ vi.mock('@excalidraw/excalidraw', () => ({
     mocks.excalidrawProps = props
     // The real Excalidraw passes (elements, appState, files); the editor reads
     // appState from it, so the fake has to hand one over too.
-    mocks.onChange = () =>
-      (props.onChange as unknown as (e: unknown[], a: unknown, f: unknown) => void)(
+    mocks.onChange = () => {
+      ;(props.onChange as unknown as (e: unknown[], a: unknown, f: unknown) => void)(
         mocks.api.elements,
         {
           showHyperlinkPopup: mocks.api.showHyperlinkPopup,
           isLoading: mocks.api.isLoading,
-          ...(mocks.api.viewport ?? {})
+          ...mocks.api.viewport
         },
         {}
       )
+    }
     // The real Excalidraw hands out its imperative API on mount — long before
     // initialData is applied. A child effect still runs before the parent's
     // persistence effect, so the ordering under test is preserved (calling it
@@ -142,7 +143,7 @@ vi.mock('@excalidraw/excalidraw', () => ({
         scrollToContent: (...args: unknown[]) => mocks.scrollToContent(...args),
         updateScene: (...args: unknown[]) => mocks.updateScene(...args)
       })
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only, like the real API handoff
+      // oxlint-disable-next-line react/exhaustive-deps -- mount-only, like the real API handoff
     }, [])
     return <div data-testid="excalidraw" />
   },
@@ -301,9 +302,7 @@ describe('CanvasEditor persistence safety', () => {
   it('persists a changed scene after init completes', async () => {
     render(<CanvasEditor canvasId="c1" initialScene="" />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -324,9 +323,7 @@ describe('CanvasEditor persistence safety', () => {
     // every canvas tab visit.
     render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE_WITH_SIDECAR} />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -337,9 +334,7 @@ describe('CanvasEditor persistence safety', () => {
   it('Cmd+S flushes to the vault and never reaches Excalidraw', async () => {
     const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
 
     const documentKeydown = vi.fn()
     document.addEventListener('keydown', documentKeydown)
@@ -367,9 +362,7 @@ describe('CanvasEditor persistence safety', () => {
     finishInit()
 
     // A real edit: serialized once and written.
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -384,15 +377,11 @@ describe('CanvasEditor persistence safety', () => {
     // Pan/zoom fires onChange but leaves every element untouched. Before the
     // signature gate each of these paid a full serializeAsJSON (multi-MB with
     // inline images) purely to discover the string was identical.
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -404,9 +393,7 @@ describe('CanvasEditor persistence safety', () => {
   it('persists an edit made right after the previous save (flush is never gated)', async () => {
     render(<CanvasEditor canvasId="c1" initialScene="" />)
     finishInit()
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     await act(async () => {
       await vi.runAllTimersAsync()
     })
@@ -415,9 +402,7 @@ describe('CanvasEditor persistence safety', () => {
     // New stroke, then an immediate flush (Cmd+S / tab close / quit) inside the
     // debounce window: the fingerprint moved, so it must reach the vault.
     mocks.api.elements = [...mocks.api.elements, { id: 'stroke-2', type: 'freedraw' }]
-    act(() => {
-      mocks.onChange?.()
-    })
+    act(() => mocks.onChange?.())
     const wrapper = document.querySelector('[data-canvas-editor="c1"]')!
     fireEvent.keyDown(wrapper.querySelector('[data-testid="excalidraw"]')!, {
       key: 's',

@@ -95,6 +95,7 @@ vi.mock('@/components/ui/alert-dialog', () => ({
 
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
     open ? <div role="dialog">{children}</div> : null,
   DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
@@ -120,6 +121,7 @@ vi.mock('@/components/ui/select', () => ({
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
       >
+        {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- test double for a third-party control; label is irrelevant to the assertions */}
         <option value="" />
         <option value="work">work</option>
         <option value="home">home</option>

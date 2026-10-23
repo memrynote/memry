@@ -71,6 +71,7 @@ function captureContext(
   let latest: ReturnType<typeof useTabs> | null = null
 
   const Probe = (): null => {
+    // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
     latest = useTabs()
     return null
   }
@@ -456,20 +457,25 @@ describe('tab context render scoping', () => {
 
     // Only ever reads actions: must not re-render when tab state changes.
     const ActionsProbe = (): null => {
+      // oxlint-disable-next-line react/immutability -- test harness intentionally records render counts for assertions
       renders.actions += 1
+      // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
       capturedActions = useTabActions()
       return null
     }
 
     // Reads tab state: must keep re-rendering when tab state changes.
     const StateProbe = (): null => {
+      // oxlint-disable-next-line react/immutability -- test harness intentionally records render counts for assertions
       renders.tabState += 1
+      // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
       seenTitle = useTabs().state.tabGroups.main.tabs.find((t) => t.id === 'alpha')?.title ?? ''
       return null
     }
 
     // Drives the state changes from outside the two probes above.
     const Driver = (): null => {
+      // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
       capturedContext = useTabs()
       return null
     }

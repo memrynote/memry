@@ -11,8 +11,8 @@ mkdir -p "$TMP"
 node themes.mjs
 node brand.mjs
 node render.mjs --events
-# the committed copies went through the pre-commit prettier; match them so a build leaves no diff
-pnpm exec prettier --write --log-level warn themes.js brand.js events.json
+# the committed copies went through the pre-commit oxfmt; match them so a build leaves no diff
+pnpm exec oxfmt themes.js brand.js events.json
 uv run --quiet --with numpy --with scipy python score.py "$TMP/score.wav"
 if [[ "${1:-}" == "--audio" ]]; then
   ffmpeg -y -loglevel error -i "$OUT" -map 0:v -c copy "$TMP/video.mp4"

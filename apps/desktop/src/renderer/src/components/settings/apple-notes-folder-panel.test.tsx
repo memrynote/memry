@@ -227,7 +227,7 @@ describe('AppleNotesFolderPanel', () => {
 
       await enterPassword('older')
 
-      await screen.findByText(/Unlocks 2 of 3 locked notes/)
+      expect(await screen.findByText(/Unlocks 2 of 3 locked notes/)).toBeInTheDocument()
     })
 
     it('drops the password from the options as soon as it is edited', async () => {

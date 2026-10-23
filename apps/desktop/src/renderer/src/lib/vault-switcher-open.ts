@@ -18,7 +18,7 @@ const listeners = new Set<Listener>()
 
 /** Ask the mounted vault switcher to open and take focus. */
 export function requestVaultSwitcherOpen(): void {
-  for (const listener of [...listeners]) listener()
+  for (const listener of Array.from(listeners)) listener()
 }
 
 /** Subscribe the vault switcher to open requests. */

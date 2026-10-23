@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/sync-fixtures'
+import { test } from './fixtures/sync-fixtures'
 import { waitForVaultReady } from './utils/electron-helpers'
 import { createNoteWithBody, expectNoteBody, openNoteByTitle } from './utils/note-sync-helpers'
 

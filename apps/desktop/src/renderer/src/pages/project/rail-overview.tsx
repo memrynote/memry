@@ -98,6 +98,7 @@ export const RailOverview = ({
       />
 
       {pinnedNotes.length > 0 ? (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
         <div role="list" className="mt-2 space-y-px">
           {pinnedNotes.map((note) => (
             <NoteRow

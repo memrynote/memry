@@ -479,8 +479,12 @@ describe('agent IPC handlers', () => {
     const cleanup = vi.fn()
     const kill = vi.fn()
     const handle = {
-      events: (async function* () {})(),
-      stderr: (async function* () {})(),
+      events: (async function* () {
+        /* intentional no-op */
+      })(),
+      stderr: (async function* () {
+        /* intentional no-op */
+      })(),
       pid: 9,
       kill,
       waitExit: vi.fn(),

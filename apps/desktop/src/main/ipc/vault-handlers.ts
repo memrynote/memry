@@ -159,7 +159,7 @@ export function registerVaultHandlers(): void {
       broadcastToAllWindows(VaultChannels.events.LIST_CHANGED)
       // Lazy like the other account routes here: the sync stack loads on first use.
       const { refreshVaultDirectory } = await import('../sync/vault-directory')
-      void refreshVaultDirectory({ force: true }).catch((err) =>
+      void refreshVaultDirectory({ force: true }).catch((err: unknown) =>
         log.warn('Vault icon sync failed; retries on the next refresh', err)
       )
     })

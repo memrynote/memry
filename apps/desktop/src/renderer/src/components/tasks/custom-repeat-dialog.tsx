@@ -432,6 +432,9 @@ const CustomRepeatDialogInner = ({
   const [endDate, setEndDate] = useState<Date | null>(initialState.endDate)
   const [endCount, setEndCount] = useState(initialState.endCount)
 
+  // Stamp for a new rule; fixed at mount so render stays pure.
+  const [fallbackCreatedAt] = useState(() => new Date())
+
   // Build current config for preview
   const currentConfig = useMemo(
     (): RepeatConfig => ({
@@ -448,7 +451,7 @@ const CustomRepeatDialogInner = ({
       endDate: endType === 'date' ? endDate : undefined,
       endCount: endType === 'count' ? endCount : undefined,
       completedCount: initialConfig?.completedCount || 0,
-      createdAt: initialConfig?.createdAt || new Date()
+      createdAt: initialConfig?.createdAt || fallbackCreatedAt
     }),
     [
       frequency,
@@ -461,7 +464,8 @@ const CustomRepeatDialogInner = ({
       endType,
       endDate,
       endCount,
-      initialConfig
+      initialConfig,
+      fallbackCreatedAt
     ]
   )
 
@@ -591,7 +595,8 @@ export const CustomRepeatDialog = ({
   dueDate
 }: CustomRepeatDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
-  const effectiveDueDate = useMemo(() => dueDate || new Date(), [dueDate])
+  const [mountedAt] = useState(() => new Date())
+  const effectiveDueDate = dueDate || mountedAt
 
   // Create a stable key that changes when dialog opens/closes or config changes
   // This causes React to unmount/remount the inner component, resetting all state

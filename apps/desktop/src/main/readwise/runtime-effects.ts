@@ -151,6 +151,7 @@ export class ReadwiseScheduler {
     if (token === null) throw new ReadwiseUnavailableError('not-connected')
     if (!this.deps.canPull()) throw new ReadwiseUnavailableError('other-device')
     // The token read yielded: re-check before taking the slot.
+    // oxlint-disable-next-line typescript/return-await, typescript/await-thenable -- TS narrows `this.current` to null here; the await above may have set it
     if (this.current) return await this.current
     return await this.beginRun(token, 'manual')
   }

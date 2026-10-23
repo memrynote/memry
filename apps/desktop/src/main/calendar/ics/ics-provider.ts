@@ -148,7 +148,7 @@ export const icsCalendarProvider: ProviderDefinition = {
     if (!after.isSelected) {
       purgeIcsCalendarEvents(db, after.id)
     } else if (!before.isSelected) {
-      void refreshIcsCalendarSource(db, after.id).catch((err) => {
+      void refreshIcsCalendarSource(db, after.id).catch((err: unknown) => {
         log.warn('Immediate refresh after enabling a subscribed calendar failed', err)
       })
     }

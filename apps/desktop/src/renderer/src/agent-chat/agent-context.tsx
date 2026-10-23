@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef
@@ -173,7 +174,9 @@ export function AgentProvider({
   // resubscribing on every conversation switch would tear down and rebuild the
   // IPC listener for no gain.
   const activeConversationIdRef = useRef(state.activeConversationId)
-  activeConversationIdRef.current = state.activeConversationId
+  useLayoutEffect(() => {
+    activeConversationIdRef.current = state.activeConversationId
+  }, [state.activeConversationId])
 
   // Streamed text is buffered here and committed once per animation frame. A
   // hidden window gets no frames, so a background window stops re-rendering
@@ -240,7 +243,7 @@ export function AgentProvider({
         trackRendererError('agent_create_conversation', error)
         const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
         dispatch({ type: 'set_error', error: message })
-        throw new Error(message)
+        throw new Error(message, { cause: error })
       }
     },
     [t]
@@ -276,7 +279,7 @@ export function AgentProvider({
         dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: false })
         const message = extractErrorMessage(error, t('agentChat.errors.sendTurn'))
         dispatch({ type: 'set_error', error: message })
-        throw new Error(message)
+        throw new Error(message, { cause: error })
       }
     },
     [t]
@@ -479,7 +482,7 @@ export function AgentProvider({
           dispatch({ type: 'set_source_window_id', sourceWindowId: result.windowId })
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_resolve_window', error)
         dispatch({
@@ -492,7 +495,7 @@ export function AgentProvider({
       .then((statuses) => {
         if (!cancelled) dispatch({ type: 'set_backend_statuses', statuses })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_backend_status', error)
         dispatch({
@@ -505,7 +508,7 @@ export function AgentProvider({
       .then((result) => {
         if (!cancelled) dispatch({ type: 'set_disclosure', accepted: result.accepted })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_load_disclosure', error)
         dispatch({
@@ -518,7 +521,7 @@ export function AgentProvider({
       .then((conversations) => {
         if (!cancelled) dispatch({ type: 'set_conversations', conversations })
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (cancelled) return
         trackRendererError('agent_list_conversations', error)
         dispatch({
@@ -583,7 +586,7 @@ export function AgentProvider({
       // A retry that outlives its effect must not overwrite a newer target: the
       // bootstrap loop retries for seconds, and conversation switches are fast.
       cancelled ? Promise.resolve({ ok: false }) : setStreamTarget({ conversationId })
-    ).catch((error) => {
+    ).catch((error: unknown) => {
       if (cancelled) return
       trackRendererError('agent_set_stream_target', error)
     })

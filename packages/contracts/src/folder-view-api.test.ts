@@ -264,9 +264,8 @@ describe('ViewConfigSchema', () => {
   it('should validate minimal view config', () => {
     const result = ViewConfigSchema.safeParse({ name: 'My View' })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.type).toBe('table') // default
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.type).toBe('table') // default
   })
 
   it('should validate full view config', () => {
@@ -404,10 +403,9 @@ describe('Request Schemas', () => {
         scope: { kind: 'folder', path: 'notes' }
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.limit).toBe(500)
-        expect(result.data.offset).toBe(0)
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.limit).toBe(500)
+      expect(result.data.offset).toBe(0)
     })
 
     it('should validate minimal tag request with defaults', () => {
@@ -415,10 +413,9 @@ describe('Request Schemas', () => {
         scope: { kind: 'tag', tag: 'work' }
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.limit).toBe(500)
-        expect(result.data.offset).toBe(0)
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.limit).toBe(500)
+      expect(result.data.offset).toBe(0)
     })
 
     it('should validate full request', () => {

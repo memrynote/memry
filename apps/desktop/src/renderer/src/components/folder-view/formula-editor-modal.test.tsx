@@ -35,6 +35,7 @@ vi.mock('@/components/ui/dialog', () => ({
     open: boolean
     onOpenChange?: (open: boolean) => void
     children: React.ReactNode
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double mirrors the real widget ARIA role
   }) => (open ? <div role="dialog">{children}</div> : null),
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
@@ -61,6 +62,7 @@ vi.mock('@/components/ui/autocomplete-dropdown', () => ({
     onSelect: (index: number) => void
   }) =>
     visible ? (
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double mirrors the real widget ARIA role
       <div role="listbox">
         {suggestions.map((suggestion, index) => (
           <button type="button" key={suggestion.label} onClick={() => onSelect(index)}>

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { foldTag } from '@memry/shared/tag-fold'
 import { createPortal } from 'react-dom'
@@ -107,17 +107,23 @@ import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/att
 import { NoteFileUrlProvider } from './note-file-url-context'
 import {
   ReviewFormattingToolbar,
-  ReviewFormattingToolbarController
+  ReviewFormattingToolbarController,
+  getEditorSelectionFromState
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 import { Plugin } from 'prosemirror-state'
 import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
+import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
 import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
+import { PortalFlowsLayer } from './portal-flows/portal-flows-layer'
+import { getPortalSlashMenuItems } from './portal-flows/portal-slash-items'
+import { usePortalAncestryNotes } from './portal-flows/use-portal-ancestry'
 import { TaskRemovalDialog } from './task-removal-dialog'
 import {
   markTaskRemovalsHandled,
@@ -199,7 +205,6 @@ import { useT } from '@memry/i18n/renderer'
 import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import { yUndoPluginKey } from 'y-prosemirror'
 import type { EditorContextMenuSpelling } from '@memry/contracts/writing-tools-api'
-import { getEditorSelectionFromState } from './review-formatting-toolbar'
 import {
   EditorContextMenu,
   editorContextMenuEntries,
@@ -443,6 +448,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const portalAncestry = usePortalAncestryNotes()
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
   // Starts the custom callout type sync before the first note parse (#3207).
@@ -665,11 +671,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [fetchNote]
   )
 
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   const resolveFileUrl = useRef(
     createNoteFileUrlResolver(
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       () => notePathRef.current,
       async () => (await vaultService.getStatus()).path ?? null,
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       fetchNotePath,
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       () => noteIdRef.current
     )
   ).current
@@ -838,6 +848,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // live by note created/renamed/deleted events (#1716).
   useWikiLinkBroken(editor, useObjectIdentityLookup())
   useEffect(() => registerEditorPlugin(editor, createWikiLinkCardPlugin()), [editor])
+  // The trailing ` ^anchor` of a portal-addressable block is markdown, not prose.
+  useEffect(() => registerEditorPlugin(editor, createAnchorVisibilityPlugin()), [editor])
+  useEffect(() => registerEditorPlugin(editor, createPortalTrailingParagraphPlugin()), [editor])
 
   const footnoteHover = useFootnotes(editor)
 
@@ -1260,6 +1273,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onCreate: runSideEffects ? openMentionCreate : undefined
   })
   const MentionSuggestionMenu = useCallback(
+    // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
     function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
       return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
     },
@@ -1322,6 +1336,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           element.dataset.criticMarkId === review.hoveredMarkId
         )
       )
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [review, review?.hoveredMarkId, review?.marks])
 
   useEffect(() => {
@@ -1340,6 +1355,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       review.onMarkPositionsChange?.(positions)
     })
     return () => window.cancelAnimationFrame(frame)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [review, review?.marks])
 
   // Finder-style multi-block marquee selection
@@ -1396,7 +1412,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const discardTask = useCallback((taskId: string) => {
     tasksService
       .delete(taskId)
-      .catch((err) =>
+      .catch((err: unknown) =>
         log.warn('Failed to delete a task whose conversion was undone', { taskId, err })
       )
   }, [])
@@ -1671,7 +1687,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // Asked about like any task leaving the note, even one converted this
         // session: this is a choice, not an undo.
         convertedCheckboxesRef.current.delete(blockId)
-        turnTaskIntoCheckbox(editor as any, blockId).catch((err) =>
+        turnTaskIntoCheckbox(editor as any, blockId).catch((err: unknown) =>
           log.warn('Failed to turn a task into a checkbox', { blockId, err })
         )
       }
@@ -2048,9 +2064,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
    */
   const filePanelLabel = t('editor.filePanel.choose')
   const filePanelDeps = useRef({ editor, label: filePanelLabel, open: setAttachmentPicker })
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   filePanelDeps.current = { editor, label: filePanelLabel, open: setAttachmentPicker }
   const [VaultFilePanel] = useState(
     () =>
+      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
       function VaultFilePanel({ blockId }: FilePanelProps): React.ReactElement {
         const deps = filePanelDeps.current
         return (
@@ -2134,7 +2152,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         markTaskRemovalsHandled(editor, movedTaskIds)
         editor.removeBlocks([block])
         for (const taskId of movedTaskIds) {
-          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err) =>
+          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err: unknown) =>
             log.warn('Failed to relink a moved task', { taskId, err })
           )
         }
@@ -2199,6 +2217,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               toast.error(extractErrorMessage(err, t('wikiLinkMenu.copyFailed')))
             )
           return
+        default:
+          break
       }
       // Edit and unlink act on the chip as it was when the menu opened; a remote
       // edit since then may have moved or removed it.
@@ -2861,7 +2881,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }
 
   const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
-    relinkTaskNotes(taskId, change).catch((err) =>
+    relinkTaskNotes(taskId, change).catch((err: unknown) =>
       log.warn("Failed to update a task's linked notes", { taskId, err })
     )
   }
@@ -2907,7 +2927,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       .then((result) => {
         if (!result.success) toast.error(result.error ?? t('editor.taskRemoval.deleteFailed'))
       })
-      .catch((err) => toast.error(extractErrorMessage(err, t('editor.taskRemoval.deleteFailed'))))
+      .catch((err: unknown) =>
+        toast.error(extractErrorMessage(err, t('editor.taskRemoval.deleteFailed')))
+      )
   }
 
   // Cut removes the selection in the same synchronous dispatch that fires the
@@ -2924,6 +2946,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
     container.addEventListener('cut', onCut, true)
     return () => container.removeEventListener('cut', onCut, true)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [editor])
 
   // The content a note opens with never reaches `onChange`. y-prosemirror
@@ -2942,6 +2965,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   })
   useEffect(() => {
     scanOpenedContent()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [editor])
 
   // Conversion turning on, once the setting is read or when the owner switches
@@ -2956,6 +2980,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     toast.error(aiError, { action: { label: tCommon('button.retry'), onClick: retryAI } })
   }
   const reportAIUnavailableRef = useRef(reportAIUnavailable)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   reportAIUnavailableRef.current = reportAIUnavailable
 
   // Cmd/Ctrl+J is the AI shortcut. Once the AI server failed to start no
@@ -2997,8 +3022,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // note-relative PDF/attachment ref load — see `note-file-url-context`.
   return (
     <NoteFileUrlProvider resolveFileUrl={resolveFileUrl} noteId={noteId}>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
       <div
         ref={containerRef}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="region"
         aria-label={t('editor.content.regionAria')}
         className={cn('content-area h-full flex flex-col relative', className)}
@@ -3013,6 +3040,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         {yjsFragment && <BodySyncPendingHint fragment={yjsFragment} />}
 
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
         <div
           ref={setEditorContainerRef}
           className={cn(
@@ -3174,7 +3202,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             editor={editor}
             editable={editable}
             onChange={(_editor, context): void => {
-              void handleChange()
+              handleChange()
               applyTaskIntents(context.getChanges())
             }}
             theme={editorTheme}
@@ -3231,6 +3259,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
             <FilePanelController filePanel={VaultFilePanel} />
+            <PortalFlowsLayer
+              noteId={noteId}
+              notePath={notePath}
+              editable={editable}
+              ancestry={portalAncestry}
+            />
             <LinkAddressToolbarController />
             <SlashMenuFallbackContext value={slashMenuFallbacks}>
               <SuggestionMenuController<(query: string) => Promise<SlashMenuItem[]>>
@@ -3297,10 +3331,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         }
                         return inCell
                           ? { ...withPhoto, onItemClick: pickImageForCell }
-                          : { ...withPhoto, onItemClick: () => openAttachmentPicker('image') }
+                          : {
+                              ...withPhoto,
+                              onItemClick: () => openAttachmentPicker('image')
+                            }
                       }
                       if (key === 'video' || key === 'audio') {
-                        return { ...item, onItemClick: () => openAttachmentPicker('media') }
+                        return {
+                          ...item,
+                          onItemClick: () => openAttachmentPicker('media')
+                        }
                       }
                       if (key === 'file') {
                         return {
@@ -3441,6 +3481,23 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         group: t('editor.viewBlock.group'),
                         subtext: t('editor.viewBlock.subtext')
                       })
+                  // `/portal` and `/search portal`: live windows onto other notes.
+                  const portalItems = inCell
+                    ? []
+                    : getPortalSlashMenuItems(
+                        editor,
+                        {
+                          portal: {
+                            title: t('portalFlows.slash.portal.title'),
+                            subtext: t('portalFlows.slash.portal.subtext')
+                          },
+                          searchPortal: {
+                            title: t('portalFlows.slash.searchPortal.title'),
+                            subtext: t('portalFlows.slash.searchPortal.subtext')
+                          }
+                        },
+                        t('editor.viewBlock.group')
+                      )
                   // `/chart` is the same view block in its chart layout.
                   const chartItem = inCell
                     ? null
@@ -3539,6 +3596,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...portalItems,
                     ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
                     ...dateItems,

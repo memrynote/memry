@@ -88,7 +88,10 @@ export default function App() {
       .catch(() => dispatch({ type: 'STATUS', connection: 'app-closed', port: null }))
 
     browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-      if (!tab?.id) return dispatch({ type: 'DRAFT_READY', draft: null })
+      if (!tab?.id) {
+        dispatch({ type: 'DRAFT_READY', draft: null })
+        return
+      }
       // Content scripts never inject into a PDF viewer, so a rejected EXTRACT on
       // a fetchable http(s) tab whose path ends in .pdf means the browser is
       // showing the file itself. buildPdfDraft enforces both conditions; a
@@ -194,7 +197,9 @@ export default function App() {
   // ⌘↵ / Ctrl↵ saves when the card is ready. Ref keeps the handler fresh
   // without re-subscribing the listener on every render.
   const sendRef = useRef(onSend)
-  sendRef.current = onSend
+  useEffect(() => {
+    sendRef.current = onSend
+  })
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (

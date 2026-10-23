@@ -92,9 +92,8 @@ describe('TabContextMenu', () => {
 
     await waitFor(() => {
       expect(latestState.layout.type).toBe('split')
-      if (latestState.layout.type === 'split') {
-        expect(latestState.layout.direction).toBe('vertical')
-      }
+      if (latestState.layout.type !== 'split') throw new Error('expected a split layout')
+      expect(latestState.layout.direction).toBe('vertical')
     })
   })
 
@@ -127,12 +126,14 @@ describe('TabContextMenu', () => {
     await waitFor(() => {
       const tabs = latestState.tabGroups[group.id].tabs
       if (isPin) {
+        /* oxlint-disable vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted */
         expect(tabs.find((tab) => tab.id === clickedTab.id)?.isPinned).toBe(true)
         expect(tabs.find((tab) => tab.id === activeTab.id)?.isPinned).toBe(false)
       } else {
         expect(tabs).toHaveLength(3)
         expect(tabs.filter((tab) => tab.entityId === clickedTab.entityId)).toHaveLength(2)
         expect(tabs.at(-1)?.viewState).toEqual({ filter: 'done' })
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     })
   })

@@ -62,17 +62,17 @@ export const AddSubtaskInput = ({
   return (
     <div className={cn('relative py-1', className)}>
       {/* Tree connector lines - CSS based for seamless connection */}
-      <div className="absolute left-0 top-0 bottom-0 w-5" aria-hidden="true">
+      <div className="absolute start-0 top-0 bottom-0 w-5" aria-hidden="true">
         {/* Vertical line - extends to 50% height since add input is always last */}
-        <div className="absolute left-2 w-px bg-border top-0 h-[50%]" />
+        <div className="absolute start-2 w-px bg-border top-0 h-[50%]" />
         {/* Horizontal line - connects vertical line to content */}
-        <div className="absolute left-2 top-1/2 w-3 h-px bg-border" />
+        <div className="absolute start-2 top-1/2 w-3 h-px bg-border" />
       </div>
 
       {/* Input container */}
       <div
         className={cn(
-          'flex items-center rounded-sm border transition-colors ml-7',
+          'flex items-center rounded-sm border transition-colors ms-7',
           isActive
             ? 'border-ring bg-background shadow-sm'
             : 'border-transparent hover:border-border'
@@ -80,7 +80,7 @@ export const AddSubtaskInput = ({
       >
         <Plus
           className={cn(
-            'w-4 h-4 ml-2 shrink-0',
+            'w-4 h-4 ms-2 shrink-0',
             isActive ? 'text-muted-foreground' : 'text-muted-foreground/60'
           )}
           aria-hidden="true"
@@ -103,7 +103,7 @@ export const AddSubtaskInput = ({
         />
 
         {isActive && title && (
-          <span className="text-xs text-muted-foreground mr-2 shrink-0">
+          <span className="text-xs text-muted-foreground me-2 shrink-0">
             {tPhaseF('phaseF.componentsTasksAddSubtaskInput.enterToAdd')}
           </span>
         )}

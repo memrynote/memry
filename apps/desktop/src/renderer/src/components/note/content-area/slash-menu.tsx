@@ -35,6 +35,7 @@ import {
   Hierarchy,
   Image,
   Info,
+  Layers,
   LayoutTemplate,
   Link,
   List,
@@ -47,6 +48,7 @@ import {
   Music,
   PenTool,
   Quote,
+  Search,
   Sigma,
   Smile,
   Sparkles,
@@ -54,7 +56,6 @@ import {
   Video,
   type AppIcon
 } from '@/lib/icons'
-import { isMac } from '@/lib/shortcut-catalog'
 import { cn } from '@/lib/utils'
 import { recordSlashMenuRecent, type SlashMenuItem } from './slash-menu-model'
 
@@ -90,6 +91,8 @@ const ICONS: Readonly<Record<string, AppIcon>> = {
   diagram: Hierarchy,
   whiteboard: PenTool,
   view: Database,
+  portal: Layers,
+  search_portal: Search,
   emoji: Smile,
   insert_template: LayoutTemplate,
   image: Image,
@@ -123,6 +126,7 @@ function RowIcon({ id }: { id: string }): ReactNode {
       : id.startsWith('template:')
         ? LayoutTemplate
         : File)
+  // oxlint-disable-next-line react/static-components -- component comes from a stable module-level table or plugin registry, not created per render
   return <Icon className={cn('size-4', id === 'ai' && 'text-tint')} aria-hidden />
 }
 
@@ -191,13 +195,16 @@ export function SlashMenu({
 
   // A new query is a new list; the first fallback is the one Enter runs.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- state resets when its input changes; render-time derivation would need previous-value tracking
     setFallbackIndex(0)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [query])
 
   useEffect(() => {
     listRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
       ?.scrollIntoView?.({ block: 'nearest' })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [selectedIndex, activeFallback])
 
   const closeAndClear = (): void => {
@@ -270,9 +277,6 @@ export function SlashMenu({
 
   if (items.length === 0 && !showEmpty) return null
 
-  const selected = selectedIndex === undefined ? undefined : items[selectedIndex]
-  const secondaryKey = isMac ? '⌘↵' : 'Ctrl ↵'
-
   const rows: ReactNode[] = []
   let currentGroup: string | undefined
   items.forEach((item, index) => {
@@ -280,6 +284,7 @@ export function SlashMenu({
       currentGroup = item.group
       rows.push(
         <div
+          // oxlint-disable-next-line react/no-array-index-key -- list is positional and never reordered, so the index is the stable identity
           key={`group-${index}`}
           role="presentation"
           className={cn(
@@ -295,8 +300,10 @@ export function SlashMenu({
     rows.push(
       <button
         type="button"
+        // oxlint-disable-next-line react/no-array-index-key -- list is positional and never reordered, so the index is the stable identity
         key={`${item.group}-${item.id}-${index}`}
         id={`bn-suggestion-menu-item-${index}`}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="option"
         aria-selected={isSelected}
         aria-label={item.title}
@@ -313,7 +320,7 @@ export function SlashMenu({
         >
           <RowIcon id={item.id} />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-foreground">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-normal leading-4 text-foreground">
           <Title item={item} />
         </span>
         {item.matchedAlias ? (
@@ -333,6 +340,7 @@ export function SlashMenu({
   return (
     <div
       id="bn-suggestion-menu"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="listbox"
       aria-label={t('editor.slashMenu.aria')}
       className="bn-suggestion-menu memry-slash-menu flex max-h-[inherit] w-[360px] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-dropdown)]"
@@ -350,6 +358,7 @@ export function SlashMenu({
                 <button
                   type="button"
                   key={fallback.key}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                   role="option"
                   aria-selected={isSelected}
                   tabIndex={-1}
@@ -363,7 +372,7 @@ export function SlashMenu({
                       aria-hidden
                     />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-4 text-foreground">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-normal leading-4 text-foreground">
                     {fallback.label}
                     {fallback.target ? (
                       <span className="font-semibold"> “{fallback.target}”</span>
@@ -377,26 +386,10 @@ export function SlashMenu({
           rows
         )}
       </div>
-      {(selected || fallbacks.length > 0) && (
-        <div className="flex h-9 shrink-0 items-center gap-3 border-t border-border bg-surface pe-2 ps-3">
-          <span className="min-w-0 flex-1 truncate text-xs text-text-secondary">
-            {selected?.subtext ?? ''}
-          </span>
-          {selected?.secondary ? (
-            <>
-              <span className="flex shrink-0 items-center gap-1.5 text-xs text-text-secondary">
-                {selected.secondary.label}
-                <Key>{secondaryKey}</Key>
-              </span>
-              <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />
-            </>
-          ) : null}
-          <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-foreground">
-            {selected ? t('editor.slashMenu.actions.insert') : t('editor.slashMenu.actions.open')}
-            <Key>↵</Key>
-          </span>
-        </div>
-      )}
+      <div className="flex h-8 shrink-0 items-center justify-end gap-1.5 border-t border-border px-3 text-xs text-text-secondary">
+        {t('editor.slashMenu.close')}
+        <Key>{'Esc'}</Key>
+      </div>
     </div>
   )
 }

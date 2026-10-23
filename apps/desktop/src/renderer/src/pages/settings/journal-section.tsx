@@ -66,6 +66,7 @@ export function JournalSettings() {
   // Sync editable copies whenever the persisted vault config loads or changes.
   useEffect(() => {
     if (!config) return
+    // oxlint-disable-next-line react/set-state-in-effect -- editable drafts resync from the persisted vault config, which loads asynchronously from main
     setJournalFolder(config.journalFolder)
     setJournalDateFormat(config.journalDateFormat)
   }, [config])
@@ -88,7 +89,8 @@ export function JournalSettings() {
   }, [config, journalDateFormat, updateConfig])
 
   // Local date, not UTC: near midnight a UTC date shows the wrong day (and weekday).
-  const todayIso = toLocalDateString(new Date())
+  const [today] = useState(() => new Date())
+  const todayIso = toLocalDateString(today)
   const previewFilename = `${formatJournalFilename(todayIso, journalDateFormat)}.md`
   const previewPath = journalFolder ? `${journalFolder}/${previewFilename}` : previewFilename
 

@@ -100,6 +100,7 @@ export function ReviewRail({ review, targetId }: ReviewRailProps) {
       if (areNumberRecordsEqual(previous, nextHeights)) return previous
       return nextHeights
     })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [editingMarkId, expandedMarkIds, review.activeDraft, review.marks])
 
   useEffect(() => {

@@ -26,7 +26,7 @@ import { ConversationList } from './conversation-list'
 export type RightSidebarTab = 'day' | 'agent'
 
 export const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
-const RIGHT_SIDEBAR_TABS: RightSidebarTab[] = ['day', 'agent']
+const RIGHT_SIDEBAR_TABS: ReadonlySet<RightSidebarTab> = new Set(['day', 'agent'])
 
 interface SidebarTabsProps {
   children: { day: ReactNode; agent: ReactNode }
@@ -39,7 +39,7 @@ interface SidebarTabsProps {
 function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
   try {
     const stored = localStorage.getItem(RIGHT_SIDEBAR_TAB_KEY)
-    if (RIGHT_SIDEBAR_TABS.includes(stored as RightSidebarTab)) return stored as RightSidebarTab
+    if (RIGHT_SIDEBAR_TABS.has(stored as RightSidebarTab)) return stored as RightSidebarTab
   } catch {
     // localStorage may be unavailable in tests or restricted renderer contexts.
   }

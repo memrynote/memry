@@ -71,7 +71,7 @@ function trackSyncCompleted(source: string): void {
 function runPeriodicSync(): void {
   void syncGoogleCalendarNow()
     .then(() => trackSyncCompleted('periodic'))
-    .catch((error) => {
+    .catch((error: unknown) => {
       log.warn('periodic Google Calendar sync failed', error)
       trackSyncFailed('google_periodic_sync', error)
     })
@@ -92,7 +92,7 @@ export function triggerGoogleCalendarSyncNow(reason: string): void {
   lastTriggerAt = now
   void syncGoogleCalendarNow()
     .then(() => trackSyncCompleted(toSafeToken(reason, 'trigger')))
-    .catch((error) => {
+    .catch((error: unknown) => {
       log.warn('on-demand Google Calendar sync failed', { reason, error })
       trackSyncFailed('google_trigger_sync', error)
     })
@@ -156,7 +156,7 @@ async function runStart(): Promise<void> {
 
   void syncGoogleCalendarNow()
     .then(() => trackSyncCompleted('initial'))
-    .catch((error) => {
+    .catch((error: unknown) => {
       log.warn('initial Google Calendar sync failed', error)
       trackSyncFailed('google_initial_sync', error)
     })
@@ -200,7 +200,7 @@ async function armPushIfSignedIn(): Promise<void> {
       remoteId: s.remoteId,
       isMemryManaged: s.isMemryManaged
     }))
-    void pushRuntime.ensureForSelectedSources(sources).catch((err) => {
+    void pushRuntime.ensureForSelectedSources(sources).catch((err: unknown) => {
       log.warn('ensureForSelectedSources failed', err)
     })
   }
@@ -224,7 +224,7 @@ export function stopGoogleCalendarSyncRunner(): void {
 
   const pushRuntime = getGooglePushRuntime()
   if (pushRuntime) {
-    void pushRuntime.stopAll().catch((err) => {
+    void pushRuntime.stopAll().catch((err: unknown) => {
       log.warn('stopAll failed', err)
     })
   }

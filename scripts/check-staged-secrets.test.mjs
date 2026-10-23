@@ -162,14 +162,14 @@ describe('check-staged-secrets Rust declarations', () => {
     assert.deepEqual(rustRules('    signing_secret_key: &self.secret_key,'), [])
     assert.deepEqual(rustRules('    api_key: &mut material,'), [])
     // A three-character literal is not a credential in any language.
-    assert.deepEqual(rustRules('    token: \"t\".into(),'), [])
+    assert.deepEqual(rustRules('    token: "t".into(),'), [])
     assert.deepEqual(rustRules('                    sent_token = Some(token);'), [])
     assert.deepEqual(rustRules('    api_key: Ok(material),'), [])
     // A path expression, not an assignment: the pattern splits `Foo::bar` as
     // if the first colon were a separator, so the quoted argument looked like
     // a literal assigned to a key containing `Token`.
-    assert.deepEqual(rustRules('        TokenClaims::parse(\"not-a-jwt\"),'), [])
-    assert.deepEqual(rustRules('    TokenClaims::parse(&jwt(json!({ \"sub\": \"u\" }))),'), [])
+    assert.deepEqual(rustRules('        TokenClaims::parse("not-a-jwt"),'), [])
+    assert.deepEqual(rustRules('    TokenClaims::parse(&jwt(json!({ "sub": "u" }))),'), [])
   })
 
   it('lets Swift name a secret through an expression, not a literal', () => {

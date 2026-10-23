@@ -116,7 +116,9 @@ export function ImportSettings({ focusTarget, focusRequestId }: ImportSettingsPr
   // The error toast's "Open Readwise" lands here with the Readwise panel open.
   const readwiseItem = importers.find((item) => item.id === 'readwise') ?? null
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- opens the Readwise panel in response to an external focus request (toast deep link)
     if (focusTarget === 'readwise-import' && readwiseItem) setActive(readwiseItem)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- focusRequestId re-triggers the effect when the same target is requested again
   }, [focusTarget, focusRequestId, readwiseItem])
 
   const normalizedQuery = query.trim().toLowerCase()

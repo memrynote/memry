@@ -204,7 +204,7 @@ export function whenPageApplyQuiescent(timeoutMs: number): Promise<boolean> {
 
 function settleQuiescenceWaiters(): void {
   if (!isPageApplyQuiescent()) return
-  for (const settle of [...quiescenceWaiters]) settle()
+  for (const settle of Array.from(quiescenceWaiters)) settle()
 }
 
 /**

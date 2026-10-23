@@ -124,6 +124,7 @@ vi.mock('react-pdf', () => ({
 
 vi.mock('react-player', () => {
   const Player = ({ src, onError }: { src: string; onError?: () => void }) => {
+    // oxlint-disable-next-line react/immutability -- test harness intentionally records render counts for assertions
     mocks.videoError = onError
     return <div data-testid="react-player">video {src}</div>
   }

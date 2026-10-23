@@ -146,8 +146,10 @@ describe('templates CRUD', () => {
   })
 
   it('refuses to modify or delete built-ins', async () => {
-    await expect(updateTemplate({ id: 'blank', content: 'x' })).rejects.toThrow()
-    await expect(deleteTemplate('blank')).rejects.toThrow()
+    await expect(updateTemplate({ id: 'blank', content: 'x' })).rejects.toThrow(
+      'Cannot modify built-in templates'
+    )
+    await expect(deleteTemplate('blank')).rejects.toThrow('Cannot delete built-in templates')
     expect(enqueueUpdate).not.toHaveBeenCalled()
     expect(enqueueDelete).not.toHaveBeenCalled()
   })

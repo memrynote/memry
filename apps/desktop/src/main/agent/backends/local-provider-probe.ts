@@ -193,7 +193,7 @@ async function probeStreaming(
     }
     const chunk = await readFirstStreamChunk(response.body)
     return {
-      streamingSupported: Boolean(chunk),
+      streamingSupported: chunk,
       detail: chunk ? null : 'Streaming response ended before sending a chunk.'
     }
   } catch (error) {

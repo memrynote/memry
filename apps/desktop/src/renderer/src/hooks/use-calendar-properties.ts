@@ -14,7 +14,7 @@ export function useCalendarProperties() {
       .then((list) => {
         if (!cancelled) setNames(new Set(list))
       })
-      .catch((err) => log.error('Failed to load calendar property names', err))
+      .catch((err: unknown) => log.error('Failed to load calendar property names', err))
     return () => {
       cancelled = true
     }

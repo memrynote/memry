@@ -19,7 +19,7 @@ import {
   type BlogSection,
   type BlogCallout
 } from '@/lib/blog'
-import { PAGE_META } from '@/lib/seo'
+import type { PAGE_META } from '@/lib/seo'
 import { TINT_CLASSES } from '@/lib/site-tints'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -112,8 +112,8 @@ function ComparisonTableView({ table }: { table: NonNullable<BlogSection['table'
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60">
-          {table.rows.map((row, rowIdx) => (
-            <tr key={rowIdx} className="hover:bg-paper-alt/50 transition-colors">
+          {table.rows.map((row) => (
+            <tr key={row[0]} className="hover:bg-paper-alt/50 transition-colors">
               <td className="px-4 py-3.5 font-medium text-ink">{row[0]}</td>
               <td className="px-4 py-3.5 text-muted">{row[1]}</td>
               <td className="px-4 py-3.5 text-muted font-medium text-terracotta">{row[2]}</td>
@@ -132,17 +132,17 @@ function SectionView({ section }: { section: BlogSection }) {
         {section.heading}
       </h2>
 
-      {section.paragraphs.map((p, idx) => (
-        <p key={idx} className="mb-5 text-base md:text-lg leading-relaxed text-muted">
+      {section.paragraphs.map((p) => (
+        <p key={p} className="mb-5 text-base md:text-lg leading-relaxed text-muted">
           {p}
         </p>
       ))}
 
       {section.bullets && (
         <ul className="my-6 space-y-3 ps-2">
-          {section.bullets.map((b, idx) => (
+          {section.bullets.map((b) => (
             <li
-              key={idx}
+              key={b}
               className="flex items-start gap-3 text-base md:text-lg leading-relaxed text-muted"
             >
               <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-terracotta" />
@@ -256,9 +256,9 @@ export function BlogPostView({ post }: { post: BlogPost }) {
                 <h3 className="font-serif text-xl text-ink font-medium">Key Takeaways</h3>
               </div>
               <ul className="space-y-3">
-                {post.takeaways.map((takeaway, idx) => (
+                {post.takeaways.map((takeaway) => (
                   <li
-                    key={idx}
+                    key={takeaway}
                     className="flex items-start gap-3 text-sm md:text-base leading-relaxed text-muted"
                   >
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-sage" />

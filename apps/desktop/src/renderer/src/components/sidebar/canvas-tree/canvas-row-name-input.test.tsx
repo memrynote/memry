@@ -32,6 +32,7 @@ describe('CanvasRowNameInput', () => {
     // stop the native one from bubbling through the real DOM.
     const onKeyDown = vi.fn()
     render(
+      // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children
       <div onKeyDown={onKeyDown}>
         <CanvasRowNameInput edit={makeEdit()} ariaLabel="name" />
       </div>

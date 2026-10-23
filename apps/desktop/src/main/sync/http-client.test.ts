@@ -347,7 +347,14 @@ describe('http-client', () => {
       mockFetch.mockImplementation(
         (_url: string, init: { signal: AbortSignal }) =>
           new Promise((_resolve, reject) => {
-            init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true })
+            init.signal.addEventListener(
+              'abort',
+              () => {
+                // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
+                reject(init.signal.reason)
+              },
+              { once: true }
+            )
           })
       )
 
@@ -411,7 +418,9 @@ describe('http-client', () => {
       mockFetch.mockResolvedValueOnce(
         createJsonResponse({ error: { code: 'STORAGE_BLOB_NOT_FOUND' } }, 503)
       )
-      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow()
+      await expect(fetchCrdtSnapshot('note-1', 'token-1', { maxRetries: 0 })).rejects.toThrow(
+        'Dead letter after 1 attempts: Server error (503)'
+      )
 
       mockFetch.mockResolvedValueOnce(
         createJsonResponse({ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null })
@@ -710,15 +719,17 @@ describe('http-client', () => {
       )
 
       // #when / #then
+      let err: unknown
       try {
         await syncFetch('GET', '/api/test')
         expect.unreachable()
-      } catch (err) {
-        expect(err).toBeInstanceOf(RateLimitError)
-        const rle = err as RateLimitError
-        expect(rle.retryAfter).toBeGreaterThan(25)
-        expect(rle.retryAfter).toBeLessThanOrEqual(30)
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(RateLimitError)
+      const rle = err as RateLimitError
+      expect(rle.retryAfter).toBeGreaterThan(25)
+      expect(rle.retryAfter).toBeLessThanOrEqual(30)
     })
   })
 })

@@ -79,7 +79,7 @@ export function revalidateCommands(): void {
   if (next === signature) return
   signature = next
   snapshot = { activeTabId: context.activeTabId, activeTabType, commands }
-  for (const listener of [...listeners]) listener()
+  for (const listener of Array.from(listeners)) listener()
 }
 
 /**

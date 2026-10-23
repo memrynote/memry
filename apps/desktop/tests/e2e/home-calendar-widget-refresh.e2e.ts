@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E specs run outside the app tsconfig; `page`/`electronApp` are fixture-typed.
 /**
  * Home calendar widget refresh (#1911)
  *

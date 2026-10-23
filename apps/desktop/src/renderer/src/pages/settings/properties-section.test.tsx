@@ -162,7 +162,7 @@ describe('PropertiesSettings', () => {
 
   it('renders status categories and adds a category option', async () => {
     const api = window.api
-    const { container } = render(<PropertiesSettings />)
+    const { container: _container } = render(<PropertiesSettings />)
 
     await userEvent.click(screen.getByText('Workflow'))
     // Built-in status category keys are translated at the display layer

@@ -144,7 +144,7 @@ function BackButton({ onClick, className }: BackButtonProps) {
       onClick={onClick}
       aria-label={t('nav.journalBack')}
       className={cn(
-        'inline-flex items-center gap-1 mr-2 p-1 rounded-md',
+        'inline-flex items-center gap-1 me-2 p-1 rounded-md',
         'text-muted-foreground/60 hover:text-foreground',
         'hover:bg-muted/50',
         'cursor-pointer transition-all duration-200',
@@ -194,7 +194,7 @@ export function DateBreadcrumb({
         className={cn('flex items-center justify-center gap-2', className)}
       >
         {/* Day navigation arrows - grouped on left */}
-        <div className="flex items-center gap-0.5 mr-1">
+        <div className="flex items-center gap-0.5 me-1">
           <DayNavArrow direction="prev" onClick={onPreviousDay} label={t('nav.previousDay')} />
           <DayNavArrow direction="next" onClick={onNextDay} label={t('nav.nextDay')} />
         </div>
@@ -229,7 +229,7 @@ export function DateBreadcrumb({
           {isToday && (
             <span
               className={cn(
-                'ml-2.5 px-2 py-0.5',
+                'ms-2.5 px-2 py-0.5',
                 'text-[0.6rem] font-semibold uppercase tracking-[0.1em]',
                 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
                 'rounded-full border border-amber-500/20'

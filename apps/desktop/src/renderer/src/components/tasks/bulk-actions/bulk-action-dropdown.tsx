@@ -89,6 +89,7 @@ export const BulkActionDropdown = <T extends string | number = string>({
 
         {options.map((option, index) => {
           if (option.isSeparator) {
+            // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
             return <DropdownMenuSeparator key={`sep-${index}`} />
           }
 

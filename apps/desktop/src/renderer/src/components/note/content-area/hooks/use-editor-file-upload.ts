@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { useCallback, useEffect } from 'react'
 import { notesService } from '@/services/notes-service'
@@ -26,17 +26,17 @@ function reportUploadFailure(error: unknown): void {
   toast.error(extractErrorMessage(error, t('editor.upload.failed')))
 }
 
-const IMAGE_TYPES = [
+const IMAGE_TYPES = new Set([
   'image/png',
   'image/jpeg',
   'image/jpg',
   'image/gif',
   'image/webp',
   'image/svg+xml'
-]
+])
 
 export function isImageFile(file: File): boolean {
-  return IMAGE_TYPES.includes(file.type.toLowerCase())
+  return IMAGE_TYPES.has(file.type.toLowerCase())
 }
 
 interface EditorFileUploadParams {

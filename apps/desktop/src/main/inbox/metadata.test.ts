@@ -25,6 +25,26 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
+// Mock the stream conversion (vitest hoists this to the top of the file regardless)
+vi.mock('stream', async () => {
+  const actual = await vi.importActual('stream')
+  return {
+    ...actual,
+    Readable: {
+      fromWeb: vi.fn(() => ({
+        pipe: vi.fn().mockReturnThis(),
+        on: vi.fn((event, cb: () => void) => {
+          if (event === 'end')
+            setTimeout(() => {
+              cb()
+            }, 0)
+          return { on: vi.fn() }
+        })
+      }))
+    }
+  }
+})
+
 import {
   fetchUrlMetadata,
   fetchUrlHtml,
@@ -543,23 +563,6 @@ describe('URL Metadata Extraction', () => {
         }
       })
 
-      // Mock the stream conversion
-      vi.mock('stream', async () => {
-        const actual = await vi.importActual('stream')
-        return {
-          ...actual,
-          Readable: {
-            fromWeb: vi.fn(() => ({
-              pipe: vi.fn().mockReturnThis(),
-              on: vi.fn((event, cb: () => void) => {
-                if (event === 'end') setTimeout(() => cb(), 0)
-                return { on: vi.fn() }
-              })
-            }))
-          }
-        }
-      })
-
       const filename = await downloadImage('https://example.com/image.jpg', testDir)
 
       // Due to mocking complexity, we'll test the failure case instead
@@ -600,23 +603,15 @@ describe('URL Metadata Extraction', () => {
       expect(filename).toBeNull()
     })
 
-    it('should determine extension from content-type', async () => {
-      const testCases = [
-        { contentType: 'image/jpeg', expected: '.jpg' },
-        { contentType: 'image/png', expected: '.png' },
-        { contentType: 'image/gif', expected: '.gif' },
-        { contentType: 'image/webp', expected: '.webp' }
-      ]
-
-      for (const { contentType } of testCases) {
+    it('should return null without a response body, whatever the content type', async () => {
+      for (const contentType of ['image/jpeg', 'image/png', 'image/gif', 'image/webp']) {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           headers: new Map([['content-type', contentType]]),
-          body: null // Will cause early return
+          body: null
         })
 
-        await downloadImage('https://example.com/image', testDir)
-        // Coverage achieved for content-type handling
+        expect(await downloadImage('https://example.com/image', testDir)).toBeNull()
       }
     })
 
@@ -656,7 +651,9 @@ describe('fetchUrlHtml', () => {
 
   it('throws on non-ok status', async () => {
     mockFetch.mockResolvedValue(new Response('nope', { status: 404 }))
-    await expect(fetchUrlHtml('https://example.com/missing')).rejects.toThrow()
+    await expect(fetchUrlHtml('https://example.com/missing')).rejects.toThrow(
+      'Failed to fetch article HTML: 404'
+    )
   })
 })
 

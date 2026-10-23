@@ -1,9 +1,13 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
+import type * as PromisesModule from 'fs/promises'
+import type * as IndexModule from '../vault/index'
+import type * as FileTypesModule from '@memry/shared/file-types'
+import type * as ExportUtilsModule from '../lib/export-utils'
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
@@ -100,7 +104,7 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('fs/promises', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('fs/promises')>()),
+  ...(await importOriginal<typeof PromisesModule>()),
   writeFile: mocks.fsWriteFile,
   rm: mocks.fsRm
 }))
@@ -199,7 +203,7 @@ vi.mock('../lib/export-utils', () => ({
 }))
 
 vi.mock('../vault/index', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../vault/index')>()),
+  ...(await importOriginal<typeof IndexModule>()),
   getStatus: mocks.getVaultStatus
 }))
 
@@ -225,7 +229,7 @@ vi.mock('@memry/storage-data', () => ({
 }))
 
 vi.mock('@memry/shared/file-types', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/shared/file-types')>()),
+  ...(await importOriginal<typeof FileTypesModule>()),
   getAllSupportedExtensions: vi.fn(() => ['md', 'pdf', 'png'])
 }))
 
@@ -776,8 +780,7 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it('exports tasks without their ids unless the caller keeps them', async () => {
-    const actual =
-      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    const actual = await vi.importActual<typeof ExportUtilsModule>('../lib/export-utils')
     mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
     mocks.getNoteById.mockResolvedValue({
       id: 'note-a',
@@ -810,8 +813,7 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it("carries the note's uploaded icon into the export", async () => {
-    const actual =
-      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    const actual = await vi.importActual<typeof ExportUtilsModule>('../lib/export-utils')
     mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
     mocks.getCustomIcon.mockReturnValue({ ext: 'png', data: PNG_BASE64 })
     mocks.getNoteById.mockResolvedValue({
@@ -838,8 +840,7 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it("draws the note's library icon into the export", async () => {
-    const actual =
-      await vi.importActual<typeof import('../lib/export-utils')>('../lib/export-utils')
+    const actual = await vi.importActual<typeof ExportUtilsModule>('../lib/export-utils')
     mocks.renderNoteAsHtml.mockImplementation(actual.renderNoteAsHtml)
     mocks.getNoteById.mockResolvedValue({
       id: 'note-a',

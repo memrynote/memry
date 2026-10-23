@@ -55,7 +55,7 @@ describe('pre-push hook policy', () => {
       'pnpm check:contracts',
       'pnpm check:architecture',
       'pnpm typecheck:packages',
-      'pnpm lint:desktop',
+      'pnpm lint',
       'pnpm ipc:check',
       'pnpm typecheck:desktop',
       'pnpm test:desktop',

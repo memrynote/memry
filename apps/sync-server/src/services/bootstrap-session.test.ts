@@ -513,7 +513,7 @@ describe('open/renew/close over real SQLite', () => {
 
     const realPrepare = harness.db.prepare.bind(harness.db)
     let gatedCallsLeft = 1
-    let released = false
+    const released = false
     let parkedAtInsert = false
     let releasePark!: () => void
     const parkGate = new Promise<void>((resolve) => {

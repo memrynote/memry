@@ -30,8 +30,8 @@ pnpm docs:dev         # docs site
 ## Verify before you push
 
 ```bash
-pnpm lint         # ESLint
-pnpm typecheck    # TypeScript, all packages
+pnpm lint         # oxlint
+pnpm typecheck    # TypeScript 7 via oxlint --type-check
 pnpm test         # Vitest
 pnpm test:e2e     # Playwright (Electron)
 ```

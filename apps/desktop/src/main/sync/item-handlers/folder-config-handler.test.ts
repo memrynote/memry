@@ -6,6 +6,7 @@ import type { FolderConfigSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as FoldersModule from '../../vault/folders'
 
 type MockQueue = Pick<SyncQueueManager, 'enqueue'> & { enqueue: ReturnType<typeof vi.fn> }
 
@@ -304,8 +305,7 @@ describe('folderConfigHandler', () => {
     // ever opened, and the REAL vault/folders module behind the mock. Guards
     // the exemption removal in registry.test.ts.
     it('#given the real vault module and no vault ever opened #when remote upsert arrives #then applies and emits without an unhandled rejection', async () => {
-      const actual =
-        await vi.importActual<typeof import('../../vault/folders')>('../../vault/folders')
+      const actual = await vi.importActual<typeof FoldersModule>('../../vault/folders')
       mockReadFolderConfig.mockImplementation(actual.readFolderConfig)
       mockWriteFolderConfig.mockImplementation(actual.writeFolderConfig)
 

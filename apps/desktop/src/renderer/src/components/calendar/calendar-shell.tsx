@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -178,11 +178,11 @@ export function CalendarShell({
   }, [])
 
   const viewKey = PERIOD_KEY[view](anchorDate)
-  const renderedKeyRef = useRef(viewKey)
-  if (renderedKeyRef.current !== viewKey) {
+  const [renderedKey, setRenderedKey] = useState(viewKey)
+  if (renderedKey !== viewKey) {
     // New period/view mounts unscrolled — drop the chrome edge with it
     setIsScrolled(false)
-    renderedKeyRef.current = viewKey
+    setRenderedKey(viewKey)
   }
 
   const handleRefreshGoogle = async (): Promise<void> => {
@@ -331,11 +331,9 @@ export function CalendarShell({
       </>
     )
 
-  const renderView: Record<CalendarWorkspaceView, () => React.JSX.Element> = {
-    day: () => (
-      <CalendarDayView {...chipViewProps} onMoveEvent={onMoveEvent} onQuickSave={onQuickSave} />
-    ),
-    week: () => (
+  const viewElements: Record<CalendarWorkspaceView, React.JSX.Element> = {
+    day: <CalendarDayView {...chipViewProps} onMoveEvent={onMoveEvent} onQuickSave={onQuickSave} />,
+    week: (
       <CalendarWeekView
         {...chipViewProps}
         onMoveEvent={onMoveEvent}
@@ -344,15 +342,15 @@ export function CalendarShell({
         onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
       />
     ),
-    month: () => <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />,
-    year: () => (
+    month: <CalendarMonthView {...chipViewProps} onQuickSave={onQuickSave} />,
+    year: (
       <CalendarYearView
         {...viewProps}
         onViewChange={onViewChange}
         onAnchorChange={onAnchorChange}
       />
     ),
-    timeline: () => (
+    timeline: (
       <CalendarTimelineView
         anchorDate={anchorDate}
         weekStartsOn={weekStartsOn}
@@ -408,7 +406,7 @@ export function CalendarShell({
           </div>
         ) : (
           <div key={viewKey} className="h-full">
-            {renderView[view]()}
+            {viewElements[view]}
           </div>
         )}
       </div>

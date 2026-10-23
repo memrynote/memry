@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Task } from '@memry/domain-tasks'
+import type * as HeaderStatusModule from '../notes/header-status'
 
 const mockSend = vi.fn()
 
@@ -45,7 +46,7 @@ vi.mock('../telemetry/track', () => ({
 }))
 
 vi.mock('../notes/header-status', async (importActual) => ({
-  ...(await importActual<typeof import('../notes/header-status')>()),
+  ...(await importActual<typeof HeaderStatusModule>()),
   syncHeaderStatusForTask: vi.fn()
 }))
 

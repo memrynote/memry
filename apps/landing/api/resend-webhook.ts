@@ -34,7 +34,7 @@ async function verifyResendWebhook(req: VercelRequest): Promise<ResendWebhookPay
   const signature = getHeaderValue(req, 'svix-signature')
   if (!id || !timestamp || !signature) throw new Error('Missing Resend webhook signature')
 
-  const verifiedPayload = await resend.webhooks.verify({
+  const verifiedPayload = resend.webhooks.verify({
     payload,
     headers: {
       id,

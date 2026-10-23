@@ -100,6 +100,7 @@ export const BulkPriorityDialog = ({
             className="space-y-2"
           >
             {priorityOptions.map((option) => (
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children
               <div
                 key={option.value}
                 className={cn(

@@ -125,7 +125,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
     const options = InboxJobListSchema.parse(input || {})
     const db = deps.requireDatabase()
 
-    const conditions: SQL<unknown>[] = []
+    const conditions: SQL[] = []
     if (options.itemIds?.length) {
       conditions.push(inArray(inboxJobs.itemId, options.itemIds))
     }
@@ -316,7 +316,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
   async function handleGetPatterns(): Promise<CapturePattern> {
     const emptyResult: CapturePattern = {
-      timeHeatmap: Array.from({ length: 24 }, () => new Array<number>(7).fill(0)),
+      timeHeatmap: Array.from({ length: 24 }, () => Array.from<number>({ length: 7 }).fill(0)),
       typeDistribution: [],
       topDomains: [],
       topTags: []
@@ -349,7 +349,9 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
         )
         .all()
 
-      const timeHeatmap: number[][] = Array.from({ length: 24 }, () => new Array<number>(7).fill(0))
+      const timeHeatmap: number[][] = Array.from({ length: 24 }, () =>
+        Array.from<number>({ length: 7 }).fill(0)
+      )
       for (const row of heatmapRows) {
         const dayIdx = (row.dow + 6) % 7
         if (row.hour >= 0 && row.hour < 24 && dayIdx >= 0 && dayIdx < 7) {

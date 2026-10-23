@@ -63,14 +63,14 @@ A rebuilt composer, voice dictation, and a tool activity view that collapses int
 
 ### In Other News
 
-* Templates you can author like a normal note, and that sync across your devices.
-* Bookmarks and reminders sync now too.
-* PDFs and Obsidian-style image embeds work in the editor.
-* A proper tab bar, per-note width, and a darker dark theme.
-* The web clipper is live on the [Chrome Web Store](https://memrynote.com/features/web-clipper?utm_source=reddit&utm_medium=social&utm_campaign=beta_update_2026_08&utm_content=web_clipper), and on Firefox.
-* You can delete a vault from your account with a server-side purge — your files on disk stay exactly where they are.
-* Optional, redacted diagnostic reports for when something breaks.
-* Plus a long list of fixes: sync reliability, editor formatting that did not survive a save, a due date that was off by one in some time zones, startup hangs, and undo on Windows and Linux.
+- Templates you can author like a normal note, and that sync across your devices.
+- Bookmarks and reminders sync now too.
+- PDFs and Obsidian-style image embeds work in the editor.
+- A proper tab bar, per-note width, and a darker dark theme.
+- The web clipper is live on the [Chrome Web Store](https://memrynote.com/features/web-clipper?utm_source=reddit&utm_medium=social&utm_campaign=beta_update_2026_08&utm_content=web_clipper), and on Firefox.
+- You can delete a vault from your account with a server-side purge — your files on disk stay exactly where they are.
+- Optional, redacted diagnostic reports for when something breaks.
+- Plus a long list of fixes: sync reliability, editor formatting that did not survive a save, a due date that was off by one in some time zones, startup hangs, and undo on Windows and Linux.
 
 ### If You Have Not Started Yet
 

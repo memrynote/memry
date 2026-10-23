@@ -65,9 +65,9 @@ function backspace(state: EditorState): EditorState {
   const view = viewOf(state)
   plugin.props.handleKeyDown!.call(
     plugin,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     view as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     { key: 'Backspace', shiftKey: false, metaKey: false, ctrlKey: false, altKey: false } as any
   )
   return view.state

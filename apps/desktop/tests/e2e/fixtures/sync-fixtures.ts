@@ -1,19 +1,12 @@
-import {
-  test as base,
-  expect as playwrightExpect,
-  ElectronApplication,
-  Page
-} from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
+import { test as base, expect as playwrightExpect } from '@playwright/test'
 import { randomUUID } from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { waitForAppReady } from '../utils/electron-helpers'
-import {
-  destroyLaunchedElectron,
-  launchElectronWithWindow,
-  LaunchedElectron
-} from '../utils/electron-lifecycle'
+import type { LaunchedElectron } from '../utils/electron-lifecycle'
+import { destroyLaunchedElectron, launchElectronWithWindow } from '../utils/electron-lifecycle'
 
 function createTestVault(prefix: string): string {
   const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), prefix))

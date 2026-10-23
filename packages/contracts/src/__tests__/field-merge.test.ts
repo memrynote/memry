@@ -81,6 +81,7 @@ describe('field-merge vectors', () => {
   })
 
   for (const entry of vectors.cases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(entry.name, () => {
       const result = mergeFields(
         entry.localData,
@@ -125,6 +126,7 @@ describe('field-merge vectors', () => {
   for (const entry of vectors.clockAlgebra) {
     it(`clockAlgebra: ${entry.name}`, () => {
       if (entry.op === 'compare') {
+        /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
         expect(compare(entry.a, entry.b!), entry.pins).toBe(entry.expected)
       } else if (entry.op === 'merge') {
         const expected = entry.expected as {
@@ -136,6 +138,7 @@ describe('field-merge vectors', () => {
         expect(expected.forward).toEqual(expected.reversed)
       } else {
         expect(increment(entry.a, entry.deviceId!), entry.pins).toEqual(entry.expected)
+        /* oxlint-enable vitest/no-conditional-expect */
       }
     })
   }

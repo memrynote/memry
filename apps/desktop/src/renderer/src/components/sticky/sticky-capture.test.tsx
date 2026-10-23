@@ -60,7 +60,7 @@ function setup(session: { draftId: string | null }, drafts: StickyDraft[] = []):
   const api = (window as any).api
   api.sticky = sticky
   api.settings = {
-    ...(api.settings ?? {}),
+    ...api.settings,
     getStickySettings: vi.fn().mockResolvedValue({ ...STICKY_SETTINGS_DEFAULTS, lastKind: 'task' })
   }
 }

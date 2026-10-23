@@ -100,7 +100,7 @@ describe('renderer timer/rAF cleanup on unmount', () => {
     const { result, unmount } = renderHook(() => usePropertySection({ entityId: 'note-1' }))
 
     await act(async () => {
-      await result.current.handleAddProperty({ name: 'Status note', type: 'text' })
+      result.current.handleAddProperty({ name: 'Status note', type: 'text' })
     })
     expect(vi.getTimerCount()).toBe(1)
 

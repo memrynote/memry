@@ -21,9 +21,9 @@
  */
 
 import { randomBytes } from 'crypto'
+import type { Dirent } from 'fs'
 import {
   closeSync,
-  Dirent,
   existsSync,
   fsyncSync,
   mkdirSync,

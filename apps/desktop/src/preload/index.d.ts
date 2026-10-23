@@ -1,4 +1,4 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
+import type { ElectronAPI } from '@electron-toolkit/preload'
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
@@ -25,7 +25,12 @@ import type {
   FillFieldsInput,
   FillFieldsResult
 } from '@memry/contracts/tag-fill-api'
-import type { GraphLayout, SaveGraphLayoutRequest } from '@memry/contracts/graph-api'
+import type {
+  GraphLayout,
+  SaveGraphLayoutRequest,
+  GraphViewsSettings,
+  GraphViewsSettingsPatch
+} from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
   AgentEvent,
@@ -51,7 +56,6 @@ import type {
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { GlobalCaptureResult, StickyShortcutResult } from '@memry/contracts/settings-schemas'
-import type { GraphViewsSettings, GraphViewsSettingsPatch } from '@memry/contracts/graph-api'
 import type {
   AppleNotesFoldersInput,
   AppleNotesFoldersResult,
@@ -113,7 +117,10 @@ import type {
   SyncErrorCategory,
   TriggerSyncResult,
   VaultBindingChoice,
-  VaultBindingState
+  VaultBindingState,
+  LargeNotesResult,
+  NoteSyncState,
+  UnsentNotesResult
 } from '@memry/contracts/ipc-sync-ops'
 import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
@@ -144,6 +151,7 @@ import type {
 } from '@memry/contracts/sticky-api'
 import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
+import type { SyncedSettings } from '../shared/contracts/settings-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -201,7 +209,15 @@ export type DeleteAttachmentResponse = NotesRpc.DeleteAttachmentResponse
 
 // Template types (Phase 15)
 export type TemplatePropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'project'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+  | 'project'
 
 export interface TemplateProperty {
   name: string
@@ -1065,6 +1081,15 @@ import type {
 
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
 import type {
+  PortalGetUsageInput,
+  PortalGetUsageResult,
+  PortalSearchInput,
+  PortalSearchResult,
+  PortalStampAnchorInput,
+  PortalStampAnchorResult,
+  PortalUsageChangedEvent
+} from '@memry/contracts/portals-api'
+import type {
   ListVaultActivityInput,
   ListVaultActivityResult,
   VaultActivityRetentionDays
@@ -1100,6 +1125,14 @@ export interface SearchClientAPI {
 export interface RecentsClientAPI {
   record(input: RecordRecentlyOpenedInput): Promise<{ recorded: boolean }>
   list(limit?: number): Promise<RecentlyOpenedItem[]>
+}
+
+// Portals API (live windows onto another note or block)
+export interface PortalsClientAPI {
+  getUsage(input: PortalGetUsageInput): Promise<PortalGetUsageResult>
+  stampAnchor(input: PortalStampAnchorInput): Promise<PortalStampAnchorResult>
+  search(input: PortalSearchInput): Promise<PortalSearchResult>
+  onUsageChanged(callback: (event: PortalUsageChangedEvent) => void): () => void
 }
 
 // Vault activity API (device-local log of files added, removed, skipped, failed)
@@ -1665,7 +1698,7 @@ interface SyncAuthClientAPI {
   initOAuth: (input: { provider: 'google' }) => Promise<{
     state: string
   }>
-  refreshToken /* auth action */: () => Promise<{
+  refreshToken/* auth action */ : () => Promise<{
     success: boolean
     /** True only when the session can no longer refresh and needs a new sign-in. */
     sessionEnded?: boolean
@@ -1871,9 +1904,7 @@ interface SyncOpsClientAPI {
     fieldPath: string,
     value: unknown
   ) => Promise<{ success: boolean; error?: string }>
-  getSyncedSettings: () => Promise<
-    import('../shared/contracts/settings-sync').SyncedSettings | null
-  >
+  getSyncedSettings: () => Promise<SyncedSettings | null>
   getStorageBreakdown: () => Promise<{
     used: number
     limit: number
@@ -1884,11 +1915,9 @@ interface SyncOpsClientAPI {
       other: number
     }
   } | null>
-  getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
-  getNoteSyncState: (
-    noteId: string
-  ) => Promise<import('@memry/contracts/ipc-sync-ops').NoteSyncState | null>
-  getUnsentNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').UnsentNotesResult>
+  getLargeNotes: () => Promise<LargeNotesResult>
+  getNoteSyncState: (noteId: string) => Promise<NoteSyncState | null>
+  getUnsentNotes: () => Promise<UnsentNotesResult>
   getVaultBinding: () => Promise<VaultBindingState>
   resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
   repairDeviceKeys: () => Promise<RepairDeviceKeysResult>
@@ -2046,6 +2075,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   tags: TagsClientAPI
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
+  portals: PortalsClientAPI
   vaultActivity: VaultActivityClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI

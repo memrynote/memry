@@ -92,7 +92,7 @@ describe('Sync Harness — Negative Crypto', () => {
     await deviceA.push()
 
     // #then — device B has a different vault key so decryption should fail
-    await expect(deviceB.pull()).rejects.toThrow()
+    await expect(deviceB.pull()).rejects.toThrow('ciphertext cannot be decrypted using that key')
   })
 
   it('corrupted signature should throw', async () => {
@@ -133,7 +133,9 @@ describe('Sync Harness — Negative Crypto', () => {
     const decryptInput = buildDecryptInput(pushItem, identityA)
 
     // #then
-    expect(() => decryptItemFromPull({ ...decryptInput, signature: tamperedSignature })).toThrow()
+    expect(() => decryptItemFromPull({ ...decryptInput, signature: tamperedSignature })).toThrow(
+      /Signature verification failed for item/
+    )
   })
 
   it('tampered encryptedData should fail decryption', async () => {
@@ -176,7 +178,9 @@ describe('Sync Harness — Negative Crypto', () => {
     // #then — signature check uses original encryptedData in CBOR, so tampered data
     // will cause signature verification to fail first (since encryptedData is part of
     // the signed payload). If signature somehow passes, AEAD decryption will fail.
-    expect(() => decryptItemFromPull({ ...decryptInput, encryptedData: tamperedData })).toThrow()
+    expect(() => decryptItemFromPull({ ...decryptInput, encryptedData: tamperedData })).toThrow(
+      /Signature verification failed for item/
+    )
   })
 
   it('expired/invalid JWT should be rejected by server', async () => {

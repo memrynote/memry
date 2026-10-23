@@ -1,3 +1,4 @@
+import type * as NotesServiceModule from '@/services/notes-service'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -24,7 +25,8 @@ vi.mock('@/services/calendar-service', () => ({
   }
 }))
 
-vi.mock('@/services/notes-service', () => ({
+vi.mock('@/services/notes-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotesServiceModule>()),
   notesService: { create: mocks.createNote }
 }))
 

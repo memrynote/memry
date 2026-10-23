@@ -14,7 +14,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "dependencies": {
     "@memry/contracts": "workspace:*",

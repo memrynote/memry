@@ -3,11 +3,12 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { sql } from 'drizzle-orm'
-import { initializeFts } from '../../database/fts'
+import { initializeFts, getFtsCount } from '../../database/fts'
 import { initializeFtsTasks } from '../../database/fts-tasks'
 import { initializeFtsInbox, getFtsInboxCount } from '../../database/fts-inbox'
-import { getFtsCount } from '../../database/fts'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as PromisesModule from 'fs/promises'
+import type * as DatabaseModule from '../../database'
 
 const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
@@ -17,7 +18,7 @@ const openSpy = vi.hoisted(() => vi.fn())
 const statSpy = vi.hoisted(() => vi.fn())
 
 vi.mock('fs/promises', async () => {
-  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises')
+  const actual = await vi.importActual<typeof PromisesModule>('fs/promises')
   return {
     ...actual,
     default: { ...actual, open: openSpy, stat: statSpy },
@@ -27,7 +28,7 @@ vi.mock('fs/promises', async () => {
 })
 
 vi.mock('../../database', async () => {
-  const actual = await vi.importActual<typeof import('../../database')>('../../database')
+  const actual = await vi.importActual<typeof DatabaseModule>('../../database')
   return {
     ...actual,
     getDatabase,
@@ -220,8 +221,10 @@ describe('search projector', () => {
     // statement rebuild used to start with (DELETE FROM fts_notes) throws too
     expect(() =>
       indexDb.db.all(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'alpha'`)
-    ).toThrow()
-    expect(() => indexDb.db.run(sql`DELETE FROM fts_notes`)).toThrow()
+    ).toThrow(/fts5: corruption found reading blob \d+ from table "fts_notes"/)
+    expect(() => indexDb.db.run(sql`DELETE FROM fts_notes`)).toThrow(
+      "Failed to run the query 'DELETE FROM fts_notes'"
+    )
 
     const projector = createSearchProjector(() => vaultDir)
 
@@ -305,7 +308,9 @@ describe('search projector', () => {
       const onCorrupt = vi.fn()
       const projector = createSearchProjector(() => vaultDir, onCorrupt)
 
-      await expect(projector.project(noteEvent)).rejects.toThrow()
+      await expect(projector.project(noteEvent)).rejects.toThrow(
+        /fts5: corruption found reading blob \d+ from table "fts_notes"/
+      )
       expect(onCorrupt).toHaveBeenCalledTimes(1)
     })
 
@@ -500,7 +505,7 @@ describe('search projector', () => {
     dataDb.db.run(sql`DROP TABLE fts_inbox`)
 
     const projector = createSearchProjector(() => vaultDir)
-    await expect(projector.reconcile()).rejects.toThrow()
+    await expect(projector.reconcile()).rejects.toThrow(/Failed to run the query/)
 
     expect(readDedupeMarker()).toBeUndefined()
 

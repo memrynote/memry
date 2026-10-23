@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { substituteTemplatePlaceholders } from '@memry/shared/template-placeholders'
 import { createLogger } from '@/lib/logger'
@@ -24,7 +24,8 @@ export interface InsertTemplateArgs {
 }
 
 export type InsertTemplateResult =
-  { ok: true; insertedBlockIds: string[] } | { ok: false; reason: 'empty' | 'stale-block' }
+  | { ok: true; insertedBlockIds: string[] }
+  | { ok: false; reason: 'empty' | 'stale-block' }
 
 function withoutBlockIds(node: any): any {
   return {

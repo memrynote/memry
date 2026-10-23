@@ -32,9 +32,8 @@ describe('RequestOtpRequestSchema', () => {
   it('rejects a malformed email', () => {
     const result = RequestOtpRequestSchema.safeParse({ email: 'not-an-email' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('email')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('email')
   })
 
   it('rejects missing email', () => {
@@ -67,9 +66,8 @@ describe('VerifyOtpRequestSchema', () => {
       code: 'abcdef'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('code')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('code')
   })
 
   it('rejects codes with fewer than 6 digits', () => {
@@ -145,17 +143,15 @@ describe('DeviceRegisterRequestSchema', () => {
   it('rejects unknown platforms', () => {
     const result = DeviceRegisterRequestSchema.safeParse({ ...base, platform: 'chromeos' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('platform')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('platform')
   })
 
   it('rejects empty device name (at least one character)', () => {
     const result = DeviceRegisterRequestSchema.safeParse({ ...base, name: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('name')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('name')
   })
 
   it('rejects a name over 255 characters', () => {
@@ -196,9 +192,8 @@ describe('FirstDeviceSetupRequestSchema', () => {
       keyVerifier: 'verifier-base64'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('kdfSalt')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('kdfSalt')
   })
 
   it('rejects empty keyVerifier', () => {
@@ -219,9 +214,8 @@ describe('RefreshTokenRequestSchema', () => {
   it('rejects an empty refresh token (rotation must carry a value)', () => {
     const result = RefreshTokenRequestSchema.safeParse({ refreshToken: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('refreshToken')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('refreshToken')
   })
 
   it('rejects missing refresh token', () => {
@@ -390,9 +384,8 @@ describe('RefreshTokenResponseSchema', () => {
       expiresIn: '3600'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('expiresIn')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('expiresIn')
   })
 
   it('rejects when any of the three required fields is missing', () => {

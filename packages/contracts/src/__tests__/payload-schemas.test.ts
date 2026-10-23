@@ -114,6 +114,7 @@ describe('payload-schemas vectors', () => {
     const schema = SCHEMAS[group.type]
 
     for (const entry of group.cases.slice(0, 3)) {
+      // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
       it(entry.name, () => {
         const parsed = schema.parse(entry.payload)
         expect(parsed, entry.pins).toEqual(entry.expectedParsed)
@@ -127,9 +128,11 @@ describe('payload-schemas vectors', () => {
         const top = key.split('.')[0]
         if (key.includes('.')) {
           const nested = (parsed[top] ?? {}) as Record<string, unknown>
+          /* oxlint-disable vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines */
           expect(key.split('.')[1] in nested, `${key} must be stripped by parse`).toBe(false)
         } else {
           expect(key in parsed, `${key} must be stripped by parse`).toBe(false)
+          /* oxlint-enable vitest/no-conditional-expect */
         }
       }
       expect(
@@ -138,6 +141,7 @@ describe('payload-schemas vectors', () => {
       ).toBeGreaterThan(0)
     })
 
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(group.cases[3].name, () => {
       const entry = group.cases[3]
       const stored = entry.storedPayloadJson!

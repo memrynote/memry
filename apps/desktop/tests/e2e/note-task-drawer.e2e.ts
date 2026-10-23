@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * A task block in a note opens the task detail drawer in place: the note tab
  * stays active, edits in the drawer reach the block live, Esc closes it, and

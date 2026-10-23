@@ -1,11 +1,14 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { SettingsSyncManager } from '@memry/sync-client/settings-sync'
+import {
+  SettingsSyncManager,
+  getSettingsSyncManager,
+  resetSettingsSyncManager
+} from '@memry/sync-client/settings-sync'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { getSetting, setSetting as writeRaw } from '../database/queries/settings'
 import { deleteSetting, setSetting, setSettingWriteListener } from '../settings/settings-store'
-import { getSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import {
   applyMergedCalendarSettings,
   changedCalendarFields,

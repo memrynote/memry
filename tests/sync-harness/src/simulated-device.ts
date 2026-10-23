@@ -62,14 +62,14 @@ export class SimulatedDevice {
     type: SyncItemType,
     itemId: string,
     content: Record<string, unknown>,
-    changedFields?: string[]
+    _changedFields?: string[]
   ): Promise<SyncItem> {
     await initCrypto()
 
     // A conforming client seeds a create from the id's last tombstone clock,
     // `increment(merge({}, T), device)`, so a re-create happens after the delete
     // (protocol 05 §5.8, #2409). With no tombstone this is `{device: 1}`.
-    const clock: VectorClock = { ...(this.tombstoneClocks.get(itemId) ?? {}) }
+    const clock: VectorClock = { ...this.tombstoneClocks.get(itemId) }
     clock[this.identity.deviceId] = (clock[this.identity.deviceId] ?? 0) + 1
     const item: SyncItem = {
       id: itemId,
@@ -85,7 +85,7 @@ export class SimulatedDevice {
   async updateItem(
     itemId: string,
     fields: Record<string, unknown>,
-    changedFields?: string[]
+    _changedFields?: string[]
   ): Promise<SyncItem> {
     const existing = this.items.get(itemId)
     if (!existing) throw new Error(`Item ${itemId} not found on device ${this.identity.deviceId}`)
@@ -247,7 +247,7 @@ export class SimulatedDevice {
   }
 
   private recordTombstoneClock(itemId: string, clock: VectorClock): void {
-    const merged = { ...(this.tombstoneClocks.get(itemId) ?? {}) }
+    const merged = { ...this.tombstoneClocks.get(itemId) }
     for (const [device, tick] of Object.entries(clock)) {
       merged[device] = Math.max(merged[device] ?? 0, tick)
     }

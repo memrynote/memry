@@ -40,9 +40,10 @@ export function defineMethod<Fn extends (...args: any[]) => any>(config: {
   } as RpcMethodSpec<Fn>
 }
 
-export function defineEvent<Payload>(channel: string): RpcEventSpec<
-  (callback: (payload: Payload) => void) => () => void
-> {
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Payload is the subscriber's assertion about an untyped IPC event payload
+export function defineEvent<Payload>(
+  channel: string
+): RpcEventSpec<(callback: (payload: Payload) => void) => () => void> {
   return { channel } as RpcEventSpec<(callback: (payload: Payload) => void) => () => void>
 }
 
@@ -54,12 +55,13 @@ export function defineDomain<
   return domain
 }
 
-export type RpcClient<TDomain extends RpcDomainSpec<string, Record<string, RpcMethodSpec<any>>, any>> =
-  {
-    [K in keyof TDomain['methods']]: TDomain['methods'][K] extends RpcMethodSpec<infer Fn>
-      ? Fn
-      : never
-  }
+export type RpcClient<
+  TDomain extends RpcDomainSpec<string, Record<string, RpcMethodSpec<any>>, any>
+> = {
+  [K in keyof TDomain['methods']]: TDomain['methods'][K] extends RpcMethodSpec<infer Fn>
+    ? Fn
+    : never
+}
 
 export type RpcSubscriptions<
   TDomain extends RpcDomainSpec<string, any, Record<string, RpcEventSpec<any>>>

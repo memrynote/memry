@@ -351,6 +351,7 @@ const SocialPreview = ({
           <div className="grid grid-cols-2 gap-2 rounded-md overflow-hidden">
             {mediaUrls.slice(0, 4).map((url, index) => (
               <img
+                // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                 key={index}
                 src={url}
                 alt={`Post media ${index + 1}`}

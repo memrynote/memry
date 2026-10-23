@@ -480,7 +480,7 @@ export function applyElementEdits(
     if (edit.endArrowhead !== undefined) patch.endArrowhead = arrowhead(edit.endArrowhead)
 
     if (Object.keys(patch).length > 0) {
-      patches.set(edit.elementId, { ...(patches.get(edit.elementId) ?? {}), ...patch })
+      patches.set(edit.elementId, { ...patches.get(edit.elementId), ...patch })
     }
 
     if (edit.text === undefined) continue
@@ -488,7 +488,7 @@ export function applyElementEdits(
     if (target.customData) continue
     const textId = target.type === 'text' ? target.id : labelOf.get(target.id)
     if (!textId) continue
-    patches.set(textId, { ...(patches.get(textId) ?? {}), text: edit.text })
+    patches.set(textId, { ...patches.get(textId), text: edit.text })
   }
 
   // A caption cannot outlive its shape: Excalidraw would keep rendering a text

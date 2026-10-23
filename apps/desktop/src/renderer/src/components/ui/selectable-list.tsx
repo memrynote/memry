@@ -54,6 +54,8 @@ export interface SelectableListSectionProps {
   className?: string
 }
 
+const noopSelect = (): void => {}
+
 export function SelectableListSection({
   title,
   icon,
@@ -61,7 +63,7 @@ export function SelectableListSection({
   collapsible = false,
   defaultCollapsed = false,
   selectedId = null,
-  onSelect = () => {},
+  onSelect = noopSelect,
   children,
   className
 }: SelectableListSectionProps) {

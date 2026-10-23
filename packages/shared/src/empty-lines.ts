@@ -1,7 +1,8 @@
 import { decodeHtmlCommentTokens } from './html-comments.ts'
 
 export type MarkdownSegment =
-  { type: 'content'; text: string } | { type: 'gap'; extraLines: number }
+  | { type: 'content'; text: string }
+  | { type: 'gap'; extraLines: number }
 
 /**
  * Split markdown into content segments and gap descriptors.

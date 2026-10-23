@@ -105,9 +105,8 @@ describe('RepeatConfigSchema', () => {
       createdAt: '2026-01-03T10:00:00Z'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('frequency')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('frequency')
   })
 
   it('should reject interval less than 1', () => {
@@ -211,9 +210,8 @@ describe('TaskCreateSchema', () => {
       title: ''
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('title')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('title')
   })
 
   it('should reject title over 500 chars', () => {
@@ -325,9 +323,8 @@ describe('TaskCreateSchema', () => {
     (dueDate) => {
       const result = TaskCreateSchema.safeParse({ projectId: 'proj-1', title: 'Test', dueDate })
       expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues[0].path).toContain('dueDate')
-      }
+      if (result.success) throw new Error('expected the check above to fail')
+      expect(result.error.issues[0].path).toContain('dueDate')
     }
   )
 
@@ -336,9 +333,8 @@ describe('TaskCreateSchema', () => {
     (startDate) => {
       const result = TaskCreateSchema.safeParse({ projectId: 'proj-1', title: 'Test', startDate })
       expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues[0].path).toContain('startDate')
-      }
+      if (result.success) throw new Error('expected the check above to fail')
+      expect(result.error.issues[0].path).toContain('startDate')
     }
   )
 
@@ -459,9 +455,8 @@ describe('TaskUpdateSchema', () => {
       title: 'Updated Title'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('id')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('id')
   })
 
   it('should reject empty title', () => {
@@ -489,9 +484,8 @@ describe('TaskUpdateSchema', () => {
     (dueDate) => {
       const result = TaskUpdateSchema.safeParse({ id: 'task-1', dueDate })
       expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues[0].path).toContain('dueDate')
-      }
+      if (result.success) throw new Error('expected the check above to fail')
+      expect(result.error.issues[0].path).toContain('dueDate')
     }
   )
 
@@ -500,9 +494,8 @@ describe('TaskUpdateSchema', () => {
     (startDate) => {
       const result = TaskUpdateSchema.safeParse({ id: 'task-1', startDate })
       expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues[0].path).toContain('startDate')
-      }
+      if (result.success) throw new Error('expected the check above to fail')
+      expect(result.error.issues[0].path).toContain('startDate')
     }
   )
 
@@ -625,14 +618,13 @@ describe('TaskListSchema', () => {
   it('should validate empty object with defaults', () => {
     const result = TaskListSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.includeCompleted).toBe(false)
-      expect(result.data.includeArchived).toBe(false)
-      expect(result.data.sortBy).toBe('position')
-      expect(result.data.sortOrder).toBe('asc')
-      expect(result.data.limit).toBe(100)
-      expect(result.data.offset).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.includeCompleted).toBe(false)
+    expect(result.data.includeArchived).toBe(false)
+    expect(result.data.sortBy).toBe('position')
+    expect(result.data.sortOrder).toBe('asc')
+    expect(result.data.limit).toBe(100)
+    expect(result.data.offset).toBe(0)
   })
 
   it('should validate full query', () => {
@@ -716,9 +708,8 @@ describe('ProjectCreateSchema', () => {
       name: 'My Project'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.color).toBe('#6366f1') // default
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.color).toBe('#6366f1') // default
   })
 
   it('should validate full input', () => {
@@ -841,10 +832,9 @@ describe('StatusCreateSchema', () => {
       name: 'To Do'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.color).toBe('#6b7280') // default
-      expect(result.data.isDone).toBe(false) // default
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.color).toBe('#6b7280') // default
+    expect(result.data.isDone).toBe(false) // default
   })
 
   it('should validate full input', () => {
@@ -1112,9 +1102,8 @@ describe('GetUpcomingSchema', () => {
   it('should validate with default days', () => {
     const result = GetUpcomingSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.days).toBe(7) // default
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.days).toBe(7) // default
   })
 
   it('should validate custom days', () => {

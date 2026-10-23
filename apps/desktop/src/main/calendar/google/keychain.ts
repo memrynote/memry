@@ -30,7 +30,8 @@ async function setPassword(
     await setSecret(SERVICE, account, value.trim())
   } catch (error) {
     throw new Error(
-      `Failed to store Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`
+      `Failed to store Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`,
+      { cause: error }
     )
   }
 }
@@ -49,7 +50,8 @@ async function getPassword(accountId: string, kind: GoogleTokenKind): Promise<st
     return await getSecret(SERVICE, account, { treatUnreadableAsAbsent: true })
   } catch (error) {
     throw new Error(
-      `Failed to read Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`
+      `Failed to read Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`,
+      { cause: error }
     )
   }
 }
@@ -61,7 +63,8 @@ async function deletePassword(accountId: string, kind: GoogleTokenKind): Promise
     await deleteSecret(SERVICE, account)
   } catch (error) {
     throw new Error(
-      `Failed to delete Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`
+      `Failed to delete Google Calendar credential (${account}): ${error instanceof Error ? error.message : 'unknown error'}`,
+      { cause: error }
     )
   }
 }

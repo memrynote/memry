@@ -19,6 +19,7 @@ import {
   initNoteSyncService,
   resetNoteSyncService
 } from './note-sync'
+import type * as PathsModule from '../lib/paths'
 
 type QueueItem = {
   type: string
@@ -147,7 +148,7 @@ vi.mock('@memry/sync-client/tombstone-clocks', () => ({
     _itemId: string,
     current: Record<string, number> | null | undefined,
     deviceId: string
-  ) => ({ ...(current ?? {}), [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
+  ) => ({ ...current, [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
 }))
 
 vi.mock('@memry/storage-data', () => ({
@@ -179,7 +180,7 @@ vi.mock('../vault/journal', () => ({
 
 // `fs` is mocked whole, so the reader reads through `mocks.readFileSync`.
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFileSync: (vault: string, relativePath: string) =>
     mocks.readFileSync(`${vault}/${relativePath}`, 'utf-8')
 }))

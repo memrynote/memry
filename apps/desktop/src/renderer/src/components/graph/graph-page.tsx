@@ -160,7 +160,7 @@ function GraphWorkspace({
   }, [viewState, rememberState])
   useEffect(
     () => () => {
-      // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- unmount flush of a debounced settings write: the ref holds the value, not a DOM node
+      // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- unmount flush of a debounced settings write: the ref holds the value, not a DOM node
       if (pendingStateRef.current) rememberState(pendingStateRef.current)
     },
     [rememberState]
@@ -177,7 +177,7 @@ function GraphWorkspace({
   const categoryIndex = useMemo(() => buildGraphCategoryIndex(categories), [categories])
 
   const categoryRows = useMemo<GraphCategoryRow[]>(() => {
-    const counts = new Array<number>(categoryIndex.categories.length).fill(0)
+    const counts = Array.from<number>({ length: categoryIndex.categories.length }).fill(0)
     for (const node of data.nodes) {
       const rank = categoryRankOf(node.id, node.tags, categoryIndex.rankByTag)
       if (rank !== undefined) counts[rank] += 1
@@ -273,6 +273,7 @@ function GraphWorkspace({
 
   return (
     <div className="relative h-full w-full">
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- role=img labels the WebGL canvas container, which has no <img> equivalent */}
       <div role="img" aria-label={graphAriaLabel} className="h-full w-full">
         <GraphCanvas
           key={layoutEpoch}

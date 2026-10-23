@@ -5,6 +5,8 @@ import { toast } from 'sonner'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
+import type * as UseCalendarRangeModule from '@/hooks/use-calendar-range'
+import type * as TasksServiceModule from '@/services/tasks-service'
 
 // The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
 const CalendarPageInDndContext = () => (
@@ -30,7 +32,7 @@ const {
 }))
 
 vi.mock('@/hooks/use-calendar-range', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-calendar-range')>()),
+  ...(await importOriginal<typeof UseCalendarRangeModule>()),
   useCalendarRange: mockUseCalendarRange
 }))
 
@@ -74,7 +76,7 @@ vi.mock('@/components/calendar/event-project-field', () => ({
 }))
 
 vi.mock('@/services/tasks-service', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/services/tasks-service')>()),
+  ...(await importOriginal<typeof TasksServiceModule>()),
   tasksService: {
     linkProjectItem: mockLinkProjectItem
   }

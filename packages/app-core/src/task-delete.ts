@@ -97,7 +97,7 @@ export function deleteTaskBranches(
         }
       }
       // Deepest first, parent last.
-      for (const taskId of [...branch.reverse(), id]) removeRow(taskId)
+      for (const taskId of [...branch.toReversed(), id]) removeRow(taskId)
     }
     return requested.length
   })

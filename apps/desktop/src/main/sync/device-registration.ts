@@ -197,7 +197,9 @@ export const persistKeysAndRegisterDevice = async (
     await deleteKey(KEYCHAIN_ENTRIES.REFRESH_TOKEN).catch(() => {})
     await deleteKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY).catch(() => {})
 
-    throw new Error(getMainI18n().t('errors:sync.keyPersistenceFailed'))
+    throw new Error(getMainI18n().t('errors:sync.keyPersistenceFailed'), {
+      cause: keyPersistenceErr
+    })
   }
 
   const pubKey = getDevicePublicKey(signingSecretKey)

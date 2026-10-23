@@ -6,6 +6,7 @@ import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { IndexDb } from '../../types'
 import { noteCacheExists } from './note-crud'
 import { pathLinkKeys } from './note-names-queries'
+import { getPortalHostIds } from './portal-ref-queries'
 import { getIncomingPropertyRefs } from './property-ref-queries'
 import { resolveLinkTargets } from './wiki-target-resolver'
 
@@ -54,13 +55,15 @@ export function getIncomingLinks(db: IndexDb, noteId: string): NoteLink[] {
 }
 
 /**
- * A note's incoming references: wiki-link backlinks (`via` undefined) plus
- * relation-property references (`via.kind === 'property'`). A source that
- * references the target both ways produces two distinct entries.
+ * A note's incoming references: wiki-link backlinks (`via` undefined),
+ * relation-property references (`via.kind === 'property'`) and portals
+ * (`via.kind === 'portal'`, one entry per host note however many portals it
+ * holds). A source that references the target several ways produces one
+ * distinct entry per way.
  */
 export interface IncomingReference {
   sourceNoteId: string
-  via?: { kind: 'property'; propertyName: string }
+  via?: { kind: 'property'; propertyName: string } | { kind: 'portal' }
 }
 
 export function getIncomingReferences(db: IndexDb, noteId: string): IncomingReference[] {
@@ -78,7 +81,13 @@ export function getIncomingReferences(db: IndexDb, noteId: string): IncomingRefe
       via: { kind: 'property' as const, propertyName: ref.propertyName }
     }))
 
-  return [...wikiLinks, ...propertyLinks]
+  // portal_refs rows outlive nothing they should not: a host's rows are
+  // deleted with the host, and the query joins note_cache to drop stragglers.
+  const portalLinks: IncomingReference[] = getPortalHostIds(db, noteId)
+    .filter((hostId) => hostId !== noteId)
+    .map((hostId) => ({ sourceNoteId: hostId, via: { kind: 'portal' as const } }))
+
+  return [...wikiLinks, ...propertyLinks, ...portalLinks]
 }
 
 /**

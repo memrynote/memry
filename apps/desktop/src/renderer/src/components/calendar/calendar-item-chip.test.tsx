@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CalendarItemChip } from './calendar-item-chip'
@@ -176,6 +176,7 @@ describe('CalendarItemChip', () => {
     const onClick = vi.fn()
     const onParentMouseDown = vi.fn()
     render(
+      // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- test stub wrapper that observes bubbled events
       <div onMouseDown={onParentMouseDown}>
         <CalendarItemChip
           item={eventItem({

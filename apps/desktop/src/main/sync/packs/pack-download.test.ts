@@ -64,7 +64,7 @@ describe('downloadPackToFile', () => {
       fetchFn: fetchFn as unknown as typeof globalThis.fetch,
       maxAttempts: 1,
       sleep: async () => {}
-    }).catch((err: Error) => err)
+    }).catch((err: unknown) => err)
 
     expect(failure).toBeInstanceOf(Error)
     expect((failure as Error).message).not.toContain('deadbeefsecret')
@@ -182,7 +182,7 @@ describe('downloadPackToFile', () => {
   it('removes the temp file on discard', async () => {
     await fs.writeFile(dest, Buffer.from([1]))
     await discardPackFile(dest)
-    await expect(fs.stat(dest)).rejects.toThrow()
+    await expect(fs.stat(dest)).rejects.toThrow(/ENOENT: no such file or directory, stat/)
     // Idempotent: a second discard of a missing file is silent.
     await expect(discardPackFile(dest)).resolves.toBeUndefined()
   })

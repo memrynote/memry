@@ -456,7 +456,9 @@ describe('failure semantics', () => {
     const { c, next } = createContext(undefined)
 
     // #when / #then — the request never reaches the handler
-    await expect(middleware(c as never, next)).rejects.toThrow()
+    await expect(middleware(c as never, next)).rejects.toThrow(
+      "Cannot read properties of undefined (reading 'get')"
+    )
     expect(next).not.toHaveBeenCalled()
   })
 

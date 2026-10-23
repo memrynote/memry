@@ -8,6 +8,9 @@ import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
+import type * as IndexModule from './index'
+import type * as DatabaseModule from '../database'
+import type * as ResolveEmbedModule from './resolve-embed'
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
@@ -17,9 +20,9 @@ vi.mock('electron', () => ({
 describe('resolveVaultEmbed', () => {
   let tempVault: TestVaultResult
   let indexDb: TestDatabaseResult
-  let vaultIndex: typeof import('./index')
-  let database: typeof import('../database')
-  let resolver: typeof import('./resolve-embed')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let resolver: typeof ResolveEmbedModule
 
   const writeVaultFile = (relPath: string): string => {
     const abs = path.join(tempVault.path, relPath)

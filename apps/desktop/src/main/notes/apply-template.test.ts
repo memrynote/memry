@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type * as TemplatesModule from '../vault/templates'
 
 vi.mock('../vault/notes', () => ({
   getNoteById: vi.fn()
 }))
 vi.mock('../vault/templates', async (importActual) => {
-  const actual = await importActual<typeof import('../vault/templates')>()
+  const actual = await importActual<typeof TemplatesModule>()
   return { ...actual, getTemplate: vi.fn() }
 })
 vi.mock('./domain', () => ({
@@ -17,7 +18,7 @@ vi.mock('../vault-locks/registry', () => ({
 }))
 
 import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
-import { getNoteById } from '../vault/notes'
+import { getNoteById, type Note as NotesNote } from '../vault/notes'
 import { getTemplate } from '../vault/templates'
 import { updateNoteCommand } from './domain'
 import { NoteError, VaultError } from '../lib/errors'
@@ -45,7 +46,7 @@ const note = {
   tags: ['work', 'daily'],
   properties: { status: 'done', priority: 5 }
   // other Note fields unused by buildTemplateApplyUpdate
-} as unknown as import('../vault/notes').Note
+} as unknown as NotesNote
 
 describe('buildTemplateApplyUpdate', () => {
   it('resolves {{title}} to the note title in the body', () => {

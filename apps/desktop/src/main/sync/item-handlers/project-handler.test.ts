@@ -88,7 +88,7 @@ describe('projectHandler', () => {
           color: '#ff0000',
           position: 0,
           isInbox: false,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // oxlint-disable-next-line no-unused-vars
           statuses: TEST_STATUSES.map(({ projectId, ...rest }) => rest)
         }
 

@@ -1,6 +1,6 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { TaskActivityChannels, TasksChannels } from '../../contracts/src/ipc-channels.ts'
-import {
+import type {
   ProjectCreateSchema,
   ProjectLinkItemSchema,
   ProjectListForItemSchema,
@@ -12,9 +12,7 @@ import {
   StatusCreateSchema,
   TaskCreateSchema,
   TaskListSchema,
-  TaskUpdateSchema
-} from '../../contracts/src/tasks-api.ts'
-import type {
+  TaskUpdateSchema,
   Project,
   ProjectContents,
   ProjectLinkedEvent,

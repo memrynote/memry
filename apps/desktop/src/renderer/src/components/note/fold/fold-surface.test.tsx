@@ -39,6 +39,7 @@ function TypingHost({ editor }: { editor: EditorHandle }) {
   const node = useRef<HTMLDivElement>(null)
   const [handle, setHandle] = useState<EditorHandle | null>(null)
   useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-derived-state -- test host mirrors the DOM node ref after mount; the ref is unavailable during render
     setHandle({ ...editor, domElement: node.current ?? undefined })
   }, [editor])
   useEditorTarget(handle)

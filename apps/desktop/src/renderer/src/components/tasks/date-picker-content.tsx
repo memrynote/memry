@@ -59,11 +59,11 @@ export function DatePickerContent({
     settings: { clockFormat }
   } = useGeneralSettings()
 
-  const today = useMemo(() => {
+  const [today] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
-  }, [])
+  })
 
   const presets = useMemo(() => {
     const tomorrow = new Date(today)
@@ -167,6 +167,7 @@ export function DatePickerContent({
                     'bg-transparent text-[12px] leading-4 text-foreground',
                     'focus:outline-none [&::-webkit-calendar-picker-indicator]:hidden'
                   )}
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
                   autoFocus={editing}
                   onBlur={() => setEditing(false)}
                 />

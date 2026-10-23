@@ -7,10 +7,10 @@ import { KEYCHAIN_ENTRIES, type KeychainEntry } from '@memry/contracts/crypto'
 import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
 import { EVENT_CHANNELS, type VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
 import {
+  type StorageBreakdownResult,
   GetHistorySchema,
   GetNoteSyncStateSchema,
   ResolveVaultBindingSchema,
-  StorageBreakdownResult,
   SyncControlSchema,
   type TriggerSyncResult,
   UpdateSyncedSettingSchema

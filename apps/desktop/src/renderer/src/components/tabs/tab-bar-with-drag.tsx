@@ -155,6 +155,7 @@ export const TabBarWithDrag = ({
       el.removeEventListener('scroll', checkScroll)
       resizeObserver.disconnect()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- length/scroll flags re-run the measurement and keep-visible logic (see comment)
   }, [checkScroll, regularTabsLength])
 
   // Keep the active tab visible — without this the strip stays pinned at the start
@@ -174,6 +175,7 @@ export const TabBarWithDrag = ({
     scrolledTabIdRef.current = activeTabId
     // scrollIntoView is not implemented in jsdom
     tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- length/scroll flags re-run the measurement and keep-visible logic (see comment)
   }, [activeTabId, regularTabsLength, activeDragItem, canScrollToStart, canScrollToEnd])
 
   // If group doesn't exist, don't render (after all hooks)

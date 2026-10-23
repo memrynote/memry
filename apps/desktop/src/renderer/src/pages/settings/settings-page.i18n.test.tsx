@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
-import { SettingsModalProvider } from '@/contexts/settings-modal-context'
+import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
 
 vi.mock('./account-section', () => ({ AccountSettings: () => <div data-testid="account-panel" /> }))
 vi.mock('./general-section', () => ({ GeneralSettings: () => <div data-testid="general-panel" /> }))
@@ -48,7 +48,6 @@ vi.mock('@/contexts/tabs', () => ({ useActiveTab: () => activeTab }))
 
 import { SettingsContent, SettingsNav } from '../settings'
 import { SettingsView } from '@/components/settings-view'
-import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useEffect } from 'react'
 
 function SettingsPage() {

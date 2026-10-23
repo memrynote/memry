@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
+/* oxlint-disable typescript/no-explicit-any -- the BlockNote editor instance is untyped across content-area hooks */
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -174,6 +174,7 @@ function MentionCreateMenu({
     <div
       data-mention-create-menu
       data-inline-choice-menu
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="listbox"
       aria-label={t('tagObjects.create.as', { title: state.title })}
       className="absolute z-50 w-[300px] rounded-lg border border-border bg-popover p-1 text-[13px] shadow-[var(--shadow-card-hover)] motion-safe:animate-in motion-safe:fade-in-0"
@@ -196,6 +197,7 @@ function MentionCreateMenu({
             )}
             <button
               type="button"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
               role="option"
               aria-selected={selected}
               onMouseDown={(event) => {

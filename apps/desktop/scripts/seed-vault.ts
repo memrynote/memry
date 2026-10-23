@@ -37,7 +37,6 @@ import {
   insertTemplates,
   openDataDb
 } from './seed-vault/db-writer'
-import { generateId } from '../src/main/lib/id'
 import {
   allocateCanvasPath,
   resolveCanvasFile,
@@ -71,6 +70,7 @@ import {
   writeIosParityAttachments
 } from './seed-data/ios-parity'
 import { WRITING_DRAFTS_METADATA, WRITING_DRAFTS_NOTE } from './seed-data/writing-drafts'
+import { PORTAL_METADATA, PORTAL_NOTES } from './seed-data/portals'
 
 interface CliArgs {
   vaultPath: string
@@ -172,6 +172,7 @@ async function main(): Promise<void> {
       IOS_PARITY_METADATA,
       ...IOS_PARITY_LINK_TARGETS.map((target) => target.metadata),
       WRITING_DRAFTS_METADATA,
+      ...PORTAL_METADATA,
       ...OBJECT_NOTE_METADATA
     ])
     console.log(`  → note_metadata: ${noteMetaCount}`)
@@ -244,6 +245,7 @@ async function main(): Promise<void> {
     IOS_PARITY_NOTE,
     ...IOS_PARITY_LINK_TARGETS.map((target) => target.note),
     WRITING_DRAFTS_NOTE,
+    ...PORTAL_NOTES,
     ...OBJECT_NOTE_FILES
   ]
   console.log(`  → Writing ${noteFiles.length} note files`)
@@ -265,7 +267,7 @@ async function main(): Promise<void> {
   console.log('Open memrynote → Switch Vault → choose this path to view.')
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error)
   process.exit(1)
 })

@@ -127,7 +127,7 @@ describe('CalDAV write-back (#1400)', () => {
 
     dbResult.db.delete(calendarEvents).where(eq(calendarEvents.id, 'event-1')).run()
     await push('event-1')
-    const del = server.requests.filter((request) => request.method === 'DELETE').at(-1)!
+    const del = server.requests.findLast((request) => request.method === 'DELETE')!
     expect(del.headers['if-match']).toBe(updated!.remoteVersion)
     expect(server.getObject(WORK, name)).toBeUndefined()
     expect(dbResult.db.select().from(calendarBindings).get()?.archivedAt).not.toBeNull()

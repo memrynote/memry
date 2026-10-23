@@ -63,7 +63,7 @@ export function createSyncApi({
         ...init,
         headers: {
           'Content-Type': 'application/json',
-          ...(init.headers ?? {}),
+          ...init.headers,
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       })
@@ -100,7 +100,7 @@ export function createSyncApi({
   async function publicJson<T = unknown>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetchImpl(`${baseUrl}${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) }
+      headers: { 'Content-Type': 'application/json', ...init?.headers }
     })
     if (!res.ok) {
       const message = await res.text().catch(() => '')

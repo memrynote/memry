@@ -139,6 +139,7 @@ const DatesPicker = ({
           <button
             key={item.id}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
             role="radio"
             aria-checked={segment === item.id}
             onClick={() => setSegment(item.id)}

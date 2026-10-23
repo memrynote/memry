@@ -56,6 +56,7 @@ export const useIsItemActive = () => {
   // effect-synced ref still held the previous tab on the render that follows a
   // tab switch, so the rail only highlighted the new page one render later.
   const identityRef = useRef<ActiveTabIdentity | null>(activeTabIdentity)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   identityRef.current = activeTabIdentity
 
   // Return stable callback that reads from ref

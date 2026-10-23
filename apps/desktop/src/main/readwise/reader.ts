@@ -139,3 +139,32 @@ export async function* listDocuments(
     }
   }
 }
+
+export interface GetDocumentOptions {
+  token: string
+  id: string
+  withHtmlContent: boolean
+  signal?: AbortSignal
+  limiter?: RequestLimiter
+}
+
+/**
+ * One top-level Reader document by id, or null when Reader no longer has it
+ * (or the id names a child or a `feed` item). For a command the user starts
+ * on one document (D16); sync reads through `listDocuments`.
+ */
+export async function getDocument(options: GetDocumentOptions): Promise<ReaderDocument | null> {
+  for await (const page of readwisePages({
+    token: options.token,
+    signal: options.signal,
+    throttle: (signal) => (options.limiter ?? sharedLimiter).acquire(signal),
+    path: '/api/v3/list/',
+    query: { id: options.id, withHtmlContent: options.withHtmlContent ? 'true' : undefined },
+    schema: ListPageSchema
+  })) {
+    const document = page.results.find((row) => row.id === options.id)
+    if (document)
+      return document.parent_id == null && document.location !== 'feed' ? document : null
+  }
+  return null
+}

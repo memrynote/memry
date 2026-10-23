@@ -42,8 +42,10 @@ function getLineWidth(level: number): number {
   }
 }
 
+const NO_HEADINGS: HeadingItem[] = []
+
 export const OutlineEdge = memo(function OutlineEdge({
-  headings = [],
+  headings = NO_HEADINGS,
   onHeadingClick,
   className,
   activeHeadingId

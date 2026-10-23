@@ -259,6 +259,7 @@ function MoveToFolderDialogSession({
       const selectedElement = listRef.current.querySelector('[data-selected="true"]')
       selectedElement?.scrollIntoView({ block: 'nearest' })
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- selectedIndex is the trigger: scroll the newly selected row into view
   }, [selectedIndex])
 
   // Handle move action
@@ -274,6 +275,7 @@ function MoveToFolderDialogSession({
         setIsMoving(false)
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- false positive: onMove/onOpenChange/searchQuery are read inside the callback
     [currentFolder, onMove, onOpenChange]
   )
 
@@ -292,6 +294,7 @@ function MoveToFolderDialogSession({
     } finally {
       setIsMoving(false)
     }
+    // oxlint-disable-next-line react/memo-dependencies -- false positive: onMove/onOpenChange/searchQuery are read inside the callback
   }, [canCreateFolder, searchQuery, onMove, onOpenChange])
 
   // Handle keyboard navigation
@@ -376,6 +379,7 @@ function MoveToFolderDialogSession({
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           ref={inputRef}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
           autoFocus
           placeholder={tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.searchFolders')}
           value={searchQuery}

@@ -91,7 +91,9 @@ function mount(initialState: TabSystemState) {
   let latestBoards: ReturnType<typeof useHomeBoards> | null = null
 
   const Probe = (): null => {
+    // oxlint-disable-next-line react/globals -- test probe captures the hook result for later assertions
     latestTabs = useTabs()
+    // oxlint-disable-next-line react/globals -- test probe captures the hook result for later assertions
     latestBoards = useHomeBoards()
     return null
   }

@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { registerWidget } from '@/lib/home/widget-registry'
 import { GRID_MARGIN, GRID_ROW_HEIGHT } from '@/lib/home/widget-sizes'
 import type { HomePage } from '@/lib/home/types'
+import type * as LegacyModule from 'react-grid-layout/legacy'
 
 // Board width the grid believes it has. Deliberately NARROW (a 1280px window minus the sidebar and
 // page padding lands around here) — the regression this file guards is that a drag made at a narrow
@@ -14,7 +15,7 @@ import type { HomePage } from '@/lib/home/types'
 const BOARD_WIDTH = 900
 
 vi.mock('react-grid-layout/legacy', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-grid-layout/legacy')>()
+  const actual = await importOriginal<typeof LegacyModule>()
   return {
     ...actual,
     WidthProvider:
@@ -56,14 +57,26 @@ function makeStore(board: HomePage) {
   return { board }
 }
 
-function Harness({ store }: { store: { board: HomePage } }): React.JSX.Element {
-  const [board, setBoard] = useState(store.board)
+function persistTo(store: { board: HomePage }): (board: HomePage) => void {
+  return (board) => {
+    store.board = board
+  }
+}
+
+function Harness({
+  initial,
+  onPersist
+}: {
+  initial: HomePage
+  onPersist: (board: HomePage) => void
+}): React.JSX.Element {
+  const [board, setBoard] = useState(initial)
   return (
     <TooltipProvider>
       <BoardGrid
         board={board}
         onChange={(next) => {
-          store.board = next
+          onPersist(next)
           setBoard(next)
         }}
       />
@@ -93,7 +106,7 @@ function dragWidget(dx: number, dy: number): void {
 describe('BoardGrid persistence', () => {
   it('persists a drag and restores it on remount', () => {
     const store = makeStore(initialBoard)
-    const first = render(<Harness store={store} />)
+    const first = render(<Harness initial={store.board} onPersist={persistTo(store)} />)
 
     const before = widgetPosition()
     dragWidget(Math.round(colStep * 3), Math.round(rowStep * 2))
@@ -107,7 +120,7 @@ describe('BoardGrid persistence', () => {
     first.unmount()
 
     // Remount from what was persisted — the arrangement must come back, not reset to the default.
-    render(<Harness store={makeStore(store.board) as { board: HomePage }} />)
+    render(<Harness initial={store.board} onPersist={persistTo(store)} />)
     expect(store.board.widgets[0]).toMatchObject({ x: moved.x, y: moved.y })
     const pos = widgetPosition()
     expect(pos.x).toBeGreaterThan(0)

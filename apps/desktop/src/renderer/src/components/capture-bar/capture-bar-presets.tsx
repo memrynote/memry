@@ -44,7 +44,13 @@ import type { Project } from '@/data/tasks-data'
 import type { MergedPresets, TaskPresets } from './capture-presets'
 
 export type PresetsMenuView =
-  'root' | 'project' | 'status' | 'startDate' | 'repeat' | 'reminder' | 'tags'
+  | 'root'
+  | 'project'
+  | 'status'
+  | 'startDate'
+  | 'repeat'
+  | 'reminder'
+  | 'tags'
 
 /** Which surface is open: the date picker, a menu view, or nothing. */
 export type PresetsPanel = 'date' | PresetsMenuView
@@ -371,6 +377,7 @@ export const CapturePresets = ({
             <div className="px-2 pt-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
               {t('task.priority')}
             </div>
+            {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- visual grouping wrapper; fieldset/details would change layout and semantics */}
             <div role="group" aria-label={t('task.priority')} className="flex gap-1 px-1 pb-1.5">
               {PRIORITY_ORDER.map((priority, index) => {
                 const active = merged.priority === priority
@@ -627,6 +634,7 @@ export const CapturePresets = ({
             {subHeader(t('task.tags'))}
             {/* The tag input handles its own keys; stop them reaching the
                 menu's arrow navigation. Escape still closes the panel. */}
+            {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- stops key propagation from the tag field inside; not itself a control */}
             <div
               className="px-1 pb-1"
               onKeyDown={(e) => {
@@ -637,6 +645,7 @@ export const CapturePresets = ({
                 tags={presets.tags}
                 onTagsChange={(tags) => onChange({ tags })}
                 placeholder={t('quickAdd.presets.addTags')}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a just-opened popover/inline editor
                 autoFocus
               />
             </div>

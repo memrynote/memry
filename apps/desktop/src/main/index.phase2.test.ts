@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import type { VaultStatus } from '@memry/contracts/vault-api'
 import { readStartupVaultArg } from '@memry/contracts/startup-vault'
+import type * as EmbeddingsModule from './lib/embeddings'
 
 const appOnMock = vi.fn()
 const isVaultSwitchInProgressMock = vi.fn(() => false)
@@ -259,7 +260,7 @@ vi.mock('./inbox/voice-model', () => ({
 // Keep the real module (other importers use initEmbeddingModel/getModelInfo/etc.);
 // spy only stopEmbeddingModel to assert the embeddings utilityProcess is stopped on quit (#805).
 vi.mock('./lib/embeddings', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./lib/embeddings')>()),
+  ...(await importOriginal<typeof EmbeddingsModule>()),
   stopEmbeddingModel: stopEmbeddingModelMock
 }))
 
@@ -522,9 +523,9 @@ function getFlushDoneListeners(): FlushDoneListener[] {
 }
 
 function getFlushRequestId(window: ReturnType<typeof createBrowserWindowMock>): string | undefined {
-  return window.webContents.send.mock.calls
-    .filter(([channel]) => channel === 'app:request-flush')
-    .at(-1)?.[1] as string | undefined
+  return window.webContents.send.mock.calls.findLast(
+    ([channel]) => channel === 'app:request-flush'
+  )?.[1] as string | undefined
 }
 
 // `app:flush-done` is a shared channel, so a reply only counts when it carries
@@ -707,7 +708,8 @@ describe('main index phase2 exports', () => {
     // A save in Settings -> Shortcuts rebuilds it.
     readKeyboardOverridesMock.mockReturnValue({})
     const onKeyboardOverridesChanged = setKeyboardOverridesListenerMock.mock.calls.at(-1)?.[0] as
-      (() => void) | undefined
+      | (() => void)
+      | undefined
     onKeyboardOverridesChanged?.()
     expect(buildAppMenuMock).toHaveBeenCalledTimes(2)
     expect(buildAppMenuMock).toHaveBeenLastCalledWith(expect.anything(), {})
@@ -922,7 +924,8 @@ describe('main index phase2 exports', () => {
     await flushReadyWork()
 
     const options = BrowserWindowMock.mock.calls[0]?.[0] as
-      { webPreferences?: { additionalArguments?: string[] } } | undefined
+      | { webPreferences?: { additionalArguments?: string[] } }
+      | undefined
     expect(readStartupVaultArg(options?.webPreferences?.additionalArguments ?? [])).toBe(
       '/vault/My Notes'
     )
@@ -1889,7 +1892,7 @@ describe('main index phase2 exports', () => {
     expect(globalShortcutUnregisterMock).not.toHaveBeenCalledWith('CommandOrControl+Shift+Space')
 
     globalCaptureRegistered = true
-    for (const listener of [...vaultStatusChangedListeners]) {
+    for (const listener of Array.from(vaultStatusChangedListeners)) {
       listener({ isOpen: true, path: '/vault', isIndexing: false, indexProgress: 0, error: null })
     }
 

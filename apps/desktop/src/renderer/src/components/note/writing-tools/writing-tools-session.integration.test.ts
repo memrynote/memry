@@ -40,7 +40,7 @@ import { collectTextBlocks, writingToolsPluginKey } from './writing-tools-plugin
 const cleanups: Array<() => void> = []
 
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0).reverse()) cleanup()
+  for (const cleanup of cleanups.splice(0).toReversed()) cleanup()
 })
 
 function setup(text: string, generateAssist: GenerateWritingAssist = vi.fn()) {

@@ -943,9 +943,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       {/* The block's own focus target: selected-but-not-editing, where the
           property keys live. Mouse and Esc reach it; keyboard users get the
           same keys from the title, which is in the tab order. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
       <div
         ref={rowRef}
         tabIndex={-1}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="group"
         aria-label={rowTask.title}
         aria-keyshortcuts="S P Shift+P D Shift+D R H L E Shift+L"

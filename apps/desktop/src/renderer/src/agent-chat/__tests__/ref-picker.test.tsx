@@ -80,7 +80,7 @@ describe('RefPicker', () => {
     vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
     Object.assign(window.api, {
       calendar: {
-        ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
+        ...(window.api as unknown as { calendar?: Record<string, unknown> }).calendar,
         listEvents: mockCalendarListEvents
       }
     })

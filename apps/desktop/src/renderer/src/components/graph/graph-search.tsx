@@ -30,13 +30,13 @@ export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.
   }, [filterState.searchQuery, dispatch])
 
   return (
-    <div className="absolute right-3 top-3 z-40">
+    <div className="absolute end-3 top-3 z-40">
       <div className="relative flex items-center">
-        <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none" />
+        <Search className="absolute start-2.5 size-3.5 text-muted-foreground pointer-events-none" />
         <Input
           ref={inputRef}
           placeholder={t('search.placeholder')}
-          className="h-8 w-48 pl-8 pr-8 text-xs bg-popover/95 backdrop-blur-sm border-border"
+          className="h-8 w-48 ps-8 pe-8 text-xs bg-popover/95 backdrop-blur-sm border-border"
           value={filterState.searchQuery}
           onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
         />
@@ -44,7 +44,7 @@ export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-1 h-5 w-5 p-0"
+            className="absolute end-1 h-5 w-5 p-0"
             onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
             aria-label={t('search.clear')}
           >

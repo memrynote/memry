@@ -122,7 +122,7 @@ describe('AgentProvider', () => {
       })
     }
     ;(window as typeof window & { api: unknown }).api = {
-      ...(window.api ?? {}),
+      ...window.api,
       agent: agentApi
     }
   })

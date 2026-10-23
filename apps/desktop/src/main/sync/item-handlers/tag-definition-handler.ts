@@ -193,7 +193,8 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get() as
-      Record<string, unknown> | undefined
+      | Record<string, unknown>
+      | undefined
   }
 
   buildPushPayload(

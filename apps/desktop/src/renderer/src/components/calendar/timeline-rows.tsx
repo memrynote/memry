@@ -150,8 +150,10 @@ export function TimelineGroupHeader({
     )
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
     <div role="row" className="flex h-10 pt-2" data-testid="timeline-group">
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
         role="rowheader"
         className="sticky start-0 z-10 flex shrink-0 items-center gap-2 border-e border-border bg-background ps-5 pe-3"
         style={{ width: TIMELINE_LIST_WIDTH }}
@@ -236,6 +238,7 @@ function RowFrame({
   return (
     <div
       id={id}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
       role="row"
       aria-selected={isSelected}
       aria-label={label}
@@ -248,6 +251,7 @@ function RowFrame({
       onDoubleClick={(event) => onOpen(event.currentTarget.getBoundingClientRect())}
     >
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
         role="gridcell"
         className="sticky start-0 z-10 flex shrink-0 items-center gap-2 border-e border-border bg-background pe-3"
         style={{ width: TIMELINE_LIST_WIDTH }}
@@ -262,6 +266,7 @@ function RowFrame({
         {listCell}
       </div>
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- div-based absolute-positioned grid; table elements would change layout
         role="gridcell"
         data-timeline-track
         className={cn(

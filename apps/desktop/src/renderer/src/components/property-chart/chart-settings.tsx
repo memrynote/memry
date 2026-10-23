@@ -170,6 +170,7 @@ function PropertyList({
   }
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="listbox"
       aria-label={t('editor.chart.property')}
       className="flex max-h-56 flex-col gap-px overflow-y-auto"
@@ -180,6 +181,7 @@ function PropertyList({
           <button
             key={property.name}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             role="option"
             aria-selected={isSelected}
             // A new property brings its own suggested chart.
@@ -226,6 +228,7 @@ function ChartTypePicker({
         <button
           key={option}
           type="button"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="radio"
           aria-checked={option === type}
           onClick={() =>

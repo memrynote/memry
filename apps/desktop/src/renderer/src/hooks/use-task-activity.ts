@@ -41,7 +41,7 @@ export function useTaskActivity(options: UseTaskActivityOptions): UseTaskActivit
 
   const query = useInfiniteQuery({
     queryKey: taskActivityKeys.list(taskId ?? '', { limit, actions }),
-    queryFn: async ({ pageParam = 0 }) =>
+    queryFn: async ({ pageParam }) =>
       tasksService.getActivity({
         taskId: taskId as string,
         offset: pageParam,

@@ -4,6 +4,7 @@ import { JournalPage } from './journal'
 import React from 'react'
 import type { VaultLockState } from '@memry/contracts/vault-locks-api'
 import { toast } from 'sonner'
+import type * as BacklinksModule from '@/components/note/backlinks'
 
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
@@ -361,6 +362,7 @@ vi.mock('@/components/note', () => ({
           data-testid="blocknote-editor"
           contentEditable
           suppressContentEditableWarning
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- test stub of a contentEditable editor, which is focusable
           tabIndex={0}
         >
           BlockNote editor
@@ -384,7 +386,7 @@ vi.mock('@/components/note', () => ({
 }))
 
 vi.mock('@/components/note/backlinks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/components/note/backlinks')>()),
+  ...(await importOriginal<typeof BacklinksModule>()),
   BacklinksSection: ({ backlinks, onBacklinkClick }: any) => (
     <div data-testid="backlinks">
       {backlinks.map((backlink: any) => (

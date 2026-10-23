@@ -32,6 +32,7 @@ export const HintBadge = ({ hint, typedChars }: HintBadgeProps): React.JSX.Eleme
       }}
     >
       {hint.label.split('').map((char, i) => (
+        // oxlint-disable-next-line react/no-array-index-key -- characters of a fixed label, positional
         <span key={i} style={{ opacity: i < matchedLength && isMatching ? 0.4 : 1 }}>
           {char}
         </span>

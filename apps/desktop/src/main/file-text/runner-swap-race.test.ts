@@ -7,6 +7,8 @@ import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db
 import type { IndexDb } from '../database/types'
 import { getExtractedText, getFileTextJob } from '../database/queries/extracted-text'
 import { FileTextRunner } from './runner'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: the runner resolves an attachment twice (compare, then extract).
 // Right after the second vault check resolves the file, it is swapped for a
@@ -22,7 +24,7 @@ function swapOnSecondCheck(probe: unknown): void {
 }
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     const real = await actual.realpath(probe)
     swapOnSecondCheck(probe)
@@ -31,7 +33,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, realpath }, realpath }
 })
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   const native = (probe: string): string => {
     const real = actual.realpathSync.native(probe)
     swapOnSecondCheck(probe)

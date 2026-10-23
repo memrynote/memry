@@ -14,7 +14,11 @@ const subscription = () => {
     listeners.push(cb)
     return unsubscribe
   })
-  return { subscribe, unsubscribe, fire: () => listeners.forEach((cb) => cb({ id: 'b1' })) }
+  return {
+    subscribe,
+    unsubscribe,
+    fire: () => listeners.forEach((cb) => cb({ id: 'b1' }))
+  }
 }
 
 let created: ReturnType<typeof subscription>
@@ -28,7 +32,7 @@ beforeEach(() => {
   deleted = subscription()
   // Assign only homePages onto the existing window.api (preserves jsdom window/document)
   ;(window as any).api = {
-    ...((window as any).api ?? {}),
+    ...(window as any).api,
     homePages: {
       list: vi.fn().mockResolvedValue([board]),
       create: vi.fn().mockResolvedValue({ ...board, id: 'b2', name: 'New' }),

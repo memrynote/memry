@@ -101,6 +101,7 @@ function ModelRow(): React.JSX.Element {
     >
       <span
         className="mt-[5px] flex h-1 overflow-hidden rounded-[2px] bg-surface-active"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="progressbar"
         aria-label={t(`${K}.modelTitle`)}
         aria-valuemin={0}
@@ -179,9 +180,9 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
           patch: { folder: { kind: 'new', parent, name: t('onboardingWizard.preview.notesName') } }
         })
       )
-      .catch((err) => log.warn('Reading the default vault folder failed', err))
+      .catch((err: unknown) => log.warn('Reading the default vault folder failed', err))
     // Runs once: later folder changes come from the user.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   const pick = async (mode: 'parent' | 'existing'): Promise<void> => {

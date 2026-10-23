@@ -383,6 +383,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   })
   const openFindAt = findInPage.openAt
   useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- find request arrives via tab state from another surface; effect consumes it once
     if (!findRequest || !isActiveJournal || currentViewState.type !== 'day') return
     openFindAt(findRequest.query, findRequest.index)
     setFindRequest(null)
@@ -800,6 +801,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // arriving is the signal that the block tree behind the map is real.
   useEffect(() => {
     refreshMindMap()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [headings, refreshMindMap])
   const {
     shiftStyle: railShiftStyle,
@@ -1023,6 +1025,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     } finally {
       setIsDeleting(false)
     }
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
   }, [isDeleting, deleteEntry, t, dialog])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
@@ -1093,6 +1096,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         noteId: bl.sourceId,
         noteTitle: bl.sourceTitle,
         folder: folderPath,
+        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
         date: new Date(),
         mentions: (bl.contexts ?? []).map((ctx, i) => ({
           id: `mention-${bl.sourceId}-${i}`,

@@ -15,7 +15,12 @@ import { WikiLinkDisplayPanel } from './wiki-link-display-panel'
 import { useT } from '@memry/i18n/renderer'
 
 export type WikiLinkMenuAction =
-  'open' | 'openInNewTab' | 'openToTheSide' | 'edit' | 'copy' | 'unlink'
+  | 'open'
+  | 'openInNewTab'
+  | 'openToTheSide'
+  | 'edit'
+  | 'copy'
+  | 'unlink'
 
 /** A right-click on a wiki-link chip, captured when the menu opened. */
 export interface WikiLinkMenuTarget {

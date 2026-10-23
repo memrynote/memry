@@ -5,6 +5,8 @@ import { render, screen } from '@testing-library/react'
 import { VirtualizedProjectTaskList } from './virtualized-project-task-list'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
+import type * as CoreModule from '@dnd-kit/core'
+import type * as DragDropModule from '@/components/tasks/drag-drop'
 
 const useDroppableMock = vi.fn()
 const useDragContextMock = vi.fn()
@@ -39,7 +41,7 @@ vi.mock('@dnd-kit/sortable', () => ({
 }))
 
 vi.mock('@dnd-kit/core', async () => {
-  const actual = await vi.importActual<typeof import('@dnd-kit/core')>('@dnd-kit/core')
+  const actual = await vi.importActual<typeof CoreModule>('@dnd-kit/core')
   return {
     ...actual,
     useDroppable: (options: unknown) => {
@@ -61,9 +63,7 @@ vi.mock('@/contexts/drag-context', () => ({
 }))
 
 vi.mock('@/components/tasks/drag-drop', async () => {
-  const actual = await vi.importActual<typeof import('@/components/tasks/drag-drop')>(
-    '@/components/tasks/drag-drop'
-  )
+  const actual = await vi.importActual<typeof DragDropModule>('@/components/tasks/drag-drop')
 
   return {
     ...actual,

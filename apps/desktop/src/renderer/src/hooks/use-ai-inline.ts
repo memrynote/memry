@@ -75,7 +75,8 @@ export function useAIInline(aiEnabled = true): AIInlineState {
         }
 
         const existingPort = (await window.electron.ipcRenderer.invoke(AI_GET_PORT_CHANNEL)) as
-          number | null
+          | number
+          | null
         if (existingPort) {
           try {
             const health = await fetch(`http://127.0.0.1:${existingPort}/api/ai/chat`, {
@@ -121,6 +122,7 @@ export function useAIInline(aiEnabled = true): AIInlineState {
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- attempt is the retry trigger, not read inside the effect
   }, [attempt, aiEnabled])
 
   return { port, loading, error, retry }

@@ -58,6 +58,6 @@ describe('property_refs migration', () => {
       ).run()
     }
     insert()
-    expect(insert).toThrow()
+    expect(insert).toThrow(/UNIQUE constraint failed: property_refs\.source_note_id,/)
   })
 })

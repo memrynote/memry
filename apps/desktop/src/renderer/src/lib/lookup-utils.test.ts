@@ -7,8 +7,7 @@ import {
   isTaskCompletedFast,
   getProjectFromMap,
   createLookupContext,
-  getTaskContext,
-  type LookupContext
+  getTaskContext
 } from './lookup-utils'
 
 // Mock factories

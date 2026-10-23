@@ -190,7 +190,7 @@ describe('Composer', () => {
     mockConnectProvider.mockResolvedValue({ success: true })
     Object.assign(window.api, {
       calendar: {
-        ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
+        ...(window.api as unknown as { calendar?: Record<string, unknown> }).calendar,
         listEvents: mockCalendarListEvents,
         getProviderStatus: mockGetProviderStatus,
         connectProvider: mockConnectProvider

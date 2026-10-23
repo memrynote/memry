@@ -54,7 +54,7 @@ export function StatusProjectPickerPanel({
               style={{ backgroundColor: project.color }}
             />
             <span className="text-[13px] text-muted-foreground leading-4">{project.name}</span>
-            <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
+            <ChevronRight size={10} className="ms-auto text-muted-foreground/60" />
           </button>
         ))}
       </div>

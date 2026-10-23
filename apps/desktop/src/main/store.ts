@@ -581,7 +581,7 @@ export function getPendingCrdtStoreRename(vaultUuid: string): string | undefined
  */
 export function recordCrdtStoreRename(from: string, to: string): void {
   const current = store.get('crdtStore')
-  const pending = { ...(current.pendingRenames ?? {}) }
+  const pending = { ...current.pendingRenames }
 
   const origin = pending[from] ?? from
   delete pending[from]

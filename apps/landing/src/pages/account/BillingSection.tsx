@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 
 interface BillingStatus {
   plan: string

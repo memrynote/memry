@@ -25,6 +25,7 @@ import type { SyncContext } from './sync-context'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { CrdtSnapshotWatermark } from '@memry/sync-client/crdt-snapshot-watermark'
 import type { CrdtSnapshotMeta } from '../http-client'
+import type * as RetryModule from '@memry/sync-client/retry'
 
 const fetchCrdtSnapshotMock = vi.fn()
 const getFromServerMock = vi.fn()
@@ -42,7 +43,7 @@ vi.mock('../http-client', () => ({
 
 vi.mock('../../crypto/index', () => ({ secureCleanup: vi.fn() }))
 vi.mock('@memry/sync-client/retry', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/sync-client/retry')>()),
+  ...(await importOriginal<typeof RetryModule>()),
   withRetry: async (fn: () => Promise<unknown>) => ({ value: await fn() })
 }))
 vi.mock('../crdt-encrypt', () => ({ decryptCrdtUpdate: () => new Uint8Array([9, 9, 9]) }))

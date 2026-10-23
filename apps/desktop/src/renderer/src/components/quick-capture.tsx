@@ -96,6 +96,7 @@ export function QuickCapture(): React.JSX.Element {
 
   const attachmentFilename =
     droppedFile?.name ??
+    // oxlint-disable-next-line react/purity -- display-only default filename for a pasted image; recomputed per render intentionally
     (clipboardImage ? `clipboard-${new Date().toISOString().slice(0, 10)}.png` : '')
   const attachmentSize = droppedFile?.size ?? clipboardImage?.size ?? 0
   const attachmentExtension = droppedFile
@@ -124,6 +125,7 @@ export function QuickCapture(): React.JSX.Element {
 
   useEffect(() => {
     if (!isLinkPreviewVisible) {
+      // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
       setLinkPreview(null)
       setPreviewLoading(false)
       previewUrlRef.current = null

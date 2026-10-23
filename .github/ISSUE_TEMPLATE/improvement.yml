@@ -1,7 +1,7 @@
 name: Improvement
 description: Suggest a smaller polish, workflow, or quality improvement.
-title: "[Improvement]: "
-labels: ["improvement"]
+title: '[Improvement]: '
+labels: ['improvement']
 body:
   - type: markdown
     attributes:

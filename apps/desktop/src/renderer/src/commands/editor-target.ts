@@ -56,7 +56,7 @@ function newest(candidates: Iterable<Entry>): Entry | undefined {
 }
 
 function notify(): void {
-  for (const listener of [...listeners]) listener()
+  for (const listener of Array.from(listeners)) listener()
 }
 
 function onFocusIn(event: FocusEvent): void {

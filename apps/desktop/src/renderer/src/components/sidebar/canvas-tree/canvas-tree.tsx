@@ -236,7 +236,8 @@ function CanvasConfirmDialog({
  * rename can touch anything.
  */
 type EditTarget =
-  { kind: 'canvas'; id: string } | { kind: 'folder'; path: string; materialized: boolean }
+  | { kind: 'canvas'; id: string }
+  | { kind: 'folder'; path: string; materialized: boolean }
 
 interface EditState {
   target: EditTarget
@@ -439,6 +440,7 @@ export function CanvasTree({
     if (!pendingFocus) return
     const timer = setTimeout(() => focusRow(pendingFocus), 0)
     return () => clearTimeout(timer)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- rows re-runs the focus attempt until the target row exists (see comment above)
   }, [focusRow, pendingFocus, rows])
 
   // Closes the window above. Deliberately NOT keyed on `rows`, so a later
@@ -457,7 +459,7 @@ export function CanvasTree({
     (key: string): string[] => {
       const index = rows.findIndex((node) => rowKeyOf(node) === key)
       if (index < 0) return []
-      return [...rows.slice(index + 1), ...rows.slice(0, index).reverse()].map(rowKeyOf)
+      return [...rows.slice(index + 1), ...rows.slice(0, index).toReversed()].map(rowKeyOf)
     },
     [rows]
   )
@@ -742,9 +744,13 @@ export function CanvasTree({
     [beginEdit, run, tree]
   )
 
-  React.useImperativeHandle(ref, () => ({ createFolder: () => handleNewFolder(null) }), [
-    handleNewFolder
-  ])
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      createFolder: () => handleNewFolder(null)
+    }),
+    [handleNewFolder]
+  )
 
   /**
    * The keyboard path to moving a folder. Drag and drop has none, so this is

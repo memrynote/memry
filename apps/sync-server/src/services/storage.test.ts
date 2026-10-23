@@ -118,13 +118,15 @@ describe('getStorageBreakdown', () => {
     })
 
     // #when / #then
+    let e: unknown
     try {
       await getStorageBreakdown(db as unknown as D1Database, 'ghost')
       expect.fail('should have thrown')
-    } catch (e) {
-      expect((e as { statusCode: number }).statusCode).toBe(404)
-      expect((e as { code: string }).code).toBe('NOT_FOUND')
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as { statusCode: number }).statusCode).toBe(404)
+    expect((e as { code: string }).code).toBe('NOT_FOUND')
   })
 
   it('should include crdt snapshots and updates in crdt category', async () => {

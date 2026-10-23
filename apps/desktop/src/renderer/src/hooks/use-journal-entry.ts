@@ -165,7 +165,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       const saveInput: JournalSaveInput = { date: oldDate, ...pendingTags }
       if (pendingContent !== null) saveInput.content = pendingContent
 
-      journalService.updateEntry(saveInput).catch((err) => {
+      journalService.updateEntry(saveInput).catch((err: unknown) => {
         // The user has already navigated away — this is silent data loss.
         trackRendererError('journal_pending_save_failed', err)
         log.error(`Failed to save pending changes for ${oldDate}:`, err)
@@ -352,6 +352,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
   }, [updateMutation])
 
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   performSaveRef.current = performSave
 
   const scheduleSave = useCallback(() => {

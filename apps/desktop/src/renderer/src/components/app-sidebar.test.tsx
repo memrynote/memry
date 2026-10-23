@@ -292,7 +292,13 @@ vi.mock('@/components/ui/picker', async () => {
   const Picker = ({ children }: { children: ReactNode }) => {
     const [open, setOpen] = React.useState(false)
     return (
-      <PickerCtx.Provider value={{ open, toggle: () => setOpen((value) => !value) }}>
+      <PickerCtx.Provider
+        // oxlint-disable-next-line react/jsx-no-constructed-context-values -- value is constructed once for this static test provider
+        value={{
+          open,
+          toggle: () => setOpen((value) => !value)
+        }}
+      >
         {children}
       </PickerCtx.Provider>
     )
@@ -306,6 +312,7 @@ vi.mock('@/components/ui/picker', async () => {
   }) => {
     const { toggle } = React.useContext(PickerCtx)
     return (
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- test stub wrapper
       <span data-testid={testId} onClick={toggle}>
         {children}
       </span>

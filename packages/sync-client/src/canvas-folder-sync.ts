@@ -40,7 +40,8 @@ export class CanvasFolderSyncService {
   constructor(deps: CanvasFolderSyncDeps) {
     const load = (folderId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(canvasFolders).where(eq(canvasFolders.id, folderId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
     const serialize = (local: Record<string, unknown>): Record<string, unknown> => ({
       id: local.id,
       vaultId: local.vaultId,

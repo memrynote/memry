@@ -18,7 +18,10 @@ const hangingToolProvider = vi.fn(async (url: string | URL, init?: RequestInit) 
     return new Response('data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n')
   }
   return new Promise<Response>((_, reject) => {
-    init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+    init?.signal?.addEventListener('abort', () => {
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
+      reject(init.signal?.reason)
+    })
   })
 }) as unknown as typeof fetch
 

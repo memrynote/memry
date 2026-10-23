@@ -290,7 +290,10 @@ describe('#given a malformed request envelope', () => {
     const empty = await push(app, [])
     expect(empty.status).toBe(400)
 
-    const overLimit = await push(app, new Array<Record<string, unknown>>(101).fill({ id: 'x' }))
+    const overLimit = await push(
+      app,
+      Array.from({ length: 101 }, () => ({ id: 'x' }))
+    )
     expect(overLimit.status).toBe(400)
   })
 })

@@ -171,7 +171,7 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
             results.set(result.noteId, result.accepted === true)
             if (result.accepted === true) {
               const pushed = { sequenceNum: result.sequenceNum, revision: result.revision }
-              await Promise.resolve(deps.onPushed?.(result.noteId, pushed)).catch((err) =>
+              await Promise.resolve(deps.onPushed?.(result.noteId, pushed)).catch((err: unknown) =>
                 log.warn('Could not record a pushed snapshot revision', { error: err })
               )
             }

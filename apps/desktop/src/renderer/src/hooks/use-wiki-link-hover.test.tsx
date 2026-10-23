@@ -52,9 +52,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => {
-      link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
-    })
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     expect(result.current.isVisible).toBe(false)
 
     await act(async () => {
@@ -67,9 +65,7 @@ describe('useWikiLinkHover', () => {
     expect(result.current.position).toEqual({ top: 64, left: 20, placement: 'below' })
     expect(result.current.isVisible).toBe(true)
 
-    act(() => {
-      link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
-    })
+    act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
     })

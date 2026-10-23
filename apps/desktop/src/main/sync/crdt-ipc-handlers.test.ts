@@ -93,10 +93,18 @@ vi.mock('./crdt-writeback', () => ({
 }))
 vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
-    enqueue() {}
-    flush() {}
-    flushAll() {}
-    schedule() {}
+    enqueue() {
+      /* intentional no-op */
+    }
+    flush() {
+      /* intentional no-op */
+    }
+    flushAll() {
+      /* intentional no-op */
+    }
+    schedule() {
+      /* intentional no-op */
+    }
   }
 }))
 
@@ -107,14 +115,22 @@ vi.mock('./runtime', () => ({ getSyncEngine: () => syncEngine.current }))
 
 vi.mock('y-leveldb', () => ({
   LeveldbPersistence: class {
-    async destroy() {}
+    async destroy() {
+      /* intentional no-op */
+    }
     async getYDoc() {
       const Y = await import('yjs')
       return new Y.Doc()
     }
-    async storeUpdate() {}
-    async clearDocument() {}
-    async flushDocument() {}
+    async storeUpdate() {
+      /* intentional no-op */
+    }
+    async clearDocument() {
+      /* intentional no-op */
+    }
+    async flushDocument() {
+      /* intentional no-op */
+    }
   }
 }))
 

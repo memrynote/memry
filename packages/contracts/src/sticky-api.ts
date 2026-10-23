@@ -69,7 +69,8 @@ export const StickyUndoSchema = z.object({ undoToken: z.string().min(1) })
 export type StickyUndoInput = z.infer<typeof StickyUndoSchema>
 
 export type StickyUndoResult =
-  { success: true; draft: StickyDraft } | { success: false; error: string }
+  | { success: true; draft: StickyDraft }
+  | { success: false; error: string }
 
 export const StickyOpenTargetSchema = z.object({
   kind: z.enum(STICKY_KINDS),

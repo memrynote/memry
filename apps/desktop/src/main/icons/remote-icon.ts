@@ -59,7 +59,7 @@ export interface RemoteIcon {
 async function chromiumFetch(url: string, init: RequestInit): Promise<Response> {
   try {
     const { net } = await import('electron')
-    if (typeof net?.fetch === 'function') return net.fetch(url, init)
+    if (typeof net?.fetch === 'function') return await net.fetch(url, init)
   } catch {
     // not running inside Electron
   }
@@ -103,7 +103,7 @@ export function pickIconExtension(
 
 /** Default label for a downloaded icon: its file name, else the host. */
 export function iconNameFromUrl(url: URL): string {
-  const last = url.pathname.split('/').filter(Boolean).pop() ?? ''
+  const last = url.pathname.split('/').findLast(Boolean) ?? ''
   let base = ''
   try {
     base = decodeURIComponent(last)
@@ -161,7 +161,7 @@ export async function downloadRemoteIcon(raw: string): Promise<RemoteIcon> {
     })
   } catch (error) {
     log.warn('Custom icon download failed', { host: url.hostname, error })
-    throw new Error(getMainI18n().t('errors:customIcon.downloadFailed'))
+    throw new Error(getMainI18n().t('errors:customIcon.downloadFailed'), { cause: error })
   } finally {
     clearTimeout(timeout)
   }

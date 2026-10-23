@@ -674,6 +674,62 @@ const viewBlockCases: RoundtripCase[] = [
 ]
 
 /**
+ * A portal is a ```` ```memry-portal ```` fence holding its definition as JSON.
+ * Like the view block it is a plain `codeBlock` in every pipeline, so the fence
+ * and its JSON, unknown keys included, come back byte for byte.
+ */
+const portalCases: RoundtripCase[] = [
+  {
+    name: 'memry-portal fence targeting a whole note',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001"\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with a collapsed root',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ]\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with several roots',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2",\n    "p8m2qa"\n  ]\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with show-mode open',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "open": {\n    "k3x9a2": {\n      "show": [\n        "n4c8x1"\n      ]\n    }\n  }\n}\n```'
+  },
+  {
+    name: 'memry-portal fence with hide-mode and nested open',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "open": {\n    "k3x9a2": {\n      "hide": [\n        "b9x1"\n      ]\n    },\n    "n4c8x1": {\n      "hide": []\n    }\n  }\n}\n```'
+  },
+  {
+    name: 'memry-portal fence on a whole note with a hide list',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "hide": [\n    "k3x9a2",\n    "p8m2qa"\n  ]\n}\n```'
+  },
+  {
+    name: 'memry-portal search fence',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "search": {\n    "text": "exam",\n    "tag": "bio",\n    "limit": 50\n  }\n}\n```'
+  },
+  {
+    name: 'memry-portal fence keeps keys a build does not know',
+    markdown:
+      '```memry-portal\n{\n  "v": 1,\n  "note": "9f1c2d3e-0000-4000-8000-000000000001",\n  "blocks": [\n    "k3x9a2"\n  ],\n  "layout": {\n    "future": true\n  }\n}\n```'
+  },
+  {
+    name: 'memry-portal fence between paragraphs',
+    markdown: 'Before\n\n```memry-portal\n{"v":1,"note":"n1"}\n```\n\nAfter'
+  },
+  {
+    name: 'a block whose text ends with an anchor',
+    markdown: 'Read this chapter ^chl-7f2a'
+  }
+]
+
+/**
  * Spellings Memry never writes, from files it did not author (#1915). The
  * block tree cannot tell `* One` from `- One`, so `canonical` here records
  * the house style an EDITED region comes back in. What an untouched document
@@ -1154,6 +1210,7 @@ export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
   ...diagramCases,
   ...whiteboardCases,
   ...viewBlockCases,
+  ...portalCases,
   ...foreignSpellingCases,
   ...inlineImageCases,
   ...columnCases,

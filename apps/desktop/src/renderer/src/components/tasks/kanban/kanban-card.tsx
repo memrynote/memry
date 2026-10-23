@@ -32,9 +32,9 @@ interface KanbanCardProps {
 interface KanbanCardContentProps extends KanbanCardProps {
   isDragging?: boolean
   style?: React.CSSProperties
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   attributes?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   listeners?: any
   setNodeRef?: (node: HTMLElement | null) => void
 }
@@ -104,8 +104,10 @@ export const KanbanCardContent = forwardRef<HTMLDivElement, KanbanCardContentPro
           else if (ref) ref.current = node
           setNodeRef?.(node)
         }}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
         role="button"
         tabIndex={0}
+        // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria-selected conveys selection state of the card
         aria-selected={isSelected}
         aria-label={task.title}
         onClick={handleClick}

@@ -508,6 +508,7 @@ interface ColumnListLike {
  * `serializeColumn` — the caller's own top-level walk, so toggles, blank-line
  * gaps and markers inside a column are written exactly as on a page.
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- B is whatever block type the caller's serializer accepts
 export async function serializeColumnListBlock<B>(
   block: ColumnListLike,
   serializeColumn: (blocks: B[]) => Promise<string>

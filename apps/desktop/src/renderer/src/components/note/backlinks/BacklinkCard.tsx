@@ -24,6 +24,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
           canvas: via.canvasTitle || t('canvasLinks.untitledCanvas')
         })
       : null
+  const portalLabel = via?.kind === 'portal' ? t('backlinks.viaPortal') : null
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   // A property-sourced backlink has no text mentions to reveal, so there is
   // nothing to expand — rendering the chevron would offer a toggle that does
@@ -32,6 +33,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
 
   const titleLink = (
     <span
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="link"
       tabIndex={0}
       onClick={(e) => {
@@ -50,11 +52,14 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
       {displayLabel}
     </span>
   )
-  const canvasNote = canvasLabel && (
-    <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">{canvasLabel}</span>
+  const canvasNote = (canvasLabel ?? portalLabel) && (
+    <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">
+      {canvasLabel ?? portalLabel}
+    </span>
   )
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
     <div role="group" aria-label={t('backlinks.fromAria', { title: displayLabel })}>
       <div
         className={cn(
@@ -96,6 +101,7 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
       </div>
 
       {isExpanded && mentions.length > 0 && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         <div className="ms-5 flex flex-col gap-px" role="list">
           {mentions.map((mention) => (
             <button

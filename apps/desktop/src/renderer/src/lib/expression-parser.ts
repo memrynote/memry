@@ -12,7 +12,13 @@
 // ============================================================================
 
 export type ASTNode =
-  LiteralNode | IdentifierNode | MemberNode | BinaryNode | UnaryNode | CallNode | ConditionalNode
+  | LiteralNode
+  | IdentifierNode
+  | MemberNode
+  | BinaryNode
+  | UnaryNode
+  | CallNode
+  | ConditionalNode
 
 export interface LiteralNode {
   type: 'literal'
@@ -97,7 +103,23 @@ export class ParseError extends Error {
 // Tokenizer
 // ============================================================================
 
-const OPERATORS = ['||', '&&', '==', '!=', '<=', '>=', '<', '>', '+', '-', '*', '/', '%', '**', '!']
+const OPERATORS = new Set([
+  '||',
+  '&&',
+  '==',
+  '!=',
+  '<=',
+  '>=',
+  '<',
+  '>',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '**',
+  '!'
+])
 
 /**
  * Tokenize an expression string into tokens.
@@ -186,14 +208,14 @@ function tokenize(expression: string): Token[] {
 
     // Multi-character operators
     const twoChar = expression.slice(pos, pos + 2)
-    if (OPERATORS.includes(twoChar)) {
+    if (OPERATORS.has(twoChar)) {
       tokens.push({ type: 'operator', value: twoChar, position: startPos })
       pos += 2
       continue
     }
 
     // Single-character operators
-    if (OPERATORS.includes(char)) {
+    if (OPERATORS.has(char)) {
       tokens.push({ type: 'operator', value: char, position: startPos })
       pos++
       continue

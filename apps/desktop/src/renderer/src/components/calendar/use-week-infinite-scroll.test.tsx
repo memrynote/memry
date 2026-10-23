@@ -57,11 +57,13 @@ describe('useWeekInfiniteScroll', () => {
     const onVisibleDayStartChange = vi.fn()
 
     function Harness(): React.JSX.Element {
+      // oxlint-disable-next-line react/globals -- test harness captures the hook result for assertions after render
       current = useWeekInfiniteScroll({
         initialDate: '2026-05-14',
         totalDays: 90,
         onVisibleDayStartChange
       })
+      // oxlint-disable-next-line react/refs -- registry/ref is read lazily, not as render output
       return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
     }
 
@@ -141,10 +143,12 @@ describe('useWeekInfiniteScroll', () => {
     let current: UseWeekInfiniteScrollResult | null = null
 
     function Harness(): React.JSX.Element {
+      // oxlint-disable-next-line react/globals -- test harness captures the hook result for assertions after render
       current = useWeekInfiniteScroll({
         initialDate: '2026-05-14',
         totalDays: 36_525
       })
+      // oxlint-disable-next-line react/refs -- registry/ref is read lazily, not as render output
       return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
     }
 
@@ -176,7 +180,9 @@ describe('useWeekInfiniteScroll', () => {
     let current: UseWeekInfiniteScrollResult | null = null
 
     function Harness(): React.JSX.Element {
+      // oxlint-disable-next-line react/globals -- test harness captures the hook result for assertions after render
       current = useWeekInfiniteScroll({ initialDate: '2026-05-14', totalDays: 90 })
+      // oxlint-disable-next-line react/refs -- registry/ref is read lazily, not as render output
       return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
     }
 
@@ -203,7 +209,9 @@ describe('useWeekInfiniteScroll', () => {
     let current: UseWeekInfiniteScrollResult | null = null
 
     function Harness(): React.JSX.Element {
+      // oxlint-disable-next-line react/globals -- test harness captures the hook result for assertions after render
       current = useWeekInfiniteScroll({ initialDate: '2026-05-14', totalDays: 90 })
+      // oxlint-disable-next-line react/refs -- registry/ref is read lazily, not as render output
       return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
     }
 

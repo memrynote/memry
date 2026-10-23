@@ -428,6 +428,7 @@ export function MindMapCanvas({
   // camera reports its flight, but a focus that did not move it at all — the
   // box was already centred — reports nothing to hang the first frame off.
   useLayoutEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
     syncFocus()
   }, [syncFocus])
 

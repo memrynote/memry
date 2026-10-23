@@ -94,7 +94,9 @@ vi.mock('@/components/tasks/date-picker-calendar', () => ({
       type="button"
       onClick={() => {
         const date = new Date('2026-06-01T00:00:00.000Z')
-        expect(disabled?.(new Date('2020-01-01T00:00:00.000Z'))).toBe(true)
+        if (disabled?.(new Date('2020-01-01T00:00:00.000Z')) !== true) {
+          throw new Error('past dates must be disabled in the date picker')
+        }
         onSelect(date)
       }}
     >
@@ -142,6 +144,7 @@ describe('bulk action components', () => {
     const onClick = vi.fn()
 
     render(
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/prefer-tag-over-role -- pointer-only wrapper; keyboard access is provided by the focusable children; ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       <div role="button" tabIndex={0} onClick={onParentClick}>
         <SelectionCheckbox
           checked

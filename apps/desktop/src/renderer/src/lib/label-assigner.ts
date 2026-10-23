@@ -71,7 +71,7 @@ export const assignLabels = (elements: HTMLElement[]): HintTarget[] => {
     letterGroups.set(letter, group)
   })
 
-  const labels = new Array<string>(elements.length).fill('')
+  const labels = Array.from<string>({ length: elements.length }).fill('')
   const singleCharLabels = new Set<string>()
 
   for (const [letter, indices] of letterGroups) {

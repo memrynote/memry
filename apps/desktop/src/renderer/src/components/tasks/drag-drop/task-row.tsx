@@ -42,9 +42,9 @@ interface TaskRowProps {
   accentClass?: string
   isDragging?: boolean
   isJustDropped?: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   dragHandleListeners?: Record<string, any>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   dragHandleAttributes?: Record<string, any>
   droppedPriority?: Priority | null
   insertionIndicatorPosition?: 'before' | 'after'
@@ -221,6 +221,7 @@ const TaskRowComponent = ({
 
   return (
     <TaskRowMenu task={task} enabled={!isOverlay}>
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children */}
       <div
         ref={rowRef}
         style={style}

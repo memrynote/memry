@@ -63,7 +63,7 @@ export function StatusEditor({
           {selectedOption ? (
             <SelectChip value={selectedOption.value} color={selectedOption.color} />
           ) : isOrphan ? (
-            <SelectChip value={String(value)} color="stone" />
+            <SelectChip value={value} color="stone" />
           ) : (
             <span className="text-[13px] text-text-tertiary font-sans">
               {t('properties.empty')}
@@ -115,6 +115,7 @@ export function StatusEditor({
                       }}
                     />
                     <input
+                      // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
                       autoFocus
                       type="text"
                       aria-label={t('properties.optionName')}

@@ -5,10 +5,9 @@ import path from 'path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { vi } from 'vitest'
 import {
   convertUnmergedDebtMirror,
   crdtBodyDebtBackoffMs,
@@ -32,7 +31,8 @@ describe('crdt body debts (#2297)', () => {
   const db = () => asSyncDb(t.db)
   const state = (key: string) =>
     t.sqlite.prepare('SELECT value, updated_at AS at FROM sync_state WHERE key = ?').get(key) as
-      { value: string; at: number } | undefined
+      | { value: string; at: number }
+      | undefined
   const debt = (noteId: string) => listCrdtBodyDebts(db()).find((d) => d.noteId === noteId)
   const owe = (
     ids: string[],

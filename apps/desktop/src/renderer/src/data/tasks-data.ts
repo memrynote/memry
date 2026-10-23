@@ -201,7 +201,7 @@ export const createDefaultProject = (): Omit<Project, 'id' | 'createdAt'> => ({
   color: '#6366f1',
   isDefault: false,
   isArchived: false,
-  statuses: [...defaultStatuses.map((s, i) => ({ ...s, id: generateId('status'), order: i }))],
+  statuses: defaultStatuses.map((s, i) => ({ ...s, id: generateId('status'), order: i })),
   taskCount: 0
 })
 

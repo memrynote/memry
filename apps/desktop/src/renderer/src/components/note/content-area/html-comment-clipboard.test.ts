@@ -10,7 +10,7 @@ import { buildBlockClipboard } from './block-clipboard'
 import { HtmlComment } from './html-comment'
 import { checkboxLineMarkdown } from './markdown-utils'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 const COMMENT = '<!-- [[Alpha]] -->'
 

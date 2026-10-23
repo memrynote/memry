@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type * as PathsModule from '../lib/paths'
 
 const calls: string[] = []
 const feedCalls: Array<{ noteId: string; content: string }> = []
@@ -56,7 +57,7 @@ vi.mock('./notes-io', () => ({
   toAbsolutePath: vi.fn((p: string) => `/vault/${p}`)
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: async (_vault: string, p: string) =>
     written.find((w) => w.path === `/vault/${p}`)?.content ?? null
 }))

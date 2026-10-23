@@ -40,6 +40,8 @@
     "./cover-image": "./src/cover-image.ts",
     "./template-placeholders": "./src/template-placeholders.ts",
     "./view-block": "./src/view-block.ts",
+    "./portal-block": "./src/portal-block.ts",
+    "./portal-resolve": "./src/portal-resolve.ts",
     "./versioned": "./src/versioned.ts",
     "./wiki-link-props": "./src/wiki-link-props.ts",
     "./markdown-preview-text": "./src/markdown-preview-text.ts",
@@ -48,7 +50,7 @@
   },
   "types": "./src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"

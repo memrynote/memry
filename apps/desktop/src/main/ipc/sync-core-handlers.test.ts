@@ -58,7 +58,7 @@ const mockUpdateSet = vi.fn().mockReturnValue({
 })
 const mockSelectGet = vi.fn().mockReturnValue(undefined)
 
-const createWhereResult = (defaultValue: unknown = undefined) => {
+const createWhereResult = (defaultValue?: unknown) => {
   const result = Promise.resolve(defaultValue)
   ;(result as Record<string, unknown>).get = mockSelectGet
   ;(result as Record<string, unknown>).run = vi.fn()
@@ -578,6 +578,7 @@ describe('sync IPC handlers', () => {
   it('returns the sync trigger error key when Sync Now fails without a concrete message', async () => {
     registerSyncHandlers({
       syncNow: vi.fn(async () => {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         throw null
       })
     } as never)

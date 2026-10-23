@@ -64,6 +64,24 @@ export {
 } from './link-queries'
 
 export {
+  getPortalRefsForHost,
+  setPortalRefs,
+  getPortalUsage,
+  getPortalHostIds,
+  listPortalEdges,
+  type PortalRefRow,
+  type PortalUsageRow
+} from './portal-ref-queries'
+
+export {
+  setBlockLinkRefs,
+  getBlockLinkRefsForSource,
+  getLinkUsage,
+  type BlockLinkRefRow,
+  type LinkUsageRow
+} from './block-link-ref-queries'
+
+export {
   resolveLinkTarget,
   resolveLinkTargets,
   type ResolvedLinkTarget

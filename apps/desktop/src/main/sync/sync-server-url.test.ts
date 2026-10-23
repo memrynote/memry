@@ -180,7 +180,7 @@ describe('resolveSyncServerUrl', () => {
 
       expect(resolved).toBe('sync.memrynote.com')
       expect(resolved).not.toBe(DEV_FALLBACK)
-      expect(() => new URL(resolved)).toThrow()
+      expect(() => new URL(resolved)).toThrow('Invalid URL')
     })
 
     it('keeps whitespace-only configuration distinguishable from unset', () => {
@@ -188,7 +188,7 @@ describe('resolveSyncServerUrl', () => {
       // unparseable URL rather than a silent localhost fallback.
       process.env.SYNC_SERVER_URL = '   '
       expect(resolveSyncServerUrl()).toBe('   ')
-      expect(() => new URL(resolveSyncServerUrl())).toThrow()
+      expect(() => new URL(resolveSyncServerUrl())).toThrow('Invalid URL')
     })
   })
 })

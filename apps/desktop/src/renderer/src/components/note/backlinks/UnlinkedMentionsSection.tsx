@@ -98,6 +98,7 @@ function SourceMentions({
 }) {
   const { t } = useT('notes')
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
     <div role="group" aria-label={t('unlinkedMentions.fromAria', { title: source.sourceTitle })}>
       <button
         type="button"
@@ -109,6 +110,7 @@ function SourceMentions({
       <ul className="ms-5 flex flex-col gap-px">
         {source.contexts.map((context, ordinal) => (
           <li
+            // oxlint-disable-next-line react/no-array-index-key -- list is positional and never reordered, so the index is the stable identity
             key={ordinal}
             className="flex items-start gap-2 rounded px-1.5 py-1 hover:bg-surface-active/30"
           >

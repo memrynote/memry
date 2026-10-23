@@ -155,6 +155,7 @@ export function FolderGalleryView({
         const card = (
           <div
             key={note.id}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- whole-card target with nested interactive children; a nested <button> would be invalid HTML
             role="button"
             tabIndex={0}
             // Drops onto a canvas as a card; this view has no multi-select.

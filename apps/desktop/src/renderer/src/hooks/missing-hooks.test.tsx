@@ -274,7 +274,7 @@ beforeEach(() => {
     getLocal: vi.fn().mockResolvedValue({ nodes: [{ id: 'local-1' }], edges: [] })
   } as never
   api.journal = {
-    ...(api.journal ?? {}),
+    ...api.journal,
     getDayContext: vi.fn().mockResolvedValue({
       tasks: [{ id: 'task-1', dueDate: '2026-05-10' }],
       events: [{ id: 'event-1' }],
@@ -478,6 +478,7 @@ describe('navigation and keyboard hooks', () => {
 
     const flush = renderHook(() => useFlushOnQuit())
     await act(async () => {
+      // oxlint-disable-next-line typescript/await-thenable -- the registered flush listener returns a promise; the mock type erases it
       await mocks.taskListeners.flush('flush-1')
     })
     expect(mocks.flushAllPendingSaves).toHaveBeenCalled()

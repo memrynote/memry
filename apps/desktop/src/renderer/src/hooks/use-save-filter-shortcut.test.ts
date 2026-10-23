@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
-import { fireEvent } from '@testing-library/react'
+import { renderHook, fireEvent } from '@testing-library/react'
 
 import { useSaveFilterShortcut } from './use-save-filter-shortcut'
 

@@ -26,9 +26,8 @@ describe('DateRangeSchema', () => {
   it('rejects missing to', () => {
     const result = DateRangeSchema.safeParse({ from: '2026-04-01' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('to')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('to')
   })
 
   it('rejects non-string from', () => {
@@ -41,15 +40,14 @@ describe('SearchQuerySchema', () => {
   it('accepts minimal input with defaults', () => {
     const result = SearchQuerySchema.safeParse({ text: 'meeting' })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.types).toEqual([])
-      expect(result.data.tags).toEqual([])
-      expect(result.data.dateRange).toBeNull()
-      expect(result.data.projectId).toBeNull()
-      expect(result.data.folderPath).toBeNull()
-      expect(result.data.limit).toBe(10)
-      expect(result.data.offset).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.types).toEqual([])
+    expect(result.data.tags).toEqual([])
+    expect(result.data.dateRange).toBeNull()
+    expect(result.data.projectId).toBeNull()
+    expect(result.data.folderPath).toBeNull()
+    expect(result.data.limit).toBe(10)
+    expect(result.data.offset).toBe(0)
   })
 
   it('accepts full query', () => {
@@ -74,9 +72,8 @@ describe('SearchQuerySchema', () => {
   it('rejects text over 500 chars', () => {
     const result = SearchQuerySchema.safeParse({ text: 'x'.repeat(501) })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('text')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('text')
   })
 
   it('accepts text at 500 char boundary', () => {
@@ -132,9 +129,8 @@ describe('AddReasonSchema', () => {
       searchQuery: 'q'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.itemIcon).toBeNull()
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.itemIcon).toBeNull()
   })
 
   it('accepts itemIcon string', () => {
@@ -156,9 +152,8 @@ describe('AddReasonSchema', () => {
       searchQuery: 'q'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('itemId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('itemId')
   })
 
   it('rejects invalid itemType', () => {

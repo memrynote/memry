@@ -8,7 +8,8 @@ import { isCryptoErrorMessage } from '@memry/sync-client/worker-protocol'
 import { CryptoError } from '../crypto/crypto-errors'
 
 export type DecryptSingleResult =
-  { ok: true; item: DecryptedPullItem } | { ok: false; failure: DecryptionFailure }
+  | { ok: true; item: DecryptedPullItem }
+  | { ok: false; failure: DecryptionFailure }
 
 export function decryptSingleItem(
   item: PullItemForDecrypt,

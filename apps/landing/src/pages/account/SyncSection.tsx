@@ -6,7 +6,7 @@ import {
   type PlanChangeTarget
 } from '@/components/account/CheckoutPanel'
 import { parseCheckoutToken, readCheckoutTokenClaims } from '@/lib/checkout-summary'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 import { parseCheckoutCadence, parseCheckoutPlan } from '@/lib/paddle-checkout'
 import { useSearchParams } from 'react-router'
 
@@ -31,6 +31,7 @@ export function SyncSection() {
   const [billingLoaded, setBillingLoaded] = useState(false)
 
   useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- mints a checkout token on mount; the effect synchronizes with the API
     if (hashToken) return
     api
       .authedJson<{ checkoutToken: string }>('/auth/checkout-token', { method: 'POST' })

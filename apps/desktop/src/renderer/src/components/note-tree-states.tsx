@@ -27,6 +27,7 @@ export function NotesTreeSyncing({ children }: { children?: ReactNode }) {
   const { t } = useT('notes')
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
     <div className="p-2" role="status" aria-live="polite">
       <p className="px-1 pb-2 text-xs text-muted-foreground">{t('tree.syncing.body')}</p>
       {children}

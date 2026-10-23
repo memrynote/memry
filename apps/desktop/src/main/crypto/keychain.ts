@@ -77,7 +77,8 @@ export const storeKey = async (entry: KeychainEntry, key: Uint8Array): Promise<v
     }
   } catch (err) {
     throw new Error(
-      `Failed to store key in keychain (${account}): ${err instanceof Error ? err.message : 'unknown error'}`
+      `Failed to store key in keychain (${account}): ${err instanceof Error ? err.message : 'unknown error'}`,
+      { cause: err }
     )
   }
 }
@@ -100,7 +101,8 @@ export const retrieveKey = async (entry: KeychainEntry): Promise<Uint8Array | nu
     }
   } catch (err) {
     throw new Error(
-      `Failed to retrieve key from keychain (${account}): ${err instanceof Error ? err.message : 'unknown error'}`
+      `Failed to retrieve key from keychain (${account}): ${err instanceof Error ? err.message : 'unknown error'}`,
+      { cause: err }
     )
   }
 
@@ -121,7 +123,8 @@ export const deleteKey = async (entry: KeychainEntry): Promise<void> => {
     }
   } catch (err) {
     throw new Error(
-      `Failed to delete key from keychain (${account}): ${err instanceof Error ? err.message : 'unknown error'}`
+      `Failed to delete key from keychain (${account}): ${err instanceof Error ? err.message : 'unknown error'}`,
+      { cause: err }
     )
   }
 }

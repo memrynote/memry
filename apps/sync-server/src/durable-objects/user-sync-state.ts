@@ -31,7 +31,7 @@ const CLOSE_CODE_REPLACED = 4001
 const CLOSE_CODE_TOKEN_EXPIRED = 4003
 const CLOSE_CODE_DEVICE_REVOKED = 4004
 const CLOSE_CODE_RATE_LIMITED = 4008
-const CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
+const _CLOSE_CODE_VERSION_INCOMPATIBLE = 4009
 
 const logger = createLogger('UserSyncState')
 
@@ -366,7 +366,7 @@ export class UserSyncState extends DurableObject<Bindings> {
       const parsed = parseClientMessage(message)
       if (parsed?.type === 'auth') {
         const token = (parsed.payload as { token?: unknown } | undefined)?.token
-        return this.handleAuthRefresh(ws, attachment, token).catch((error) =>
+        return this.handleAuthRefresh(ws, attachment, token).catch((error: unknown) =>
           this.captureError('ws_auth_refresh', error)
         )
       }

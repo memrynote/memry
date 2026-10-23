@@ -20,12 +20,14 @@ describe('CryptoError guards', () => {
 
       // #when / #then
       expect(() => encrypt(plaintext, shortKey)).toThrow(CryptoError)
+      let err: unknown
       try {
         encrypt(plaintext, shortKey)
-      } catch (err) {
-        expect(err).toBeInstanceOf(CryptoError)
-        expect((err as CryptoError).code).toBe('INVALID_KEY_LENGTH')
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(CryptoError)
+      expect((err as CryptoError).code).toBe('INVALID_KEY_LENGTH')
     })
 
     it('#given valid key #then encrypts successfully', () => {
@@ -51,12 +53,14 @@ describe('CryptoError guards', () => {
 
       // #when / #then
       expect(() => decrypt(ciphertext, nonce, shortKey)).toThrow(CryptoError)
+      let err: unknown
       try {
         decrypt(ciphertext, nonce, shortKey)
-      } catch (err) {
-        expect(err).toBeInstanceOf(CryptoError)
-        expect((err as CryptoError).code).toBe('INVALID_KEY_LENGTH')
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(CryptoError)
+      expect((err as CryptoError).code).toBe('INVALID_KEY_LENGTH')
     })
 
     it('#given wrong nonce length #then throws INVALID_NONCE_LENGTH', () => {
@@ -67,12 +71,14 @@ describe('CryptoError guards', () => {
 
       // #when / #then
       expect(() => decrypt(ciphertext, badNonce, key)).toThrow(CryptoError)
+      let err: unknown
       try {
         decrypt(ciphertext, badNonce, key)
-      } catch (err) {
-        expect(err).toBeInstanceOf(CryptoError)
-        expect((err as CryptoError).code).toBe('INVALID_NONCE_LENGTH')
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(CryptoError)
+      expect((err as CryptoError).code).toBe('INVALID_NONCE_LENGTH')
     })
 
     it('#given corrupted ciphertext #then throws DECRYPTION_FAILED', () => {
@@ -83,12 +89,14 @@ describe('CryptoError guards', () => {
 
       // #when / #then
       expect(() => decrypt(ciphertext, nonce, key)).toThrow(CryptoError)
+      let err: unknown
       try {
         decrypt(ciphertext, nonce, key)
-      } catch (err) {
-        expect(err).toBeInstanceOf(CryptoError)
-        expect((err as CryptoError).code).toBe('DECRYPTION_FAILED')
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(CryptoError)
+      expect((err as CryptoError).code).toBe('DECRYPTION_FAILED')
     })
 
     it('#given wrong key #then throws DECRYPTION_FAILED', () => {
@@ -99,12 +107,14 @@ describe('CryptoError guards', () => {
 
       // #when / #then
       expect(() => decrypt(ciphertext, nonce, wrongKey)).toThrow(CryptoError)
+      let err: unknown
       try {
         decrypt(ciphertext, nonce, wrongKey)
-      } catch (err) {
-        expect(err).toBeInstanceOf(CryptoError)
-        expect((err as CryptoError).code).toBe('DECRYPTION_FAILED')
+      } catch (thrown) {
+        err = thrown
       }
+      expect(err).toBeInstanceOf(CryptoError)
+      expect((err as CryptoError).code).toBe('DECRYPTION_FAILED')
     })
 
     it('#given valid inputs #then decrypts successfully', () => {

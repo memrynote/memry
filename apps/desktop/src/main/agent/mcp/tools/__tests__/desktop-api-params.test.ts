@@ -95,7 +95,8 @@ describe('desktop API parameter lists', () => {
       if (handWrittenApis[domain]?.[method] !== undefined) continue
       const spec = (
         rpcDomains.find((candidate) => candidate.name === domain)?.methods as
-          Record<string, { params: readonly string[] }> | undefined
+          | Record<string, { params: readonly string[] }>
+          | undefined
       )?.[method]
       // The responder still takes the older (start, end) string pair.
       const expected =
@@ -134,6 +135,10 @@ describe('desktop API parameter lists', () => {
       if (item?.type === 'boolean') return true
       return object
     }
+    const readbacks: Array<{
+      operation: string
+      request: Parameters<typeof assertDesktopApiArgs>[0]
+    }> = []
     for (const operation of AgentMcpDesktopWriteOperations) {
       const names = desktopOperationParamNames(operation)
       const items = desktopArgsItemSchemas(desktopOperationJsonSchema(operation))
@@ -141,7 +146,13 @@ describe('desktop API parameter lists', () => {
         names[index] === 'scope' ? { kind: 'folder', path: 'a' } : sample(item, index)
       )
       const readback = desktopWriteReadback({ operation, args })
-      if (readback) expect(() => assertDesktopApiArgs(readback.request), operation).not.toThrow()
+      if (readback) readbacks.push({ operation, request: readback.request })
+    }
+    expect(readbacks.length).toBeGreaterThan(0)
+    for (const { operation, request } of readbacks) {
+      expect(() => {
+        assertDesktopApiArgs(request)
+      }, operation).not.toThrow()
     }
   })
 

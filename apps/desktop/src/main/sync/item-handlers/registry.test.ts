@@ -12,7 +12,9 @@ vi.mock('../../lib/logger', () => ({
   })
 }))
 
-import { getAllHandlers, getHandler } from './index'
+import { getAllHandlers, getHandler, type SyncItemHandler } from './index'
+
+type SeedData = Parameters<SyncItemHandler['applyUpsert']>[2]
 
 /**
  * Types that are deliberately absent from the record-handler registry because
@@ -20,10 +22,10 @@ import { getAllHandlers, getHandler } from './index'
  * handler — `ItemApplier.apply` logs a warning and returns 'skipped' for an
  * unregistered type, which is silent data loss on the receiving device.
  */
-const NON_RECORD_TYPES: SyncItemType[] = [
+const NON_RECORD_TYPES: ReadonlySet<SyncItemType> = new Set([
   // Blobs pushed/pulled through the attachment outbox + R2, never a record row.
   'attachment'
-]
+])
 
 /**
  * Types excluded from the emit-via-`ctx.emit` probe only. They still have to
@@ -97,29 +99,24 @@ beforeEach(() => {
   const seedEmit = vi.fn()
   const seedCtx = { db, emit: seedEmit, vaultKey: new Uint8Array(32) }
 
-  const projectHandler = getHandler('project')!
-  expect(projectHandler.applyUpsert(seedCtx, PROJECT_ID, {}, { 'device-seed': 1 })).toBe('applied')
+  const applySeed = (type: SyncItemType, id: string, data: SeedData): void => {
+    const result = getHandler(type)!.applyUpsert(seedCtx, id, data, { 'device-seed': 1 })
+    if (result !== 'applied') throw new Error(`seeding ${type} FK parent returned ${result}`)
+  }
 
-  const sourceHandler = getHandler('calendar_source')!
-  expect(sourceHandler.applyUpsert(seedCtx, CALENDAR_SOURCE_ID, {}, { 'device-seed': 1 })).toBe(
-    'applied'
+  applySeed('project', PROJECT_ID, {})
+  applySeed('calendar_source', CALENDAR_SOURCE_ID, {})
+  applySeed(
+    'agent_conversation',
+    CONVERSATION_ID,
+    getHandler('agent_conversation')!.schema.parse(FIXTURE_OVERRIDES.agent_conversation)
   )
-
-  const conversationHandler = getHandler('agent_conversation')!
-  expect(
-    conversationHandler.applyUpsert(
-      seedCtx,
-      CONVERSATION_ID,
-      conversationHandler.schema.parse(FIXTURE_OVERRIDES.agent_conversation),
-      { 'device-seed': 1 }
-    )
-  ).toBe('applied')
 })
 
 describe('sync item handler registry', () => {
   it('registers a handler for every syncable item type', () => {
     const missing = SYNC_ITEM_TYPES.filter(
-      (type) => !NON_RECORD_TYPES.includes(type) && !getHandler(type)
+      (type) => !NON_RECORD_TYPES.has(type) && !getHandler(type)
     )
 
     expect(missing).toEqual([])
@@ -151,14 +148,18 @@ describe('sync item handler registry', () => {
     // A handler that mutates the local DB without emitting leaves the running
     // renderer showing stale data until the app is restarted — the "vault is
     // updated but the app does not refresh" class of report.
-    for (const type of SYNC_ITEM_TYPES) {
-      if (NON_RECORD_TYPES.includes(type)) continue
-      const exemption = EMIT_PROBE_EXEMPT[type]
-      if (exemption) {
-        it.skip(`${type}: emit probe skipped — ${exemption}`, () => {})
-        continue
-      }
+    for (const type of SYNC_ITEM_TYPES.filter(
+      (t) => !NON_RECORD_TYPES.has(t) && EMIT_PROBE_EXEMPT[t] !== undefined
+    )) {
+      // Documented gap: these types cannot run against a bare data-db handle
+      // (reason in EMIT_PROBE_EXEMPT); the skip keeps them visible in reports.
+      // oxlint-disable-next-line vitest/no-disabled-tests -- documented probe exemption, see EMIT_PROBE_EXEMPT
+      it.skip(`${type}: emit probe skipped — ${EMIT_PROBE_EXEMPT[type]}`, () => {})
+    }
 
+    for (const type of SYNC_ITEM_TYPES.filter(
+      (t) => !NON_RECORD_TYPES.has(t) && EMIT_PROBE_EXEMPT[t] === undefined
+    )) {
       it(`${type}: emits a renderer event when a remote upsert is applied`, () => {
         const handler = getHandler(type)
         expect(handler, `no handler registered for ${type}`).toBeDefined()

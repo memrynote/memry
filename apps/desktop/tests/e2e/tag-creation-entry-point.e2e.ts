@@ -13,7 +13,7 @@
  * sweep breaks this rather than shipping quietly.
  */
 
-import { Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 

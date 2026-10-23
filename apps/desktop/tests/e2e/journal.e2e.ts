@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, some vars intentionally unused
 /**
  * Journal E2E Tests
  *
@@ -12,13 +11,7 @@
  */
 
 import { test, expect } from './fixtures'
-import {
-  waitForAppReady,
-  waitForVaultReady,
-  navigateTo,
-  SELECTORS,
-  SHORTCUTS
-} from './utils/electron-helpers'
+import { waitForAppReady, waitForVaultReady, navigateTo, SELECTORS } from './utils/electron-helpers'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -50,7 +43,7 @@ test.describe('Journal Management', () => {
 
       if (fs.existsSync(journalDir)) {
         const files = fs.readdirSync(journalDir)
-        const todayFile = files.find((f) => f.includes(today))
+        const _todayFile = files.find((f) => f.includes(today))
         // Today's file should exist (or will after save)
       }
 
@@ -63,7 +56,7 @@ test.describe('Journal Management', () => {
       const hasDateHeader = await dateHeader.isVisible().catch(() => false)
 
       if (hasDateHeader) {
-        const headerText = await dateHeader.textContent()
+        const _headerText = await dateHeader.textContent()
         // Should contain today's date in some format
       }
 
@@ -80,7 +73,7 @@ test.describe('Journal Management', () => {
         await page.waitForTimeout(2000) // Wait for debounced auto-save
 
         // Verify by checking file or looking for save indicator
-        const saveIndicator = page.locator('[data-testid="save-status"]')
+        const _saveIndicator = page.locator('[data-testid="save-status"]')
         // Should show saved status
       }
 
@@ -112,7 +105,7 @@ test.describe('Journal Management', () => {
       const hasGreeting = await greeting.isVisible().catch(() => false)
 
       if (hasGreeting) {
-        const greetingText = await greeting.textContent()
+        const _greetingText = await greeting.textContent()
         // Should contain morning/afternoon/evening based on time
       }
 
@@ -139,7 +132,7 @@ test.describe('Journal Management', () => {
         // Journal should show yesterday's entry
         const dateHeader = page.locator('[data-testid="journal-date-header"]')
         if (await dateHeader.isVisible()) {
-          const dateText = await dateHeader.textContent()
+          const _dateText = await dateHeader.textContent()
           // Should show yesterday's date
         }
       }
@@ -231,7 +224,7 @@ test.describe('Journal Management', () => {
 
       if (hasCalendar) {
         const todayCell = calendar.locator('[data-today="true"]')
-        const hasTodayHighlight = await todayCell.isVisible().catch(() => false)
+        const _hasTodayHighlight = await todayCell.isVisible().catch(() => false)
       }
 
       expect(true).toBe(true)
@@ -244,7 +237,7 @@ test.describe('Journal Management', () => {
       if (hasCalendar) {
         // Look for dates with entries indicator
         const entryDates = calendar.locator('[data-has-entry="true"]')
-        const count = await entryDates.count()
+        const _count = await entryDates.count()
       }
 
       expect(true).toBe(true)
@@ -255,7 +248,7 @@ test.describe('Journal Management', () => {
     test('T552: should display activity heatmap', async ({ page }) => {
       // Look for heatmap component
       const heatmap = page.locator('[data-testid="activity-heatmap"]')
-      const hasHeatmap = await heatmap.isVisible().catch(() => false)
+      const _hasHeatmap = await heatmap.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -266,9 +259,9 @@ test.describe('Journal Management', () => {
 
       if (hasHeatmap) {
         // Verify different activity levels exist
-        const lowActivity = heatmap.locator('[data-activity="low"]')
-        const mediumActivity = heatmap.locator('[data-activity="medium"]')
-        const highActivity = heatmap.locator('[data-activity="high"]')
+        const _lowActivity = heatmap.locator('[data-activity="low"]')
+        const _mediumActivity = heatmap.locator('[data-activity="medium"]')
+        const _highActivity = heatmap.locator('[data-activity="high"]')
       }
 
       expect(true).toBe(true)
@@ -286,7 +279,7 @@ test.describe('Journal Management', () => {
 
           // Look for tooltip
           const tooltip = page.locator('[role="tooltip"]')
-          const hasTooltip = await tooltip.isVisible().catch(() => false)
+          const _hasTooltip = await tooltip.isVisible().catch(() => false)
         }
       }
 
@@ -316,8 +309,8 @@ test.describe('Journal Management', () => {
 
       if (hasStats) {
         // Should show stats like total entries, streak, etc.
-        const totalEntries = stats.locator('[data-testid="total-entries"]')
-        const currentStreak = stats.locator('[data-testid="current-streak"]')
+        const _totalEntries = stats.locator('[data-testid="total-entries"]')
+        const _currentStreak = stats.locator('[data-testid="current-streak"]')
       }
 
       expect(true).toBe(true)
@@ -330,7 +323,7 @@ test.describe('Journal Management', () => {
 
       if (hasMonthView) {
         const entries = monthView.locator('[data-testid="month-entry"]')
-        const count = await entries.count()
+        const _count = await entries.count()
       }
 
       expect(true).toBe(true)
@@ -366,7 +359,7 @@ test.describe('Journal Management', () => {
 
     test('should show word count', async ({ page }) => {
       const wordCount = page.locator('[data-testid="word-count"]')
-      const hasWordCount = await wordCount.isVisible().catch(() => false)
+      const _hasWordCount = await wordCount.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -380,7 +373,7 @@ test.describe('Journal Management', () => {
         await page.waitForTimeout(500)
 
         // Verify focus mode is active
-        const focusActive = page.locator('[data-focus-mode="true"]')
+        const _focusActive = page.locator('[data-focus-mode="true"]')
         // const isFocusActive = await focusActive.isVisible().catch(() => false)
 
         // Toggle back

@@ -92,7 +92,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
       <div className={cn('flex flex-col gap-2', className)}>
         {/* Input field */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={inputRef}
             type="text"
@@ -101,7 +101,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className={cn(
-              'pl-9 pr-3',
+              'ps-9 pe-3',
               isValid && 'border-task-complete',
               isInvalid && 'border-task-due-today'
             )}

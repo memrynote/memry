@@ -151,12 +151,12 @@ async function boot(): Promise<void> {
   createRoot(document.getElementById('root')!).render(rootComponent)
   trackRendererReady(performance.now() - rendererStartedAt)
 
-  void reconcileStartupLocale(i18n).catch((error) => {
+  void reconcileStartupLocale(i18n).catch((error: unknown) => {
     log.error('Startup locale reconcile failed', error)
   })
 }
 
-void boot().catch((error) => {
+void boot().catch((error: unknown) => {
   log.error('Renderer boot failed', error)
   trackRendererError('boot_failed', error)
   trackRendererLog('error', 'boot_failed', 'RendererBoot')

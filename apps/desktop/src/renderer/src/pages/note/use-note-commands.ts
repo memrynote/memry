@@ -138,7 +138,10 @@ export function useNoteCommands(input: NoteCommandInput): {
   const commands: Record<NoteCommandId, CommandImpl> = {
     'note.find': { run: input.openFind, enabled: note !== null },
     // Unlabeled: the palette says "Export to PDF…", as the native File menu does.
-    'note.exportPdf': { run: () => dialog.show('export'), enabled: note !== null },
+    'note.exportPdf': {
+      run: () => dialog.show('export'),
+      enabled: note !== null
+    },
     'note.localGraph': item('note.localGraph', () => input.setIsLocalGraphOpen((open) => !open)),
     'note.versionHistory': item('note.versionHistory', () => dialog.show('versionHistory')),
     'note.applyTemplate': item('note.applyTemplate', () => dialog.show('applyTemplate'), hasEditor),
@@ -155,6 +158,7 @@ export function useNoteCommands(input: NoteCommandInput): {
       input.mindMap.toggle,
       ready && input.mindMap.isAvailable
     ),
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     'note.rename': item('note.rename', rename, canEdit),
     'note.addName': item('note.addName', () => requestNoteNameInput(noteId ?? ''), canEdit),
     'note.moveToFolder': item('note.moveToFolder', () => dialog.show('move')),

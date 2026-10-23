@@ -5,5 +5,6 @@
     "allowImportingTsExtensions": true
   },
   "include": ["src/**/*"],
+  "references": [{ "path": "./tsconfig.test.json" }],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
 }

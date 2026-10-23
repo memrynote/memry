@@ -223,7 +223,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
 
   // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
   // known library limitation the React Compiler can't memoize around.
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
@@ -239,7 +239,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
   // reads calling a method on the returned object as forwarding those to a
   // parent. Nothing here is passed to or received from any parent.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
     virtualizer.measure()
   }, [pageNaturalHeight, numPages, virtualizer])
 
@@ -504,6 +504,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
         {!loading && !error && (
           <>
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
               role="slider"
               tabIndex={0}
               data-pdf-resize-handle
@@ -519,6 +520,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
               className="absolute -bottom-1 -end-1 z-10 h-3.5 w-3.5 cursor-nwse-resize touch-none border-b-2 border-e-2 border-foreground/60 opacity-40 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             />
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
               role="button"
               tabIndex={0}
               data-pdf-resize-handle
@@ -554,7 +556,9 @@ function SyncProgressOverlay({
   const Icon = direction === 'upload' ? Upload : Download
   const label =
     status === 'completed'
-      ? `${direction === 'upload' ? 'Uploaded' : 'Downloaded'}`
+      ? direction === 'upload'
+        ? 'Uploaded'
+        : 'Downloaded'
       : status === 'failed'
         ? 'Failed'
         : `${direction === 'upload' ? 'Uploading' : 'Downloading'}...`

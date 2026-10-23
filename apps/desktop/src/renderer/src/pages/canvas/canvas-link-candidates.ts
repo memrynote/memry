@@ -175,7 +175,7 @@ export function candidatesFromFolders(
   const out: LinkCandidate[] = []
   for (const folder of folders) {
     if (!folder.path.toLowerCase().includes(needle)) continue
-    const name = folder.path.split('/').filter(Boolean).pop() ?? folder.path
+    const name = folder.path.split('/').findLast(Boolean) ?? folder.path
     const candidate = withHref({
       kind: 'folder',
       id: folder.path,

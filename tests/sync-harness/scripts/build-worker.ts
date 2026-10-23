@@ -38,7 +38,7 @@ export async function buildWorker(): Promise<string> {
 if (process.argv[1] && process.argv[1].includes('build-worker')) {
   buildWorker()
     .then((out) => console.log(`Worker bundled: ${out}`))
-    .catch((err) => {
+    .catch((err: unknown) => {
       console.error('Build failed:', err)
       process.exit(1)
     })

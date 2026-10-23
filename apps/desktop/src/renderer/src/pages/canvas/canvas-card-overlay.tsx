@@ -781,7 +781,7 @@ export const CanvasCardLayer = ({
 
     wrapper.addEventListener('dragover', onDragOver, { capture: true })
     wrapper.addEventListener('drop', onDrop, { capture: true })
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent -- attaches DOM listeners; state is read from refs at event time
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent -- attaches DOM listeners; state is read from refs at event time
     wrapper.addEventListener('dblclick', onDblClick, { capture: true })
     wrapper.addEventListener('pointerdown', onPointerDownAway, { capture: true })
     // Non-passive: consuming the gesture requires preventDefault().
@@ -826,7 +826,7 @@ export const CanvasCardLayer = ({
   // Reacts to an external context change (the note becoming locked elsewhere
   // via useNoteEditLock), not a user action on this component — there is no
   // event handler to move this into.
-  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     const active = activeCardIdRef.current
     if (!active) return
@@ -835,7 +835,7 @@ export const CanvasCardLayer = ({
       dispatchActive({ type: 'deactivate' })
     }
   }, [lockCtx, dispatchActive])
-  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const placeCard = useCallback(
     async (entityType: CanvasCardRef['entityType'], entityId: string) => {
@@ -949,6 +949,7 @@ export const CanvasCardLayer = ({
     activeCardId,
     dispatchActive,
     lockCtx,
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
     claimFailedTick,
     rich
   ])

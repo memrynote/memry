@@ -195,6 +195,7 @@ export function TimelineActionPanel({
                 {task.title || t('timeline.untitled')}
               </span>
               <CommandPrimitive.Input
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a just-opened popover/inline editor
                 autoFocus
                 value={search}
                 onValueChange={setSearch}

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type * as ClientModule from '../database/client'
 
 /**
  * #2423: a pending delete recorded before a re-create of the same id must not
@@ -10,7 +11,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 let activeDb: unknown = null
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => activeDb
 }))
 

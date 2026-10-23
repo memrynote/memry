@@ -123,12 +123,14 @@ export function CheckoutPanel({
     completedRef.current = false
     try {
       await openPaddleCheckout(plan, effectiveCadence, token, (event) => {
-        if (event.name === 'checkout.completed') {
+        // Paddle types event names as a string enum; importing it would pull @paddle/paddle-js out of its lazy chunk.
+        const eventName: string | undefined = event.name
+        if (eventName === 'checkout.completed') {
           completedRef.current = true
           setStatus('success')
-        } else if (event.name === 'checkout.closed' && !completedRef.current) {
+        } else if (eventName === 'checkout.closed' && !completedRef.current) {
           setStatus('canceled')
-        } else if (event.name === 'checkout.payment.failed') {
+        } else if (eventName === 'checkout.payment.failed') {
           setStatus('failed')
         }
       })
@@ -196,6 +198,7 @@ export function CheckoutPanel({
                   <button
                     key={option}
                     type="button"
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
                     role="radio"
                     aria-checked={active}
                     onClick={() => setCadence(option)}
@@ -270,6 +273,7 @@ function PlanRow({
   return (
     <button
       type="button"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio card; native radio input would change the visuals
       role="radio"
       aria-checked={selected}
       disabled={disabled}
@@ -364,11 +368,13 @@ function OrderSummary({
       </div>
 
       {status === 'success' && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
         <p role="status" className="mt-4 text-sm text-sage">
           Payment complete. Return to Memrynote to finish activation.
         </p>
       )}
       {status === 'canceled' && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
         <p role="status" className="mt-4 text-sm text-muted">
           Checkout canceled.
         </p>
@@ -549,6 +555,7 @@ function ChangeQuote({
       </div>
 
       {status === 'done' && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
         <p role="status" className="mt-4 text-sm text-sage">
           Plan updated. Your new plan is active now.
         </p>

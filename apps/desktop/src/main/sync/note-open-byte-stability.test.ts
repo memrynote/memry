@@ -60,6 +60,7 @@ import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 // The renderer's promotion rule. Imported from source on purpose: a copy of it
 // here would converge with itself and prove nothing.
 import { normalizeWikiLinks } from '../../renderer/src/components/note/content-area/wiki-link-utils'
+import type * as FileOpsModule from '../vault/file-ops'
 
 const mocks = vi.hoisted(() => ({
   vaultRoot: '',
@@ -144,7 +145,7 @@ vi.mock('../vault/notes', () => ({
 // and the second is the one the user feels (no mtime churn, no snapshot, no
 // sync push).
 vi.mock('../vault/file-ops', async () => {
-  const actual = await vi.importActual<typeof import('../vault/file-ops')>('../vault/file-ops')
+  const actual = await vi.importActual<typeof FileOpsModule>('../vault/file-ops')
   return {
     ...actual,
     atomicWrite: async (absolutePath: string, content: string) => {

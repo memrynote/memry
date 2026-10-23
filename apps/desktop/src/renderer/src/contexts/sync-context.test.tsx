@@ -252,9 +252,7 @@ describe('SyncProvider', () => {
   describe('#given authenticated user #when mounted', () => {
     it('#then fetches initial sync status', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => {
-        expect(result.current.state.status).toBe('idle')
-      })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
     })
   })
 
@@ -720,7 +718,9 @@ describe('SyncProvider', () => {
 
     it('#then surfaces command failures and ignores commands when signed out', async () => {
       const { result, rerender } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      await vi.waitFor(() => {
+        expect(result.current.state.status).toBe('idle')
+      })
 
       mockSyncOps.triggerSync.mockRejectedValueOnce(new Error('trigger broke'))
       await act(async () => {

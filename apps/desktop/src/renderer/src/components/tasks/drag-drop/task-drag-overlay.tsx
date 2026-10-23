@@ -132,6 +132,7 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
   const isOverdue = Boolean(
     !isCompleted &&
     primaryTask?.dueDate &&
+    // oxlint-disable-next-line react/purity -- overdue check must use the current day at render
     new Date(primaryTask.dueDate) < new Date(new Date().setHours(0, 0, 0, 0))
   )
   const previewVariant = effectiveSourceType === 'list' ? 'list' : 'kanban'

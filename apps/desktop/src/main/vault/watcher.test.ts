@@ -4,7 +4,7 @@ import path from 'path'
 import { eq, isNull } from 'drizzle-orm'
 import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
-import { noteMetadata } from '@memry/db-schema/data-schema'
+import { noteMetadata, canvases } from '@memry/db-schema/data-schema'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import {
@@ -24,6 +24,10 @@ import {
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
+import type * as FileOpsModule from './file-ops'
+import type * as FileScanModule from './file-scan'
+import type * as JournalFolderFollowModule from './journal-folder-follow'
+import type * as SceneFileModule from '../canvas/scene-file'
 
 const mockWatch = vi.hoisted(() => vi.fn())
 const baseConfig: VaultConfig = {
@@ -76,12 +80,12 @@ vi.mock('../notes/runtime-effects', () => ({
 // not open the file at all, by either route, and only a spy can tell "did not
 // read" from "read and ignored".
 vi.mock('./file-ops', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./file-ops')>()
+  const actual = await importOriginal<typeof FileOpsModule>()
   return { ...actual, safeRead: vi.fn(actual.safeRead) }
 })
 
 vi.mock('./file-scan', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./file-scan')>()
+  const actual = await importOriginal<typeof FileScanModule>()
   return { ...actual, scanMarkdownFile: vi.fn(actual.scanMarkdownFile) }
 })
 
@@ -120,12 +124,12 @@ vi.mock('./index', () => ({
 }))
 
 vi.mock('./journal-folder-follow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./journal-folder-follow')>()),
+  ...(await importOriginal<typeof JournalFolderFollowModule>()),
   followJournalFolder: vi.fn()
 }))
 
 vi.mock('../canvas/scene-file', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../canvas/scene-file')>()
+  const actual = await importOriginal<typeof SceneFileModule>()
   return { ...actual, readCanvasVaultFileSync: vi.fn(actual.readCanvasVaultFileSync) }
 })
 
@@ -168,7 +172,6 @@ import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
 import { syncFolderConfigRename, withAppFolderChange } from '../notes/folder-config-effects'
 import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 import { CanvasChannels } from '@memry/contracts/canvas-api'
-import { canvases } from '@memry/db-schema/data-schema'
 import { createCanvas } from '../canvas/store'
 import { readCanvasVaultFileSync, resolveCanvasFile } from '../canvas/scene-file'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
@@ -328,9 +331,8 @@ describe('vault watcher', () => {
     expect(tags).toEqual(['Alpha', 'Beta'])
 
     const links = indexDb.db.select().from(noteLinks).where(eq(noteLinks.sourceId, noteId)).all()
-    if (links.length > 0) {
-      expect(links).toEqual([expect.objectContaining({ targetTitle: 'Target Note' })])
-    }
+    if (!(links.length > 0)) throw new Error('expected: links.length > 0')
+    expect(links).toEqual([expect.objectContaining({ targetTitle: 'Target Note' })])
 
     window.webContents.send.mockClear()
 

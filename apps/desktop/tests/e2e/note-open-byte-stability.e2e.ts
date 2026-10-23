@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * Opening a note must not rewrite it — the real app (#1434, phase 3 of #1427).
  *
@@ -145,9 +144,8 @@ test.describe('Note open byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     // #given a vault note written straight to disk
@@ -174,9 +172,8 @@ test.describe('Note open byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     // #given
@@ -196,9 +193,8 @@ test.describe('Note open byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     // #given a note that has already been opened once, so whatever the first
@@ -238,9 +234,8 @@ test.describe('Note open byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     // #given a note with no frontmatter and one inline hash tag in its body —

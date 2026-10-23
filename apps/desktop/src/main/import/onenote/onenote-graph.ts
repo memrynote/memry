@@ -157,6 +157,7 @@ export function createOneNoteGraphClient(deps: GraphClientDeps) {
     return response
   }
 
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
   async function listAll<TRaw, TOut>(firstUrl: string, map: (raw: TRaw) => TOut): Promise<TOut[]> {
     const out: TOut[] = []
     let url: string | undefined = firstUrl

@@ -120,10 +120,7 @@ export function stateTextClasses(className: string): string[] {
 /** The unconditional text colour class, if the element sets one. */
 export function restingTextClass(className: string): string | null {
   return (
-    className
-      .split(/\s+/)
-      .filter((cls) => !cls.includes(':') && isColorTextUtility(cls))
-      .at(-1) ?? null
+    className.split(/\s+/).findLast((cls) => !cls.includes(':') && isColorTextUtility(cls)) ?? null
   )
 }
 

@@ -40,5 +40,7 @@ export const scenes = {
     unzoom()
     await rec.glide(1250, 760, 900)
   },
-  async end() {}
+  async end() {
+    /* intentional no-op */
+  }
 }

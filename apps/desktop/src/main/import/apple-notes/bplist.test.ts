@@ -30,7 +30,9 @@ describe('parseBinaryPlist', () => {
     expect(
       isBinaryPlist(Buffer.from('not a plist at all, but long enough to have a trailer'))
     ).toBe(false)
-    expect(() => parseBinaryPlist(buildBinaryPlist({ a: 'b' }).subarray(0, 20))).toThrow()
+    expect(() => parseBinaryPlist(buildBinaryPlist({ a: 'b' }).subarray(0, 20))).toThrow(
+      'not a binary plist'
+    )
   })
 
   it('resolves the root of a keyed archive and follows UID references', () => {

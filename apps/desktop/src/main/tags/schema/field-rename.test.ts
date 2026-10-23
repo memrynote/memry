@@ -22,6 +22,9 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
+import type * as ClientModule from '../../database/client'
+import type * as RegistryModule from '../../vault-locks/registry'
+import type * as RuntimeEffectsModule from '../../notes/runtime-effects'
 
 const state = vi.hoisted(() => ({
   data: null as unknown,
@@ -34,7 +37,7 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn() }
 }))
 vi.mock('../../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))
@@ -43,11 +46,11 @@ vi.mock('../../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({ getDoc: () => undefined, recordOwedFullState: vi.fn() })
 }))
 vi.mock('../../vault-locks/registry', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../vault-locks/registry')>()),
+  ...(await importOriginal<typeof RegistryModule>()),
   isNoteLocked: (noteId: string) => state.locked.has(noteId)
 }))
 vi.mock('../../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteUpdate: vi.fn()
 }))
 

@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * Inline Subtasks E2E Tests
  *
@@ -704,7 +703,7 @@ test.describe('Inline Subtasks', () => {
       },
       { childTaskId }
     )
-    // eslint-disable-next-line no-console
+    // oxlint-disable-next-line no-console
     console.log('dispatched:', dispatched)
 
     await page.waitForTimeout(1500)

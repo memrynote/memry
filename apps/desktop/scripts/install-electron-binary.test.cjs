@@ -238,7 +238,7 @@ test(
 )
 
 test('a failed download leaves the previous install intact', { skip: unsupported }, async () => {
-  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir, install }) => {
+  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir: _tmpDir, install }) => {
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
     const seed = await settled(install(workingBin))
     assert.equal(seed.code, 0, seed.output)
@@ -267,19 +267,23 @@ test('a failed download leaves the previous install intact', { skip: unsupported
 // by any branch on CI, and the artifact is an executable the job then runs, so every
 // restored entry has to survive the same checksum gate as a fresh download.
 
-test('a cache miss downloads, installs, and populates the cache', { skip: unsupported }, async () => {
-  await withFixture(async ({ electronDir, fixtureZip, cacheDir, cachedZip, install }) => {
-    const result = await settled(install(undefined, { MEMRY_ELECTRON_CACHE_DIR: cacheDir }))
+test(
+  'a cache miss downloads, installs, and populates the cache',
+  { skip: unsupported },
+  async () => {
+    await withFixture(async ({ electronDir, fixtureZip, cacheDir, cachedZip, install }) => {
+      const result = await settled(install(undefined, { MEMRY_ELECTRON_CACHE_DIR: cacheDir }))
 
-    assert.equal(result.code, 0, result.output)
-    assert.match(result.output, /downloading electron-v0\.0\.0-test/)
-    assert.doesNotMatch(result.output, /reusing the cached/)
-    assert.ok(readerSeesValidInstall(electronDir))
-    assert.equal(fs.existsSync(cachedZip), true, 'the artifact was not cached')
-    assert.equal(sha256(cachedZip), sha256(fixtureZip), 'the cached artifact was corrupted')
-    assert.deepEqual(fs.readdirSync(cacheDir), [zipName], 'a partial cache write was left behind')
-  })
-})
+      assert.equal(result.code, 0, result.output)
+      assert.match(result.output, /downloading electron-v0\.0\.0-test/)
+      assert.doesNotMatch(result.output, /reusing the cached/)
+      assert.ok(readerSeesValidInstall(electronDir))
+      assert.equal(fs.existsSync(cachedZip), true, 'the artifact was not cached')
+      assert.equal(sha256(cachedZip), sha256(fixtureZip), 'the cached artifact was corrupted')
+      assert.deepEqual(fs.readdirSync(cacheDir), [zipName], 'a partial cache write was left behind')
+    })
+  }
+)
 
 test('a cache hit installs with no network access at all', { skip: unsupported }, async () => {
   await withFixture(async ({ root, electronDir, fixtureZip, cacheDir, install }) => {
@@ -299,37 +303,33 @@ test('a cache hit installs with no network access at all', { skip: unsupported }
   })
 })
 
-test(
-  'a poisoned cache entry is rejected and never extracted',
-  { skip: unsupported },
-  async () => {
-    await withFixture(async ({ root, electronDir, fixtureZip, cacheDir, cachedZip, install }) => {
-      // A structurally valid zip carrying a different executable — exactly what a
-      // cache-poisoning branch would plant. Only the checksum tells them apart.
-      const poisoned = buildFixtureZip(path.join(root, 'attacker'), {
-        name: 'poisoned.zip',
-        fillByte: POISONED_BYTE
-      })
-      fs.mkdirSync(cacheDir, { recursive: true })
-      fs.copyFileSync(poisoned, cachedZip)
-
-      const result = await settled(install(undefined, { MEMRY_ELECTRON_CACHE_DIR: cacheDir }))
-
-      assert.equal(result.code, 0, result.output)
-      assert.match(result.output, /discarding unusable cached artifact/)
-      assert.match(result.output, /Electron checksum mismatch/)
-      // Rejection must fall back to a fresh download, not fail the job.
-      assert.match(result.output, /downloading electron-v0\.0\.0-test/)
-      assert.ok(readerSeesValidInstall(electronDir))
-      assert.equal(
-        installedExecutableByte(electronDir),
-        GENUINE_BYTE,
-        'the poisoned executable was installed'
-      )
-      assert.equal(sha256(cachedZip), sha256(fixtureZip), 'the poisoned entry was not replaced')
+test('a poisoned cache entry is rejected and never extracted', { skip: unsupported }, async () => {
+  await withFixture(async ({ root, electronDir, fixtureZip, cacheDir, cachedZip, install }) => {
+    // A structurally valid zip carrying a different executable — exactly what a
+    // cache-poisoning branch would plant. Only the checksum tells them apart.
+    const poisoned = buildFixtureZip(path.join(root, 'attacker'), {
+      name: 'poisoned.zip',
+      fillByte: POISONED_BYTE
     })
-  }
-)
+    fs.mkdirSync(cacheDir, { recursive: true })
+    fs.copyFileSync(poisoned, cachedZip)
+
+    const result = await settled(install(undefined, { MEMRY_ELECTRON_CACHE_DIR: cacheDir }))
+
+    assert.equal(result.code, 0, result.output)
+    assert.match(result.output, /discarding unusable cached artifact/)
+    assert.match(result.output, /Electron checksum mismatch/)
+    // Rejection must fall back to a fresh download, not fail the job.
+    assert.match(result.output, /downloading electron-v0\.0\.0-test/)
+    assert.ok(readerSeesValidInstall(electronDir))
+    assert.equal(
+      installedExecutableByte(electronDir),
+      GENUINE_BYTE,
+      'the poisoned executable was installed'
+    )
+    assert.equal(sha256(cachedZip), sha256(fixtureZip), 'the poisoned entry was not replaced')
+  })
+})
 
 test('an unusable cache directory never fails the install', { skip: unsupported }, async () => {
   await withFixture(async ({ root, electronDir, install }) => {

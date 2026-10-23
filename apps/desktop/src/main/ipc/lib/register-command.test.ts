@@ -103,6 +103,7 @@ describe('registerCommand', () => {
     // #given
     const schema = z.object({ id: z.string() })
     const command = vi.fn(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw 'raw string not error'
     })
     registerCommand('test:fallback', schema, command, 'Failed fallback')

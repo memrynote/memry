@@ -93,7 +93,7 @@ test('import sources lists the desktop catalog and marks what runs from the CLI'
   }
   assert.deepEqual(
     sources.map((source) => source.name),
-    [...sources.map((source) => source.name)].sort((a, b) => a.localeCompare(b))
+    sources.map((source) => source.name).sort((a, b) => a.localeCompare(b))
   )
 })
 

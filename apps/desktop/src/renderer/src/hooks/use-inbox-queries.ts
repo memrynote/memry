@@ -85,7 +85,7 @@ export function useInboxList(options: UseInboxListOptions = {}): UseInboxListRes
   const query = useInfiniteQuery({
     gcTime: LIST_GC_TIME,
     queryKey: inboxKeys.list(listOptions),
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }) => {
       const response = await inboxService.list({
         ...listOptions,
         offset: pageParam,
@@ -367,7 +367,7 @@ export function useInboxArchived(options: ArchivedListOptions = {}): UseInboxLis
 
   const query = useInfiniteQuery({
     queryKey: inboxKeys.archived(listOptions),
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }) => {
       const response = await inboxService.listArchived({
         ...listOptions,
         offset: pageParam,

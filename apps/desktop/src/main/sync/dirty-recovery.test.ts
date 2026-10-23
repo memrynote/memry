@@ -22,7 +22,7 @@ import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { RECORD_SYNC_ITEM_TYPES, type RecordSyncItemType } from '@memry/contracts/sync-api'
 import type { DataDb } from '../database/client'
 import { incrementNoteClockOffline } from '@memry/sync-client/offline-clock'
-import { SyncQueueManager } from '@memry/sync-client/queue'
+import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue'
 import { initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
 import { initProjectSyncService, resetProjectSyncService } from '@memry/sync-client/project-sync'
 import { initInboxSyncService, resetInboxSyncService } from '@memry/sync-client/inbox-sync'
@@ -56,7 +56,6 @@ import {
 } from '@memry/sync-client/task-activity-sync'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
-import { DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue'
 import { trackMainEvent } from '../telemetry/track'
 import { DIRTY_RECOVERY, recoverDirtyItems } from './dirty-recovery'
 
@@ -234,7 +233,8 @@ describe('dirty-recovery', () => {
     expect(queued?.operation).toBe('update')
     const payload = queued ? (JSON.parse(queued.payload) as Record<string, unknown>) : null
     const payloadFieldClocks = payload?.fieldClocks as
-      Record<string, Record<string, number>> | undefined
+      | Record<string, Record<string, number>>
+      | undefined
     expect(payload?.clock).toEqual({ 'old-device': 1, 'device-A': 1 })
     expect(payloadFieldClocks?.statusId).toEqual({ 'old-device': 1, 'device-A': 1 })
     expect(payloadFieldClocks?.title).toEqual({ 'old-device': 1 })
@@ -276,7 +276,8 @@ describe('dirty-recovery', () => {
     expect(queued?.operation).toBe('create')
     const payload = queued ? (JSON.parse(queued.payload) as Record<string, unknown>) : null
     const payloadFieldClocks = payload?.fieldClocks as
-      Record<string, Record<string, number>> | undefined
+      | Record<string, Record<string, number>>
+      | undefined
     expect(payload?.clock).toEqual({ 'device-A': 3 })
     expect(payloadFieldClocks?.title).toEqual({ 'device-A': 2 })
 
@@ -1174,6 +1175,7 @@ describe('dirty-recovery', () => {
       expect(Object.keys(DIRTY_RECOVERY).sort()).toEqual([...RECORD_SYNC_ITEM_TYPES].sort())
       for (const type of RECORD_SYNC_ITEM_TYPES) {
         const entry = DIRTY_RECOVERY[type]
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         if (entry.kind === 'exempt') expect(entry.reason.trim(), type).not.toBe('')
       }
 

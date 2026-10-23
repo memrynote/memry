@@ -816,6 +816,7 @@ describe('normalizeRejectionReason', () => {
   })
 
   it('names the constructor for a plain-object reason', () => {
+    // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     class Boom {}
     expect(normalizeRejectionReason(new Boom()).name).toBe('Rejection_Boom')
     expect(normalizeRejectionReason({ a: 1 }).name).toBe('Rejection_Object')

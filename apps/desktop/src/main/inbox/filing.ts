@@ -12,7 +12,8 @@ import { rename, copyFile, unlink, stat, readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
+import type { getDatabase } from '../database'
+import { requireDatabase, getIndexDatabase } from '../database'
 import { getNoteById, createFolder, getFolders } from '../vault/notes'
 // Filing creates notes the user expects on every device, so it goes through the
 // notes domain command rather than the raw vault write. `createNoteCommand` is
@@ -749,7 +750,7 @@ export async function fileToFolder(
 
     // Binary types: move file directly (no markdown wrapper), preserving tags
     if (isBinaryType(item.type)) {
-      return fileBinaryToFolder(itemId, folderPath, tags)
+      return await fileBinaryToFolder(itemId, folderPath, tags)
     }
 
     // Text + link types: create markdown note

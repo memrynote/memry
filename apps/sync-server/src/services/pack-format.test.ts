@@ -253,7 +253,9 @@ describe('corruption detection', () => {
 
   it('rejects truncated files and empty entries', async () => {
     const built = await buildPack([entry()])
-    await expect(parsePack(built.bytes.subarray(0, built.bytes.length - 10))).rejects.toThrow()
+    await expect(parsePack(built.bytes.subarray(0, built.bytes.length - 10))).rejects.toThrow(
+      'pack footer magic mismatch'
+    )
 
     await expect(buildPack([entry({ bytes: new Uint8Array(0) })])).rejects.toThrow(
       /empty pack entry/

@@ -58,7 +58,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
       (response) => {
         if (!cancelled) setProjects(response.projects)
       },
-      (err) => {
+      (err: unknown) => {
         if (!cancelled) {
           log.error('Canvas add-card: project list failed', err)
           setProjects([])
@@ -73,6 +73,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
   useEffect(() => {
     const trimmed = query.trim()
     if (!open || trimmed === '') {
+      // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
       setResults([])
       setFiles([])
       setEvents([])
@@ -87,7 +88,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
         (response) => {
           if (!cancelled) setResults(response.results)
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas add-card: search failed', err)
             setResults([])
@@ -100,7 +101,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
             setFiles(response.results.filter((result) => result.metadata.type === 'note'))
           }
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas add-card: file search failed', err)
             setFiles([])
@@ -111,7 +112,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
         (response) => {
           if (!cancelled) setEvents(response.events)
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas add-card: event search failed', err)
             setEvents([])

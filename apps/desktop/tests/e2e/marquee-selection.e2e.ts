@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, some vars intentionally unused
 /**
  * Marquee Block Selection E2E Tests
  *
@@ -362,7 +361,7 @@ test.describe('Block marquee selection', () => {
     ])
     await page.waitForTimeout(400)
 
-    const zone = await getMarqueeZoneBox(page)
+    const _zone = await getMarqueeZoneBox(page)
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 

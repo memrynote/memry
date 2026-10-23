@@ -175,6 +175,6 @@ test.describe('Note-view menu file actions', () => {
       )
       .toBe(false)
 
-    await expect(page.locator(`${SELECTORS.noteTitle}`).filter({ hasText: title })).toHaveCount(0)
+    await expect(page.locator(SELECTORS.noteTitle).filter({ hasText: title })).toHaveCount(0)
   })
 })

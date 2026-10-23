@@ -307,7 +307,9 @@ function createFakeChild(): {
           if (killed) return
           yield Buffer.from('')
         })(),
-        stderr: (async function* () {})(),
+        stderr: (async function* () {
+          /* intentional no-op */
+        })(),
         pid: 4242,
         kill: () => {
           kills += 1

@@ -1,8 +1,8 @@
-import { z } from 'zod'
+import type { z } from 'zod'
 import { CanvasChannels } from '../../contracts/src/ipc-channels.ts'
 import {
-  CanvasCreateSchema,
-  CanvasUpdateSchema,
+  type CanvasCreateSchema,
+  type CanvasUpdateSchema,
   type Canvas,
   type CanvasLibraryItem,
   type CanvasLibraryListResponse,

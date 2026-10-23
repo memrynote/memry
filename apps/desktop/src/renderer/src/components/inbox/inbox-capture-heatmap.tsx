@@ -60,6 +60,7 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
         <div className="flex flex-col pt-4 gap-0.75">
           {dayLabels.map((day, dayIdx) => (
             <div
+              // oxlint-disable-next-line react/no-array-index-key -- fixed 7-day/24-hour grid, positional
               key={dayIdx}
               className="h-3 inline-block text-[#50505A] font-sans shrink-0 text-[9px]/3"
             >
@@ -79,6 +80,7 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
             ))}
           </div>
           {dayLabels.map((_, dayIdx) => (
+            // oxlint-disable-next-line react/no-array-index-key -- fixed 7-day/24-hour grid, positional
             <div key={dayIdx} className="flex gap-0.75">
               {HEATMAP_HOURS.map((hour) => {
                 const val = (heatmap?.[hour]?.[dayIdx] ?? 0) + (heatmap?.[hour + 1]?.[dayIdx] ?? 0)

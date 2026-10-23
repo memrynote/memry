@@ -6,21 +6,21 @@ Reorder tasks, move between statuses, re-parent subtasks, and reorder projects.
 
 ## In List View
 
-| Drag | Effect |
-| --- | --- |
-| Within a list / group | Reorder |
-| Cross-group drag | Updates the grouping field (status, priority, due-date bucket, project) |
-| To another project in the sidebar | Move to that project |
-| Onto another task | Re-parent as a subtask |
+| Drag                              | Effect                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| Within a list / group             | Reorder                                                                 |
+| Cross-group drag                  | Updates the grouping field (status, priority, due-date bucket, project) |
+| To another project in the sidebar | Move to that project                                                    |
+| Onto another task                 | Re-parent as a subtask                                                  |
 
 ## In Kanban View
 
-| Drag | Effect |
-| --- | --- |
-| Within a column | Reorder |
-| To another column | Update status |
-| Onto a card | Re-parent as a subtask of that card |
-| To the column header | Append to that column |
+| Drag                 | Effect                              |
+| -------------------- | ----------------------------------- |
+| Within a column      | Reorder                             |
+| To another column    | Update status                       |
+| Onto a card          | Re-parent as a subtask of that card |
+| To the column header | Append to that column               |
 
 ## Multi-Select Drag
 

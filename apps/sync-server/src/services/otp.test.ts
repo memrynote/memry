@@ -343,14 +343,16 @@ describe('verifyOtp', () => {
     db.prepare.mockReturnValueOnce(selectStmt)
 
     // #when / #then
+    let e: unknown
     try {
       await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
       expect.fail('Should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(AppError)
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_OTP_EXPIRED)
-      expect((e as AppError).statusCode).toBe(401)
+    } catch (thrown) {
+      e = thrown
     }
+    expect(e).toBeInstanceOf(AppError)
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_OTP_EXPIRED)
+    expect((e as AppError).statusCode).toBe(401)
   })
 
   it('should throw AUTH_OTP_MAX_ATTEMPTS when attempts >= 5', async () => {
@@ -360,14 +362,16 @@ describe('verifyOtp', () => {
     db.prepare.mockReturnValueOnce(selectStmt)
 
     // #when / #then
+    let e: unknown
     try {
       await verifyOtp(db as unknown as D1Database, 'user@example.com', '123456', TEST_HMAC_KEY)
       expect.fail('Should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(AppError)
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_OTP_MAX_ATTEMPTS)
-      expect((e as AppError).statusCode).toBe(401)
+    } catch (thrown) {
+      e = thrown
     }
+    expect(e).toBeInstanceOf(AppError)
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_OTP_MAX_ATTEMPTS)
+    expect((e as AppError).statusCode).toBe(401)
   })
 
   it('should increment attempts and throw AUTH_INVALID_OTP on wrong code', async () => {
@@ -381,14 +385,16 @@ describe('verifyOtp', () => {
     db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(incrementStmt)
 
     // #when / #then
+    let e: unknown
     try {
       await verifyOtp(db as unknown as D1Database, 'user@example.com', '000000', TEST_HMAC_KEY)
       expect.fail('Should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(AppError)
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_INVALID_OTP)
-      expect((e as AppError).statusCode).toBe(401)
+    } catch (thrown) {
+      e = thrown
     }
+    expect(e).toBeInstanceOf(AppError)
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_INVALID_OTP)
+    expect((e as AppError).statusCode).toBe(401)
 
     expect(db.prepare).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE otp_codes SET attempts = attempts + 1')
@@ -480,14 +486,16 @@ describe('checkEmailRateLimit', () => {
     ])
 
     // #when / #then
+    let e: unknown
     try {
       await checkEmailRateLimit(db as unknown as D1Database, 'user@example.com')
       expect.fail('Should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(AppError)
-      expect((e as AppError).code).toBe(ErrorCodes.RATE_LIMITED)
-      expect((e as AppError).statusCode).toBe(429)
+    } catch (thrown) {
+      e = thrown
     }
+    expect(e).toBeInstanceOf(AppError)
+    expect((e as AppError).code).toBe(ErrorCodes.RATE_LIMITED)
+    expect((e as AppError).statusCode).toBe(429)
   })
 
   it('should use the correct rate limit key for the email', async () => {

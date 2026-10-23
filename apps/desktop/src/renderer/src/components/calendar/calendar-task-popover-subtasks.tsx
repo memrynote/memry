@@ -31,6 +31,7 @@ export function CalendarTaskPopoverSubtasks({
           {t('task-popover.subtasks-prefix')}
         </span>
         <span
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled bar with a custom fill; native <progress> would change the rendering
           role="progressbar"
           aria-label={t('task-popover.subtasks-counter', {
             done: doneCount,

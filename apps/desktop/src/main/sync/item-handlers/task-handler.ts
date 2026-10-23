@@ -405,7 +405,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(tasks).where(eq(tasks.id, itemId)).get() as
-      Record<string, unknown> | undefined
+      | Record<string, unknown>
+      | undefined
   }
 
   buildPushPayload(

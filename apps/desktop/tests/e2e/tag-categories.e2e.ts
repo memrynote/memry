@@ -21,7 +21,7 @@
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
@@ -37,7 +37,7 @@ async function seedNoteWithTag(page: Page, tag: string): Promise<void> {
       content: `Note body with #${tagName}`,
       tags: [tagName]
     })
-    return !!res?.success
+    return res?.success
   }, tag)
   expect(created).toBeTruthy()
 }

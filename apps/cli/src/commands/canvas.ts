@@ -8,7 +8,7 @@ import {
   requireFirst,
   type CliIo,
   type ParsedCli
-} from '../run.ts'
+} from '../cli-support.ts'
 
 /** `canvas` commands: the canvas index and its `.excalidraw` documents. Drawing stays in the desktop app. */
 export async function runCanvas(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {

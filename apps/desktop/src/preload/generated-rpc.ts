@@ -57,6 +57,7 @@ export interface GeneratedRpcDeps {
     ...args: MainIpcInvokeArgs<C>
   ): Promise<MainIpcInvokeResult<C>>
   invokeSync(this: void, channel: string): unknown
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- T is the caller's assertion about an untyped IPC payload
   subscribe<T>(this: void, channel: string, callback: (payload: T) => void): () => void
 }
 

@@ -16,7 +16,7 @@ import { createNote, SELECTORS } from './utils/electron-helpers'
  * clock so the suite is stable on any day.
  */
 
-const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+const _MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const TYPING = '.date-mention-typing'
 const GHOST = '.date-mention-ghost'
 const PILL = '.date-mention[data-date-mention]'

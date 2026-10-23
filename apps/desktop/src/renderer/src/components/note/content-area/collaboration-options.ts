@@ -30,7 +30,7 @@ import type * as Y from 'yjs'
 export function withCollaborationIfLive<
   // `any` mirrors BlockNote's own signature for these three schema generics;
   // narrowing them here would stop a custom schema's options from matching.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   Options extends Partial<BlockNoteEditorOptions<any, any, any>>
 >(fragment: Y.XmlFragment | undefined, options: Options): Options {
   if (!fragment) return options

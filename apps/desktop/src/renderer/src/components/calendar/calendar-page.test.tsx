@@ -8,6 +8,7 @@ import type {
   CalendarRangeResponse,
   CalendarSourceRecord
 } from '@/services/calendar-service'
+import type * as UseCalendarRangeModule from '@/hooks/use-calendar-range'
 
 // The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
 const CalendarPageInDndContext = () => (
@@ -43,7 +44,7 @@ const {
 }))
 
 vi.mock('@/hooks/use-calendar-range', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-calendar-range')>()),
+  ...(await importOriginal<typeof UseCalendarRangeModule>()),
   useCalendarRange: mockUseCalendarRange
 }))
 

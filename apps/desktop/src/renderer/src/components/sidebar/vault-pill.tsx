@@ -61,16 +61,17 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
     observer.observe(el)
     if (el.firstElementChild) observer.observe(el.firstElementChild)
     return () => observer.disconnect()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- vault count change re-measures the strip
   }, [vaults.length])
 
   const focusPath = hasTarget && progress > 0.5 ? targetPath : activePath
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- scrollerRef is this component's own node
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- scrollerRef is this component's own node
     const button = scrollerRef.current?.querySelector<HTMLElement>(
       `[data-vault-dot-button="${CSS.escape(focusPath)}"]`
     )
     if (typeof button?.scrollIntoView !== 'function') return
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- scrollerRef is this component's own node; nothing crosses a component boundary
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- scrollerRef is this component's own node; nothing crosses a component boundary
     button.scrollIntoView({
       block: 'nearest',
       inline: 'nearest',
@@ -88,6 +89,7 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- group role on a div; <fieldset> would add border/legend layout
       role="group"
       data-testid="vault-pill"
       aria-label={t('vaultSwipe.indicatorLabel')}

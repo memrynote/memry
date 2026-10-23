@@ -183,6 +183,7 @@ let harnessDispatch: React.Dispatch<AgentAction> | null = null
 /** Drives SidebarTabs from the real reducer instead of a hand-built state object. */
 function ReducerHarness({ seed }: { seed: AgentState }): React.JSX.Element {
   const [state, dispatch] = useReducer(agentReducer, seed)
+  // oxlint-disable-next-line react/globals -- test harness captures the hook result for assertions after render
   harnessDispatch = dispatch
   mockUseAgentOptional.mockReturnValue({
     state,

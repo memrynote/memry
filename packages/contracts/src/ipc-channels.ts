@@ -1039,6 +1039,28 @@ export type SearchInvokeChannel = (typeof SearchChannels.invoke)[keyof typeof Se
 export type SearchEventChannel = (typeof SearchChannels.events)[keyof typeof SearchChannels.events]
 
 // ============================================================================
+// Portal Channels (live windows onto another note or block)
+// ============================================================================
+
+export const PortalChannels = {
+  invoke: {
+    /** Which notes show a note or one of its blocks through a portal */
+    GET_USAGE: 'portals:get-usage',
+    /** Give a source block its ` ^anchor` (idempotent) so a portal can address it */
+    STAMP_ANCHOR: 'portals:stamp-anchor',
+    /** Run a search portal's query and return matching blocks */
+    SEARCH: 'portals:search'
+  },
+  events: {
+    /** Portal usage of these source notes changed */
+    USAGE_CHANGED: 'portals:usage-changed'
+  }
+} as const
+
+export type PortalInvokeChannel = (typeof PortalChannels.invoke)[keyof typeof PortalChannels.invoke]
+export type PortalEventChannel = (typeof PortalChannels.events)[keyof typeof PortalChannels.events]
+
+// ============================================================================
 // Folder View Channels (Bases-like database view)
 // ============================================================================
 

@@ -95,7 +95,7 @@ const dispatchCrdtStateChanged = (data: CrdtStateChangedPayload): void => {
   // Snapshot: a callback may unsubscribe itself (teardown) mid-dispatch. The
   // per-callback guard mirrors `subscribe()` — one throwing provider must not
   // starve the others registered for the same note.
-  for (const callback of [...subscribers]) {
+  for (const callback of Array.from(subscribers)) {
     try {
       callback(data)
     } catch (error) {

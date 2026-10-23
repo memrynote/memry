@@ -462,7 +462,7 @@ describe('bulk apply page session', () => {
         mode?: number
       ) => {
         const fd = realOpenSync(p as string, flags as never, mode)
-        fdPaths.set(fd, String(p))
+        fdPaths.set(fd, p)
         return fd
       }) as typeof fs.openSync)
       const fsyncSpy = vi.spyOn(fs, 'fsyncSync').mockImplementation((fd: number) => {

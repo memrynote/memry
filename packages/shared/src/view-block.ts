@@ -89,7 +89,10 @@ export interface ViewBlockChart {
 
 /** Structurally the folder view's `FilterExpression`. */
 export type ViewBlockFilter =
-  string | { and: ViewBlockFilter[] } | { or: ViewBlockFilter[] } | { not: ViewBlockFilter }
+  | string
+  | { and: ViewBlockFilter[] }
+  | { or: ViewBlockFilter[] }
+  | { not: ViewBlockFilter }
 
 export interface ViewBlockOrder {
   property: string

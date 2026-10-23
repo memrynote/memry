@@ -187,6 +187,7 @@ export function Composer({
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
     const label = activeTab.title || t('agentChat.composer.currentNote')
+    // oxlint-disable-next-line react/set-state-in-effect -- seeds the removable current-note chip from the active tab
     setCurrentNoteAttachment({
       kind: 'current_note',
       ref_id: '__current__',
@@ -219,11 +220,10 @@ export function Composer({
   }
 
   useEffect(() => {
-    const focusTimer = window.setTimeout(() => {
-      promptEditorRef.current?.focus()
-    }, 0)
+    const focusTimer = window.setTimeout(() => promptEditorRef.current?.focus(), 0)
 
     return () => window.clearTimeout(focusTimer)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- conversationId is an intentional trigger: refocus the prompt on conversation switch
   }, [conversationId])
 
   const selectedModelOptions = isCliProvider(selectedProvider)

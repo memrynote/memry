@@ -10,7 +10,7 @@
     "deploy:production": "wrangler deploy --env production",
     "reset:staging": "node scripts/reset-staging.mjs",
     "staging:user": "node scripts/staging-user.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ../../scripts/typecheck.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -26,7 +26,7 @@
     "@cloudflare/workers-types": "^4.20250204.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.11.1",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "wrangler": "^4.0.0"
   }

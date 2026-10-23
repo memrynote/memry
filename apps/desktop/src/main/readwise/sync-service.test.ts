@@ -24,6 +24,19 @@ import {
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../notes/runtime-effects'
+import type * as DomainModule from '../notes/domain'
+import type * as ImportedNoteModule from '../import/_shared/imported-note'
+import type * as SyncServiceModule from '../readwise/sync-service'
+import type * as NotesModule from '../vault/notes'
+import type * as SyncStateModule from '../readwise/sync-state'
+import type * as LinksRepositoryModule from '../readwise/links-repository'
+import type * as SecretsModule from '../readwise/secrets'
+import type * as SettingsModule from '../readwise/settings'
+import type * as CrdtProviderModule from '../sync/crdt-provider'
+import type * as RunnerModule from '../import/runner'
+import type * as RegistryModule from '../import/registry'
+import type { BookEvent } from '../readwise/sync-service'
 
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
@@ -48,7 +61,7 @@ vi.mock('../secrets/secret-storage', () => ({
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -58,11 +71,11 @@ vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
 }))
 vi.mock('../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 vi.mock('../import/_shared/imported-note', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../import/_shared/imported-note')>()
+  const actual = await importOriginal<typeof ImportedNoteModule>()
   return { ...actual, createImportedNote: vi.fn(actual.createImportedNote) }
 })
 vi.mock('../vault/activity-log', () => ({ recordActivity: mocks.recordActivity }))
@@ -92,17 +105,17 @@ describe('Readwise incremental sync', () => {
   let vault: TestVaultResult
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
-  let engine: typeof import('../readwise/sync-service')
-  let domain: typeof import('../notes/domain')
-  let notes: typeof import('../vault/notes')
-  let state: typeof import('../readwise/sync-state')
-  let links: typeof import('../readwise/links-repository')
-  let secrets: typeof import('../readwise/secrets')
-  let settings: typeof import('../readwise/settings')
-  let imported: typeof import('../import/_shared/imported-note')
-  let crdtProvider: typeof import('../sync/crdt-provider')
-  let runner: typeof import('../import/runner')
-  let registry: typeof import('../import/registry')
+  let engine: typeof SyncServiceModule
+  let domain: typeof DomainModule
+  let notes: typeof NotesModule
+  let state: typeof SyncStateModule
+  let links: typeof LinksRepositoryModule
+  let secrets: typeof SecretsModule
+  let settings: typeof SettingsModule
+  let imported: typeof ImportedNoteModule
+  let crdtProvider: typeof CrdtProviderModule
+  let runner: typeof RunnerModule
+  let registry: typeof RegistryModule
   let readwise: ReadwiseStub
 
   const db = () => asClientDb(dataDb.db)
@@ -185,7 +198,7 @@ describe('Readwise incremental sync', () => {
   async function sync(
     over: { signal?: AbortSignal; service?: InstanceType<typeof engine.ReadwiseSyncService> } = {}
   ) {
-    const events: import('../readwise/sync-service').BookEvent[] = []
+    const events: BookEvent[] = []
     const result = await (over.service ?? engine.getReadwiseSyncService()).run(TOKEN, {
       signal: over.signal ?? new AbortController().signal,
       book: (event) => events.push(event)
@@ -272,7 +285,10 @@ describe('Readwise incremental sync', () => {
       vi.fn(
         (_url: string, init: RequestInit) =>
           new Promise<Response>((_resolve, reject) =>
-            init.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+            init.signal?.addEventListener('abort', () => {
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
+              reject(init.signal?.reason)
+            })
           )
       )
     )
@@ -432,7 +448,7 @@ describe('Readwise incremental sync', () => {
       const cursor = state.getCursor(db())
       resetWrites()
 
-      await expect(sync()).rejects.toThrow()
+      await expect(sync()).rejects.toThrow('Readwise answered 500')
       expect(state.getCursor(db())).toBe(cursor)
       expect(writes()).toBe(0)
 
@@ -494,7 +510,7 @@ describe('Readwise incremental sync', () => {
 
   it('a book that failed is fetched with ids= on the next run, before the window', async () => {
     twoBooks()
-    const actual = await vi.importActual<typeof import('../import/_shared/imported-note')>(
+    const actual = await vi.importActual<typeof ImportedNoteModule>(
       '../import/_shared/imported-note'
     )
     vi.mocked(imported.createImportedNote).mockImplementation(async (input) => {

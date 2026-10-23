@@ -87,6 +87,7 @@ export function SetupWizard({
       'input, button:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
     firstFocusable?.focus()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- wizardStep is the trigger: focus the first control whenever the step changes
   }, [wizardStep])
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export function SetupWizard({
   useEffect(() => {
     const resetLoadingTimer = window.setTimeout(() => setIsLoading(false), 0)
     return () => window.clearTimeout(resetLoadingTimer)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- wizardStep is the trigger: reset loading whenever the step changes
   }, [wizardStep])
 
   const isRecoveryStep = wizardStep === 'recovery-display' || wizardStep === 'recovery-confirm'
@@ -478,6 +480,7 @@ function WizardProgress({ currentStep }: { currentStep: number }): React.JSX.Ele
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- progress dots group; a fieldset would add default borders and layout
       role="group"
       aria-label={t('setup.progress', {
         current: currentStep + 1,

@@ -8,7 +8,7 @@ import {
 } from '@tests/utils/test-db'
 import { type SyncEngineDeps } from '@main/sync/engine'
 import { SyncQueueManager } from '@memry/sync-client/queue'
-import { NetworkMonitor } from '@main/sync/network'
+import type { NetworkMonitor } from '@main/sync/network'
 import type { WebSocketManager } from '@main/sync/websocket'
 
 export type { TestDatabaseResult }

@@ -255,7 +255,7 @@ export function incrementClock(
   deviceId: string
 ): VectorClock {
   return {
-    ...(existingClock ?? {}),
+    ...existingClock,
     [deviceId]: ((existingClock ?? {})[deviceId] ?? 0) + 1
   }
 }

@@ -92,6 +92,7 @@ export function CalendarEventPopover({
           }}
           className={CALENDAR_CARD_CLASS}
           ref={position.ref}
+          // oxlint-disable-next-line react/refs -- position.ref is a callback ref from usePopoverPosition, not a ref object read during render
           style={position.style}
         >
           <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>

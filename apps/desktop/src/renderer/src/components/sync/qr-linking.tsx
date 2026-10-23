@@ -181,6 +181,7 @@ function QrReady({
           size={180}
           level="M"
           marginSize={0}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="img"
           aria-label={t('qrLinking.qrImageAria')}
         />

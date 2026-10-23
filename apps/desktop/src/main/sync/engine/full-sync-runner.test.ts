@@ -13,11 +13,11 @@ import {
   crdtSweepChunkDelayMs,
   SYNC_STATE_KEYS,
   type CrdtPullCost,
-  type SyncContext
+  type SyncContext,
+  type SyncRunOutcome
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
-import type { SyncRunOutcome } from './sync-context'
 import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'

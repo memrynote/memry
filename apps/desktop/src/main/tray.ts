@@ -39,7 +39,10 @@ export function showMainWindow(): void {
 function buildContextMenu(): Menu {
   const t = getMainI18n().getFixedT(null, 'menu')
   return Menu.buildFromTemplate([
-    { label: t('tray.show'), click: () => showMainWindow() },
+    {
+      label: t('tray.show'),
+      click: () => showMainWindow()
+    },
     { type: 'separator' },
     {
       label: process.platform === 'win32' ? t('app.exit') : t('app.quit'),

@@ -111,6 +111,7 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
   }, [])
 
   React.useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- IPC read on mount; refresh sets state after the await
     void refresh()
   }, [refresh])
 

@@ -17,7 +17,7 @@
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 import { destroyElectronApp, launchElectronWithWindow } from './utils/electron-lifecycle'
@@ -42,7 +42,7 @@ async function seedNotes(page: Page): Promise<void> {
         content: 'Carries only the first tag',
         tags: [tagA]
       })
-      return !!both?.success && !!onlyA?.success
+      return both?.success && onlyA?.success
     },
     { tagA: TAG_A, tagB: TAG_B, bothTitle: BOTH_TITLE, onlyATitle: ONLY_A_TITLE }
   )

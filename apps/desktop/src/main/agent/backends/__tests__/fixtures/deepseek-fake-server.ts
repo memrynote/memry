@@ -165,7 +165,10 @@ export async function startFakeDeepSeek(input: FakeDeepSeekOptions = {}): Promis
     close: () =>
       new Promise((resolve, reject) => {
         server.closeAllConnections()
-        server.close((error) => (error ? reject(error) : resolve()))
+        server.close((error) => {
+          if (error) reject(error)
+          else resolve()
+        })
       })
   }
 }

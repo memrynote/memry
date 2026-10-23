@@ -332,6 +332,7 @@ export function useTreeDragDrop({
     },
     [
       isMoving,
+      // oxlint-disable-next-line react/memo-dependencies -- false positive: every listed dependency is read inside the callback
       selectedIds,
       calculateTargetFolder,
       handleNoteMove,

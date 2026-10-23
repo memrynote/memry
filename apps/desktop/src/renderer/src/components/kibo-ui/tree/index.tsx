@@ -519,6 +519,7 @@ export const TreeProvider = ({
   }
 
   return (
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values -- consumers are the tree nodes, which re-render with the provider; value mirrors per-render state
     <TreeContext.Provider value={treeContextValue}>
       <LazyMotion features={domAnimation}>
         <div className={cn('w-full', className)}>{children}</div>
@@ -617,6 +618,7 @@ export const TreeNode = ({
   }
 
   return (
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values -- consumers are the tree nodes, which re-render with the provider; value mirrors per-render state
     <TreeNodeContext.Provider value={treeNodeContextValue}>
       <div className={cn('select-none pb-px', className)} {...props}>
         {children}

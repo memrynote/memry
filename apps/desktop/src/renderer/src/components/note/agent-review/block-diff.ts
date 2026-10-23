@@ -210,7 +210,8 @@ function markContent(content: unknown, marker: Marker): unknown {
 }
 
 type Unit =
-  { kind: 'char'; char: string; styles: Record<string, unknown> } | { kind: 'item'; item: unknown }
+  | { kind: 'char'; char: string; styles: Record<string, unknown> }
+  | { kind: 'item'; item: unknown }
 
 /**
  * Text runs become one unit per UTF-16 code unit so offsets line up with the

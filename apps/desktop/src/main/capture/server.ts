@@ -268,7 +268,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
 function listen(port: number): Promise<number> {
   return new Promise((resolve, reject) => {
     const next = http.createServer((req, res) => {
-      handle(req, res).catch((err) => {
+      handle(req, res).catch((err: unknown) => {
         log.error('capture request failed', err)
         trackMainError('capture_server', 'capture_request', err)
         if (!res.headersSent) json(res, 500, { error: 'internal' })

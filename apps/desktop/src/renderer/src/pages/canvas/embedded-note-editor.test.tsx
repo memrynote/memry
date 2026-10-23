@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EmbeddedNoteEditor } from './embedded-note-editor'
 import { hasPendingSaves } from '@/lib/save-registry'
 import type { Note } from '@memry/rpc/notes'
+import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 
 const mocks = vi.hoisted(() => ({
   update: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock('@/services/notes-service', () => ({
   notesService: { update: mocks.update }
 }))
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/vault-locks-store')>()),
+  ...(await importOriginal<typeof VaultLocksStoreModule>()),
   useIsNoteLocked: () => mocks.isNoteLocked
 }))
 // Stub ContentArea (BlockNote → react-pdf needs DOMMatrix, absent in jsdom;
@@ -40,8 +41,16 @@ vi.mock('@/components/note/content-area', () => ({
     return (
       <div data-testid="content-area" data-editable={String(editable)}>
         <span data-testid="initial-content">{initialContent}</span>
-        <button data-testid="edit" onClick={() => onMarkdownChange('edited body')} />
-        <button data-testid="edit-again" onClick={() => onMarkdownChange('edited again')} />
+        <button
+          data-testid="edit"
+          aria-label="edit"
+          onClick={() => onMarkdownChange('edited body')}
+        />
+        <button
+          data-testid="edit-again"
+          aria-label="edit-again"
+          onClick={() => onMarkdownChange('edited again')}
+        />
       </div>
     )
   }

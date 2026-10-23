@@ -6,9 +6,8 @@ import { LocaleSchema } from '@memry/contracts/locale-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { applyLocale } from '../../ipc/locale-handler'
-import { writePreferences } from '../../vault/vault-preferences'
+import { writePreferences, readPreferences } from '../../vault/vault-preferences'
 import { writeCacheFromPreferences } from '../../vault/settings-cache'
-import { readPreferences } from '../../vault/vault-preferences'
 import { getCurrentVaultPath } from '../../store'
 import { getDatabase } from '../../database'
 import { getSetting, setSetting, deleteSetting } from '../../database/queries/settings'
@@ -159,7 +158,7 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     try {
       applyMergedReadwiseSettings(getDatabase(), merged.readwise)
       // Another device took Readwise over: this one gives up its token (D8).
-      void releaseTokenIfClaimedElsewhere().catch((err) =>
+      void releaseTokenIfClaimedElsewhere().catch((err: unknown) =>
         log.warn('Failed to release the Readwise token after a takeover:', err)
       )
     } catch (err) {
@@ -414,7 +413,7 @@ function applySyncedLocale(candidate: string | undefined): void {
     return
   }
 
-  applyLocale(parsed.data).catch((err) => {
+  applyLocale(parsed.data).catch((err: unknown) => {
     log.warn('Failed to apply synced locale:', err)
   })
 }

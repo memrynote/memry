@@ -36,6 +36,7 @@ const QuickActions = ({
   return (
     <div
       className={cn('flex items-center', isRow ? 'gap-1' : 'gap-2', className)}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="group"
       aria-label={t('quickActions.groupAria')}
     >

@@ -77,7 +77,13 @@ export type MindMapNodeKind =
  * media the map cannot draw and would otherwise lose.
  */
 export type MindMapContentKind =
-  'table' | 'code' | 'image' | 'quote' | 'embed' | 'bookmark' | 'file'
+  | 'table'
+  | 'code'
+  | 'image'
+  | 'quote'
+  | 'embed'
+  | 'bookmark'
+  | 'file'
 
 /** How much of one content kind sits under a node. Never zero. */
 export interface MindMapContentCount {

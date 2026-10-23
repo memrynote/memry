@@ -51,7 +51,7 @@ describe('crdt-encrypt', () => {
 
       expect(() =>
         decryptCrdtUpdate(packed, keys.vaultKey, 'note-B', keys.signingPublicKey)
-      ).toThrow()
+      ).toThrow(/Signature verification failed for item note-B from device/)
     })
   })
 

@@ -34,7 +34,8 @@ export class ReminderSyncService {
   constructor(deps: ReminderSyncDeps) {
     const load = (reminderId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(reminders).where(eq(reminders.id, reminderId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'reminder',

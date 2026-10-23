@@ -88,6 +88,7 @@ export const MoveMenu = ({
   const _currentProject = projects.find((p) => p.id === task.projectId)
 
   // Quick date options
+  // oxlint-disable-next-line react/purity -- quick-date presets must reflect the current day at render
   const today = startOfDay(new Date())
   const tomorrow = addDays(today, 1)
   const nextWeek = addDays(today, 7)

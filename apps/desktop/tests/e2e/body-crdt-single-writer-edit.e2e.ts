@@ -151,10 +151,8 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     electronAppA,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `E1 Offline Own Edit ${Date.now()}`
     const initialBody = 'shared note from A'
     const editText = 'offline edit from A'
@@ -176,10 +174,8 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `E2 Offline Own Edit ${Date.now()}`
     const initialBody = 'shared note from B'
     const editText = 'offline edit from B'
@@ -201,10 +197,8 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     electronAppA,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `E3 Offline Peer Edit ${Date.now()}`
     const initialBody = 'shared note from B'
     const editText = 'offline edit from A on B note'
@@ -226,10 +220,8 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `E4 Offline Peer Edit ${Date.now()}`
     const initialBody = 'shared note from A'
     const editText = 'offline edit from B on A note'
@@ -252,10 +244,8 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `E5 Receiver Offline ${Date.now()}`
     const initialBody = 'shared note from A'
     const editText = 'online edit from A while B offline'
@@ -280,10 +270,8 @@ test.describe('Body CRDT single-writer edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `E6 Receiver Offline ${Date.now()}`
     const initialBody = 'shared note from B'
     const editText = 'online edit from B while A offline'

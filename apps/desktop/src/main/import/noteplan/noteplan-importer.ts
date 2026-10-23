@@ -470,7 +470,7 @@ export async function runNotePlanImport(
       // properties whenever this argument is defined, so merge first — passing
       // the source file's properties straight through would silently drop the
       // user's own. Undefined when empty, which is what preserves them.
-      const properties = { ...(existing?.properties ?? {}), ...prepared.properties }
+      const properties = { ...existing?.properties, ...prepared.properties }
 
       await createJournalEntry({
         date: planned.date,

@@ -68,7 +68,7 @@ export function JournalMonthView({
   const days = useMemo(() => getDaysInMonth(year, month), [year, month])
 
   // Reverse to show most recent first
-  const reversedDays = useMemo(() => [...days].reverse(), [days])
+  const reversedDays = useMemo(() => [...days].toReversed(), [days])
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>

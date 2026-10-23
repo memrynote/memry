@@ -47,6 +47,7 @@ export const CanvasCardActive = ({
   const onKeyUp = useCallback((e: React.KeyboardEvent): void => e.stopPropagation(), [])
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- container handles bubbled keyboard events only; not itself a control
     <div
       ref={containerRef}
       tabIndex={-1}

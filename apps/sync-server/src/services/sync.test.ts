@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { PushItemInput, VectorClock } from '@memry/contracts/sync-api'
 import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { AppError, ErrorCodes } from '../lib/errors'
+import type * as BlobModule from './blob'
 
 vi.mock('./blob', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./blob')>()),
+  ...(await importOriginal<typeof BlobModule>()),
   putBlob: vi.fn().mockResolvedValue({ etag: 'etag-1' }),
   getBlob: vi.fn()
 }))
@@ -125,7 +126,8 @@ interface RecordedPushStatement {
 const createPushDb = (
   options: {
     existing?:
-      Array<Record<string, unknown>> | ((binds: unknown[]) => Array<Record<string, unknown>>)
+      | Array<Record<string, unknown>>
+      | ((binds: unknown[]) => Array<Record<string, unknown>>)
     lookupError?: unknown
     writeError?: unknown
   } = {}
@@ -154,6 +156,7 @@ const createPushDb = (
     batches.push(statements.map((stmt) => ({ sql: stmt.sql, binds: stmt.binds })))
     return statements.map((stmt) => {
       if (stmt.sql.trimStart().startsWith('SELECT')) {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         if (options.lookupError) throw options.lookupError
         const rows =
           typeof options.existing === 'function'
@@ -161,6 +164,7 @@ const createPushDb = (
             : (options.existing ?? [])
         return { success: true, results: rows }
       }
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       if (options.writeError) throw options.writeError
       if (isCursorReservation(stmt.sql)) return answerCursorReservation(stmt.binds)
       return { success: true, results: [] }
@@ -194,11 +198,11 @@ const createValidPushItem = (overrides?: Partial<PushItemInput>): PushItemInput 
   id: '550e8400-e29b-41d4-a716-446655440000',
   type: 'note',
   operation: 'create',
-  encryptedKey: btoa(String.fromCharCode(...new Array(48).fill(0))),
-  keyNonce: btoa(String.fromCharCode(...new Array(24).fill(0))),
+  encryptedKey: btoa(String.fromCharCode(...new Uint8Array(48).fill(0))),
+  keyNonce: btoa(String.fromCharCode(...new Uint8Array(24).fill(0))),
   encryptedData: btoa('test-encrypted-data'),
-  dataNonce: btoa(String.fromCharCode(...new Array(24).fill(0))),
-  signature: btoa(String.fromCharCode(...new Array(64).fill(0))),
+  dataNonce: btoa(String.fromCharCode(...new Uint8Array(24).fill(0))),
+  signature: btoa(String.fromCharCode(...new Uint8Array(64).fill(0))),
   signerDeviceId: 'device-1',
   clock: { 'device-1': 1 },
   ...overrides
@@ -220,61 +224,77 @@ describe('validateEncryptedFields', () => {
   it('should throw CRYPTO_INVALID_PAYLOAD for wrong dataNonce length (23 bytes)', () => {
     // #given
     const item = createValidPushItem({
-      dataNonce: btoa(String.fromCharCode(...new Array(23).fill(0)))
+      dataNonce: btoa(String.fromCharCode(...new Uint8Array(23).fill(0)))
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for wrong keyNonce length', () => {
     // #given
     const item = createValidPushItem({
-      keyNonce: btoa(String.fromCharCode(...new Array(23).fill(0)))
+      keyNonce: btoa(String.fromCharCode(...new Uint8Array(23).fill(0)))
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for encryptedKey too short (47 bytes)', () => {
     // #given
     const item = createValidPushItem({
-      encryptedKey: btoa(String.fromCharCode(...new Array(47).fill(0)))
+      encryptedKey: btoa(String.fromCharCode(...new Uint8Array(47).fill(0)))
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD for signature wrong length (63 bytes)', () => {
     // #given
     const item = createValidPushItem({
-      signature: btoa(String.fromCharCode(...new Array(63).fill(0)))
+      signature: btoa(String.fromCharCode(...new Uint8Array(63).fill(0)))
     })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw CRYPTO_INVALID_PAYLOAD when encryptedData exceeds the byte limit', () => {
@@ -287,7 +307,10 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem()
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       mockedSafeBase64Decode
         .mockImplementationOnce(() => new Uint8Array(24))
@@ -295,9 +318,10 @@ describe('validateEncryptedFields', () => {
         .mockImplementationOnce(() => new Uint8Array(48))
         .mockImplementationOnce(() => new Uint8Array(MAX_ENCRYPTED_DATA_BYTES + 1))
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.CRYPTO_INVALID_PAYLOAD)
   })
 
   it('should throw VALIDATION_ERROR for non-base64 dataNonce', () => {
@@ -308,15 +332,19 @@ describe('validateEncryptedFields', () => {
     const item = createValidPushItem({ dataNonce: '!!!not-base64!!!' })
 
     // #when / #then
-    expect(() => validateEncryptedFields(item)).toThrow(AppError)
+    expect(() => {
+      validateEncryptedFields(item)
+    }).toThrow(AppError)
+    let e: unknown
     try {
       mockedSafeBase64Decode.mockImplementationOnce(() => {
         throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Malformed base64 input', 400)
       })
       validateEncryptedFields(item)
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.VALIDATION_ERROR)
   })
 })
 
@@ -334,7 +362,7 @@ describe('verifyItemSignature', () => {
     platform: 'darwin',
     os_version: null,
     app_version: '1.0.0',
-    auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+    auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
     push_token: null,
     last_sync_at: null,
     revoked_at: null,
@@ -374,12 +402,14 @@ describe('verifyItemSignature', () => {
       AppError
     )
 
+    let e: unknown
     try {
       mockedGetDevice.mockResolvedValue(null)
       await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_NOT_FOUND)
   })
 
   it('should throw AUTH_DEVICE_REVOKED when signer device is revoked', async () => {
@@ -392,12 +422,14 @@ describe('verifyItemSignature', () => {
       AppError
     )
 
+    let e: unknown
     try {
       mockedGetDevice.mockResolvedValue({ ...activeDevice, revoked_at: 9999 })
       await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_REVOKED)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.AUTH_DEVICE_REVOKED)
   })
 
   it('should throw SYNC_INVALID_SIGNATURE when verification fails', async () => {
@@ -410,12 +442,14 @@ describe('verifyItemSignature', () => {
       AppError
     )
 
+    let e: unknown
     try {
       mockedVerifyEd25519.mockResolvedValueOnce(false)
       await verifyItemSignature(db as unknown as D1Database, item, 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.SYNC_INVALID_SIGNATURE)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.SYNC_INVALID_SIGNATURE)
   })
 
   it('should include stateVector and deletedAt in the signed payload when present', async () => {
@@ -1774,7 +1808,7 @@ describe('processRecordPushBatch', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -1916,7 +1950,7 @@ describe('processRecordPushBatch', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2171,7 +2205,7 @@ describe('processPushItem', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2524,7 +2558,7 @@ describe('processPushItem', () => {
       {} as R2Bucket,
       'user-1',
       'device-1',
-      createValidPushItem({ dataNonce: btoa(String.fromCharCode(...new Array(23).fill(0))) })
+      createValidPushItem({ dataNonce: btoa(String.fromCharCode(...new Uint8Array(23).fill(0))) })
     )
     expect(appErrorResult).toEqual({ accepted: false, reason: ErrorCodes.CRYPTO_INVALID_PAYLOAD })
 
@@ -2689,7 +2723,7 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2748,8 +2782,8 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
       return { prepare, batch }
     }
 
-    const sigA = btoa(String.fromCharCode(...new Array(64).fill(1)))
-    const sigB = btoa(String.fromCharCode(...new Array(64).fill(2)))
+    const sigA = btoa(String.fromCharCode(...new Uint8Array(64).fill(1)))
+    const sigB = btoa(String.fromCharCode(...new Uint8Array(64).fill(2)))
     const itemA = createValidPushItem({
       encryptedData: btoa('payload-from-device-A'),
       signature: sigA
@@ -2826,7 +2860,7 @@ describe('processPushItem replaced blob cleanup', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2983,7 +3017,7 @@ describe('processRecordPushBatch committedItems', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,

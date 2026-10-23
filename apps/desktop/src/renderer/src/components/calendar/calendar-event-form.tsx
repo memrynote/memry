@@ -285,6 +285,7 @@ export function CalendarEventForm({
       : tCommon('button.save')
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Cmd+Enter save shortcut on the form wrapper; fields inside are the controls
     <div
       className="flex flex-col"
       onKeyDown={(e) => {
@@ -463,6 +464,7 @@ function EventColorField({ value, onChange, disabled }: EventColorFieldProps) {
       <span id={labelId} className="sr-only">
         {t('form.color')}
       </span>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- visual grouping wrapper; fieldset/details would change layout and semantics */}
       <div role="group" aria-labelledby={labelId} className="flex flex-wrap gap-1">
         <button
           type="button"

@@ -19,7 +19,15 @@ const log = createLogger('Evaluator:Filter')
 // ============================================================================
 
 export type PropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'relation'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+  | 'relation'
 
 export interface Operator {
   value: string

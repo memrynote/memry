@@ -171,7 +171,7 @@ function mergeRemoteEventIntoLocal(
     existing.fieldClocks ?? initAllFieldClocks(existing.clock ?? {}, CALENDAR_EVENT_SYNCABLE_FIELDS)
   const remoteFC: FieldClocks = {}
   for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
-    remoteFC[field] = { ...(localFC[field] ?? {}) }
+    remoteFC[field] = { ...localFC[field] }
   }
 
   const remoteForMerge: Record<string, unknown> = {}

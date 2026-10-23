@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Home Dashboard — Bookmarks widget E2E (Group G)
  *
@@ -30,6 +29,7 @@ import {
 import * as path from 'path'
 import * as fs from 'fs'
 import matter from 'gray-matter'
+import type { Page } from '@playwright/test'
 
 // ============================================================================
 // Helpers
@@ -63,11 +63,11 @@ function writeNoteFile(
 }
 
 /** The seeded Home board's bookmarks widget card. */
-function bookmarksWidget(page: import('@playwright/test').Page) {
+function bookmarksWidget(page: Page) {
   return page.locator('[data-testid="widget"][data-widget-type="bookmarks"]').first()
 }
 
-function bookmarkRows(page: import('@playwright/test').Page) {
+function bookmarkRows(page: Page) {
   return bookmarksWidget(page).locator('[data-testid="bookmark-item"]')
 }
 
@@ -80,7 +80,7 @@ function bookmarkRows(page: import('@playwright/test').Page) {
  * The Sections rail Home button always navigates Home, whether or not a Home
  * tab is still in the strip.
  */
-async function gotoHome(page: import('@playwright/test').Page): Promise<void> {
+async function gotoHome(page: Page): Promise<void> {
   await waitForAppReady(page)
   await waitForVaultReady(page)
   await dismissFirstRunOnboarding(page)
@@ -101,10 +101,7 @@ async function gotoHome(page: import('@playwright/test').Page): Promise<void> {
  * scan that reads each note's frontmatter, then we poll the notes RPC until the
  * expected count is present.
  */
-async function reindexVault(
-  page: import('@playwright/test').Page,
-  expectedCount: number
-): Promise<void> {
+async function reindexVault(page: Page, expectedCount: number): Promise<void> {
   await page.evaluate(() => window.api.vault.reindex())
   await expect
     .poll(
@@ -124,16 +121,13 @@ async function reindexVault(
 }
 
 /** Reload window and re-land on Home. */
-async function reloadHome(page: import('@playwright/test').Page): Promise<void> {
+async function reloadHome(page: Page): Promise<void> {
   await page.reload()
   await gotoHome(page)
 }
 
 /** Resolve a seeded note's real id by matching its title via the notes RPC. */
-async function noteIdByTitle(
-  page: import('@playwright/test').Page,
-  title: string
-): Promise<string> {
+async function noteIdByTitle(page: Page, title: string): Promise<string> {
   return page.evaluate(async (t) => {
     const res = await window.api.notes.list({
       sortBy: 'modified',
@@ -146,11 +140,7 @@ async function noteIdByTitle(
   }, title)
 }
 
-async function bookmark(
-  page: import('@playwright/test').Page,
-  itemType: string,
-  itemId: string
-): Promise<void> {
+async function bookmark(page: Page, itemType: string, itemId: string): Promise<void> {
   await page.evaluate(({ itemType, itemId }) => window.api.bookmarks.toggle({ itemType, itemId }), {
     itemType,
     itemId
@@ -164,11 +154,7 @@ async function bookmark(
  * a resize button to click — height IS the size. Returns after persisting; the
  * caller reloads to re-render from the stored board.
  */
-async function setWidgetHeight(
-  page: import('@playwright/test').Page,
-  type: string,
-  h: number
-): Promise<void> {
+async function setWidgetHeight(page: Page, type: string, h: number): Promise<void> {
   await page.evaluate(
     async ({ type, h }) => {
       const boards = await window.api.homePages.list()

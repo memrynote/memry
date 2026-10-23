@@ -348,7 +348,9 @@ export function AccountSettings() {
       .getSyncSettings()
       // Explicit !== false: blobs written by older versions have no key and
       // must read as "on" (the shipped default).
-      .then((settings) => setAttachmentAutoDownload(settings.attachmentAutoDownload !== false))
+      .then((settings) => {
+        setAttachmentAutoDownload(settings.attachmentAutoDownload !== false)
+      })
       .catch(() => {
         /* keep the default-on optimistic value */
       })
@@ -376,6 +378,7 @@ export function AccountSettings() {
   }, [state.status])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void loadStorage()
   }, [loadStorage])
 
@@ -396,6 +399,7 @@ export function AccountSettings() {
   }, [billingLoadFailed, state.status])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void loadBilling()
   }, [loadBilling])
 

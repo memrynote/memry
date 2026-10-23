@@ -52,7 +52,7 @@ export function startSmartConnectionsDownload(): void {
     .then((result) => {
       if (!result.success) log.warn('Smart connections model did not load', result.error)
     })
-    .catch((error) => log.warn('Starting the smart connections download failed', error))
+    .catch((error: unknown) => log.warn('Starting the smart connections download failed', error))
 }
 
 /** Brand marks (LobeHub icons, MIT). Ollama and LM Studio are one-color, so they invert in dark. */
@@ -101,7 +101,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
           dispatch({ type: 'update', patch: { agent: ready.backend } })
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.warn('Detecting agents failed', error)
         if (!cancelled) setStatuses([])
       })
@@ -109,7 +109,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
       cancelled = true
     }
     // Detection runs once per visit; the preselect reads the draft at that moment.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   const stateOf = (backend: AgentBackendId): OnboardingAgentStatus | undefined =>
@@ -140,6 +140,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
               >
                 <button
                   type="button"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
                   role="radio"
                   aria-checked={selected}
                   data-wizard-option

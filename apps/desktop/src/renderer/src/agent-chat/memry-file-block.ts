@@ -23,7 +23,8 @@ export interface PromptFile {
 }
 
 export type UserTextSegment =
-  { kind: 'text'; text: string } | { kind: 'file'; name: string; bytes: number; content: string }
+  | { kind: 'text'; text: string }
+  | { kind: 'file'; name: string; bytes: number; content: string }
 
 export type PromptFileRefusal = 'unsupported_type' | 'not_text' | 'too_large' | 'read_failed'
 
@@ -79,8 +80,12 @@ export function splitMemryFileBlocks(text: string): UserTextSegment[] {
 function readBytes(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as ArrayBuffer)
-    reader.onerror = () => reject(new Error('FileReader failed', { cause: reader.error }))
+    reader.onload = () => {
+      resolve(reader.result as ArrayBuffer)
+    }
+    reader.onerror = () => {
+      reject(new Error('FileReader failed', { cause: reader.error }))
+    }
     reader.readAsArrayBuffer(file)
   })
 }

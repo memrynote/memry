@@ -120,6 +120,7 @@ export function LinkingPending({
   return (
     <div
       className="wizard-step-enter flex flex-col items-center justify-center py-12 gap-4"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       role="status"
       aria-live="polite"
     >

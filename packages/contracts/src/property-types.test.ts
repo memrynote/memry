@@ -108,9 +108,8 @@ describe('PropertyDefinitionSchema (discriminated union)', () => {
   it('rejects unknown variant type', () => {
     const result = PropertyDefinitionSchema.safeParse({ type: 'bogus', options: [] })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('type')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('type')
   })
 
   it('rejects select option with empty value', () => {
@@ -146,9 +145,8 @@ describe('PropertyDefinitionsFileSchema', () => {
   it('accepts empty file with default properties', () => {
     const result = PropertyDefinitionsFileSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.properties).toEqual({})
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.properties).toEqual({})
   })
 
   it('accepts file with named select property', () => {

@@ -64,170 +64,34 @@ import { plainVersionedMap } from '@memry/shared/versioned'
 import { utcNow } from '@memry/shared/utc'
 import { tagCategories } from '@memry/db-schema/schema/tag-categories'
 import { randomUUID } from 'node:crypto'
+import {
+  TAG_COLOR_PALETTE,
+  DEFAULT_OPTION_COLOR,
+  MAX_NOTES,
+  tagIs,
+  tagIn,
+  schemaEditFailure,
+  parseOptions,
+  foldForSearch,
+  matchRank,
+  TEXT_LIKE,
+  subtitleFor,
+  fieldOwner
+} from './tag-schema-support.ts'
+import {
+  NEW_FIELD_TYPES,
+  type NewFieldType,
+  type TagCategoryRecord,
+  type TagFieldInput,
+  type TagSchemaEdit,
+  type TagSchemaEditResult,
+  type TagSchemaOverview,
+  type TagSchemaService
+} from './tag-schema-types.ts'
 import type { DataDb, IndexDb } from './database.ts'
 import type { NotesService } from './notes.ts'
 import type { PropertiesService } from './properties.ts'
 import type { TemplatesService } from './templates.ts'
-
-export type NewFieldType = NewFieldSpec['type']
-
-// `NEW_FIELD_TYPES` in contracts/tag-schema-api.ts. That module imports its
-// siblings without an extension, which Node's type stripping cannot resolve, so
-// the CLI keeps the list here; the `satisfies` and the check below fail the
-// typecheck when desktop adds a type.
-export const NEW_FIELD_TYPES = [
-  'text',
-  'number',
-  'checkbox',
-  'date',
-  'url',
-  'status',
-  'select',
-  'multiselect',
-  'relation'
-] as const satisfies readonly NewFieldType[]
-const _allFieldTypesListed: Exclude<NewFieldType, (typeof NEW_FIELD_TYPES)[number]> extends never
-  ? true
-  : never = true
-void _allFieldTypesListed
-
-export interface TagFieldInput {
-  name: string
-  type: NewFieldType
-  options?: string[]
-  relation?: { target: string; many: boolean; inverse: string | null }
-}
-
-export type TagSchemaEdit =
-  | { kind: 'add-field'; tag: string; field: TagFieldInput; index?: number }
-  | { kind: 'remove-field'; tag: string; name: string }
-  | { kind: 'move-field'; tag: string; name: string; toIndex: number }
-  | {
-      kind: 'set-relation'
-      tag: string
-      name: string
-      relation: { target: string; many: boolean; inverse: string | null }
-    }
-  | { kind: 'set-template'; tag: string; template: { id: string; autofill: boolean } | null }
-  | { kind: 'set-extends'; tag: string; parent: string | null }
-
-export interface TagSchemaEditResult {
-  tag: string
-  changed: boolean
-  schema: ResolvedTag | null
-}
-
-export interface TagCategoryRecord {
-  id: string
-  name: string
-  sortOrder: number
-  tagCount: number
-}
-
-export interface TagSchemaOverview {
-  tags: Record<string, ResolvedTag>
-  /** Note id to the key of its primary object tag. */
-  objects: Record<string, string>
-}
-
-export interface TagSchemaService {
-  snapshot(): Promise<TagSchemaOverview>
-  schemaOf(tag: string): Promise<ResolvedTag>
-  edit(edit: TagSchemaEdit): Promise<TagSchemaEditResult>
-  impact(query: ImpactQuery): Promise<ImpactResult>
-  objects(input: { query: string; tag?: string; limit: number }): Promise<SearchObjectsResponse>
-  linkedHere(input: GetLinkedHereInput): Promise<LinkedHereGroup[]>
-  setIcon(tag: string, icon: string | null): Promise<{ tag: string; icon: string | null }>
-  pin(tag: string, noteId: string): Promise<{ success: true }>
-  unpin(tag: string, noteId: string): Promise<{ success: true }>
-  reorder(input: {
-    tags: string[]
-    /** A category id, or null for no category. Omitted: each tag keeps its own. */
-    category?: string | null
-  }): Promise<{
-    success: true
-    tags: Array<{ tag: string; categoryId: string | null; sortOrder: number }>
-  }>
-  categories: {
-    list(): Promise<TagCategoryRecord[]>
-    create(name: string): Promise<TagCategoryRecord>
-    rename(id: string, name: string): Promise<{ success: true }>
-    delete(id: string): Promise<{ success: true }>
-    reorder(ids: string[]): Promise<{ success: true }>
-  }
-}
-
-// Same palette as desktop's `getOrCreateTag`: a new definition is minted
-// unauthored, so it never repaints the tag on another device.
-const TAG_COLOR_PALETTE = [
-  'rose',
-  'pink',
-  'fuchsia',
-  'purple',
-  'violet',
-  'indigo',
-  'blue',
-  'sky',
-  'cyan',
-  'teal',
-  'emerald',
-  'green',
-  'lime',
-  'yellow',
-  'amber',
-  'orange',
-  'stone',
-  'slate',
-  'gray',
-  'zinc',
-  'neutral',
-  'warm',
-  'red',
-  'coral'
-]
-
-const DEFAULT_OPTION_COLOR = 'gray'
-const MAX_NOTES = 10000
-
-function tagIs(column: AnyColumn, tag: string): SQL {
-  return sql`tag_fold(${column}) = ${foldTag(tag)}`
-}
-
-function tagIn(column: AnyColumn, tags: Iterable<string>): SQL {
-  const keys = [...new Set([...tags].map(foldTag))]
-  if (keys.length === 0) return sql`0`
-  return sql`tag_fold(${column}) IN (${sql.join(
-    keys.map((key) => sql`${key}`),
-    sql`, `
-  )})`
-}
-
-// English text of desktop's `errors:tagFields.*` messages.
-function schemaEditFailure(error: SchemaEditError): Error {
-  switch (error.code) {
-    case 'reserved-name':
-      return new Error(`"${error.name}" is reserved and cannot be a field name`)
-    case 'duplicate-field':
-      return new Error(`#${error.definedBy} already has a field named "${error.name}"`)
-    case 'unknown-field':
-      return new Error(`This tag has no field named "${error.name}"`)
-    case 'inherited-field':
-      return new Error(`"${error.name}" comes from #${error.definedBy}. Edit it there`)
-    case 'cycle':
-      return new Error(`#${error.parent} already takes its fields from this tag`)
-    case 'unreadable-schema':
-      return new Error('A newer version of Memry changed this tag. Update Memry to edit it')
-  }
-}
-
-function parseOptions(raw: string | null): unknown {
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
 
 export function createTagSchemaService({
   dataDb,
@@ -899,65 +763,14 @@ export function createTagSchemaService({
   }
 }
 
-/**
- * Lowercase with diacritics removed, so "ahm" finds "Ahmet" and "s" finds
- * "ş". Turkish dotted and dotless i both fold to "i" (desktop `foldForSearch`).
- */
-export function foldForSearch(text: string): string {
-  return text.replace(/[İIı]/g, 'i').toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '')
-}
-
-function matchRank(title: string, query: string): number | null {
-  if (query === '') return 0
-  const folded = foldForSearch(title)
-  if (folded.startsWith(query)) return 0
-  if (folded.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(query))) return 1
-  return folded.includes(query) ? 2 : null
-}
-
-const TEXT_LIKE: ReadonlySet<PropertyType> = new Set(['text', 'url', 'select', 'status'])
-
-function subtitleFor(
-  values: Record<string, unknown>,
-  entry: ResolvedTag | undefined,
-  titleOf: (id: string) => string | undefined
-): string[] {
-  const filled = (value: unknown): value is string | number =>
-    (typeof value === 'string' && value.trim() !== '') || typeof value === 'number'
-  const texts: string[] = []
-  let relation: string | undefined
-  for (const field of entry?.effectiveFields ?? []) {
-    const value = values[field.name]
-    if (field.type === 'relation') {
-      relation ??= parseRelationValue(value)
-        .filter((ref) => ref.kind === 'note')
-        .map((ref) => titleOf(ref.id))
-        .find((title) => title !== undefined)
-    } else if (TEXT_LIKE.has(field.type) && filled(value)) {
-      texts.push(String(value))
-    }
-  }
-  return [texts[0], relation ?? texts[1]].filter((part): part is string => part !== undefined)
-}
-
-function fieldOwner(
-  tags: readonly string[],
-  field: string,
-  resolved: ReadonlyMap<string, ResolvedTag>,
-  relationOnly: boolean
-): { tag: string; label: string | null } | null {
-  for (const tag of tags) {
-    const match = resolved
-      .get(tagKey(tag))
-      ?.effectiveFields.find(
-        (candidate) => candidate.name === field && (!relationOnly || candidate.relation)
-      )
-    if (match) {
-      return {
-        tag: match.definedBy,
-        label: match.relation?.inverse ?? resolved.get(match.definedBy)?.name ?? null
-      }
-    }
-  }
-  return null
-}
+export { foldForSearch } from './tag-schema-support.ts'
+export { NEW_FIELD_TYPES } from './tag-schema-types.ts'
+export type {
+  NewFieldType,
+  TagCategoryRecord,
+  TagFieldInput,
+  TagSchemaEdit,
+  TagSchemaEditResult,
+  TagSchemaOverview,
+  TagSchemaService
+} from './tag-schema-types.ts'

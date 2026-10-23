@@ -82,6 +82,7 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
           <iframe
             src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
             className="size-full"
+            // oxlint-disable-next-line react/iframe-missing-sandbox -- YouTube embed player requires scripts and same-origin; src is fixed to youtube-nocookie.com/embed
             sandbox="allow-scripts allow-same-origin allow-presentation"
             allow="autoplay; encrypted-media"
             title={item.title || 'YouTube video'}
@@ -95,7 +96,7 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
     return (
       <button
         type="button"
-        className="flex flex-col gap-4 text-left cursor-pointer group rounded-xl p-2 -m-2 transition-colors hover:bg-foreground/[0.03]"
+        className="flex flex-col gap-4 text-start cursor-pointer group rounded-xl p-2 -m-2 transition-colors hover:bg-foreground/[0.03]"
         onClick={() => setIsPlaying(true)}
       >
         <div className="relative overflow-hidden rounded-[10px] bg-muted aspect-video w-full">
@@ -108,7 +109,7 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
           />
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
             <div className="flex items-center justify-center size-14 rounded-full bg-red-600 group-hover:bg-red-500 transition-colors shadow-lg">
-              <Play className="size-6 text-white ml-0.5" />
+              <Play className="size-6 text-white ms-0.5" />
             </div>
           </div>
         </div>

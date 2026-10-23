@@ -105,7 +105,8 @@ describe('tab commands from the keyboard', () => {
 
     await waitFor(() => {
       expect(latest.layout.type).toBe('split')
-      if (latest.layout.type === 'split') expect(latest.layout.direction).toBe(direction)
+      if (latest.layout.type !== 'split') throw new Error('expected a split layout')
+      expect(latest.layout.direction).toBe(direction)
     })
   })
 

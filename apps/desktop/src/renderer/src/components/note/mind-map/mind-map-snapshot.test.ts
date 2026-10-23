@@ -149,6 +149,7 @@ describe('mintSnapshotElements — links that outlive the document', () => {
       expect(parsed).toMatchObject({ kind: 'note', id: 'n1' })
       expect(tabFromMemryHref(hrefOf(box)!)).toMatchObject({ type: 'note', path: '/note/n1' })
       if (parsed?.kind === 'note' && parsed.anchor) {
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(parsed.anchor.type).toBe('heading')
       }
     }

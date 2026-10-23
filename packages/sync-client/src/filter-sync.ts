@@ -33,7 +33,8 @@ export class FilterSyncService {
   constructor(deps: FilterSyncDeps) {
     const load = (filterId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'filter',

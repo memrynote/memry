@@ -16,6 +16,7 @@ export function useWritingTools(): {
   }, [t])
 
   const [session] = useState(
+    // oxlint-disable-next-line react/refs -- ref is read in a deferred callback/event path, not during render
     () =>
       new WritingToolsSession(
         (input) => writingToolsService.generateAssist(input),

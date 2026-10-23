@@ -170,7 +170,7 @@ interface ProbeChild {
  * must genuinely re-probe. See crdt-preflight-child.ts and crdt-provider.ts.
  */
 export async function runCrdtPreflight(storeDir: string): Promise<CrdtPreflightResult> {
-  return await probeWithFallback(storeDir).catch((err) => {
+  return await probeWithFallback(storeDir).catch((err: unknown) => {
     log.error('CRDT preflight failed to run', { error: err })
     return {
       ok: false,

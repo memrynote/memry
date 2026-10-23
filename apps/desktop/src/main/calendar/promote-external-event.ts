@@ -109,7 +109,7 @@ export function promoteExternalEvent(
     colorId: mirror.colorId ?? null,
     conferenceData: mirror.conferenceData ?? null,
     targetCalendarId: remoteCalendarId,
-    clock: { ...(mirror.clock ?? {}) },
+    clock: { ...mirror.clock },
     createdAt: now,
     modifiedAt: now
   })
@@ -125,7 +125,7 @@ export function promoteExternalEvent(
     writebackMode: 'time_and_text',
     remoteVersion: mirror.remoteEtag,
     lastLocalSnapshot: null,
-    clock: { ...(mirror.clock ?? {}) },
+    clock: { ...mirror.clock },
     createdAt: now,
     modifiedAt: now
   })

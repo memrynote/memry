@@ -39,7 +39,8 @@ export class TagCategorySyncService {
       getDeviceId: deps.getDeviceId,
       load: (id) =>
         deps.db.select().from(tagCategories).where(eq(tagCategories.id, id)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const existingClock = (local.clock as VectorClock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
@@ -57,7 +58,8 @@ export class TagCategorySyncService {
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
           deps.db.select().from(tagCategories).where(eq(tagCategories.id, itemId)).get() as
-            Record<string, unknown> | undefined,
+            | Record<string, unknown>
+            | undefined,
           deviceId,
           (clock) =>
             deps.db.update(tagCategories).set({ clock }).where(eq(tagCategories.id, itemId)).run()

@@ -98,7 +98,10 @@ export function CalendarMonthView({
 }: CalendarMonthViewProps): React.JSX.Element {
   const { t, i18n } = useT('calendar')
   const weekStartsOn = useWeekStartsOn()
-  const gridDays = getMonthGridDays(anchorDate, weekStartsOn)
+  const gridDays = useMemo(
+    () => getMonthGridDays(anchorDate, weekStartsOn),
+    [anchorDate, weekStartsOn]
+  )
   const [containerWidth, containerRef] = useContainerWidth()
   const columnWidth = containerWidth / 7
   const maxVisibleEvents = maxVisibleEventsForColumnWidth(columnWidth)
@@ -114,8 +117,7 @@ export function CalendarMonthView({
     const rows: string[][] = []
     for (let i = 0; i < gridDays.length; i += 7) rows.push(gridDays.slice(i, i + 7))
     return rows.map((weekDays) => ({ weekDays, ...buildWeekSpanBars(items, weekDays) }))
-    // `gridDays` is recomputed each render from the anchor, so key on the anchor.
-  }, [anchorDate, weekStartsOn, items]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gridDays, items])
 
   return (
     <div className="flex h-full flex-col" data-testid="calendar-view" data-view="month">
@@ -130,6 +132,7 @@ export function CalendarMonthView({
         ))}
       </div>
 
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- mouse marquee selection on the grid; keyboard users act on the event chips inside */}
       <div
         role="application"
         aria-label={t('calendar:view.monthGridLabel')}

@@ -6,7 +6,8 @@ import { Check } from 'lucide-react'
  * Safari) and copies it everywhere else; `copy` always copies.
  */
 export type ClipboardIntent =
-  { kind: 'share'; title: string; url: string } | { kind: 'copy'; text: string }
+  | { kind: 'share'; title: string; url: string }
+  | { kind: 'copy'; text: string }
 
 type Status = 'idle' | 'copied' | 'failed'
 

@@ -53,6 +53,7 @@ export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
     <AnimatePresence>
       {open && (
         <motion.div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- animated modal overlay; native dialog cannot take the framer-motion exit
           role="dialog"
           aria-modal="true"
           aria-label="MemryNote product demo"
@@ -110,6 +111,7 @@ function DemoVideo() {
   const track = (name: LandingEventName) => trackLandingEvent(name, TARGET)
 
   return (
+    // oxlint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for the narrated demo yet
     <video
       ref={ref}
       src={DEMO_VIDEO}
@@ -124,7 +126,9 @@ function DemoVideo() {
         if (!e.currentTarget.ended) track('landing_demo_pause')
       }}
       onEnded={() => track('landing_demo_complete')}
-      onVolumeChange={(e) => track(e.currentTarget.muted ? 'landing_demo_mute' : 'landing_demo_unmute')}
+      onVolumeChange={(e) =>
+        track(e.currentTarget.muted ? 'landing_demo_mute' : 'landing_demo_unmute')
+      }
       onTimeUpdate={(e) => {
         const { currentTime, duration } = e.currentTarget
         reached.current.add(0)

@@ -147,7 +147,7 @@ describe('journal writes under a locked folder are refused (#2606)', () => {
       await withReadOnlyJournalFolder(async () => {
         await expect(
           runWithLockedWritesAllowed(() => writeJournalEntryWithContent(DATE, 'Remote text'))
-        ).rejects.toThrow()
+        ).rejects.toThrow(/EACCES: permission denied, open/)
       })
 
       expect(fs.readFileSync(file, 'utf8')).toBe(ORIGINAL)

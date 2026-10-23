@@ -68,9 +68,8 @@ describe('GeneralSettingsSchema', () => {
       theme: 'midnight'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('theme')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('theme')
   })
 
   it('rejects invalid fontFamily enum', () => {
@@ -79,9 +78,8 @@ describe('GeneralSettingsSchema', () => {
       fontFamily: 'comic-sans'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('fontFamily')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('fontFamily')
   })
 
   it('rejects malformed accent color', () => {
@@ -90,9 +88,8 @@ describe('GeneralSettingsSchema', () => {
       accentColor: 'blue'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('accentColor')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('accentColor')
   })
 
   it('accepts every supported locale', () => {
@@ -146,9 +143,8 @@ describe('GeneralSettingsSchema', () => {
       language: 'xx'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('language')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('language')
   })
 
   it('rejects invalid clockFormat enum', () => {
@@ -171,9 +167,8 @@ describe('GeneralSettingsSchema', () => {
     const { startOnBoot: _omit, ...rest } = GENERAL_SETTINGS_DEFAULTS
     const result = GeneralSettingsSchema.safeParse(rest)
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('startOnBoot')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('startOnBoot')
   })
 })
 
@@ -189,9 +184,8 @@ describe('EditorSettingsSchema', () => {
       width: 'full'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.width).toBe('full')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.width).toBe('full')
   })
 
   it('coerces legacy widths to normal', () => {
@@ -201,9 +195,8 @@ describe('EditorSettingsSchema', () => {
         width: legacy
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.width).toBe('normal')
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.width).toBe('normal')
     }
   })
 
@@ -261,9 +254,8 @@ describe('TaskSettingsSchema', () => {
       defaultSortOrder: 'alphabetical'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('defaultSortOrder')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('defaultSortOrder')
   })
 
   it('rejects staleInboxDays below 1', () => {
@@ -329,9 +321,8 @@ describe('ShortcutBindingSchema', () => {
       modifiers: {}
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('key')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('key')
   })
 
   it('rejects missing modifiers object', () => {
@@ -372,9 +363,8 @@ describe('KeyboardShortcutsSchema', () => {
   it('rejects missing globalCapture field', () => {
     const result = KeyboardShortcutsSchema.safeParse({ overrides: {} })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('globalCapture')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('globalCapture')
   })
 })
 
@@ -387,17 +377,15 @@ describe('SyncSettingsSchema', () => {
   it('rejects non-boolean enabled', () => {
     const result = SyncSettingsSchema.safeParse({ enabled: 'yes', autoSync: true })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('enabled')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('enabled')
   })
 
   it('rejects missing autoSync field', () => {
     const result = SyncSettingsSchema.safeParse({ enabled: true })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('autoSync')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('autoSync')
   })
 })
 
@@ -423,9 +411,8 @@ describe('AISettingsSchema', () => {
       model: null
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('provider')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('provider')
   })
 })
 
@@ -444,9 +431,8 @@ describe('VoiceTranscriptionSettingsSchema', () => {
     )
     const result = VoiceTranscriptionSettingsSchema.safeParse({ ...base, language: 'klingon' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('language')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('language')
   })
 
   it('reads audioSearch as optional, so settings saved before it still parse', () => {
@@ -463,9 +449,8 @@ describe('VoiceTranscriptionSettingsSchema', () => {
   it('rejects unsupported provider', () => {
     const result = VoiceTranscriptionSettingsSchema.safeParse({ provider: 'whisper-cloud' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('provider')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('provider')
   })
 
   it('rejects unsupported voice memo naming modes', () => {
@@ -474,9 +459,8 @@ describe('VoiceTranscriptionSettingsSchema', () => {
       memoNameMode: 'random'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('memoNameMode')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('memoNameMode')
   })
 })
 
@@ -502,9 +486,8 @@ describe('BackupSettingsSchema', () => {
       frequencyHours: 3
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('frequencyHours')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('frequencyHours')
   })
 
   it('rejects maxBackups below 1', () => {
@@ -550,9 +533,8 @@ describe('AccountInfoSchema', () => {
   it('rejects an invalid email', () => {
     const result = AccountInfoSchema.safeParse({ ...baseAccount, email: 'not-an-email' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('email')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('email')
   })
 
   it('rejects an unsupported authProvider', () => {
@@ -575,9 +557,8 @@ describe('TagInfoSchema', () => {
   it('rejects non-integer count', () => {
     const result = TagInfoSchema.safeParse({ name: 'work', count: 1.5 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('count')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('count')
   })
 })
 
@@ -601,9 +582,8 @@ describe('ExportRequestSchema', () => {
   it('rejects empty destPath', () => {
     const result = ExportRequestSchema.safeParse({ format: 'json', destPath: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('destPath')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('destPath')
   })
 })
 
@@ -656,9 +636,8 @@ describe('GetRecoveryKeyRequestSchema', () => {
   it('rejects an empty reAuthToken', () => {
     const result = GetRecoveryKeyRequestSchema.safeParse({ reAuthToken: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('reAuthToken')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('reAuthToken')
   })
 })
 
@@ -677,9 +656,8 @@ describe('SetApiKeyRequestSchema', () => {
       key: 'sk-test-123'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('provider')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('provider')
   })
 
   it('rejects empty key', () => {
@@ -719,9 +697,8 @@ describe('TestConnectionResultSchema', () => {
   it('rejects non-boolean valid', () => {
     const result = TestConnectionResultSchema.safeParse({ valid: 'yes' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('valid')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('valid')
   })
 })
 
@@ -756,7 +733,7 @@ describe('InboxSettings', () => {
   it('rejects a non-HH:MM time', () => {
     expect(() =>
       InboxSettingsSchema.parse({ reviewReminderEnabled: true, reviewReminderTime: '6pm' })
-    ).toThrow()
+    ).toThrow(/reviewReminderTime/)
   })
 })
 
@@ -841,9 +818,8 @@ describe('CalendarGoogleSettingsSchema (M2)', () => {
       defaultTargetCalendarId: 42
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('defaultTargetCalendarId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('defaultTargetCalendarId')
   })
 
   it('rejects non-boolean onboardingCompleted', () => {

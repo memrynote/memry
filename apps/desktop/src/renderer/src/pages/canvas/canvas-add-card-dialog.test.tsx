@@ -98,7 +98,10 @@ function setup(overrides: Partial<Parameters<typeof CanvasAddCardDialog>[0]> = {
     ...overrides
   }
   const { rerender } = render(<CanvasAddCardDialog {...props} />)
-  return { ...props, rerender: () => rerender(<CanvasAddCardDialog {...props} />) }
+  return {
+    ...props,
+    rerender: () => rerender(<CanvasAddCardDialog {...props} />)
+  }
 }
 
 describe('CanvasAddCardDialog', () => {

@@ -16,7 +16,8 @@ import type {
 } from '@memry/contracts/inbox-api'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
-import { getDatabase, requireDatabase } from '../database'
+import type { getDatabase } from '../database'
+import { requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -560,13 +561,16 @@ export function createDesktopInboxDomain() {
     }),
     ...createInboxQueries({
       getItem: getInboxItem,
+      // oxlint-disable-next-line typescript/no-useless-default-assignment -- RPC callers may omit the argument
       list: async (input = {}) => queryHandlers.handleList(input),
       getJobs: async (input) => queryHandlers.handleGetJobs(input),
       getTags: async () => queryHandlers.handleGetTags(),
       getStats: async () => queryHandlers.handleGetStats(),
       getStaleThreshold: async () => queryHandlers.handleGetStaleThreshold(),
       setStaleThreshold: async (days) => queryHandlers.handleSetStaleThreshold(days),
+      // oxlint-disable-next-line typescript/no-useless-default-assignment -- RPC callers may omit the argument
       listArchived: async (input = {}) => queryHandlers.handleListArchived(input),
+      // oxlint-disable-next-line typescript/no-useless-default-assignment -- RPC callers may omit the argument
       getFilingHistory: async (input = {}) => queryHandlers.handleGetFilingHistory(input),
       getPatterns: async () => queryHandlers.handleGetPatterns()
     })

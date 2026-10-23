@@ -34,7 +34,14 @@ import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 
 export type DragSourceType = 'list' | 'kanban' | 'calendar'
 export type DropTargetType =
-  'task' | 'section' | 'column' | 'date' | 'project' | 'trash' | 'archive' | null
+  | 'task'
+  | 'section'
+  | 'column'
+  | 'date'
+  | 'project'
+  | 'trash'
+  | 'archive'
+  | null
 
 export interface DragState {
   isDragging: boolean

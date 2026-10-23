@@ -85,6 +85,7 @@ export function ProjectCardView({ state }: { state: ProjectState }): React.JSX.E
               <span className="tabular-nums">{percent}%</span>
             </div>
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
               role="progressbar"
               aria-valuenow={percent}
               aria-valuemin={0}

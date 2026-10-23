@@ -150,6 +150,7 @@ export function CalendarYearView({
               <div className="mb-1 grid grid-cols-7">
                 {dayHeaders.map((header, i) => (
                   <span
+                    // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
                     key={i}
                     className="py-0.5 text-center text-xs font-medium text-muted-foreground"
                   >

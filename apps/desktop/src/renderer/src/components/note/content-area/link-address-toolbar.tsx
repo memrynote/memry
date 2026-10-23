@@ -106,6 +106,7 @@ function EditLinkAddressForm(props: LinkToolbarProps): React.JSX.Element {
         className="bn-text-input"
         name="url"
         icon={<Link className="size-4" />}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
         autoFocus={true}
         placeholder={dict.link_toolbar.form.url_placeholder}
         value={url}

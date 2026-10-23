@@ -9,7 +9,15 @@ import {
 } from './schema.ts'
 
 export type InboxItemType =
-  'link' | 'note' | 'image' | 'voice' | 'video' | 'clip' | 'pdf' | 'social' | 'reminder'
+  | 'link'
+  | 'note'
+  | 'image'
+  | 'voice'
+  | 'video'
+  | 'clip'
+  | 'pdf'
+  | 'social'
+  | 'reminder'
 
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'

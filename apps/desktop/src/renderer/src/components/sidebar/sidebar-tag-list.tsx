@@ -190,6 +190,7 @@ function TagTreeItem({
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     return () => observer.disconnect()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- node.name/inputs re-measure or re-render the external action slot
   }, [node.name])
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -444,6 +445,7 @@ export function SidebarTagList({
   }, [
     searchOpen,
     sortBy,
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- node.name/inputs re-measure or re-render the external action slot
     currentSortLabel,
     toggleSearch,
     onActionsReady,

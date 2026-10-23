@@ -68,7 +68,10 @@ const pickerProps = (
   id: TaskRowPickerId
 ): { open?: boolean; onOpenChange?: (open: boolean) => void } =>
   control
-    ? { open: control.open === id, onOpenChange: (open) => control.onOpenChange(id, open) }
+    ? {
+        open: control.open === id,
+        onOpenChange: (open) => control.onOpenChange(id, open)
+      }
     : {}
 
 // ============================================================================
@@ -162,6 +165,7 @@ export const TaskRow = ({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="button"
       tabIndex={onClick && interactive ? 0 : -1}
       onClick={interactive ? handleRowClick : undefined}
@@ -178,6 +182,7 @@ export const TaskRow = ({
       aria-busy={!interactive || undefined}
     >
       {isSelectionMode && showSelection && (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <SelectionCheckbox
             checked={isCheckedForSelection}
@@ -237,6 +242,7 @@ export const TaskRow = ({
       )}
 
       {path ? null : showProjectBadge && onProjectChange && interactive ? (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <InteractiveProjectBadge
             projectId={task.projectId}

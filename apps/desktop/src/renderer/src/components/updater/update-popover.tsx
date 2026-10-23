@@ -77,7 +77,7 @@ export function UpdatePopover({
 
   const handleDownload = useCallback(() => {
     onClose()
-    void downloadUpdate().catch((err) => {
+    void downloadUpdate().catch((err: unknown) => {
       log.error('update download failed', err)
       trackRendererError('update_download', err)
     })
@@ -85,7 +85,7 @@ export function UpdatePopover({
 
   const handleRestart = useCallback(() => {
     onClose()
-    void quitAndInstall().catch((err) => {
+    void quitAndInstall().catch((err: unknown) => {
       log.error('restart to install failed', err)
       trackRendererError('update_install', err)
     })
@@ -93,19 +93,19 @@ export function UpdatePopover({
 
   const handleSkip = useCallback(() => {
     onClose()
-    void skipVersion(version).catch((err) => log.error('skip version failed', err))
+    void skipVersion(version).catch((err: unknown) => log.error('skip version failed', err))
   }, [skipVersion, version, onClose])
 
   const handleTurnOffAuto = useCallback(() => {
     onClose()
-    void setAutoDownload(false).catch((err) => log.error('set auto-download failed', err))
+    void setAutoDownload(false).catch((err: unknown) => log.error('set auto-download failed', err))
   }, [setAutoDownload, onClose])
 
   const handleCopyVersionInfo = useCallback(() => {
     onClose()
     void navigator.clipboard
       .writeText(`MemryNote ${state.currentVersion} → ${version}`)
-      .catch((err) => log.error('copy version info failed', err))
+      .catch((err: unknown) => log.error('copy version info failed', err))
   }, [state.currentVersion, version, onClose])
 
   const handleAllChanges = useCallback(() => {

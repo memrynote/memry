@@ -16,6 +16,7 @@ export const ProjectsSkeleton = ({
   return (
     <div className={cn('ms-1', className)}>
       {Array.from({ length: count }).map((_, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
         <div key={index} className="flex h-7 items-center gap-1.5 ps-1 pe-2.5 rounded-[5px] pb-px">
           {/* Color dot skeleton — same leading slots as a real project row */}
           <div className="flex shrink-0 items-center gap-0.5">

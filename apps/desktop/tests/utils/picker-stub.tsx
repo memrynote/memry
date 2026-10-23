@@ -66,7 +66,9 @@ export function createPickerStub() {
     onValueChange,
     onOpenChange
   }: PickerRootProps): React.ReactElement => {
+    // oxlint-disable-next-line react/immutability -- test stub captures the latest handler so tests can invoke it
     handlers.onValueChange = onValueChange ?? null
+    // oxlint-disable-next-line react/immutability -- test stub captures the latest handler so tests can invoke it
     handlers.onOpenChange = onOpenChange ?? null
     return <div>{children}</div>
   }
@@ -74,6 +76,7 @@ export function createPickerStub() {
   return {
     Picker: Object.assign(PickerRoot, {
       Trigger: ({ children }: ChildrenProps) => (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- test stub; click is the only interaction under test
         <div onClick={() => handlers.onOpenChange?.(true)}>{children}</div>
       ),
       Content: ({ children }: ChildrenProps) => <div>{children}</div>,

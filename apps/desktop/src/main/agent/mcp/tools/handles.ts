@@ -86,7 +86,13 @@ export interface ExtractedTextReply {
  */
 export interface NoteSyncReply {
   state:
-    'not_syncing' | 'local_only' | 'pending' | 'sent' | 'confirmed' | 'not_recorded' | 'rejected'
+    | 'not_syncing'
+    | 'local_only'
+    | 'pending'
+    | 'sent'
+    | 'confirmed'
+    | 'not_recorded'
+    | 'rejected'
   waiting_since?: string
   last_sent_at?: string
   body_confirmed_at?: string

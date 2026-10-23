@@ -5,6 +5,7 @@ import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { errorHandler } from '../lib/errors'
 import { signBootstrapSession, verifyBootstrapSession } from '../services/bootstrap-session'
 import type { AppContext } from '../types'
+import type * as RateLimitModule from '../middleware/rate-limit'
 
 vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
@@ -22,7 +23,7 @@ vi.mock('../middleware/paid-sync', () => ({
 }))
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../middleware/rate-limit')>()
+  const actual = await importOriginal<typeof RateLimitModule>()
   return {
     ...actual,
     createRateLimiter: vi.fn().mockImplementation(() => async (_c: any, next: any) => {

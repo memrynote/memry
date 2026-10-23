@@ -293,6 +293,7 @@ describe('AppSidebar section shortcuts', () => {
     render(
       <>
         <AppSidebar currentPage="inbox" viewCounts={{}} />
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- manually positioned popover surface; native <dialog> top-layer behavior would change stacking and focus handling */}
         <div role="dialog">
           <input aria-label="palette" />
         </div>

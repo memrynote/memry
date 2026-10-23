@@ -74,17 +74,17 @@ export function ThinkingReasoning({
     thinkingSinceRef.current = null
     // Wall-clock time at the moment thinking ended: not derivable from props,
     // and reading the clock during render would be impure.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change
     setMeasuredMs((total) => (total ?? 0) + performance.now() - since)
   }, [thinking])
 
   const autoExpanded = thinking && !answerStarted
   const expanded = autoExpanded || open
 
-  const syncFade = (viewport: HTMLDivElement): void => {
+  const syncFade = useCallback((viewport: HTMLDivElement): void => {
     setFadeTop(viewport.scrollTop > 1)
     setFadeBottom(viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1)
-  }
+  }, [])
 
   const sync = useCallback((): void => {
     const viewport = viewportRef.current
@@ -93,7 +93,7 @@ export function ThinkingReasoning({
     if (followRef.current) viewport.scrollTop = viewport.scrollHeight
     syncedHeightRef.current = viewport.scrollHeight
     syncFade(viewport)
-  }, [])
+  }, [syncFade])
 
   useLayoutEffect(() => {
     if (expanded) sync()

@@ -252,7 +252,7 @@ export async function renameJournalsForFormatChange(
         to: toRel,
         error
       })
-      await fs.rename(path.join(dir, to), path.join(dir, from)).catch((restoreError) => {
+      await fs.rename(path.join(dir, to), path.join(dir, from)).catch((restoreError: unknown) => {
         logger.error('Could not restore journal file name', { path: toRel, error: restoreError })
       })
     }
@@ -286,7 +286,7 @@ export async function revertJournalRenames(
   const dir = path.join(vaultPath, folder)
   const db = getDatabase()
 
-  for (const { from, to } of [...moved].reverse()) {
+  for (const { from, to } of [...moved].toReversed()) {
     const fromRel = `${folder}/${from}`
     const toRel = `${folder}/${to}`
     try {

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { createJournalDateLabels, type MonthStat } from '@/lib/journal-utils'
 import { useT } from '@memry/i18n/renderer'
 import { useMemo } from 'react'
+import { useToday } from '@/hooks/use-today'
 
 // =============================================================================
 // TYPES
@@ -87,10 +88,12 @@ function MonthCard({ stat, isCurrent, onClick, monthShort, dayLabel }: MonthCard
       {/* Activity Dots */}
       <div className="flex items-center gap-1">
         {stat.activityDots.map((level, index) => (
+          // oxlint-disable-next-line react/no-array-index-key -- fixed-size dot strip, positional
           <span key={index} className={cn('size-2 rounded-full', HEATMAP_COLORS[level])} />
         ))}
         {/* Fill remaining dots if less than 5 */}
         {Array.from({ length: Math.max(0, 5 - stat.activityDots.length) }).map((_, index) => (
+          // oxlint-disable-next-line react/no-array-index-key -- fixed-size dot strip, positional
           <span key={`empty-${index}`} className="size-2 rounded-full bg-border/30" />
         ))}
       </div>
@@ -113,8 +116,9 @@ export function JournalYearView({
   const { t, i18n: _i18n } = useT('journal')
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
   // Get current month from date if not provided
-  const currentMonthIndex = currentMonth ?? new Date().getMonth()
-  const currentYear = new Date().getFullYear()
+  const today = useToday()
+  const currentMonthIndex = currentMonth ?? Number(today.slice(5, 7)) - 1
+  const currentYear = Number(today.slice(0, 4))
   const isCurrentYear = year === currentYear
 
   return (

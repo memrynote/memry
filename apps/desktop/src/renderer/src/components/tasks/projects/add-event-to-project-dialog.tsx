@@ -31,11 +31,12 @@ export const AddEventToProjectDialog = ({
 
   useEffect(() => {
     if (!open) return
+    // oxlint-disable-next-line react/set-state-in-effect -- IPC fetch on dialog open; loading flag belongs to that fetch
     setIsLoading(true)
     tasksService
       .listProjects()
       .then((res) => setProjects(res.projects.filter((project) => project.archivedAt == null)))
-      .catch((error) => log.error('Failed to list projects', extractErrorMessage(error)))
+      .catch((error: unknown) => log.error('Failed to list projects', extractErrorMessage(error)))
       .finally(() => setIsLoading(false))
   }, [open])
 

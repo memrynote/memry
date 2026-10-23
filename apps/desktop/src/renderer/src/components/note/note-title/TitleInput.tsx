@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState, KeyboardEvent, type RefObject } from 'react'
+import { type KeyboardEvent, useRef, useEffect, useCallback, useState, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -53,6 +53,7 @@ export function TitleInput({
 
   useEffect(() => {
     adjustHeight()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [displayValue, adjustHeight])
 
   // Auto-focus on mount

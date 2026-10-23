@@ -74,7 +74,7 @@ function projectionItem(
 }
 
 function emit(event: CalendarChangedEvent): void {
-  for (const listener of [...listeners]) listener(event)
+  for (const listener of Array.from(listeners)) listener(event)
 }
 
 let settingsListener: ((event: { key: string; value: unknown }) => void) | undefined
@@ -114,7 +114,9 @@ function renderApp(): { showBoard: (visible: boolean) => void } {
     </QueryClientProvider>
   )
   const view = render(tree(true))
-  return { showBoard: (visible: boolean) => view.rerender(tree(visible)) }
+  return {
+    showBoard: (visible: boolean) => view.rerender(tree(visible))
+  }
 }
 
 describe('home calendar widget stays current', () => {

@@ -108,7 +108,7 @@ export function NoteLayout({
   // The plugin also traces `activeHeadingId` back to `scrollRef` and calls it a
   // ref handed to a parent; it is not — what leaves here is a heading id.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
     onActiveHeadingChange?.(activeHeadingId)
   }, [activeHeadingId, onActiveHeadingChange])
 

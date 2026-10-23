@@ -2,7 +2,7 @@
 // what you don't use") gets a Journal widget from the
 // Add widget menu; it lands at the bottom, is dragged by its header up into the empty right
 // column, and pulled taller from its corner until its next days (today plus three) are on screen. Widgets are react-grid-layout items: the real drag and resize.
-import { closeOtherTabs, settle } from '../../engine/kit.mjs'
+import { closeOtherTabs } from '../../engine/kit.mjs'
 
 const header = (page) => page.locator('.widget-drag-handle').filter({ hasText: 'Journal' }).first()
 

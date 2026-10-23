@@ -5,7 +5,7 @@ import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
 import { CheckoutPanel, NoTokenNotice } from '@/components/account/CheckoutPanel'
 import { parseCheckoutToken } from '@/lib/checkout-summary'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 import type { CheckoutPlanId } from '@/lib/constants'
 import {
   parseCheckoutCadence,
@@ -46,7 +46,9 @@ export function CheckoutPage() {
   }, [api])
 
   useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- mints a checkout token once the session is ready; there is no user event to hang it on
     if (hashToken || !ready || !isSignedIn || webToken || minting || mintError) return
+    // oxlint-disable-next-line react/set-state-in-effect -- mints a checkout token from the session on mount; the effect synchronizes with the API
     void mintToken()
   }, [hashToken, ready, isSignedIn, webToken, minting, mintError, mintToken])
 

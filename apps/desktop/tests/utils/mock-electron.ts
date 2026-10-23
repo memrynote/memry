@@ -258,14 +258,6 @@ export const mockElectron = {
 }
 
 /**
- * Install Electron mocks for testing.
- * Call this before importing modules that use Electron.
- */
-export function installElectronMocks(): void {
-  vi.mock('electron', () => mockElectron)
-}
-
-/**
  * Reset all Electron mocks.
  */
 export function resetElectronMocks(): void {

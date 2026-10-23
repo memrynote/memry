@@ -46,7 +46,7 @@ export function syncNoteCreate(
 
   getCrdtProvider()
     ?.initForNote(noteId, { title }, tags)
-    .catch((error) => {
+    .catch((error: unknown) => {
       // A swallowed init means the note's body never enters CRDT sync.
       logger.error('CRDT init failed for new note', { noteId, error })
       trackMainError('notes', 'crdt_init_for_note', error)
@@ -77,7 +77,7 @@ export async function syncNoteDelete(noteId: string): Promise<void> {
   recordLocalItemDelete('note', noteId)
   void getCrdtProvider()
     ?.purge(noteId)
-    .catch((error) => {
+    .catch((error: unknown) => {
       logger.error('CRDT purge failed for deleted note', { noteId, error })
       trackMainError('notes', 'crdt_purge_for_deleted_note', error)
     })

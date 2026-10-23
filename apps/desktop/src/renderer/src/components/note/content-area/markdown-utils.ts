@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { type Block } from '@blocknote/core'
 import {
   splitMarkdownPreservingBlanks,
@@ -149,6 +150,7 @@ async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
     withPlainCheckboxMarkers(blocks) as never[]
   )
   const md = normalizeSerializedMarkdown(
+    // oxlint-disable-next-line typescript/await-thenable -- `editor` is untyped, so TS picks the sync overload; serializers may be async
     await writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements)
@@ -407,7 +409,7 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
   // `open`, summary as inline content, body as children.
   return {
     type: 'toggleListItem' as const,
-    props: { ...(colors ?? {}), open: segment.open },
+    props: { ...colors, open: segment.open },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
   } as unknown as Block
@@ -701,7 +703,15 @@ export async function serializeBlocksPreservingBlanks(
     const md = await serializeBlocks(editor, contentGroup)
     segments.push({ type: 'content', text: md.trim() })
   }
-  if (emptyCount > 0) {
+  // The host editor keeps an empty paragraph after a trailing portal so the
+  // caret has somewhere to go (portal-trailing-paragraph-plugin). It is not
+  // content: a file ending in the fence stays byte-identical on every save.
+  const lastBlock = blocks.findLast((block) => !isEmptyParagraph(block))
+  const endsInPortal =
+    lastBlock !== undefined &&
+    (lastBlock.type as string) === 'codeBlock' &&
+    (lastBlock.props as { language?: string }).language === PORTAL_BLOCK_LANGUAGE
+  if (emptyCount > 0 && !endsInPortal) {
     segments.push({ type: 'gap', extraLines: emptyCount })
   }
 

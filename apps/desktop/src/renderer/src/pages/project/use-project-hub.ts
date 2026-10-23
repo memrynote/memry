@@ -194,6 +194,7 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [projectId, reloadToken])
 
   const refresh = useCallback(() => setReloadToken((token) => token + 1), [])

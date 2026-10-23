@@ -224,6 +224,7 @@ describe('pruneUnresolvableReferences', () => {
 
       if (probe < MISSING_PROBE_LIMIT) {
         // One 404 is not yet proof the attachment is gone for good.
+        // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(pruneUnresolvableReferences(db, 'note-1', ['att-live', 'att-dead'])).toEqual([
           'att-live',
           'att-dead'

@@ -51,6 +51,7 @@ import { buildDeleteAttestation } from './vectors/delete-attestation'
 import { buildDeleteKeep } from './vectors/delete-keep'
 import { buildNoteBlocks } from './vectors/note-blocks'
 import { buildPackContainer } from './vectors/pack-container'
+import { buildPortalResolve } from './vectors/portal-resolve'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
 import { buildRecreateClock } from './vectors/recreate-clock'
@@ -71,7 +72,7 @@ interface VectorClass {
   /** Relative to `test-vectors/`. A class may own more than one file. */
   readonly files: ReadonlyArray<{
     readonly path: string
-    readonly build: () => Promise<unknown> | unknown
+    readonly build: () => unknown
   }>
 }
 
@@ -139,6 +140,7 @@ const CLASSES: readonly VectorClass[] = [
     name: 'delete-attestation',
     files: [{ path: 'delete-attestation.json', build: buildDeleteAttestation }]
   },
+  { name: 'portal-resolve', files: [{ path: 'portal-resolve.json', build: buildPortalResolve }] },
   {
     name: 'markdown-roundtrip',
     files: [

@@ -225,7 +225,7 @@ export function getJournalPropertyRows(
   from: string,
   to: string
 ): { rows: JournalPropertyRow[]; properties: JournalPropertySummary[] } {
-  const entries = listJournalEntriesInRange(db, from, to).reverse()
+  const entries = listJournalEntriesInRange(db, from, to).toReversed()
   const values = getPropertiesForNotes(
     db,
     entries.map((entry) => entry.id)

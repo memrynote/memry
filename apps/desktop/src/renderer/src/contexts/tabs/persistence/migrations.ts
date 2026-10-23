@@ -12,7 +12,7 @@ import { STORAGE_VERSION } from './types'
  * Old: { type: 'horizontal' | 'vertical', ratio, first, second }
  * New: { type: 'split', direction: 'horizontal' | 'vertical', ratio, first, second }
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 export const migrateLayout = (layout: any): SplitLayout => {
   if (!layout || typeof layout !== 'object') {
     return layout

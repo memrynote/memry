@@ -139,7 +139,8 @@ class HomePageHandler extends BaseItemHandler<HomePageSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(homePages).where(eq(homePages.id, itemId)).get() as
-      Record<string, unknown> | undefined
+      | Record<string, unknown>
+      | undefined
   }
 
   buildPushPayload(

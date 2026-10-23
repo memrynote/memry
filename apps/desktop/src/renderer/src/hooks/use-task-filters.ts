@@ -104,7 +104,7 @@ const loadPersistedFilterState = (filterKey: string): PersistedFilterState | nul
  */
 export const readPersistedFilterState = (filterKey: string): TaskFilters => ({
   ...defaultFilters,
-  ...(loadPersistedFilterState(filterKey)?.filters ?? {})
+  ...loadPersistedFilterState(filterKey)?.filters
 })
 
 const loadPersistedSortState = (sortKey: string): PersistedSortState | null => {
@@ -300,6 +300,7 @@ export const useFilteredAndSortedTasks = ({
         filtersWithDebouncedSearch,
         sort,
         projects,
+        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
         new Date(),
         noteIndex
       ),

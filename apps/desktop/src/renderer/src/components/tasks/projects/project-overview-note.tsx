@@ -56,6 +56,7 @@ export const ProjectOverviewNote = ({
 
   useEffect(() => {
     if (!homeNoteId) {
+      // oxlint-disable-next-line react/set-state-in-effect -- resets the loaded note when the home note id clears; the effect owns the load lifecycle (IPC)
       setNote(null)
       return
     }
@@ -69,7 +70,7 @@ export const ProjectOverviewNote = ({
         setNote(loaded)
         lastSavedContentRef.current = loaded?.content ?? null
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.error(
           'Failed to load overview note',
           extractErrorMessage(error, t('projectHome.overview.loadError'))

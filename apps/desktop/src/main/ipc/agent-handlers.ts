@@ -217,7 +217,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
           turnId
         }
       )
-        .catch((error) => {
+        .catch((error: unknown) => {
           logger.error('Agent turn failed', error)
           // Failures before the subprocess streams (missing CLI binary, MCP
           // server not running, spawn throw) never reach runTurn's own

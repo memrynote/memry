@@ -93,7 +93,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
     searchService
       .getStats()
       .then((stats) => setItemCount(stats.totalIndexed))
-      .catch((err) => log.warn('Failed to load search stats', err))
+      .catch((err: unknown) => log.warn('Failed to load search stats', err))
   }, [open, loadReasons])
 
   // First stage of the search funnel (search_opened -> search_performed ->
@@ -193,7 +193,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         itemIcon: item.metadata.type === 'note' ? (item.metadata.emoji ?? null) : null,
         searchQuery: query
       })
-      .catch((err) => log.warn('Failed to persist recent search', err))
+      .catch((err: unknown) => log.warn('Failed to persist recent search', err))
   }
 
   const toggleMatches = (item: SearchResultItemType): void => {
@@ -394,6 +394,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       : null
 
   const status = isIndexing ? (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live region; <output> would change inline display and styling
     <span role="status" className="flex items-center gap-2">
       {indexBuilt !== undefined && indexTotal !== undefined && indexTotal > 0 && (
         <span className="flex h-[3px] w-16 rounded-full bg-border" aria-hidden="true">

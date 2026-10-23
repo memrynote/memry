@@ -66,7 +66,7 @@ export function StatusPanel({
               </span>
               <span
                 className={cn(
-                  'ml-auto text-[11px] leading-3.5 tabular-nums',
+                  'ms-auto text-[11px] leading-3.5 tabular-nums',
                   selected ? 'text-text-secondary' : 'text-text-tertiary'
                 )}
               >

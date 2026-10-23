@@ -112,7 +112,7 @@ describe('KanbanBoard', () => {
     const onTaskClick = vi.fn()
     const onQuickAdd = vi.fn()
     const onToggleSelect = vi.fn()
-    const getOrderedTasks = vi.fn((_sectionId: string, tasks: Task[]) => [...tasks].reverse())
+    const getOrderedTasks = vi.fn((_sectionId: string, tasks: Task[]) => [...tasks].toReversed())
 
     render(
       <KanbanBoard

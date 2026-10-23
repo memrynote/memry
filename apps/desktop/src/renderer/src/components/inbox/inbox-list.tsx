@@ -393,6 +393,8 @@ export interface InboxListItemProps {
   className?: string
 }
 
+const EMPTY_FOLDERS: Folder[] = []
+
 export function InboxListItem({
   item,
   period: _period,
@@ -400,7 +402,7 @@ export function InboxListItem({
   isQuickFileActive = false,
   quickFileQuery = '',
   quickFileHighlightedIndex = 0,
-  folders = [],
+  folders = EMPTY_FOLDERS,
   onPreview,
   onArchive,
   onSnooze,
@@ -502,9 +504,11 @@ export function InboxListItem({
         item.isStale && 'opacity-60',
         className
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- row is a div inside the grouped section container; switching to li needs a ul parent and restyling
       role="listitem"
       tabIndex={isFocused ? 0 : -1}
       aria-label={t('list.itemAria', { type: typeLabels[item.type], title: displayTitle })}
+      // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- selection state is exposed to AT here; moving rows to listbox/option semantics is a follow-up
       aria-selected={isSelected}
       onClick={handleClick}
       data-item-id={item.id}

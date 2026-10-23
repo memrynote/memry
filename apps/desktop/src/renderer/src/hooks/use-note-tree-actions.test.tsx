@@ -18,7 +18,12 @@ const mocks = vi.hoisted(() => ({
   closeTab: vi.fn(),
   updateTabTitleByEntityId: vi.fn(),
   vaultConfig: null as null | Record<string, unknown>,
-  deleteJournalEntry: vi.fn()
+  deleteJournalEntry: vi.fn(),
+  confirmNoteDelete: vi.fn()
+}))
+
+vi.mock('@/components/note/content-area/portal-flows/use-note-delete-guard', () => ({
+  useNoteDeleteGuard: () => ({ confirmNoteDelete: mocks.confirmNoteDelete, dialog: null })
 }))
 
 vi.mock('@/hooks/use-vault-config', () => ({
@@ -176,6 +181,7 @@ const renderActions = (overrides: Partial<NoteTreeActionsDeps> = {}) => {
 
 describe('useNoteTreeActions', () => {
   beforeEach(() => {
+    mocks.confirmNoteDelete.mockResolvedValue(true)
     vi.clearAllMocks()
     mocks.createInSelectedFolder = true
     mocks.openPagesInNewTab = true
@@ -453,7 +459,7 @@ describe('useNoteTreeActions', () => {
   // own behaviour is covered in tab-crud-reducer.test.ts.
   it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {
     mocks.openPagesInNewTab = false
-    const { result, mutations } = renderActions()
+    const { result, mutations: _mutations } = renderActions()
 
     act(() => result.current.handleSelectionChange(['work-a']))
     expect(mocks.openTab).toHaveBeenLastCalledWith(
@@ -723,6 +729,19 @@ describe('useNoteTreeActions', () => {
       })
       expect(result.current.journalConfirm).toBeNull()
       expect(notesService.renameFolder).toHaveBeenCalledWith('Daily', 'Diary')
+    })
+
+    it('keeps a note when the delete guard is declined', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      mocks.confirmNoteDelete.mockResolvedValueOnce(false)
+      act(() => result.current.handleDeleteClick(entry))
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(mocks.confirmNoteDelete).toHaveBeenCalledWith([{ id: entry.id, title: entry.title }])
+      expect(mocks.deleteJournalEntry).not.toHaveBeenCalled()
+      expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
     })
 
     it('deletes a journal entry as a journal, by date', async () => {

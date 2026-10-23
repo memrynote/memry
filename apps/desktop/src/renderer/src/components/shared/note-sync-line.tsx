@@ -40,7 +40,7 @@ export function NoteSyncLine({ noteId }: { noteId: string }): React.JSX.Element 
         .then((next) => {
           if (!cancelled) setState(next)
         })
-        .catch((err) => log.warn('Could not read the note sync state', err))
+        .catch((err: unknown) => log.warn('Could not read the note sync state', err))
     }
     read()
     const timer = setInterval(read, REFRESH_MS)

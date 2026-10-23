@@ -46,7 +46,7 @@ export const useDateViewValue = (
     const pathOf = (task: Task): string[] | null => {
       const ancestorIds = tree.ancestorIds(task.id)
       if (ancestorIds.length === 0) return null
-      const titles = [...ancestorIds].reverse().map((id) => tree.get(id)?.title ?? '')
+      const titles = [...ancestorIds].toReversed().map((id) => tree.get(id)?.title ?? '')
       return foldTaskPath(projectNames.get(task.projectId) ?? '', titles)
     }
     return { tasks, pathOf, openPath }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useT } from '@memry/i18n/renderer'
+import type { useT } from '@memry/i18n/renderer'
 import { setShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
 import type { ShortcutConflict } from '@/lib/shortcut-catalog'
 

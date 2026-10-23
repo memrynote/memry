@@ -2,6 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as AttachmentOutboxModule from './attachment-outbox'
 
 const mocks = vi.hoisted(() => ({
   backfill: vi.fn(),
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('./attachment-backfill', () => ({ backfillUnsyncedAttachments: mocks.backfill }))
 vi.mock('./attachment-outbox', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./attachment-outbox')>()),
+  ...(await importOriginal<typeof AttachmentOutboxModule>()),
   drainAttachmentOutbox: mocks.drain,
   dropUploadsWithoutFile: mocks.dropGone
 }))
@@ -25,7 +26,9 @@ import { attachmentUploadRedriver } from './attachment-upload-redriver'
 function deferredToken(): { resolve: (token: string) => void } {
   let resolve!: (token: string) => void
   mocks.getToken.mockReturnValueOnce(new Promise<string>((r) => (resolve = r)))
-  return { resolve: (token) => resolve(token) }
+  return {
+    resolve: (token) => resolve(token)
+  }
 }
 
 describe('attachmentUploadRedriver', () => {

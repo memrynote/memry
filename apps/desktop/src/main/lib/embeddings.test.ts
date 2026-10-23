@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserWindow } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import { formatWorkerStderrTail, isInformationalWorkerStderr } from './embeddings-worker-stderr'
 
 const mockApp = vi.hoisted(() => ({
   getPath: vi.fn((name: string) => `/mock/${name}`)
@@ -75,12 +76,10 @@ vi.mock('@huggingface/transformers', () => {
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 import {
   EMBEDDING_DIMENSION,
-  formatWorkerStderrTail,
   generateEmbedding,
   getEmbeddingWorkerCrashContext,
   getModelInfo,
   initEmbeddingModel,
-  isInformationalWorkerStderr,
   isModelLoaded,
   isModelLoading,
   resetEmbeddingModelFailure,

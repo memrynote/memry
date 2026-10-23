@@ -6,9 +6,10 @@ import { JournalHeaderActions } from './journal/journal-header-actions'
 import { WikiLinkMenu, type WikiLinkSuggestionItem } from './note/content-area/wiki-link-menu'
 import { WikiLinkPreviewCard } from './note/content-area/wiki-link-preview-card'
 import { TabPane } from './split-view/tab-pane'
+import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
 
 vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/tag-fields/use-tag-schemas')>()),
+  ...(await importOriginal<typeof UseTagSchemasModule>()),
   useTagSchemas: () => ({ data: undefined, isLoading: false }),
   useResolvedTag: () => null,
   useObjectIdentity: () => null,
@@ -179,7 +180,8 @@ describe('small zero-line renderer surfaces', () => {
       />
     )
     const existingOption = screen.getByRole('option', { name: 'Existing Note' })
-    expect(existingOption.querySelector('svg')).toBeNull()
+    // A note without an icon of its own gets the generic note glyph (NoteMenuIcon).
+    expect(existingOption.querySelector('svg')).not.toBeNull()
 
     fireEvent.click(screen.getByText('Existing Note'))
     fireEvent.click(screen.getByText('create'))

@@ -17,6 +17,7 @@ import { createTestVault } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
 import { generateContentHash } from './frontmatter'
+import type * as IndexerModule from './indexer'
 
 const mocks = vi.hoisted(() => ({
   watch: vi.fn(),
@@ -46,7 +47,7 @@ vi.mock('../notes/runtime-effects', () => ({
   queueEmbeddedVaultFiles: vi.fn()
 }))
 vi.mock('./indexer', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./indexer')>()
+  const actual = await importOriginal<typeof IndexerModule>()
   return {
     ...actual,
     findVaultFiles: vi.fn(async (...args: Parameters<typeof actual.findVaultFiles>) => {

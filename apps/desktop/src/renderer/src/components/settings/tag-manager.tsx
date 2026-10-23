@@ -210,6 +210,7 @@ export function TagManager() {
                   {editingTag === tag.name ? (
                     <Input
                       ref={editInputRef}
+                      // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
                       autoFocus
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
@@ -342,6 +343,7 @@ export function TagManager() {
           </DialogHeader>
           <div className="py-4 space-y-2">
             {COLOR_ROWS.map((row, rowIndex) => (
+              // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
               <div key={rowIndex} className="flex gap-2 justify-center">
                 {row.map((colorName) => {
                   const clrs = TAG_COLORS[colorName]

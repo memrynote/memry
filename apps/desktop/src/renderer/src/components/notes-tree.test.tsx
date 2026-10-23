@@ -814,7 +814,8 @@ describe('T522: NotesTree - multi-selection', () => {
     await user.click(note2)
     await user.keyboard('{/Meta}')
 
-    // Both should be selected (implementation may vary)
+    await user.pointer({ target: note2, keys: '[MouseRight]' })
+    expect(await screen.findByText('Delete 2 items')).toBeInTheDocument()
   })
 })
 

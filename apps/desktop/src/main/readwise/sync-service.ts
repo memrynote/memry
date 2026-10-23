@@ -687,7 +687,7 @@ export function getReadwiseSyncService(): ReadwiseSyncService {
     },
     claimLost: claimLostToAnotherDevice,
     onClaimLost: () => {
-      void releaseTokenIfClaimedElsewhere().catch((error) =>
+      void releaseTokenIfClaimedElsewhere().catch((error: unknown) =>
         log.warn('Could not drop the Readwise token after a takeover', { error })
       )
     }

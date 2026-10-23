@@ -30,7 +30,8 @@ import {
   useNoteTasksChoice
 } from '@/components/note/delete-note-tasks'
 import { LargeFileViewer } from '@/components/note/large-file-viewer'
-import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
+import type { HeadingItem, HeadingInfo, Block } from '@/components/note'
+import { NoteLayout, ContentArea } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
@@ -39,7 +40,8 @@ import {
   clearNewNoteTitlePending,
   isNewNoteTitlePending
 } from '@/lib/new-note-title'
-import { TagsRow, Tag } from '@/components/note/tags-row'
+import type { Tag } from '@/components/note/tags-row'
+import { TagsRow } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { NoteNamesLine } from '@/components/note/names/note-names-line'
@@ -54,12 +56,11 @@ import { noteCoverImageTarget } from '@/components/note/cover-image-target'
 import { useVault } from '@/hooks/use-vault'
 import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import { useNoteCover } from '@/components/note/use-note-cover'
+import type { Backlink, Mention } from '@/components/note/backlinks'
 import {
   BacklinksSection,
   OutgoingLinksSection,
   UnlinkedMentionsSection,
-  Backlink,
-  Mention,
   backlinkId
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
@@ -87,9 +88,12 @@ import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/ser
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
+import { useBlockRefScroll } from '@/hooks/use-block-ref-scroll'
+import type { BlockRef } from '@/lib/block-ref'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -546,6 +550,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const openFindAt = findInPage.openAt
   useEffect(() => {
     if (!findRequest || !activeTab || !note || !isActiveNote || isLargeFile) return
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- effect only calls openFindAt on a find request; no ref is passed
     openFindAt(findRequest.query, findRequest.index)
     saveTabState(activeTab.id, { viewState: { [FIND_REQUEST_KEY]: undefined } })
   }, [findRequest, activeTab, note, isActiveNote, isLargeFile, openFindAt, saveTabState])
@@ -604,6 +609,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Stable ref so cleanup can always call the latest mutateAsync
   const updateNoteRef = useRef(updateNote.mutateAsync)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   updateNoteRef.current = updateNote.mutateAsync
 
   // Register with save registry + flush on unmount
@@ -719,15 +725,19 @@ export function NotePage({ noteId }: NotePageProps) {
     for (const t of allAvailableTags) {
       map.set(foldTag(t.tag), t.color)
     }
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     for (const key of pendingTagColorsRef.current.keys()) {
+      // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
       if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     // Just-created tags aren't in allAvailableTags until reindex+refetch;
     // without this the editor pill falls back to the hashed default color
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     for (const [key, color] of pendingTagColorsRef.current) {
       if (!map.has(key)) map.set(key, color)
     }
     return map
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
   }, [allAvailableTags])
 
   const tagIconMap = useMemo(() => {
@@ -738,6 +748,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return map
   }, [allAvailableTags])
 
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   const headerTags: Tag[] = useMemo(() => {
     return (note?.headerTags || []).map((tagName) => ({
       id: tagName,
@@ -748,6 +759,7 @@ export function NotePage({ noteId }: NotePageProps) {
         '',
       icon: tagIconMap.get(foldTag(tagName)) ?? null
     }))
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
   }, [note?.headerTags, tagColorMap, tagIconMap])
 
   const availableTags: Tag[] = useMemo(() => {
@@ -777,6 +789,7 @@ export function NotePage({ noteId }: NotePageProps) {
         noteId: bl.sourceId,
         noteTitle: bl.sourceTitle,
         folder: folderPath,
+        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
         date: new Date(),
         mentions: (bl.contexts ?? []).map((ctx, i) => ({
           id: `mention-${bl.sourceId}-${i}`,
@@ -810,12 +823,23 @@ export function NotePage({ noteId }: NotePageProps) {
     [headings]
   )
 
+  // A portal or link in this note that refers to one of another note's blocks:
+  // the where-used popover opens the note here and the note scrolls to it.
+  const blockRef = (activeTab?.viewState as { blockRef?: BlockRef } | undefined)?.blockRef
+  const clearBlockRef = useCallback(() => {
+    if (!activeTab?.id) return
+    saveTabState(activeTab.id, { viewState: { blockRef: undefined } })
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memoization intentionally depends on a ref-backed value
+  }, [activeTab?.id, saveTabState])
+  useBlockRefScroll(blockRef, editorContainerRef, clearBlockRef)
+
   const clearHeadingAnchor = useCallback(() => {
     if (!activeTab?.id) return
     // `undefined` deletes a `viewState` key — the only way to drop one now that
     // writes are merged (see `mergeViewState`). Leaving it set would re-fire the
     // jump every time the user came back to this tab.
     saveTabState(activeTab.id, { viewState: { headingText: undefined } })
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memoization intentionally depends on a ref-backed value
   }, [activeTab?.id, saveTabState])
 
   // The block id the anchor names, or null until the editor has emitted headings.
@@ -996,8 +1020,9 @@ export function NotePage({ noteId }: NotePageProps) {
   // that chain and misreads it as this effect forwarding a ref or live state
   // to a parent — it does neither; it only calls `refreshMindMap()`.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
     refreshMindMap()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [headings, refreshMindMap])
 
   const handleTitleChange = useCallback(
@@ -1090,6 +1115,7 @@ export function NotePage({ noteId }: NotePageProps) {
       pendingTagColorsRef.current.set(foldTag(name), color)
       await addHeaderTag(name)
     },
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
     [addHeaderTag]
   )
 
@@ -1209,12 +1235,18 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, isDeleted, refetchNote, t]
   )
 
+  const noteDeleteGuard = useNoteDeleteGuard()
   const deleteTasksChoice = useNoteTasksChoice(dialog.is('delete'), noteId ? [noteId] : [])
   const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
 
   // Delete the current note, then close its tab
   const handleDeleteConfirm = useCallback(async () => {
     if (!noteId || isDeleting) return
+    // Other notes that show or link this one get a say before it goes.
+    const proceed = await noteDeleteGuard.confirmNoteDelete([
+      { id: noteId, title: note?.title ?? '' }
+    ])
+    if (!proceed) return
     setIsDeleting(true)
     try {
       const result = await deleteNote.mutateAsync(noteId)
@@ -1230,7 +1262,19 @@ export function NotePage({ noteId }: NotePageProps) {
     } finally {
       setIsDeleting(false)
     }
-  }, [noteId, isDeleting, deleteNote, carriedTaskIdsToDelete, closeTab, activeTab?.id, t, dialog])
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memoization intentionally depends on a ref-backed value
+  }, [
+    noteId,
+    note?.title,
+    isDeleting,
+    deleteNote,
+    noteDeleteGuard,
+    carriedTaskIdsToDelete,
+    closeTab,
+    activeTab?.id,
+    t,
+    dialog
+  ])
 
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
@@ -1809,6 +1853,7 @@ export function NotePage({ noteId }: NotePageProps) {
             noteId={noteId ?? ''}
             noteTitle={note.title}
             onActivateNode={mindMapNavigation.activateNode}
+            // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
             initialFocusBlockId={activeHeadingRef.current}
             onFocusChange={handleMindMapFocusChange}
           />
@@ -2270,6 +2315,7 @@ export function NotePage({ noteId }: NotePageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {noteDeleteGuard.dialog}
     </NoteLayout>
   )
 }

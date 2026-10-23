@@ -172,7 +172,7 @@ const safeStringify = (value: unknown): string => {
   try {
     // Remaining types here (bigint/symbol/function) all stringify safely; unknown
     // can't be narrowed further by a typeof-object negative check.
-    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    // oxlint-disable-next-line typescript/no-base-to-string
     return typeof value === 'object' ? JSON.stringify(value) : String(value)
   } catch {
     return '<unserializable>'

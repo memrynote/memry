@@ -52,7 +52,9 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
   if (query.length < MIN_QUERY_LENGTH || hasOperators(query) || !isAIEnabled()) return []
 
   if (!isModelLoaded()) {
-    void initEmbeddingModel().catch((error) => logger.warn('Search model warm-up failed', error))
+    void initEmbeddingModel().catch((error: unknown) =>
+      logger.warn('Search model warm-up failed', error)
+    )
     return []
   }
 

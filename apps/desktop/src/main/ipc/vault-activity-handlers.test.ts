@@ -99,7 +99,9 @@ describe('vault activity IPC handlers', () => {
 
   it('rejects a retention the settings do not offer', async () => {
     openActivityLog(vaultPath)
-    await expect(invoke(VaultActivityChannels.invoke.SET_RETENTION, { days: 12 })).rejects.toThrow()
+    await expect(invoke(VaultActivityChannels.invoke.SET_RETENTION, { days: 12 })).rejects.toThrow(
+      'Validation failed: days: Invalid input'
+    )
   })
 
   it('creates the log file before revealing it', async () => {

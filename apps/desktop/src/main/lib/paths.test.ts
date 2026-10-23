@@ -87,6 +87,7 @@ describe('paths utils', () => {
 
   it('toMemryFileUrl builds a memry-file URL for the platform', () => {
     if (process.platform === 'win32') {
+      /* oxlint-disable vitest/no-conditional-expect -- platform-specific behavior: the contract differs per OS, so only the running OS's branch can be asserted */
       expect(toMemryFileUrl('C:\\vault\\note.md')).toBe('memry-file://local/C:/vault/note.md')
     } else {
       expect(toMemryFileUrl('/vault/note.md')).toBe('memry-file://local/vault/note.md')
@@ -98,6 +99,7 @@ describe('paths utils', () => {
       expect(fromMemryFileUrl('memry-file://local/C:/vault/note.md')).toBe('C:/vault/note.md')
     } else {
       expect(fromMemryFileUrl('memry-file://local/vault/note.md')).toBe('/vault/note.md')
+      /* oxlint-enable vitest/no-conditional-expect */
     }
   })
 

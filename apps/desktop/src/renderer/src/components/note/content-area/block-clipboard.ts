@@ -18,7 +18,7 @@
  * @module note/content-area/block-clipboard
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Memry's editors carry
+/* oxlint-disable typescript/no-explicit-any -- Memry's editors carry
    different block schemas; the menu types them as `<any, any, any>`. */
 
 import { getNodeById, type Block } from '@blocknote/core'

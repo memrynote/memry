@@ -68,10 +68,11 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
   // Clearing on an empty query is dropping stale async results, not deriving
   // state from a prop: leaving them would show the previous query's rows, and
   // the in-flight flag has to flip with the query it belongs to.
-  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- see above */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- see above */
   useEffect(() => {
     const trimmed = query.trim()
     if (!open || trimmed === '') {
+      // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
       setResults([])
       setEvents([])
       setLoading(false)
@@ -86,7 +87,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
         (response) => {
           if (!cancelled) setResults(response.results)
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas link picker: search failed', err)
             setResults([])
@@ -97,7 +98,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
         (response) => {
           if (!cancelled) setEvents(response.events)
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas link picker: event search failed', err)
             setEvents([])
@@ -114,7 +115,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       clearTimeout(timer)
     }
   }, [open, query])
-  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const groups = groupCandidates([
     ...candidatesFromSearch(results),

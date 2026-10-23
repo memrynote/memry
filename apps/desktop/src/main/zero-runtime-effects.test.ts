@@ -151,7 +151,7 @@ vi.mock('@memry/sync-core', () => {
     withIncrementedClock: (payload: string, deviceId: string) => {
       const parsed = JSON.parse(payload)
       parsed.clock = {
-        ...(parsed.clock ?? {}),
+        ...parsed.clock,
         [deviceId]: ((parsed.clock ?? {})[deviceId] ?? 0) + 1
       }
       return JSON.stringify(parsed)

@@ -3,7 +3,7 @@ import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import type Graph from 'graphology'
-import type { GraphDataResponse } from '@memry/contracts/graph-api'
+import type { GraphDataResponse, GraphSettings, GraphViewState } from '@memry/contracts/graph-api'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import {
   buildGraphologyGraph,
@@ -38,7 +38,6 @@ import {
 } from './physics-layout'
 import { GraphPinMarkers } from './graph-pin-markers'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
-import type { GraphSettings, GraphViewState } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
 import { useNoteMutations } from '@/hooks/use-notes-query'
 import { useGraphEdits, type GraphEdits } from '@/hooks/use-graph-edits'
@@ -167,12 +166,12 @@ export function GraphCanvas({
   // plain colour strings.
   const categoryColors = useMemo(
     () => categoryIndex.categories.map((category) => resolveGraphVar(category.colorVar, '#8c8c8c')),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     [categoryIndex, resolvedTheme]
   )
   const uncategorizedColor = useMemo(
     () => resolveGraphVar(GRAPH_GROUP_NONE_VAR, '#c4c2bc'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     [resolvedTheme]
   )
 
@@ -239,7 +238,7 @@ export function GraphCanvas({
     const tags = ownTag !== null ? [ownTag] : (data.nodes.find((n) => n.id === focus)?.tags ?? [])
     const group = collapsedGroups.find((candidate) => candidate.tags.some((t) => tags.includes(t)))
     return group && graph.hasNode(groupNodeId(group.id)) ? groupNodeId(group.id) : null
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [graph, revision, filterState.focusNodeId, data, collapsedGroups])
 
   const focusVisibleSet = useMemo(() => {
@@ -247,7 +246,7 @@ export function GraphCanvas({
     return computeFocusSet(graph, focusNodeId, filterState.focusDepth)
     // `revision` is not read here — it marks the patch that changed the topology
     // this focus neighbourhood is derived from.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [graph, revision, focusNodeId, filterState.focusDepth])
 
   const searchLower = useMemo(
@@ -405,7 +404,7 @@ export function GraphCanvas({
       minEdgeThickness: 0.5,
       ...SIGMA_ALLOW_INVALID_CONTAINER
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     []
   )
 
@@ -537,7 +536,7 @@ function useLiveGraph(
     return cache
   })
 
-  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
+  /* oxlint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
      react-you-might-not-need-an-effect/no-event-handler,
      react-you-might-not-need-an-effect/no-chain-state-updates -- genuine external sync: the
      graphology instance sigma is bound to is mutated here, and the counter only records that it
@@ -553,10 +552,11 @@ function useLiveGraph(
     }
     appliedRef.current = { data, options, themeKey }
     if (syncGraphologyGraph(graph, data, options, positionCache).changed) {
+      // oxlint-disable-next-line react/set-state-in-effect -- genuine external sync: graphology instance mutation; the counter only records that it changed
       setRevision((current) => current + 1)
     }
   }, [graph, data, options, themeKey, positionCache])
-  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
+  /* oxlint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change,
      react-you-might-not-need-an-effect/no-event-handler,
      react-you-might-not-need-an-effect/no-chain-state-updates */
 
@@ -834,6 +834,7 @@ function LayoutManager({
       applyRandomLayout(graph)
     }
     // A patch can add nodes the static layouts have never placed.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- revision re-runs the layout when the graph gained nodes
   }, [layout, graph, revision])
 
   if (layout !== 'forceatlas2') return null

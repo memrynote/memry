@@ -134,6 +134,7 @@ describe('putBlob', () => {
       putBlob(storage as unknown as R2Bucket, 'other-user/items/x', new ArrayBuffer(0), 'user-1')
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       await putBlob(
         storage as unknown as R2Bucket,
@@ -141,10 +142,11 @@ describe('putBlob', () => {
         new ArrayBuffer(0),
         'user-1'
       )
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UNAUTHORIZED)
-      expect((e as AppError).statusCode).toBe(403)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UNAUTHORIZED)
+    expect((e as AppError).statusCode).toBe(403)
   })
 
   it('should check etag when expectedEtag is provided and no conflict exists', async () => {
@@ -172,6 +174,7 @@ describe('putBlob', () => {
       })
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       await putBlob(
         storage as unknown as R2Bucket,
@@ -180,9 +183,10 @@ describe('putBlob', () => {
         'user-1',
         { expectedEtag: 'etag-new' }
       )
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.STORAGE_VERSION_CONFLICT)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.STORAGE_VERSION_CONFLICT)
   })
 
   it('should throw STORAGE_UPLOAD_FAILED when R2 put returns null', async () => {
@@ -194,12 +198,14 @@ describe('putBlob', () => {
       putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       storage.put.mockResolvedValue(null)
       await putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UPLOAD_FAILED)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UPLOAD_FAILED)
   })
 
   it('should throw STORAGE_QUOTA_EXCEEDED for quota-related R2 errors', async () => {
@@ -211,13 +217,15 @@ describe('putBlob', () => {
       putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       storage.put.mockRejectedValue(new Error('Storage quota exceeded for bucket'))
       await putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.STORAGE_QUOTA_EXCEEDED)
-      expect((e as AppError).statusCode).toBe(413)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.STORAGE_QUOTA_EXCEEDED)
+    expect((e as AppError).statusCode).toBe(413)
   })
 
   it('should throw STORAGE_UNAUTHORIZED for permission-related R2 errors', async () => {
@@ -229,13 +237,15 @@ describe('putBlob', () => {
       putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       storage.put.mockRejectedValue(new Error('Access denied: forbidden'))
       await putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UNAUTHORIZED)
-      expect((e as AppError).statusCode).toBe(403)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UNAUTHORIZED)
+    expect((e as AppError).statusCode).toBe(403)
   })
 
   it('should throw STORAGE_UPLOAD_FAILED for unknown R2 errors', async () => {
@@ -247,13 +257,15 @@ describe('putBlob', () => {
       putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
     ).rejects.toThrow(AppError)
 
+    let e: unknown
     try {
       storage.put.mockRejectedValue(new Error('Network timeout'))
       await putBlob(storage as unknown as R2Bucket, 'user-1/items/x', new ArrayBuffer(0), 'user-1')
-    } catch (e) {
-      expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UPLOAD_FAILED)
-      expect((e as AppError).statusCode).toBe(500)
+    } catch (thrown) {
+      e = thrown
     }
+    expect((e as AppError).code).toBe(ErrorCodes.STORAGE_UPLOAD_FAILED)
+    expect((e as AppError).statusCode).toBe(500)
   })
 })
 

@@ -203,6 +203,7 @@ export function TemplatesSettings() {
               value={duplicateName}
               onChange={(e) => setDuplicateName(e.target.value)}
               placeholder={t('templates.dialogs.duplicate.placeholder')}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- the duplicate dialog exists to type a name, so its input takes focus on open
               autoFocus
             />
           </div>
@@ -254,6 +255,7 @@ function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: Temp
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- card with nested controls cannot be a native button
       role="button"
       tabIndex={0}
       aria-label={template.name}

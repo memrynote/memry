@@ -8,8 +8,11 @@
  * the config registered or y-prosemirror deletes the node from the shared doc.
  */
 
-import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
-import type { CustomInlineContentImplementation } from '@blocknote/core'
+import {
+  createInlineContentSpec,
+  type InlineContentSpec,
+  type CustomInlineContentImplementation
+} from '@blocknote/core'
 
 export const hashTagConfig = {
   type: 'hashTag' as const,

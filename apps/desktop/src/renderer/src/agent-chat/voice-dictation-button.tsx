@@ -112,7 +112,7 @@ export function VoiceDictationButton({
   const recording = state === 'requesting-permission' || state === 'recording'
 
   useEffect(() => {
-    /* eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent -- recording flips inside useVoiceCapture's own event handlers, not in an event this component sees; the composer only needs the boolean to keep this slot mounted mid-capture */
+    /* oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent -- recording flips inside useVoiceCapture's own event handlers, not in an event this component sees; the composer only needs the boolean to keep this slot mounted mid-capture */
     onBusyChange?.(recording || transcribing)
   }, [onBusyChange, recording, transcribing])
 

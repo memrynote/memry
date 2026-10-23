@@ -344,7 +344,8 @@ test.describe('Keyboard shortcuts', () => {
       .poll(() =>
         page.evaluate(() => {
           const dom = document.querySelector('.ProseMirror') as
-            (Element & { editor?: { state: { selection: { from: number; to: number } } } }) | null
+            | (Element & { editor?: { state: { selection: { from: number; to: number } } } })
+            | null
           const selection = dom?.editor?.state.selection
           return selection ? selection.to - selection.from : 0
         })

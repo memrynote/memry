@@ -123,10 +123,10 @@ Turkish "Sil 3 görevs?".
   (`approval-actions.tsx:72-74`), so Greek shows "Creating note" inside a Greek sentence.
 - `task-activity-row.tsx:97` shows booleans as "true"/"false"; `stop-repeating-dialog.tsx:48-50`
   hard-codes "on a schedule" and lowercases localized text.
-- The i18n ESLint rules do not inspect JS strings or template literals, so these pass lint.
+- The i18n lint rules do not inspect JS strings or template literals, so these pass lint.
   `R/components/folder-view/row-context-menu.tsx:215` ("Move {n} Notes to Folder...") also
   slips through: the item contains ⇧⌘M, so `isShortcutDisplayElement`
-  (`apps/desktop/scripts/i18n/eslint/no-jsx-text-literals.mjs:44,55-58`) skips it.
+  (`apps/desktop/scripts/i18n/eslint/no-jsx-text-literals.mjs:44,55-58` at the time; now under `scripts/i18n/oxlint/`) skips it.
 
 ### 6. Fragments closed by a quote or `?` in JSX
 

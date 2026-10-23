@@ -74,6 +74,7 @@ export function useResolvedFileUrl(url: string): string | null {
 
   useEffect(() => {
     if (isResolved || !resolve) {
+      // oxlint-disable-next-line react/set-state-in-effect -- state resets when its input changes; render-time derivation would need previous-value tracking
       setResolved(url)
       return
     }

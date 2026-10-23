@@ -20,7 +20,7 @@ import {
   duplicateCanvas,
   getCanvasFilePath
 } from '../canvas/store'
-import { syncCanvasCreate, syncCanvasUpdate, syncCanvasDelete } from '../canvas/sync-bridge'
+import { syncCanvasCreate, syncCanvasUpdate } from '../canvas/sync-bridge'
 import { trackMainEvent } from '../telemetry/track'
 
 // Mock electron ipcMain so register/unregister can run in tests

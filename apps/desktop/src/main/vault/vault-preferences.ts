@@ -146,7 +146,7 @@ export function readPreferences(vaultPath: string): VaultPreferences {
       minimizeToTray: prefs.minimizeToTray ?? VAULT_PREFERENCES_DEFAULTS.minimizeToTray,
       editor: {
         ...EDITOR_PREFERENCES_DEFAULTS,
-        ...(prefs.editor ?? {})
+        ...prefs.editor
       }
     }
   } catch {

@@ -1,5 +1,5 @@
 import type { MemryApp } from '../app-core/memry-app.ts'
-import { hasFlag, print, requireFirst, type CliIo, type ParsedCli } from '../run.ts'
+import { hasFlag, print, requireFirst, type CliIo, type ParsedCli } from '../cli-support.ts'
 
 /** Sync commands added for desktop parity. Returns false for a subcommand it does not own. */
 export async function runSyncExtras(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<boolean> {

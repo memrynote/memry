@@ -45,9 +45,7 @@ import {
   updateTagIcon,
   getNoteTags,
   noteIdsWithTag,
-  findTagDefinition
-} from '../tags/store'
-import {
+  findTagDefinition,
   getAllTagsWithCounts,
   mergeTagInNotes,
   mergeTagInTasks,
@@ -343,7 +341,7 @@ export function registerTagsHandlers(): void {
         syncTagDefinitionDelete(tagSnapshot)
         await Promise.all(
           noteIds.map((noteId) =>
-            editNoteHeaderTags(indexDb, noteId, { remove: [tag] }).catch((err) => {
+            editNoteHeaderTags(indexDb, noteId, { remove: [tag] }).catch((err: unknown) => {
               log.warn('Failed to update frontmatter for note', { noteId, err })
               trackMainError('tags', 'frontmatter_writeback', err)
             })
@@ -376,10 +374,12 @@ export function registerTagsHandlers(): void {
         assertNoteWritable(input.noteId)
         removeTagFromNote(db, input.noteId, input.tag)
 
-        await editNoteHeaderTags(db, input.noteId, { remove: [input.tag] }).catch((err) => {
-          log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
-          trackMainError('tags', 'frontmatter_writeback', err)
-        })
+        await editNoteHeaderTags(db, input.noteId, { remove: [input.tag] }).catch(
+          (err: unknown) => {
+            log.warn('Failed to update frontmatter for note', { noteId: input.noteId, err })
+            trackMainError('tags', 'frontmatter_writeback', err)
+          }
+        )
 
         emitTagEvent(TagsChannels.events.NOTES_CHANGED, {
           tag: input.tag,
@@ -448,7 +448,7 @@ export function registerTagsHandlers(): void {
           noteResult.noteIds.map((noteId) =>
             editNoteHeaderTags(indexDb, noteId, {
               rename: [{ from: input.source, to: trimmedTarget }]
-            }).catch((err) => {
+            }).catch((err: unknown) => {
               log.warn('Failed to update frontmatter for note during merge', { noteId, err })
               trackMainError('tags', 'frontmatter_writeback', err)
             })

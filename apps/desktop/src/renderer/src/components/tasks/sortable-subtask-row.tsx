@@ -106,6 +106,7 @@ export const SortableSubtaskRow = ({
         <div
           {...attributes}
           {...listeners}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
           role="button"
           tabIndex={onClick ? 0 : -1}
           onClick={() => onClick?.(subtask.id)}
@@ -134,6 +135,7 @@ export const SortableSubtaskRow = ({
           </span>
 
           <span className="flex min-w-0 grow items-center gap-2">
+            {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
             <span onClick={(e) => e.stopPropagation()} className="flex shrink-0">
               <InteractiveStatusIcon
                 type={statusType}

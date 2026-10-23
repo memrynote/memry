@@ -128,7 +128,7 @@ interface NotesTreeProps {
 }
 
 export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function NotesTree(
-  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps = {},
+  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps,
   ref
 ) {
   const { t } = useT('notes')
@@ -172,15 +172,6 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   )
 
   const renameCallbackRef = useCallback((el: HTMLInputElement | null) => {
-    if (el) {
-      requestAnimationFrame(() => {
-        el.focus()
-        el.select()
-      })
-    }
-  }, [])
-
-  const folderRenameCallbackRef = useCallback((el: HTMLInputElement | null) => {
     if (el) {
       requestAnimationFrame(() => {
         el.focus()
@@ -296,6 +287,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
     container.addEventListener('keydown', handleKeyDown)
     return () => container.removeEventListener('keydown', handleKeyDown)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete, actions])
 
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
@@ -647,7 +639,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           />
           {isBeingRenamed ? (
             <input
-              ref={folderRenameCallbackRef}
+              ref={renameCallbackRef}
               type="text"
               aria-label={t('tree.actions.rename')}
               value={actions.folderRenameValue}
@@ -821,6 +813,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         onConfirm={(...args) => void actions.handleDeleteConfirm(...args)}
         journalFolder={actions.journalFolder}
       />
+
+      {actions.deleteGuardDialog}
 
       <MoveToFolderDialog
         open={actions.selectionMoveRequest !== null}

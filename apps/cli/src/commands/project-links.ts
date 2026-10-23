@@ -19,7 +19,7 @@ import {
   requireFirst,
   type CliIo,
   type ParsedCli
-} from '../run.ts'
+} from '../cli-support.ts'
 
 const ITEM_FLAGS: Record<string, ProjectLinkItemType> = {
   note: 'note',

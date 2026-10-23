@@ -14,6 +14,7 @@ import type {
 } from '@memry/contracts/agent-mcp-channels'
 import type { NoteFileType } from '@memry/contracts/search-api'
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 function parse<T>(schema: ZodTypeAny, input: unknown): T {
   const r = schema.safeParse(input)
   if (!r.success) {

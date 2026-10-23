@@ -13,7 +13,7 @@ import type { Block } from './types'
 // Uses the default BlockNote schema: it already carries the table blocks, and
 // the custom schema's extra specs drag react-pdf into jsdom.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 // jsdom ships neither, and BlockNote's paste path constructs both.
 class FakeDataTransfer {

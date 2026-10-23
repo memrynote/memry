@@ -9,7 +9,6 @@ import {
   useLayoutEffect,
   useRef
 } from 'react'
-import { MotionConfig } from 'motion/react'
 import { useToday } from '@/hooks/use-today'
 import { resolveProjectReorderTarget } from '@/components/sidebar/sidebar-drag-types'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -23,6 +22,7 @@ import {
   disposeVaultWorkspace,
   type VaultWorkspaceLifecycle
 } from '@/lib/vault-workspace-lifecycle'
+import { ThemeSyncManager, TabPersistenceManager } from '@/components/app-managers'
 import { Loader2 } from '@/lib/icons'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -55,7 +55,6 @@ import {
   type CommandImpl
 } from '@/commands'
 import { useRecordRecentlyOpened } from '@/hooks/use-recently-opened'
-import { useTabSessionPersistence } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer } from '@/components/split-view'
@@ -95,16 +94,12 @@ import { VaultSwitchContentCover } from '@/components/vault-switch-content-cover
 import {
   getVaultSwitchState,
   subscribeVaultSwitchState,
-  useVaultSwitchState,
-  wasEnteredBySwitch
+  useVaultSwitchState
 } from '@/lib/vault-switch-state'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdateInstallFailedDialog } from '@/components/updater/update-install-failed-dialog'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
-import { UpdateReleaseNotesTabOpener } from '@/components/updater/update-release-notes-tab-opener'
 import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
-import { useThemeSync } from '@/hooks/use-theme-sync'
-import { useWeekStartSync } from '@/hooks/use-week-start-sync'
 import { trackTelemetry } from '@/lib/telemetry'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
@@ -167,64 +162,6 @@ export type AppPage = BasePage | 'tasks' | 'home'
 
 // Sidebar badge ids, hoisted so the count pass gets a stable input array.
 const taskViewIds = taskViews.map((view) => view.id)
-
-// =============================================================================
-// THEME SYNC MANAGER (inside ThemeProvider)
-// =============================================================================
-
-function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const { reduceMotion } = useThemeSync()
-  useWeekStartSync()
-  // 'user' follows the OS; motion's own default ('never') would ignore it.
-  return (
-    <MotionConfig reducedMotion={reduceMotion === 'on' ? 'always' : 'user'}>
-      {children}
-    </MotionConfig>
-  )
-}
-
-// =============================================================================
-// TAB PERSISTENCE MANAGER (inside TabProvider)
-// =============================================================================
-
-/**
- * Component that enables tab session persistence.
- * Must be rendered inside TabProvider.
- */
-function TabPersistenceManager({
-  vaultPath,
-  children
-}: {
-  vaultPath: string | null
-  children: React.ReactNode
-}): React.JSX.Element {
-  // Restore the stored session on mount, and hold the debounced auto-save until
-  // that restore has landed — otherwise the save writes the provider's default
-  // Home tab over the session the restore is still on its way to read.
-  //
-  // The vault path decides which session that is: each vault keeps its own tabs,
-  // so switching reads the other vault's set instead of destroying either.
-  //
-  // "Restore session on start" is about launching the app. A vault entered by
-  // an in-app switch always comes back as it was left, tabs and all; read once
-  // at mount, since this tree lives exactly as long as the vault is open.
-  const [enteredBySwitch] = useState(() => wasEnteredBySwitch(vaultPath))
-  const { isRestoring } = useTabSessionPersistence({
-    vaultPath,
-    restoreFullSession: enteredBySwitch
-  })
-
-  return (
-    <>
-      {children}
-      {/* Opens the ephemeral read-only release-notes tab after an update+restart.
-          Mounted only once the session restore has settled: RESTORE_SESSION replaces
-          the whole tab state, so a tab opened before it would be silently wiped
-          (and its one-shot stash already consumed). */}
-      {!isRestoring && <UpdateReleaseNotesTabOpener />}
-    </>
-  )
-}
 
 // =============================================================================
 // MAIN APP CONTENT (inside TabProvider)
@@ -688,7 +625,7 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
           tasks={tasks}
           selectedIds={selectedTaskIds}
           selectedIdsRef={selectedTaskIdsRef}
-          onDragEnd={(event, state) => void handleDragEnd(event, state)}
+          onDragEnd={(event, state) => handleDragEnd(event, state)}
         >
           <DroppedPriorityProvider value={droppedPriorities}>{mainContent}</DroppedPriorityProvider>
         </DragProvider>
@@ -793,6 +730,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
   // effect cleanups after this, and those read the flag to tell a hide from an
   // unmount (see `vault-workspace-lifecycle`).
   useLayoutEffect(() => {
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
     activePathRef.current = activePath
     for (const [path, lifecycle] of lifecyclesRef.current) {
       lifecycle.hidden = path !== activePath
@@ -801,7 +739,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
 
   // Evicted vaults drop their cache, and whatever their hidden tree parked.
   // Releases external resources held in refs; nothing flows to a parent.
-  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
+  /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     for (const [path, client] of clientsRef.current) {
       if (kept.includes(path)) continue
@@ -813,8 +751,9 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       disposeVaultWorkspace(lifecycle)
       lifecyclesRef.current.delete(path)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
   }, [kept])
-  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
+  /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   useEffect(() => {
     const lifecycles = lifecyclesRef.current
@@ -822,6 +761,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       for (const lifecycle of lifecycles.values()) disposeVaultWorkspace(lifecycle)
       lifecycles.clear()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
   }, [])
 
   // Leaving a vault: stop its in-flight reads before main closes it, and mark
@@ -863,14 +803,17 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       void client.cancelQueries()
       void client.invalidateQueries({ refetchType: 'none' })
     })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
   }, [activePath])
 
   return (
     <>
+      {/* oxlint-disable-next-line react/refs -- lazy per-path client/lifecycle registry; created once per vault path and stable afterwards */}
       {kept.map((path) => (
         <Activity key={path} mode={path === activePath ? 'visible' : 'hidden'}>
           <div className="contents" inert={leaving && path === activePath}>
             <QueryClientProvider client={clientFor(path)}>
+              {/* oxlint-disable-next-line react/jsx-no-constructed-context-values -- lifecycleFor returns a registry-stable object per vault path */}
               <VaultWorkspaceLifecycleContext.Provider value={lifecycleFor(path)}>
                 <VaultScopeProvider vaultPath={path}>
                   <VaultWorkspace vaultPath={path} />

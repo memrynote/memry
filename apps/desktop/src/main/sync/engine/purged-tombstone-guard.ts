@@ -28,7 +28,10 @@ const RECREATABLE_TYPES = new Set<string>(RECREATABLE_AFTER_PURGE_ITEM_TYPES)
  *   neither in the local row's clock nor among this account's known devices.
  */
 export type LocalTombstoneRefusal =
-  'local_clockless' | 'local_pending_write' | 'local_newer' | 'unknown_device'
+  | 'local_clockless'
+  | 'local_pending_write'
+  | 'local_newer'
+  | 'unknown_device'
 
 /** Ids of this account's devices cached locally, or null when the cache is empty (not checkable). */
 export function readKnownDeviceIds(db: DrizzleDb): ReadonlySet<string> | null {

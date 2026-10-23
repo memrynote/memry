@@ -124,8 +124,8 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
   // amortized work per line instead of re-parsing up to RING_LIMIT timestamps and
   // reallocating the array on every warn/error. Epoch ms is captured at push time in
   // a parallel array, so the shipped line shape (`ts` ISO string) is untouched.
-  const ringLines = new Array<DiagnosticLogLine | null>(RING_LIMIT).fill(null)
-  const ringTsMs = new Array<number>(RING_LIMIT).fill(0)
+  const ringLines = Array.from<DiagnosticLogLine | null>({ length: RING_LIMIT }).fill(null)
+  const ringTsMs = Array.from<number>({ length: RING_LIMIT }).fill(0)
   let ringHead = 0
   let ringSize = 0
 
@@ -226,7 +226,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
           typeof throttled.line.fields?.repeatCount === 'number'
             ? throttled.line.fields.repeatCount
             : 1
-        throttled.line.fields = { ...(throttled.line.fields ?? {}), repeatCount: priorCount + 1 }
+        throttled.line.fields = { ...throttled.line.fields, repeatCount: priorCount + 1 }
         return
       }
 

@@ -1749,6 +1749,7 @@
           "heading": "Deleted books",
           "description": "Notes you deleted in memry. They stay deleted until you restore them.",
           "meta": "Deleted {date} · {count, plural, one {# highlight} other {# highlights}}",
+          "metaDocument": "Deleted {date} · saved article",
           "restore": "Restore",
           "footer": "Restoring recreates the note with all of its highlights.",
           "empty": "No deleted books",

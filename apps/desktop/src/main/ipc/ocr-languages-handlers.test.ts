@@ -42,7 +42,7 @@ describe('OCR languages IPC handlers', () => {
   it('rejects a language the server does not serve before changing anything', async () => {
     await expect(
       invokeHandler(OcrLanguagesChannels.invoke.SET, { languages: ['klingon'] })
-    ).rejects.toThrow()
+    ).rejects.toThrow(/Validation failed: languages\.0: Invalid option: expected one of/)
     expect(mocks.setOcrLanguages).not.toHaveBeenCalled()
   })
 

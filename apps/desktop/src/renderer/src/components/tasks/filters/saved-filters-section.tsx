@@ -115,7 +115,7 @@ export const SavedFiltersSection = ({
                 <button
                   type="button"
                   onClick={() => onApply(filter)}
-                  className="flex-1 min-w-0 text-left focus:outline-none"
+                  className="flex-1 min-w-0 text-start focus:outline-none"
                 >
                   <span
                     className={cn(

@@ -197,6 +197,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
               <>
                 <div
                   className="flex h-1 overflow-hidden rounded-full bg-muted"
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom storage bar; native progress element cannot take this styling
                   role="progressbar"
                   aria-valuenow={data.used}
                   aria-valuemax={data.limit}

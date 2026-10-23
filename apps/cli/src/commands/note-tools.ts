@@ -18,7 +18,7 @@ import {
   requireFirst,
   type CliIo,
   type ParsedCli
-} from '../run.ts'
+} from '../cli-support.ts'
 
 const NEEDS_EMBEDDINGS =
   ' It reads the on-device embeddings index, which only the Memry desktop app builds and queries.'

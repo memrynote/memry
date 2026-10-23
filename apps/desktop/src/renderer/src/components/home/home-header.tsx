@@ -78,6 +78,7 @@ export function HomeHeader({
 
   // ponytail: greeting/date computed once per render; no timer to roll them at
   // midnight/hour boundaries — next interaction re-renders them.
+  // oxlint-disable-next-line react/purity -- greeting and date intentionally read the wall clock on each render
   const now = new Date()
   const greeting = t(`home.greeting.${getGreetingKey(now.getHours())}`)
   const date = now.toLocaleDateString(i18n.language, {

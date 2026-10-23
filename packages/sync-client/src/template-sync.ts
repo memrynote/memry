@@ -33,7 +33,8 @@ export class TemplateSyncService {
   constructor(deps: TemplateSyncDeps) {
     const load = (templateId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(templates).where(eq(templates.id, templateId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'template',

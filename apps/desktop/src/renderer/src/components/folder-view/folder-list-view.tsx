@@ -99,6 +99,7 @@ export function FolderListView({
         const row = (
           <div
             key={note.id}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- whole-row card with nested interactive children; a nested <button> would be invalid HTML
             role="button"
             tabIndex={0}
             // Drops onto a canvas as a card; this view has no multi-select.

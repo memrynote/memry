@@ -39,7 +39,7 @@ const parser = new XMLParser({
   isArray: (name) => name === 'note' || name === 'tag' || name === 'resource'
 })
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type AnyObj = Record<string, any>
 
 function extractContent(raw: unknown): string {

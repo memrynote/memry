@@ -352,6 +352,8 @@
         "insert": "Ekle",
         "open": "Aç"
       },
+      "close": "Menüyü kapat",
+      "new": "Yeni",
       "matchesAlias": "eşleşme:",
       "noMatch": "“{query}” ile eşleşen blok yok",
       "fallback": {

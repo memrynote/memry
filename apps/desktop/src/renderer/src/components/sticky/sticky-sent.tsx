@@ -51,6 +51,7 @@ export function StickySent({
   }, [canUndo, onOpen, onUndo, onDone])
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
     <div role="status" className="flex flex-1 flex-col justify-center gap-3 px-5 py-4">
       <div className="flex items-center gap-2">
         <span className="flex size-5 items-center justify-center rounded-full bg-foreground/[0.08]">

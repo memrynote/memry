@@ -5,16 +5,14 @@
  * bounded shutdown, SIGKILL fallback, and first-window retry.
  */
 
-import { test as base, ElectronApplication, Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
+import { test as base } from '@playwright/test'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 
-import {
-  destroyLaunchedElectron,
-  launchElectronWithWindow,
-  LaunchedElectron
-} from './utils/electron-lifecycle'
+import type { LaunchedElectron } from './utils/electron-lifecycle'
+import { destroyLaunchedElectron, launchElectronWithWindow } from './utils/electron-lifecycle'
 
 export const test = base.extend<{
   electronApp: ElectronApplication

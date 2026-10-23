@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import ts from 'typescript'
+// TypeScript 7 ships no JS compiler API; this AST scan stays on the last 6.x release.
+import ts from 'typescript-6'
 import {
   FALLBACK_LOCALE,
   defaultWorkspaceRoot,
@@ -55,7 +56,7 @@ export function isIgnoredSourcePath(filePath, workspaceRoot = defaultWorkspaceRo
     rel.includes('/build/') ||
     rel.startsWith('apps/desktop/tests/') ||
     /\.(test|spec)\.tsx?$/.test(rel) ||
-    /\.d\.ts$/.test(rel)
+    rel.endsWith('.d.ts')
   )
 }
 

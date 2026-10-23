@@ -40,6 +40,7 @@ export const HubRow = ({
   className
 }: HubRowProps): React.JSX.Element => (
   <div
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
     role="listitem"
     className={cn(
       'group relative flex w-full items-center gap-2.5 rounded-md px-2 py-1.5',

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Home Dashboard — Recently edited widget E2E (group F)
  *
@@ -80,7 +79,7 @@ function seedNotesByRecency(
     seeded.push({ id: '', title })
   }
   // Newest-first.
-  return seeded.reverse()
+  return seeded.toReversed()
 }
 
 /**

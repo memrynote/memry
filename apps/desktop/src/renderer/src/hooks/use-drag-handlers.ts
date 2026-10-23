@@ -273,6 +273,8 @@ export const useDragHandlers = ({
           onUpdateTask(id, { archivedAt: null })
         })
         break
+      default:
+        break
     }
 
     setUndoStack((prev) => prev.slice(0, -1))

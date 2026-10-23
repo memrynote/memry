@@ -51,6 +51,7 @@ const SortButton = ({
     <button
       type="button"
       onClick={() => onSort(sortKey)}
+      // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria-sort on sortable header button; no columnheader element in this layout
       aria-sort={active ? (sort?.dir === 'asc' ? 'ascending' : 'descending') : undefined}
       className={cn(
         'flex items-center gap-1 text-xs font-semibold tracking-[0.02em] hover:text-foreground',
@@ -96,7 +97,7 @@ export const AllTab = ({ source, showDone, handlers }: AllTabProps): React.JSX.E
   })
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
 
-  const now = useMemo(() => new Date(), [])
+  const [now] = useState(() => new Date())
   const rows = useMemo(() => {
     const built = buildAllRows({ ...source, now, showDone })
     return sort
@@ -162,6 +163,7 @@ export const AllTab = ({ source, showDone, handlers }: AllTabProps): React.JSX.E
       {rows.length === 0 ? (
         <p className="px-2 py-1.5 text-[13px] text-muted-foreground">{t('projectHub.all.empty')}</p>
       ) : (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
         <div role="list" className="space-y-px">
           {rows.map((row) => {
             const nested = !sort && row.parentNoteId !== null

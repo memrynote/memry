@@ -51,6 +51,7 @@ interface OutboundReminderRow {
   triggeredAt?: unknown
 }
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- T keeps the caller's row type so object literals with extra columns still type-check
 export function toOutboundReminderPayload<T extends OutboundReminderRow>(
   row: T
 ): Record<string, unknown> {

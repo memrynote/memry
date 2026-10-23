@@ -39,7 +39,7 @@ This directory owns the Electron app (`@memry/desktop`), the reference implement
 ## Renderer and UI
 
 - Read `DESIGN.md` before a UI change. Live token values are in `src/renderer/src/assets/base.css`, and `docs/DESIGN_TOKENS.md` catalogs them.
-- Every user-visible string goes through i18n. Add keys to `packages/i18n/src/locales/en/<namespace>.json`, and other locales fall back to English. ESLint rejects literal JSX text, user-facing attribute strings, toast strings, and `extractErrorMessage` fallbacks. `pnpm --filter @memry/desktop i18n:check` must pass.
+- Every user-visible string goes through i18n. Add keys to `packages/i18n/src/locales/en/<namespace>.json`, and other locales fall back to English. The oxlint i18n plugin (`scripts/i18n/oxlint/`) rejects literal JSX text, user-facing attribute strings, toast strings, and `extractErrorMessage` fallbacks. `pnpm --filter @memry/desktop i18n:check` must pass.
 - Show errors with `extractErrorMessage(err, fallback)` from `@/lib/ipc-error`, using a translated fallback.
 - Log with `createLogger('Scope')` from `@/lib/logger`.
 - Pre-commit scans each staged renderer file in full and rejects raw `console.*` calls and physical direction classes anywhere in it. Clean up a file you touch in the same commit.
@@ -60,6 +60,7 @@ This directory owns the Electron app (`@memry/desktop`), the reference implement
 ## Tests
 
 - `config/vitest.config.ts` defines five projects. `shared` runs the shared packages' tests, `main` and `preload` run in Node, `renderer` runs in jsdom, and `main-integration` runs `*.integration.test.ts` against the real sync-server Worker in miniflare through `tests/sync-harness`. Run one file with `pnpm --filter @memry/desktop test <path>`, or one project with `test:main`, `test:renderer`, `test:shared`, or `test:main-integration`.
+- Every `typecheck` script runs `scripts/typecheck.mjs`: `oxlint --type-check` (TypeScript 7) over the files each tsconfig covers. oxlint ignores a tsconfig `exclude`, so the script lists files with `tsc --listFilesOnly`. oxlint finds a file's program through `tsconfig.json` and its `references`, so a new tsconfig for checked files must be listed there. TypeScript 7 has no compiler API, so scripts and tests that need one import `typescript-6`.
 - `typecheck:test` compiles test files through `tsconfig.test.node.json` and `tsconfig.test.web.json`. Their `exclude` lists name 284 test files that failed to compile when the gate landed, and the lists only shrink. A new or touched test file compiles and stays off them.
 - `test:e2e` runs Playwright against `out/main/index.js` and does not build it. Run `pnpm --filter @memry/desktop exec electron-vite build` after your last code change, then `pnpm --filter @memry/desktop test:e2e <spec>`, once. A fresh worktree has no `out/` and fails with `Cannot find module .../out/main/index.js`, and an existing `out/` may be stale.
 - Run `pnpm test:desktop` before calling a broad change done.
@@ -70,7 +71,7 @@ This directory owns the Electron app (`@memry/desktop`), the reference implement
 Verify in the running app when a change affects what the user sees or does, such as UI, an IPC flow, or main-process behavior behind a UI action, and one window can exercise the flow. Skip it for pure refactors, tests, docs, sync-server-only changes, and flows that need two synced devices.
 
 1. Build with `pnpm --filter @memry/desktop exec electron-vite build`. Native modules must be built for Electron, and `agent-app.mjs start` fails fast when they are not.
-2. Start with `node apps/desktop/scripts/agent-app.mjs start`. It opens a copy of the E2E test vault (or of `MEMRY_AGENT_VAULT_TEMPLATE`) with a temp profile and an `e2e-agent-*` keychain device, never real data. One instance runs at a time, on CDP port 9222 and inspector port 9229.
+2. Start with `node apps/desktop/scripts/agent-app.mjs start`. It opens a copy of the E2E test vault and adds the portal example notes from `scripts/agent-vault-portals.mjs` (or opens a copy of `MEMRY_AGENT_VAULT_TEMPLATE`, without them) with a temp profile and an `e2e-agent-*` keychain device, never real data. One instance runs at a time, on CDP port 9222 and inspector port 9229.
 3. Drive the flow with the `playwright-memry` MCP server from `.pi/mcp.json`. Snapshot, click, type, and take screenshots.
 4. When the change writes data, check it from main with `node apps/desktop/scripts/agent-app.mjs eval "__memryDebug.query('SELECT ...')"`. That SQL is read-only. Seed through the UI or `__memryTestHooks`.
 5. Stop with `node apps/desktop/scripts/agent-app.mjs stop`, which removes the temp directories and keychain items.

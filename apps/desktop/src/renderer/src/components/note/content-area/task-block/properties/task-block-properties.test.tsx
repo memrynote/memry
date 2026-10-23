@@ -5,6 +5,7 @@ import type { Task } from '@/data/task-model'
 import { TaskBlockProperties } from './task-block-properties'
 import { AddPropertyMenu } from './add-property-menu'
 import type { TaskPropertyId } from './task-property-ids'
+import type * as UseRelatedItemInfoModule from '@/components/tasks/use-related-item-info'
 
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '24h' } })
@@ -37,7 +38,7 @@ vi.mock('@/components/tasks/use-related-item-search', () => ({
   useRelatedItemSearch: () => ({ notes: [], canvases: [] })
 }))
 vi.mock('@/components/tasks/use-related-item-info', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/components/tasks/use-related-item-info')>()
+  const actual = await importOriginal<typeof UseRelatedItemInfoModule>()
   return {
     ...actual,
     useRelatedItemInfo: (noteIds: string[] = [], canvasIds: string[] = []) => ({

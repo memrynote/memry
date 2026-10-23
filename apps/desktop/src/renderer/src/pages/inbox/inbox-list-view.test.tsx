@@ -4,6 +4,8 @@ import { renderWithProviders } from '@tests/utils/render'
 import { InboxListView } from './inbox-list-view'
 import type React from 'react'
 import { toast } from 'sonner'
+import type * as ReactQueryModule from '@tanstack/react-query'
+import type * as UseDisplayDensityModule from '@/hooks/use-display-density'
 
 const mocks = vi.hoisted(() => ({
   inboxState: {
@@ -49,7 +51,7 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  const actual = await importOriginal<typeof ReactQueryModule>()
   return {
     ...actual,
     useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries })
@@ -67,7 +69,7 @@ vi.mock('@/contexts/tabs', () => ({
 // minimal partial mock could surface as `DENSITY_CONFIG.compact` undefined when test
 // files share module state in the full coverage run.
 vi.mock('@/hooks/use-display-density', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-display-density')>())
+  ...(await importOriginal<typeof UseDisplayDensityModule>())
 }))
 
 vi.mock('@/hooks/use-keyboard-shortcuts', () => ({

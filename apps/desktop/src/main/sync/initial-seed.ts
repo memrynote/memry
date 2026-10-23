@@ -14,7 +14,7 @@ export interface InitialSeedDeps {
   db: DrizzleDb
   queue: SyncQueueManager
   deviceId: string
-  adapters?: Array<RemoteSyncAdapter<DrizzleDb, unknown>>
+  adapters?: Array<RemoteSyncAdapter<DrizzleDb>>
 }
 
 export function runInitialSeed(deps: InitialSeedDeps): void {

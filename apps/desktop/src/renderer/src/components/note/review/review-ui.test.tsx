@@ -303,7 +303,7 @@ describe('review UI', () => {
     vi.mocked(window.api.search.query).mockImplementation(searchQuery)
     Object.assign(window.api, {
       calendar: {
-        ...((window.api as unknown as { calendar?: Record<string, unknown> }).calendar ?? {}),
+        ...(window.api as unknown as { calendar?: Record<string, unknown> }).calendar,
         listEvents: vi.fn().mockResolvedValue({ events: [] })
       }
     })

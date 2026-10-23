@@ -102,10 +102,8 @@ test.describe('Body CRDT create propagation', () => {
     electronAppA,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `C1 Offline Create ${Date.now()}`
     const body = 'device A offline line 1\n\ndevice A offline line 2'
 
@@ -122,10 +120,8 @@ test.describe('Body CRDT create propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `C2 Offline Create ${Date.now()}`
     const body = 'device B offline line 1\n\ndevice B offline line 2'
 
@@ -142,10 +138,8 @@ test.describe('Body CRDT create propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `C3 Online Create ${Date.now()}`
     const body = 'device A online line 1\n\ndevice A online line 2'
 
@@ -162,10 +156,8 @@ test.describe('Body CRDT create propagation', () => {
     electronAppA,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
-
     const title = `C4 Online Create ${Date.now()}`
     const body = 'device B online line 1\n\ndevice B online line 2'
 

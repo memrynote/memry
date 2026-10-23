@@ -74,16 +74,16 @@ jobs:
           done
 
       - name: Typecheck desktop main process
-        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.node.json --composite false
+        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.node.json
 
       - name: Typecheck desktop renderer
-        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.web.json --composite false
+        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.web.json
 
       - name: Typecheck desktop main-process tests
-        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.test.node.json --composite false
+        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.node.json
 
       - name: Typecheck desktop renderer tests
-        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.test.web.json --composite false
+        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.web.json
 
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check
@@ -107,11 +107,20 @@ jobs:
       - name: Check protocol vectors are current
         run: pnpm --filter @memry/contracts vectors:check
 
-      - name: Lint desktop
-        run: pnpm --filter @memry/desktop exec eslint --cache .
+      # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
+      # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
+      # --ignore-scripts skipped the extension's postinstall, and its tsconfig extends the
+      # file `wxt prepare` generates; type-aware lint rejects a project it cannot load.
+      - name: Lint
+        run: |
+          pnpm --filter @memry/extension exec wxt prepare
+          pnpm lint
 
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
+
+      - name: Check formatting
+        run: pnpm format:check
 
       - name: Test macOS update-manifest validator
         run: node --test scripts/validate-mac-update-manifest.test.mjs

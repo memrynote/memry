@@ -23,6 +23,7 @@ function SkippedMarkers({ markers }: { markers: readonly FoldSkipped[] }) {
   const { t } = useT('notes')
   return markers.map((marker, index) => (
     <p
+      // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
       key={index}
       className="text-xs leading-5 text-text-secondary"
       data-fold-skipped={marker.kind}
@@ -183,6 +184,7 @@ export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispa
   // Entering or leaving Topic swaps cards for lines: a crossfade, since no word survives the swap.
   const topic = view.level === 'topic'
   const wasTopic = useRef(topic)
+  // oxlint-disable-next-line react/refs -- previous-value ref: render compares against the last committed topic to pick the crossfade
   const crossfade = wasTopic.current !== topic
   useEffect(() => {
     wasTopic.current = topic

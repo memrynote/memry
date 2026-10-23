@@ -4,8 +4,7 @@ import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createLogger } from './logging'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
-import { trackMainEvent } from './telemetry'
-import { trackMainLog } from './telemetry'
+import { trackMainEvent, trackMainLog } from './telemetry'
 
 const log = createLogger('SyncQueue')
 

@@ -47,6 +47,7 @@ vi.mock('@/components/ui/picker', async () => {
     onOpenChange: (open: boolean) => void
   }) {
     return (
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- single-render test fixture; identity stability is irrelevant
       <OpenContext.Provider value={{ open, onOpenChange }}>
         <PickerContext.Provider value={onValueChange}>{children}</PickerContext.Provider>
       </OpenContext.Provider>
@@ -80,6 +81,7 @@ vi.mock('@/components/ui/picker', async () => {
 
     if (!open) return null
     return (
+      // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
       <div
         ref={ref}
         data-testid="vault-picker"

@@ -1,6 +1,6 @@
 import resourcesToBackend from 'i18next-resources-to-backend'
-import type { Locale } from '../shared/config'
 import {
+  type Locale,
   FALLBACK_LOCALE,
   I18N_NAMESPACES,
   LocaleSchema,

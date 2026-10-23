@@ -6,6 +6,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 
 import * as schema from '@memry/db-schema/data-schema'
+import type * as StoreModule from '../../../../canvas/store'
 
 const mocks = vi.hoisted(() => ({
   getCanvasContext: vi.fn(),
@@ -456,9 +457,7 @@ describe('canvas handles', () => {
       })
 
       it('tells two same-titled canvases apart after one moves in beside the other', async () => {
-        const store = await vi.importActual<typeof import('../../../../canvas/store')>(
-          '../../../../canvas/store'
-        )
+        const store = await vi.importActual<typeof StoreModule>('../../../../canvas/store')
         mocks.listCanvases.mockImplementation((db: never, vaultId: string) =>
           store.listCanvases(db, vaultId)
         )

@@ -90,6 +90,7 @@ describe('withErrorHandler', () => {
   it('uses fallback message for non-Error throws', async () => {
     // #given
     const handler = withErrorHandler(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw 'string error'
     }, 'Failed to create task')
 
@@ -103,6 +104,7 @@ describe('withErrorHandler', () => {
   it('uses default fallback when none provided', async () => {
     // #given
     const handler = withErrorHandler(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw 42
     })
 
@@ -208,6 +210,7 @@ describe('withDb', () => {
     mockGetDatabase.mockReturnValue(mockDb as never)
 
     const handler = withDb(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw null
     }, 'Failed to update task')
 
@@ -493,8 +496,12 @@ describe('validated handler attribution', () => {
     setIpcHandlerChannel(notes, 'notes:create:distinct')
     setIpcHandlerChannel(tasks, 'tasks:create:distinct')
 
-    await expect(notes(invokeEvent, { title: '' })).rejects.toThrow()
-    await expect(tasks(invokeEvent, { title: '' })).rejects.toThrow()
+    await expect(notes(invokeEvent, { title: '' })).rejects.toThrow(
+      'Validation failed: title: Too small: expected string to have >=1 characters'
+    )
+    await expect(tasks(invokeEvent, { title: '' })).rejects.toThrow(
+      'Validation failed: title: Too small: expected string to have >=1 characters'
+    )
 
     // Not one throttled event under a shared key — two, one per channel.
     expect(mockTrackMainError.mock.calls.map((call) => call[1])).toEqual([
@@ -507,7 +514,9 @@ describe('validated handler attribution', () => {
     // Registration paths that never reach ipcMain.handle keep the old behaviour.
     const listener = createValidatedHandler(TitleSchema, async (input) => input)
 
-    await expect(listener(invokeEvent, { title: '' })).rejects.toThrow()
+    await expect(listener(invokeEvent, { title: '' })).rejects.toThrow(
+      'Validation failed: title: Too small: expected string to have >=1 characters'
+    )
 
     expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'validated_handler', expect.anything())
   })

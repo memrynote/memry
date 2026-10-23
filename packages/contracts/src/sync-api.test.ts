@@ -169,9 +169,8 @@ describe('EncryptedItemPayloadSchema', () => {
       encryptedKey: ''
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('encryptedKey')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('encryptedKey')
   })
 
   it('rejects missing dataNonce', () => {
@@ -200,10 +199,9 @@ describe('SyncItemSchema', () => {
   it('accepts minimal sync item with defaults', () => {
     const result = SyncItemSchema.safeParse(base)
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.version).toBe(1)
-      expect(result.data.cryptoVersion).toBe(1)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.version).toBe(1)
+    expect(result.data.cryptoVersion).toBe(1)
   })
 
   it('accepts full sync item with clock + stateVector + deletedAt', () => {
@@ -221,9 +219,8 @@ describe('SyncItemSchema', () => {
   it('rejects non-uuid id', () => {
     const result = SyncItemSchema.safeParse({ ...base, id: 'not-uuid' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('id')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('id')
   })
 
   it('rejects negative sizeBytes', () => {
@@ -252,10 +249,9 @@ describe('SyncQueueItemSchema', () => {
   it('accepts minimal queue item', () => {
     const result = SyncQueueItemSchema.safeParse(base)
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.priority).toBe(0)
-      expect(result.data.attempts).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.priority).toBe(0)
+    expect(result.data.attempts).toBe(0)
   })
 
   it('accepts full queue item with lastAttempt/errorMessage', () => {
@@ -341,10 +337,9 @@ describe('RecordPushItemSchema', () => {
   it('rejects record type missing required clock', () => {
     const result = RecordPushItemSchema.safeParse(validPushItem({ type: 'task' }))
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('clock')
-      expect(result.error.issues[0].message).toMatch(/requires clock metadata/)
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('clock')
+    expect(result.error.issues[0].message).toMatch(/requires clock metadata/)
   })
 
   it('rejects attachment type (not in record list)', () => {
@@ -896,9 +891,8 @@ describe('DeviceKeySchema / DeviceKeysResponseSchema', () => {
       signingPublicKey: 'pk'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('revokedAt')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('revokedAt')
   })
 
   it('accepts devices response', () => {
@@ -942,9 +936,8 @@ describe('SignatureMetadataSchema', () => {
       algorithm: 'rsa'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('algorithm')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('algorithm')
   })
 })
 

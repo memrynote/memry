@@ -36,6 +36,7 @@ describe('invokeWhenAgentReady', () => {
       .mockRejectedValue(new Error('errors:agent.runtimeStarting'))
 
     const result = invokeWhenAgentReady(fn)
+    // oxlint-disable-next-line vitest/valid-expect -- promise is awaited below, after fake timers advance; awaiting here would deadlock
     const assertion = expect(result).rejects.toThrow('errors:agent.runtimeStarting')
     await vi.runAllTimersAsync()
     await assertion

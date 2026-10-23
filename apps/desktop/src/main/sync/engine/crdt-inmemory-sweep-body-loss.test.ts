@@ -9,6 +9,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { SyncContext } from './sync-context'
 import type { CrdtSnapshotMeta } from '../http-client'
+import type * as RetryModule from '@memry/sync-client/retry'
+import type * as PathsModule from '../../lib/paths'
 
 const EDITOR_WINDOW = vi.hoisted(() => 7)
 const AUTHOR_CLIENT = 0xffffffff
@@ -90,7 +92,7 @@ vi.mock('../http-client', () => ({
 }))
 
 vi.mock('@memry/sync-client/retry', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@memry/sync-client/retry')>()),
+  ...(await importOriginal<typeof RetryModule>()),
   withRetry: async (fn: () => Promise<unknown>) => ({ value: await fn() })
 }))
 vi.mock('../crdt-encrypt', () => ({ decryptCrdtUpdate: (packed: Uint8Array) => packed }))
@@ -130,7 +132,7 @@ vi.mock('../../vault/notes', () => ({
   }
 }))
 vi.mock('../../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: async (_vault: string, relative: string) =>
     h.files.get(`/vault/${relative}`) ?? null,
   openVaultFile: async (_vault: string, relative: string) => {
@@ -515,6 +517,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
     await provider.init(outbox, pushSnapshot)
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
+    // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (!options?.store) expect(provider.storeId).toBeNull()
     return { provider, coordinator, pushUpdate, flushFullStates }
   }
@@ -888,7 +891,7 @@ describe('CrdtProvider with no store (#2536)', () => {
           return coordinator.pullCrdtForNote(id)
         },
         () => false
-      ).catch((err: Error) => err.message)
+      ).catch((err) => err.message)
       const afterFailedFlush = { failed, owed: owesFileBody(NOTE), server: await bodyAfterPull() }
       await flushFullStates()
 

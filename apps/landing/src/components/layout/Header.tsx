@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent } from '@/lib/analytics'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 
 function isExternalHref(href: string) {
   return href.startsWith('http')

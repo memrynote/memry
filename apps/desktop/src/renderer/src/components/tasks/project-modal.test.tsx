@@ -16,6 +16,7 @@ vi.mock('@/components/ui/dialog', () => ({
     open: boolean
     onOpenChange?: (open: boolean) => void
     children: React.ReactNode
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
   }) => (open ? <div role="dialog">{children}</div> : null),
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -83,6 +84,7 @@ vi.mock('@/components/note/note-title/EmojiPicker', () => ({
     onRemove: () => void
     hasEmoji: boolean
   }) => (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
     <div role="listbox" aria-label="icon-picker">
       <button type="button" onClick={() => onSelect('icon:StarIcon')}>
         pick Star

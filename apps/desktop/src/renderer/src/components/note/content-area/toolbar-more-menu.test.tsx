@@ -76,6 +76,7 @@ vi.mock('@blocknote/react', () => ({
           checked?: boolean
           onClick?: () => void
         }) => (
+          // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- test double mirrors BlockNote's checkable menu item, which exposes aria-checked
           <button type="button" role="menuitem" aria-checked={checked} onClick={onClick}>
             {children}
           </button>

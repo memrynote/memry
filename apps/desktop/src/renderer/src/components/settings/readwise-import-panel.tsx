@@ -96,12 +96,13 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
       .then((raw) => {
         if (active) setStatus(unwrap(raw, t('import.dialog.error')))
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (active) setError(extractErrorMessage(err, t('import.dialog.error')))
       })
     return () => {
       active = false
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- refreshNonce re-triggers the status IPC read
   }, [t, refreshNonce])
 
   // A run starting, moving on or ending changes the banner.

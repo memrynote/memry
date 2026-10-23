@@ -407,12 +407,12 @@ describe('tags-handlers', () => {
     )
 
     unregisterTagsHandlers()
-    const objectChannels: string[] = [
+    const objectChannels: ReadonlySet<string> = new Set([
       TagsChannels.invoke.SEARCH_OBJECTS,
       TagsChannels.invoke.GET_LINKED_HERE
-    ]
+    ])
     expect(removeHandlerCalls).toEqual(
-      Object.values(TagsChannels.invoke).filter((channel) => !objectChannels.includes(channel))
+      Object.values(TagsChannels.invoke).filter((channel) => !objectChannels.has(channel))
     )
   })
 })
@@ -728,6 +728,7 @@ describe('tags-handlers failure envelopes', () => {
     const reported: string[] = []
     for (const [channel, payload, failing, expected] of cases) {
       failing.mockImplementationOnce(() => {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         throw NO_MESSAGE_FAILURE
       })
       const result = await invokeHandler<Envelope>(channel, payload)
@@ -777,6 +778,7 @@ describe('tags-handlers failure envelopes', () => {
     const reported: string[] = []
     for (const [channel, payload, failing, expected] of cases) {
       failing.mockImplementationOnce(() => {
+        // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
         throw NO_MESSAGE_FAILURE
       })
       const result = await invokeHandler<Envelope>(channel, payload)

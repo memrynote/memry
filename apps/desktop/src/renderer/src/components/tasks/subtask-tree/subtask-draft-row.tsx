@@ -34,6 +34,7 @@ export const SubtaskDraftRow = ({
   useEffect(() => {
     const frame = requestAnimationFrame(() => inputRef.current?.focus())
     return () => cancelAnimationFrame(frame)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- parent.id re-focuses the input when the draft moves to another parent
   }, [parent.id])
   if (!tree) return null
 

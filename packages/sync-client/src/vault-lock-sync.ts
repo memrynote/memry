@@ -28,12 +28,13 @@ export function resetVaultLockSyncService(): void {
 }
 
 export class VaultLockSyncService {
-  private controller: RecordSyncController<Record<string, unknown>, [], []>
+  private controller: RecordSyncController<Record<string, unknown>>
 
   constructor(deps: VaultLockSyncDeps) {
     const load = (lockId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(vaultLocks).where(eq(vaultLocks.id, lockId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'vault_lock',
@@ -69,5 +70,7 @@ export class VaultLockSyncService {
   }
 
   /** Unlocking is an update (`locked: false`); a lock record is never deleted. */
-  enqueueDelete(): void {}
+  enqueueDelete(): void {
+    /* intentional no-op */
+  }
 }

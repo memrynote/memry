@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'

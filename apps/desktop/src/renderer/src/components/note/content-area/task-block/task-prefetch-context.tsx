@@ -122,7 +122,7 @@ export function TaskPrefetchProvider({
       }
     }),
     // A new object per change, so the rows reading it re-render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     [parentsVersion]
   )
 

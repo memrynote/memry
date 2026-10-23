@@ -31,6 +31,7 @@ export function InlineChoiceMenu<T extends string>({
   return (
     <div
       data-inline-choice-menu
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="listbox"
       aria-label={title}
       className="absolute z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95"
@@ -41,6 +42,7 @@ export function InlineChoiceMenu<T extends string>({
         <button
           key={id}
           type="button"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
           role="option"
           aria-selected={index === selectedIndex}
           className={cn(

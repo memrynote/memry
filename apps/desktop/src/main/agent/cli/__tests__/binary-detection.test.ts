@@ -2,11 +2,12 @@ import { spawnSync } from 'node:child_process'
 
 import type { BinaryStatus } from '@memry/contracts/ipc-agent'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as NodeChildProcessModule from 'node:child_process'
 
 // Keep the real implementations but watch spawnSync: a synchronous probe is the
 // regression this module exists to prevent.
 vi.mock('node:child_process', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:child_process')>()
+  const actual = await importOriginal<typeof NodeChildProcessModule>()
   return { ...actual, spawnSync: vi.fn(actual.spawnSync) }
 })
 

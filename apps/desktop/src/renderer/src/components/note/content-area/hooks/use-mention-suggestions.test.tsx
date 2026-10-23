@@ -68,6 +68,17 @@ describe('useMentionSuggestions', () => {
     expect(items).toHaveLength(5)
   })
 
+  it('carries a note’s own emoji onto its mention row', async () => {
+    mocks.listNotes.mockResolvedValue({ notes: [{ id: 'a', title: 'Genome', emoji: '🧬' }] })
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useMentionSuggestions(editor, options()))
+    let items: MentionSuggestionItem[] = []
+    await act(async () => {
+      items = await result.current.getMentionItems('Genome')
+    })
+    expect(items.find((item) => item.kind === 'note')).toMatchObject({ id: 'a', emoji: '🧬' })
+  })
+
   it('shows the Date group for a date-parseable query plus filtered notes', async () => {
     mocks.listNotes.mockResolvedValue({
       notes: [
@@ -163,9 +174,7 @@ describe('useMentionSuggestions', () => {
     expect(items.filter((i) => i.kind === 'note')).toHaveLength(10)
     expect(result.current.mentionHasMore).toBe(true)
 
-    act(() => {
-      result.current.showMore()
-    })
+    act(() => result.current.showMore())
     await act(async () => {
       items = await result.current.getMentionItems('')
     })
@@ -376,7 +385,9 @@ describe('useMentionSuggestions canvases', () => {
     expect(canvases.map((item) => item.title)).not.toContain('Unrelated')
     expect(result.current.mentionHasMore).toBe(true)
 
-    act(() => result.current.showMore())
+    act(() => {
+      result.current.showMore()
+    })
     await act(async () => {
       items = await result.current.getMentionItems('roadmap')
     })

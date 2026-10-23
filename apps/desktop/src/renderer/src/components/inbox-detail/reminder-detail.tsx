@@ -42,15 +42,11 @@ function formatTriggerDate(isoString: string): string {
   })
 }
 
-function getTargetIcon(targetType: string) {
-  switch (targetType) {
-    case 'journal':
-      return Calendar
-    case 'task':
-      return CheckSquare
-    default:
-      return FileText
-  }
+function TargetIcon({ targetType }: { targetType: string }): React.JSX.Element {
+  const className = 'size-3.5 shrink-0 text-text-tertiary'
+  if (targetType === 'journal') return <Calendar className={className} aria-hidden="true" />
+  if (targetType === 'task') return <CheckSquare className={className} aria-hidden="true" />
+  return <FileText className={className} aria-hidden="true" />
 }
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
@@ -103,7 +99,9 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   const handleNavigateToSource = useCallback(() => {
     if (!metadata) return
 
-    inboxService.markViewed(item.id).catch((err) => log.warn('Failed to mark reminder viewed', err))
+    inboxService
+      .markViewed(item.id)
+      .catch((err: unknown) => log.warn('Failed to mark reminder viewed', err))
 
     const tab = buildReminderTargetTab({
       targetType: metadata.targetType,
@@ -136,7 +134,6 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
     return <div className="p-5 text-muted-foreground text-sm">{t('reminder.dataUnavailable')}</div>
   }
 
-  const TargetIcon = getTargetIcon(metadata.targetType)
   const isViewed = item.viewedAt != null
   const presetLabels = {
     'in-1-hour': t('reminder.presetInOneHour'),
@@ -185,7 +182,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           title={t('reminder.source')}
           className={cn(DRAWER_ROW, 'group')}
         >
-          <TargetIcon className="size-3.5 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <TargetIcon targetType={metadata.targetType} />
           <span className="min-w-0 flex-1 truncate text-text-primary">
             {metadata.targetType === 'journal'
               ? t('reminder.journalTitle', {

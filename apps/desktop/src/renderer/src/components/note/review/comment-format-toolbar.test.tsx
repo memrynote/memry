@@ -165,9 +165,15 @@ describe('CommentFormatToolbar mounted on a real editor', () => {
     vi.stubGlobal(
       'ResizeObserver',
       class {
-        observe(): void {}
-        unobserve(): void {}
-        disconnect(): void {}
+        observe(): void {
+          /* intentional no-op */
+        }
+        unobserve(): void {
+          /* intentional no-op */
+        }
+        disconnect(): void {
+          /* intentional no-op */
+        }
       }
     )
 

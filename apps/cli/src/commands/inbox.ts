@@ -8,7 +8,7 @@ import {
   requireFirst,
   type CliIo,
   type ParsedCli
-} from '../run.ts'
+} from '../cli-support.ts'
 
 function requireFlag(parsed: ParsedCli, key: string): string {
   const value = getFlag(parsed.flags, key)

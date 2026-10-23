@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { selectedFragmentToHTML } from '@blocknote/core'
@@ -363,6 +363,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
+    // oxlint-disable-next-line react/memo-dependencies -- listed deps are intentional invalidation triggers that the body does not read
   }, [editor, blockContainerRef, recomputeHighlightRects, nestedSubtasks, taskParents])
 
   // Outdent every marquee-selected block by one level. Both the textblock
@@ -413,6 +414,7 @@ export function useBlockMarqueeSelection({
     } finally {
       requestAnimationFrame(recomputeHighlightRects)
     }
+    // oxlint-disable-next-line react/memo-dependencies -- listed deps are intentional invalidation triggers that the body does not read
   }, [editor, blockContainerRef, recomputeHighlightRects, taskParents])
 
   useEffect(() => {

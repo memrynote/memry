@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * Saving a note must not rewrite the bytes around a toggle (#1877, #1883).
  *
@@ -174,9 +173,8 @@ test.describe('Toggle write-back byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Toggle Gap ${Date.now()}`
@@ -217,9 +215,8 @@ test.describe('Toggle write-back byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Toggle Unterminated ${Date.now()}`

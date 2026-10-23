@@ -116,5 +116,9 @@ export function useSubtaskTreeController({
     ]
   )
 
-  return { value, moveUnderTaskId, closeMoveUnder: () => setMoveUnderTaskId(null) }
+  return {
+    value,
+    moveUnderTaskId,
+    closeMoveUnder: () => setMoveUnderTaskId(null)
+  }
 }

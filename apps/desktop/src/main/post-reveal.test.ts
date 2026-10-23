@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PostRevealModule from './post-reveal'
 
 const scopedLogger = {
   debug: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock('./app-shutdown', () => ({
 }))
 
 // The queue and its latches are module state, so each test gets a fresh copy.
-async function importPostReveal(): Promise<typeof import('./post-reveal')> {
+async function importPostReveal(): Promise<typeof PostRevealModule> {
   vi.resetModules()
   return import('./post-reveal')
 }

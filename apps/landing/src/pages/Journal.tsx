@@ -344,6 +344,7 @@ function MonthlyStatsMock() {
         <div className="mt-5 flex h-12 items-end gap-1.5">
           {[3, 5, 4, 7, 2, 6, 8, 4, 5, 7, 9, 6].map((v, i) => (
             <span
+              // oxlint-disable-next-line react/no-array-index-key -- static demo chart; positional and never reordered
               key={i}
               className="flex-1 rounded-t-sm bg-terracotta/70"
               style={{ height: `${(v / 9) * 100}%` }}
@@ -376,6 +377,7 @@ function YearlyOverviewMock() {
             const intensity = v === 0 ? 0 : Math.min(1, v / 22)
             return (
               <div
+                // oxlint-disable-next-line react/no-array-index-key -- static demo chart; positional and never reordered
                 key={`${m}-${i}`}
                 className={cn(
                   'rounded-md border border-border/40 px-2 py-2.5 text-center text-[11px]',
@@ -654,6 +656,7 @@ function HeatmapGrid() {
     <div className="flex gap-2">
       <div className="flex flex-col justify-between py-0.5 text-[10px] text-muted">
         {days.map((d, i) => (
+          // oxlint-disable-next-line react/no-array-index-key -- static demo chart; positional and never reordered
           <span key={i} className="font-mono-accent leading-3">
             {d}
           </span>
@@ -661,11 +664,13 @@ function HeatmapGrid() {
       </div>
       <div className="flex flex-1 gap-1.5">
         {Array.from({ length: weeks }).map((_, w) => (
+          // oxlint-disable-next-line react/no-array-index-key -- static demo chart; positional and never reordered
           <div key={w} className="flex flex-1 flex-col gap-1.5">
             {Array.from({ length: 7 }).map((__, d) => {
               const v = cells[w * 7 + d]
               return (
                 <span
+                  // oxlint-disable-next-line react/no-array-index-key -- static demo chart; positional and never reordered
                   key={d}
                   className="aspect-square rounded-[3px] border border-border/40"
                   style={{

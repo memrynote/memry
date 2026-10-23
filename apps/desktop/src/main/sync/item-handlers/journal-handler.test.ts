@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import { noteMetadata } from '@memry/db-schema/data-schema'
-import {
-  asClientDb,
-  asSyncDb,
-  createTestDataDb,
-  type TestDatabaseResult
-} from '@tests/utils/test-db'
+import { asClientDb, asSyncDb, createTestDataDb } from '@tests/utils/test-db'
 import { getBaseline, writeBaseline } from '../../vault-locks/store'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { SyncQueueManager } from '@memry/sync-client/queue'

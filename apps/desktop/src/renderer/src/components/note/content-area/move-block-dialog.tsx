@@ -109,6 +109,7 @@ export function MoveBlockDialog({
   useEffect(() => {
     const active = listRef.current?.querySelector<HTMLElement>('[data-active="true"]')
     active?.scrollIntoView({ block: 'nearest' })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [selectedIndex])
 
   return (
@@ -118,6 +119,7 @@ export function MoveBlockDialog({
           <DialogTitle>{t('editor.blockMenu.moveDialog.title')}</DialogTitle>
         </DialogHeader>
         <Input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}

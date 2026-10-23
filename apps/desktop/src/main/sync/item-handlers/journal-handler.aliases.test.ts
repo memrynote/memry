@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
+import type * as NotesModule from '@main/database/queries/notes'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'journal-aliases-'))
 const vaultPath = path.join(root, 'vault')
@@ -31,7 +32,7 @@ vi.mock('../../database/client', () => ({
 }))
 vi.mock('../../database', () => ({ getDatabase: () => currentDb.value }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@main/database/queries/notes')>()),
+  ...(await importOriginal<typeof NotesModule>()),
   noteCacheExists: vi.fn(() => true),
   getNoteCacheByPath: vi.fn(() => undefined),
   deleteNoteCache: vi.fn(),

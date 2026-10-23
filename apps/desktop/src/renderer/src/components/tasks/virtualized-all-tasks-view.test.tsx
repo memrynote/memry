@@ -7,9 +7,12 @@ import { DateViewContext, type DateViewValue } from './date-view-context'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 import type { TaskNoteIndex } from '@/lib/task-note-index'
+import type * as CoreModule from '@dnd-kit/core'
+import type * as DragDropModule from '@/components/tasks/drag-drop'
 
 const useDroppableMock = vi.fn()
 const useDragContextMock = vi.fn()
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
 let noteIndexMock: TaskNoteIndex | undefined
 const measureMock = vi.fn()
 let virtualizerCount = 0
@@ -42,7 +45,7 @@ vi.mock('@dnd-kit/sortable', () => ({
 }))
 
 vi.mock('@dnd-kit/core', async () => {
-  const actual = await vi.importActual<typeof import('@dnd-kit/core')>('@dnd-kit/core')
+  const actual = await vi.importActual<typeof CoreModule>('@dnd-kit/core')
   return {
     ...actual,
     useDroppable: (options: unknown) => {
@@ -70,9 +73,7 @@ vi.mock('@/hooks/use-task-note-index', () => ({
 }))
 
 vi.mock('@/components/tasks/drag-drop', async () => {
-  const actual = await vi.importActual<typeof import('@/components/tasks/drag-drop')>(
-    '@/components/tasks/drag-drop'
-  )
+  const actual = await vi.importActual<typeof DragDropModule>('@/components/tasks/drag-drop')
 
   return {
     ...actual,
@@ -344,6 +345,7 @@ describe('VirtualizedAllTasksView in a date view', () => {
     }
 
     render(
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- single-render test fixture; identity stability is irrelevant
       <DateViewContext.Provider value={dateView}>
         <VirtualizedAllTasksView
           tasks={[parent, child]}

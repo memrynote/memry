@@ -112,7 +112,8 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get() as
-      Record<string, unknown> | undefined
+      | Record<string, unknown>
+      | undefined
   }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {

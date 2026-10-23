@@ -62,7 +62,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
       if (e.button !== 1) return
       e.preventDefault()
       if (!entry) return
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- identity and timestamps are minted by openTab
+      // oxlint-disable-next-line no-unused-vars -- identity and timestamps are minted by openTab
       const { id, openedAt, lastAccessedAt, ...tab } = entry.tab
       openTab({ ...tab, isPinned: false, isPreview: false }, { background: true, forceNew: true })
     }

@@ -75,7 +75,7 @@ export function useProjectWidgetHandlers({
       void notesService
         .update({ id: noteId, emoji: icon })
         .then(() => hub.refresh())
-        .catch((error) => log.error('Failed to set note icon', extractErrorMessage(error)))
+        .catch((error: unknown) => log.error('Failed to set note icon', extractErrorMessage(error)))
     },
     [hub]
   )

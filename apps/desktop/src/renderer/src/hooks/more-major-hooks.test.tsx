@@ -329,7 +329,7 @@ describe('more major hooks coverage', () => {
       { id: 'item-1', title: 'Read paper' }
     ]
     first({ items: dueItems })
-    second({ items: [...dueItems].reverse() })
+    second({ items: [...dueItems].toReversed() })
 
     const tags = (
       Notification as unknown as { mock: { calls: [string, { tag: string }][] } }

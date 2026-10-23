@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import React from 'react'
+import type * as UseVaultModule from '@/hooks/use-vault'
 
 const mocks = vi.hoisted(() => ({
   status: { path: '/vaults/Active' } as { path: string } | null,
@@ -35,6 +36,7 @@ vi.mock('@/components/ui/picker', async () => {
   Picker.Trigger = ({ children }: { children: ReactNode }) => {
     const onOpenChange = React.useContext(OpenChangeContext)
     return (
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
       <div data-testid="picker-trigger" onClick={() => onOpenChange(true)}>
         {children}
       </div>
@@ -61,7 +63,7 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 vi.mock('@/hooks/use-vault', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-vault')>()),
+  ...(await importOriginal<typeof UseVaultModule>()),
   useVault: () => ({
     status: mocks.status,
     isLoading: false,

@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import type * as HttpClientModule from '../sync/http-client'
+import type * as AttachmentOutboxModule from '../sync/attachment-outbox'
+import type * as AttachmentDownloadStateModule from '@memry/sync-client/attachment-download-state'
 
 // ============================================================================
 // Mocks
@@ -73,7 +76,7 @@ vi.mock('../store', () => ({
 // with `instanceof` against the class from http-client, so a stand-in here would
 // silently classify as `unknown` and the test would prove nothing.
 vi.mock('../sync/attachments', async () => {
-  const actual = await vi.importActual<typeof import('../sync/http-client')>('../sync/http-client')
+  const actual = await vi.importActual<typeof HttpClientModule>('../sync/http-client')
   return {
     AttachmentSyncService: vi.fn().mockImplementation(function AttachmentSyncServiceMock() {
       return attachmentMocks.service
@@ -91,12 +94,10 @@ vi.mock('../sync/upload-queue', () => ({
 // The outbox uploader is only reachable as a registered callback. Keep the real
 // module and just record what gets registered, so the uploader's own progress
 // wiring can be driven directly.
-type OutboxUploader = Parameters<
-  typeof import('../sync/attachment-outbox').registerOutboxUploader
->[0]
+type OutboxUploader = Parameters<typeof AttachmentOutboxregisterOutboxUploader>[0]
 const outboxUploaders = vi.hoisted(() => [] as OutboxUploader[])
 vi.mock('../sync/attachment-outbox', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../sync/attachment-outbox')>()
+  const actual = await importOriginal<typeof AttachmentOutboxModule>()
   return {
     ...actual,
     clearUpload: vi.fn(actual.clearUpload),
@@ -121,8 +122,7 @@ vi.mock('@memry/sync-client/attachment-events', () => ({
 }))
 
 vi.mock('@memry/sync-client/attachment-download-state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@memry/sync-client/attachment-download-state')>()
+  const actual = await importOriginal<typeof AttachmentDownloadStateModule>()
   return { ...actual, markDownloadSucceeded: vi.fn(actual.markDownloadSucceeded) }
 })
 
@@ -222,7 +222,8 @@ import {
   clearUpload,
   isLocalOnlyNote,
   markUploadFailed,
-  resetAttachmentQueue
+  resetAttachmentQueue,
+  type registerOutboxUploader as AttachmentOutboxregisterOutboxUploader
 } from '../sync/attachment-outbox'
 import { UploadQueue } from '../sync/upload-queue'
 import type { NetworkMonitor } from '../sync/network'
@@ -613,7 +614,7 @@ describe('sync-attachment-handlers', () => {
   it('gives the outbox uploader its own throttled progress broadcaster', async () => {
     // #given the uploader registered with the attachment outbox
     registerAttachmentHandlers()
-    const uploader = outboxUploaders.filter(Boolean).at(-1)
+    const uploader = outboxUploaders.findLast(Boolean)
     expect(uploader).toBeDefined()
 
     // #when the outbox drains one queued attachment
@@ -690,7 +691,7 @@ describe('sync-attachment-handlers', () => {
     await vi.waitFor(() => expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1))
 
     // #when the outbox re-drive reaches the same row before that upload ends
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     const drained = uploader('note-1', '/vault/attachments/saved.png')
     finishSavedUpload({ attachmentId: 'attachment-saved', sessionId: 'session-saved' })
 
@@ -716,7 +717,7 @@ describe('sync-attachment-handlers', () => {
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/waiting.png' })
 
     // #when the outbox re-drive reaches the same row during that wait
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     const drained = uploader('note-1', '/vault/attachments/waiting.png')
     grantToken('token-1')
 
@@ -742,7 +743,7 @@ describe('sync-attachment-handlers', () => {
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/failing.png' })
     await vi.waitFor(() => expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1))
 
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     const drained = uploader('note-1', '/vault/attachments/failing.png')
     failSavedUpload(new Error('server said no'))
 
@@ -759,7 +760,7 @@ describe('sync-attachment-handlers', () => {
     }) => void
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/signed-out.png' })
 
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     await expect(uploader('note-1', '/vault/attachments/signed-out.png')).resolves.toEqual({
       attachmentId: 'attachment-1'
     })
@@ -980,7 +981,7 @@ describe('sync-attachment-handlers', () => {
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/note-1/aaaaaa-saved.png' })
     await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(1))
 
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     await uploader('note-1', '/vault/attachments/note-1/bbbbbb-drained.png')
     mockPlaceDownloadedFile.mockResolvedValueOnce('/vault/sources/file.pdf')
     mockApplyDownloadedAttachmentName.mockClear()

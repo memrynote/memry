@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
-import { isInlineTagName } from '@memry/shared/inline-tags'
+import { extractInlineTagsFromMarkdown, isInlineTagName } from '@memry/shared/inline-tags'
 import { COVER_PATH, COVER_URL, FULL_BOOK, TRICKY_BOOK, book, highlight } from './fixtures.ts'
 import { planNote, type NotePlan, type PlanNoteOptions } from './plan-note.ts'
 import { hashSectionBody, readSection } from './section.ts'
@@ -70,7 +69,7 @@ describe('planNote', () => {
   })
 
   it('renders identical bytes for identical input, whatever the highlight order', () => {
-    const reversed = { ...FULL_BOOK, highlights: [...(FULL_BOOK.highlights ?? [])].reverse() }
+    const reversed = { ...FULL_BOOK, highlights: [...(FULL_BOOK.highlights ?? [])].toReversed() }
     expect(plan(reversed).section).toBe(plan(FULL_BOOK).section)
   })
 

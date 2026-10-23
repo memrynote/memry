@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as UpdaterModule from './updater'
 
 const mocks = vi.hoisted(() => {
   class MockEmitter {
@@ -111,6 +112,7 @@ vi.mock('electron-updater', () => ({
 // native library decides about the test process.
 vi.mock('./velopack-native', () => ({
   loadVelopack: () => ({
+    // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     UpdateManager: class {
       constructor() {
         throw new Error('This application is not properly installed')
@@ -844,7 +846,7 @@ describe('updater', () => {
         )
 
       async function failToInstallOnReadOnlyVolume(): Promise<{
-        updater: typeof import('./updater')
+        updater: typeof UpdaterModule
         error: Error
       }> {
         const updater = await loadUpdater()

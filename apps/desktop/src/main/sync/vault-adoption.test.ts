@@ -10,6 +10,21 @@ import { LeveldbPersistence } from 'y-leveldb'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { VAULT_KEY_VERIFIER_SETTING } from '../crypto/vault-key-state'
+import type {
+  adoptVaultLocally as VaultAdoptionadoptVaultLocally,
+  adoptAccountVaultIfAbsent as VaultAdoptionadoptAccountVaultIfAbsent
+} from './vault-adoption'
+import type {
+  getOrCreateVaultUuid as VaultIdgetOrCreateVaultUuid,
+  resetVaultUuidCache as VaultIdresetVaultUuidCache
+} from '../agent/storage/vault-id'
+import type {
+  getPendingCrdtStoreRename as StoregetPendingCrdtStoreRename,
+  recordLegacyCrdtStoreClaim as StorerecordLegacyCrdtStoreClaim,
+  getLegacyCrdtStoreClaim as StoregetLegacyCrdtStoreClaim,
+  getLegacyCrdtStorePartitionPending as StoregetLegacyCrdtStorePartitionPending
+} from '../store'
+import type { prepareVaultCrdtStore as CrdtStorePathprepareVaultCrdtStore } from './crdt-store-path'
 
 const mocks = vi.hoisted(() => ({
   dataDb: null as object | null,
@@ -79,15 +94,15 @@ describe('adoptVaultLocally', () => {
 
   // Re-imported per test: `store.ts` caches the config file in a module-level
   // variable, and every test gets its own userData directory.
-  let adoptVaultLocally: typeof import('./vault-adoption').adoptVaultLocally
-  let adoptAccountVaultIfAbsent: typeof import('./vault-adoption').adoptAccountVaultIfAbsent
-  let getOrCreateVaultUuid: typeof import('../agent/storage/vault-id').getOrCreateVaultUuid
-  let resetVaultUuidCache: typeof import('../agent/storage/vault-id').resetVaultUuidCache
-  let getPendingCrdtStoreRename: typeof import('../store').getPendingCrdtStoreRename
-  let recordLegacyCrdtStoreClaim: typeof import('../store').recordLegacyCrdtStoreClaim
-  let getLegacyCrdtStoreClaim: typeof import('../store').getLegacyCrdtStoreClaim
-  let getLegacyCrdtStorePartitionPending: typeof import('../store').getLegacyCrdtStorePartitionPending
-  let prepareVaultCrdtStore: typeof import('./crdt-store-path').prepareVaultCrdtStore
+  let adoptVaultLocally: typeof VaultAdoptionadoptVaultLocally
+  let adoptAccountVaultIfAbsent: typeof VaultAdoptionadoptAccountVaultIfAbsent
+  let getOrCreateVaultUuid: typeof VaultIdgetOrCreateVaultUuid
+  let resetVaultUuidCache: typeof VaultIdresetVaultUuidCache
+  let getPendingCrdtStoreRename: typeof StoregetPendingCrdtStoreRename
+  let recordLegacyCrdtStoreClaim: typeof StorerecordLegacyCrdtStoreClaim
+  let getLegacyCrdtStoreClaim: typeof StoregetLegacyCrdtStoreClaim
+  let getLegacyCrdtStorePartitionPending: typeof StoregetLegacyCrdtStorePartitionPending
+  let prepareVaultCrdtStore: typeof CrdtStorePathprepareVaultCrdtStore
 
   beforeEach(async () => {
     vi.resetModules()
@@ -196,7 +211,9 @@ describe('adoptVaultLocally', () => {
     const joinerOwnUuid = getOrCreateVaultUuid(db)
     db.run('DROP TABLE settings')
 
-    expect(() => adoptVaultLocally(db, INITIATOR_UUID)).toThrow()
+    expect(() => {
+      adoptVaultLocally(db, INITIATOR_UUID)
+    }).toThrow("Failed to run the query 'DELETE FROM settings WHERE key = ?'")
 
     expect(getPendingCrdtStoreRename(INITIATOR_UUID)).toBe(joinerOwnUuid)
   })

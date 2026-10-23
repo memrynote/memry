@@ -80,6 +80,7 @@ export const ItemProjectChips = ({
   }, [itemType, itemId])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process (IPC) whenever the item changes; no event to hang this on
     void load()
   }, [load])
 

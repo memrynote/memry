@@ -233,6 +233,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
           )}
 
           {currentView === 'archived' && (
+            // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- container handles bubbled keyboard events only; not itself a control
             <div
               className={cn(
                 'ms-auto flex items-center rounded-[5px] py-1 border overflow-hidden outline-none',
@@ -291,6 +292,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             <>
               {activeJobCount > 0 && (
                 <span
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
                   role="status"
                   title={t('view.jobs.running', { count: activeJobCount })}
                   className="flex items-center gap-1.5 shrink-0 px-1.5 text-[11px] tabular-nums text-text-secondary"

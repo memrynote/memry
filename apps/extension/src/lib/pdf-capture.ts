@@ -53,7 +53,7 @@ function fromContentDisposition(header: string | null): string | null {
 
 function fromUrlPath(url: string): string | null {
   try {
-    const last = new URL(url).pathname.split('/').filter(Boolean).pop()
+    const last = new URL(url).pathname.split('/').findLast(Boolean)
     if (!last) return null
     return sanitize(decodeURIComponent(last)) || null
   } catch {

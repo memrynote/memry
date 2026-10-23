@@ -150,6 +150,7 @@ export function AgentProvidersSection({
       })()
     }, 600)
     return () => clearTimeout(handle)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- settings and apiKey are the debounce trigger; the effect reads them through the latest saved snapshot
   }, [dirty, settings, apiKey])
 
   const nonLoopback = useMemo(() => {
@@ -542,7 +543,8 @@ export function AgentProvidersSection({
 }
 
 type MemoryStatus =
-  { state: 'idle' | 'clearing' | 'cleared' } | { state: 'failed'; message: string }
+  | { state: 'idle' | 'clearing' | 'cleared' }
+  | { state: 'failed'; message: string }
 
 function AgentMemoryGroup(): React.JSX.Element {
   const { t } = useT('settings')
@@ -687,6 +689,7 @@ function SegmentedControl<T extends string>({
           <button
             key={option.value}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radiogroup segmented control; a native radio input would change the visuals
             role="radio"
             aria-checked={active}
             onClick={() => {

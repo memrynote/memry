@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto'
 import {
   effectiveTurnPermissions,
   type AgentBackendOptions,
-  type AgentTurnPermissions
+  type AgentTurnPermissions,
+  type AgentSourceRef,
+  type AgentToolsOffReason
 } from '@memry/contracts/ipc-agent'
 
 import { toSafeToken } from '@memry/contracts/telemetry-api'
@@ -25,7 +27,6 @@ import { persistToolActivity } from './tool-activity'
 import { extractAgentSourceRefs } from '../source-refs'
 import { withoutImageBytes } from '../mcp/tool-image'
 import { mintTurnWriteGrant, revokeTurnWriteGrantsFor } from '../turn-grants'
-import type { AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
 
 const logger = createLogger('AgentRuntime:Turn')
 

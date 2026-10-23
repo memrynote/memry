@@ -24,7 +24,13 @@ import { foldTag } from './tag-fold.ts'
 export type ObsidianPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest'
 
 export type ObsidianStatusType =
-  'TODO' | 'DONE' | 'IN_PROGRESS' | 'CANCELLED' | 'ON_HOLD' | 'NON_TASK' | 'EMPTY'
+  | 'TODO'
+  | 'DONE'
+  | 'IN_PROGRESS'
+  | 'CANCELLED'
+  | 'ON_HOLD'
+  | 'NON_TASK'
+  | 'EMPTY'
 
 export interface ObsidianRecurrence {
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'

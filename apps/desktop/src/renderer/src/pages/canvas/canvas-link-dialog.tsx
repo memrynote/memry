@@ -103,7 +103,7 @@ export function CanvasLinkDialog({
   // from `open` — closing just discards it.
   useEffect(() => {
     if (!open) {
-      // eslint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- see above
+      // oxlint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react/set-state-in-effect -- query is user-owned state; closing the dialog discards it (see above)
       setQuery('')
     }
   }, [open])
@@ -125,7 +125,7 @@ export function CanvasLinkDialog({
   // Not derived state: arrow keys move the highlight from here on, so it has
   // to be storage cmdk can write back into, seeded on each new result set.
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-derived-state -- see above
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-derived-state, react/set-state-in-effect, react/no-deriving-state-in-effects -- cmdk highlight is writable storage seeded per result set (see above)
     setValue(initialValue)
   }, [initialValue])
 

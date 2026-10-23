@@ -4,6 +4,7 @@ import { Check, ChevronDown, Copy } from 'lucide-react'
 import { useBlockNoteEditor, useEditorSelectionChange } from '@blocknote/react'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { useT } from '@memry/i18n/renderer'
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { VIEW_BLOCK_LANGUAGE } from '@memry/shared/view-block'
 
 /**
@@ -24,10 +25,14 @@ import { VIEW_BLOCK_LANGUAGE } from '@memry/shared/view-block'
  * every user has, and without the second the picker is unreachable by keyboard.
  */
 
-// A `memry-view` code block is drawn as a live list (view-block.tsx) and has
-// its own header; a language picker on it would offer to turn the list into
-// code.
-const CODE_BLOCK_SELECTOR = `[data-content-type="codeBlock"]:not([data-language="${VIEW_BLOCK_LANGUAGE}"])`
+// A `memry-view` code block is drawn as a live list (view-block.tsx) and a
+// `memry-portal` one as a window onto another note (portal/). Each has its own
+// header; a language picker on either would offer to turn it into code.
+const CODE_BLOCK_SELECTOR = `[data-content-type="codeBlock"]:not([data-language="${VIEW_BLOCK_LANGUAGE}"]):not([data-language="${PORTAL_BLOCK_LANGUAGE}"])`
+
+function isDrawnCodeBlock(language: unknown): boolean {
+  return language === VIEW_BLOCK_LANGUAGE || language === PORTAL_BLOCK_LANGUAGE
+}
 
 /** Marks the toolbar, so the pointer leaving the block for it is not "left". */
 const TOOLBAR_ATTR = 'data-memry-code-toolbar'
@@ -86,6 +91,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
   const placement = useMemo(() => {
     void tick
     return block?.isConnected ? measure(block) : null
+    // oxlint-disable-next-line react/memo-dependencies -- listed deps are intentional invalidation triggers that the body does not read
   }, [block, tick])
 
   useEffect(() => {
@@ -123,7 +129,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
 
   useEditorSelectionChange(() => {
     const caretBlock = editor.getTextCursorPosition().block
-    if (caretBlock.type !== 'codeBlock' || caretBlock.props.language === VIEW_BLOCK_LANGUAGE) {
+    if (caretBlock.type !== 'codeBlock' || isDrawnCodeBlock(caretBlock.props.language)) {
       setFocused(null)
       return
     }
@@ -170,8 +176,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
 
   const blockId = placement.block.closest('[data-id]')?.getAttribute('data-id')
   const currentBlock = blockId ? editor.getBlock(blockId) : undefined
-  const language =
-    currentBlock?.type === 'codeBlock' ? String(currentBlock.props.language ?? '') : ''
+  const language = currentBlock?.type === 'codeBlock' ? (currentBlock.props.language ?? '') : ''
   const copyLabel = copied ? t('editor.codeBlock.copied') : t('editor.codeBlock.copy')
   const inlineEndStyle = placement.isRtl
     ? { left: placement.inlineEnd }

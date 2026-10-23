@@ -142,6 +142,7 @@ function useStickToBottom(scrollRef: RefObject<HTMLDivElement | null>, children:
     const observer = new ResizeObserver(() => applyScrollPolicy(element))
     for (const child of Array.from(element.children)) observer.observe(child)
     return () => observer.disconnect()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- children is an intentional trigger: re-observe and reapply scroll policy when content changes
   }, [children, scrollRef])
 }
 

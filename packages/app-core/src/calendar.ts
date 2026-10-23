@@ -16,193 +16,18 @@ import {
   reminders,
   settings as settingsTable,
   tasks,
-  type CalendarBindingSourceType,
-  type CalendarConferenceData,
-  type CalendarReminders,
-  type CalendarVisibility
+  type CalendarBindingSourceType
 } from '@memry/db-schema/data-schema'
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { createId } from './ids.ts'
-
-export interface CalendarEventRecord {
-  id: string
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string | null
-  timezone: string
-  isAllDay: boolean
-  recurrenceRule: Record<string, unknown> | null
-  recurrenceExceptions: string[] | null
-  attendees: unknown[] | null
-  reminders: CalendarReminders | null
-  visibility: CalendarVisibility | null
-  colorId: string | null
-  conferenceData: CalendarConferenceData | null
-  targetCalendarId: string | null
-  archivedAt: string | null
-  createdAt: string
-  modifiedAt: string
-}
-
-export interface CreateCalendarEventInput {
-  title: string
-  startAt: string
-  endAt?: string | null
-  timezone?: string
-  description?: string | null
-  location?: string | null
-  isAllDay?: boolean
-  recurrenceRule?: Record<string, unknown> | null
-  recurrenceExceptions?: string[] | null
-  targetCalendarId?: string | null
-}
-
-export interface UpdateCalendarEventInput {
-  title?: string
-  startAt?: string
-  endAt?: string | null
-  timezone?: string
-  description?: string | null
-  location?: string | null
-  isAllDay?: boolean
-  recurrenceRule?: Record<string, unknown> | null
-  recurrenceExceptions?: string[] | null
-  targetCalendarId?: string | null
-}
-
-export interface ListCalendarEventsOptions {
-  includeArchived?: boolean
-  start?: string
-  end?: string
-}
-
-export interface CalendarSourceRecord {
-  id: string
-  provider: string
-  kind: 'account' | 'calendar'
-  accountId: string | null
-  remoteId: string
-  title: string
-  timezone: string | null
-  color: string | null
-  isPrimary: boolean
-  isSelected: boolean
-  isMemryManaged: boolean
-  syncStatus: string
-  lastSyncedAt: string | null
-  lastError: string | null
-  archivedAt: string | null
-}
-
-export interface CalendarExternalEventRecord {
-  id: string
-  sourceId: string
-  remoteEventId: string
-  remoteEtag: string | null
-  remoteUpdatedAt: string | null
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string | null
-  timezone: string | null
-  isAllDay: boolean
-  status: string
-  recurrenceRule: Record<string, unknown> | null
-  attendees: unknown[] | null
-  reminders: CalendarReminders | null
-  visibility: CalendarVisibility | null
-  colorId: string | null
-  conferenceData: CalendarConferenceData | null
-  rawPayload: Record<string, unknown> | null
-  archivedAt: string | null
-  syncedAt: string | null
-  createdAt: string
-  modifiedAt: string
-}
-
-export interface ListCalendarExternalEventsOptions {
-  sourceId?: string
-  includeArchived?: boolean
-  start?: string
-  end?: string
-}
-
-export interface CalendarBindingRecord {
-  id: string
-  sourceType: string
-  sourceId: string
-  provider: string
-  remoteCalendarId: string
-  remoteEventId: string
-  ownershipMode: string
-  writebackMode: string
-  remoteVersion: string | null
-  lastLocalSnapshot: Record<string, unknown> | null
-  archivedAt: string | null
-  syncedAt: string | null
-  createdAt: string
-  modifiedAt: string
-}
-
-export interface ListCalendarBindingsOptions {
-  sourceType?: string
-  sourceId?: string
-  provider?: string
-  includeArchived?: boolean
-}
-
-export interface CalendarGoogleSettings {
-  defaultTargetCalendarId: string | null
-  onboardingCompleted: boolean
-  promoteConfirmDismissed: boolean
-}
-
-export interface ListCalendarSourcesOptions {
-  provider?: string
-  kind?: 'account' | 'calendar'
-  selectedOnly?: boolean
-}
-
-export interface CalendarService {
-  events: {
-    create(input: CreateCalendarEventInput): Promise<CalendarEventRecord>
-    get(id: string): Promise<CalendarEventRecord | null>
-    list(options?: ListCalendarEventsOptions): Promise<CalendarEventRecord[]>
-    update(id: string, input: UpdateCalendarEventInput): Promise<CalendarEventRecord>
-    delete(id: string): Promise<boolean>
-  }
-  sources: {
-    list(options?: ListCalendarSourcesOptions): Promise<{ sources: CalendarSourceRecord[] }>
-    updateSelection(
-      id: string,
-      isSelected: boolean
-    ): Promise<{ success: boolean; source: CalendarSourceRecord | null }>
-  }
-  external: {
-    get(id: string): Promise<CalendarExternalEventRecord | null>
-    list(
-      options?: ListCalendarExternalEventsOptions
-    ): Promise<{ events: CalendarExternalEventRecord[] }>
-    promote(id: string): Promise<{ success: boolean; eventId: string | null }>
-  }
-  bindings: {
-    get(id: string): Promise<CalendarBindingRecord | null>
-    list(options?: ListCalendarBindingsOptions): Promise<{ bindings: CalendarBindingRecord[] }>
-  }
-  providerStatus(input: {
-    provider: string
-    accountId?: string
-  }): Promise<{ provider: string; accountId?: string; connected: boolean; sourceCount: number }>
-  range(input: GetCalendarRangeInput): Promise<CalendarRangeResponse>
-  googleSettings(): Promise<CalendarGoogleSettings>
-  setDefaultGoogleCalendar(
-    calendarId: string | null,
-    markOnboardingComplete?: boolean
-  ): Promise<{ success: boolean }>
-}
+import type {
+  CalendarEventRecord,
+  CalendarSourceRecord,
+  CalendarExternalEventRecord,
+  CalendarBindingRecord,
+  CalendarGoogleSettings,
+  CalendarService
+} from './calendar-types.ts'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -459,24 +284,22 @@ function calendarRange(dataDb: DataDb, input: GetCalendarRangeInput): CalendarRa
     'event',
     memryEvents.map((event) => event.id)
   )
-  const eventItems = memryEvents.map(
-    (event): CalendarProjectionItem => ({
-      projectionId: `event:${event.id}`,
-      sourceType: 'event',
-      sourceId: event.id,
-      title: event.title,
-      descriptionPreview: descriptionPreview(event.description),
-      startAt: event.startAt,
-      endAt: event.endAt ?? null,
-      isAllDay: event.isAllDay,
-      timezone: event.timezone,
-      visualType: 'event',
-      editability: editableEvent,
-      source: nativeSource('Memry'),
-      binding: eventBindings.get(event.id) ?? null,
-      snoozeOffsetMinutes: null
-    })
-  )
+  const eventItems = memryEvents.map((event): CalendarProjectionItem => ({
+    projectionId: `event:${event.id}`,
+    sourceType: 'event',
+    sourceId: event.id,
+    title: event.title,
+    descriptionPreview: descriptionPreview(event.description),
+    startAt: event.startAt,
+    endAt: event.endAt ?? null,
+    isAllDay: event.isAllDay,
+    timezone: event.timezone,
+    visualType: 'event',
+    editability: editableEvent,
+    source: nativeSource('Memry'),
+    binding: eventBindings.get(event.id) ?? null,
+    snoozeOffsetMinutes: null
+  }))
 
   const taskRange = dueDateRange(input)
   const taskRows = taskRange
@@ -591,24 +414,22 @@ function calendarRange(dataDb: DataDb, input: GetCalendarRangeInput): CalendarRa
     'inbox_snooze',
     snoozedInboxRows.map((item) => item.id)
   )
-  const snoozeItems = snoozedInboxRows.map(
-    (item): CalendarProjectionItem => ({
-      projectionId: `inbox_snooze:${item.id}`,
-      sourceType: 'inbox_snooze',
-      sourceId: item.id,
-      title: item.title,
-      descriptionPreview: descriptionPreview(item.content),
-      startAt: item.snoozedUntil!,
-      endAt: null,
-      isAllDay: false,
-      timezone: localTimezone,
-      visualType: 'snooze',
-      editability: { ...editableInstant, canEditText: false },
-      source: nativeSource('Memry Inbox'),
-      binding: snoozeBindings.get(item.id) ?? null,
-      snoozeOffsetMinutes: null
-    })
-  )
+  const snoozeItems = snoozedInboxRows.map((item): CalendarProjectionItem => ({
+    projectionId: `inbox_snooze:${item.id}`,
+    sourceType: 'inbox_snooze',
+    sourceId: item.id,
+    title: item.title,
+    descriptionPreview: descriptionPreview(item.content),
+    startAt: item.snoozedUntil!,
+    endAt: null,
+    isAllDay: false,
+    timezone: localTimezone,
+    visualType: 'snooze',
+    editability: { ...editableInstant, canEditText: false },
+    source: nativeSource('Memry Inbox'),
+    binding: snoozeBindings.get(item.id) ?? null,
+    snoozeOffsetMinutes: null
+  }))
 
   const externalRows = dataDb
     .select({ event: calendarExternalEvents, source: calendarSources })
@@ -625,24 +446,22 @@ function calendarRange(dataDb: DataDb, input: GetCalendarRangeInput): CalendarRa
     )
     .orderBy(asc(calendarExternalEvents.startAt))
     .all()
-  const externalItems = externalRows.map(
-    ({ event, source }): CalendarProjectionItem => ({
-      projectionId: `external_event:${event.id}`,
-      sourceType: 'external_event',
-      sourceId: event.id,
-      title: event.title,
-      descriptionPreview: descriptionPreview(event.description),
-      startAt: event.startAt,
-      endAt: event.endAt ?? null,
-      isAllDay: event.isAllDay,
-      timezone: event.timezone ?? source.timezone ?? localTimezone,
-      visualType: 'external_event',
-      editability: editableEvent,
-      source: sourceMeta(source),
-      binding: null,
-      snoozeOffsetMinutes: null
-    })
-  )
+  const externalItems = externalRows.map(({ event, source }): CalendarProjectionItem => ({
+    projectionId: `external_event:${event.id}`,
+    sourceType: 'external_event',
+    sourceId: event.id,
+    title: event.title,
+    descriptionPreview: descriptionPreview(event.description),
+    startAt: event.startAt,
+    endAt: event.endAt ?? null,
+    isAllDay: event.isAllDay,
+    timezone: event.timezone ?? source.timezone ?? localTimezone,
+    visualType: 'external_event',
+    editability: editableEvent,
+    source: sourceMeta(source),
+    binding: null,
+    snoozeOffsetMinutes: null
+  }))
 
   return {
     items: sortProjectionItems([
@@ -850,7 +669,7 @@ export function createCalendarService(dataDb: DataDb): CalendarService {
             colorId: mirror.colorId ?? null,
             conferenceData: mirror.conferenceData ?? null,
             targetCalendarId: source.remoteId,
-            clock: { ...(mirror.clock ?? {}) },
+            clock: { ...mirror.clock },
             createdAt: time,
             modifiedAt: time
           })
@@ -868,7 +687,7 @@ export function createCalendarService(dataDb: DataDb): CalendarService {
             writebackMode: 'time_and_text',
             remoteVersion: mirror.remoteEtag,
             lastLocalSnapshot: null,
-            clock: { ...(mirror.clock ?? {}) },
+            clock: { ...mirror.clock },
             createdAt: time,
             modifiedAt: time
           })

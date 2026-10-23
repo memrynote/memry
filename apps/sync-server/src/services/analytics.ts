@@ -153,7 +153,7 @@ const normalizeServerPath = (path: string | undefined): string => {
 }
 
 const getRouteArea = (path: string): string => {
-  const first = path.split('/').filter(Boolean)[0]
+  const first = path.split('/').find(Boolean)
   return safeLabel(first, 'root')
 }
 
@@ -393,7 +393,7 @@ export const waitUntilCaptured = (
   metadata: { source: string; action: string }
 ): void => {
   c.executionCtx.waitUntil(
-    promise.catch((error) =>
+    promise.catch((error: unknown) =>
       captureServerError(c.env, {
         error,
         method: c.req.method,

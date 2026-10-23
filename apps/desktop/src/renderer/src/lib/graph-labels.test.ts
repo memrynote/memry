@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 // sigma reads WebGL constants at import time; jsdom has no WebGL. Only `scaleSize`
 // and the default settings are used here, never a GL program.
 vi.hoisted(() => {
+  // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
   vi.stubGlobal('WebGLRenderingContext', class {})
+  // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
   vi.stubGlobal('WebGL2RenderingContext', class {})
 })
 

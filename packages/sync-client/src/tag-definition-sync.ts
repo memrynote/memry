@@ -82,7 +82,8 @@ export class TagDefinitionSyncService {
       getDeviceId: deps.getDeviceId,
       load: (name) =>
         deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const newClock = nextLocalClock(
           deps.db,
@@ -106,7 +107,8 @@ export class TagDefinitionSyncService {
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
           deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get() as
-            Record<string, unknown> | undefined,
+            | Record<string, unknown>
+            | undefined,
           deviceId,
           (clock) =>
             deps.db

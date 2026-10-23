@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * Checkboxes inside table cells — the real app.
  *

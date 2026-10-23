@@ -11,7 +11,10 @@ const log = createLogger('AgentModelPreference')
 const STORAGE_KEY = 'memry:agent-model-preference'
 
 export type AgentProvider =
-  'claude_cli' | 'codex_cli' | 'antigravity_cli' | 'local_openai_compatible'
+  | 'claude_cli'
+  | 'codex_cli'
+  | 'antigravity_cli'
+  | 'local_openai_compatible'
 
 export interface AgentModelPreference {
   provider: AgentProvider
@@ -24,14 +27,14 @@ export interface AgentModelPreference {
   localModel?: string | null
 }
 
-const PROVIDERS: AgentProvider[] = [
+const PROVIDERS: ReadonlySet<AgentProvider> = new Set([
   'claude_cli',
   'codex_cli',
   'antigravity_cli',
   'local_openai_compatible'
-]
+])
 const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
-const CLAUDE_EFFORTS: ClaudeEffort[] = ['low', 'medium', 'high', 'xhigh', 'max']
+const CLAUDE_EFFORTS: ReadonlySet<ClaudeEffort> = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
 const CODEX_EFFORTS: CodexReasoningEffort[] = ['low', 'medium', 'high', 'xhigh']
 const LOCAL_EFFORTS: LocalReasoningEffort[] = ['default', 'high', 'max']
 
@@ -41,7 +44,7 @@ export function readAgentModelPreference(): AgentModelPreference | null {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<AgentModelPreference>
-    if (!parsed || !PROVIDERS.includes(parsed.provider as AgentProvider)) return null
+    if (!parsed || !PROVIDERS.has(parsed.provider as AgentProvider)) return null
     const models: Partial<Record<AgentCliBackendId, string | null>> = {}
     if (parsed.models && typeof parsed.models === 'object') {
       for (const backend of CLI_BACKENDS) {
@@ -52,7 +55,7 @@ export function readAgentModelPreference(): AgentModelPreference | null {
     // Older persisted shapes carry no efforts/localModel; treat them as unset.
     const efforts: AgentModelPreference['efforts'] = {}
     if (parsed.efforts && typeof parsed.efforts === 'object') {
-      if (CLAUDE_EFFORTS.includes(parsed.efforts.claude_cli as ClaudeEffort)) {
+      if (CLAUDE_EFFORTS.has(parsed.efforts.claude_cli as ClaudeEffort)) {
         efforts.claude_cli = parsed.efforts.claude_cli
       }
       if (CODEX_EFFORTS.includes(parsed.efforts.codex_cli as CodexReasoningEffort)) {
@@ -89,7 +92,8 @@ export function persistAgentModelPreference(preference: AgentModelPreference): v
 
 /** Backend + model to seed a new conversation with, from the last pick. Undefined = app default. */
 export function preferredConversationDefaults():
-  { backend: AgentBackendId; backendModel?: string | null } | undefined {
+  | { backend: AgentBackendId; backendModel?: string | null }
+  | undefined {
   const pref = readAgentModelPreference()
   if (!pref) return undefined
   if (pref.provider !== 'local_openai_compatible') {

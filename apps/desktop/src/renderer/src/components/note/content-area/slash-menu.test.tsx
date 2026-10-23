@@ -73,7 +73,7 @@ afterEach(() => {
 })
 
 describe('SlashMenu', () => {
-  it('renders groups, the shortcut lane, alias hints and the selected row footer', () => {
+  it('renders groups, the shortcut lane, alias hints and the close footer', () => {
     render(<SlashMenu items={items()} loadingState="loaded" selectedIndex={0} />)
 
     expect(screen.getByText('Blocks')).toBeInTheDocument()
@@ -84,8 +84,7 @@ describe('SlashMenu', () => {
     )
     expect(screen.getByText('##')).toBeInTheDocument()
     expect(screen.getByText('todo')).toBeInTheDocument()
-    expect(screen.getByText('Medium section heading')).toBeInTheDocument()
-    expect(screen.getByText('As toggle')).toBeInTheDocument()
+    expect(screen.getByText('Esc')).toBeInTheDocument()
   })
 
   it('runs a row on click', () => {

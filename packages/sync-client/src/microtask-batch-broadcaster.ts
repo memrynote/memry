@@ -36,7 +36,7 @@ export class MicrotaskBatchBroadcaster {
   }
 
   flushAll(): void {
-    for (const noteId of [...this.queue.keys()]) {
+    for (const noteId of Array.from(this.queue.keys())) {
       this.flush(noteId)
     }
   }

@@ -28,12 +28,13 @@ export function useTasksCommands(input: TasksCommandInput): { focusQuickAdd: () 
   // A direct tab write: the nonce is stamped by OTHER surfaces (the sidebar's
   // "Tasks" click, the empty state's "Add task") and is read live off the tab,
   // which a `useState`-shaped hook does not do.
+  const activeTabId = activeTab?.id
   const focusQuickAdd = useCallback(() => {
-    if (!activeTab?.id) return
-    saveTabState(activeTab.id, {
+    if (!activeTabId) return
+    saveTabState(activeTabId, {
       viewState: { [TASKS_VIEW_STATE_KEYS.focusQuickAddAt]: Date.now() }
     })
-  }, [activeTab?.id, saveTabState])
+  }, [activeTabId, saveTabState])
 
   const commands: Record<TasksCommandId, CommandImpl> = {
     'tasks.newTask': { label: t('quickAdd.label'), run: focusQuickAdd },

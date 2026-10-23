@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, some vars intentionally unused
 /**
  * Sidebar & Window Controls E2E
  *
@@ -23,7 +22,7 @@ const chromeSidebarToggle = (page: Page) => page.locator('[data-sidebar="trigger
 
 test.describe('Sidebar & WindowControls', () => {
   test('traffic lights stay anchored at the same x across sidebar toggle', async ({
-    electronApp,
+    electronApp: _electronApp,
     page
   }) => {
     // The custom traffic-light controls only render on macOS (titleBarStyle:
@@ -63,7 +62,10 @@ test.describe('Sidebar & WindowControls', () => {
     expect(Math.abs(reopenedBox!.x - expandedBox!.x)).toBeLessThanOrEqual(PIXEL_DRIFT_TOLERANCE)
   })
 
-  test('history arrows are always visible and disabled', async ({ electronApp, page }) => {
+  test('history arrows are always visible and disabled', async ({
+    electronApp: _electronApp,
+    page
+  }) => {
     await ready(page)
 
     // Expanded state
@@ -83,7 +85,10 @@ test.describe('Sidebar & WindowControls', () => {
     await expect(page.getByLabel('Browser forward').first()).toBeDisabled()
   })
 
-  test('sidebar content reclaims full width when collapsed', async ({ electronApp, page }) => {
+  test('sidebar content reclaims full width when collapsed', async ({
+    electronApp: _electronApp,
+    page
+  }) => {
     await ready(page)
 
     const mainContent = page.locator('#main-content')
@@ -99,7 +104,7 @@ test.describe('Sidebar & WindowControls', () => {
   })
 
   test('chrome buttons remain clickable after sidebar is collapsed', async ({
-    electronApp,
+    electronApp: _electronApp,
     page
   }) => {
     await ready(page)

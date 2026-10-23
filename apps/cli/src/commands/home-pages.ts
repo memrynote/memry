@@ -1,5 +1,5 @@
 import type { MemryApp } from '../app-core/memry-app.ts'
-import { print, requireFirst, type CliIo, type ParsedCli } from '../run.ts'
+import { print, requireFirst, type CliIo, type ParsedCli } from '../cli-support.ts'
 
 /** `home-pages` commands: read the home boards. Widgets and covers are edited in the desktop app. */
 export async function runHomePages(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void> {

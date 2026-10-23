@@ -1,4 +1,4 @@
-import * as Y from 'yjs'
+import type * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
@@ -18,7 +18,7 @@ import {
 } from '@memry/shared'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
-import { atomicWrite, ensureDirectory } from '../vault/file-ops'
+import { atomicWrite, ensureDirectory, deleteFile } from '../vault/file-ops'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
 import { runWithLockedWritesAllowed } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
@@ -47,7 +47,6 @@ import { getNoteCacheById } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
 import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
-import { deleteFile } from '../vault/file-ops'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import { CRDT_EVENTS, type CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -374,7 +373,7 @@ export function scheduleWriteback(
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
     runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err) => reportWritebackFailure(noteId, err))
+      .catch((err: unknown) => reportWritebackFailure(noteId, err))
       .finally(() => {
         inFlightWritebacks.delete(noteId)
       })
@@ -461,7 +460,9 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
 export async function settleWriteback(noteId: string): Promise<void> {
   const pending = pendingTimers.get(noteId)
   if (!pending) return
-  await writebackNow(noteId, pending.doc).catch((err) => reportWritebackFailure(noteId, err))
+  await writebackNow(noteId, pending.doc).catch((err: unknown) =>
+    reportWritebackFailure(noteId, err)
+  )
 }
 
 export function cancelPendingWritebacks(): void {
@@ -516,7 +517,7 @@ export async function flushPendingWritebacks(): Promise<void> {
   for (const [, { timer }] of pending) clearTimeout(timer)
   await Promise.all(
     pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
-      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err) => {
+      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
@@ -1006,7 +1007,7 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   void flushProjectionEvents()
 
   rememberIgnoredWrite(absolutePath)
-  await deleteFile(absolutePath).catch((err) => {
+  await deleteFile(absolutePath).catch((err: unknown) => {
     log.error('Failed to delete synced note file', { noteId, error: err })
   })
 
@@ -1054,7 +1055,7 @@ function mergeFrontmatter(
   doc: Y.Doc,
   writing: WritingFrontmatter
 ): MergedFrontmatter {
-  const merged: NoteFrontmatter = { ...(existing ?? {}) }
+  const merged: NoteFrontmatter = { ...existing }
   let changed = mergeWritingFrontmatter(merged, writing)
   const yjsTags = existing === null ? getYjsTags(doc) : []
   if (yjsTags.length > 0) {
@@ -1071,7 +1072,7 @@ function mergeJournalFrontmatter(
   writing: WritingFrontmatter
 ): MergedFrontmatter {
   const yjsTags = getYjsTags(doc)
-  const merged: NoteFrontmatter = { ...(existing ?? {}), date }
+  const merged: NoteFrontmatter = { ...existing, date }
   let changed = normalizeDateValue(existing?.date) !== date
   if (mergeWritingFrontmatter(merged, writing)) changed = true
   if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {

@@ -52,7 +52,11 @@ export interface AISettings {
   summarizeLongNotes: boolean
   /** Which agent writes the summaries. Local, default `auto`. */
   summarizeAgent:
-    'auto' | 'claude_cli' | 'codex_cli' | 'antigravity_cli' | 'local_openai_compatible'
+    | 'auto'
+    | 'claude_cli'
+    | 'codex_cli'
+    | 'antigravity_cli'
+    | 'local_openai_compatible'
 }
 
 export interface AIModelStatus {

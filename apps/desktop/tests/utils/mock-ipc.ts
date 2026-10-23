@@ -157,6 +157,7 @@ export async function invokeHandler<T = unknown>(channel: string, ...args: unkno
  */
 export function registerTestHandler(
   channel: string,
+  // oxlint-disable-next-line typescript/no-redundant-type-constituents -- `unknown` documents that a function is also accepted
   response: unknown | ((event: MockIpcMainInvokeEvent, ...args: unknown[]) => unknown)
 ): void {
   const handler = typeof response === 'function' ? (response as IpcHandler) : () => response

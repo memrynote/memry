@@ -6,6 +6,7 @@ import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
+import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
@@ -14,7 +15,8 @@ const contentAreaMocks = vi.hoisted(() => ({
   suggestionControllers: [] as any[],
   sideMenuControllers: [] as any[],
   pasteSelect: null as
-    null | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
+    | null
+    | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
   handleChange: vi.fn(),
   flushPendingMarkdown: vi.fn(async (_deliver?: (markdown: string) => void) => {}),
   retryAI: vi.fn(),
@@ -87,7 +89,7 @@ const contentAreaMocks = vi.hoisted(() => ({
 // only the routing matters, so it stands in as a probe for which kind was asked
 // for. Rendering the real one would reach `listVaultAttachments` over IPC.
 vi.mock('./attachment-picker-dialog', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./attachment-picker-dialog')>()),
+  ...(await importOriginal<typeof AttachmentPickerDialogModule>()),
   AttachmentPickerDialog: ({ kind }: { kind: string }) => (
     <div data-testid="attachment-picker-dialog" data-kind={kind} />
   )
@@ -549,6 +551,8 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    // The portal flows watch the change stream for deleted source blocks.
+    onChange: vi.fn(() => () => {}),
     // Plain text runs only: every checkbox built above is one.
     // `checkbox-task-conversion.test.ts` covers the real serializer.
     blocksToMarkdownLossy: vi.fn(
@@ -750,7 +754,7 @@ describe('ContentArea', () => {
     // React 19 installs its delegated root listeners on the test container and
     // deliberately keeps them past unmount — they are the runtime's, not ours.
     const isReactRootListener = (listener: unknown): boolean =>
-      typeof listener === 'function' && /^bound dispatch/.test(listener.name)
+      typeof listener === 'function' && listener.name.startsWith('bound dispatch')
 
     EventTarget.prototype.addEventListener = function (
       this: EventTarget,
@@ -2018,7 +2022,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
+    const row = (await slashItems('')).find((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })
@@ -2039,7 +2043,7 @@ describe('ContentArea', () => {
     render(<ContentArea noteId="note-1" />)
     await waitFor(() => expect(contentAreaMocks.templatesService.list).toHaveBeenCalled())
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
+    const row = (await slashItems('')).find((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })

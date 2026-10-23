@@ -28,7 +28,8 @@ export function resolveLinkTarget(api: ExcalidrawImperativeAPI): LinkTarget {
   if (selectedIds.length !== 1) return { kind: 'none' }
 
   const element = api.getSceneElements().find((el) => el.id === selectedIds[0]) as
-    LinkableElement | undefined
+    | LinkableElement
+    | undefined
   if (!element) return { kind: 'none' }
   if (element.customData?.entityType) return { kind: 'card' }
   return { kind: 'shape', elementId: element.id }

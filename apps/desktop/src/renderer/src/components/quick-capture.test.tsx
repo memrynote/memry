@@ -488,7 +488,7 @@ describe('QuickCapture', () => {
     let onSettingsChanged: ((event: { key: string; value: unknown }) => void) | undefined
     const api = (window as any).api
     api.settings = {
-      ...(api.settings ?? {}),
+      ...api.settings,
       getAISettings: vi.fn().mockResolvedValue({ enabled: true })
     }
     api.onSettingsChanged = vi.fn((callback) => {

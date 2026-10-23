@@ -413,7 +413,7 @@ export class WritingToolsSession {
     const anchors = anchorsForRange(view.state, from, from + text.length)
     this.updateAlternative(id, (record) => ({
       ...record,
-      ...(anchors ?? {}),
+      ...anchors,
       activeVariantId
     }))
     return true

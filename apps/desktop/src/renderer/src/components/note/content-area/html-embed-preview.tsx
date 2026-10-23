@@ -266,6 +266,7 @@ export function HtmlPreview({
         {/* Corner resize brackets, faint at rest so they can be found. */}
         <div
           {...handleProps}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
           role="slider"
           aria-orientation="horizontal"
           aria-valuemin={MIN_HTML_WIDTH}
@@ -276,6 +277,7 @@ export function HtmlPreview({
         />
         <div
           {...handleProps}
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
           role="button"
           onPointerDown={(e) => handlePointerDown(e, 'start')}
           className={cn(handleClass, '-start-1 cursor-nesw-resize border-s-2')}

@@ -17,11 +17,11 @@
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "composite": true,
+    "noEmit": true,
     "jsx": "react-jsx",
+    "noUncheckedSideEffectImports": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "baseUrl": ".",
     "types": ["vitest/globals", "@testing-library/jest-dom"],
     "paths": {
       "@memry/contracts": ["../../packages/contracts/src/index.ts"],

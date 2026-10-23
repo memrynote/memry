@@ -219,8 +219,10 @@ export const CanvasEditor = ({
    */
   const restoredViewportRef = useRef(embedded ? null : storedViewport)
   /** Live camera, mirrored out of onChange. The only thing teardown may persist. */
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   const viewportRef = useRef(restoredViewportRef.current)
   /** Last camera actually written, so a commit that changes nothing is skipped. */
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   const committedViewportRef = useRef(restoredViewportRef.current)
   const viewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const setStoredViewportRef = useRef(setStoredViewport)
@@ -301,7 +303,7 @@ export const CanvasEditor = ({
     const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
     return {
       elements: parsed.elements ?? [],
-      appState: { ...(parsed.appState ?? {}), ...(viewport ? viewportAppState(viewport) : {}) },
+      appState: { ...parsed.appState, ...(viewport ? viewportAppState(viewport) : {}) },
       files: parsed.files,
       // `scrollToContent` runs AFTER the appState restore and would undo it, so
       // it stays the fallback for a tab that has no camera of its own yet.

@@ -86,7 +86,7 @@ async function connectCaldav(
     throw error
   }
 
-  void syncCaldavNow(db).catch((error) => {
+  void syncCaldavNow(db).catch((error: unknown) => {
     log.warn('First CalDAV sync after connect failed', error)
   })
   return { success: true, status: await buildProviderStatus(db, CALDAV_CALENDAR_PROVIDER) }
@@ -176,7 +176,7 @@ export const caldavCalendarProvider: ProviderDefinition = {
       return
     }
     if (!before.isSelected) {
-      void syncCaldavCalendarSource(db, after.id).catch((error) => {
+      void syncCaldavCalendarSource(db, after.id).catch((error: unknown) => {
         log.warn('Immediate sync after enabling a CalDAV calendar failed', error)
       })
     }

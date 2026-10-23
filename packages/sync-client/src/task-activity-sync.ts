@@ -42,7 +42,8 @@ export class TaskActivitySyncService {
   constructor(deps: TaskActivitySyncDeps) {
     const load = (activityId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'task_activity',

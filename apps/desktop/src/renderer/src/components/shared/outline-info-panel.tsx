@@ -69,8 +69,10 @@ const FADE_DURATION = 100
 const PINNED_LEAVE_DELAY = 200
 const HOVER_LEAVE_DELAY = 150
 
+const NO_HEADINGS: HeadingItem[] = []
+
 export const OutlineInfoPanel = memo(function OutlineInfoPanel({
-  headings = [],
+  headings = NO_HEADINGS,
   onHeadingClick,
   className,
   activeHeadingId,

@@ -98,6 +98,7 @@ export function useAnchoredPopoverPosition(
     return () => observer.disconnect()
     // Viewport size is a dependency so a clamped popover re-measures its natural
     // height when the window grows and can expand back to full size.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- viewport size is an intentional trigger: a clamped popover re-measures when the window resizes
   }, [node, viewportWidth, viewportHeight])
 
   const height = measuredHeight ?? options.estimatedHeight

@@ -54,9 +54,8 @@ describe('parseViewBlockDefinition', () => {
 
     // #then the block still renders, from the source alone
     expect(parsed).toMatchObject({ ok: true, definition: { source: { kind: 'vault' } } })
-    if (parsed.ok) {
-      expect(parsed.definition).toEqual({ source: { kind: 'vault' } })
-    }
+    if (!parsed.ok) throw new Error('expected: parsed.ok')
+    expect(parsed.definition).toEqual({ source: { kind: 'vault' } })
   })
 
   it('reads a chart over the journal', () => {

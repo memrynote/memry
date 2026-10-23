@@ -300,6 +300,7 @@ function VaultActivityRow({
             </summary>
             <ul className="mt-1 flex flex-col gap-0.5 ps-4 list-disc">
               {items.map((item, index) => (
+                // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
                 <li key={index} className="break-words">
                   {item}
                 </li>

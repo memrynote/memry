@@ -71,6 +71,7 @@ export function CalendarNotePopover({
   return (
     <div
       ref={setContainer}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- manually positioned popover surface; native <dialog> top-layer behavior would change stacking and focus handling
       role="dialog"
       aria-label={kindLabel}
       data-testid="calendar-note-popover"

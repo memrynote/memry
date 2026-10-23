@@ -43,7 +43,7 @@ import type {
  * Converts a function type to a Vitest Mock with the same signature.
  * Uses ReturnType<typeof vi.fn> which is the actual mock type.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type MockedFunction<T extends (...args: any[]) => any> = Mock<T>
 
 /**

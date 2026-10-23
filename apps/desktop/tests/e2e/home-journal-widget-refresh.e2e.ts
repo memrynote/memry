@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E specs run outside the app tsconfig; `page` is fixture-typed.
 /**
  * Home journal widget refresh (#2083)
  *

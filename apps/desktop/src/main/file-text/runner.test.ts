@@ -74,7 +74,9 @@ function openFakePdf(harness: Harness): PdfDocument {
     async renderPage(pageNumber) {
       return { png: Uint8Array.of(pageNumber), width: 10, height: 10 }
     },
-    async close() {}
+    async close() {
+      /* intentional no-op */
+    }
   }
 }
 

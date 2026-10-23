@@ -9,7 +9,7 @@
  * gunzip → decode → convert path it uses in production. No real user DB ships.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
@@ -29,6 +29,10 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
+import type * as IndexModule from '../../vault/index'
+import type * as DatabaseModule from '../../database'
+import type * as AppleNotesImporterModule from './apple-notes-importer'
+import type * as ImportContextModule from '../import-context'
 
 vi.mock('electron', () => {
   const send = vi.fn()
@@ -285,7 +289,7 @@ function encodeTableData(cells: string[][]): Buffer {
     (_, i) => new Uint8Array([i + 1, ...Array(15).fill(0)])
   )
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
+  /* oxlint-disable typescript/no-explicit-any */
   const objects: any[] = []
   const push = (object: any): number => objects.push(object) - 1
   const rootIndex = push({ customMap: { type: 1, mapEntry: [] } })
@@ -350,7 +354,7 @@ function encodeTableData(cells: string[][]): Buffer {
     { key: 2, value: { objectIndex: columnsIndex } },
     { key: 3, value: { objectIndex: cellsIndex } }
   ]
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  /* oxlint-enable typescript/no-explicit-any */
 
   const Proto = Root.fromJSON(descriptor).lookupType(MERGEABLE_DATA_TYPE)
   const bytes = Proto.encode(
@@ -610,11 +614,11 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
   let dbDir: string
   let dbPath: string
 
-  let vaultIndex: typeof import('../../vault/index')
-  let database: typeof import('../../database')
-  let importer: typeof import('./apple-notes-importer')
-  let importContext: typeof import('../import-context')
-  let platformSpy: ReturnType<typeof vi.spyOn> | null = null
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let importer: typeof AppleNotesImporterModule
+  let importContext: typeof ImportContextModule
+  let platformSpy: MockInstance | null = null
 
   beforeEach(async () => {
     // Force darwin so the macOS guard passes regardless of CI host.

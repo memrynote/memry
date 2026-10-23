@@ -121,7 +121,11 @@ describe('planBatchPlacement', () => {
   })
 
   it('lays the batch out as a row-major grid centred on an empty viewport', () => {
-    const centers = planBatchPlacement(Array(4).fill(SIZE), [], VIEWPORT)
+    const centers = planBatchPlacement(
+      Array.from({ length: 4 }, () => SIZE),
+      [],
+      VIEWPORT
+    )
     expect(centers).toHaveLength(4)
     // 2x2: first row shares y, first column shares x.
     expect(centers[0].y).toBe(centers[1].y)
@@ -135,7 +139,11 @@ describe('planBatchPlacement', () => {
   })
 
   it('never places two batch cards on top of each other', () => {
-    const centers = planBatchPlacement(Array(30).fill(SIZE), [], VIEWPORT)
+    const centers = planBatchPlacement(
+      Array.from({ length: 30 }, () => SIZE),
+      [],
+      VIEWPORT
+    )
     for (let i = 0; i < centers.length; i++) {
       for (let j = i + 1; j < centers.length; j++) {
         expect(overlaps(centers[i], centers[j])).toBe(false)
@@ -145,7 +153,11 @@ describe('planBatchPlacement', () => {
 
   it('keeps clear of cards already on the board', () => {
     const existing = [card(1000 - CARD_DEFAULT_WIDTH / 2, 600 - CARD_DEFAULT_HEIGHT / 2)]
-    const centers = planBatchPlacement(Array(9).fill(SIZE), existing, VIEWPORT)
+    const centers = planBatchPlacement(
+      Array.from({ length: 9 }, () => SIZE),
+      existing,
+      VIEWPORT
+    )
     const existingCenter = { x: 1000, y: 600 }
     for (const center of centers) {
       expect(overlaps(center, existingCenter)).toBe(false)
@@ -161,7 +173,11 @@ describe('planBatchPlacement', () => {
       }
     }
     const bottom = Math.max(...wall.map((c) => c.y + c.height))
-    const centers = planBatchPlacement(Array(4).fill(SIZE), wall, VIEWPORT)
+    const centers = planBatchPlacement(
+      Array.from({ length: 4 }, () => SIZE),
+      wall,
+      VIEWPORT
+    )
     for (const center of centers) {
       expect(center.y - CARD_DEFAULT_HEIGHT / 2).toBeGreaterThan(bottom)
     }

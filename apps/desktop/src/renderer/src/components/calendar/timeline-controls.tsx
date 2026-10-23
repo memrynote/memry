@@ -46,6 +46,7 @@ function ZoomSegments({ zoom, onChange, variant }: ZoomSegmentsProps): React.JSX
           <button
             key={option}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- segmented-control button styled as a pill; native radio input would change the visuals
             role="radio"
             aria-checked={isActive}
             onClick={() => onChange(option)}
