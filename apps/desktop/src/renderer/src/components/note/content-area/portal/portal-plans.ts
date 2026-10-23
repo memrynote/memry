@@ -201,7 +201,9 @@ export function planReconcile(
         continue
       }
       if (rootParentId !== undefined && parentId === rootParentId) {
-        const previousRoot = [...at.earlier].reverse().find((n) => rootIds.has(String(n.attrs.id)))
+        const previousRoot = [...at.earlier]
+          .toReversed()
+          .find((n) => rootIds.has(String(n.attrs.id)))
         next = addRoot(
           next,
           anchorOf(created),
@@ -386,7 +388,7 @@ export function planIncludeParent(
   if (!window || !isBlocksTarget(def)) return null
   const at = window.ancestors.findIndex((b) => b.blockId === ancestorBlockId)
   if (at < 0) return null
-  const path = window.ancestors.slice(at).reverse()
+  const path = window.ancestors.slice(at).toReversed()
   return planner(def, (anchorOf) => path.reduce((next, a) => includeParent(next, anchorOf(a)), def))
 }
 

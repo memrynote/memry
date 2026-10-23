@@ -41,7 +41,7 @@ export function sourceLabel(
   if (source.kind === 'vault') return allNotesLabel
   if (source.kind === 'journal') return journalLabel
   if (source.kind === 'folder') {
-    return source.path.split('/').filter(Boolean).pop() ?? (source.path || allNotesLabel)
+    return source.path.split('/').findLast(Boolean) ?? (source.path || allNotesLabel)
   }
   return [source.tag, ...(source.andTags ?? [])].map((tag) => `#${tag}`).join(' + ')
 }

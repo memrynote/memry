@@ -44,7 +44,7 @@ export function serializeSidebarSnapshot(root: Element): string {
   const clone = root.cloneNode(true) as Element
   for (const el of clone.querySelectorAll(REMOVED_ELEMENTS)) el.remove()
   for (const el of [clone, ...clone.querySelectorAll('*')]) {
-    for (const attr of [...el.attributes]) {
+    for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase()
       if (
         name.startsWith('on') ||

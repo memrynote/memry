@@ -22,7 +22,20 @@ function fakeCrypto(overrides: Partial<SyncCryptoProvider> = {}): SyncCryptoProv
   }
 }
 
-const silentLog: SyncLogger = { debug() {}, info() {}, warn() {}, error() {} }
+const silentLog: SyncLogger = {
+  debug() {
+    /* intentional no-op */
+  },
+  info() {
+    /* intentional no-op */
+  },
+  warn() {
+    /* intentional no-op */
+  },
+  error() {
+    /* intentional no-op */
+  }
+}
 
 function blobFor(payload: unknown): {
   encryptedKey: string

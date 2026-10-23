@@ -1482,8 +1482,10 @@ for (const [key, kind, rw, call, notRun] of CALLS) {
   if (key === 'vault_edit_canvas_elements') {
     const drawn = live.vault_draw_on_canvas?.reply
     const elementId = drawn?.created?.[0] ?? drawn?.refs?.idea ?? drawn?.element_ids?.[0]
-    if (elementId)
-      (valueOf.set(T('drawnElementId'), elementId), tokenOf.set(elementId, T('drawnElementId')))
+    if (elementId) {
+      valueOf.set(T('drawnElementId'), elementId)
+      tokenOf.set(elementId, T('drawnElementId'))
+    }
   }
   const entry = kind === 'tool' ? { arguments: tokenize(call) } : { args: tokenize(call) }
   if (notRun) {

@@ -362,9 +362,9 @@ const ICON_CATEGORIES = {
 } as const
 
 // Tüm ikonları düz bir map olarak export et
-export const ALL_ICONS: Record<string, AppIcon> = Object.values(ICON_CATEGORIES).reduce(
-  (acc, category) => ({ ...acc, ...category }),
-  {}
+export const ALL_ICONS: Record<string, AppIcon> = Object.assign(
+  {},
+  ...Object.values(ICON_CATEGORIES)
 )
 
 // İkon adından bileşeni al

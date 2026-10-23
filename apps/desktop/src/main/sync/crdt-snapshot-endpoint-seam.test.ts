@@ -305,7 +305,9 @@ vi.mock('./engine', async () => {
         this as unknown as { fullSyncRunner: { loadCrdtBodyDebts(): void } }
       ).fullSyncRunner.loadCrdtBodyDebts()
     }
-    async stop(): Promise<void> {}
+    async stop(): Promise<void> {
+      /* intentional no-op */
+    }
   }
   return { SyncEngine: TestSyncEngine }
 })

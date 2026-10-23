@@ -13,6 +13,7 @@ import {
 // documentation fixtures, not secrets. The access key id is split so the
 // staged-secret scanner's `AKIA…` token rule does not fire on them; the
 // concatenated value is exactly the documented one the vector requires.
+// oxlint-disable-next-line no-useless-concat -- split so secret scanners do not flag AWS's documented example key
 const AWS_DOC_ACCESS_KEY_ID = 'AKIAIOSFOD' + 'NN7EXAMPLE'
 const AWS_DOC_SECRET_KEY = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
 

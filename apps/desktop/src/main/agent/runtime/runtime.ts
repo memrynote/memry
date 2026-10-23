@@ -340,7 +340,7 @@ export class AgentRuntime {
     setMcpWriteGate(null)
     revokeAllTurnWriteGrants()
 
-    for (const toolCallId of [...this.pending.keys()]) {
+    for (const toolCallId of Array.from(this.pending.keys())) {
       this.settleApproval(toolCallId, { kind: 'deny' })
     }
 
@@ -398,7 +398,7 @@ export class AgentRuntime {
    * never runs.
    */
   private denyPendingApprovals(conversationId: string): void {
-    for (const [toolCallId, approval] of [...this.pending]) {
+    for (const [toolCallId, approval] of Array.from(this.pending)) {
       if (approval.conversationId !== conversationId) continue
       this.settleApproval(toolCallId, { kind: 'deny' })
       // The approval card is only ever cleared by a decision event; without

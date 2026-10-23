@@ -48,6 +48,7 @@ const secretKeywordWordPattern = new RegExp(`(?:^|_)(?:${secretKeywords.join('|'
 const tokenPatterns = [
   {
     rule: 'private-key-block',
+    // oxlint-disable-next-line no-useless-concat -- split so this file does not match its own private-key pattern
     pattern: new RegExp('-----BEGIN (?:[A-Z0-9 ]+ )?' + 'PRIVATE KEY-----', 'i'),
     message: 'private key block'
   },

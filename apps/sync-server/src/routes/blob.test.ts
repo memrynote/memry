@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
-import type { AppContext } from '../types'
+import { AppError, ErrorCodes } from '../lib/errors'
 
 vi.mock('../services/blob', () => ({
   generateAttachmentChunkKey: (userId: string, vaultId: string, chunkHash: string) =>

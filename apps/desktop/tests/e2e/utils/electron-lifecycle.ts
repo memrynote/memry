@@ -266,7 +266,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     await destroyElectronApp(app, [userDataDir], opts.deviceId)
     const tail = mainLogs.slice(-40).join('').slice(-4000)
     const baseMsg = err instanceof Error ? err.message : String(err)
-    throw new Error(`${baseMsg}\n--- main process output ---\n${tail}\n--- end ---`)
+    throw new Error(`${baseMsg}\n--- main process output ---\n${tail}\n--- end ---`, { cause: err })
   }
 }
 

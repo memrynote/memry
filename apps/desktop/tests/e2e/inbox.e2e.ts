@@ -19,8 +19,7 @@ import {
   navigateTo,
   SELECTORS,
   SHORTCUTS,
-  getElementCount,
-  waitForToast
+  getElementCount
 } from './utils/electron-helpers'
 
 test.describe('Inbox Management', () => {
@@ -46,7 +45,7 @@ test.describe('Inbox Management', () => {
 
         // Verify item appears in inbox list
         const inboxItem = page.locator(`${SELECTORS.inboxItem}:has-text("${testText}")`)
-        const exists = await inboxItem.isVisible().catch(() => false)
+        const _exists = await inboxItem.isVisible().catch(() => false)
       }
 
       expect(true).toBe(true)
@@ -81,7 +80,7 @@ test.describe('Inbox Management', () => {
         // Look for timestamp in the inbox item
         const inboxItem = page.locator(SELECTORS.inboxItem).first()
         if (await inboxItem.isVisible()) {
-          const timestamp = inboxItem.locator('[data-testid="inbox-item-time"]')
+          const _timestamp = inboxItem.locator('[data-testid="inbox-item-time"]')
           // Timestamp should exist
         }
       }
@@ -116,7 +115,7 @@ test.describe('Inbox Management', () => {
         await page.waitForTimeout(2000) // Wait for metadata fetch
 
         // Verify link item appears
-        const linkItem = page.locator(`${SELECTORS.inboxItem}[data-type="link"]`)
+        const _linkItem = page.locator(`${SELECTORS.inboxItem}[data-type="link"]`)
         // Link should be captured
       }
 
@@ -135,7 +134,7 @@ test.describe('Inbox Management', () => {
         // Look for title in the inbox item
         const inboxItem = page.locator(SELECTORS.inboxItem).first()
         if (await inboxItem.isVisible()) {
-          const title = inboxItem.locator('[data-testid="inbox-item-title"]')
+          const _title = inboxItem.locator('[data-testid="inbox-item-title"]')
           // Should show fetched title
         }
       }
@@ -155,7 +154,7 @@ test.describe('Inbox Management', () => {
         // Look for favicon or thumbnail
         const inboxItem = page.locator(SELECTORS.inboxItem).first()
         if (await inboxItem.isVisible()) {
-          const image = inboxItem.locator('img, [data-testid="link-thumbnail"]')
+          const _image = inboxItem.locator('img, [data-testid="link-thumbnail"]')
           // Should have some visual indicator
         }
       }
@@ -173,7 +172,7 @@ test.describe('Inbox Management', () => {
         await page.waitForTimeout(500)
 
         // Should be captured as text, not link
-        const textItem = page.locator(`${SELECTORS.inboxItem}[data-type="text"]`)
+        const _textItem = page.locator(`${SELECTORS.inboxItem}[data-type="text"]`)
         // Should be text type
       }
 
@@ -256,7 +255,7 @@ test.describe('Inbox Management', () => {
 
     test('T547: should remove item from inbox after filing', async ({ page }) => {
       // Get initial inbox count
-      const initialCount = await getElementCount(page, SELECTORS.inboxItem)
+      const _initialCount = await getElementCount(page, SELECTORS.inboxItem)
 
       // Capture an item
       const captureInput = page.locator(SELECTORS.captureInput)
@@ -326,7 +325,7 @@ test.describe('Inbox Management', () => {
     test('T548: should hide snoozed items from main list', async ({ page }) => {
       // After snoozing, verify item is hidden
       // Get count before snooze
-      const countBefore = await getElementCount(page, SELECTORS.inboxItem)
+      const _countBefore = await getElementCount(page, SELECTORS.inboxItem)
 
       // Snooze an item (if available)
       const inboxItem = page.locator(SELECTORS.inboxItem).first()
@@ -342,7 +341,7 @@ test.describe('Inbox Management', () => {
           }
 
           // Count should decrease or stay same
-          const countAfter = await getElementCount(page, SELECTORS.inboxItem)
+          const _countAfter = await getElementCount(page, SELECTORS.inboxItem)
         }
       }
 
@@ -352,7 +351,7 @@ test.describe('Inbox Management', () => {
     test('T548: should show snoozed items in separate section', async ({ page }) => {
       // Look for snoozed items section
       const snoozedSection = page.locator('[data-testid="snoozed-items"]')
-      const hasSnoozedSection = await snoozedSection.isVisible().catch(() => false)
+      const _hasSnoozedSection = await snoozedSection.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -377,7 +376,7 @@ test.describe('Inbox Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T548: should show snooze time indicator', async ({ page }) => {
+    test('T548: should show snooze time indicator', async ({ page: _page }) => {
       // Verify snoozed items show when they'll return
       expect(true).toBe(true)
     })
@@ -449,7 +448,7 @@ test.describe('Inbox Management', () => {
     test('should show stale items indicator', async ({ page }) => {
       // Look for stale items warning
       const staleIndicator = page.locator('[data-testid="stale-items-warning"]')
-      const hasStaleIndicator = await staleIndicator.isVisible().catch(() => false)
+      const _hasStaleIndicator = await staleIndicator.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })

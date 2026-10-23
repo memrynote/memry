@@ -235,6 +235,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
 
     void (async () => {
       try {
+        // oxlint-disable-next-line no-unmodified-loop-condition -- `isStopped` is set by stop() while the loop awaits
         while (!isStopped && lane.bus.size > 0) {
           const event = lane.bus.dequeue()
           if (!event) {
@@ -276,6 +277,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     // Lanes advance independently, so a lane can still be busy (or have been
     // refilled) when a faster one settles. Loop until every lane is idle — or
     // until the runtime stops, since a stopped lane never drains its backlog.
+    // oxlint-disable-next-line no-unmodified-loop-condition -- `isStopped` is set by stop() while the loop awaits
     while (!isStopped && target.some((lane) => lane.bus.size > 0 || lane.activeDrain !== null)) {
       await Promise.all(target.map((lane) => drainLane(lane)))
     }
@@ -380,8 +382,8 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       // The tail swallows, so it never rejects: a failing pass must not stop
       // the next one from being queued, and stop() awaits this handle.
       reconcileChain = run.then(
-        () => {},
-        () => {}
+        () => undefined,
+        () => undefined
       )
 
       try {

@@ -56,6 +56,7 @@ export const test = base.extend<{
   syncBootstrap: SharedSyncBootstrap
   bootstrappedSyncPair: void
 }>({
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   syncBootstrap: async ({}, use) => {
     const bootstrap = await startSharedSyncBootstrap()
     try {

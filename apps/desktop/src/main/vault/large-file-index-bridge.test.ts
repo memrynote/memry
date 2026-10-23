@@ -160,8 +160,8 @@ describe('buildLineIndex', () => {
     // understand.
     const logged = mocks.warned.at(-1) as { err?: unknown } | undefined
     expect(logged?.err).toBeInstanceOf(Error)
-    expect((logged?.err as Error).message).toContain('ENOMEM')
-    expect((logged?.err as Error).cause).toBe('ENOMEM')
+    expect((logged?.err as Error | undefined)?.message).toContain('ENOMEM')
+    expect((logged?.err as Error | undefined)?.cause).toBe('ENOMEM')
   })
 
   it('surfaces a read failure the fallback cannot fix', async () => {

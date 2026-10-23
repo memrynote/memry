@@ -8,7 +8,7 @@ import {
   type CriticMarkupCommentFormatRange
 } from '@memry/shared'
 import { Node, mergeAttributes, type Editor, type JSONContent } from '@tiptap/core'
-import Placeholder from '@tiptap/extension-placeholder'
+import { Placeholder } from '@tiptap/extension-placeholder'
 import {
   EditorContent,
   NodeViewWrapper,
@@ -16,7 +16,7 @@ import {
   useEditor,
   type ReactNodeViewProps
 } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
+import { StarterKit } from '@tiptap/starter-kit'
 
 import {
   MentionIcon,

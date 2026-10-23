@@ -12,7 +12,7 @@ export async function parallelWithLimit<T>(
     throw new Error('concurrency must be >= 1')
   }
 
-  const results: PromiseSettledResult<T>[] = new Array(tasks.length)
+  const results: PromiseSettledResult<T>[] = Array.from({ length: tasks.length })
   let nextIndex = 0
 
   async function runWorker(): Promise<void> {

@@ -369,7 +369,7 @@ describe('Inbox Stats Module', () => {
       // Should not throw
       incrementCaptureCount('unknown')
 
-      const stats = getTodayStats()
+      const _stats = getTodayStats()
       // Stats may or may not be created depending on implementation
       // The key is that it doesn't throw
     })

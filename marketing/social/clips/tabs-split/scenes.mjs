@@ -14,7 +14,7 @@ async function openFromSearch(page, title) {
 }
 
 export async function setup({ page }) {
-  const strip = page.getByRole('tablist', { name: 'Open tabs' }).getByRole('tab')
+  const _strip = page.getByRole('tablist', { name: 'Open tabs' }).getByRole('tab')
   await openFromSearch(page, BRIEF)
   await page.getByRole('button', { name: 'New Tab' }).click()
   await page.waitForTimeout(500)
@@ -44,7 +44,7 @@ export const scenes = {
     const c = await rec.center(tab(page, IDEAS))
     await rec.glide(c.x + 30, c.y + 4, 1000)
   },
-  async hover({ rec, page, zoom, sleep, at }) {
+  async hover({ rec, page, zoom, sleep: _sleep, at }) {
     zoom(560, 120, 1.7)
     const c = await rec.center(tab(page, BRIEF))
     await rec.glide(c.x, c.y, 800)
@@ -71,7 +71,7 @@ export const scenes = {
     await page.mouse.up()
     await at(5.8)
   },
-  async split({ rec, page, unzoom, at }) {
+  async split({ rec, page: _page, unzoom, at }) {
     unzoom()
     await rec.glide(1000, 560, 900)
     await at(5.8)

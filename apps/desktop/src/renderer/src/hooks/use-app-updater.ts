@@ -242,7 +242,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
       )
       publishError(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
@@ -257,7 +257,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToDownloadUpdate')
       )
       publishError(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
@@ -272,7 +272,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToInstallUpdate')
       )
       publishError(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
@@ -287,7 +287,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
       )
       publishError(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
@@ -302,7 +302,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
       )
       publishError(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 
@@ -317,7 +317,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
       )
       publishError(message)
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   }, [])
 

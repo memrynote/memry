@@ -361,7 +361,7 @@ describe('SyncProvider', () => {
         'Sync needs you to sign in again on this device.',
         expect.objectContaining({ action: expect.objectContaining({ label: 'Open settings' }) })
       )
-      const { action } = toastMock.error.mock.calls.at(-1)?.[1] as {
+      const { action } = toastMock.error.mock.calls.at(-1)![1] as {
         action: { onClick: () => void }
       }
       const opened = vi.fn()

@@ -86,7 +86,11 @@ describe('AgentRuntime subprocess cancellation', () => {
     let signal: AbortSignal | undefined
     mocks.streamText.mockImplementationOnce((options: { abortSignal?: AbortSignal }) => {
       signal = options.abortSignal
-      return { fullStream: (async function* () {})() }
+      return {
+        fullStream: (async function* () {
+          /* intentional no-op */
+        })()
+      }
     })
 
     const backend = new LocalOpenAICompatibleBackend({
@@ -131,6 +135,7 @@ describe('AgentRuntime subprocess cancellation', () => {
     let shutdownSettled = false
     const shutdown = agentRuntime.killAll().then(() => {
       shutdownSettled = true
+      return undefined
     })
 
     await Promise.resolve()

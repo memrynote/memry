@@ -8,7 +8,7 @@ export function extractYouTubeVideoId(url: string): string | null {
 
   const hostname = parsed.hostname.toLowerCase()
   if (hostname === 'youtu.be') {
-    return getValidVideoId(parsed.pathname.split('/').filter(Boolean)[0])
+    return getValidVideoId(parsed.pathname.split('/').find(Boolean))
   }
 
   if (hostname !== 'youtube.com' && !hostname.endsWith('.youtube.com')) {

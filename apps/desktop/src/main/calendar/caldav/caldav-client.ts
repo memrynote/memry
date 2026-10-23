@@ -197,7 +197,7 @@ export async function discoverCaldavAccount(
       url,
       displayName:
         textOf(props.displayname)?.trim() ||
-        new URL(url).pathname.split('/').filter(Boolean).at(-1) ||
+        new URL(url).pathname.split('/').findLast(Boolean) ||
         url,
       color: normalizeColor(props.calendarColor),
       timezone: extractTimezoneId(textOf(props.calendarTimezone)),

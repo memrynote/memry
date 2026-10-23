@@ -75,7 +75,9 @@ export function registerOneNoteImportHandlers(): void {
         return { notebooks: await graph.listNotebookTrees() }
       } catch (error) {
         if (Date.now() > deadline) {
-          throw new Error('OneNote took too long to list your notebooks. Please try again.')
+          throw new Error('OneNote took too long to list your notebooks. Please try again.', {
+            cause: error
+          })
         }
         throw error
       }

@@ -209,7 +209,7 @@ describe('readLines', () => {
 
   it('truncates a single line that would itself be an unbounded string', async () => {
     // #given the minified-JSON shape: one line holding the whole file
-    const body = 'y'.repeat(5000) + '\n' + 'short\n'
+    const body = 'y'.repeat(5000) + '\nshort\n'
     const index = await indexOf(body, { fileBytes: 0 })
 
     // #when

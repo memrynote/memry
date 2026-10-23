@@ -12,9 +12,7 @@ import type {
   StatusCreateSchema,
   TaskCreateSchema,
   TaskListSchema,
-  TaskUpdateSchema
-} from '../../contracts/src/tasks-api.ts'
-import type {
+  TaskUpdateSchema,
   Project,
   ProjectContents,
   ProjectLinkedEvent,

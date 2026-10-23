@@ -49,7 +49,7 @@ export const scenes = {
     unzoom()
     await sleep(500)
     const t = page.getByRole('button', { name: /Year in review/ })
-    const b = await t.boundingBox()
+    const _b = await t.boundingBox()
     zoom(560, 430, 1.5)
     await rec.click(t)
     await sleep(600)

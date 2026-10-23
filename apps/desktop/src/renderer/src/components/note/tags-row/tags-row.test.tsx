@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'

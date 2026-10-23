@@ -10,15 +10,19 @@ import { nestUnlisted } from '@/components/tasks/date-view-context'
 export type TaskWidgetView = 'all' | 'today' | 'tomorrow' | 'next7' | 'nodue'
 export const TASK_WIDGET_DATE_VIEWS: TaskWidgetView[] = ['all', 'today', 'tomorrow', 'next7']
 export const TASK_WIDGET_NO_DUE_VIEW: TaskWidgetView = 'nodue'
-const TASK_WIDGET_VIEWS: TaskWidgetView[] = [...TASK_WIDGET_DATE_VIEWS, TASK_WIDGET_NO_DUE_VIEW]
+const TASK_WIDGET_VIEWS: ReadonlySet<TaskWidgetView> = new Set([
+  ...TASK_WIDGET_DATE_VIEWS,
+  TASK_WIDGET_NO_DUE_VIEW
+])
 
 export type ResolvedTasksFilter =
-  { kind: 'view'; viewId: TaskWidgetView } | { kind: 'saved'; savedFilterId: string }
+  | { kind: 'view'; viewId: TaskWidgetView }
+  | { kind: 'saved'; savedFilterId: string }
 
 /** Configs written before the widget adopted the Tasks page windows still say `week`. */
 function normalizeView(dateRange: string): TaskWidgetView {
   if (dateRange === 'week' || dateRange === 'upcoming') return 'next7'
-  return TASK_WIDGET_VIEWS.includes(dateRange as TaskWidgetView)
+  return TASK_WIDGET_VIEWS.has(dateRange as TaskWidgetView)
     ? (dateRange as TaskWidgetView)
     : 'today'
 }

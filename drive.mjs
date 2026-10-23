@@ -96,7 +96,7 @@ const CASES = [
   { name: 'FzD', body: '> a\n>\n> ```\n> b\n> ```\n\n```py\nc\n```' },
   { name: 'FzE', body: '    c' }
 ]
-const edit = async (c, name, abs, ch) => {
+const _edit = async (c, name, _abs, _ch) => {
   const note = await byPath(`${name}.md`)
   await page.waitForTimeout(1500)
   const editor = await openNote(note, name)

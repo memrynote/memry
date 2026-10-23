@@ -66,7 +66,7 @@ export const scenes = {
     await chip(page, 'Lisbon board').waitFor()
     await at(3.8)
   },
-  async day({ rec, page, sleep, at }) {
+  async day({ rec, page, sleep: _sleep, at }) {
     await rec.key('Enter')
     await rec.type(`Flights booked on [[${FLIGHTS_DAY}]] `, { cps: 15 })
     const c = await chip(page, FLIGHTS_DAY).boundingBox()

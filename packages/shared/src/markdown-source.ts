@@ -378,7 +378,7 @@ function backtrack(
     y--
     matches.push([offset + x, offset + y])
   }
-  return matches.reverse()
+  return matches.toReversed()
 }
 
 /**

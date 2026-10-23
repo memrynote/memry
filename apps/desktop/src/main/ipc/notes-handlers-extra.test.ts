@@ -1,7 +1,7 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
 

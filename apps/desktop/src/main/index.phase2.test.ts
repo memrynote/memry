@@ -522,9 +522,9 @@ function getFlushDoneListeners(): FlushDoneListener[] {
 }
 
 function getFlushRequestId(window: ReturnType<typeof createBrowserWindowMock>): string | undefined {
-  return window.webContents.send.mock.calls
-    .filter(([channel]) => channel === 'app:request-flush')
-    .at(-1)?.[1] as string | undefined
+  return window.webContents.send.mock.calls.findLast(
+    ([channel]) => channel === 'app:request-flush'
+  )?.[1] as string | undefined
 }
 
 // `app:flush-done` is a shared channel, so a reply only counts when it carries
@@ -1893,7 +1893,7 @@ describe('main index phase2 exports', () => {
     expect(globalShortcutUnregisterMock).not.toHaveBeenCalledWith('CommandOrControl+Shift+Space')
 
     globalCaptureRegistered = true
-    for (const listener of [...vaultStatusChangedListeners]) {
+    for (const listener of Array.from(vaultStatusChangedListeners)) {
       listener({ isOpen: true, path: '/vault', isIndexing: false, indexProgress: 0, error: null })
     }
 

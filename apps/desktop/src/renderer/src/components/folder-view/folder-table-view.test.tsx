@@ -589,7 +589,7 @@ describe('FolderTableView', () => {
 
     // RowContextMenu wiring: the note row's selectedNoteIds must exclude the
     // task/inbox ids even though all three are selected.
-    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
     expect(noteRowCall.selectedNoteIds).toEqual(['note-1'])
 
     // ⇧⌘M keyboard shortcut (bypasses RowContextMenu entirely) must apply
@@ -612,7 +612,7 @@ describe('FolderTableView', () => {
       />
     )
 
-    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
     expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2'])
 
     const grid = screen.getByRole('grid', { name: 'notesTable' })
@@ -643,7 +643,7 @@ describe('FolderTableView', () => {
     // Only the matching row is rendered, but selection is not pruned by search.
     expect(screen.queryByRole('button', { name: /Beta brief/ })).not.toBeInTheDocument()
 
-    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
     expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2', 'note-3'])
 
     const grid = screen.getByRole('grid', { name: 'notesTable' })
@@ -992,7 +992,7 @@ describe('GroupedTable', () => {
       />
     )
 
-    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
     expect(noteRowCall.selectedNoteIds).toEqual(['note-1'])
 
     const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
@@ -1019,7 +1019,7 @@ describe('GroupedTable', () => {
     expect(screen.getByRole('button', { name: /Alpha plan/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Beta brief/ })).not.toBeInTheDocument()
 
-    const noteRowCall = rowContextMenuCalls.filter((call) => call.note.id === 'note-1').at(-1)
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
     expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2'])
 
     const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })

@@ -23,7 +23,9 @@ class FakeContents {
     close: async (): Promise<void> => {}
   }
 
-  setWindowOpenHandler(): void {}
+  setWindowOpenHandler(): void {
+    /* intentional no-op */
+  }
   once(event: string, handler: (...args: unknown[]) => void): void {
     this.handlers.set(event, handler)
   }

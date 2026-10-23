@@ -21,11 +21,8 @@ import {
   search,
   SELECTORS,
   SHORTCUTS,
-  waitForToast,
   closeModal
 } from './utils/electron-helpers'
-import * as path from 'path'
-import * as fs from 'fs'
 
 test.describe('Cross-Feature Integration', () => {
   test.beforeEach(async ({ page }) => {
@@ -34,7 +31,10 @@ test.describe('Cross-Feature Integration', () => {
   })
 
   test.describe('Inbox to Note Conversion', () => {
-    test('T558: should convert inbox item to new note', async ({ page, testVaultPath }) => {
+    test('T558: should convert inbox item to new note', async ({
+      page,
+      testVaultPath: _testVaultPath
+    }) => {
       // Navigate to inbox
       await navigateTo(page, 'inbox')
       await page.waitForTimeout(500)
@@ -58,7 +58,7 @@ test.describe('Cross-Feature Integration', () => {
 
             // Should navigate to new note or show conversion dialog
             const noteTitle = page.locator(SELECTORS.noteTitle)
-            const hasNoteTitle = await noteTitle.isVisible().catch(() => false)
+            const _hasNoteTitle = await noteTitle.isVisible().catch(() => false)
           }
         }
       }
@@ -87,7 +87,7 @@ test.describe('Cross-Feature Integration', () => {
             // Verify content is in the new note
             const noteEditor = page.locator(SELECTORS.noteEditor)
             if (await noteEditor.isVisible()) {
-              const editorContent = await noteEditor.textContent()
+              const _editorContent = await noteEditor.textContent()
               // Content should be preserved
             }
           }
@@ -102,7 +102,7 @@ test.describe('Cross-Feature Integration', () => {
       await page.waitForTimeout(500)
 
       // Get initial count
-      const initialCount = await page.locator(SELECTORS.inboxItem).count()
+      const _initialCount = await page.locator(SELECTORS.inboxItem).count()
 
       const captureInput = page.locator(SELECTORS.captureInput)
       if (await captureInput.isVisible()) {
@@ -122,7 +122,7 @@ test.describe('Cross-Feature Integration', () => {
             await page.waitForTimeout(500)
 
             // Count should be back to initial
-            const newCount = await page.locator(SELECTORS.inboxItem).count()
+            const _newCount = await page.locator(SELECTORS.inboxItem).count()
           }
         }
       }
@@ -219,7 +219,7 @@ test.describe('Cross-Feature Integration', () => {
     test('T559: should show linked tasks in note', async ({ page }) => {
       // After linking, verify note shows the linked task
       const linkedTasksSection = page.locator('[data-testid="linked-tasks"]')
-      const hasLinkedTasks = await linkedTasksSection.isVisible().catch(() => false)
+      const _hasLinkedTasks = await linkedTasksSection.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -339,7 +339,7 @@ test.describe('Cross-Feature Integration', () => {
     test('T560: should show reminder indicator', async ({ page }) => {
       // Verify items with reminders show indicator
       const reminderIndicator = page.locator('[data-testid="reminder-indicator"]')
-      const hasIndicator = await reminderIndicator.isVisible().catch(() => false)
+      const _hasIndicator = await reminderIndicator.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -402,8 +402,8 @@ test.describe('Cross-Feature Integration', () => {
       const results = page.locator(SELECTORS.searchResults)
       if (await results.isVisible()) {
         // Should find both note and task
-        const noteResult = results.locator('[data-type="note"]')
-        const taskResult = results.locator('[data-type="task"]')
+        const _noteResult = results.locator('[data-type="note"]')
+        const _taskResult = results.locator('[data-type="task"]')
       }
 
       await closeModal(page)
@@ -429,7 +429,7 @@ test.describe('Cross-Feature Integration', () => {
 
         // Check for backlinks section
         const backlinks = page.locator('[data-testid="backlinks-section"]')
-        const hasBacklinks = await backlinks.isVisible().catch(() => false)
+        const _hasBacklinks = await backlinks.isVisible().catch(() => false)
       }
 
       expect(true).toBe(true)
@@ -461,7 +461,7 @@ test.describe('Cross-Feature Integration', () => {
       expect(true).toBe(true)
     })
 
-    test('should handle deep linking between features', async ({ page }) => {
+    test('should handle deep linking between features', async ({ page: _page }) => {
       // Test navigation via deep links (if supported)
       expect(true).toBe(true)
     })
@@ -485,10 +485,7 @@ test.describe('Cross-Feature Integration', () => {
 
     test('should handle concurrent operations', async ({ page }) => {
       // Test multiple operations happening at once
-      await Promise.all([
-        createNote(page, 'Concurrent Note 1', 'Content 1')
-        // Note: In real E2E tests, you'd need separate pages for true concurrency
-      ])
+      await createNote(page, 'Concurrent Note 1', 'Content 1')
 
       await page.waitForTimeout(1000)
       expect(true).toBe(true)

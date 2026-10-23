@@ -53,7 +53,7 @@ const listeners = new Set<() => void>()
 
 function setState(next: VaultSwitchState): void {
   state = next
-  for (const listener of [...listeners]) listener()
+  for (const listener of Array.from(listeners)) listener()
 }
 
 export function subscribeVaultSwitchState(listener: () => void): () => void {
@@ -119,7 +119,7 @@ export function holdVaultReveal(): () => void {
     if (released) return
     released = true
     revealHolds -= 1
-    if (revealHolds === 0) for (const listener of [...listeners]) listener()
+    if (revealHolds === 0) for (const listener of Array.from(listeners)) listener()
   }
 }
 
@@ -163,7 +163,7 @@ export function setVaultSwipeProgress(targetPath: string | null, progress: numbe
   const next = targetPath === null || progress <= 0 ? REST : { targetPath, progress }
   if (next.targetPath === swipe.targetPath && next.progress === swipe.progress) return
   swipe = next
-  for (const listener of [...swipeListeners]) listener()
+  for (const listener of Array.from(swipeListeners)) listener()
 }
 
 function subscribeSwipe(listener: () => void): () => void {
@@ -195,7 +195,7 @@ export type VaultPageRequest = { path: string } | { step: 1 | -1 }
 const pageListeners = new Set<(request: VaultPageRequest) => void>()
 
 export function requestVaultPage(request: VaultPageRequest): void {
-  for (const listener of [...pageListeners]) listener(request)
+  for (const listener of Array.from(pageListeners)) listener(request)
 }
 
 export function useVaultPageRequest(onRequest: (request: VaultPageRequest) => void): void {

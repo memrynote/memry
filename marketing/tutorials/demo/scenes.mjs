@@ -408,7 +408,7 @@ export const scenes = {
     await rec.glide(...Object.values(await rec.center(block)), 500)
   },
 
-  async canvas({ page, rec, at, zoom, sleep }) {
+  async canvas({ page, rec, at, zoom: _zoom, sleep }) {
     await rec.glide(...Object.values(await rec.center(page.getByText(/^Canvases/i).first())), 400)
     await sleep(250)
     await rec.click(page.getByRole('button', { name: 'New canvas' }).first(), { pause: 60 })

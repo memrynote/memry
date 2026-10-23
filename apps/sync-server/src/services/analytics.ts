@@ -153,7 +153,7 @@ const normalizeServerPath = (path: string | undefined): string => {
 }
 
 const getRouteArea = (path: string): string => {
-  const first = path.split('/').filter(Boolean)[0]
+  const first = path.split('/').find(Boolean)
   return safeLabel(first, 'root')
 }
 

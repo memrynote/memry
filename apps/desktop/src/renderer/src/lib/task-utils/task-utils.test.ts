@@ -2992,7 +2992,7 @@ describe('Task Utils', () => {
       })
 
       it('should handle single task for all filters', () => {
-        const proj = [createMockProject({ id: 'project-1' })]
+        const _proj = [createMockProject({ id: 'project-1' })]
         const task = createMockTask({
           id: 't1',
           projectId: 'project-1',

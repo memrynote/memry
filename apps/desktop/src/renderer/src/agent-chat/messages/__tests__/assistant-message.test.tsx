@@ -431,9 +431,15 @@ describe('AssistantMessage', () => {
           constructor(callback: ResizeObserverCallback) {
             observers.push(callback)
           }
-          observe(): void {}
-          unobserve(): void {}
-          disconnect(): void {}
+          observe(): void {
+            /* intentional no-op */
+          }
+          unobserve(): void {
+            /* intentional no-op */
+          }
+          disconnect(): void {
+            /* intentional no-op */
+          }
         }
       )
     })
@@ -455,7 +461,9 @@ describe('AssistantMessage', () => {
       Object.defineProperty(el, 'scrollTop', {
         configurable: true,
         get: () => top,
-        set: (v: number) => (top = Math.max(0, Math.min(v, height - 180)))
+        set: (v: number) => {
+          top = Math.max(0, Math.min(v, height - 180))
+        }
       })
       const landUnobserved = (h: number): void => {
         height = h

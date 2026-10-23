@@ -1,7 +1,8 @@
 import { decodeHtmlCommentTokens } from './html-comments.ts'
 
 export type MarkdownSegment =
-  { type: 'content'; text: string } | { type: 'gap'; extraLines: number }
+  | { type: 'content'; text: string }
+  | { type: 'gap'; extraLines: number }
 
 /**
  * Split markdown into content segments and gap descriptors.
@@ -30,6 +31,7 @@ export function splitMarkdownPreservingBlanks(markdown: string): MarkdownSegment
     }
   }
 
+  // oxlint-disable-next-line no-control-regex -- NUL delimits the gap sentinel on purpose
   const parts = assembled.split(/\x00GAP:(\d+)\x00/)
   const segments: MarkdownSegment[] = []
 

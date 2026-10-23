@@ -117,7 +117,7 @@ export class PushCoordinator {
   }
 
   private settlePushWaiters(): void {
-    for (const settle of [...this.settledWaiters]) settle()
+    for (const settle of Array.from(this.settledWaiters)) settle()
   }
 
   constructor(ctx: SyncContext, stateManager: SyncStateManager) {

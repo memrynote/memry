@@ -316,7 +316,7 @@ async function parallelMap<T, R>(
   concurrency: number,
   fn: (item: T) => Promise<R>
 ): Promise<R[]> {
-  const results: R[] = new Array(items.length)
+  const results: R[] = Array.from({ length: items.length })
   let nextIndex = 0
 
   async function worker(): Promise<void> {
@@ -892,9 +892,9 @@ export class AttachmentSyncService {
         } catch (renameErr) {
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
           if (isDiskSpaceError(renameErr)) {
-            throw new Error(getMainI18n().t('errors:attachment.diskFull'))
+            throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })
           }
-          throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
+          throw new Error(getMainI18n().t('errors:attachment.writeFailed'), { cause: renameErr })
         }
         await unlink(statePath).catch(() => {})
       } catch (err) {
@@ -918,7 +918,7 @@ export class AttachmentSyncService {
             path: destPath,
             chunksDone: downloadProgress.chunksCompleted
           })
-          throw new Error(getMainI18n().t('errors:attachment.diskFull'))
+          throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: err })
         }
         throw err
       }

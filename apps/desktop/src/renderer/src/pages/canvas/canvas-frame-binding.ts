@@ -30,10 +30,10 @@ export const FRAME_BINDING_KEY = 'memryBinding'
 
 export type BindablePropertyType = 'select' | 'multiselect' | 'status'
 
-const BINDABLE_PROPERTY_TYPES: readonly string[] = ['select', 'multiselect', 'status']
+const BINDABLE_PROPERTY_TYPES: ReadonlySet<string> = new Set(['select', 'multiselect', 'status'])
 
 export function isBindablePropertyType(type: string): type is BindablePropertyType {
-  return BINDABLE_PROPERTY_TYPES.includes(type)
+  return BINDABLE_PROPERTY_TYPES.has(type)
 }
 
 export type FrameBinding =

@@ -178,7 +178,7 @@ describe('onenote-auth', () => {
   it('ignores unrelated requests to the loopback port instead of aborting sign-in', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string | URL, init?: RequestInit) => {
+      vi.fn(async (url: string | URL) => {
         const href = String(url)
         if (href === MS_TOKEN_URL) {
           return new Response(
@@ -190,7 +190,6 @@ describe('onenote-auth', () => {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         })
-        void init
       })
     )
 

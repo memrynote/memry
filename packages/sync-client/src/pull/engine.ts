@@ -85,10 +85,6 @@ export interface PullRunResult {
   changedNoteIds: string[]
 }
 
-interface FetchedPage {
-  changes: RecordChangesResponse
-}
-
 export class RecordPullEngine {
   private deviceKeys = new Map<string, Uint8Array | null>()
   private deviceKeysFetched = false

@@ -65,7 +65,10 @@ export const scenes = {
     const v = page.locator('video[data-testid="video-embed"]')
     // Lift the player clear of the caption band, then zoom on it.
     await rec.glide(1100, 500, 300)
-    for (let i = 0; i < 12; i++) (await page.mouse.wheel(0, 20), await sleep(40))
+    for (let i = 0; i < 12; i++) {
+      await page.mouse.wheel(0, 20)
+      await sleep(40)
+    }
     await sleep(300)
     await sleep(500)
     const b = await v.boundingBox()
@@ -79,7 +82,7 @@ export const scenes = {
       .waitForFunction(() => document.querySelector('video')?.currentTime > 0.8, null, {
         timeout: 5000
       })
-      .catch(async (e) => {
+      .catch(async () => {
         await page.screenshot({ path: '/tmp/vadbg.png' })
         throw new Error(
           JSON.stringify(

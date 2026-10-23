@@ -26,8 +26,7 @@ import {
   navigateTo as _navigateTo,
   search,
   selectSearchResult as _selectSearchResult,
-  waitForToast as _waitForToast,
-  getToastMessage
+  waitForToast as _waitForToast
 } from './utils/electron-helpers'
 import { openNoteByHandle } from './utils/note-sync-helpers'
 import * as path from 'path'
@@ -90,7 +89,7 @@ test.describe('Notes Management', () => {
         await noteTitle.fill('Note with Tags')
 
         // Look for tag input
-        const tagInput = page.locator('[data-testid="add-tag-button"], [data-testid="tag-input"]')
+        const _tagInput = page.locator('[data-testid="add-tag-button"], [data-testid="tag-input"]')
         // const hasTagInput = await tagInput.isVisible().catch(() => false)
 
         expect(true).toBe(true) // Test structure is valid
@@ -160,9 +159,10 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T534: should update modified timestamp on edit', async ({ page, testVaultPath }) => {
-      const notesDir = path.join(testVaultPath, 'notes')
-
+    test('T534: should update modified timestamp on edit', async ({
+      page,
+      testVaultPath: _testVaultPath
+    }) => {
       // Get initial file modification times
       const initialStats: Map<string, number> = new Map()
       if (fs.existsSync(notesDir)) {
@@ -257,7 +257,7 @@ test.describe('Notes Management', () => {
       await page.waitForTimeout(500)
 
       // Look for backlinks section
-      const backlinksSection = page.locator(
+      const _backlinksSection = page.locator(
         '[data-testid="backlinks-section"], [data-testid="backlinks"]'
       )
       // const hasBacklinks = await backlinksSection.isVisible().catch(() => false)
@@ -345,15 +345,10 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T537: should remove note from file system on delete', async ({ page, testVaultPath }) => {
-      const notesDir = path.join(testVaultPath, 'notes')
-
-      // Count initial files
-      let initialCount = 0
-      if (fs.existsSync(notesDir)) {
-        initialCount = fs.readdirSync(notesDir).filter((f) => f.endsWith('.md')).length
-      }
-
+    test('T537: should remove note from file system on delete', async ({
+      page,
+      testVaultPath: _testVaultPath
+    }) => {
       // Create and delete a note
       const noteTitle = `File Delete Test ${Date.now()}`
       await createNote(page, noteTitle, 'Will be removed from disk.')
@@ -378,7 +373,7 @@ test.describe('Notes Management', () => {
       await search(page, noteTitle)
       await page.waitForTimeout(500)
 
-      const results = page.locator(SELECTORS.searchResults)
+      const _results = page.locator(SELECTORS.searchResults)
       // const hasResults = await results.isVisible().catch(() => false)
 
       expect(true).toBe(true)

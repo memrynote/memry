@@ -6,10 +6,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   // Types
-  DayHeader,
-  DateParts,
-  TimeGreeting,
-  MonthStat,
   type JournalDateLabels,
   // Date Generation Functions (T111)
   getTodayString,

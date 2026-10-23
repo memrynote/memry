@@ -216,11 +216,11 @@ export function resolveSource(cwd, { env = process.env, run = git } = {}) {
 }
 
 function main() {
-  const argv = process.argv.slice(2)
-  const mode = argv.includes('--copy') ? 'copy' : 'link'
-  const check = argv.includes('--check')
-  const force = argv.includes('--force')
-  const quiet = argv.includes('--quiet')
+  const argv = new Set(process.argv.slice(2))
+  const mode = argv.has('--copy') ? 'copy' : 'link'
+  const check = argv.has('--check')
+  const force = argv.has('--force')
+  const quiet = argv.has('--quiet')
   const say = (message) => {
     if (!quiet) console.log(message)
   }

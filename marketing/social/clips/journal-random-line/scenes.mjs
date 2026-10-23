@@ -30,7 +30,7 @@ export const scenes = {
     await rec.glide(c.x + 200, c.y, 1200)
     await rec.glide(c.x + 60, c.y + 150, 800)
   },
-  async template({ rec, page, zoom, unzoom, sleep, at }) {
+  async template({ rec, page, zoom, unzoom: _unzoom, sleep, at }) {
     await rec.click(page.getByRole('button', { name: 'Settings', exact: true }), { pause: 150 })
     await rec.click(page.getByText('Editor', { exact: true }).first(), { pause: 150 })
     const row = page.getByText('Daily page', { exact: true }).first()

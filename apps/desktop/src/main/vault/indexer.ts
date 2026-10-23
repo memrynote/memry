@@ -337,7 +337,7 @@ async function indexNonMarkdownFile(
  * Avoids exhausting file-descriptors or SQLite write slots on large vaults.
  */
 async function withConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
-  const results: T[] = new Array(tasks.length)
+  const results: T[] = Array.from({ length: tasks.length })
   let next = 0
 
   async function worker(): Promise<void> {

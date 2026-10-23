@@ -37,7 +37,8 @@ import {
   getTasksInDueWindow,
   countActiveFilters,
   scopeTasksByProject,
-  applyFiltersAndSort
+  applyFiltersAndSort,
+  addDays // used by handleBulkChangeDueDate
 } from '@/lib/task-utils'
 import { getTaskTabCounts } from '@memry/domain-tasks/parsing'
 import {
@@ -52,7 +53,6 @@ import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { hasLocationFilter } from '@/lib/task-note-index'
 import { SHOW_TASKS_LOCATION_KEY, parseShowTasksLocation } from '@/lib/tasks-location-tab'
 import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
-import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
 import {
   useFilterState,
   useSavedFilters,

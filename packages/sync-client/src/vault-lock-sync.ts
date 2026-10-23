@@ -70,5 +70,7 @@ export class VaultLockSyncService {
   }
 
   /** Unlocking is an update (`locked: false`); a lock record is never deleted. */
-  enqueueDelete(): void {}
+  enqueueDelete(): void {
+    /* intentional no-op */
+  }
 }

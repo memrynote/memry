@@ -321,7 +321,7 @@ describe('POST /telemetry/batch → PostHog', () => {
     expect(response.status).toBe(202)
     const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
     expect(captureCall).toBeDefined()
-    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    const body = JSON.parse((captureCall?.[1] as RequestInit | undefined)?.body as string)
     expect(body.batch.map((e: { event: string }) => e.event)).toContain('note_created')
   })
 
@@ -368,7 +368,7 @@ describe('POST /telemetry/batch → PostHog', () => {
       expect(fetchSpy).toHaveBeenCalled()
     })
     const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
-    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    const body = JSON.parse((captureCall?.[1] as RequestInit | undefined)?.body as string)
     const names = body.batch.map((e: { event: string }) => e.event)
     expect(names).toContain('app_started')
     expect(names).not.toContain('app_log_recorded')

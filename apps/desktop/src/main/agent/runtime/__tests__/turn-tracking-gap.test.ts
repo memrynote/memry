@@ -110,6 +110,7 @@ async function startChild(
   await waitForReady(readyFile)
 
   const handle: BackendRunHandle = {
+    // oxlint-disable-next-line require-yield -- drains the stream and yields nothing
     events: (async function* () {
       for await (const chunk of stdout) void chunk
     })(),

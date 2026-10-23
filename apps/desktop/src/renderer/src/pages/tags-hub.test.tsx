@@ -9,7 +9,7 @@ import {
   type DragOverEvent,
   type DragStartEvent
 } from '@dnd-kit/core'
-import TagsHubPage from './tags-hub'
+import { TagsHubPage } from './tags-hub'
 
 const mockUseTagCategories = vi.hoisted(() =>
   vi.fn(() => ({

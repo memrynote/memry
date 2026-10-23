@@ -41,8 +41,12 @@ const mocks = vi.hoisted(() => ({
   spawnClaudeTurn: vi.fn(async () => ({
     pid: 7,
     proc: {
-      stdout: (async function* () {})(),
-      stderr: (async function* () {})(),
+      stdout: (async function* () {
+        /* intentional no-op */
+      })(),
+      stderr: (async function* () {
+        /* intentional no-op */
+      })(),
       kill: vi.fn(),
       once: vi.fn()
     },
@@ -66,8 +70,12 @@ const mocks = vi.hoisted(() => ({
   spawnAgyTurn: vi.fn(async () => ({
     pid: 9,
     proc: {
-      stdout: (async function* () {})(),
-      stderr: (async function* () {})(),
+      stdout: (async function* () {
+        /* intentional no-op */
+      })(),
+      stderr: (async function* () {
+        /* intentional no-op */
+      })(),
       kill: vi.fn(),
       once: vi.fn()
     },
@@ -80,8 +88,12 @@ const mocks = vi.hoisted(() => ({
   spawnCodexTurn: vi.fn(async () => ({
     pid: 8,
     proc: {
-      stdout: (async function* () {})(),
-      stderr: (async function* () {})(),
+      stdout: (async function* () {
+        /* intentional no-op */
+      })(),
+      stderr: (async function* () {
+        /* intentional no-op */
+      })(),
       kill: vi.fn(),
       once: vi.fn()
     },

@@ -13,7 +13,8 @@ export async function getVoiceTranscriptionOpenAIApiKey(): Promise<string | null
     return await getSecret(SERVICE, resolveAccount(OPENAI_ACCOUNT))
   } catch (error) {
     throw new Error(
-      `Failed to read voice transcription API key: ${error instanceof Error ? error.message : 'unknown error'}`
+      `Failed to read voice transcription API key: ${error instanceof Error ? error.message : 'unknown error'}`,
+      { cause: error }
     )
   }
 }
@@ -36,7 +37,8 @@ export async function setVoiceTranscriptionOpenAIApiKey(apiKey: string): Promise
     await setSecret(SERVICE, account, trimmed)
   } catch (error) {
     throw new Error(
-      `Failed to store voice transcription API key: ${error instanceof Error ? error.message : 'unknown error'}`
+      `Failed to store voice transcription API key: ${error instanceof Error ? error.message : 'unknown error'}`,
+      { cause: error }
     )
   }
 }

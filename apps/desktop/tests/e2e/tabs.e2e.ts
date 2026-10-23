@@ -9,12 +9,9 @@ import { test, expect } from './fixtures'
 import {
   waitForAppReady,
   waitForVaultReady,
-  navigateTo,
   createNote,
   SELECTORS,
-  SHORTCUTS,
-  getElementCount,
-  takeScreenshot
+  SHORTCUTS
 } from './utils/electron-helpers'
 
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
@@ -387,7 +384,7 @@ test.describe('Split View', () => {
 
     // Pane should have content area
     const content = tabPane.locator('[data-tab-content]').first()
-    const hasContent = await content.isVisible().catch(() => false)
+    const _hasContent = await content.isVisible().catch(() => false)
     // Content may or may not be visible depending on tab type (placeholder views)
     expect(true).toBe(true)
   })
@@ -422,7 +419,7 @@ test.describe('Tab Content Integration', () => {
         `${SELECTORS.captureInput}, [data-tab-content]:has-text("Inbox"), h1:has-text("Inbox")`
       )
       .first()
-    const hasContent = await inboxContent.isVisible({ timeout: 3000 }).catch(() => false)
+    const _hasContent = await inboxContent.isVisible({ timeout: 3000 }).catch(() => false)
     // The inbox page should render something
     expect(true).toBe(true)
   })
@@ -567,15 +564,6 @@ test.describe('Chord Shortcuts', () => {
     await waitForVaultReady(page)
     await page.waitForTimeout(500)
   })
-
-  async function createHorizontalSplit(page) {
-    await page.evaluate(() => {
-      const container = document.querySelector('[data-testid="split-view-container"]')
-      if (!container) return
-      const event = new CustomEvent('test:split-view', { detail: { direction: 'horizontal' } })
-      container.dispatchEvent(event)
-    })
-  }
 
   async function fireChord(page, secondKey: string, withShift = false) {
     await page.keyboard.press(`${MOD}+KeyK`)

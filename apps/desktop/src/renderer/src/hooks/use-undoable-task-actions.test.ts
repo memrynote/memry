@@ -167,7 +167,7 @@ describe('useUndoableTaskActions', () => {
 
   describe('deleteTask', () => {
     it('should capture full task snapshot before delete', () => {
-      const task = makeTask({ id: 'task-1', title: 'Delete me', priority: 'high' })
+      const _task = makeTask({ id: 'task-1', title: 'Delete me', priority: 'high' })
       const { result, deps } = setup([{ id: 'task-1', title: 'Delete me', priority: 'high' }])
 
       act(() => {

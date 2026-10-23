@@ -13,7 +13,7 @@ import { getViewDisplayName } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
 
 // Last path segment — compact label for nested folders ("Work/Specs" → "Specs").
-const basename = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
+const basename = (path: string): string => path.split('/').findLast(Boolean) ?? path
 
 // Folder picker + saved-view switcher live on one line in the widget header, so changing either is
 // a single click. Saved views come from the folder's .folder.md config (same source as the full

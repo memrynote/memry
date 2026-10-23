@@ -78,7 +78,9 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
       tryRemoveStaleInitLock(lockPath)
       if (Date.now() - start > initLockTimeoutMs) {
-        throw new Error('Timed out waiting for vault database initialization lock.')
+        throw new Error('Timed out waiting for vault database initialization lock.', {
+          cause: error
+        })
       }
       sleepSync(50)
     }
@@ -88,11 +90,15 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
     return fn()
   } finally {
     fs.closeSync(fd)
-    try {
-      fs.unlinkSync(lockPath)
-    } catch (error) {
-      if (!isFileMissing(error)) throw error
-    }
+    removeInitLock(lockPath)
+  }
+}
+
+function removeInitLock(lockPath: string): void {
+  try {
+    fs.unlinkSync(lockPath)
+  } catch (error) {
+    if (!isFileMissing(error)) throw error
   }
 }
 

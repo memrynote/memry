@@ -114,6 +114,9 @@ export default defineConfig({
         { allowShortCircuit: true, allowTaggedTemplates: true, allowTernary: true }
       ],
       ['no-empty-function', { allow: ['arrowFunctions'] }],
+      // The last `.then(cb)` of a chain is fire-and-forget (`void p.then(() => setState())`),
+      // so only a callback another `.then` consumes must return.
+      ['promise/always-return', { ignoreLastCallback: true }],
       ['max-lines', { max: 800, skipBlankLines: true, skipComments: true }],
       ['typescript/ban-ts-comment', { 'ts-ignore': 'allow-with-description' }],
       ['typescript/no-empty-object-type', { allowInterfaces: 'always' }],
@@ -244,7 +247,10 @@ export default defineConfig({
       'typescript/explicit-function-return-type',
       // Existing renderer files co-export providers/hooks, UI primitives and editor block
       // helpers; enforcing this needs broad file-splitting unrelated to lint correctness.
-      'react/only-export-components'
+      'react/only-export-components',
+      // State is updated by copy (`items.map((i) => ({ ...i, done: true }))`) in React,
+      // Zustand-style stores and sync merges; the rule's fix is to mutate in place.
+      'oxc/no-map-spread'
     ),
 
     // --- Repo guards ---
@@ -273,6 +279,13 @@ export default defineConfig({
         // The 800-line cap was never applied to tests.
         'max-lines': 'off'
       }
+    },
+    {
+      // The main process has no `window`: every `postMessage` there goes to a worker_threads
+      // `parentPort`/`Worker` or a utility process, which take no target origin. The rule's
+      // security concern (`window.postMessage`) stays enforced everywhere else.
+      files: ['apps/desktop/src/main/**'],
+      rules: disable('unicorn/require-post-message-target-origin')
     },
     {
       files: [`${RENDERER}/**/*.tsx`],

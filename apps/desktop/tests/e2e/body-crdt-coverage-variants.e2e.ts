@@ -183,40 +183,6 @@ async function assertMergedNoteOnBothDevices(
   await expect.poll(() => getNoteFileBodyByTitle(pageB, title)).toBe(finalBody)
 }
 
-async function assertMergedOpenNoteOnBothDevicesById(
-  electronAppA: ElectronApplication,
-  electronAppB: ElectronApplication,
-  pageA: Page,
-  pageB: Page,
-  noteId: string,
-  expectedBodies: string[]
-): Promise<void> {
-  let finalBody = ''
-  await expect
-    .poll(async () => {
-      const body = await readNoteBodyText(pageA)
-      if (!expectedBodies.includes(body)) {
-        return false
-      }
-      finalBody = body
-      return true
-    })
-    .toBe(true)
-
-  await expect.poll(() => readNoteBodyText(pageA)).toBe(finalBody)
-  await expect.poll(() => readNoteBodyText(pageB)).toBe(finalBody)
-  await expect.poll(() => getCrdtDocBodyById(electronAppA, noteId)).toBe(finalBody)
-  await expect.poll(() => getCrdtDocBodyById(electronAppB, noteId)).toBe(finalBody)
-  await expect
-    .poll(async () => (await getWritebackDebugById(electronAppA, noteId))?.lastMarkdown ?? null)
-    .toBe(finalBody)
-  await expect
-    .poll(async () => (await getWritebackDebugById(electronAppB, noteId))?.lastMarkdown ?? null)
-    .toBe(finalBody)
-  await expect.poll(() => getNoteFileBodyById(pageA, noteId)).toBe(finalBody)
-  await expect.poll(() => getNoteFileBodyById(pageB, noteId)).toBe(finalBody)
-}
-
 async function assertMergedOpenNoteOnBothDevicesByDeviceIds(
   electronAppA: ElectronApplication,
   electronAppB: ElectronApplication,

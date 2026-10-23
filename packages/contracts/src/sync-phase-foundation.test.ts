@@ -395,7 +395,7 @@ describe('sync phase contract schemas', () => {
 
     expect(
       PushRequestSchema.safeParse({
-        items: new Array(101).fill({
+        items: Array.from({ length: 101 }, () => ({
           id: validItem.id,
           type: 'task',
           operation: 'create',
@@ -405,7 +405,7 @@ describe('sync phase contract schemas', () => {
           dataNonce: 'dn',
           signature: 'sig',
           signerDeviceId: 'device-1'
-        })
+        }))
       }).success
     ).toBe(false)
 

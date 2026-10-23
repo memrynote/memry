@@ -37,7 +37,7 @@ vi.mock('@/lib/task-grouping', () => ({
         label: PRIORITY_LABELS[p],
         tasks: buckets.get(p)!
       })).filter((g) => g.tasks.length > 0)
-      return sortDirection === 'desc' ? groups.reverse() : groups
+      return sortDirection === 'desc' ? groups.toReversed() : groups
     }
 
     if (sortField === 'dueDate') {
@@ -621,7 +621,7 @@ describe('virtual-list-utils', () => {
       const t2 = createMockTask({ id: 't2' })
       const t3 = createMockTask({ id: 't3' })
       const allTasks = [t1, t2, t3]
-      const reorder = (_sectionId: string, tasks: Task[]): Task[] => [...tasks].reverse()
+      const reorder = (_sectionId: string, tasks: Task[]): Task[] => [...tasks].toReversed()
 
       // #when
       const result = flattenTasksFlat(allTasks, [mockProject], allTasks, reorder)
@@ -655,7 +655,7 @@ describe('virtual-list-utils', () => {
       const capturedSections: string[] = []
       const reorder = (sectionId: string, tasks: Task[]): Task[] => {
         capturedSections.push(sectionId)
-        return [...tasks].reverse()
+        return [...tasks].toReversed()
       }
 
       // #when
@@ -680,7 +680,7 @@ describe('virtual-list-utils', () => {
       // #given — title sort → falls back to flattenTasksFlat
       const t1 = createMockTask({ id: 't1' })
       const t2 = createMockTask({ id: 't2' })
-      const reorder = (_sectionId: string, tasks: Task[]): Task[] => [...tasks].reverse()
+      const reorder = (_sectionId: string, tasks: Task[]): Task[] => [...tasks].toReversed()
 
       // #when
       const result = flattenTasksGrouped(
@@ -705,7 +705,7 @@ describe('virtual-list-utils', () => {
       const capturedSections: string[] = []
       const reorder = (sectionId: string, tasks: Task[]): Task[] => {
         capturedSections.push(sectionId)
-        return [...tasks].reverse()
+        return [...tasks].toReversed()
       }
 
       vi.mocked(groupTasksByStatus).mockReturnValue([

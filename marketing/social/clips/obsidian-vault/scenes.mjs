@@ -90,7 +90,7 @@ export const scenes = {
     await rec.glide(c.x + 140, c.y + 160, 1300)
     await rec.glide(c.x + 8, c.y + 6, 900)
   },
-  async open({ rec, page, zoom, unzoom, sleep, at }) {
+  async open({ rec, page, zoom, unzoom: _unzoom, sleep, at }) {
     zoom(330, 220, 1.8)
     await rec.click(page.getByRole('button', { name: 'Maya. Open the vault list' }), { pause: 120 })
     const item = page.getByRole('option', { name: 'Open vault' })
@@ -132,7 +132,7 @@ export const scenes = {
     }
     await at(3.7)
   },
-  async links({ rec, page, zoom, unzoom, sleep, at }) {
+  async links({ rec, page, zoom, unzoom: _unzoom, sleep, at }) {
     zoom(700, 240, 1.8)
     await sleep(250)
     await rec.click(page.locator('.wiki-link[data-target=Alfama]').first(), { pause: 200 })

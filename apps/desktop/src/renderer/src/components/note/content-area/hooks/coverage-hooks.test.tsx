@@ -244,7 +244,7 @@ describe('coverage hooks around note editing', () => {
       reorderProperties
     })
 
-    const canEdit = vi.fn(() => true)
+    const _canEdit = vi.fn(() => true)
     const onBlocked = vi.fn()
     const onError = vi.fn()
     const { result, rerender } = renderHook(

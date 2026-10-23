@@ -106,7 +106,7 @@ function liftKeychainLatch(service: string, account: string): void {
     service,
     account
   })
-  for (const listener of [...keychainRecoveredListeners]) {
+  for (const listener of Array.from(keychainRecoveredListeners)) {
     try {
       listener()
     } catch (err) {

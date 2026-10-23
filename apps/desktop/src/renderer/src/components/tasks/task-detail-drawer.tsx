@@ -174,7 +174,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       .ancestorIds(task.id)
       .map((id) => byId.get(id))
       .filter((x): x is Task => x !== undefined)
-      .reverse()
+      .toReversed()
   }, [task, tasks])
   const subtaskTree = useSubtaskTree()
   const canAddSubtask = task

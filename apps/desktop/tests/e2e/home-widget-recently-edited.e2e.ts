@@ -80,7 +80,7 @@ function seedNotesByRecency(
     seeded.push({ id: '', title })
   }
   // Newest-first.
-  return seeded.reverse()
+  return seeded.toReversed()
 }
 
 /**

@@ -36,7 +36,7 @@ export type RunShellProbe = (shell: string, args: string[]) => Promise<string>
 export function parseShellPath(stdout: string, marker: string = PATH_MARKER): string | null {
   const line = stdout
     .split(/\r?\n/)
-    .reverse()
+    .toReversed()
     .find((candidate) => candidate.includes(marker))
   if (line === undefined) {
     return null

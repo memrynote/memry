@@ -52,7 +52,7 @@ const SYNC_ITEM_FULL: Record<string, unknown> = {
 }
 
 const reversedKeys = (value: Record<string, unknown>): Record<string, unknown> =>
-  Object.fromEntries(Object.entries(value).reverse())
+  Object.fromEntries(Object.entries(value).toReversed())
 
 const CASES: OkCase[] = [
   {

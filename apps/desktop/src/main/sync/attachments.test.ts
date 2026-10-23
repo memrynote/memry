@@ -1016,7 +1016,6 @@ describe('AttachmentSyncService', () => {
       await writeFile(testFile, Buffer.alloc(1024, 'L'))
 
       let progressDuringUpload: TransferProgress | null = null
-      let service: AttachmentSyncService
 
       const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
         const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
@@ -1051,7 +1050,7 @@ describe('AttachmentSyncService', () => {
         return new Response(null, { status: 404 })
       })
 
-      service = new AttachmentSyncService(createTestDeps(fetchFn))
+      const service = new AttachmentSyncService(createTestDeps(fetchFn))
 
       // #when
       await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow(
@@ -1083,7 +1082,6 @@ describe('AttachmentSyncService', () => {
       })
 
       let progressDuringDownload: TransferProgress | null = null
-      let service: AttachmentSyncService
 
       const fetchFn = vi.fn(async (url: string | URL | Request) => {
         const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
@@ -1103,7 +1101,7 @@ describe('AttachmentSyncService', () => {
         return new Response(null, { status: 404 })
       })
 
-      service = new AttachmentSyncService(
+      const service = new AttachmentSyncService(
         createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
       )
 

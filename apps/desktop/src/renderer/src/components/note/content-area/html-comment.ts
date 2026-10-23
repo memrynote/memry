@@ -73,6 +73,7 @@ export function renderHtmlComment(
   this: { renderType?: string } | undefined,
   inlineContent: { props: { source: string } }
 ): { dom: HTMLElement } {
+  // oxlint-disable-next-line oxc/no-this-in-exported-function -- BlockNote calls render with the render context bound as `this`
   if (this?.renderType !== 'nodeView') {
     return { dom: createHtmlCommentExternalDOM(inlineContent.props.source) }
   }

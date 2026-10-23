@@ -273,7 +273,9 @@ describe('Readwise first import', () => {
     it('shows zeros for an empty account', async () => {
       pages = [[]]
       const result = await preview()
-      expect(result.groups.map((g) => g.counts.map((c) => c.value))).toEqual(Array(5).fill([0, 0]))
+      expect(result.groups.map((g) => g.counts.map((c) => c.value))).toEqual(
+        Array.from({ length: 5 }, () => [0, 0])
+      )
     })
 
     it('warns when there is no token, or Readwise rejects it', async () => {

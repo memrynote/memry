@@ -269,7 +269,7 @@ describe('CalDAV bound objects changed on the server', () => {
     expect(event('rewrite-event')?.title).toBe('Dentist (local, not pushed yet)')
 
     await push('rewrite-event')
-    const update = server.requests.filter((request) => request.method === 'PUT').at(-1)!
+    const update = server.requests.findLast((request) => request.method === 'PUT')!
     expect(update.headers['if-match']).toBe(stored.etag)
   })
 })

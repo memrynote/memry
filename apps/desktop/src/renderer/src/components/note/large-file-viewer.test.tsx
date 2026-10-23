@@ -74,13 +74,13 @@ class TestResizeObserver {
 /** Report a new pane width to whatever the viewer is observing. */
 function resizePane(width: number): void {
   act(() => {
-    for (const observer of [...mocks.resizeObservers]) observer.emit(width)
+    for (const observer of Array.from(mocks.resizeObservers)) observer.emit(width)
   })
 }
 
 function emitIndex(event: LargeFileIndexEvent): void {
   act(() => {
-    for (const listener of [...mocks.indexListeners]) listener(event)
+    for (const listener of Array.from(mocks.indexListeners)) listener(event)
   })
 }
 
@@ -98,7 +98,7 @@ async function scrollTo(firstRow: number, lineCount: number): Promise<void> {
 
 function emitSearchProgress(event: LargeFileSearchProgressEvent): void {
   act(() => {
-    for (const listener of [...mocks.searchListeners]) listener(event)
+    for (const listener of Array.from(mocks.searchListeners)) listener(event)
   })
 }
 
@@ -178,7 +178,7 @@ describe('LargeFileViewer', () => {
 
     const api = window.api as unknown as Record<string, unknown>
     api.notes = {
-      ...((api.notes as Record<string, unknown>) ?? {}),
+      ...(api.notes as Record<string, unknown>),
       largeFileOpen: mocks.open,
       largeFileReadLines: mocks.readLines,
       largeFileSearch: mocks.search,

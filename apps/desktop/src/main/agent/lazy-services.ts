@@ -22,6 +22,7 @@ export async function ensureLazyAgentServicesStarted(): Promise<void> {
 
   startupPromise ??= starter().then(() => {
     started = true
+    return undefined
   })
   await startupPromise
 }

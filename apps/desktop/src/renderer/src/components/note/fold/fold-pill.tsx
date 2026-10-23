@@ -19,7 +19,7 @@ interface FoldPillProps {
   onCopy: () => Promise<void>
 }
 
-const WRITTEN_LEVELS: readonly FoldLevel[] = ['key', 'takeaway', 'topic']
+const WRITTEN_LEVELS: ReadonlySet<FoldLevel> = new Set(['key', 'takeaway', 'topic'])
 
 /** The one line above the pill that explains the state, most pressing first. */
 function useCaption({ layers, level, openCount }: FoldPillProps): string | null {
@@ -28,7 +28,7 @@ function useCaption({ layers, level, openCount }: FoldPillProps): string | null 
   if (layers.status === 'no_agent') return t('fold.chrome.captionNoAgent')
   if (openCount > 0) return t('fold.pill.opened', { count: openCount })
   if (layers.status === 'writing') return t('fold.chrome.writing')
-  if (WRITTEN_LEVELS.includes(level)) {
+  if (WRITTEN_LEVELS.has(level)) {
     return t('fold.chrome.writtenBy', { agent: layers.agent ?? t('fold.chrome.unknownAgent') })
   }
   return null

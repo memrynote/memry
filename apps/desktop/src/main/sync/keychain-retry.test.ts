@@ -39,7 +39,7 @@ const LATCHED = new Error(
 const LAST_DELAY = KEYCHAIN_RETRY_DELAYS_MS[KEYCHAIN_RETRY_DELAYS_MS.length - 1]
 
 const fireKeychainRecovered = (): void => {
-  for (const listener of [...mocks.recoveredListeners]) listener()
+  for (const listener of Array.from(mocks.recoveredListeners)) listener()
 }
 
 describe('keychain-retry', () => {

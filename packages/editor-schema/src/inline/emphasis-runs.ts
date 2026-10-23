@@ -151,7 +151,7 @@ function codeTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
   return items.map((item) => {
     if (item.type !== 'text' || item.styles?.code === true || !item.text?.includes('`')) return item
     let text = item.text
-    for (const [at, length] of codeSpanRanges(text).reverse()) {
+    for (const [at, length] of codeSpanRanges(text).toReversed()) {
       const token = codeToken(marks.push({ code: text.slice(at, at + length) }) - 1)
       text = text.slice(0, at) + token + text.slice(at + length)
     }

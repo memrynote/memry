@@ -42,7 +42,7 @@ const openAttachmentExternal = vi.fn().mockResolvedValue(undefined)
 function setupApi(): void {
   const api = window.api as unknown as Record<string, unknown>
   api.notes = {
-    ...((api.notes as Record<string, unknown>) ?? {}),
+    ...(api.notes as Record<string, unknown>),
     listAttachments,
     revealAttachmentInFinder,
     openAttachmentExternal

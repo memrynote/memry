@@ -310,7 +310,7 @@ describe('AddFieldPopover reusing vault properties', () => {
     expect(await within(popover).findByText('Existing properties')).toBeInTheDocument()
     const suggestions = within(popover)
       .getAllByRole('button')
-      .filter((button) => /reuse$/.test(button.textContent ?? ''))
+      .filter((button) => (button.textContent ?? '').endsWith('reuse'))
       .map((button) => button.textContent)
     expect(suggestions).toEqual([
       'SourceURL · on 30 notes · reuse',

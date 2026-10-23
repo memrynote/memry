@@ -5,9 +5,7 @@ import {
   groupItemsByTimePeriod,
   formatTimestamp,
   formatDuration,
-  extractDomain,
-  type TimePeriod,
-  type GroupedItems
+  extractDomain
 } from './inbox-utils'
 
 describe('inbox-utils', () => {

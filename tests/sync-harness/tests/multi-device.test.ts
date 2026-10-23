@@ -109,7 +109,7 @@ describe('Sync Harness — Multi-Device', () => {
     await devB.pull()
     await devC.pull()
 
-    for (const [label, dev] of [
+    for (const [_label, dev] of [
       ['A', devA],
       ['B', devB],
       ['C', devC]
@@ -297,7 +297,7 @@ describe('Sync Harness — Multi-Device', () => {
     const chaos = new ChaosController({ seed: 7000 })
     const wrappedFetch = chaos.wrapFetch(serverFetch)
 
-    const { devices, identities } = await createDeviceSet(2, wrappedFetch)
+    const { devices, identities: _identities } = await createDeviceSet(2, wrappedFetch)
     const [devA, devB] = devices
 
     const taskId = crypto.randomUUID()
@@ -330,7 +330,7 @@ describe('Sync Harness — Multi-Device', () => {
 
     const { devices, identities } = await createDeviceSet(2, wrappedFetch)
     const [devA, devB] = devices
-    const [idA] = identities
+    const [_idA] = identities
 
     const taskId = crypto.randomUUID()
     await devA.createItem('task', taskId, { title: 'Idempotent test' })

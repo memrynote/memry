@@ -65,7 +65,7 @@ describe('createNoteFileUrlResolver', () => {
   })
 
   it('picks up a note path that arrives after the editor mounted', async () => {
-    let notePath: string | undefined
+    let notePath: string | undefined = undefined
     const resolve = createNoteFileUrlResolver(
       () => notePath,
       async () => VAULT

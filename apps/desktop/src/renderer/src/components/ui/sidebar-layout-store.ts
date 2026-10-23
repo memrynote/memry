@@ -26,7 +26,7 @@ export function subscribeSidebarLayout(listener: () => void): () => void {
 }
 
 function emitSidebarLayout(): void {
-  for (const listener of [...layoutListeners]) listener()
+  for (const listener of Array.from(layoutListeners)) listener()
 }
 
 /** The stored open flag, or null when none was ever stored. */

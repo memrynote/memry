@@ -103,7 +103,7 @@ export function pickIconExtension(
 
 /** Default label for a downloaded icon: its file name, else the host. */
 export function iconNameFromUrl(url: URL): string {
-  const last = url.pathname.split('/').filter(Boolean).pop() ?? ''
+  const last = url.pathname.split('/').findLast(Boolean) ?? ''
   let base = ''
   try {
     base = decodeURIComponent(last)
@@ -163,7 +163,7 @@ export async function downloadRemoteIcon(raw: string): Promise<RemoteIcon> {
     })
   } catch (error) {
     log.warn('Custom icon download failed', { host: url.hostname, error })
-    throw new Error(getMainI18n().t('errors:customIcon.downloadFailed'))
+    throw new Error(getMainI18n().t('errors:customIcon.downloadFailed'), { cause: error })
   } finally {
     clearTimeout(timeout)
   }

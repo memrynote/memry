@@ -94,7 +94,7 @@ describe('google calendar client — push channels (Task 7)', () => {
           'https://www.googleapis.com/calendar/v3/calendars/primary%40group.calendar.google.com/events/watch'
         )
         expect(init?.method).toBe('POST')
-        expect((init?.headers as Record<string, string>).Authorization).toBe(
+        expect((init?.headers as Record<string, string> | undefined)?.Authorization).toBe(
           'Bearer seeded-access-token'
         )
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>
@@ -789,7 +789,9 @@ describe('google calendar client — push channels (Task 7)', () => {
         'https://www.googleapis.com/calendar/v3/calendars/primary/events/google-event-1'
       )
       expect(capturedInit?.method).toBe('PATCH')
-      expect((capturedInit?.headers as Record<string, string>)['If-Match']).toBe('etag-old')
+      expect((capturedInit?.headers as Record<string, string> | undefined)?.['If-Match']).toBe(
+        'etag-old'
+      )
       expect(JSON.parse(String(capturedInit?.body))).toMatchObject({
         summary: 'Updated',
         description: 'Notes',

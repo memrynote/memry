@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type { MessageStore } from '../../storage/message-store'
-import type { Message, MessageContent, MessageRole, MessageStatus } from '../../storage/types'
+import type { Message, MessageContent, MessageRole } from '../../storage/types'
 import { COMPACT_PROMPT, maybeCompact } from '../compactor'
 
 function message(input: {

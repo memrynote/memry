@@ -286,7 +286,7 @@ export async function revertJournalRenames(
   const dir = path.join(vaultPath, folder)
   const db = getDatabase()
 
-  for (const { from, to } of [...moved].reverse()) {
+  for (const { from, to } of [...moved].toReversed()) {
     const fromRel = `${folder}/${from}`
     const toRel = `${folder}/${to}`
     try {

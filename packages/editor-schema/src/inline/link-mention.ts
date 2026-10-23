@@ -69,12 +69,7 @@ const WELL_FORMED_PAYLOAD = /^[^\s\\]+$/
 const ANY_TOKEN_ALPHABET = /^[A-Za-z0-9.%!'*~_-]+$/
 
 function isUrl(value: string): boolean {
-  try {
-    new URL(value)
-    return true
-  } catch {
-    return false
-  }
+  return URL.canParse(value)
 }
 
 export function parseLinkMentionToken(encoded: string): string | null {
@@ -206,9 +201,9 @@ export const LinkMention = createLinkMentionSpec((inlineContent) => {
     img.className = 'link-mention-favicon'
     img.src = favicon
     img.alt = ''
-    img.onerror = () => {
+    img.addEventListener('error', () => {
       img.style.display = 'none'
-    }
+    })
     dom.appendChild(img)
   }
 

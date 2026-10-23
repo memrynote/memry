@@ -57,7 +57,9 @@ vi.mock('sigma', () => {
       mocks.refreshCount += 1
     }
 
-    kill(): void {}
+    kill(): void {
+      /* intentional no-op */
+    }
   }
 
   return { Sigma: FakeSigma, default: FakeSigma }

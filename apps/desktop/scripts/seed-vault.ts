@@ -37,7 +37,6 @@ import {
   insertTemplates,
   openDataDb
 } from './seed-vault/db-writer'
-import { generateId } from '../src/main/lib/id'
 import {
   allocateCanvasPath,
   resolveCanvasFile,

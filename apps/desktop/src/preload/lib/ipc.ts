@@ -18,7 +18,8 @@ import type {
 export function logListenerError(channel: string, error: unknown): void {
   const message = `[PreloadIpc] Listener for "${channel}" threw`
   const sink = (globalThis as typeof globalThis & { __electronLog?: unknown }).__electronLog as
-    { error?: (...data: unknown[]) => void } | undefined
+    | { error?: (...data: unknown[]) => void }
+    | undefined
   if (typeof sink?.error === 'function') {
     sink.error(message, error)
     return
@@ -57,7 +58,7 @@ export function subscribe<T>(channel: string, callback: (payload: T) => void): (
   if (!subscription) {
     const callbacks: IpcCallback[] = []
     const handler = (_event: Electron.IpcRendererEvent, payload: unknown): void => {
-      for (const current of [...callbacks]) {
+      for (const current of Array.from(callbacks)) {
         // One throwing listener must not abort the fan-out. Without this guard
         // a single unexpected payload shape takes down every subscriber
         // registered after it — for the rest of the session, not just this

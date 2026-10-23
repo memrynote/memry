@@ -599,7 +599,7 @@ describe('FileBlock missing attachment card (#1713)', () => {
     // The global test setup owns `window.api`; overlay the notes surface.
     const api = window.api as unknown as Record<string, unknown>
     savedNotesApi = api.notes
-    api.notes = { ...((api.notes as Record<string, unknown>) ?? {}), resolveAttachment }
+    api.notes = { ...(api.notes as Record<string, unknown>), resolveAttachment }
     const Render = (createFileBlock as any).render
     const block = {
       props: { url: RELATIVE, name: 'manual.pdf', size: 2048, mimeType: 'application/pdf' }
@@ -668,7 +668,7 @@ describe('FileBlock rename (#1714)', () => {
     const api = window.api as unknown as Record<string, unknown>
     savedNotesApi = api.notes
     api.notes = {
-      ...((api.notes as Record<string, unknown>) ?? {}),
+      ...(api.notes as Record<string, unknown>),
       resolveAttachment: vi.fn().mockResolvedValue({
         absolutePath: '/vault/attachments/note1/abc123-manual.txt',
         storedFilename: 'abc123-manual.txt',

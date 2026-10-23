@@ -449,7 +449,7 @@ export const groupTasksForSort = <T extends FilterTask>(
   }
 
   if (sortDirection === 'desc') {
-    groups = [...groups].reverse()
+    groups = [...groups].toReversed()
   }
 
   return groups

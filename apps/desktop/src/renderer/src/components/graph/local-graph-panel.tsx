@@ -3,6 +3,7 @@ import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import { X, Maximize2, Pin } from '@/lib/icons'
+// oxlint-disable-next-line import/no-named-as-default -- graphology's types declare only the default export
 import Graph from 'graphology'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'

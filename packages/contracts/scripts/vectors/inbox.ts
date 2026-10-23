@@ -105,7 +105,7 @@ function buildApply(): Row[] {
 }
 
 const dayOf = (ms: number): number => Math.floor(ms / DAY)
-const COUNTED = ['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social', 'reminder']
+const COUNTED = new Set(['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social', 'reminder'])
 
 function buildViews(): Row {
   const rows = VIEW_ROWS.map(({ id, payload }) => {
@@ -133,7 +133,7 @@ function buildViews(): Row {
   const captured = new Map<number, number>()
   const processed = new Map<number, number>()
   for (const r of rows) {
-    if (COUNTED.includes(r.type))
+    if (COUNTED.has(r.type))
       captured.set(dayOf(r.createdAt), (captured.get(dayOf(r.createdAt)) ?? 0) + 1)
     if (r.filedAt !== null)
       processed.set(dayOf(r.filedAt), (processed.get(dayOf(r.filedAt)) ?? 0) + 1)

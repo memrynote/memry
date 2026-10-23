@@ -138,7 +138,7 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
         // error — worth counting. Only the ZodError name/stack ship, never the
         // issue messages, which can echo input values.
         trackIpcError(handlerAction(listener, handler, 'validated_handler'), error)
-        throw new Error(`Validation failed: ${messages}`)
+        throw new Error(`Validation failed: ${messages}`, { cause: error })
       }
       ipcLog.error('handler error:', error)
       // Handlers on this wrapper (canvas, calendar reads) never pass withDb/

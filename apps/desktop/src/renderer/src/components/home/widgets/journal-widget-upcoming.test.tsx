@@ -144,7 +144,7 @@ describe('home journal widget upcoming days', () => {
     })
 
     server.set('2026-12-31', entry('2026-12-31', 'Pack for the flight.'))
-    for (const listener of [...createdListeners]) listener({ date: '2026-12-31' })
+    for (const listener of Array.from(createdListeners)) listener({ date: '2026-12-31' })
 
     await waitFor(() => {
       expect(rowFor('2026-12-31').textContent).toContain('Pack for the flight.')

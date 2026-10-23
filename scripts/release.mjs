@@ -482,7 +482,8 @@ async function signNsisInstaller({ assetDir }) {
     manifest = readFileSync(manifestPath, 'utf8')
   } catch (error) {
     throw new Error(
-      `No readable latest.yml next to ${setupName}; refusing to sign a manifest-less installer. ${error.message}`
+      `No readable latest.yml next to ${setupName}; refusing to sign a manifest-less installer. ${error.message}`,
+      { cause: error }
     )
   }
 
@@ -512,7 +513,8 @@ async function signNsisInstaller({ assetDir }) {
   } catch (error) {
     throw new Error(
       `Could not load app-builder-lib's blockmap builder, so the signed installer's ` +
-        `blockmap and latest.yml cannot be regenerated. Nothing was uploaded.\n${error.message}`
+        `blockmap and latest.yml cannot be regenerated. Nothing was uploaded.\n${error.message}`,
+      { cause: error }
     )
   }
 
@@ -945,7 +947,8 @@ function readGhJson(args) {
     return JSON.parse(output)
   } catch (error) {
     throw new Error(
-      `gh ${args.join(' ')} did not return JSON: ${error.message}\n${output.slice(0, 500)}`
+      `gh ${args.join(' ')} did not return JSON: ${error.message}\n${output.slice(0, 500)}`,
+      { cause: error }
     )
   }
 }

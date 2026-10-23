@@ -67,7 +67,8 @@ async function withTranslatedFolderError<T>(run: () => T | Promise<T>): Promise<
   try {
     return await run()
   } catch (err) {
-    if (err instanceof CanvasFolderError) throw new Error(CANVAS_FOLDER_ERROR_KEYS[err.code])
+    if (err instanceof CanvasFolderError)
+      throw new Error(CANVAS_FOLDER_ERROR_KEYS[err.code], { cause: err })
     throw err
   }
 }

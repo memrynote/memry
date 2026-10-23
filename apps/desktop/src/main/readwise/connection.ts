@@ -181,13 +181,14 @@ export async function syncReadwiseNow(): Promise<void> {
   } catch (err) {
     const t = getMainI18n().t
     if (err instanceof ReadwiseRunInProgressError) {
-      throw new Error(t('errors:importer.readwiseRunInProgress'))
+      throw new Error(t('errors:importer.readwiseRunInProgress'), { cause: err })
     }
     if (err instanceof ReadwiseUnavailableError) {
       throw new Error(
         err.reason === 'not-connected'
           ? t('errors:importer.readwiseNotConnected')
-          : t('errors:importer.readwiseRunUnavailable')
+          : t('errors:importer.readwiseRunUnavailable'),
+        { cause: err }
       )
     }
     const message = describeReadwiseError(err)

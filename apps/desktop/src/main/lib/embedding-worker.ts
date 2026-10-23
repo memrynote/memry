@@ -245,7 +245,7 @@ async function loadEmbeddingPipeline(
           }
         : {}),
       async dispose(): Promise<void> {
-        await Promise.allSettled([...active])
+        await Promise.allSettled(active)
         await model.dispose()
       }
     }

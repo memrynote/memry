@@ -10,7 +10,20 @@ import type { SeamHttpContext } from './http.ts'
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
-const silentLog: SyncLogger = { debug() {}, info() {}, warn() {}, error() {} }
+const silentLog: SyncLogger = {
+  debug() {
+    /* intentional no-op */
+  },
+  info() {
+    /* intentional no-op */
+  },
+  warn() {
+    /* intentional no-op */
+  },
+  error() {
+    /* intentional no-op */
+  }
+}
 
 const NONCE = 24
 const WRAPPED = 48

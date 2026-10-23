@@ -615,7 +615,7 @@ describe('sync-attachment-handlers', () => {
   it('gives the outbox uploader its own throttled progress broadcaster', async () => {
     // #given the uploader registered with the attachment outbox
     registerAttachmentHandlers()
-    const uploader = outboxUploaders.filter(Boolean).at(-1)
+    const uploader = outboxUploaders.findLast(Boolean)
     expect(uploader).toBeDefined()
 
     // #when the outbox drains one queued attachment
@@ -694,7 +694,7 @@ describe('sync-attachment-handlers', () => {
     })
 
     // #when the outbox re-drive reaches the same row before that upload ends
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     const drained = uploader('note-1', '/vault/attachments/saved.png')
     finishSavedUpload({ attachmentId: 'attachment-saved', sessionId: 'session-saved' })
 
@@ -720,7 +720,7 @@ describe('sync-attachment-handlers', () => {
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/waiting.png' })
 
     // #when the outbox re-drive reaches the same row during that wait
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     const drained = uploader('note-1', '/vault/attachments/waiting.png')
     grantToken('token-1')
 
@@ -748,7 +748,7 @@ describe('sync-attachment-handlers', () => {
       expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
     })
 
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     const drained = uploader('note-1', '/vault/attachments/failing.png')
     failSavedUpload(new Error('server said no'))
 
@@ -765,7 +765,7 @@ describe('sync-attachment-handlers', () => {
     }) => void
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/signed-out.png' })
 
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     await expect(uploader('note-1', '/vault/attachments/signed-out.png')).resolves.toEqual({
       attachmentId: 'attachment-1'
     })
@@ -990,7 +990,7 @@ describe('sync-attachment-handlers', () => {
       expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(1)
     })
 
-    const uploader = outboxUploaders.filter(Boolean).at(-1)!
+    const uploader = outboxUploaders.findLast(Boolean)!
     await uploader('note-1', '/vault/attachments/note-1/bbbbbb-drained.png')
     mockPlaceDownloadedFile.mockResolvedValueOnce('/vault/sources/file.pdf')
     mockApplyDownloadedAttachmentName.mockClear()

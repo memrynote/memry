@@ -140,7 +140,7 @@ function main() {
       throw new Error(`Refusing to delete protected account: ${account}`)
     }
     // `security` removes one item per call; duplicates need a loop.
-    let status = deleteGenericPassword(service, account)
+    const status = deleteGenericPassword(service, account)
     if (status === 0) {
       deleted++
       while (deleteGenericPassword(service, account) === 0) deleted++

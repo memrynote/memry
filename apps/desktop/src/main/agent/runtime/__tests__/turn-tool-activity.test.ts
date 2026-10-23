@@ -461,7 +461,9 @@ function createRunHandle(
     events: (async function* () {
       yield* events
     })(),
-    stderr: (async function* () {})(),
+    stderr: (async function* () {
+      /* intentional no-op */
+    })(),
     pid: 1234,
     kill: vi.fn(),
     waitExit: vi.fn(async () => 0),

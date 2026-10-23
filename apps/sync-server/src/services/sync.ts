@@ -642,7 +642,7 @@ const processPushWave = async (
   client: ClientIdentity | null,
   collectCommitted = false
 ): Promise<PushItemOutcome[]> => {
-  const outcomes: PushItemOutcome[] = new Array<PushItemOutcome>(items.length)
+  const outcomes: PushItemOutcome[] = Array.from<PushItemOutcome>({ length: items.length })
   const reject = (index: number, reason: string): void => {
     outcomes[index] = { accepted: false, reason }
   }
@@ -1035,7 +1035,7 @@ export const processRecordPushBatch = async (
   /** Byte budget for socket items (#2300); 0 builds none. */
   socketItemsBudget = 0
 ): Promise<RecordPushBatchResult> => {
-  const itemOutcomes = new Array<PushItemOutcome>(items.length)
+  const itemOutcomes = Array.from<PushItemOutcome>({ length: items.length })
   for (const wave of splitIntoWaves(items)) {
     const waveOutcomes = await processPushWave(
       db,

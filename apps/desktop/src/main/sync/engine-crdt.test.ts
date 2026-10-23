@@ -394,10 +394,8 @@ describe('SyncEngine', () => {
         payload: JSON.stringify({ title: 'Entry' })
       })
 
-      let encryptCallCount = 0
       vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(
         (args: { id: string; type: SyncItemType; operation: string }) => {
-          encryptCallCount++
           return {
             pushItem: {
               id: args.id,

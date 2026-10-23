@@ -171,10 +171,10 @@ export function PortalNoteView({
   )
 
   const writeClipboard = useCallback(
-    (text: string, done: string) => {
+    (text: string, successMessage: string) => {
       navigator.clipboard
         .writeText(text)
-        .then(() => toast.success(done))
+        .then(() => toast.success(successMessage))
         .catch((err: unknown) => {
           log.error('Failed to copy from the portal', err)
           toast.error(t('portalBlock.copyFailed'))

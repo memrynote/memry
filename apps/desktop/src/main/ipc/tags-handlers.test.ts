@@ -407,12 +407,12 @@ describe('tags-handlers', () => {
     )
 
     unregisterTagsHandlers()
-    const objectChannels: string[] = [
+    const objectChannels: ReadonlySet<string> = new Set([
       TagsChannels.invoke.SEARCH_OBJECTS,
       TagsChannels.invoke.GET_LINKED_HERE
-    ]
+    ])
     expect(removeHandlerCalls).toEqual(
-      Object.values(TagsChannels.invoke).filter((channel) => !objectChannels.includes(channel))
+      Object.values(TagsChannels.invoke).filter((channel) => !objectChannels.has(channel))
     )
   })
 })

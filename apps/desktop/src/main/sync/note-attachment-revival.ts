@@ -55,7 +55,7 @@ export function noteRevived(noteId: string): void {
 
 /** Check every revived note once. A note whose check fails stays for the next pass. */
 export async function settleRevivedNotes(deps: RevivalDeps): Promise<void> {
-  for (const noteId of [...revived]) {
+  for (const noteId of Array.from(revived)) {
     try {
       if (await reuploadFreedAttachments(deps, noteId)) revived.delete(noteId)
     } catch (error) {

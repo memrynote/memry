@@ -63,7 +63,7 @@ function renameTagsInText(text: Y.XmlText, renames: readonly TagRename[]): boole
     if (at[last] - at[first] !== tag.length - 1) continue
     edits.push({ at: at[first], length: tag.length, next, attributes: attrsAt[first] })
   }
-  for (const edit of edits.reverse()) {
+  for (const edit of edits.toReversed()) {
     text.delete(edit.at, edit.length)
     text.insert(edit.at, edit.next, edit.attributes)
   }

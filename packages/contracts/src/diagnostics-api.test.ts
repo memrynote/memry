@@ -27,7 +27,10 @@ describe('DiagnosticLogBatchSchema', () => {
   })
   it('rejects > 50 lines', () => {
     expect(
-      DiagnosticLogBatchSchema.safeParse({ ...batchBase, lines: Array(51).fill(line) }).success
+      DiagnosticLogBatchSchema.safeParse({
+        ...batchBase,
+        lines: Array.from({ length: 51 }, () => line)
+      }).success
     ).toBe(false)
   })
   it('rejects an info level (warn/error only)', () => {
@@ -71,7 +74,10 @@ describe('DiagnosticReportSchema', () => {
   })
   it('rejects > 200 lines', () => {
     expect(
-      DiagnosticReportSchema.safeParse({ ...report, lines: Array(201).fill(line) }).success
+      DiagnosticReportSchema.safeParse({
+        ...report,
+        lines: Array.from({ length: 201 }, () => line)
+      }).success
     ).toBe(false)
   })
 })

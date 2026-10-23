@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessibleTab } from '@/components/tabs/accessible-tab'
 import { NewTabMenu } from '@/components/tabs/new-tab-menu'

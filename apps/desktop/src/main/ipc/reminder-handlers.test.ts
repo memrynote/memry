@@ -57,7 +57,6 @@ vi.mock('@main/database/queries/notes', () => ({
 import { registerReminderHandlers, unregisterReminderHandlers } from './reminder-handlers'
 import { getDatabase, getIndexDatabase } from '../database'
 import * as remindersService from '../lib/reminders'
-import * as notesQueries from '@main/database/queries/notes'
 
 describe('reminder-handlers', () => {
   beforeEach(() => {
