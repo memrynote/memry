@@ -71,18 +71,26 @@ export function readReadwiseOptions(db: DataDb): ReadwiseOptions {
     rootFolder,
     folderLayout: oneOf(READWISE_FOLDER_LAYOUTS, stored.folderLayout, defaults.folderLayout),
     categories,
-    cadence: oneOf(READWISE_CADENCES, stored.cadence, defaults.cadence)
+    cadence: oneOf(READWISE_CADENCES, stored.cadence, defaults.cadence),
+    readerDocuments:
+      typeof stored.readerDocuments === 'boolean'
+        ? stored.readerDocuments
+        : defaults.readerDocuments,
+    readerFullText:
+      typeof stored.readerFullText === 'boolean' ? stored.readerFullText : defaults.readerFullText
   }
 }
 
 /**
  * A category that goes from off to on needs its books read once, and the
  * export has no category filter, so the next run reads all of it (D7). The
- * flag is device-local run state.
+ * saved-documents switch does too: the v2 books tell the Reader pass which
+ * documents already have a note (D11). The flag is device-local run state.
  */
 function flagCategoriesSwitchedOn(db: DataDb, before: ReadwiseOptions): void {
   const after = readReadwiseOptions(db)
   if (
+    (after.readerDocuments && !before.readerDocuments) ||
     READWISE_CATEGORIES.some(
       (category) => after.categories[category] && !before.categories[category]
     )
@@ -108,6 +116,14 @@ export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInpu
   if (updates.cadence !== undefined) {
     next.cadence = updates.cadence
     pushes.push(['readwise.cadence', updates.cadence])
+  }
+  if (updates.readerDocuments !== undefined) {
+    next.readerDocuments = updates.readerDocuments
+    pushes.push(['readwise.readerDocuments', updates.readerDocuments])
+  }
+  if (updates.readerFullText !== undefined) {
+    next.readerFullText = updates.readerFullText
+    pushes.push(['readwise.readerFullText', updates.readerFullText])
   }
   if (updates.categories) {
     const categories: Record<string, unknown> =

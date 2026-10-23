@@ -35,6 +35,47 @@ export function getLinkByReaderDocumentId(
     .get()
 }
 
+/**
+ * The row of a v2 book: by its own id, or by its `external_id`, which is the Reader
+ * document's id (D11). A Reader note made before the book's highlights arrived is
+ * found the second way, so the book writes into that note and makes no second one.
+ */
+export function getLinkForBook(
+  db: DataDb,
+  readwiseBookId: number,
+  externalId: string | null | undefined
+): ReadwiseLink | undefined {
+  return (
+    getLinkByBookId(db, readwiseBookId) ??
+    (externalId ? getLinkByReaderDocumentId(db, externalId) : undefined)
+  )
+}
+
+/**
+ * Gives a row the id it lacks, so the book and its Reader document share one
+ * note (D11). Another row that already holds the id is left alone: two notes
+ * named the same item (a takeover can bring both), and the lowest id keeps it.
+ */
+export function completeLink(
+  db: DataDb,
+  link: ReadwiseLink,
+  ids: { readwiseBookId: number; readerDocumentId: string | null | undefined }
+): void {
+  const readwiseBookId = link.readwiseBookId ?? ids.readwiseBookId
+  const readerDocumentId = link.readerDocumentId ?? ids.readerDocumentId ?? null
+  if (readwiseBookId === link.readwiseBookId && readerDocumentId === link.readerDocumentId) return
+  const taken =
+    (link.readwiseBookId === null && getLinkByBookId(db, readwiseBookId)) ||
+    (link.readerDocumentId === null &&
+      readerDocumentId !== null &&
+      getLinkByReaderDocumentId(db, readerDocumentId))
+  if (taken) return
+  db.update(readwiseLinks)
+    .set({ readwiseBookId, readerDocumentId, updatedAt: utcNow() })
+    .where(eq(readwiseLinks.id, link.id))
+    .run()
+}
+
 export function getLinkByNoteId(db: DataDb, noteId: string): ReadwiseLink | undefined {
   return db
     .select()
@@ -72,11 +113,19 @@ export function upsertLink(db: DataDb, input: UpsertLinkInput): ReadwiseLink {
         .returning()
         .get()
     }
+    // Another row can already hold the id (a takeover rebuilt two notes for one
+    // document, D11): the unique index would reject it, so this row keeps its own.
+    const heldElsewhere =
+      readerDocumentId !== null &&
+      existing.readerDocumentId !== readerDocumentId &&
+      getLinkByReaderDocumentId(tx, readerDocumentId) !== undefined
     return tx
       .update(readwiseLinks)
       .set({
         readwiseBookId: readwiseBookId ?? existing.readwiseBookId,
-        readerDocumentId: readerDocumentId ?? existing.readerDocumentId,
+        readerDocumentId: heldElsewhere
+          ? existing.readerDocumentId
+          : (readerDocumentId ?? existing.readerDocumentId),
         noteId,
         state,
         updatedAt: utcNow()

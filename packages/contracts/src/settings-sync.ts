@@ -209,7 +209,11 @@ export const SyncedSettingsSchema = z.object({
         })
         .catchall(z.unknown())
         .optional(),
-      cadence: z.string().optional()
+      cadence: z.string().optional(),
+      // Reader (#1420): additive. A build without these keeps them through
+      // `catchall`, and its echoed field clocks keep the merge.
+      readerDocuments: z.boolean().optional(),
+      readerFullText: z.boolean().optional()
     })
     .catchall(z.unknown())
     .optional()

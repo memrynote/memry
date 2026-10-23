@@ -7,9 +7,11 @@ import { exportBooks, exportPages, ReadwiseError, type ReadwiseBook } from './cl
 import { awaitPullAuthority, claimLostToAnotherDevice } from './pull-gate'
 import { releaseTokenIfClaimedElsewhere } from './release'
 import { waitForVaultIndexBuild } from '../sync/vault-index-ready'
-import { markLinkState } from './links-repository'
+import { completeLink, getLinkForBook, listLinks, markLinkState } from './links-repository'
 import { rebuildLinks } from './rebuild-links'
 import { upsertReadwiseNote, type UpsertOutcome } from './note-writer'
+import { listDocuments } from './reader'
+import { runReaderPass } from './reader-sync'
 import { readReadwiseOptions } from './settings'
 import {
   addRetry,
@@ -68,6 +70,18 @@ function isLive(highlight: { is_deleted?: boolean | null; is_discard?: boolean |
  * preview). Reads the whole export, like the run does.
  */
 export async function countLibrary(token: string, signal: AbortSignal): Promise<LibraryCounts> {
+  return (await scanLibrary(token, signal)).counts
+}
+
+/**
+ * What a first import would bring: the counts, and the ids of the Reader
+ * documents the v2 books already cover (`external_id`, D11).
+ */
+export async function scanLibrary(
+  token: string,
+  signal: AbortSignal
+): Promise<{ counts: LibraryCounts; bookExternalIds: Set<string> }> {
+  const bookExternalIds = new Set<string>()
   const empty = (): CategoryCount => ({ books: 0, highlights: 0, sampleTitles: [] })
   const counts: LibraryCounts = {
     books: empty(),
@@ -80,13 +94,38 @@ export async function countLibrary(token: string, signal: AbortSignal): Promise<
   for await (const page of exportPages({ token, includeDeleted: false, signal })) {
     for (const book of page) {
       if (book.is_deleted) continue
+      if (book.external_id) bookExternalIds.add(book.external_id)
       const entry = counts[categoryOf(book)]
       entry.books += 1
       entry.highlights += book.highlights.filter(isLive).length
       if (entry.sampleTitles.length < SAMPLE_TITLES) entry.sampleTitles.push(bookTitle(book))
     }
   }
-  return counts
+  return { counts, bookExternalIds }
+}
+
+/**
+ * The saved Reader documents a first import would add: the documents without
+ * a v2 book (D11), counted from the same list the run reads, without the
+ * article HTML. The 20 requests a minute budget makes a large library take
+ * minutes, which is why the preview asks only when the switch is on.
+ */
+export async function countReaderDocuments(
+  token: string,
+  signal: AbortSignal,
+  bookExternalIds: ReadonlySet<string>
+): Promise<CategoryCount> {
+  const count: CategoryCount = { books: 0, highlights: 0, sampleTitles: [] }
+  for await (const page of listDocuments({ token, withHtmlContent: false, signal })) {
+    for (const document of page) {
+      if (bookExternalIds.has(document.id)) continue
+      count.books += 1
+      if (count.sampleTitles.length < SAMPLE_TITLES) {
+        count.sampleTitles.push((document.title ?? '').trim() || 'Untitled')
+      }
+    }
+  }
+  return count
 }
 
 export type BookEvent =
@@ -106,7 +145,9 @@ export interface RunObserver {
   planned?(total: number): void
   /** A book is about to be written. */
   writing?(title: string): void
-  /** A book is done. */
+  /** `count` more items (Reader documents) will be looked at, on top of `planned`. */
+  more?(count: number): void
+  /** A book or a Reader document is done. */
   book(event: BookEvent): void
   /**
    * The engine writes the run's activity log line when something changed
@@ -125,6 +166,8 @@ export interface RunResult {
   /** Skipped because the note is open in an editor. They are on the retry list. */
   deferred: number
   failed: number
+  /** Reader notes created for saved documents without highlights (D11). */
+  documents: number
   /** Highlights in the books that changed, as the export reported them. */
   highlights: number
   /** Another device took Readwise over, so this run stopped at the next book (D8). */
@@ -226,6 +269,7 @@ export class ReadwiseSyncService {
       appended: 0,
       deferred: 0,
       failed: 0,
+      documents: 0,
       highlights: 0
     }
     let claimMoved = false
@@ -375,13 +419,55 @@ export class ReadwiseSyncService {
       }
 
       setCursor(db, nextCursor(exported, cursor, startedAt))
+
+      // 4. Saved Reader documents, only when the user asked for them (D11).
+      // The v2 work is done and its cursor kept, so a Reader failure never undoes it.
+      if (options.readerDocuments) {
+        const bookExternalIds = new Set<string>()
+        for (const link of listLinks(db)) {
+          if (link.readerDocumentId !== null) bookExternalIds.add(link.readerDocumentId)
+        }
+        for (const book of [...retryBooks, ...exported]) {
+          if (book.external_id) bookExternalIds.add(book.external_id)
+        }
+        try {
+          const reader = await runReaderPass({
+            db,
+            token,
+            signal,
+            startedAt,
+            options,
+            bookExternalIds,
+            stopped,
+            more: (count) => observer.more?.(count),
+            onDocument: (event) => {
+              if (event.result === 'failed') result.failed += 1
+              if (event.result === 'created') result.documents += 1
+              observer.book(event)
+            }
+          })
+          if (reader.cancelled) return cancelled()
+        } catch (error) {
+          if (signal.aborted) return cancelled()
+          needsAttention(error)
+          if (error instanceof ReadwiseError && error.code === 'invalid-token') throw error
+          // Rate limit or network: the Reader cursor stays, and the next run lists again.
+          const reason = error instanceof Error ? error.message : String(error)
+          log.warn('The Reader documents could not be listed', { error })
+          result.failed += 1
+          observer.book({ title: 'Reader', result: 'failed', reason })
+        }
+      }
+
       if (full) {
         setLastFullRead(db, startedAt.toISOString())
         // A category switched on while this run was reading keeps its flag.
         const now = readReadwiseOptions(db)
-        const gained = READWISE_CATEGORIES.some(
-          (category) => now.categories[category] && !options.categories[category]
-        )
+        const gained =
+          (now.readerDocuments && !options.readerDocuments) ||
+          READWISE_CATEGORIES.some(
+            (category) => now.categories[category] && !options.categories[category]
+          )
         if (!gained) setFullPassPending(db, false)
       }
       setLastRun(db, { at: new Date().toISOString(), needsAttention: false })
@@ -391,13 +477,15 @@ export class ReadwiseSyncService {
       if (claimMoved) this.deps.onClaimLost?.()
       // Also for a cancelled or failed run: the notes it wrote did change.
       const changedBooks = result.added + result.updated + result.appended
-      if (changedBooks > 0 && observer.logActivity !== false) {
+      if (changedBooks + result.documents > 0 && observer.logActivity !== false) {
         recordActivity({
           kind: 'import',
           source: 'import',
           importer: 'readwise',
-          message: `Readwise: ${plural(changedBooks, 'book')}, ${plural(result.highlights, 'highlight')}`,
-          counts: { imported: changedBooks, failed: result.failed }
+          message:
+            `Readwise: ${plural(changedBooks, 'book')}, ${plural(result.highlights, 'highlight')}` +
+            (result.documents > 0 ? `, ${plural(result.documents, 'Reader document')}` : ''),
+          counts: { imported: changedBooks + result.documents, failed: result.failed }
         })
       }
     }
@@ -412,6 +500,14 @@ export class ReadwiseSyncService {
     const title = bookTitle(book)
     const db = getDatabase()
     try {
+      // Before any skip: a deleted or category-off book still tells which Reader document it covers (D11).
+      const link = getLinkForBook(db, book.user_book_id, book.external_id)
+      if (link) {
+        completeLink(db, link, {
+          readwiseBookId: book.user_book_id,
+          readerDocumentId: book.external_id
+        })
+      }
       const plan = planNote(book, planOptions)
       if (plan === null) {
         removeRetry(db, book.user_book_id)

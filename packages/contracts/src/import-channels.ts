@@ -411,6 +411,10 @@ export interface ReadwiseOptions {
   folderLayout: ReadwiseFolderLayout
   categories: Record<ReadwiseCategory, boolean>
   cadence: ReadwiseCadence
+  /** Also import saved Reader documents that have no highlights (D11). Off: a library can hold thousands. */
+  readerDocuments: boolean
+  /** Write the full article text once, below the section, when a Reader note is created (D11). */
+  readerFullText: boolean
 }
 
 /** D3: supplementals are listed and off. D1/#1416: hourly by default. */
@@ -424,7 +428,9 @@ export const READWISE_OPTIONS_DEFAULTS: ReadwiseOptions = {
     podcasts: true,
     supplementals: false
   },
-  cadence: 'hourly'
+  cadence: 'hourly',
+  readerDocuments: false,
+  readerFullText: false
 }
 
 export const ReadwiseConnectSchema = z.object({
@@ -461,7 +467,9 @@ export const ReadwiseSetOptionsSchema = z.object({
       supplementals: z.boolean().optional()
     })
     .optional(),
-  cadence: z.enum(READWISE_CADENCES).optional()
+  cadence: z.enum(READWISE_CADENCES).optional(),
+  readerDocuments: z.boolean().optional(),
+  readerFullText: z.boolean().optional()
 })
 export type ReadwiseSetOptionsInput = z.infer<typeof ReadwiseSetOptionsSchema>
 
@@ -507,5 +515,7 @@ export interface ReadwiseStatusResult {
  */
 export const READWISE_PREVIEW_COUNT_KEYS = {
   books: 'import.preview.readwise.books',
-  highlights: 'import.preview.readwise.highlights'
+  highlights: 'import.preview.readwise.highlights',
+  /** The `reader` group: saved Reader documents without highlights. */
+  documents: 'import.preview.readwise.documents'
 } as const

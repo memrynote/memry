@@ -6,6 +6,7 @@ import {
 } from '@memry/contracts/import-channels'
 import { IMPORT_MESSAGE_CODES, IMPORT_STATUS, importingItemStatus } from '@memry/importers/messages'
 import { getDatabase } from '../../database'
+import { readReadwiseOptions } from '../../readwise/settings'
 import { createLogger } from '../../lib/logger'
 import { getMainI18n } from '../../lib/main-i18n'
 import { ReadwiseError } from '../../readwise/client'
@@ -14,7 +15,8 @@ import { describeReadwiseError } from '../../readwise/connection'
 import { ReadwisePullGateError } from '../../readwise/pull-gate'
 import { getReadwiseToken } from '../../readwise/secrets'
 import {
-  countLibrary,
+  countReaderDocuments,
+  scanLibrary,
   getReadwiseSyncService,
   type BookEvent,
   type PreviewCategory
@@ -89,7 +91,8 @@ export const readwiseImporter: Importer = {
       return previewError(IMPORT_MESSAGE_CODES.readwiseTokenMissing, 'Readwise is not connected')
     }
     try {
-      const counts = await countLibrary(token, signal)
+      const { counts, bookExternalIds } = await scanLibrary(token, signal)
+      const options = readReadwiseOptions(getDatabase())
       const categories: PreviewCategory[] = [...READWISE_CATEGORIES, 'other']
       const groups: ImportPreviewGroup[] = categories
         .filter((category) => category !== 'other' || counts.other.books > 0)
@@ -101,6 +104,14 @@ export const readwiseImporter: Importer = {
           ],
           sampleTitles: counts[category].sampleTitles
         }))
+      if (options.readerDocuments) {
+        const reader = await countReaderDocuments(token, signal, bookExternalIds)
+        groups.push({
+          label: 'reader',
+          counts: [{ labelKey: READWISE_PREVIEW_COUNT_KEYS.documents, value: reader.books }],
+          sampleTitles: reader.sampleTitles
+        })
+      }
       return { groups }
     } catch (error) {
       if (signal.aborted) throw error
@@ -129,6 +140,10 @@ export const readwiseImporter: Importer = {
           total = count
           ctx.setPhase('importing')
           ctx.reportProgress(0, total)
+        },
+        more: (count) => {
+          total += count
+          ctx.reportProgress(completed, total)
         },
         writing: (title) => ctx.status(importingItemStatus(title)),
         book: (event) => {

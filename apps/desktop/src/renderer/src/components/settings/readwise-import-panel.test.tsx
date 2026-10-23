@@ -155,12 +155,30 @@ describe('ReadwiseImportPanel', () => {
     const supplementals = await screen.findByRole('switch', { name: 'Supplementals' })
     expect(supplementals).not.toBeChecked()
     expect(screen.getByRole('switch', { name: 'Books' })).toBeChecked()
-    expect(screen.getAllByRole('switch')).toHaveLength(5)
+    expect(screen.getAllByRole('switch')).toHaveLength(7)
 
     fireEvent.click(supplementals)
     await waitFor(() =>
       expect(setOptions).toHaveBeenCalledWith({ categories: { supplementals: true } })
     )
+  })
+
+  it('groups the two Reader switches, both off, and saves each', async () => {
+    status.mockResolvedValue(connectedStatus)
+    renderPanel()
+
+    expect(await screen.findByText('Readwise Reader')).toBeInTheDocument()
+    expect(screen.getByText('Off by default. Can add thousands of notes.')).toBeInTheDocument()
+    expect(screen.getByText('Written once, when the note is created')).toBeInTheDocument()
+    const documents = screen.getByRole('switch', { name: 'Also import saved Reader documents' })
+    const fullText = screen.getByRole('switch', { name: 'Include full article text' })
+    expect(documents).not.toBeChecked()
+    expect(fullText).not.toBeChecked()
+
+    fireEvent.click(documents)
+    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true }))
+    fireEvent.click(fullText)
+    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerFullText: true }))
   })
 
   it('saves the folder layout', async () => {
@@ -271,6 +289,40 @@ describe('ReadwiseImportPanel', () => {
       )
       await waitFor(() => expect(states[states.length - 1].confirmLabel).toBe('Import 447 books'))
       expect(preview).toHaveBeenCalledTimes(1)
+    })
+
+    it('counts saved Reader documents only with the switch on, and the label says notes', async () => {
+      setOptions.mockResolvedValue({
+        ...firstImportStatus,
+        options: { ...READWISE_OPTIONS_DEFAULTS, readerDocuments: true }
+      })
+      const states: OneNotePanelState[] = []
+      renderPanel((state) => states.push(state))
+
+      const readerSwitch = await screen.findByRole('switch', {
+        name: 'Also import saved Reader documents'
+      })
+      expect(readerSwitch).not.toBeChecked()
+      expect(screen.getByText('Off by default. Can add thousands of notes.')).toBeInTheDocument()
+
+      preview.mockResolvedValue({
+        success: true,
+        preview: {
+          groups: [
+            ...libraryPreview.preview.groups,
+            {
+              label: 'reader',
+              counts: [{ labelKey: 'import.preview.readwise.documents', value: 8 }]
+            }
+          ]
+        }
+      })
+      fireEvent.click(readerSwitch)
+
+      await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true }))
+      await waitFor(() => expect(preview).toHaveBeenCalledTimes(2))
+      expect(await screen.findByText('8')).toBeInTheDocument()
+      await waitFor(() => expect(states[states.length - 1].confirmLabel).toBe('Import 513 notes'))
     })
 
     it('is not ready until the counts arrive, and stops the preview on unmount', async () => {

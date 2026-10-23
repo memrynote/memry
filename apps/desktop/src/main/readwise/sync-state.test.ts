@@ -18,11 +18,13 @@ import {
   getCursor,
   getLastRun,
   getFullPassPending,
+  getReaderCursor,
   getRetryList,
   removeRetry,
   setCursor,
   setFullPassPending,
-  setLastRun
+  setLastRun,
+  setReaderCursor
 } from './sync-state'
 
 beforeAll(async () => {
@@ -45,6 +47,7 @@ describe('readwise device-local state', () => {
 
   it('round-trips the cursor, the retry list, and the full-pass flag', () => {
     expect(getCursor(db)).toBeNull()
+    expect(getReaderCursor(db)).toBeNull()
     expect(getRetryList(db)).toEqual([])
     expect(getFullPassPending(db)).toBe(false)
 
@@ -83,6 +86,8 @@ describe('readwise device-local state', () => {
     })
 
     setCursor(db, '2026-10-22T10:00:00.000Z')
+    setReaderCursor(db, '2026-10-21T10:00:00.000Z')
+    expect(getReaderCursor(db)).toBe('2026-10-21T10:00:00.000Z')
     addRetry(db, 4, 'error')
     setFullPassPending(db, true)
     upsertLink(db, { readwiseBookId: 4, noteId: 'n1' })
