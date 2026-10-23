@@ -383,6 +383,7 @@ describe('relation property cells', () => {
     ])
     const onRowClick = vi.fn()
     render(
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- test double; keyboard behaviour is not under test
       <div onClick={onRowClick}>
         <PropertyCell type="relation" value={['memry://event/evt_1']} />
       </div>

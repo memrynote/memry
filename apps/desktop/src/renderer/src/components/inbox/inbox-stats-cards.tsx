@@ -23,6 +23,7 @@ export function InboxStatsCards({ stats }: InboxStatsCardsProps): React.JSX.Elem
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
+          // oxlint-disable-next-line react/no-array-index-key -- static skeleton placeholders
           <div key={i} className="h-24 bg-muted/50 rounded-xl animate-pulse" />
         ))}
       </div>

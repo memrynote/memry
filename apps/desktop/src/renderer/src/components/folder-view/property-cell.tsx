@@ -159,6 +159,7 @@ const TruncatedTooltip = memo(function TruncatedTooltip({
       // Check if content is truncated (scrollWidth > clientWidth)
       setIsTruncated(element.scrollWidth > element.clientWidth)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- value/tagKey change the rendered content, so overflow must be re-measured
   }, [value])
 
   if (!isTruncated) {
@@ -1154,6 +1155,7 @@ function useTagOverflow(
     return () => {
       ro.disconnect()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- value/tagKey change the rendered content, so overflow must be re-measured
   }, [tagKey, count])
 
   return { containerRef, visible }

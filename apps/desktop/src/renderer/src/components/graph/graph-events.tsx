@@ -201,6 +201,7 @@ export function GraphEvents({
     openTab,
     onHoverNode,
     onTooltipMove,
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- onFocusNode is read by listeners registered via registerEvents; keep re-registration when it changes
     onFocusNode,
     onToggleCategory,
     onContextMenu,

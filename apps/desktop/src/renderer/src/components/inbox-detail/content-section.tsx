@@ -539,11 +539,12 @@ const VoicePreview = ({
               <Play className="size-3.5 text-background ms-0.5" />
             )}
           </button>
-
+          {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard seek is a follow-up */}
           <div
             ref={waveformRef}
             className="flex items-center grow h-8 gap-0.5 cursor-pointer"
             onClick={handleWaveformClick}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- waveform scrubber is a custom slider; <input type=range> cannot render bars
             role="slider"
             aria-label={t('content.audioPosition')}
             aria-valuemin={0}
@@ -555,6 +556,7 @@ const VoicePreview = ({
               const isPlayed = i / PLAYBACK_BAR_COUNT < progress
               return (
                 <div
+                  // oxlint-disable-next-line react/no-array-index-key -- waveform bars are positional and never reordered
                   key={i}
                   className="flex-1 min-w-0 rounded-xs transition-colors duration-150"
                   style={{
@@ -567,7 +569,6 @@ const VoicePreview = ({
               )
             })}
           </div>
-
           <div className="flex items-center shrink-0 gap-0.5 text-xs tabular-nums">
             <span className="text-foreground font-medium">{formatDuration(currentTime)}</span>
             <span className="text-text-tertiary">/ {formatDuration(displayDuration)}</span>

@@ -301,6 +301,7 @@ function useLiveLocalGraph(
        its node or edge set moved so the simulation can be rebuilt. Refilling during render
        would fire graphology's change events mid-render. */
     if (refillGraph(graph, buildGraphologyGraph(data))) {
+      // oxlint-disable-next-line react/set-state-in-effect -- genuine external sync: graphology instance mutation; the counter only records that it changed
       setLayoutRevision((current) => current + 1)
     }
     /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler,

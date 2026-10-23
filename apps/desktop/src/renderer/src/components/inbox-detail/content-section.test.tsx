@@ -270,11 +270,13 @@ describe('ContentSection', () => {
     vi.stubGlobal(
       'AudioContext',
       vi.fn(function AudioContext(this: any) {
+        // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
         this.decodeAudioData = vi.fn(async () => ({
           getChannelData: vi.fn(() =>
             Float32Array.from({ length: 120 }, (_, index) => (index % 2 === 0 ? 0.25 : -0.25))
           )
         }))
+        // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
         this.close = vi.fn()
       })
     )
@@ -350,9 +352,11 @@ describe('ContentSection', () => {
     vi.stubGlobal(
       'AudioContext',
       vi.fn(function AudioContext(this: any) {
+        // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
         this.decodeAudioData = vi.fn(async () => {
           throw new Error('unsupported audio file')
         })
+        // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
         this.close = close
       })
     )
@@ -383,7 +387,9 @@ describe('ContentSection', () => {
       finishDecode = resolve
     })
     const audioContextCtor = vi.fn(function AudioContext(this: any) {
+      // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
       this.decodeAudioData = vi.fn(() => decoded)
+      // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
       this.close = close
     })
 
@@ -426,9 +432,11 @@ describe('ContentSection', () => {
       sendBytes = resolve
     })
     const audioContextCtor = vi.fn(function AudioContext(this: any) {
+      // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
       this.decodeAudioData = vi.fn(async () => ({
         getChannelData: vi.fn(() => new Float32Array(120))
       }))
+      // oxlint-disable-next-line react/no-this-in-sfc -- constructor mock invoked with `new`, not a component
       this.close = vi.fn()
     })
     const fetchMock = vi.fn(async () => ({ arrayBuffer: vi.fn(() => bytes) }))

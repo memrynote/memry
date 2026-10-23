@@ -251,6 +251,7 @@ export function ViewSwitcher({
     } finally {
       setIsDeleting(false)
     }
+    // oxlint-disable-next-line react/memo-dependencies -- false positive: onDeleteView/resetEditor are called inside the callback
   }, [deleteTargetName, onDeleteView, resetEditor])
 
   // ============================================================================
@@ -357,6 +358,7 @@ export function ViewSwitcher({
                   {tPhaseF('phaseF.componentsFolderViewViewSwitcher.name')}
                 </span>
                 <Input
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
                   autoFocus
                   value={formName}
                   onChange={(e) => {

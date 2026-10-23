@@ -92,6 +92,7 @@ function BoardRow({
           data-testid="board-manager-name-input"
           aria-label={t('home.board.nameLabel')}
           value={draft}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
           autoFocus
           onChange={(event) => {
             onDraftChange(event.target.value)

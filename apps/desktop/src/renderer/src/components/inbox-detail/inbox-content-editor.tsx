@@ -163,6 +163,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
   )
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- mousedown on the editor wrapper only forwards clicks in empty space to the editor
     <section
       className={cn(
         'inbox-content-editor prose prose-sm dark:prose-invert max-w-none',

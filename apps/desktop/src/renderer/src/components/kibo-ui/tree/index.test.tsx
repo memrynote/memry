@@ -79,6 +79,7 @@ vi.mock('@/components/icon-picker', () => ({
     currentIcon?: string
   }) =>
     isOpen ? (
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double mirrors the real widget ARIA role
       <div role="listbox" aria-label={`icon-picker-${currentIcon ?? 'none'}`}>
         <button
           type="button"

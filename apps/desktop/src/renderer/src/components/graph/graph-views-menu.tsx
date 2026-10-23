@@ -148,6 +148,7 @@ export function GraphViewsMenu({
             <DialogTitle>{t('views.save-dialog-title')}</DialogTitle>
           </DialogHeader>
           <Input
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
             autoFocus
             value={name}
             onChange={(event) => {

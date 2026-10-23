@@ -40,6 +40,7 @@ export function SelectionCheckbox({
   return (
     <button
       type="button"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled button-checkbox (tri-state, indeterminate) cannot be a native input without changing visuals
       role="checkbox"
       aria-checked={state === 'indeterminate' ? 'mixed' : state === 'checked'}
       aria-label={label}
