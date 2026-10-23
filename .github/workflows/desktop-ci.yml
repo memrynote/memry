@@ -109,8 +109,12 @@ jobs:
 
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
+      # --ignore-scripts skipped the extension's postinstall, and its tsconfig extends the
+      # file `wxt prepare` generates; type-aware lint rejects a project it cannot load.
       - name: Lint
-        run: pnpm lint
+        run: |
+          pnpm --filter @memry/extension exec wxt prepare
+          pnpm lint
 
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
