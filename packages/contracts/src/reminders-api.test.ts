@@ -180,10 +180,9 @@ describe('ListRemindersSchema', () => {
   it('should validate empty object with defaults', () => {
     const result = ListRemindersSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.limit).toBe(50)
-      expect(result.data.offset).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.limit).toBe(50)
+    expect(result.data.offset).toBe(0)
   })
 
   it('should validate with targetType filter', () => {

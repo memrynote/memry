@@ -151,12 +151,11 @@ describe('BookmarkListSchema', () => {
   it('should validate empty object with defaults', () => {
     const result = BookmarkListSchema.safeParse({})
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.sortBy).toBe('position')
-      expect(result.data.sortOrder).toBe('asc')
-      expect(result.data.limit).toBe(100)
-      expect(result.data.offset).toBe(0)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.sortBy).toBe('position')
+    expect(result.data.sortOrder).toBe('asc')
+    expect(result.data.limit).toBe(100)
+    expect(result.data.offset).toBe(0)
   })
 
   it('should validate with itemType filter', () => {
@@ -164,9 +163,8 @@ describe('BookmarkListSchema', () => {
       itemType: 'note'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.itemType).toBe('note')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.itemType).toBe('note')
   })
 
   it('should validate with sortBy createdAt', () => {
@@ -175,10 +173,9 @@ describe('BookmarkListSchema', () => {
       sortOrder: 'desc'
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.sortBy).toBe('createdAt')
-      expect(result.data.sortOrder).toBe('desc')
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.sortBy).toBe('createdAt')
+    expect(result.data.sortOrder).toBe('desc')
   })
 
   it('should validate with limit and offset', () => {
@@ -187,10 +184,9 @@ describe('BookmarkListSchema', () => {
       offset: 100
     })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.limit).toBe(50)
-      expect(result.data.offset).toBe(100)
-    }
+    if (!result.success) throw new Error('expected the check above to hold')
+    expect(result.data.limit).toBe(50)
+    expect(result.data.offset).toBe(100)
   })
 
   it('should reject invalid sortBy', () => {

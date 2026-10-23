@@ -412,6 +412,7 @@ describe('buildAppMenu', () => {
 
     // macOS app menu only. Same app.name trap as About: the hide role's default
     // label is `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.
+    // oxlint-disable-next-line vitest/no-conditional-expect -- the hide role exists only in the macOS app menu
     if (process.platform === 'darwin') {
       expect(findMenuItem('Hide MemryNote')).toMatchObject({ role: 'hide' })
     }

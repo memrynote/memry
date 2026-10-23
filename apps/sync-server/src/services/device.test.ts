@@ -202,9 +202,7 @@ describe('updateDevice', () => {
 
     // #then
     const stmt = db.prepare.mock.results[0]?.value as MockStatement | undefined
-    if (stmt) {
-      expect(stmt.run).not.toHaveBeenCalled()
-    }
+    expect(stmt?.run.mock.calls ?? []).toHaveLength(0)
   })
 })
 

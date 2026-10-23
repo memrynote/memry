@@ -41,9 +41,8 @@ describe('RequestOtpSchema', () => {
   it('rejects a malformed email', () => {
     const result = RequestOtpSchema.safeParse({ email: 'not-an-email' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('email')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('email')
   })
 
   it('rejects missing email', () => {
@@ -67,9 +66,8 @@ describe('VerifyOtpSchema', () => {
       code: '12a456'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('code')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('code')
   })
 
   it('rejects codes that are not exactly 6 digits', () => {
@@ -108,9 +106,8 @@ describe('InitOAuthSchema', () => {
   it('rejects any other provider', () => {
     const result = InitOAuthSchema.safeParse({ provider: 'github' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('provider')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('provider')
   })
 
   it('rejects missing provider', () => {
@@ -171,9 +168,8 @@ describe('ConfirmRecoveryPhraseSchema', () => {
   it('rejects non-boolean confirmed values', () => {
     const result = ConfirmRecoveryPhraseSchema.safeParse({ confirmed: 'yes' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('confirmed')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('confirmed')
   })
 
   it('rejects missing confirmed flag', () => {

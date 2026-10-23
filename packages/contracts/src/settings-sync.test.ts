@@ -119,9 +119,8 @@ describe('SyncedSettingsSchema', () => {
       general: { theme: 'midnight' }
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('theme')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('theme')
   })
 
   it('rejects invalid general.fontFamily', () => {
@@ -129,9 +128,8 @@ describe('SyncedSettingsSchema', () => {
       general: { fontFamily: 'comic-sans' }
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('fontFamily')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('fontFamily')
   })
 
   it('accepts an editor group', () => {
@@ -162,9 +160,8 @@ describe('SyncedSettingsSchema', () => {
       editor: { width: 'huge' }
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('width')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('width')
   })
 
   it('rejects invalid editor.toolbarMode', () => {
@@ -253,9 +250,8 @@ describe('SyncedSettingsSchema', () => {
       notes: { editorFontSize: 'large' }
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('editorFontSize')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('editorFontSize')
   })
 
   it('accepts a sync group with autoSync + interval', () => {
@@ -270,9 +266,8 @@ describe('SyncedSettingsSchema', () => {
       sync: { autoSync: 'yes' }
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('autoSync')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('autoSync')
   })
 
   it('accepts all groups populated together', () => {
@@ -351,17 +346,15 @@ describe('SettingsSyncPayloadSchema', () => {
   it('rejects missing settings field', () => {
     const result = SettingsSyncPayloadSchema.safeParse({ fieldClocks: {} })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('settings')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('settings')
   })
 
   it('rejects missing fieldClocks field', () => {
     const result = SettingsSyncPayloadSchema.safeParse({ settings: {} })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('fieldClocks')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('fieldClocks')
   })
 
   it('rejects invalid nested settings group', () => {

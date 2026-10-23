@@ -128,9 +128,8 @@ describe('TaskSyncPayloadSchema', () => {
   it('rejects non-string title', () => {
     const result = TaskSyncPayloadSchema.safeParse({ title: 42 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('title')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('title')
   })
 
   it('rejects fieldClocks with non-clock value', () => {
@@ -391,9 +390,8 @@ describe('ProjectSyncPayloadSchema', () => {
       statuses: [{ id: 's1', name: 'Todo', color: '#abc' }]
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path[0]).toBe('statuses')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path[0]).toBe('statuses')
   })
 })
 
@@ -425,9 +423,8 @@ describe('NoteSyncPayloadSchema', () => {
   it('rejects invalid fileType', () => {
     const result = NoteSyncPayloadSchema.safeParse({ fileType: 'doc' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('fileType')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('fileType')
   })
 
   it('rejects non-string tag entry', () => {
@@ -482,9 +479,8 @@ describe('JournalSyncPayloadSchema', () => {
   it('rejects a non-string date', () => {
     const result = JournalSyncPayloadSchema.safeParse({ date: 20260416 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('date')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('date')
   })
 })
 
@@ -550,9 +546,8 @@ describe('FolderConfigSyncPayloadSchema', () => {
   it('rejects missing icon field', () => {
     const result = FolderConfigSyncPayloadSchema.safeParse({})
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('icon')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('icon')
   })
 })
 
@@ -598,9 +593,8 @@ describe('CalendarSourceSyncPayloadSchema', () => {
   it('rejects invalid kind', () => {
     const result = CalendarSourceSyncPayloadSchema.safeParse({ kind: 'group' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('kind')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('kind')
   })
 
   it('rejects invalid syncStatus', () => {

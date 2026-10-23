@@ -80,10 +80,10 @@ describe('tabReducer', () => {
       })
 
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.direction).toBe('horizontal')
-        expect(result.layout.ratio).toBe(0.5)
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.direction).toBe('horizontal')
+      expect(result.layout.ratio).toBe(0.5)
     })
 
     it('creates vertical split layout', () => {
@@ -97,9 +97,9 @@ describe('tabReducer', () => {
       })
 
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.direction).toBe('vertical')
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.direction).toBe('vertical')
     })
 
     it('splits nested tree correctly', () => {
@@ -123,12 +123,12 @@ describe('tabReducer', () => {
 
       // g2 should now be split vertically
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.second.type).toBe('split')
-        if (result.layout.second.type === 'split') {
-          expect(result.layout.second.direction).toBe('vertical')
-        }
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.second.type).toBe('split')
+      if (result.layout.second.type !== 'split')
+        throw new Error('expected: result.layout.second.type === "split"')
+      expect(result.layout.second.direction).toBe('vertical')
     })
 
     it('creates a default tab if source group has no active tab', () => {
@@ -267,12 +267,12 @@ describe('tabReducer', () => {
 
       expect(Object.keys(result.tabGroups)).toHaveLength(2)
       // g3 should still exist in layout
-      if (result.layout.type === 'split') {
-        expect(result.layout.second.type).toBe('leaf')
-        if (result.layout.second.type === 'leaf') {
-          expect(result.layout.second.tabGroupId).toBe(g3.id)
-        }
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.second.type).toBe('leaf')
+      if (result.layout.second.type !== 'leaf')
+        throw new Error('expected: result.layout.second.type === "leaf"')
+      expect(result.layout.second.tabGroupId).toBe(g3.id)
     })
 
     it('does not close the last group', () => {
@@ -306,9 +306,9 @@ describe('tabReducer', () => {
         payload: { path: [], ratio: 0.7 }
       })
 
-      if (result.layout.type === 'split') {
-        expect(result.layout.ratio).toBe(0.7)
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.ratio).toBe(0.7)
     })
 
     it('clamps ratio between 0.1 and 0.9', () => {
@@ -328,9 +328,9 @@ describe('tabReducer', () => {
         payload: { path: [], ratio: 0.95 }
       })
 
-      if (result.layout.type === 'split') {
-        expect(result.layout.ratio).toBe(0.9)
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.ratio).toBe(0.9)
     })
   })
 
@@ -351,14 +351,14 @@ describe('tabReducer', () => {
       })
 
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.direction).toBe('vertical')
-        // 'down' → tab goes to second position
-        expect(result.layout.first.type).toBe('leaf')
-        if (result.layout.first.type === 'leaf') {
-          expect(result.layout.first.tabGroupId).toBe(g1.id)
-        }
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.direction).toBe('vertical')
+      // 'down' → tab goes to second position
+      expect(result.layout.first.type).toBe('leaf')
+      if (result.layout.first.type !== 'leaf')
+        throw new Error('expected: result.layout.first.type === "leaf"')
+      expect(result.layout.first.tabGroupId).toBe(g1.id)
     })
 
     it('creates horizontal split for left/right direction', () => {
@@ -377,13 +377,13 @@ describe('tabReducer', () => {
       })
 
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.direction).toBe('horizontal')
-        // 'left' → new group in first position
-        if (result.layout.first.type === 'leaf') {
-          expect(result.layout.first.tabGroupId).not.toBe(g1.id)
-        }
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.direction).toBe('horizontal')
+      // 'left' → new group in first position
+      if (result.layout.first.type !== 'leaf')
+        throw new Error('expected: result.layout.first.type === "leaf"')
+      expect(result.layout.first.tabGroupId).not.toBe(g1.id)
     })
 
     it('splits the requested target group instead of the source group', () => {
@@ -412,14 +412,14 @@ describe('tabReducer', () => {
       })
 
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.first).toEqual({ type: 'leaf', tabGroupId: g1.id })
-        expect(result.layout.second.type).toBe('split')
-        if (result.layout.second.type === 'split') {
-          expect(result.layout.second.direction).toBe('vertical')
-          expect(result.layout.second.first).toEqual({ type: 'leaf', tabGroupId: g2.id })
-        }
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.first).toEqual({ type: 'leaf', tabGroupId: g1.id })
+      expect(result.layout.second.type).toBe('split')
+      if (result.layout.second.type !== 'split')
+        throw new Error('expected: result.layout.second.type === "split"')
+      expect(result.layout.second.direction).toBe('vertical')
+      expect(result.layout.second.first).toEqual({ type: 'leaf', tabGroupId: g2.id })
     })
   })
 
@@ -543,12 +543,12 @@ describe('tabReducer', () => {
 
       // #then every split ratio is 0.5
       expect(result.layout.type).toBe('split')
-      if (result.layout.type === 'split') {
-        expect(result.layout.ratio).toBe(0.5)
-        if (result.layout.second.type === 'split') {
-          expect(result.layout.second.ratio).toBe(0.5)
-        }
-      }
+      if (result.layout.type !== 'split')
+        throw new Error('expected: result.layout.type === "split"')
+      expect(result.layout.ratio).toBe(0.5)
+      if (result.layout.second.type !== 'split')
+        throw new Error('expected: result.layout.second.type === "split"')
+      expect(result.layout.second.ratio).toBe(0.5)
     })
 
     it('is a no-op for single-leaf layouts', () => {

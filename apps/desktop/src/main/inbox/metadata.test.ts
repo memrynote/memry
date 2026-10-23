@@ -603,23 +603,15 @@ describe('URL Metadata Extraction', () => {
       expect(filename).toBeNull()
     })
 
-    it('should determine extension from content-type', async () => {
-      const testCases = [
-        { contentType: 'image/jpeg', expected: '.jpg' },
-        { contentType: 'image/png', expected: '.png' },
-        { contentType: 'image/gif', expected: '.gif' },
-        { contentType: 'image/webp', expected: '.webp' }
-      ]
-
-      for (const { contentType } of testCases) {
+    it('should return null without a response body, whatever the content type', async () => {
+      for (const contentType of ['image/jpeg', 'image/png', 'image/gif', 'image/webp']) {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           headers: new Map([['content-type', contentType]]),
-          body: null // Will cause early return
+          body: null
         })
 
-        await downloadImage('https://example.com/image', testDir)
-        // Coverage achieved for content-type handling
+        expect(await downloadImage('https://example.com/image', testDir)).toBeNull()
       }
     })
 

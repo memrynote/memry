@@ -25,10 +25,9 @@ describe('NoteCreateSchema', () => {
         title: 'My Note'
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.title).toBe('My Note')
-        expect(result.data.content).toBe('')
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.title).toBe('My Note')
+      expect(result.data.content).toBe('')
     })
 
     it('should accept full valid input with all fields', () => {
@@ -40,13 +39,12 @@ describe('NoteCreateSchema', () => {
         template: 'meeting-notes'
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.title).toBe('Project Notes')
-        expect(result.data.content).toBe('# Hello\n\nThis is my note content.')
-        expect(result.data.folder).toBe('projects/2024')
-        expect(result.data.tags).toEqual(['work', 'important'])
-        expect(result.data.template).toBe('meeting-notes')
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.title).toBe('Project Notes')
+      expect(result.data.content).toBe('# Hello\n\nThis is my note content.')
+      expect(result.data.folder).toBe('projects/2024')
+      expect(result.data.tags).toEqual(['work', 'important'])
+      expect(result.data.template).toBe('meeting-notes')
     })
 
     it('keeps the properties and icon a note copied from another note carries', () => {
@@ -56,10 +54,9 @@ describe('NoteCreateSchema', () => {
         emoji: '📁'
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.properties).toEqual({ Project: 'Project X', Priority: 3, Done: false })
-        expect(result.data.emoji).toBe('📁')
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.properties).toEqual({ Project: 'Project X', Priority: 3, Done: false })
+      expect(result.data.emoji).toBe('📁')
     })
 
     it('should accept title at maximum length (200 chars)', () => {
@@ -175,15 +172,14 @@ describe('NoteUpdateSchema', () => {
         emoji: '📝'
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.emoji).toBe('📝')
-        expect(result.data.frontmatter).toEqual({ status: 'in-progress', priority: 3 })
-        expect(result.data.headerTags).toEqual({
-          add: ['updated'],
-          remove: ['old'],
-          rename: [{ from: 'a', to: 'b' }]
-        })
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.emoji).toBe('📝')
+      expect(result.data.frontmatter).toEqual({ status: 'in-progress', priority: 3 })
+      expect(result.data.headerTags).toEqual({
+        add: ['updated'],
+        remove: ['old'],
+        rename: [{ from: 'a', to: 'b' }]
+      })
     })
 
     it('keeps a whole tag list for agent callers that replace the tags row', () => {
@@ -198,9 +194,8 @@ describe('NoteUpdateSchema', () => {
         emoji: null
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.emoji).toBeNull()
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.emoji).toBeNull()
     })
 
     it('should accept partial update with only title', () => {
@@ -298,10 +293,9 @@ describe('NoteRenameSchema', () => {
         newTitle: 'New Note Title'
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.id).toBe('note-123')
-        expect(result.data.newTitle).toBe('New Note Title')
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.id).toBe('note-123')
+      expect(result.data.newTitle).toBe('New Note Title')
     })
 
     it('should accept newTitle at maximum length (200 chars)', () => {
@@ -366,10 +360,9 @@ describe('NoteMoveSchema', () => {
         newFolder: 'projects/archive'
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.id).toBe('note-123')
-        expect(result.data.newFolder).toBe('projects/archive')
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.id).toBe('note-123')
+      expect(result.data.newFolder).toBe('projects/archive')
     })
 
     it('should accept empty string for root folder', () => {
@@ -431,12 +424,11 @@ describe('NoteListSchema', () => {
     it('should accept empty object and apply defaults', () => {
       const result = NoteListSchema.safeParse({})
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.sortBy).toBe('modified')
-        expect(result.data.sortOrder).toBe('desc')
-        expect(result.data.limit).toBe(100)
-        expect(result.data.offset).toBe(0)
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.sortBy).toBe('modified')
+      expect(result.data.sortOrder).toBe('desc')
+      expect(result.data.limit).toBe(100)
+      expect(result.data.offset).toBe(0)
     })
 
     it('should accept full valid input', () => {
@@ -449,14 +441,13 @@ describe('NoteListSchema', () => {
         offset: 100
       })
       expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.folder).toBe('projects')
-        expect(result.data.tags).toEqual(['work', 'important'])
-        expect(result.data.sortBy).toBe('created')
-        expect(result.data.sortOrder).toBe('asc')
-        expect(result.data.limit).toBe(50)
-        expect(result.data.offset).toBe(100)
-      }
+      if (!result.success) throw new Error('expected the check above to hold')
+      expect(result.data.folder).toBe('projects')
+      expect(result.data.tags).toEqual(['work', 'important'])
+      expect(result.data.sortBy).toBe('created')
+      expect(result.data.sortOrder).toBe('asc')
+      expect(result.data.limit).toBe(50)
+      expect(result.data.offset).toBe(100)
     })
 
     it('should accept sortBy: title', () => {

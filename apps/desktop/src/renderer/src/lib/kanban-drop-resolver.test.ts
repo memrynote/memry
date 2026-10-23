@@ -70,44 +70,38 @@ describe('resolveColumnDrop', () => {
     it('resolves due-today to start of today', () => {
       const result = resolveColumnDrop('due-today', projects)
       expect(result).toMatchObject({ type: 'dueDate' })
-      if (result?.type === 'dueDate') {
-        expect(result.dueDate).toEqual(new Date(2026, 2, 17))
-      }
+      if (result?.type !== 'dueDate') throw new Error('expected: result?.type === "dueDate"')
+      expect(result.dueDate).toEqual(new Date(2026, 2, 17))
     })
 
     it('resolves due-tomorrow to start of tomorrow', () => {
       const result = resolveColumnDrop('due-tomorrow', projects)
-      if (result?.type === 'dueDate') {
-        expect(result.dueDate).toEqual(new Date(2026, 2, 18))
-      }
+      if (result?.type !== 'dueDate') throw new Error('expected: result?.type === "dueDate"')
+      expect(result.dueDate).toEqual(new Date(2026, 2, 18))
     })
 
     it('resolves due-upcoming to 3 days from now', () => {
       const result = resolveColumnDrop('due-upcoming', projects)
-      if (result?.type === 'dueDate') {
-        expect(result.dueDate).toEqual(new Date(2026, 2, 20))
-      }
+      if (result?.type !== 'dueDate') throw new Error('expected: result?.type === "dueDate"')
+      expect(result.dueDate).toEqual(new Date(2026, 2, 20))
     })
 
     it('resolves due-later to 14 days from now', () => {
       const result = resolveColumnDrop('due-later', projects)
-      if (result?.type === 'dueDate') {
-        expect(result.dueDate).toEqual(new Date(2026, 2, 31))
-      }
+      if (result?.type !== 'dueDate') throw new Error('expected: result?.type === "dueDate"')
+      expect(result.dueDate).toEqual(new Date(2026, 2, 31))
     })
 
     it('resolves due-overdue to null (clear due date)', () => {
       const result = resolveColumnDrop('due-overdue', projects)
-      if (result?.type === 'dueDate') {
-        expect(result.dueDate).toBeNull()
-      }
+      if (result?.type !== 'dueDate') throw new Error('expected: result?.type === "dueDate"')
+      expect(result.dueDate).toBeNull()
     })
 
     it('resolves due-noDueDate to null', () => {
       const result = resolveColumnDrop('due-noDueDate', projects)
-      if (result?.type === 'dueDate') {
-        expect(result.dueDate).toBeNull()
-      }
+      if (result?.type !== 'dueDate') throw new Error('expected: result?.type === "dueDate"')
+      expect(result.dueDate).toBeNull()
     })
   })
 

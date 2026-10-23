@@ -117,6 +117,8 @@ export default defineConfig({
       ['max-lines', { max: 800, skipBlankLines: true, skipComments: true }],
       // Vitest's `expect(value, message)` second argument is a failure message, not a bug.
       ['vitest/valid-expect', { maxArgs: 2 }],
+      // Test helpers named expect*/assert* hold the assertions for the tests that call them.
+      ['vitest/expect-expect', { assertFunctionNames: ['expect', 'expect*', 'assert*'] }],
       ['typescript/ban-ts-comment', { 'ts-ignore': 'allow-with-description' }],
       ['typescript/no-empty-object-type', { allowInterfaces: 'always' }],
       'no-array-constructor',

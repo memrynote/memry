@@ -38,9 +38,8 @@ describe('UploadInitRequestSchema', () => {
       chunkCount: 1
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('totalSize')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('totalSize')
   })
 
   it('rejects negative totalSize', () => {
@@ -81,9 +80,8 @@ describe('UploadInitRequestSchema', () => {
       chunkCount: 129
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('chunkCount')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('chunkCount')
   })
 
   it('accepts chunkCount at the 128-chunk boundary', () => {
@@ -131,9 +129,8 @@ describe('ChunkUploadParamsSchema', () => {
   it('rejects negative chunkIndex', () => {
     const result = ChunkUploadParamsSchema.safeParse({ sessionId: 'sess-1', chunkIndex: -1 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('chunkIndex')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('chunkIndex')
   })
 
   it('rejects non-integer chunkIndex', () => {
@@ -168,9 +165,8 @@ describe('ChunkExistenceCheckSchema', () => {
   it('rejects an empty hash', () => {
     const result = ChunkExistenceCheckSchema.safeParse({ hash: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('hash')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('hash')
   })
 })
 

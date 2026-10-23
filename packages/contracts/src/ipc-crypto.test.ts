@@ -50,9 +50,8 @@ describe('EncryptItemSchema', () => {
       content: {}
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('type')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('type')
   })
 
   it('rejects content that is not a record', () => {
@@ -62,9 +61,8 @@ describe('EncryptItemSchema', () => {
       content: 'raw-string'
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('content')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('content')
   })
 
   it('rejects an unknown operation value', () => {
@@ -125,9 +123,8 @@ describe('DecryptItemSchema', () => {
     for (const field of fields) {
       const result = DecryptItemSchema.safeParse({ ...base, [field]: '' })
       expect(result.success).toBe(false)
-      if (!result.success) {
-        expect(result.error.issues[0].path).toContain(field)
-      }
+      if (result.success) throw new Error('expected the check above to fail')
+      expect(result.error.issues[0].path).toContain(field)
     }
   })
 })

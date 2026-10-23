@@ -47,9 +47,8 @@ describe('GetHistorySchema', () => {
   it('rejects limit below 1', () => {
     const result = GetHistorySchema.safeParse({ limit: 0 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('limit')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('limit')
   })
 
   it('rejects limit above 1000', () => {
@@ -63,9 +62,8 @@ describe('GetHistorySchema', () => {
   it('rejects negative offset', () => {
     const result = GetHistorySchema.safeParse({ offset: -1 })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('offset')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('offset')
   })
 
   it('accepts offset 0', () => {
@@ -90,9 +88,8 @@ describe('UpdateSyncedSettingSchema', () => {
   it('rejects missing fieldPath', () => {
     const result = UpdateSyncedSettingSchema.safeParse({ value: 'dark' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('fieldPath')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('fieldPath')
   })
 
   it('rejects empty fieldPath', () => {

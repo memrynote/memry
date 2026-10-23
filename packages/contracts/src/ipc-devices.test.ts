@@ -51,9 +51,8 @@ describe('LinkViaQrSchema', () => {
   it('rejects empty qrData', () => {
     const result = LinkViaQrSchema.safeParse({ qrData: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('qrData')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('qrData')
   })
 
   it('rejects missing qrData', () => {
@@ -71,9 +70,8 @@ describe('LinkViaRecoverySchema', () => {
   it('rejects an empty recovery phrase', () => {
     const result = LinkViaRecoverySchema.safeParse({ recoveryPhrase: '' })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('recoveryPhrase')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('recoveryPhrase')
   })
 
   it('rejects missing recovery phrase', () => {
@@ -132,9 +130,8 @@ describe('RemoveDeviceSchema', () => {
   it('rejects missing deviceId — revocation must not be silently no-op', () => {
     const result = RemoveDeviceSchema.safeParse({})
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('deviceId')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('deviceId')
   })
 
   it('rejects empty deviceId string', () => {
@@ -163,9 +160,8 @@ describe('RenameDeviceSchema', () => {
       newName: 'x'.repeat(101)
     })
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain('newName')
-    }
+    if (result.success) throw new Error('expected the check above to fail')
+    expect(result.error.issues[0].path).toContain('newName')
   })
 
   it('rejects empty newName', () => {

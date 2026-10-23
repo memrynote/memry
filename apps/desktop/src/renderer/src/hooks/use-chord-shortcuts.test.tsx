@@ -234,9 +234,8 @@ describe('useChordShortcuts', () => {
     // #then ratio resets to 0.5
     const after = getState()
     expect(after.layout.type).toBe('split')
-    if (after.layout.type === 'split') {
-      expect(after.layout.ratio).toBe(0.5)
-    }
+    if (after.layout.type !== 'split') throw new Error('expected: after.layout.type === "split"')
+    expect(after.layout.ratio).toBe(0.5)
   })
 
   it('moves the active tab to the next group on ⌘K ⇧→', () => {
