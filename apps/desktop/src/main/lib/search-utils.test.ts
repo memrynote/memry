@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   escapeSearchQuery,
+  buildPhraseQuery,
   buildPrefixQuery,
   normalizeScores,
   truncateQuery,
@@ -170,5 +171,16 @@ describe('parseSearchQuery', () => {
     expect(result).toContain('"exact phrase"')
     expect(result).toContain('AND')
     expect(result).toContain('"other"*')
+  })
+})
+
+describe('buildPhraseQuery', () => {
+  it('quotes a multi-word query as one prefixed phrase', () => {
+    expect(buildPhraseQuery('this is rough')).toBe('"this is rough"*')
+  })
+
+  it('is empty for a single word or nothing searchable', () => {
+    expect(buildPhraseQuery('meet')).toBe('')
+    expect(buildPhraseQuery('***')).toBe('')
   })
 })
