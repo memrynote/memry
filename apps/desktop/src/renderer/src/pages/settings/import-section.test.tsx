@@ -82,23 +82,56 @@ describe('ImportSettings', () => {
     )
     unmount()
 
-    readwiseStatus = { connected: true, needsAttention: true, lastSyncAt: null }
-    const second = render(<ImportSettings />)
-    expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(
-      'import.v2.readwise.needsAttention'
-    )
-    second.unmount()
+    const states: Array<[Record<string, unknown>, string]> = [
+      [{ error: { kind: 'invalid-token' } }, 'import.v2.readwise.invalidToken'],
+      [{ error: { kind: 'subscription-expired' } }, 'import.v2.readwise.subscriptionExpired'],
+      [{ error: { kind: 'rate-limited' } }, 'import.v2.readwise.rateLimited'],
+      [{ error: { kind: 'network' } }, 'import.v2.readwise.network'],
+      [{ error: { kind: 'server' } }, 'import.v2.readwise.server'],
+      [{ error: { kind: 'unexpected' } }, 'import.v2.readwise.unexpected'],
+      [{ syncing: { stage: 'reading', planned: null, done: 0 } }, 'import.v2.readwise.syncing'],
+      [
+        { syncing: { stage: 'waiting-for-sync', planned: null, done: 0 } },
+        'import.v2.readwise.waiting'
+      ],
+      [
+        { lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString() },
+        'import.v2.readwise.synced'
+      ],
+      [{}, 'import.v2.readwise.connected']
+    ]
+    for (const [over, text] of states) {
+      readwiseStatus = {
+        connected: true,
+        thisDevicePulls: true,
+        syncing: null,
+        error: null,
+        lastSyncAt: null,
+        ...over
+      }
+      const { unmount } = render(<ImportSettings />)
+      expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(text)
+      unmount()
+    }
 
+    // The token stays on the pulling device, so another device is never "connected".
     readwiseStatus = {
-      connected: true,
-      needsAttention: false,
-      lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString()
+      connected: false,
+      thisDevicePulls: false,
+      pullingDeviceName: 'Desk Mac',
+      syncing: null,
+      error: null
     }
     render(<ImportSettings />)
     expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(
-      'import.v2.readwise.synced'
+      'import.v2.readwise.otherDevice'
     )
     readwiseStatus = null
+  })
+
+  it('opens the Readwise panel when the error toast asks for it', () => {
+    render(<ImportSettings focusTarget="readwise-import" focusRequestId={1} />)
+    expect(screen.getByTestId('import-dialog')).toHaveTextContent('Readwise')
   })
 
   it('filters by name, id, and file extension', () => {

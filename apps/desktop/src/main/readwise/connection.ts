@@ -1,4 +1,4 @@
-import type { ReadwiseStatusResult } from '@memry/contracts/import-channels'
+import type { ReadwiseRunError, ReadwiseStatusResult } from '@memry/contracts/import-channels'
 import { getDatabase } from '../database'
 import { getMainI18n } from '../lib/main-i18n'
 import { getStatus } from '../vault'
@@ -12,6 +12,7 @@ import {
   ReadwiseRunInProgressError,
   ReadwiseUnavailableError
 } from './runtime-effects'
+import { clearRunFailure, getRunFailure, getRunProgress } from './run-status'
 import { readReadwiseOptions } from './settings'
 import { clearRunState, getCursor, getLastRun, setLastRun } from './sync-state'
 
@@ -56,14 +57,24 @@ export async function getReadwiseStatus(): Promise<ReadwiseStatusResult> {
   const connected = (await getReadwiseToken(vaultPath)) !== null
   const lastRun = connected ? getLastRun(db) : null
   const authority = pullAuthority(db)
+  const thisDevicePulls = authority.state !== 'elsewhere'
+  // A value an older build wrote has no kind: it parked on a revoked token.
+  const parked: ReadwiseRunError | null = lastRun?.needsAttention
+    ? { kind: lastRun.attention ?? 'invalid-token', detail: null }
+    : null
+  const nextRun = connected && thisDevicePulls ? getReadwiseScheduler().nextRunAt() : null
   return {
     connected,
     options: readReadwiseOptions(db),
     lastSyncAt: lastRun?.at ?? null,
     needsAttention: lastRun?.needsAttention ?? false,
     hasImported: getCursor(db) !== null,
-    thisDevicePulls: authority.state !== 'elsewhere',
-    pullingDeviceName: authority.state === 'elsewhere' ? authority.deviceName : null
+    thisDevicePulls,
+    pullingDeviceName: authority.state === 'elsewhere' ? authority.deviceName : null,
+    syncing: connected ? getRunProgress() : null,
+    lastRun: connected ? (lastRun?.counts ?? null) : null,
+    error: connected ? (parked ?? getRunFailure()) : null,
+    nextRunAt: nextRun === null ? null : new Date(nextRun).toISOString()
   }
 }
 
@@ -90,7 +101,10 @@ export async function connectReadwise(token: string): Promise<ReadwiseStatusResu
   await setReadwiseToken(vaultPath, token)
   // A fresh token ends "needs attention", so the schedule starts again.
   const lastRun = getLastRun(db)
-  if (lastRun?.needsAttention) setLastRun(db, { ...lastRun, needsAttention: false })
+  if (lastRun?.needsAttention) {
+    setLastRun(db, { at: lastRun.at, needsAttention: false, counts: lastRun.counts })
+  }
+  clearRunFailure()
   if (authority.state === 'claim-needed') {
     try {
       await claimThisDevice(db)
@@ -103,7 +117,7 @@ export async function connectReadwise(token: string): Promise<ReadwiseStatusResu
 }
 
 /**
- * "Sync on this device instead" (D8). The token never travels between devices
+ * "Sync here instead" (D8). The token never travels between devices
  * (D2), so it is asked for again. The claim goes first and the call waits until
  * it reached the server, so the old device stops before this one reads
  * anything. Nothing is written until sync is caught up and online. Then the
@@ -119,6 +133,7 @@ export async function takeOverReadwise(token: string): Promise<ReadwiseStatusRes
   await claimThisDevice(db)
   await setReadwiseToken(vaultPath, token)
   clearRunState(db)
+  clearRunFailure()
   return await getReadwiseStatus()
 }
 
@@ -128,6 +143,7 @@ export async function disconnectReadwise(): Promise<void> {
   await deleteReadwiseToken(vaultPath)
   const db = getDatabase()
   clearRunState(db)
+  clearRunFailure()
   // Only the pulling device's disconnect frees Readwise. The next device the
   // user connects claims (D8).
   if (readClaim(db).deviceId === readPullEnv(db).deviceId) clearClaim(db)

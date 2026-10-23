@@ -72,6 +72,7 @@ import {
   useHintActivation
 } from '@/hooks'
 import { useAppZoom } from '@/hooks/use-app-zoom'
+import { useReadwiseErrorToast } from '@/hooks/use-readwise-error-toast'
 import { useCreateNewNote } from '@/hooks/use-create-new-note'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
@@ -331,9 +332,11 @@ const AppContent = (): React.JSX.Element => {
   useMouseNavButtons()
   const isChordActive = useChordShortcuts()
   const { open: openSettings, isOpen: isSettingsOpen } = useSettingsModal()
+  const openReadwiseSettings = useCallback(() => openSettings('import:readwise'), [openSettings])
   useAppZoom()
   useFolderNoteShortcutsRuntime()
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
+  useReadwiseErrorToast(openReadwiseSettings) // One toast when Readwise needs the user (D19)
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
   useIndexRecoveryNotice() // Says so when Memry repaired its own search index

@@ -11,7 +11,7 @@ import { trackTelemetry } from '@/lib/telemetry'
 
 export type { SettingsSection }
 
-export type SettingsFocusTarget = 'voice-local-model' | 'vault-activity'
+export type SettingsFocusTarget = 'voice-local-model' | 'vault-activity' | 'readwise-import'
 
 const DEFAULT_SECTION: SettingsSection = 'account'
 
@@ -43,6 +43,10 @@ function parseSettingsTarget(section?: string): {
   }
   if (section === 'vault:activity') {
     return { section: 'vault', focusTarget: 'vault-activity' }
+  }
+
+  if (section === 'import:readwise') {
+    return { section: 'import', focusTarget: 'readwise-import' }
   }
 
   return { section: (section as SettingsSection) ?? DEFAULT_SECTION, focusTarget: null }

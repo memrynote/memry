@@ -28,6 +28,15 @@ describe('settings modal targets', () => {
     expect(result.current.focusRequestId).toBeGreaterThan(firstRequest)
   })
 
+  it('opens Import focused on the Readwise panel for import:readwise', () => {
+    const { result } = renderHook(() => useSettingsModal(), { wrapper })
+
+    act(() => result.current.open('import:readwise'))
+
+    expect(result.current.activeSection).toBe('import')
+    expect(result.current.focusTarget).toBe('readwise-import')
+  })
+
   it('opens a plain section with no focus target', () => {
     const { result } = renderHook(() => useSettingsModal(), { wrapper })
 

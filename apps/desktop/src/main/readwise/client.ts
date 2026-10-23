@@ -19,7 +19,8 @@ const DEFAULT_RETRY_AFTER_SECONDS = 60
 const MAX_RETRY_AFTER_SECONDS = 120
 const REQUEST_TIMEOUT_MS = 30_000
 
-export type ReadwiseErrorCode = 'invalid-token' | 'rate-limited' | 'network' | 'server'
+export type ReadwiseErrorCode =
+  'invalid-token' | 'subscription-expired' | 'rate-limited' | 'network' | 'server'
 
 /** Typed failure. Callers map `code` to user text. The message never holds the token. */
 export class ReadwiseError extends Error {
@@ -173,6 +174,11 @@ export async function readwiseGet(options: ReadwiseRequestOptions): Promise<Resp
 
     const { status } = response
     if (status === 401 || status === 403) {
+      if (await saysSubscriptionExpired(response)) {
+        throw new ReadwiseError('subscription-expired', 'Readwise subscription has expired', {
+          status
+        })
+      }
       throw new ReadwiseError('invalid-token', 'Readwise rejected the access token', { status })
     }
     if (status === 429) {
@@ -188,6 +194,23 @@ export async function readwiseGet(options: ReadwiseRequestOptions): Promise<Resp
       continue
     }
     throw new ReadwiseError('server', `Readwise answered ${status}`, { status })
+  }
+}
+
+/**
+ * Readwise answers an account whose subscription lapsed with an auth failure
+ * whose `detail` names the subscription. Not verified against the live API
+ * (the test account's subscription is active), so a body that does not say so
+ * stays an `invalid-token`, which also asks the user to act.
+ */
+async function saysSubscriptionExpired(response: Response): Promise<boolean> {
+  try {
+    const body: unknown = await response.json()
+    const detail =
+      typeof body === 'object' && body !== null ? (body as { detail?: unknown }).detail : null
+    return typeof detail === 'string' && /subscription|expired|trial/i.test(detail)
+  } catch {
+    return false
   }
 }
 

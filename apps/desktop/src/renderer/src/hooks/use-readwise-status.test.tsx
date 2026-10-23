@@ -8,9 +8,34 @@ import { useReadwiseStatus } from './use-readwise-status'
 
 describe('useReadwiseStatus', () => {
   const status = vi.fn()
+  let listeners: Array<() => void> = []
   beforeEach(() => {
     status.mockReset()
-    ;(window as unknown as { api: unknown }).api = { import: { readwise: { status } } }
+    listeners = []
+    ;(window as unknown as { api: unknown }).api = {
+      onReadwiseStatusChanged: (callback: () => void) => {
+        listeners.push(callback)
+        return () => {
+          listeners = listeners.filter((listener) => listener !== callback)
+        }
+      },
+      import: { readwise: { status } }
+    }
+  })
+
+  it('re-reads when main reports a status change, and stops listening on unmount', async () => {
+    status.mockResolvedValue({ connected: true, syncing: null })
+    const { result, unmount } = renderHook(() => useReadwiseStatus(true))
+    await waitFor(() => expect(result.current.status).toEqual({ connected: true, syncing: null }))
+
+    status.mockResolvedValue({ connected: true, syncing: { stage: 'reading' } })
+    act(() => listeners.forEach((listener) => listener()))
+    await waitFor(() =>
+      expect(result.current.status).toEqual({ connected: true, syncing: { stage: 'reading' } })
+    )
+
+    unmount()
+    expect(listeners).toHaveLength(0)
   })
 
   it('does not ask while disabled', () => {

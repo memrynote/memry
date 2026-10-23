@@ -74,11 +74,17 @@ export const importApi = {
     restoreBook: (input: ReadwiseRestoreBookInput): Promise<{ success: true }> =>
       invoke<{ success: true }>(ReadwiseImportChannels.invoke.RESTORE_BOOK, input),
     takeOver: (input: ReadwiseTakeOverInput): Promise<ReadwiseStatusResult> =>
-      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.TAKE_OVER, input)
+      invoke<ReadwiseStatusResult>(ReadwiseImportChannels.invoke.TAKE_OVER, input),
+    cancel: (): Promise<{ success: true }> =>
+      invoke<{ success: true }>(ReadwiseImportChannels.invoke.CANCEL),
+    ackErrorToast: (): Promise<{ first: boolean }> =>
+      invoke<{ first: boolean }>(ReadwiseImportChannels.invoke.ACK_ERROR_TOAST)
   }
 }
 
 export const importEvents = {
   onImportProgress: (callback: (event: ImportProgressEvent) => void): (() => void) =>
-    subscribe<ImportProgressEvent>(ImportChannels.events.PROGRESS, callback)
+    subscribe<ImportProgressEvent>(ImportChannels.events.PROGRESS, callback),
+  onReadwiseStatusChanged: (callback: () => void): (() => void) =>
+    subscribe<void>(ReadwiseImportChannels.events.STATUS_CHANGED, callback)
 }

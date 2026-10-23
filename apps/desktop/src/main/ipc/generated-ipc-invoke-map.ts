@@ -162,6 +162,8 @@ export interface MainIpcInvokeHandlers {
   "import:onenote:status": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").OneNoteAuthStatusResult> | { success: false; error: string }>
   "import:pick-files": (...args: [{ label: string; extensions: string[]; allowMultiple?: boolean | undefined; directory?: boolean | undefined; defaultPath?: string | undefined; message?: string | undefined; }]) => Awaited<Promise<{ canceled: true; filePaths: never[]; } | { canceled: false; filePaths: string[]; }> | { success: false; error: string }>
   "import:preview": (...args: [{ importId: string; importerId: string; sourcePaths: string[]; options?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ success: true; preview: import("../../../../../packages/contracts/src/import-channels").ImportPreview; }> | { success: false; error: string }>
+  "import:readwise:ack-error-toast": (...args: [unknown]) => Awaited<Promise<{ first: boolean; }> | { success: false; error: string }>
+  "import:readwise:cancel": (...args: [unknown]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "import:readwise:connect": (...args: [{ token: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").ReadwiseStatusResult> | { success: false; error: string }>
   "import:readwise:disconnect": (...args: [unknown]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "import:readwise:list-deleted": (...args: [unknown]) => Awaited<Promise<{ books: import("../../../../../packages/contracts/src/import-channels").ReadwiseDeletedBook[]; }> | { success: false; error: string }>

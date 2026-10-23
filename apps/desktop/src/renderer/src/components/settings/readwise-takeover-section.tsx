@@ -1,6 +1,6 @@
 /**
  * The Readwise panel on a device that does not pull (#1408 D8): names the
- * device that does, and offers "Sync on this device instead". The token never
+ * device that does, and offers "Sync here instead". The token never
  * travels between devices (D2), so taking over asks for it again.
  */
 
@@ -9,16 +9,17 @@ import { useT } from '@memry/i18n/renderer'
 import type { ReadwiseStatusResult } from '@memry/contracts/import-channels'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ReadwiseStatusBanner } from '@/components/settings/readwise-status-banner'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
 interface ReadwiseTakeoverSectionProps {
-  deviceName: string | null
+  status: ReadwiseStatusResult
   disabled: boolean
   onTakenOver: (status: ReadwiseStatusResult) => void
 }
 
 export function ReadwiseTakeoverSection({
-  deviceName,
+  status,
   disabled,
   onTakenOver
 }: ReadwiseTakeoverSectionProps) {
@@ -26,6 +27,7 @@ export function ReadwiseTakeoverSection({
   const [token, setToken] = useState('')
   const [isWorking, setIsWorking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [asking, setAsking] = useState(false)
   const mountedRef = useRef(true)
   useEffect(() => {
     mountedRef.current = true
@@ -55,6 +57,11 @@ export function ReadwiseTakeoverSection({
     }
   }
 
+  const banner = (
+    <ReadwiseStatusBanner status={status} onSyncHere={asking ? undefined : () => setAsking(true)} />
+  )
+  if (!asking) return <div className="flex min-w-0 flex-col gap-3">{banner}</div>
+
   return (
     <form
       className="flex min-w-0 flex-col gap-3"
@@ -63,11 +70,7 @@ export function ReadwiseTakeoverSection({
         void takeOver()
       }}
     >
-      <p className="text-[13px]/4 text-foreground">
-        {deviceName
-          ? t('import.dialog.readwise.takeOver.syncsOn', { device: deviceName })
-          : t('import.dialog.readwise.takeOver.syncsOnAnother')}
-      </p>
+      {banner}
       <p className="text-xs/4 text-muted-foreground">
         {t('import.dialog.readwise.takeOver.explain')}
       </p>

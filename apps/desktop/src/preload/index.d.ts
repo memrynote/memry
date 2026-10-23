@@ -2085,6 +2085,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
       listDeleted: () => Promise<{ books: ReadwiseDeletedBook[] }>
       restoreBook: (input: ReadwiseRestoreBookInput) => Promise<{ success: true }>
       takeOver: (input: ReadwiseTakeOverInput) => Promise<ReadwiseStatusResult>
+      cancel: () => Promise<{ success: true }>
+      ackErrorToast: () => Promise<{ first: boolean }>
     }
   }
   updater: {
@@ -2197,6 +2199,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultBindingChanged: (callback: (state: VaultBindingState) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
+  onReadwiseStatusChanged: (callback: () => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
   onMenuCommand: (callback: (event: AppMenuCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void

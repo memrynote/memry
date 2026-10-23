@@ -387,7 +387,19 @@ export const ReadwiseImportChannels = {
     /** Recreate the note of a deleted book (D16). */
     RESTORE_BOOK: 'import:readwise:restore-book',
     /** Make this device the one that pulls from Readwise (D8). Asks for the token again. */
-    TAKE_OVER: 'import:readwise:take-over'
+    TAKE_OVER: 'import:readwise:take-over',
+    /** Stop the run in progress. It writes nothing further and keeps the cursor (#1418). */
+    CANCEL: 'import:readwise:cancel',
+    /**
+     * True the first time a window asks during an error the user must fix, false
+     * after that, until the error is fixed and comes back. The caller shows the
+     * toast only on true (D19).
+     */
+    ACK_ERROR_TOAST: 'import:readwise:ack-error-toast'
+  },
+  events: {
+    /** The status changed: a run started, moved on, or ended. Carries no payload; read `STATUS`. */
+    STATUS_CHANGED: 'import:readwise:status-changed'
   }
 } as const
 
@@ -490,6 +502,43 @@ export interface ReadwiseDeletedBook {
   highlightCount: number
 }
 
+/** Why the last run failed. Only the first two need the user (D19): they park the schedule and get a toast. */
+export const READWISE_ERROR_KINDS = [
+  'invalid-token',
+  'subscription-expired',
+  'rate-limited',
+  'network',
+  'server',
+  'unexpected'
+] as const
+export type ReadwiseErrorKind = (typeof READWISE_ERROR_KINDS)[number]
+
+export interface ReadwiseRunCounts {
+  /** Books looked at. */
+  books: number
+  added: number
+  updated: number
+  appended: number
+  /** Skipped because the note was open in an editor; retried next run. */
+  deferred: number
+  failed: number
+  highlights: number
+}
+
+export interface ReadwiseRunError {
+  kind: ReadwiseErrorKind
+  /** The failure's own text, for `unexpected` only. */
+  detail: string | null
+}
+
+/** A run in progress. `waiting-for-sync` is D8: it starts after memry sync has pulled. */
+export interface ReadwiseRunProgress {
+  stage: 'waiting-for-sync' | 'reading' | 'writing'
+  /** Books to write, once the export has been read. */
+  planned: number | null
+  done: number
+}
+
 export interface ReadwiseStatusResult {
   connected: boolean
   options: ReadwiseOptions
@@ -506,6 +555,14 @@ export interface ReadwiseStatusResult {
   thisDevicePulls: boolean
   /** The pulling device's name, when known. */
   pullingDeviceName: string | null
+  /** The run in progress on this device, or null (#1418). */
+  syncing: ReadwiseRunProgress | null
+  /** Counts of the last completed run on this device, or null. */
+  lastRun: ReadwiseRunCounts | null
+  /** Why the last run failed; null once a run succeeds or the token changes. */
+  error: ReadwiseRunError | null
+  /** ISO time the scheduler will next run, or null (manual, parked, or not pulling). */
+  nextRunAt: string | null
 }
 
 /**

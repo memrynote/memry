@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ReadwiseErrorKind, ReadwiseRunCounts } from '@memry/contracts/import-channels'
 import { deleteSetting, getSetting, setSetting } from '../database/queries/settings'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/types'
@@ -14,6 +15,7 @@ const RETRY_KEY = 'readwise.retryList'
 const FULL_PASS_KEY = 'readwise.fullPass'
 const LAST_RUN_KEY = 'readwise.lastRun'
 const LAST_FULL_READ_KEY = 'readwise.lastFullRead'
+const ERROR_TOAST_KEY = 'readwise.errorToastShown'
 
 const log = createLogger('ReadwiseState')
 
@@ -105,14 +107,35 @@ export function setLastFullRead(db: DataDb, at: string): void {
   setSetting(db, LAST_FULL_READ_KEY, at)
 }
 
+export type AttentionKind = Extract<ReadwiseErrorKind, 'invalid-token' | 'subscription-expired'>
+
 export interface LastRun {
   /** ISO time the run finished on this device. */
   at: string
   /** Set when the run failed in a way the user must fix, such as a revoked token. */
   needsAttention: boolean
+  /** Which error parked the run. Absent in a value an older build wrote: read as `invalid-token`. */
+  attention?: AttentionKind
+  /** The completed run's counts (#1418). Absent in a value an older build wrote. */
+  counts?: ReadwiseRunCounts
 }
 
-const LastRunSchema = z.object({ at: z.string(), needsAttention: z.boolean() })
+const CountsSchema = z.object({
+  books: z.number(),
+  added: z.number(),
+  updated: z.number(),
+  appended: z.number(),
+  deferred: z.number(),
+  failed: z.number(),
+  highlights: z.number()
+})
+
+const LastRunSchema = z.object({
+  at: z.string(),
+  needsAttention: z.boolean(),
+  attention: z.enum(['invalid-token', 'subscription-expired']).optional(),
+  counts: CountsSchema.optional()
+})
 
 export function getLastRun(db: DataDb): LastRun | null {
   const raw = getSetting(db, LAST_RUN_KEY)
@@ -128,6 +151,20 @@ export function getLastRun(db: DataDb): LastRun | null {
 
 export function setLastRun(db: DataDb, run: LastRun): void {
   setSetting(db, LAST_RUN_KEY, JSON.stringify(run))
+  // The error is fixed: the next episode may show its toast again (D19).
+  if (!run.needsAttention) deleteSetting(db, ERROR_TOAST_KEY)
+}
+
+/**
+ * The error toast's once-per-episode flag (D19), device-local. True when this
+ * call is the first of the episode, and it records that the toast was shown.
+ * Cleared by `setLastRun` once the error is fixed.
+ */
+export function claimErrorToast(db: DataDb): boolean {
+  if (!getLastRun(db)?.needsAttention) return false
+  if (getSetting(db, ERROR_TOAST_KEY) !== null) return false
+  setSetting(db, ERROR_TOAST_KEY, 'true')
+  return true
 }
 
 /** Forgets the connection's run state, so a reconnect starts from a full export. */
@@ -138,4 +175,5 @@ export function clearRunState(db: DataDb): void {
   deleteSetting(db, FULL_PASS_KEY)
   deleteSetting(db, LAST_RUN_KEY)
   deleteSetting(db, LAST_FULL_READ_KEY)
+  deleteSetting(db, ERROR_TOAST_KEY)
 }
