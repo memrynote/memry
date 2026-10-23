@@ -241,6 +241,7 @@ describe('preload api wrappers', () => {
     await expectInvoke(() => noteFoldApi.get('n1'), 'note-fold:get', { noteId: 'n1' })
     await expectInvoke(() => noteFoldApi.retry(), 'note-fold:retry', { noteId: undefined })
     await expectInvoke(() => noteFoldApi.getLastRun(), 'note-fold:last-run')
+    await expectInvoke(() => noteFoldApi.getAgentStatus(), 'note-fold:agent-status')
     expectSubscribe(() => noteFoldApi.onUpdated(callback), 'note-fold:updated')
   })
 

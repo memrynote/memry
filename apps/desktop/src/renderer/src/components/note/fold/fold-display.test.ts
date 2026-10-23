@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { FoldSection } from '@memry/contracts/note-fold'
 import { layers, paragraph } from './fold-fixtures'
 import {
   buildFoldedView,
@@ -59,6 +60,7 @@ describe('paragraph lines', () => {
     const line = paragraphLine(paragraph({ hash: 'a', briefIdx: [2, 0] }), 'brief', 'en')
     expect(line).toEqual({
       text: 'First sentence here. Third sentence here.',
+      md: 'First sentence here. Third sentence here.',
       source: 'author',
       evidence: []
     })
@@ -86,6 +88,7 @@ describe('paragraph lines', () => {
     const [p1] = layers().sections[0].paragraphs
     expect(paragraphLine(p1, 'key', 'en')).toEqual({
       text: 'The team plan barely sold. Buyers wanted device sync.',
+      md: null,
       source: 'written',
       evidence: [1]
     })
@@ -170,6 +173,61 @@ describe('folded view', () => {
     })
     const [section] = sections(buildFoldedView(withEmpty, 'brief', none, none).items)
     expect(section.paragraphs.map((p) => p.hash)).toEqual(['p1', 'p2'])
+  })
+})
+
+describe('rich Brief', () => {
+  it('carries the picked sentences’ inline Markdown, joined like the text', () => {
+    const rich = paragraph({
+      hash: 'a',
+      sentencesMd: ['**First** sentence here.', 'Second sentence here.', 'Third `sentence` here.'],
+      briefIdx: [2, 0]
+    })
+    expect(paragraphLine(rich, 'brief', 'en')).toMatchObject({
+      text: 'First sentence here. Third sentence here.',
+      md: '**First** sentence here. Third `sentence` here.'
+    })
+  })
+
+  it('renders plain when the Markdown is not aligned with the sentences', () => {
+    const line = paragraphLine(paragraph({ hash: 'a', sentencesMd: ['only one'] }), 'brief', 'en')
+    expect(line.md).toBeNull()
+  })
+})
+
+describe('skipped blocks', () => {
+  function withSkipped(
+    skipped: FoldSection['skipped'],
+    paragraphs = layers().sections[0].paragraphs
+  ) {
+    return layers({ sections: [{ ...layers().sections[0], skipped, paragraphs }] })
+  }
+
+  it('places each marker after its paragraph, or at the section start for -1', () => {
+    const note = withSkipped([
+      { afterParagraph: -1, kind: 'image', count: 2 },
+      { afterParagraph: 0, kind: 'code', count: 1 }
+    ])
+    const [section] = sections(buildFoldedView(note, 'key', none, none).items)
+    expect(section.skippedAtStart).toEqual([{ afterParagraph: -1, kind: 'image', count: 2 }])
+    expect(section.paragraphs.map((p) => p.skippedAfter.map((m) => m.kind))).toEqual([['code'], []])
+  })
+
+  it('keeps a marker that followed an empty paragraph with the paragraph before it', () => {
+    const [p1, p2] = layers().sections[0].paragraphs
+    const note = withSkipped(
+      [{ afterParagraph: 1, kind: 'table', count: 1 }],
+      [p1, paragraph({ hash: 'e', text: ' ' }), p2]
+    )
+    const [section] = sections(buildFoldedView(note, 'brief', none, none).items)
+    expect(section.paragraphs.map((p) => p.skippedAfter.length)).toEqual([1, 0])
+  })
+
+  it('shows no markers on a Topic card or an unfolded Topic section', () => {
+    const note = withSkipped([{ afterParagraph: 0, kind: 'code', count: 1 }])
+    const unfolded = sections(buildFoldedView(note, 'topic', none, new Set(['s1'])).items)[0]
+    expect(unfolded.paragraphs.every((p) => p.skippedAfter.length === 0)).toBe(true)
+    expect(buildFoldedView(note, 'topic', none, none).items[0].kind).toBe('card')
   })
 })
 

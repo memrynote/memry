@@ -135,7 +135,7 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
-import type { FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
+import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -733,6 +733,7 @@ export interface NoteFoldClientAPI {
   /** No noteId retries the last failed note; null when there is nothing to retry. */
   retry(noteId?: string): Promise<FoldLayers | null>
   getLastRun(): Promise<FoldLastRun>
+  getAgentStatus(): Promise<FoldAgentStatus>
   onUpdated(callback: (event: { noteId: string }) => void): () => void
 }
 

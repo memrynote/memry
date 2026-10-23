@@ -1,5 +1,6 @@
+import { Fragment, useEffect, useId, useRef } from 'react'
+import type { FoldLevel, FoldSkipped } from '@memry/contracts/note-fold'
 import { useT } from '@memry/i18n/renderer'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { cn } from '@/lib/utils'
 import {
   evidenceSegments,
@@ -8,6 +9,8 @@ import {
   type SectionView,
   type TopicCard
 } from './fold-display'
+import { InlineMarkdown } from './fold-inline-text'
+import { MorphLine } from './fold-morph-line'
 import type { FoldAction } from './fold-state'
 
 const HEADING_CLASS =
@@ -16,33 +19,70 @@ const FOCUS_CLASS = 'outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
 type Dispatch = (action: FoldAction) => void
 
-function Evidence({ paragraph }: { paragraph: ParagraphView }) {
+/**
+ * The source paragraph under a written line, with the sentences the line rests
+ * on underlined. Absolutely placed so revealing it never moves the lines
+ * around it; it shows while the line is hovered or holds focus.
+ */
+function Evidence({ paragraph, id }: { paragraph: ParagraphView; id: string }) {
   const { t } = useT('notes')
   return (
-    <HoverCardContent align="start" className="w-[min(32rem,90vw)] text-[13px] leading-5">
-      <p className="mb-1.5 text-[11px] text-text-tertiary">{t('fold.view.evidenceTitle')}</p>
+    <div
+      id={id}
+      role="note"
+      className={cn(
+        'pointer-events-none invisible absolute inset-x-0 top-full z-20 -mt-0.5 rounded-lg border border-border bg-background px-3.5 py-2.5 text-[13px] leading-5 opacity-0 shadow-sm',
+        'transition-[opacity,visibility] duration-150 motion-reduce:transition-none',
+        'group-hover/line:pointer-events-auto group-hover/line:visible group-hover/line:opacity-100 group-hover/line:delay-200',
+        'group-focus-within/line:pointer-events-auto group-focus-within/line:visible group-focus-within/line:opacity-100'
+      )}
+    >
+      <p className="mb-1.5 text-[11px] text-text-secondary">{t('fold.view.evidenceTitle')}</p>
       <p>
         {evidenceSegments(paragraph.sentences, paragraph.line.evidence).map((segment, index) => (
           <span
             key={index}
             className={cn(
               segment.cited
-                ? 'text-foreground underline decoration-text-tertiary underline-offset-4'
-                : 'text-text-tertiary'
+                ? 'text-foreground underline decoration-text-tertiary decoration-1 underline-offset-4'
+                : 'text-text-secondary'
             )}
           >
             {segment.text}{' '}
           </span>
         ))}
       </p>
-    </HoverCardContent>
+    </div>
   )
 }
 
-function ParagraphLine({ paragraph, dispatch }: { paragraph: ParagraphView; dispatch: Dispatch }) {
+/** Where the fold left blocks out: a quiet line, never interactive. */
+function SkippedMarkers({ markers }: { markers: readonly FoldSkipped[] }) {
+  const { t } = useT('notes')
+  return markers.map((marker, index) => (
+    <p
+      key={index}
+      className="text-xs leading-5 text-text-secondary"
+      data-fold-skipped={marker.kind}
+    >
+      {t(`fold.view.skipped.${marker.kind}`, { count: marker.count })}
+    </p>
+  ))
+}
+
+function ParagraphLine({
+  paragraph,
+  level,
+  dispatch
+}: {
+  paragraph: ParagraphView
+  level: FoldLevel
+  dispatch: Dispatch
+}) {
   const { t } = useT('notes')
   const written = paragraph.line.source === 'written' && !paragraph.open
   const hasEvidence = written && paragraph.line.evidence.length > 0
+  const evidenceId = useId()
 
   const button = (
     <button
@@ -52,6 +92,7 @@ function ParagraphLine({ paragraph, dispatch }: { paragraph: ParagraphView; disp
         paragraph.open ? t('fold.view.paragraphFold') : t('fold.view.paragraphOpenAction')
       }
       onClick={() => dispatch({ type: 'toggleParagraph', hash: paragraph.hash })}
+      aria-describedby={hasEvidence ? evidenceId : undefined}
       data-fold-paragraph={paragraph.hash}
       className={cn(
         'block w-full text-start text-base leading-7',
@@ -63,7 +104,17 @@ function ParagraphLine({ paragraph, dispatch }: { paragraph: ParagraphView; disp
             : 'rounded-sm text-foreground'
       )}
     >
-      <span>{paragraph.line.text}</span>
+      {paragraph.open ? (
+        <span>{paragraph.line.text}</span>
+      ) : (
+        <MorphLine level={level} tokens={paragraph.tokens}>
+          {paragraph.line.md === null ? (
+            paragraph.line.text
+          ) : (
+            <InlineMarkdown markdown={paragraph.line.md} />
+          )}
+        </MorphLine>
+      )}
       {paragraph.open && (
         <span className="text-[11px] leading-3.5 text-text-tertiary">
           {t('fold.view.paragraphOpen')}
@@ -72,12 +123,13 @@ function ParagraphLine({ paragraph, dispatch }: { paragraph: ParagraphView; disp
     </button>
   )
 
-  if (!hasEvidence) return button
+  // One wrapper whether or not there is evidence, so a line keeps its place in
+  // the tree (and its slide) when a level change adds or drops the evidence.
   return (
-    <HoverCard openDelay={250} closeDelay={80}>
-      <HoverCardTrigger asChild>{button}</HoverCardTrigger>
-      <Evidence paragraph={paragraph} />
-    </HoverCard>
+    <div className="group/line relative">
+      {button}
+      {hasEvidence && <Evidence paragraph={paragraph} id={evidenceId} />}
+    </div>
   )
 }
 
@@ -101,17 +153,29 @@ function SectionHeading({ section, dispatch }: { section: SectionView; dispatch:
   )
 }
 
-function Section({ section, dispatch }: { section: SectionView; dispatch: Dispatch }) {
+function Section({
+  section,
+  level,
+  dispatch
+}: {
+  section: SectionView
+  level: FoldLevel
+  dispatch: Dispatch
+}) {
   return (
     <div className="flex flex-col gap-2.5">
       <SectionHeading section={section} dispatch={dispatch} />
+      <SkippedMarkers markers={section.skippedAtStart} />
       {section.paragraphs.map((paragraph) =>
         section.unfolded ? (
           <p key={paragraph.hash} className="text-base leading-7 text-foreground">
             {paragraph.fullText}
           </p>
         ) : (
-          <ParagraphLine key={paragraph.hash} paragraph={paragraph} dispatch={dispatch} />
+          <Fragment key={paragraph.hash}>
+            <ParagraphLine paragraph={paragraph} level={level} dispatch={dispatch} />
+            <SkippedMarkers markers={paragraph.skippedAfter} />
+          </Fragment>
         )
       )}
     </div>
@@ -147,6 +211,7 @@ function Card({ card, dispatch }: { card: TopicCard; dispatch: Dispatch }) {
             key={chip.paragraphHash}
             type="button"
             aria-label={t('fold.view.jumpToParagraph', { topic: chip.label })}
+            data-fold-paragraph={chip.paragraphHash}
             onClick={() => dispatch({ type: 'jump', hash: chip.paragraphHash })}
             className={cn(
               'rounded-full bg-surface px-[9px] py-[3px] text-xs leading-4 text-text-secondary hover:bg-surface-active',
@@ -163,9 +228,21 @@ function Card({ card, dispatch }: { card: TopicCard; dispatch: Dispatch }) {
 
 /** The read-only folded body: sections of lines, or Topic cards. Pure display over `FoldedView`. */
 export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispatch }) {
+  // Entering or leaving Topic swaps cards for lines: a crossfade, since no word survives the swap.
+  const topic = view.level === 'topic'
+  const wasTopic = useRef(topic)
+  const crossfade = wasTopic.current !== topic
+  useEffect(() => {
+    wasTopic.current = topic
+  }, [topic])
   return (
     <div
-      className={cn('flex flex-col', view.level === 'topic' ? 'gap-3' : 'gap-2.5')}
+      key={topic ? 'cards' : 'lines'}
+      className={cn(
+        'flex flex-col',
+        topic ? 'gap-3' : 'gap-2.5',
+        crossfade && 'animate-in fade-in duration-150 motion-reduce:animate-none'
+      )}
       data-testid="note-fold-body"
       data-fold-level={view.level}
     >
@@ -173,7 +250,12 @@ export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispa
         item.kind === 'card' ? (
           <Card key={item.card.hash} card={item.card} dispatch={dispatch} />
         ) : (
-          <Section key={item.section.hash} section={item.section} dispatch={dispatch} />
+          <Section
+            key={item.section.hash}
+            section={item.section}
+            level={view.level}
+            dispatch={dispatch}
+          />
         )
       )}
     </div>

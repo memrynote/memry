@@ -90,7 +90,8 @@ function renderPanelWithAISettings(aiEnabled: boolean) {
   vi.mocked(api.settings.getAISettings).mockResolvedValue({
     enabled: aiEnabled,
     imageEmbeddings: true,
-    summarizeLongNotes: false
+    summarizeLongNotes: false,
+    summarizeAgent: 'auto'
   })
 
   return render(

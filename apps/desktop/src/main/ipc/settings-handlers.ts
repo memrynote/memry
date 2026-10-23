@@ -7,6 +7,8 @@
  * @module main/ipc/settings-handlers
  */
 
+import { FoldAgentChoiceSchema, type FoldAgentChoice } from '@memry/contracts/note-fold'
+import { refreshNoteFold } from '../note-fold'
 import { ipcMain, app, globalShortcut, shell } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
@@ -202,6 +204,7 @@ const SETTINGS_KEYS = {
   JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
   AI_ENABLED: 'ai.enabled',
   AI_SUMMARIZE_LONG_NOTES: 'ai.summarizeLongNotes',
+  AI_SUMMARIZE_AGENT: 'ai.summarizeAgent',
   // Tab settings
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton',
@@ -235,6 +238,14 @@ export interface AISettings {
   imageEmbeddings: boolean
   /** Local, off by default. Read by the note-fold service via `ai.summarizeLongNotes`. */
   summarizeLongNotes: boolean
+  /** Local. `auto` uses the first detected agent; a chosen agent that is missing means no summaries. */
+  summarizeAgent: FoldAgentChoice
+}
+
+/** A stored value from a newer or older build that is not a known choice reads as `auto`. */
+function readSummarizeAgent(raw: string | null | undefined): FoldAgentChoice {
+  const parsed = FoldAgentChoiceSchema.safeParse(raw)
+  return parsed.success ? parsed.data : 'auto'
 }
 
 export interface AIModelStatus {
@@ -250,7 +261,8 @@ export interface AIModelStatus {
 const DEFAULT_AI_SETTINGS: AISettings = {
   enabled: true,
   imageEmbeddings: true,
-  summarizeLongNotes: false
+  summarizeLongNotes: false,
+  summarizeAgent: 'auto'
 }
 
 export interface VoiceTranscriptionOpenAIKeyStatus {
@@ -896,7 +908,8 @@ export function registerSettingsHandlers(): void {
     return {
       enabled: enabledStr !== 'false', // Default to true
       imageEmbeddings: getSetting(db, IMAGE_EMBEDDING_SETTING_KEY) !== 'false',
-      summarizeLongNotes: getSetting(db, SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES) === 'true'
+      summarizeLongNotes: getSetting(db, SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES) === 'true',
+      summarizeAgent: readSummarizeAgent(getSetting(db, SETTINGS_KEYS.AI_SUMMARIZE_AGENT))
     }
   })
 
@@ -928,6 +941,23 @@ export function registerSettingsHandlers(): void {
           SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES,
           settings.summarizeLongNotes ? 'true' : 'false'
         )
+      }
+
+      if (settings.summarizeAgent !== undefined) {
+        // Parse before writing: an unknown value would silently read back as `auto`.
+        setSetting(
+          db,
+          SETTINGS_KEYS.AI_SUMMARIZE_AGENT,
+          FoldAgentChoiceSchema.parse(settings.summarizeAgent)
+        )
+      }
+
+      if (
+        settings.enabled !== undefined ||
+        settings.summarizeLongNotes !== undefined ||
+        settings.summarizeAgent !== undefined
+      ) {
+        refreshNoteFold()
       }
 
       // Emit settings changed event

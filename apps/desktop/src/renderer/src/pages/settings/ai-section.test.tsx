@@ -150,6 +150,48 @@ describe('AISettings', () => {
     expect(toggle).toBeChecked()
   })
 
+  it('offers only detected agents plus Auto in the summary agent chooser', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'auto'
+    })
+    api.noteFold.getAgentStatus = vi.fn().mockResolvedValue({
+      choice: 'auto',
+      available: [{ id: 'codex_cli', label: 'Codex' }],
+      resolved: 'Codex'
+    })
+    render(<AISettings />)
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Agent that writes summaries' })
+    )
+
+    expect(await screen.findByRole('option', { name: 'Codex' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Auto' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Claude' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: 'Codex' }))
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ summarizeAgent: 'codex_cli' })
+  })
+
+  it('says no agent was found and opens the Agents tab from the link', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'auto'
+    })
+    api.noteFold.getAgentStatus = vi
+      .fn()
+      .mockResolvedValue({ choice: 'auto', available: [], resolved: null })
+    render(<AISettings />)
+
+    expect(await screen.findByText(/No agent found/)).toBeInTheDocument()
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Open Agents' }))
+    expect(await screen.findByTestId('agent-providers-panel')).toBeInTheDocument()
+  })
+
   it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
     render(<AISettings />)

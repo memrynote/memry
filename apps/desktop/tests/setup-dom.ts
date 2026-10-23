@@ -82,6 +82,11 @@ const createMockApi = () => ({
     get: vi.fn(),
     retry: vi.fn().mockResolvedValue(null),
     getLastRun: vi.fn().mockResolvedValue({ status: 'idle', noteId: null }),
+    getAgentStatus: vi.fn().mockResolvedValue({
+      choice: 'auto',
+      available: [{ id: 'claude_cli', label: 'Claude' }],
+      resolved: 'Claude'
+    }),
     onUpdated: vi.fn().mockReturnValue(() => {})
   },
 

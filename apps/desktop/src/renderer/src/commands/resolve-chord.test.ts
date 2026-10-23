@@ -12,6 +12,7 @@ const env = (overrides: Partial<KeydownEnv> = {}): KeydownEnv => ({
   isRichTextFocused: false,
   focusOwnsLocalCommandMenu: false,
   overrides: {},
+  folderShortcuts: [],
   isAvailable: () => true,
   ...overrides
 })
@@ -280,6 +281,38 @@ describe('resolveChord: local command menus', () => {
     const inCalendar = env({ focusOwnsLocalCommandMenu: true, isInInput: true })
     expect(resolve(press({ key: 'p', ctrlKey: true }), inCalendar)).toBe('nav.commands')
     expect(resolve(press({ key: 'p', ctrlKey: true }), env())).toBe('nav.commands')
+  })
+})
+
+describe("resolveChord: fold chords yield to the user's own shortcuts", () => {
+  const folderOnFold: FolderNoteShortcut = {
+    folder: 'Work',
+    binding: { key: '1', modifiers: { meta: true, alt: true } }
+  }
+  const chord = press({ key: '1', code: 'Digit1', ctrlKey: true, altKey: true })
+
+  it('fold.full keeps its chord until a folder shortcut takes it', () => {
+    expect(resolve(chord, env())).toBe('fold.full')
+    expect(resolve(chord, env({ folderShortcuts: [folderOnFold] }))).toBeNull()
+  })
+
+  it('a folder shortcut on another chord leaves fold alone', () => {
+    const other = { ...folderOnFold, binding: { key: '9', modifiers: { meta: true, alt: true } } }
+    expect(resolve(chord, env({ folderShortcuts: [other] }))).toBe('fold.full')
+  })
+
+  it('a rebound fold command beats the folder shortcut like any rebound command', () => {
+    const rebound = { 'fold.full': { key: '1', modifiers: { meta: true, alt: true } } }
+    expect(resolve(chord, env({ overrides: rebound, folderShortcuts: [folderOnFold] }))).toBe(
+      'fold.full'
+    )
+  })
+
+  it('other commands still beat a folder shortcut on a shared chord', () => {
+    const close = { folder: 'Work', binding: { key: 'w', modifiers: { meta: true } } }
+    expect(resolve(press({ key: 'w', ctrlKey: true }), env({ folderShortcuts: [close] }))).toBe(
+      'tabs.closeTab'
+    )
   })
 })
 

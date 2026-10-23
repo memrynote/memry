@@ -63,6 +63,8 @@ export interface FoldService {
   getLastRun(): FoldLastRun
   /** A note's body changed: after the idle window, regenerate its changed chunks. */
   noteChanged(noteId: string): void
+  /** The settings or the agent changed: every note the renderer has fetched refetches its snapshot. */
+  refresh(): void
   dispose(): void
 }
 
@@ -70,6 +72,10 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
   const idleMs = deps.idleMs ?? FOLD_IDLE_MS
   const now = deps.now ?? Date.now
 
+  /** Every note the renderer fetched; `opened` only holds those that are being summarized. */
+  const seen = new Set<string>()
+  /** Fetched before the index knew them (vault just opened, index still building); refetched once they are indexed. */
+  const unindexed = new Set<string>()
   const jobs = new Map<string, Job>() // queued or running
   const queue: Job[] = []
   let running = 0
@@ -168,8 +174,14 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
     }
 
   const get = async (noteId: string): Promise<FoldLayers> => {
-    const source = await deps.getSource(noteId)
-    if (source === null) throw new Error(`Note not found: ${noteId}`)
+    seen.add(noteId)
+    // An unknown note is not an error: the renderer restores tabs before the
+    // background index build has reached every note. It reads as an empty
+    // note ('short') until noteChanged() reports it indexed.
+    const fetched = await deps.getSource(noteId)
+    if (fetched === null) unindexed.add(noteId)
+    else unindexed.delete(noteId)
+    const source = fetched ?? ''
     const language = detectLanguage(source)
     const sections = isFoldable(source, language) ? buildSections(source, language) : []
     const foldable = sections.length > 0
@@ -223,7 +235,12 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
     },
 
     noteChanged(noteId) {
-      if (disposed || !opened.has(noteId)) return
+      if (disposed) return
+      if (unindexed.delete(noteId)) {
+        deps.onUpdated(noteId)
+        return
+      }
+      if (!opened.has(noteId)) return
       clearTimeout(timers.get(noteId))
       timers.set(
         noteId,
@@ -235,6 +252,11 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
             .catch((error: unknown) => logger.warn('Fold regeneration failed', { noteId, error }))
         }, idleMs)
       )
+    },
+
+    refresh() {
+      if (disposed) return
+      for (const id of seen) deps.onUpdated(id)
     },
 
     dispose() {

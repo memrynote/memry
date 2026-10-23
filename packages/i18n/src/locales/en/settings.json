@@ -1390,7 +1390,12 @@
       "error": "Failed to update summarize long notes",
       "failed": "Last run failed \u00b7",
       "retry": "Retry",
-      "retryError": "Could not retry summarizing"
+      "retryError": "Could not retry summarizing",
+      "agentLabel": "Agent that writes summaries",
+      "agentAuto": "Auto",
+      "agentError": "Failed to change the summary agent",
+      "noAgent": "No agent found \u00b7",
+      "openAgents": "Open Agents"
     },
     "imageSearch": {
       "label": "Search images by content",

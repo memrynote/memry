@@ -28,6 +28,8 @@ function makeEditor(block: unknown = { id: 'block' }) {
     undo: vi.fn(() => true),
     redo: vi.fn(() => true),
     focus: vi.fn(),
+    setTextCursorPosition: vi.fn(),
+    insertInlineContent: vi.fn(),
     domElement,
     focusInside: () => inner.focus()
   } satisfies EditorHandle & { focusInside: () => void }

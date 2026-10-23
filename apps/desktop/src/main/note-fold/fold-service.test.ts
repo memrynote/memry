@@ -11,6 +11,7 @@ import type { ZodType } from 'zod'
 import { runIndexMigrations } from '../database/migrate'
 import type { IndexDb } from '../database/types'
 import type { ChunkAi } from './engine'
+import { pruneChunksOlderThan, writeChunkPayload } from './fold-cache'
 import { createFoldService, type FoldAgent, type FoldService } from './fold-service'
 
 const sentence = (n: number): string => `Sentence number ${n} covers subject ${n} in some detail.`
@@ -249,5 +250,39 @@ describe('note fold service (real index DB)', () => {
     expect(none.status).toBe('no_agent')
     expect(none.sections[0].paragraphs[0].briefIdx).toHaveLength(1)
     expect(calls).toHaveLength(0)
+  })
+
+  it('tells every fetched note to refetch when the settings change, so a toggled setting needs no reopen', async () => {
+    sources.set('n', noteOf(section('One', 0), section('Two', 40)))
+    enabled = false
+    expect((await service.get('n')).status).toBe('off')
+    updated.length = 0
+
+    enabled = true
+    service.refresh()
+    expect(updated).toEqual(['n'])
+    expect((await service.get('n')).status).toBe('writing')
+  })
+
+  it('reads a note the index does not know yet as short, then tells the renderer once it is indexed', async () => {
+    const layers = await service.get('late')
+    expect(layers.status).toBe('short')
+    expect(calls).toHaveLength(0)
+
+    sources.set('late', noteOf(section('One', 0), section('Two', 40)))
+    updated.length = 0
+    service.noteChanged('late')
+    expect(updated).toEqual(['late'])
+    expect((await service.get('late')).status).toBe('writing')
+  })
+
+  it('prunes only chunks older than the cutoff', () => {
+    const key = (chunkHash: string) => ({ chunkHash, language: 'en', modelId: 'm' })
+    writeChunkPayload(db, key('old'), '{}', 1_000)
+    writeChunkPayload(db, key('new'), '{}', 9_000)
+    expect(pruneChunksOlderThan(db, 5_000)).toBe(1)
+    expect(sqlite.prepare('select chunk_hash from note_fold_chunks').all()).toEqual([
+      { chunk_hash: 'new' }
+    ])
   })
 })

@@ -1,7 +1,25 @@
-import type { FoldLayers, FoldParagraph } from '@memry/contracts/note-fold'
+import type { FoldLayers, FoldParagraph, FoldToken } from '@memry/contracts/note-fold'
+
+/** Words, whitespace runs and single marks, like the engine's Intl.Segmenter pass. */
+export function tokenize(text: string): string[] {
+  return text.match(/\s+|[\p{L}\p{N}']+|[^\s\p{L}\p{N}]/gu) ?? []
+}
+
+/** An AI line's tokens, each word pointing at the first unused source token with the same text. */
+export function mapTokens(text: string | null, srcTokens: readonly string[]): FoldToken[] | null {
+  if (text === null) return null
+  const used = new Set<number>()
+  return tokenize(text).map((token) => {
+    const src = /^\s+$/.test(token)
+      ? -1
+      : srcTokens.findIndex((s, i) => !used.has(i) && s.toLowerCase() === token.toLowerCase())
+    if (src >= 0) used.add(src)
+    return { text: token, src: src >= 0 ? src : null }
+  })
+}
 
 export function paragraph(overrides: Partial<FoldParagraph> & { hash: string }): FoldParagraph {
-  return {
+  const base = {
     text: 'First sentence here. Second sentence here. Third sentence here.',
     sentences: ['First sentence here.', 'Second sentence here.', 'Third sentence here.'],
     briefIdx: [0, 2],
@@ -9,7 +27,28 @@ export function paragraph(overrides: Partial<FoldParagraph> & { hash: string }):
     takeaway: null,
     topic: null,
     evidence: [],
-    ...overrides,
+    ...overrides
+  }
+  const srcTokens = overrides.srcTokens ?? tokenize(base.text)
+  // Sentence i starts at the token holding its first character.
+  let from = 0
+  const srcSentenceStart = base.sentences.map((sentence) => {
+    from = Math.max(from, base.text.indexOf(sentence, from))
+    let chars = 0
+    const start = srcTokens.findIndex((token) => (chars += token.length) > from)
+    return Math.max(start, 0)
+  })
+  return {
+    sentencesMd: base.sentences,
+    srcTokens,
+    srcSentenceStart,
+    morph: {
+      keyTakeaway: mapTokens(base.key?.takeaway ?? null, srcTokens),
+      keyReason: mapTokens(base.key?.reason ?? null, srcTokens),
+      takeaway: mapTokens(base.takeaway, srcTokens),
+      topic: mapTokens(base.topic, srcTokens)
+    },
+    ...base,
     hash: overrides.hash
   }
 }
@@ -27,6 +66,7 @@ export function layers(overrides: Partial<FoldLayers> = {}): FoldLayers {
         hash: 's1',
         heading: 'Where we are',
         takeaway: 'The team plan barely sold, so Pro absorbs it',
+        skipped: [],
         paragraphs: [
           paragraph({
             hash: 'p1',
@@ -42,6 +82,7 @@ export function layers(overrides: Partial<FoldLayers> = {}): FoldLayers {
         hash: 's2',
         heading: null,
         takeaway: null,
+        skipped: [],
         paragraphs: [paragraph({ hash: 'p3', text: 'Next steps are the changelog and the email.' })]
       }
     ],

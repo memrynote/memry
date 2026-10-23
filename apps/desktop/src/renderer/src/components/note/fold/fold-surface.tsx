@@ -4,7 +4,14 @@ import { useAvailableCommands } from '@/commands'
 import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { cn } from '@/lib/utils'
 import { findParagraph } from './fold-display'
-import { flashBlock, placeCaretInParagraph } from './fold-caret'
+import { paragraphPosition } from './fold-anchor'
+import {
+  firstVisibleParagraph,
+  flashBlock,
+  insertTypedText,
+  placeCaretAtEnd,
+  placeCaretInParagraph
+} from './fold-caret'
 import { FoldBody } from './fold-overlay'
 import { FoldPill } from './fold-pill'
 import { escapeHasEffect } from './fold-state'
@@ -88,8 +95,10 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
   }, [folded])
 
   // Back at Full: caret on the paragraph the reader last touched, flashed after a chip jump.
-  // The key that started the return to Full; the hidden editor never saw it, so it is typed in once the caret is placed.
+  // A key that started the return to Full never reached the hidden editor, so it is typed in once the caret is placed.
+  // `typingParagraph` is where it lands when the reader touched no paragraph: the first one on screen.
   const pendingText = useRef<string | null>(null)
+  const typingParagraph = useRef<string | null>(null)
   const wasFolded = useRef(folded)
   const anchor = state.anchor
   const flash = state.flash
@@ -98,14 +107,20 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
     wasFolded.current = folded
     if (!returned) return
     const typed = pendingText.current
+    const target = anchor ?? typingParagraph.current
     pendingText.current = null
-    if (!layers || !anchor || !rootRef.current) return
-    const paragraph = findParagraph(layers, anchor)
-    if (!paragraph) return
-    const block = placeCaretInParagraph(rootRef.current, paragraph.text)
-    // ProseMirror turns a native insertText into its own transaction. With no clicked paragraph the caret has no place, so nothing is typed.
-    if (block && typed) document.execCommand('insertText', false, typed)
-    if (block && flash === anchor) {
+    typingParagraph.current = null
+    const root = rootRef.current
+    if (!root) return
+    const paragraph = layers && target ? findParagraph(layers, target) : null
+    const position = layers && target ? paragraphPosition(layers, target) : undefined
+    let block = paragraph ? placeCaretInParagraph(root, paragraph.text, position) : null
+    // Nothing matched: the key still lands, at the end of the note, rather than being lost.
+    if (typed) {
+      block ??= placeCaretAtEnd(root)
+      if (block) insertTypedText(root, block, typed)
+    }
+    if (block && flash !== null && flash === anchor) {
       flashBlock(block, window.matchMedia('(prefers-reduced-motion: reduce)').matches)
       dispatch({ type: 'clearFlash' })
     }
@@ -120,6 +135,9 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
           aria-label={t('fold.view.aria', { level: t(`fold.level.${level}`) })}
           onKeyDown={(event) => {
             if (!isTypingKey(event)) return
+            typingParagraph.current = overlayRef.current
+              ? firstVisibleParagraph(overlayRef.current)
+              : null
             if (event.key.length === 1 && !event.nativeEvent.isComposing) {
               event.preventDefault()
               pendingText.current = event.key

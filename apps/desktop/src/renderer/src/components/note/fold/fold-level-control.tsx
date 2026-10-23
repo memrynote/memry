@@ -155,6 +155,14 @@ export function FoldLevelControl({
             </>
           )}
         </DropdownMenuRadioGroup>
+        {(layers.status === 'off' || layers.status === 'no_agent') && (
+          <>
+            <DropdownMenuSeparator />
+            <p className="px-2 py-1.5 text-[11px] leading-4 text-text-tertiary">
+              {t(layers.status === 'off' ? 'fold.chrome.hintOff' : 'fold.chrome.hintNoAgent')}
+            </p>
+          </>
+        )}
         {layers.status === 'failed' && (
           <>
             <DropdownMenuSeparator />

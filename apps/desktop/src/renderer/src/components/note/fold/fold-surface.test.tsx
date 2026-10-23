@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -6,6 +7,7 @@ import { layers } from './fold-fixtures'
 import { FoldLevelControl } from './fold-level-control'
 import { FoldSurface } from './fold-surface'
 import { useNoteFold } from './use-note-fold'
+import { useEditorTarget, type EditorHandle } from '@/commands/editor-target'
 
 function Host({ wordCount = 1104 }: { wordCount?: number }) {
   const fold = useNoteFold('note-1', wordCount)
@@ -30,9 +32,58 @@ async function chooseLevel(name: RegExp): Promise<void> {
   await userEvent.click(screen.getByRole('menuitemradio', { name }))
 }
 
+function TypingHost({ editor }: { editor: EditorHandle }) {
+  const fold = useNoteFold('note-1', 1104)
+  const node = useRef<HTMLDivElement>(null)
+  const [handle, setHandle] = useState<EditorHandle | null>(null)
+  useEffect(() => {
+    setHandle({ ...editor, domElement: node.current ?? undefined })
+  }, [editor])
+  useEditorTarget(handle)
+  return (
+    <>
+      {fold.control && <FoldLevelControl {...fold.control} />}
+      <FoldSurface fold={fold}>
+        <div ref={node}>
+          <div className="ProseMirror" contentEditable suppressContentEditableWarning>
+            <div className="bn-block" data-id="b1">
+              <div className="bn-block-content">Where we are</div>
+            </div>
+            <div className="bn-block" data-id="b2">
+              <div className="bn-block-content">
+                First sentence here. Second sentence here. Third sentence here.
+              </div>
+            </div>
+            <div className="bn-block" data-id="b3">
+              <div className="bn-block-content">Next steps are the changelog and the email.</div>
+            </div>
+          </div>
+        </div>
+      </FoldSurface>
+    </>
+  )
+}
+
+function fakeEditor(): EditorHandle & { calls: string[] } {
+  const calls: string[] = []
+  return {
+    calls,
+    setTextCursorPosition: (block, placement) => calls.push(`cursor:${block}:${placement}`),
+    insertInlineContent: (content) => calls.push(`insert:${content.join('')}`),
+    toggleStyles: () => {},
+    getTextCursorPosition: () => undefined,
+    updateBlock: () => {},
+    insertBlocks: () => {},
+    undo: () => true,
+    redo: () => true,
+    focus: () => {}
+  }
+}
+
 describe('FoldSurface', () => {
   beforeEach(() => {
     vi.mocked(window.api.noteFold.get).mockReset()
+    Element.prototype.scrollIntoView = vi.fn()
   })
 
   it('shows no level control for a note too short to fold', async () => {
@@ -130,5 +181,43 @@ describe('FoldSurface', () => {
 
     fireEvent.wheel(screen.getByTestId('editor'), { deltaY: 100, ctrlKey: true })
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  })
+
+  it('types the first character at the first paragraph on screen when none was touched', async () => {
+    serve(layers())
+    const editor = fakeEditor()
+    render(<TypingHost editor={editor} />)
+    await chooseLevel(/^Brief/)
+    const overlay = await screen.findByTestId('note-fold-overlay')
+    // p1 is scrolled past; p2 is the first line in view.
+    const onScreen = (hash: string, top: number): void => {
+      const line = overlay.querySelector(`[data-fold-paragraph="${hash}"]`) as HTMLElement
+      line.getBoundingClientRect = () => ({ top, bottom: top + 28 }) as DOMRect
+    }
+    onScreen('p1', -100)
+    onScreen('p2', 40)
+    onScreen('p3', 90)
+
+    fireEvent.keyDown(overlay, { key: 'x' })
+    await waitFor(() => expect(editor.calls).toEqual(['cursor:b2:end', 'insert:x']))
+  })
+
+  it("types the character at the note's end rather than losing it when nothing is in view", async () => {
+    serve(layers())
+    const editor = fakeEditor()
+    render(<TypingHost editor={editor} />)
+    await chooseLevel(/^Brief/)
+    fireEvent.keyDown(await screen.findByTestId('note-fold-overlay'), { key: 'y' })
+    await waitFor(() => expect(editor.calls).toEqual(['cursor:b3:end', 'insert:y']))
+  })
+
+  it('types at the paragraph the reader last opened', async () => {
+    serve(layers())
+    const editor = fakeEditor()
+    render(<TypingHost editor={editor} />)
+    await chooseLevel(/^Takeaway/)
+    await userEvent.click(await screen.findByText('Pro stays at $8'))
+    fireEvent.keyDown(screen.getByTestId('note-fold-overlay'), { key: 'z' })
+    await waitFor(() => expect(editor.calls).toEqual(['cursor:b2:end', 'insert:z']))
   })
 })

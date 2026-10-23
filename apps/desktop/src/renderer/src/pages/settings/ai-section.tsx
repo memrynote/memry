@@ -1,14 +1,15 @@
-import { useState, useCallback, useEffect, type ReactNode } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, XCircle, Eye, EyeOff } from '@/lib/icons'
+import { Loader2, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
 import { AgentProvidersSection } from './agent-providers-section'
+import { InlineProgress, LocalModelRow, RowError, StatusIndicator } from './ai-section-parts'
 import { SummarizeLongNotesRow } from './summarize-long-notes-row'
 import { AgentMcpSection } from './agent-mcp-section'
 import { CommandLineSettings } from './command-line-section'
@@ -34,6 +35,7 @@ import {
   COMPACT_SELECT,
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
+import type { FoldAgentChoice } from '@memry/contracts/note-fold'
 import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 
 const log = createLogger('Page:Settings:AI')
@@ -74,101 +76,6 @@ const VOICE_PROVIDER_OPTIONS = [
   labelKey: string
 }>
 
-type StatusTone = 'ready' | 'progress' | 'idle'
-
-const STATUS_DOT: Record<StatusTone, string> = {
-  ready: 'bg-emerald-500',
-  progress: 'bg-amber-500',
-  idle: 'border border-muted-foreground/60'
-}
-
-function StatusIndicator({
-  tone,
-  label,
-  title
-}: {
-  tone: StatusTone
-  label: string
-  title?: string
-}) {
-  return (
-    <span
-      title={title}
-      className="inline-flex items-center gap-1.5 text-xs/4 text-muted-foreground"
-    >
-      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', STATUS_DOT[tone])} />
-      {label}
-    </span>
-  )
-}
-
-interface LocalModelRowProps {
-  label: string
-  modelName: string
-  hint: string
-  status: ReactNode
-  action: ReactNode
-}
-
-function LocalModelRow({ label, modelName, hint, status, action }: LocalModelRowProps) {
-  return (
-    <div className="flex items-center justify-between gap-4 min-h-14 py-2.5">
-      <div className="flex flex-col gap-0.5 min-w-0">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <span className="shrink-0 text-[13px]/4 text-foreground">{label}</span>
-          <span className="truncate font-mono text-xs/4 text-muted-foreground">{modelName}</span>
-        </div>
-        <span className="text-xs/4 text-muted-foreground">{hint}</span>
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <div className="w-28">{status}</div>
-        <div className="flex min-w-32 justify-end">{action}</div>
-      </div>
-    </div>
-  )
-}
-
-function InlineProgress({
-  label,
-  value,
-  percent
-}: {
-  label: string
-  value: string
-  percent: number
-}) {
-  return (
-    <div className="flex flex-col gap-1.5 pb-3">
-      <div className="flex justify-between gap-4 text-xs/4 text-muted-foreground">
-        <span>{label}</span>
-        <span className="tabular-nums">{value}</span>
-      </div>
-      <div
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(percent)}
-        className="h-1 overflow-hidden rounded-full bg-muted"
-      >
-        <div
-          className="h-full rounded-full bg-[var(--tint)] transition-all duration-300"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function RowError({ message }: { message: string }) {
-  return (
-    <p className="flex items-center gap-1 pb-3 text-xs/4 text-destructive">
-      <XCircle className="size-3.5 shrink-0" />
-      {message}
-    </p>
-  )
-}
-
 interface AISettingsProps {
   initialTab?: AISettingsTab
   /** Only `voice-local-model` targets this section; other targets are ignored. */
@@ -186,11 +93,14 @@ export function AISettings({
     enabled: boolean
     imageEmbeddings: boolean
     summarizeLongNotes: boolean
+    summarizeAgent: FoldAgentChoice
   }>({
     enabled: false,
     imageEmbeddings: true,
-    summarizeLongNotes: false
+    summarizeLongNotes: false,
+    summarizeAgent: 'auto'
   })
+  const [tab, setTab] = useState<AISettingsTab>(initialTab)
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
   const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>(
     VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
@@ -227,7 +137,7 @@ export function AISettings({
           window.api.settings.getVoiceTranscriptionOpenAIKeyStatus()
         ])
         if (cancelled) return
-        setSettings(aiSettings)
+        setSettings((prev) => ({ ...prev, ...aiSettings }))
         setModelStatus(status)
         setVoiceSettings({ ...VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS, ...voiceConfig })
         setVoiceModelStatus(voiceStatus)
@@ -544,6 +454,10 @@ export function AISettings({
             onSaved={(summarizeLongNotes) =>
               setSettings((prev) => ({ ...prev, summarizeLongNotes }))
             }
+            agent={settings.summarizeAgent}
+            onAgentSaved={(summarizeAgent) => setSettings((prev) => ({ ...prev, summarizeAgent }))}
+            onOpenAgents={() => setTab('agents')}
+            refreshKey={tab}
           />
         )}
         {settings.enabled && (
@@ -561,7 +475,7 @@ export function AISettings({
       </SettingsGroup>
 
       {settings.enabled && (
-        <Tabs defaultValue={initialTab}>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as AISettingsTab)}>
           <TabsList className={AI_TABS_LIST}>
             <TabsTrigger value="models" className={AI_TAB}>
               {t('ai.tabs.models')}

@@ -53,6 +53,7 @@ export function useCommandDispatcher(): void {
           isRichTextFocused: isRichTextFocused(),
           focusOwnsLocalCommandMenu: focusOwnsLocalCommandMenu(),
           overrides: overridesRef.current,
+          folderShortcuts: folderNoteShortcutsRef.current,
           isAvailable: isCommandAvailable
         }
         const id = resolveChord(e, env, phase)
@@ -64,7 +65,7 @@ export function useCommandDispatcher(): void {
         }
 
         if (phase !== 'bubble') return
-        const folder = resolveFolderChord(e, env, folderNoteShortcutsRef.current)
+        const folder = resolveFolderChord(e, env, env.folderShortcuts)
         if (folder === null || !isFolderNoteRunnable()) return
         e.preventDefault()
         e.stopPropagation()

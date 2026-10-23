@@ -11,6 +11,7 @@ import {
   type FoldedView
 } from './fold-display'
 import { foldReducer, INITIAL_FOLD_STATE, type FoldAction, type FoldState } from './fold-state'
+import { prefersReducedMotion } from './fold-morph'
 import { FOLD_CROSSFADE_MS, surfacesFor, type FoldSurfaces } from './fold-surfaces'
 
 const log = createLogger('NoteFold')
@@ -33,10 +34,6 @@ export interface NoteFold {
   step: (delta: 1 | -1) => void
   retry: () => void
 }
-
-const prefersReducedMotion = (): boolean =>
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
  * Fold state for one note or journal day entry. The main-process fold service

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, lt } from 'drizzle-orm'
 
 import { noteFoldChunks } from '@memry/db-schema/index-schema'
 
@@ -45,4 +45,9 @@ export function writeChunkPayload(
 /** An unreadable cached payload must not block regeneration. */
 export function deleteChunkPayload(db: IndexDb, key: ChunkCacheKey): void {
   db.delete(noteFoldChunks).where(where(key)).run()
+}
+
+/** Drops chunks written before `cutoffMs`; a still-wanted chunk is simply regenerated. Returns the row count. */
+export function pruneChunksOlderThan(db: IndexDb, cutoffMs: number): number {
+  return db.delete(noteFoldChunks).where(lt(noteFoldChunks.createdAt, cutoffMs)).run().changes
 }

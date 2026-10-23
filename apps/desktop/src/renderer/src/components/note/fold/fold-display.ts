@@ -4,8 +4,10 @@ import {
   type FoldLayers,
   type FoldLevel,
   type FoldParagraph,
-  type FoldSection
+  type FoldSection,
+  type FoldSkipped
 } from '@memry/contracts/note-fold'
+import { paragraphTokens, type MorphToken } from './fold-morph'
 
 /**
  * Pure display model for the folded note view. The main-process fold service
@@ -58,6 +60,8 @@ export type LineSource = 'author' | 'written'
 
 export interface FoldLine {
   text: string
+  /** Inline Markdown of the same line, for the author's Brief; null when it is plain (written lines, fallbacks). */
+  md: string | null
   source: LineSource
   /** Sentence indices a written line rests on; empty for the author's own words. */
   evidence: readonly number[]
@@ -66,6 +70,10 @@ export interface FoldLine {
 export interface ParagraphView {
   hash: string
   line: FoldLine
+  /** The line as words keyed to the source, for the slide between levels; null when it has no word map. */
+  tokens: readonly MorphToken[] | null
+  /** Blocks the fold left out right after this paragraph, as a quiet marker. */
+  skippedAfter: readonly FoldSkipped[]
   /** Source sentences, for the evidence popover. */
   sentences: readonly string[]
   fullText: string
@@ -76,6 +84,8 @@ export interface SectionView {
   hash: string
   heading: string | null
   paragraphs: readonly ParagraphView[]
+  /** Blocks the fold left out before the first paragraph. */
+  skippedAtStart: readonly FoldSkipped[]
   /** Unfolded from its Topic card: every paragraph shows in full. */
   unfolded: boolean
 }
@@ -101,12 +111,24 @@ export interface FoldedView {
   sectionCount: number
 }
 
+const joinerFor = (language: string): string => (isCjk(language) ? '' : ' ')
+
 function briefLine(paragraph: FoldParagraph, language: string): FoldLine {
-  const picked = [...new Set(paragraph.briefIdx)]
+  const indices = [...new Set(paragraph.briefIdx)]
+    .filter((index) => index < paragraph.sentences.length)
     .sort((a, b) => a - b)
-    .flatMap((index) => paragraph.sentences[index] ?? [])
-  const text = picked.length > 0 ? picked.join(isCjk(language) ? '' : ' ') : paragraph.text
-  return { text, source: 'author', evidence: [] }
+  const joiner = joinerFor(language)
+  if (indices.length === 0) {
+    return { text: paragraph.text, md: null, source: 'author', evidence: [] }
+  }
+  // Markdown is aligned 1:1 with the sentences; a snapshot that is not renders plain.
+  const aligned = paragraph.sentencesMd.length === paragraph.sentences.length
+  return {
+    text: indices.map((index) => paragraph.sentences[index]).join(joiner),
+    md: aligned ? indices.map((index) => paragraph.sentencesMd[index]).join(joiner) : null,
+    source: 'author',
+    evidence: []
+  }
 }
 
 /** What one paragraph reads as at a level. A line the model has not written falls back to Brief. */
@@ -115,18 +137,18 @@ export function paragraphLine(
   level: FoldLevel,
   language: string
 ): FoldLine {
-  if (level === 'full') return { text: paragraph.text, source: 'author', evidence: [] }
+  if (level === 'full') return { text: paragraph.text, md: null, source: 'author', evidence: [] }
   if (level === 'key' && paragraph.key) {
     const { takeaway, reason } = paragraph.key
-    const joiner = isCjk(language) ? '' : ' '
     return {
-      text: [takeaway, reason].filter(Boolean).join(joiner),
+      text: [takeaway, reason].filter(Boolean).join(joinerFor(language)),
+      md: null,
       source: 'written',
       evidence: paragraph.evidence
     }
   }
   if (level === 'takeaway' && paragraph.takeaway) {
-    return { text: paragraph.takeaway, source: 'written', evidence: paragraph.evidence }
+    return { text: paragraph.takeaway, md: null, source: 'written', evidence: paragraph.evidence }
   }
   return briefLine(paragraph, language)
 }
@@ -160,23 +182,40 @@ function sectionView(
   openParagraphs: ReadonlySet<string>,
   unfolded: boolean
 ): SectionView {
-  return {
-    hash: section.hash,
-    heading: section.heading,
-    unfolded,
-    paragraphs: section.paragraphs
-      .filter((paragraph) => paragraph.text.trim() !== '')
-      .map((paragraph) => {
-        const open = unfolded || openParagraphs.has(paragraph.hash)
-        return {
-          hash: paragraph.hash,
-          line: paragraphLine(paragraph, open ? 'full' : level, language),
-          sentences: paragraph.sentences,
-          fullText: paragraph.text,
-          open
-        }
+  const showSkipped = !unfolded && level !== 'full' && level !== 'topic'
+  const skippedAtStart: FoldSkipped[] = []
+  const paragraphs: (ParagraphView & { skippedAfter: FoldSkipped[] })[] = []
+  section.paragraphs.forEach((paragraph, index) => {
+    if (paragraph.text.trim() !== '') {
+      const open = unfolded || openParagraphs.has(paragraph.hash)
+      paragraphs.push({
+        hash: paragraph.hash,
+        line: paragraphLine(paragraph, open ? 'full' : level, language),
+        tokens: open ? null : paragraphTokens(paragraph, level, joinerFor(language)),
+        skippedAfter: [],
+        sentences: paragraph.sentences,
+        fullText: paragraph.text,
+        open
       })
+    }
+    if (!showSkipped) return
+    // A marker that follows a skipped empty paragraph stays with the one before it.
+    const last = index === section.paragraphs.length - 1
+    for (const marker of section.skipped) {
+      if (marker.afterParagraph !== index && !(last && marker.afterParagraph > index)) continue
+      const host =
+        paragraphs.length > 0 ? paragraphs[paragraphs.length - 1].skippedAfter : skippedAtStart
+      host.push(marker)
+    }
+  })
+  if (showSkipped) {
+    const start = section.skipped.filter((marker) => marker.afterParagraph < 0)
+    skippedAtStart.unshift(...start)
+    if (section.paragraphs.length === 0) {
+      skippedAtStart.push(...section.skipped.filter((marker) => marker.afterParagraph >= 0))
+    }
   }
+  return { hash: section.hash, heading: section.heading, unfolded, skippedAtStart, paragraphs }
 }
 
 /**

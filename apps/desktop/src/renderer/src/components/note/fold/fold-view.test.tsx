@@ -4,7 +4,7 @@ import { useReducer } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { FoldLevel } from '@memry/contracts/note-fold'
 import { buildFoldedView } from './fold-display'
-import { layers } from './fold-fixtures'
+import { layers, paragraph } from './fold-fixtures'
 import { FoldLevelControl } from './fold-level-control'
 import { FoldBody } from './fold-overlay'
 import { foldReducer, INITIAL_FOLD_STATE } from './fold-state'
@@ -28,11 +28,68 @@ describe('FoldBody', () => {
 
     await userEvent.click(screen.getByText('Pro stays at $8'))
     expect(screen.getByText('Opened to Full · click again to fold')).toBeInTheDocument()
-    expect(screen.getByText(/Second sentence here\./)).toBeInTheDocument()
+    expect(screen.getByRole('button', { expanded: true })).toHaveTextContent(
+      /Second sentence here\./
+    )
     expect(screen.getByText('The team plan barely sold')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByText(/Second sentence here\./))
+    await userEvent.click(screen.getByRole('button', { expanded: true }))
     expect(screen.queryByText('Opened to Full · click again to fold')).toBeNull()
+  })
+
+  it('shows the source paragraph under a written line, underlining the sentences it rests on', () => {
+    render(<Folded level="takeaway" />)
+    const line = screen.getByRole('button', {
+      name: /open/i,
+      description: /Written from these sentences/
+    })
+    expect(line).toHaveTextContent('The team plan barely sold')
+
+    const note = screen.getAllByRole('note')[0]
+    expect(note).toHaveTextContent(
+      'First sentence here. Second sentence here. Third sentence here.'
+    )
+    // p1 rests on sentence 1 only.
+    expect(screen.getByText('Second sentence here.', { selector: 'span' })).toHaveClass('underline')
+    expect(screen.getByText('First sentence here.', { selector: 'span' })).not.toHaveClass(
+      'underline'
+    )
+  })
+
+  it("offers no evidence for the author's own words", () => {
+    render(<Folded level="brief" />)
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('renders Brief inline Markdown as elements, never as HTML or a link', () => {
+    const rich = layers()
+    rich.sections[0].paragraphs[0] = paragraph({
+      hash: 'p1',
+      sentencesMd: [
+        '**First** sentence [here](https://x.test).',
+        'Second',
+        '<b>Third</b> sentence here.'
+      ]
+    })
+    rich.sections[0].skipped = [
+      { afterParagraph: 0, kind: 'code', count: 1 },
+      { afterParagraph: 1, kind: 'image', count: 2 }
+    ]
+    const view = buildFoldedView(rich, 'brief', new Set(), new Set())
+    const { container } = render(<FoldBody view={view} dispatch={() => {}} />)
+    expect(screen.getByText('First', { selector: 'strong' })).toBeInTheDocument()
+    expect(container.querySelector('a, b')).toBeNull()
+    expect(container).toHaveTextContent('<b>Third</b> sentence here.')
+    expect(screen.getByText('… 1 code block')).toBeInTheDocument()
+    expect(screen.getByText('… 2 images')).toBeInTheDocument()
+  })
+
+  it('shows no skipped-block marker on Topic cards', () => {
+    const note = layers()
+    note.sections[0].skipped = [{ afterParagraph: 0, kind: 'code', count: 1 }]
+    const view = buildFoldedView(note, 'topic', new Set(), new Set())
+    render(<FoldBody view={view} dispatch={() => {}} />)
+    expect(screen.queryByText('… 1 code block')).toBeNull()
   })
 
   it('jumps from a Topic chip to Full on that paragraph', async () => {

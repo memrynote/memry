@@ -1,4 +1,9 @@
-import { FoldChannels, type FoldLastRun, type FoldLayers } from '@memry/contracts/note-fold'
+import {
+  FoldChannels,
+  type FoldAgentStatus,
+  type FoldLastRun,
+  type FoldLayers
+} from '@memry/contracts/note-fold'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const noteFoldApi = {
@@ -7,6 +12,7 @@ export const noteFoldApi = {
   retry: (noteId?: string): Promise<FoldLayers | null> =>
     invoke(FoldChannels.invoke.RETRY, { noteId }),
   getLastRun: (): Promise<FoldLastRun> => invoke(FoldChannels.invoke.LAST_RUN),
+  getAgentStatus: (): Promise<FoldAgentStatus> => invoke(FoldChannels.invoke.AGENT_STATUS),
   onUpdated: (callback: (event: { noteId: string }) => void): (() => void) =>
     subscribe<{ noteId: string }>(FoldChannels.events.UPDATED, callback)
 }

@@ -14,8 +14,13 @@ import {
   type FoldLayers,
   type FoldLevel,
   type FoldParagraph,
-  type FoldSection
+  type FoldSection,
+  type FoldSkipped
 } from '@memry/contracts/note-fold'
+
+import { sentencesToMarkdown } from './engine-inline'
+import { buildMorph } from './engine-morph'
+import { segmenter } from './segmenter'
 
 /** ~tokens per chunk before a long section is split at a paragraph boundary. */
 export const CHUNK_TOKEN_BUDGET = 600
@@ -59,17 +64,6 @@ export function detectLanguage(text: string): string {
 
 export const isCjk = (language: string): boolean => CJK_LANGUAGES.has(language)
 
-const segmenterCache = new Map<string, Intl.Segmenter>()
-function segmenter(language: string, granularity: 'sentence' | 'word'): Intl.Segmenter {
-  const key = `${language}:${granularity}`
-  let seg = segmenterCache.get(key)
-  if (!seg) {
-    seg = new Intl.Segmenter(language === 'und' ? 'en' : language, { granularity })
-    segmenterCache.set(key, seg)
-  }
-  return seg
-}
-
 export function splitSentences(text: string, language: string): string[] {
   const out: string[] = []
   for (const { segment } of segmenter(language, 'sentence').segment(text)) {
@@ -105,6 +99,8 @@ export interface ParsedParagraph {
   hash: string
   text: string
   sentences: string[]
+  /** Inline Markdown per sentence; never sent to the model or hashed. */
+  sentencesMd: string[]
 }
 
 export interface ParsedChunk {
@@ -117,6 +113,7 @@ export interface ParsedChunk {
 export interface ParsedSection {
   heading: string | null
   chunks: ParsedChunk[]
+  skipped: FoldSkipped[]
 }
 
 const stripInline = (line: string): string =>
@@ -130,27 +127,40 @@ const stripInline = (line: string): string =>
     .replace(/\s+/g, ' ')
     .trim()
 
-interface RawSection {
-  heading: string | null
-  paragraphs: string[]
+interface RawParagraph {
+  /** Plain text: what the model sees and what is hashed. */
+  text: string
+  /** The paragraph's Markdown with list and quote markers removed. */
+  md: string
 }
 
+interface RawSection {
+  heading: string | null
+  paragraphs: RawParagraph[]
+  skipped: FoldSkipped[]
+}
+
+const EMBED_LINE = /^\s*!\[\[[^\]]*\]\]\s*$/
+const HTML_BLOCK_LINE = /^\s*<\/?[A-Za-z][^>]*>\s*$/
+
 /**
- * Splits a Markdown body into sections of plain paragraphs. Code, tables,
- * images, callouts and HTML blocks are skipped: folded views are plain text.
+ * Splits a Markdown body into sections of paragraphs. Code, tables, images,
+ * embeds, callouts and HTML-only lines never become paragraphs (so never reach
+ * the model); each is recorded in the section's `skipped` markers instead.
  */
 export function parseSections(markdown: string): RawSection[] {
   const body = markdown.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
   const sections: RawSection[] = []
-  let current: RawSection = { heading: null, paragraphs: [] }
+  let current: RawSection = { heading: null, paragraphs: [], skipped: [] }
   let buffer: string[] = []
   let fence: string | null = null
   let skipBlock = false
 
   const flush = (): void => {
     if (buffer.length > 0) {
-      const text = stripInline(buffer.join(' '))
-      if (text) current.paragraphs.push(text)
+      const md = buffer.join(' ')
+      const text = stripInline(md)
+      if (text) current.paragraphs.push({ text, md })
     }
     buffer = []
     skipBlock = false
@@ -158,18 +168,29 @@ export function parseSections(markdown: string): RawSection[] {
   const startSection = (heading: string): void => {
     flush()
     if (current.heading !== null || current.paragraphs.length > 0) sections.push(current)
-    current = { heading, paragraphs: [] }
+    current = { heading, paragraphs: [], skipped: [] }
   }
+  const skip = (kind: FoldSkipped['kind']): void => {
+    flush()
+    const afterParagraph = current.paragraphs.length - 1
+    const last = current.skipped.at(-1)
+    if (last && last.afterParagraph === afterParagraph && last.kind === kind) last.count++
+    else current.skipped.push({ afterParagraph, kind, count: 1 })
+  }
+  /** Table and HTML lines come in runs that count as one block. */
+  let run: 'table' | 'other' | null = null
 
   for (const raw of body.split(/\r?\n/)) {
     const line = raw.trimEnd()
+    const previousRun = run
+    run = null
     const fenceMatch = /^\s*(```+|~~~+)/.exec(line)
     if (fence) {
       if (fenceMatch && line.trim().startsWith(fence)) fence = null
       continue
     }
     if (fenceMatch) {
-      flush()
+      skip('code')
       fence = fenceMatch[1]
       continue
     }
@@ -182,12 +203,28 @@ export function parseSections(markdown: string): RawSection[] {
       startSection(stripInline(heading[1]))
       continue
     }
-    if (/^\s*\|/.test(line) || /^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(line)) {
-      flush()
+    if (/^\s*\|/.test(line)) {
+      if (previousRun === 'table') flush()
+      else skip('table')
+      run = 'table'
+      continue
+    }
+    if (/^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(line)) {
+      skip('image')
+      continue
+    }
+    if (EMBED_LINE.test(line)) {
+      skip('embed')
+      continue
+    }
+    if (HTML_BLOCK_LINE.test(line)) {
+      if (previousRun === 'other') flush()
+      else skip('other')
+      run = 'other'
       continue
     }
     if (/^\s*>\s*\[!/.test(line)) {
-      flush()
+      skip('callout')
       skipBlock = true
       continue
     }
@@ -205,11 +242,15 @@ export function parseSections(markdown: string): RawSection[] {
 export function buildSections(markdown: string, language: string): ParsedSection[] {
   return parseSections(markdown)
     .map((raw): ParsedSection => {
-      const paragraphs = raw.paragraphs.map((text): ParsedParagraph => ({
-        hash: sha256(text.normalize('NFC')),
-        text,
-        sentences: splitSentences(text, language)
-      }))
+      const paragraphs = raw.paragraphs.map(({ text, md }): ParsedParagraph => {
+        const sentences = splitSentences(text, language)
+        return {
+          hash: sha256(text.normalize('NFC')),
+          text,
+          sentences,
+          sentencesMd: sentencesToMarkdown(md, text, sentences)
+        }
+      })
       const groups: ParsedParagraph[][] = []
       let group: ParsedParagraph[] = []
       let tokens = 0
@@ -226,6 +267,7 @@ export function buildSections(markdown: string, language: string): ParsedSection
       if (group.length > 0) groups.push(group)
       return {
         heading: raw.heading,
+        skipped: raw.skipped,
         chunks: groups.map((g, i) => ({
           hash: sha256(
             [i === 0 ? (raw.heading ?? '') : '', ...g.map((p) => p.hash)].join('\u0000')
@@ -363,14 +405,28 @@ function buildParagraph(
   lang: string
 ): FoldParagraph {
   const first = p.sentences[0] ?? p.text
+  const key = ai ? ai.key : null
+  const takeaway = ai ? ai.takeaway : truncateUnits(first, lang, 12)
+  const topic = ai ? ai.topic : truncateUnits(first, lang, 4)
+  // Derived from the cached model lines on every assemble: not stored, so old cache rows need no rewrite.
+  const { srcTokens, srcSentenceStart, morph } = buildMorph(
+    p.text,
+    p.sentences,
+    { keyTakeaway: key?.takeaway ?? null, keyReason: key?.reason ?? null, takeaway, topic },
+    lang
+  )
   return {
     hash: p.hash,
     text: p.text,
     sentences: p.sentences,
+    sentencesMd: p.sentencesMd,
+    srcTokens,
+    srcSentenceStart,
+    morph,
     briefIdx: ai ? ai.brief : localBriefIdx(p.sentences, lang),
-    key: ai ? ai.key : null,
-    takeaway: ai ? ai.takeaway : truncateUnits(first, lang, 12),
-    topic: ai ? ai.topic : truncateUnits(first, lang, 4),
+    key,
+    takeaway,
+    topic,
     evidence: ai ? ai.evidence : []
   }
 }
@@ -425,6 +481,7 @@ export function assemble(input: AssembleInput): Assembled {
       hash: sha256([section.heading ?? '', ...section.chunks.map((c) => c.hash)].join('\u0000')),
       heading: section.heading,
       takeaway: takeaways.length === section.chunks.length ? takeaways.join(' ') : fallback,
+      skipped: section.skipped,
       paragraphs
     }
   })
