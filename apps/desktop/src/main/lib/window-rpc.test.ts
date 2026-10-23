@@ -36,7 +36,7 @@ function createWebContentsMock() {
       if (event === 'destroyed') destroyedListeners.delete(listener)
     }),
     emitDestroyed: () => {
-      for (const listener of [...destroyedListeners]) {
+      for (const listener of Array.from(destroyedListeners)) {
         destroyedListeners.delete(listener)
         listener()
       }

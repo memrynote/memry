@@ -2056,7 +2056,7 @@ describe('ContentArea', () => {
       expect(contentAreaMocks.templatesService.list).toHaveBeenCalled()
     })
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
+    const row = (await slashItems('')).find((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })
@@ -2079,7 +2079,7 @@ describe('ContentArea', () => {
       expect(contentAreaMocks.templatesService.list).toHaveBeenCalled()
     })
 
-    const [row] = (await slashItems('')).filter((item) => item.title === 'Insert template content…')
+    const row = (await slashItems('')).find((item) => item.title === 'Insert template content…')
     await act(async () => {
       row.onItemClick()
     })

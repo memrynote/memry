@@ -30,7 +30,7 @@ const mockOnCrdtStateChanged = vi.fn((noteId: string, callback: StateChangedCall
 })
 
 function broadcastStateChanged(payload: StateChangedPayload): void {
-  for (const callback of [...(noteSubscribers.get(payload.noteId) ?? [])]) callback(payload)
+  for (const callback of Array.from(noteSubscribers.get(payload.noteId) ?? [])) callback(payload)
 }
 
 /**
@@ -44,7 +44,7 @@ const mockOnCrdtProviderReset = vi.fn((callback: () => void) => {
 })
 
 function broadcastProviderReset(): void {
-  for (const callback of [...resetSubscribers]) callback()
+  for (const callback of Array.from(resetSubscribers)) callback()
 }
 
 /**
@@ -59,7 +59,7 @@ const mockOnCrdtProviderReady = vi.fn((callback: (data: ReadyPayload) => void) =
 })
 
 function broadcastProviderReady(data?: ReadyPayload): void {
-  for (const callback of [...readySubscribers]) callback(data)
+  for (const callback of Array.from(readySubscribers)) callback(data)
 }
 
 /**

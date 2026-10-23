@@ -38,8 +38,12 @@ vi.mock('@/sync/yjs-ipc-provider', () => ({
       }
       return Promise.resolve()
     }
-    destroy(): void {}
-    resumeRebind(): void {}
+    destroy(): void {
+      /* intentional no-op */
+    }
+    resumeRebind(): void {
+      /* intentional no-op */
+    }
   }
 }))
 

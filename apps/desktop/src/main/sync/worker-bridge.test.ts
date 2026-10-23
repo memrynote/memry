@@ -307,9 +307,7 @@ describe('SyncWorkerBridge', () => {
       live: MockWorker
     ): { promise: Promise<unknown>; requestId: string } => {
       const promise = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
-      const posted = live.postMessage.mock.calls
-        .filter(([m]) => m.type === 'encrypt-batch')
-        .at(-1)?.[0]
+      const posted = live.postMessage.mock.calls.findLast(([m]) => m.type === 'encrypt-batch')?.[0]
       // Never issued means the bridge refused the batch — the wedge this suite
       // is about. Keep going so the assertion reports the rejection, not a
       // TypeError on the missing message.
@@ -431,9 +429,9 @@ describe('SyncWorkerBridge', () => {
       // rejected with 'Worker not started' — three of which latch the bridge
       // off to main-thread crypto for the rest of the session.
       const promise = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
-      const posted = mockWorkerInstance.postMessage.mock.calls
-        .filter(([m]) => m.type === 'encrypt-batch')
-        .at(-1)?.[0]
+      const posted = mockWorkerInstance.postMessage.mock.calls.findLast(
+        ([m]) => m.type === 'encrypt-batch'
+      )?.[0]
       mockWorkerInstance.simulateMessage({
         type: 'encrypt-batch-result',
         // Never issued means the bridge refused the batch — assert on the
@@ -960,9 +958,9 @@ describe('SyncWorkerBridge', () => {
 
     /** Answer the newest in-flight batch the way an old worker build does. */
     const replyUnknownKindError = (): void => {
-      const posted = mockWorkerInstance.postMessage.mock.calls
-        .filter(([m]) => m.type === 'encrypt-batch')
-        .at(-1)![0]
+      const posted = mockWorkerInstance.postMessage.mock.calls.findLast(
+        ([m]) => m.type === 'encrypt-batch'
+      )![0]
       mockWorkerInstance.simulateMessage({
         type: 'error',
         requestId: posted.requestId,
@@ -1030,9 +1028,9 @@ describe('SyncWorkerBridge', () => {
 
     /** requestId of the newest posted `decrypt-crdt-batch`. */
     const lastCrdtRequestId = (): string =>
-      mockWorkerInstance.postMessage.mock.calls
-        .filter(([m]) => m.type === 'decrypt-crdt-batch')
-        .at(-1)![0].requestId
+      mockWorkerInstance.postMessage.mock.calls.findLast(
+        ([m]) => m.type === 'decrypt-crdt-batch'
+      )![0].requestId
 
     const callDecryptCrdt = (): ReturnType<SyncWorkerBridge['decryptCrdtBatch']> =>
       bridge.decryptCrdtBatch(

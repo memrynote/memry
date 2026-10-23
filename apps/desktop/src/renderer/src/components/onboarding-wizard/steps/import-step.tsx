@@ -30,7 +30,7 @@ const ROW =
 const FEATURED = new Set(['apple-notes', 'notion'])
 
 function baseName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() ?? path
+  return path.split(/[\\/]/).findLast(Boolean) ?? path
 }
 
 function useImportSources(): { importers: ImporterMeta[]; sources: OnboardingSources | null } {

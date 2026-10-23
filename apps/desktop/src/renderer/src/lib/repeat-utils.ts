@@ -59,7 +59,7 @@ const lazyLabels = (length: number, build: () => string[]): string[] => {
     return built
   }
 
-  const labels = new Array<string>(length)
+  const labels = Array.from<string>({ length: length })
   for (let index = 0; index < length; index++) {
     Object.defineProperty(labels, index, {
       get: () => resolve()[index],

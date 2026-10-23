@@ -294,8 +294,12 @@ vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager 
 vi.mock('./engine', async () => {
   const actual = await vi.importActual<typeof import('./engine')>('./engine')
   class TestSyncEngine extends actual.SyncEngine {
-    async start(): Promise<void> {}
-    async stop(): Promise<void> {}
+    async start(): Promise<void> {
+      /* intentional no-op */
+    }
+    async stop(): Promise<void> {
+      /* intentional no-op */
+    }
   }
   return { SyncEngine: TestSyncEngine }
 })

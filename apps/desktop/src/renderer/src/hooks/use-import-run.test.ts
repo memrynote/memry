@@ -68,7 +68,7 @@ function installApi(options: ApiOptions = {}) {
 
   return {
     emit: (event: ImportProgressEvent) => {
-      for (const fn of [...listeners]) fn(event)
+      for (const fn of Array.from(listeners)) fn(event)
     },
     listenerCount: () => listeners.size,
     unsubscribes,

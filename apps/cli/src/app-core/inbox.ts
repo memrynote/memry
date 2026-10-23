@@ -410,7 +410,9 @@ export function createInboxService({
           return Number.isFinite(createdAt) && createdAt >= cutoffMs
         })
 
-      const timeHeatmap = Array.from({ length: 24 }, () => new Array<number>(7).fill(0))
+      const timeHeatmap = Array.from({ length: 24 }, () =>
+        Array.from<number>({ length: 7 }).fill(0)
+      )
       const typeCounts = new Map<string, number>()
       const domainCounts = new Map<string, number>()
 

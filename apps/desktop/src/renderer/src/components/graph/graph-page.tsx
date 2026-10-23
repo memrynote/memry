@@ -179,7 +179,7 @@ function GraphWorkspace({
   const categoryIndex = useMemo(() => buildGraphCategoryIndex(categories), [categories])
 
   const categoryRows = useMemo<GraphCategoryRow[]>(() => {
-    const counts = new Array<number>(categoryIndex.categories.length).fill(0)
+    const counts = Array.from<number>({ length: categoryIndex.categories.length }).fill(0)
     for (const node of data.nodes) {
       const rank = categoryRankOf(node.id, node.tags, categoryIndex.rankByTag)
       if (rank !== undefined) counts[rank] += 1

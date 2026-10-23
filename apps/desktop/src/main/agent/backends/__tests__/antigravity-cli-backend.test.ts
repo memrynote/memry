@@ -124,7 +124,9 @@ function createHandle(stdout: string) {
     stdout: (async function* () {
       yield Buffer.from(stdout)
     })(),
-    stderr: (async function* () {})(),
+    stderr: (async function* () {
+      /* intentional no-op */
+    })(),
     pid: 123,
     kill: vi.fn(),
     waitExit: vi.fn(async () => 0),

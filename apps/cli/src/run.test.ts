@@ -43,7 +43,9 @@ function makeVaultStatusApp(vaultPath: string) {
         return { isOpen: true, path: vaultPath }
       }
     },
-    close() {}
+    close() {
+      /* intentional no-op */
+    }
   } as never
 }
 

@@ -483,7 +483,7 @@ describe('inbox-handlers', () => {
 
     it('should handle pagination', async () => {
       const chainable = mockDb.select()
-      chainable.all.mockReturnValue(Array(10).fill({ id: 'item' }))
+      chainable.all.mockReturnValue(Array.from({ length: 10 }, () => ({ id: 'item' })))
       chainable.get.mockReturnValue({ count: 20 })
 
       const result = await invokeHandler(InboxChannels.invoke.LIST, {

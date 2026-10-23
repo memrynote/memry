@@ -421,7 +421,7 @@ describe('notes-handlers', () => {
 
     it('should handle pagination', async () => {
       const mockNotes = {
-        notes: Array(50).fill({ id: 'note', title: 'Note' }),
+        notes: Array.from({ length: 50 }, () => ({ id: 'note', title: 'Note' })),
         total: 100,
         hasMore: true
       }

@@ -68,7 +68,7 @@ function write(date: string, content: string): void {
 
 function emit(set: Set<JournalListener>, date: string): void {
   act(() => {
-    for (const listener of [...set]) listener({ date })
+    for (const listener of Array.from(set)) listener({ date })
   })
 }
 
@@ -234,7 +234,7 @@ describe('home journal widget stays current', () => {
     const heatmapCallsAfterMount = mockGetHeatmap.mock.calls.length
 
     act(() => {
-      for (const listener of [...listeners.updated])
+      for (const listener of Array.from(listeners.updated))
         listener({ date: undefined as unknown as string })
     })
     await settle()

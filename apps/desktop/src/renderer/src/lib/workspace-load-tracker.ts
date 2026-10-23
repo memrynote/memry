@@ -16,7 +16,7 @@ let pending = 0
 const listeners = new Set<() => void>()
 
 function notify(): void {
-  for (const listener of [...listeners]) listener()
+  for (const listener of Array.from(listeners)) listener()
 }
 
 /**

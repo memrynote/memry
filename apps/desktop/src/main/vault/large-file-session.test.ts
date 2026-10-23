@@ -440,11 +440,7 @@ describe('large-file session', () => {
     await new Promise((resolve) => setImmediate(resolve))
 
     // #then the viewer that has been sitting on "Preparing…" gets its answer
-    expect(
-      indexEvents()
-        .filter((event) => event.sessionId === slowId)
-        .at(-1)
-    ).toMatchObject({
+    expect(indexEvents().findLast((event) => event.sessionId === slowId)).toMatchObject({
       status: 'ready',
       lineCount: 3
     })
@@ -467,11 +463,7 @@ describe('large-file session', () => {
     // #then the consumer still holding the old id is told. Waiting for it to
     // find out on its next page fetch only works once it is showing pages —
     // a session dropped while still indexing never gets a page fetch at all.
-    expect(
-      indexEvents()
-        .filter((event) => event.sessionId === sessionId)
-        .at(-1)
-    ).toMatchObject({
+    expect(indexEvents().findLast((event) => event.sessionId === sessionId)).toMatchObject({
       sessionId,
       status: 'closed'
     })

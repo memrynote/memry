@@ -486,7 +486,9 @@ function quickHandle(events: BackendEvent[] = [{ kind: 'message_stop' }]): Backe
     events: (async function* () {
       yield* events
     })(),
-    stderr: (async function* () {})(),
+    stderr: (async function* () {
+      /* intentional no-op */
+    })(),
     pid: 1,
     kill: () => {},
     waitExit: async () => 0,

@@ -103,7 +103,7 @@ export function pickIconExtension(
 
 /** Default label for a downloaded icon: its file name, else the host. */
 export function iconNameFromUrl(url: URL): string {
-  const last = url.pathname.split('/').filter(Boolean).pop() ?? ''
+  const last = url.pathname.split('/').findLast(Boolean) ?? ''
   let base = ''
   try {
     base = decodeURIComponent(last)

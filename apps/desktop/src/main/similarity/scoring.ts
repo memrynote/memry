@@ -143,7 +143,7 @@ export function clusterBySimilarity(
   if (n === 0) return { groups: [], ungrouped: [] }
 
   // Pairwise similarity, computed once.
-  const sim: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0))
+  const sim: number[][] = Array.from({ length: n }, () => Array.from<number>({ length: n }).fill(0))
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const value = cosineSimilarity(items[i].vector, items[j].vector)

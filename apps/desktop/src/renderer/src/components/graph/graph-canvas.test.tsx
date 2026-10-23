@@ -378,9 +378,7 @@ describe('GraphCanvas', () => {
       { id: 'beta-cat', name: 'Beta cat', tags: [{ tag: 'beta' }] }
     ])
     const latestNodeReducer = () =>
-      graphCanvasMocks.sigma.setSetting.mock.calls
-        .filter(([key]) => key === 'nodeReducer')
-        .at(-1)?.[1]
+      graphCanvasMocks.sigma.setSetting.mock.calls.findLast(([key]) => key === 'nodeReducer')?.[1]
 
     beforeEach(() => {
       document.documentElement.style.setProperty('--graph-group-1', '#aa0000')

@@ -229,7 +229,7 @@ function getLinkedNoteIds(db: DataDb, taskId: string): string[] {
 
 function setLinkedNoteIds(db: DataDb, taskId: string, noteIds: string[]): void {
   db.delete(taskNotes).where(eq(taskNotes.taskId, taskId)).run()
-  for (const noteId of [...new Set(noteIds.map((id) => id.trim()).filter(Boolean))]) {
+  for (const noteId of new Set(noteIds.map((id) => id.trim()).filter(Boolean))) {
     db.insert(taskNotes).values({ taskId, noteId }).onConflictDoNothing().run()
   }
 }
@@ -245,7 +245,7 @@ function getLinkedCanvasIds(db: DataDb, taskId: string): string[] {
 
 function setLinkedCanvasIds(db: DataDb, taskId: string, canvasIds: string[]): void {
   db.delete(taskCanvases).where(eq(taskCanvases.taskId, taskId)).run()
-  for (const canvasId of [...new Set(canvasIds.map((id) => id.trim()).filter(Boolean))]) {
+  for (const canvasId of new Set(canvasIds.map((id) => id.trim()).filter(Boolean))) {
     db.insert(taskCanvases).values({ taskId, canvasId }).onConflictDoNothing().run()
   }
 }

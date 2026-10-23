@@ -366,11 +366,9 @@ describe('crdt-preflight-child', () => {
       )
       // Nothing past the open was attempted — the store markers would otherwise
       // claim a write and a read that never really ran.
-      expect(
-        marks()
-          .filter((line) => line.startsWith('@@'))
-          .at(-1)
-      ).toBe(`${PREFLIGHT_MARK_STORE_OPS.open}\n`)
+      expect(marks().findLast((line) => line.startsWith('@@'))).toBe(
+        `${PREFLIGHT_MARK_STORE_OPS.open}\n`
+      )
       expect(persistence.storeUpdate).not.toHaveBeenCalled()
     })
 

@@ -47,7 +47,9 @@ class TestResizeObserver {
     this.targets.push(target)
   }
 
-  unobserve(): void {}
+  unobserve(): void {
+    /* intentional no-op */
+  }
 
   disconnect(): void {
     this.disconnected = true

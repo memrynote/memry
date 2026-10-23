@@ -385,7 +385,7 @@ export async function closeLargeFileSession(sessionId: string): Promise<void> {
 
 /** Release every handle. Called on vault close and app quit. */
 export async function closeAllLargeFileSessions(): Promise<void> {
-  for (const session of [...sessions.values()]) {
+  for (const session of Array.from(sessions.values())) {
     await disposeSession(session)
   }
 }

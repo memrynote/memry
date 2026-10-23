@@ -49,7 +49,7 @@ export async function locateBinary(name: string): Promise<string | null> {
     return null
   }
 
-  const binaryPath = result.stdout.split(/\r?\n/).filter(Boolean)[0]
+  const binaryPath = result.stdout.split(/\r?\n/).find(Boolean)
   if (!binaryPath || !existsSync(binaryPath)) {
     return null
   }

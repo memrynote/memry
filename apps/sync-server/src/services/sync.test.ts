@@ -195,11 +195,11 @@ const createValidPushItem = (overrides?: Partial<PushItemInput>): PushItemInput 
   id: '550e8400-e29b-41d4-a716-446655440000',
   type: 'note',
   operation: 'create',
-  encryptedKey: btoa(String.fromCharCode(...new Array(48).fill(0))),
-  keyNonce: btoa(String.fromCharCode(...new Array(24).fill(0))),
+  encryptedKey: btoa(String.fromCharCode(...new Uint8Array(48).fill(0))),
+  keyNonce: btoa(String.fromCharCode(...new Uint8Array(24).fill(0))),
   encryptedData: btoa('test-encrypted-data'),
-  dataNonce: btoa(String.fromCharCode(...new Array(24).fill(0))),
-  signature: btoa(String.fromCharCode(...new Array(64).fill(0))),
+  dataNonce: btoa(String.fromCharCode(...new Uint8Array(24).fill(0))),
+  signature: btoa(String.fromCharCode(...new Uint8Array(64).fill(0))),
   signerDeviceId: 'device-1',
   clock: { 'device-1': 1 },
   ...overrides
@@ -223,7 +223,7 @@ describe('validateEncryptedFields', () => {
   it('should throw CRYPTO_INVALID_PAYLOAD for wrong dataNonce length (23 bytes)', () => {
     // #given
     const item = createValidPushItem({
-      dataNonce: btoa(String.fromCharCode(...new Array(23).fill(0)))
+      dataNonce: btoa(String.fromCharCode(...new Uint8Array(23).fill(0)))
     })
 
     // #when / #then
@@ -240,7 +240,7 @@ describe('validateEncryptedFields', () => {
   it('should throw CRYPTO_INVALID_PAYLOAD for wrong keyNonce length', () => {
     // #given
     const item = createValidPushItem({
-      keyNonce: btoa(String.fromCharCode(...new Array(23).fill(0)))
+      keyNonce: btoa(String.fromCharCode(...new Uint8Array(23).fill(0)))
     })
 
     // #when / #then
@@ -257,7 +257,7 @@ describe('validateEncryptedFields', () => {
   it('should throw CRYPTO_INVALID_PAYLOAD for encryptedKey too short (47 bytes)', () => {
     // #given
     const item = createValidPushItem({
-      encryptedKey: btoa(String.fromCharCode(...new Array(47).fill(0)))
+      encryptedKey: btoa(String.fromCharCode(...new Uint8Array(47).fill(0)))
     })
 
     // #when / #then
@@ -274,7 +274,7 @@ describe('validateEncryptedFields', () => {
   it('should throw CRYPTO_INVALID_PAYLOAD for signature wrong length (63 bytes)', () => {
     // #given
     const item = createValidPushItem({
-      signature: btoa(String.fromCharCode(...new Array(63).fill(0)))
+      signature: btoa(String.fromCharCode(...new Uint8Array(63).fill(0)))
     })
 
     // #when / #then
@@ -349,7 +349,7 @@ describe('verifyItemSignature', () => {
     platform: 'darwin',
     os_version: null,
     app_version: '1.0.0',
-    auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+    auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
     push_token: null,
     last_sync_at: null,
     revoked_at: null,
@@ -1789,7 +1789,7 @@ describe('processRecordPushBatch', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -1931,7 +1931,7 @@ describe('processRecordPushBatch', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2186,7 +2186,7 @@ describe('processPushItem', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2539,7 +2539,7 @@ describe('processPushItem', () => {
       {} as R2Bucket,
       'user-1',
       'device-1',
-      createValidPushItem({ dataNonce: btoa(String.fromCharCode(...new Array(23).fill(0))) })
+      createValidPushItem({ dataNonce: btoa(String.fromCharCode(...new Uint8Array(23).fill(0))) })
     )
     expect(appErrorResult).toEqual({ accepted: false, reason: ErrorCodes.CRYPTO_INVALID_PAYLOAD })
 
@@ -2704,7 +2704,7 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2763,8 +2763,8 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
       return { prepare, batch }
     }
 
-    const sigA = btoa(String.fromCharCode(...new Array(64).fill(1)))
-    const sigB = btoa(String.fromCharCode(...new Array(64).fill(2)))
+    const sigA = btoa(String.fromCharCode(...new Uint8Array(64).fill(1)))
+    const sigB = btoa(String.fromCharCode(...new Uint8Array(64).fill(2)))
     const itemA = createValidPushItem({
       encryptedData: btoa('payload-from-device-A'),
       signature: sigA
@@ -2841,7 +2841,7 @@ describe('processPushItem replaced blob cleanup', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,
@@ -2998,7 +2998,7 @@ describe('processRecordPushBatch committedItems', () => {
       platform: 'desktop',
       os_version: null,
       app_version: '1.0.0',
-      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      auth_public_key: btoa(String.fromCharCode(...new Uint8Array(32).fill(0))),
       push_token: null,
       revoked_at: null,
       last_sync_at: null,

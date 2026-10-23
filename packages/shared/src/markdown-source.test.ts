@@ -21,7 +21,7 @@ function seededRandom(seed: number): () => number {
 }
 
 function lcsLength(a: string[], b: string[]): number {
-  const row = new Array<number>(b.length + 1).fill(0)
+  const row = Array.from<number>({ length: b.length + 1 }).fill(0)
   for (const line of a) {
     let diagonal = 0
     for (let j = 0; j < b.length; j++) {

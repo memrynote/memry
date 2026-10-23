@@ -16,9 +16,15 @@ describe('Conversation', () => {
         constructor(callback: ResizeObserverCallback) {
           observers.push(callback)
         }
-        observe(): void {}
-        unobserve(): void {}
-        disconnect(): void {}
+        observe(): void {
+          /* intentional no-op */
+        }
+        unobserve(): void {
+          /* intentional no-op */
+        }
+        disconnect(): void {
+          /* intentional no-op */
+        }
       }
     )
     const children = <div>Partial answer</div>

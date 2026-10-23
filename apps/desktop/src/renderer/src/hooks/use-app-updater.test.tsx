@@ -48,7 +48,7 @@ let updaterApi: {
 /** Push a main-process broadcast through every registered renderer listener. */
 async function broadcast(next: AppUpdateState): Promise<void> {
   await act(async () => {
-    for (const listener of [...listeners]) listener(next)
+    for (const listener of Array.from(listeners)) listener(next)
   })
 }
 

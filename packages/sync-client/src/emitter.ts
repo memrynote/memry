@@ -55,7 +55,7 @@ export class SyncEventEmitter {
   emit(event: string, ...args: unknown[]): boolean {
     const list = this.listenersByEvent.get(event)
     if (!list || list.length === 0) return false
-    for (const listener of [...list]) listener(...args)
+    for (const listener of Array.from(list)) listener(...args)
     return true
   }
 
