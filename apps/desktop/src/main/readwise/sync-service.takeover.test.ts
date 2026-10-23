@@ -380,6 +380,25 @@ describe('one pulling device', () => {
       expect(noteFiles()).toHaveLength(3)
     })
 
+    it('a claim written here but not yet pushed holds the run back, as after a timed-out takeover', async () => {
+      library()
+      syncOn()
+      // Let the previous test's simulated push timer fire before this claim is queued.
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      claim.writeClaim(db(), { deviceId: 'dev-a', deviceName: 'Desk Mac' })
+      expect(current.queue.hasPendingItem('synced_settings')).toBe(true)
+      mocks.syncEngine!.requestPush = () => undefined
+
+      const before = readwise.requests.length
+      const run = sync()
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+      expect(readwise.requests).toHaveLength(before)
+
+      current.queue.removeByItemId('synced_settings')
+      await run
+      expect(noteFiles()).toHaveLength(3)
+    })
+
     it('with sync off there is no claim and the device pulls', async () => {
       library()
       markSyncIneligible()

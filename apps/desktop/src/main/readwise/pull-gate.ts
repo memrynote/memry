@@ -132,6 +132,18 @@ export async function claimThisDevice(
   if (!env.pulled || !engine.isCaughtUpWithServer()) throw new ReadwisePullGateError('not-ready')
 
   writeClaim(db, { deviceId: env.deviceId, deviceName: readCurrentDeviceName(db) })
+  await awaitClaimDelivered(engine, options)
+}
+
+/**
+ * The claim sits in the settings queue until the server has it. A device that
+ * pulls before that leaves the old one pulling too, so every path to a run
+ * waits here, a retry after a timeout included.
+ */
+async function awaitClaimDelivered(
+  engine: SyncEngineView,
+  options: { sleepFn?: typeof sleep; signal?: AbortSignal }
+): Promise<void> {
   engine.requestPush()
   const wait = options.sleepFn ?? sleep
   for (let waited = 0; engine.hasQueuedItem('synced_settings'); waited += POLL_MS) {
@@ -152,7 +164,12 @@ export async function awaitPullAuthority(
 ): Promise<void> {
   for (let waited = 0; ; waited += POLL_MS) {
     const authority = pullAuthority(getDatabase())
-    if (authority.state === 'pull') return
+    if (authority.state === 'pull') {
+      const env = readPullEnv(getDatabase())
+      const engine = env.eligible ? await loadEngine() : null
+      if (engine) await awaitClaimDelivered(engine, { sleepFn, signal })
+      return
+    }
     if (authority.state === 'elsewhere') {
       throw new ReadwisePullGateError('elsewhere', authority.deviceName)
     }

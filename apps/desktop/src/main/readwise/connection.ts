@@ -116,7 +116,7 @@ export async function takeOverReadwise(token: string): Promise<ReadwiseStatusRes
   const env = readPullEnv(db)
   if (!env.decided || !env.eligible) throw new ReadwisePullGateError('needs-sync')
   await verifyPastedToken(token)
-  if (readClaim(db).deviceId !== env.deviceId) await claimThisDevice(db)
+  await claimThisDevice(db)
   await setReadwiseToken(vaultPath, token)
   clearRunState(db)
   return await getReadwiseStatus()
