@@ -427,6 +427,8 @@ export interface ReadwiseOptions {
   readerDocuments: boolean
   /** Write the full article text once, below the section, when a Reader note is created (D11). */
   readerFullText: boolean
+  /** List each day's new highlights in the journal entry of that day (D17). Off: it writes into files the user writes. */
+  journalHighlights: boolean
 }
 
 /** D3: supplementals are listed and off. D1/#1416: hourly by default. */
@@ -442,7 +444,8 @@ export const READWISE_OPTIONS_DEFAULTS: ReadwiseOptions = {
   },
   cadence: 'hourly',
   readerDocuments: false,
-  readerFullText: false
+  readerFullText: false,
+  journalHighlights: false
 }
 
 export const ReadwiseConnectSchema = z.object({
@@ -481,7 +484,8 @@ export const ReadwiseSetOptionsSchema = z.object({
     .optional(),
   cadence: z.enum(READWISE_CADENCES).optional(),
   readerDocuments: z.boolean().optional(),
-  readerFullText: z.boolean().optional()
+  readerFullText: z.boolean().optional(),
+  journalHighlights: z.boolean().optional()
 })
 export type ReadwiseSetOptionsInput = z.infer<typeof ReadwiseSetOptionsSchema>
 

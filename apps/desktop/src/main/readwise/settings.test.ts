@@ -99,6 +99,18 @@ describe('readwise synced settings group', () => {
     expect(readReadwiseOptions(db).readerDocuments).toBe(false)
   })
 
+  it('keeps the journal switch off until set, under its own field clock, and never flags a full pass (#3476)', () => {
+    expect(readReadwiseOptions(db).journalHighlights).toBe(false)
+
+    writeReadwiseOptions(db, { journalHighlights: true })
+
+    expect(readReadwiseOptions(db).journalHighlights).toBe(true)
+    expect(Object.keys(manager.getPayload().fieldClocks)).toEqual(['readwise.journalHighlights'])
+    expect(getFullPassPending(db)).toBe(false)
+    setSetting(db, READWISE_SETTINGS_KEY, JSON.stringify({ journalHighlights: 'yes' }))
+    expect(readReadwiseOptions(db).journalHighlights).toBe(false)
+  })
+
   it('reads a layout or cadence only a newer build knows as the default', () => {
     setSetting(
       db,

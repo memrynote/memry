@@ -44,6 +44,7 @@ import {
 import { ReadwiseDeletedBooks } from '@/components/settings/readwise-deleted-books'
 import { ReadwiseTakeoverSection } from '@/components/settings/readwise-takeover-section'
 import { ReadwiseLocationSection } from '@/components/settings/readwise-location-section'
+import { ReadwiseJournalSection } from '@/components/settings/readwise-journal-section'
 import { ReadwiseReaderSection } from '@/components/settings/readwise-reader-section'
 import {
   ReadwiseReconnectForm,
@@ -335,6 +336,12 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
       </section>
 
       <ReadwiseReaderSection
+        options={options}
+        disabled={disabled}
+        onChange={(input) => void setOptions(input)}
+      />
+
+      <ReadwiseJournalSection
         options={options}
         disabled={disabled}
         onChange={(input) => void setOptions(input)}

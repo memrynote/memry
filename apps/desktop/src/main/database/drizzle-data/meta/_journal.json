@@ -554,6 +554,13 @@
       "when": 1791581373087,
       "tag": "0078_readwise_links",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "6",
+      "when": 1791581374087,
+      "tag": "0079_readwise_highlights",
+      "breakpoints": true
     }
   ]
 }

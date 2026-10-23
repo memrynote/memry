@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { ReadwiseErrorKind, ReadwiseRunCounts } from '@memry/contracts/import-channels'
+import { readwiseHighlights } from '@memry/db-schema/schema/readwise-highlights'
 import { deleteSetting, getSetting, setSetting } from '../database/queries/settings'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/types'
@@ -16,6 +17,8 @@ const FULL_PASS_KEY = 'readwise.fullPass'
 const LAST_RUN_KEY = 'readwise.lastRun'
 const LAST_FULL_READ_KEY = 'readwise.lastFullRead'
 const ERROR_TOAST_KEY = 'readwise.errorToastShown'
+const HIGHLIGHT_INDEX_KEY = 'readwise.highlightIndex'
+const JOURNAL_PENDING_KEY = 'readwise.journalPending'
 
 const log = createLogger('ReadwiseState')
 
@@ -167,6 +170,41 @@ export function claimErrorToast(db: DataDb): boolean {
   return true
 }
 
+/**
+ * Whether a full export has filled the highlight index (#3476). Until it has,
+ * the next run reads the whole export and reports no arrivals, so the first run
+ * after the index shipped never writes the old highlights into the journal.
+ */
+export function isHighlightIndexReady(db: DataDb): boolean {
+  return getSetting(db, HIGHLIGHT_INDEX_KEY) === 'ready'
+}
+
+export function setHighlightIndexReady(db: DataDb): void {
+  setSetting(db, HIGHLIGHT_INDEX_KEY, 'ready')
+}
+
+/** Journal days still owed a write, as `date -> book id -> arrivals` (#3476). */
+export type JournalPending = Record<string, Record<string, number>>
+
+const JournalPendingSchema = z.record(z.string(), z.record(z.string(), z.number().int().min(1)))
+
+export function getJournalPending(db: DataDb): JournalPending {
+  const raw = getSetting(db, JOURNAL_PENDING_KEY)
+  if (raw === null) return {}
+  try {
+    return JournalPendingSchema.parse(JSON.parse(raw))
+  } catch (err) {
+    // A bad value costs the pending journal lines of this device, never a note.
+    log.warn('Dropping unreadable Readwise journal pending list', err)
+    return {}
+  }
+}
+
+export function setJournalPending(db: DataDb, pending: JournalPending): void {
+  if (Object.keys(pending).length === 0) deleteSetting(db, JOURNAL_PENDING_KEY)
+  else setSetting(db, JOURNAL_PENDING_KEY, JSON.stringify(pending))
+}
+
 /** Forgets the connection's run state, so a reconnect starts from a full export. */
 export function clearRunState(db: DataDb): void {
   deleteSetting(db, CURSOR_KEY)
@@ -176,4 +214,8 @@ export function clearRunState(db: DataDb): void {
   deleteSetting(db, LAST_RUN_KEY)
   deleteSetting(db, LAST_FULL_READ_KEY)
   deleteSetting(db, ERROR_TOAST_KEY)
+  deleteSetting(db, HIGHLIGHT_INDEX_KEY)
+  deleteSetting(db, JOURNAL_PENDING_KEY)
+  // The index is derived from the export: the next full read fills it again.
+  db.delete(readwiseHighlights).run()
 }

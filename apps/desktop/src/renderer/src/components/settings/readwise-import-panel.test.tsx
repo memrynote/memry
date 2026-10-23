@@ -173,7 +173,7 @@ describe('ReadwiseImportPanel', () => {
     const supplementals = await screen.findByRole('switch', { name: 'Supplementals' })
     expect(supplementals).not.toBeChecked()
     expect(screen.getByRole('switch', { name: 'Books' })).toBeChecked()
-    expect(screen.getAllByRole('switch')).toHaveLength(7)
+    expect(screen.getAllByRole('switch')).toHaveLength(8)
 
     fireEvent.click(supplementals)
     await waitFor(() =>
@@ -197,6 +197,25 @@ describe('ReadwiseImportPanel', () => {
     await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerDocuments: true }))
     fireEvent.click(fullText)
     await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ readerFullText: true }))
+  })
+
+  it('lists the journal switch, off, and saves it (#3476)', async () => {
+    status.mockResolvedValue(connectedStatus)
+    renderPanel()
+
+    expect(await screen.findByText('Journal')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Adds a Readwise section to the day you highlighted, linking each book note. New highlights only, no backfill.'
+      )
+    ).toBeInTheDocument()
+    const journal = screen.getByRole('switch', {
+      name: "List each day's highlights in the journal"
+    })
+    expect(journal).not.toBeChecked()
+
+    fireEvent.click(journal)
+    await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ journalHighlights: true }))
   })
 
   it('saves the folder layout', async () => {
@@ -307,6 +326,21 @@ describe('ReadwiseImportPanel', () => {
       )
       await waitFor(() => expect(states[states.length - 1].confirmLabel).toBe('Import 447 books'))
       expect(preview).toHaveBeenCalledTimes(1)
+    })
+
+    it('offers the journal switch beside the counts and says the first import writes nothing there (#3476)', async () => {
+      renderPanel()
+
+      const journal = await screen.findByRole('switch', {
+        name: "List each day's highlights in the journal"
+      })
+      expect(journal).not.toBeChecked()
+      expect(
+        screen.getByText('The first import writes nothing to the journal.')
+      ).toBeInTheDocument()
+
+      fireEvent.click(journal)
+      await waitFor(() => expect(setOptions).toHaveBeenCalledWith({ journalHighlights: true }))
     })
 
     it('counts saved Reader documents only with the switch on, and the label says notes', async () => {

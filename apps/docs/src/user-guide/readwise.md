@@ -22,6 +22,7 @@ The first time you open the dialog after connecting, Memry reads your Readwise l
 
 - Each category has a tile with the number of books in it and a switch. **Books**, **Articles**, **Tweets** and **Podcasts** are on. **Supplementals** is off, because Readwise adds those books by itself and they hold none of your highlights. A tile reads **will import** or **off**. An **Other** tile appears if Readwise returns a category Memry does not know. Those books are always imported.
 - The intro line gives the totals, such as _2,184 highlights across 545 books are ready_, and how many books will import with your switches.
+- **List each day's highlights in the journal** is a switch below the tiles, off by default. The first import writes nothing to the journal whether it is on or off. See [The day's highlights in your journal](#the-day-s-highlights-in-your-journal).
 - Below the tiles, choose the **Folder** and the **Folder layout**.
 
 The **Import** button names what it will do, such as **Import 505 books**. Press it to start. The dialog shows progress as books are written, and **Cancel** stops the run after the book in progress. Books already written stay, and you can start the import again. When it finishes, the dialog lists how many books were imported, which were skipped and why, and which failed.
@@ -65,6 +66,31 @@ What a Reader note holds, once, when it is created: the author, site name, publi
 - **Turning the switch off** stops new Reader notes. It deletes none, and it makes no request to Reader.
 - **A document you delete in Reader** keeps its note. **A note you delete** stays deleted.
 - Memry only reads from Reader. Nothing is changed in your Readwise account.
+
+## The day's highlights in your journal
+
+A reading log, if you want one. With **List each day's highlights in the journal** on, the journal entry of each day you highlighted gets a Readwise section that lists the books and how many highlights you made in each, linked to the book notes:
+
+```markdown
+<!-- readwise-day:start -->
+
+### Readwise
+
+- [[Deep Work]]: 3 highlights
+- [[How to Take Smart Notes]]: 1 highlight
+
+<!-- readwise-day:end v1 hash=4b1e09aa -->
+```
+
+The book notes then show those days as backlinks. The switch is in the dialog's settings, under **Journal**, and in the first-import preview. It is off by default, because it writes into your journal, which you write yourself. It syncs to your other devices like the other Readwise settings. Nothing is written while the **Journal** feature is off in Settings → Features.
+
+- **New highlights only.** Memry does not fill in the past. The first import, a new device taking over Readwise, and turning a category on write nothing to the journal. Only highlights that arrive in a later sync, while the switch is on, count. A highlight that arrives late goes into the day you made it: a Kindle that syncs on Friday adds to Tuesday's entry, and creates the entry if there is none. That day's section lists every highlight you made that day, older ones included. A book you add to Readwise now can add sections to many past days, because its highlights keep the dates you made them.
+- **The day is yours.** It is the date of the highlight in this device's time zone.
+- **Your edits stay.** While you have not changed the section, Memry rewrites it when more highlights arrive. Once you edit it, Memry never rewrites it: it only adds one line, such as `- [[Deep Work]]: 2 highlights`, for each book that got new highlights. Delete the whole section and the next new highlight of that day adds a fresh one.
+- **An open entry waits.** If the day's entry is open in the editor, Memry writes it in the first sync after you close it.
+- **Links follow titles.** The links use each book note's current title, and Memry keeps them valid when you rename a note. A book without a note, such as one in a category you turned off, is not listed.
+- **English text.** The heading and the counts are in English, whatever language the app uses, so every device writes the same text. The editor draws the section's two comment lines as labeled bands.
+- **Turning it off** stops new sections. It removes none.
 
 ## Automatic syncing
 

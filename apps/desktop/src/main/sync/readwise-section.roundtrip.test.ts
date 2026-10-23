@@ -10,7 +10,13 @@ import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
-import { planNote, readSection, type NotePlan } from '@memry/importers/readwise'
+import {
+  planJournalDay,
+  planNote,
+  readDaySection,
+  readSection,
+  type NotePlan
+} from '@memry/importers/readwise'
 import {
   COVER_PATH,
   COVER_URL,
@@ -77,6 +83,36 @@ describe('Readwise section, main markdown round trip', () => {
     const once = await roundTrip(note)
     expect(once).toBe(note)
     const read = readSection(once)
+    expect(read.found && read.untouched).toBe(true)
+  })
+})
+
+describe('Readwise journal day section (D17), main markdown round trip', () => {
+  const DAYS: Array<[string, string]> = [
+    [
+      'two books, plural and singular',
+      planJournalDay([
+        { title: 'Deep Work', count: 3, first: '2026-10-22T08:00:00.000Z' },
+        { title: 'How to Take Smart Notes', count: 1, first: '2026-10-22T09:00:00.000Z' }
+      ])
+    ],
+    [
+      'a title with markdown and a colon',
+      planJournalDay([
+        { title: 'Re: *Work* [draft] | x_y', count: 12, first: '2026-10-22T08:00:00.000Z' }
+      ])
+    ]
+  ]
+
+  it.each(DAYS)('%s comes back byte for byte', async (_name, section) => {
+    expect(await roundTrip(section)).toBe(section)
+  })
+
+  it.each(DAYS)('%s stays untouched after an edit beside it', async (_name, section) => {
+    const entry = `Written by the user.\n\n${section}\n\nA thought below the section.`
+    const once = await roundTrip(entry)
+    expect(once).toBe(entry)
+    const read = readDaySection(once)
     expect(read.found && read.untouched).toBe(true)
   })
 })

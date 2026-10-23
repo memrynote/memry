@@ -164,6 +164,37 @@ describe('0035_spatial_canvas migration', () => {
     sqlite.close()
   })
 
+  it('adds readwise_highlights on an install that already applied 0078 and keeps its rows (#3476)', () => {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0079')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0079_readwise_highlights')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: copy })
+    expect(tableNames(sqlite)).not.toContain('readwise_highlights')
+    sqlite.prepare("INSERT INTO readwise_links (readwise_book_id, note_id) VALUES (7, 'n1')").run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(tableNames(sqlite)).toContain('readwise_highlights')
+    expect(
+      sqlite.prepare('SELECT note_id FROM readwise_links WHERE readwise_book_id = 7').get()
+    ).toEqual({
+      note_id: 'n1'
+    })
+    sqlite.close()
+  })
+
   it('raw SQL statements are idempotent when executed twice', () => {
     const dbPath = path.join(tempDir, 'data.db')
     runMigrations(dbPath)

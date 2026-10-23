@@ -7,6 +7,7 @@ import { exportBooks, exportPages, ReadwiseError, type ReadwiseBook } from './cl
 import { awaitPullAuthority, claimLostToAnotherDevice } from './pull-gate'
 import { releaseTokenIfClaimedElsewhere } from './release'
 import { waitForVaultIndexBuild } from '../sync/vault-index-ready'
+import { flushJournal, journalHighlightsOn, recordHighlights } from './journal-sync'
 import { completeLink, getLinkForBook, listLinks, markLinkState } from './links-repository'
 import { rebuildLinks } from './rebuild-links'
 import { clearRunFailure, recordRunFailure, setRunProgress } from './run-status'
@@ -21,6 +22,7 @@ import {
   getLastRun,
   getLastFullRead,
   getRetryList,
+  isHighlightIndexReady,
   removeRetry,
   setCursor,
   setFullPassPending,
@@ -299,8 +301,15 @@ export class ReadwiseSyncService {
       const cursor = getCursor(db)
       const lastFullRead = getLastFullRead(db)
       const lastFullAt = lastFullRead === null ? Number.NaN : Date.parse(lastFullRead)
+      // The highlight index (#3476) is filled by a full export. Until then, and on
+      // the first import, a takeover's first run and a category full pass, the
+      // run only fills it: no highlight counts as a new arrival (D17, no backfill).
+      const indexReady = isHighlightIndexReady(db)
+      const countArrivals = cursor !== null && indexReady && !getFullPassPending(db)
+      const journalOn = journalHighlightsOn(options.journalHighlights)
       const full =
         cursor === null ||
+        !indexReady ||
         getFullPassPending(db) ||
         Number.isNaN(lastFullAt) ||
         // A clock set back leaves a time in the future: read, rather than wait for it.
@@ -412,6 +421,7 @@ export class ReadwiseSyncService {
       }
 
       // 3. The full books that a render needs.
+      const fullFetched: ReadwiseBook[] = []
       if (needFull.length > 0) {
         const payloads = new Map(needFull.map((book) => [book.user_book_id, book]))
         let fullBooks: ReadwiseBook[]
@@ -430,6 +440,7 @@ export class ReadwiseSyncService {
           fullBooks = []
           payloads.clear()
         }
+        fullFetched.push(...fullBooks)
         for (const fullBook of fullBooks) {
           if (stopped()) return cancelled()
           const payload = payloads.get(fullBook.user_book_id)
@@ -447,6 +458,14 @@ export class ReadwiseSyncService {
           finish({ event: { title: bookTitle(gone), result: 'unchanged' } }, gone)
         }
       }
+
+      await this.recordJournal(db, [...exported, ...retryBooks, ...fullFetched], {
+        rebuild: full,
+        countArrivals,
+        enabled: journalOn,
+        timeZone: planOptions.timeZone,
+        stopped
+      })
 
       setCursor(db, nextCursor(exported, cursor, startedAt))
 
@@ -537,6 +556,31 @@ export class ReadwiseSyncService {
           counts: { imported: changedBooks + result.documents, failed: result.failed }
         })
       }
+    }
+  }
+
+  /**
+   * Keeps the highlight index current and writes the journal days that got a
+   * new arrival (#3476, D17). A journal write problem never fails the run: the
+   * days stay pending and the next run writes them.
+   */
+  private async recordJournal(
+    db: ReturnType<typeof getDatabase>,
+    books: readonly ReadwiseBook[],
+    { stopped, ...record }: Parameters<typeof recordHighlights>[2] & { stopped: () => boolean }
+  ): Promise<void> {
+    // A failing index write aborts the run before the cursor moves, so the same
+    // window is read again: the arrivals in it are not lost.
+    recordHighlights(db, books, record)
+    if (!record.enabled) return
+    try {
+      await flushJournal(db, {
+        timeZone: record.timeZone,
+        retryBookIds: new Set(getRetryList(db).map((entry) => entry.readwiseBookId)),
+        stopped
+      })
+    } catch (error) {
+      log.warn('The Readwise journal could not be written', { error })
     }
   }
 

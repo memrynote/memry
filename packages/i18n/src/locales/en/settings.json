@@ -1658,7 +1658,15 @@
           "location": "Where notes go",
           "categories": "What to bring in",
           "reader": "Readwise Reader",
+          "journal": "Journal",
           "sync": "Sync"
+        },
+        "journal": {
+          "highlights": {
+            "label": "List each day's highlights in the journal",
+            "description": "Adds a Readwise section to the day you highlighted, linking each book note. New highlights only, no backfill.",
+            "firstImport": "The first import writes nothing to the journal."
+          }
         },
         "reader": {
           "documents": {
