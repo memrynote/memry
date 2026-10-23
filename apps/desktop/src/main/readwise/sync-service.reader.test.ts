@@ -24,6 +24,18 @@ import {
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../notes/runtime-effects'
+import type * as DomainModule from '../notes/domain'
+import type * as ImportedNoteModule from '../import/_shared/imported-note'
+import type * as ReaderModule from '../readwise/reader'
+import type * as SyncServiceModule from '../readwise/sync-service'
+import type * as NotesModule from '../vault/notes'
+import type * as SyncStateModule from '../readwise/sync-state'
+import type * as LinksRepositoryModule from '../readwise/links-repository'
+import type * as SecretsModule from '../readwise/secrets'
+import type * as SettingsModule from '../readwise/settings'
+import type { BookEvent } from '../readwise/sync-service'
+import type { ImportPreview } from '../import/types'
 
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
@@ -48,7 +60,7 @@ vi.mock('../secrets/secret-storage', () => ({
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -58,17 +70,17 @@ vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
 }))
 vi.mock('../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 vi.mock('../import/_shared/imported-note', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../import/_shared/imported-note')>()
+  const actual = await importOriginal<typeof ImportedNoteModule>()
   return { ...actual, createImportedNote: vi.fn(actual.createImportedNote) }
 })
 // The 20 requests a minute budget is the client's own (#1419, tested there);
 // a test run makes more than that, so it gets a budget that never waits.
 vi.mock('../readwise/reader', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../readwise/reader')>()
+  const actual = await importOriginal<typeof ReaderModule>()
   return {
     ...actual,
     listDocuments: (options: Parameters<typeof actual.listDocuments>[0]) =>
@@ -159,14 +171,14 @@ describe('Readwise Reader documents', () => {
   let vault: TestVaultResult
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
-  let engine: typeof import('../readwise/sync-service')
-  let domain: typeof import('../notes/domain')
-  let notes: typeof import('../vault/notes')
-  let state: typeof import('../readwise/sync-state')
-  let links: typeof import('../readwise/links-repository')
-  let secrets: typeof import('../readwise/secrets')
-  let settings: typeof import('../readwise/settings')
-  let imported: typeof import('../import/_shared/imported-note')
+  let engine: typeof SyncServiceModule
+  let domain: typeof DomainModule
+  let notes: typeof NotesModule
+  let state: typeof SyncStateModule
+  let links: typeof LinksRepositoryModule
+  let secrets: typeof SecretsModule
+  let settings: typeof SettingsModule
+  let imported: typeof ImportedNoteModule
   let readwise: ReadwiseStub
   let reader: ReaderStub
 
@@ -248,7 +260,7 @@ describe('Readwise Reader documents', () => {
   })
 
   async function sync() {
-    const events: import('../readwise/sync-service').BookEvent[] = []
+    const events: BookEvent[] = []
     const result = await engine.getReadwiseSyncService().run(TOKEN, {
       signal: new AbortController().signal,
       book: (event) => events.push(event)
@@ -573,7 +585,7 @@ describe('Readwise Reader documents', () => {
       readwiseImporter.preview?.(
         { importId: 'p', importerId: 'readwise', sourcePaths: [] } as never,
         new AbortController().signal
-      ) as Promise<import('../import/types').ImportPreview>
+      ) as Promise<ImportPreview>
 
     const off = await preview()
     expect(off.groups.find((g) => g.label === 'reader')).toBeUndefined()

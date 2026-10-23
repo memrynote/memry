@@ -767,7 +767,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // gone and whose file the journal replay removes.
     void getCrdtProvider()
       .purge(itemId)
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.error('Failed to purge the CRDT doc of a remotely deleted note', { itemId, error: err })
       })
 
@@ -789,7 +789,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // note pointing at it, exactly like the local path (notes/domain
     // deleteNoteCommand) — otherwise the receiving device keeps orphan
     // project_links rows and a dangling projects.home_note_id.
-    void cleanupProjectLinksForDeletedNote(itemId).catch((err) => {
+    void cleanupProjectLinksForDeletedNote(itemId).catch((err: unknown) => {
       log.error('Failed to clean up project links for synced note delete', { itemId, error: err })
     })
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })

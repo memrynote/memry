@@ -9,6 +9,7 @@ import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { TabProvider } from '@/contexts/tabs'
 import { createTestQueryClient } from '@tests/utils/render'
 import { GlobalDayPanel } from './global-day-panel'
+import type * as ReactModule from 'react'
 
 const journalPanelRenderCount = vi.hoisted(() => ({ current: 0 }))
 const mockUseCalendarRange = vi.hoisted(() => vi.fn())
@@ -41,7 +42,7 @@ vi.mock('@/agent-chat/agent-pane', () => ({
 }))
 
 vi.mock('@/components/journal', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
+  const React = await vi.importActual<typeof ReactModule>('react')
 
   return {
     JournalDayPanel: ({

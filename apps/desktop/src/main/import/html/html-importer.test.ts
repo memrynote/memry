@@ -11,6 +11,10 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
+import type * as IndexModule from '../../vault/index'
+import type * as DatabaseModule from '../../database'
+import type * as HtmlImporterModule from './html-importer'
+import type * as ImportContextModule from '../import-context'
 
 vi.mock('electron', () => {
   const send = vi.fn()
@@ -41,10 +45,10 @@ describe('htmlImporter (integration)', () => {
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
 
-  let vaultIndex: typeof import('../../vault/index')
-  let database: typeof import('../../database')
-  let importer: typeof import('./html-importer')
-  let importContext: typeof import('../import-context')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let importer: typeof HtmlImporterModule
+  let importContext: typeof ImportContextModule
 
   beforeEach(async () => {
     tempVault = createTestVault('html-import-test')

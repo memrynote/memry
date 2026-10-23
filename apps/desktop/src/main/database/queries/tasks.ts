@@ -634,7 +634,7 @@ export function getAllTaskTags(db: DataDb): { tag: string; count: number }[] {
     .groupBy(tagFoldOf(taskTags.tag))
     .orderBy(desc(count()))
     .all()
-    .map((row) => ({ tag: row.tag, count: Number(row.count) }))
+    .map((row) => ({ tag: row.tag, count: row.count }))
 }
 
 // ============================================================================

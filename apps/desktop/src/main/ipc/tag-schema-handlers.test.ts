@@ -19,6 +19,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
+import type * as ClientModule from '../database/client'
 
 const state = vi.hoisted(() => ({
   data: null as unknown,
@@ -41,7 +42,7 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   requireDatabase: () => state.data,
   getIndexDatabase: () => state.index

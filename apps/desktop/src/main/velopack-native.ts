@@ -1,4 +1,5 @@
-export type VelopackModule = typeof import('velopack')
+import type * as VelopackModule2 from 'velopack'
+export type VelopackModule = typeof VelopackModule2
 
 /**
  * velopack's loader requires the platform `.node` binary at import time and packaging

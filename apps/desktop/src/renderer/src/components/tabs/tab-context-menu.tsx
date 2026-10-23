@@ -100,6 +100,8 @@ export const TabContextMenu = ({
             })
           )
           break
+        default:
+          break
       }
     },
     [

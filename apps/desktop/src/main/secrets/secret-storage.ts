@@ -236,7 +236,7 @@ export function resetSecretStorageForTests(): void {
 
 function isAppReady(): boolean {
   try {
-    return Boolean(app && typeof app.isReady === 'function' && app.isReady())
+    return app && typeof app.isReady === 'function' && app.isReady()
   } catch {
     return false
   }

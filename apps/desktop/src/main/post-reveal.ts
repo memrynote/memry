@@ -28,7 +28,7 @@ const runTask = (name: string, task: PostRevealTask): void => {
   try {
     const result = task()
     if (result instanceof Promise) {
-      void result.catch((error) => {
+      void result.catch((error: unknown) => {
         postRevealLog.warn(`deferred startup task failed: ${name}`, error)
       })
     }

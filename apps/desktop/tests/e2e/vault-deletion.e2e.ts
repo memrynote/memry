@@ -245,7 +245,7 @@ test.describe('vault deletion', () => {
       (id) =>
         window.api.vault.deleteFromAccount(id).then(
           () => null,
-          (e) => String(e)
+          (e: unknown) => String(e)
         ),
       syncBootstrap.vaultId
     )

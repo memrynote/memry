@@ -23,7 +23,7 @@ export function useSearchTags(enabled: boolean): TagWithCount[] {
       .then(({ tags: all }) => {
         if (!cancelled) setTags(all)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.warn('Failed to load tags for search', err)
       })
     return () => {

@@ -38,7 +38,7 @@ export const AddEventToProjectDialog = ({
       .then((res) => {
         setProjects(res.projects.filter((project) => project.archivedAt == null))
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.error('Failed to list projects', extractErrorMessage(error))
       })
       .finally(() => {

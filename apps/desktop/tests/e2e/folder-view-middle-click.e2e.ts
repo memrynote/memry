@@ -36,7 +36,7 @@ async function seedNotes(page: Page): Promise<void> {
         content: 'Lives in a folder',
         folder
       })
-      return !!tagged?.success && !!inFolder?.success
+      return tagged?.success && inFolder?.success
     },
     { tag: TAG, folder: FOLDER, taggedTitle: TAGGED_TITLE, folderTitle: FOLDER_TITLE }
   )

@@ -257,7 +257,7 @@ export const InboxDetailPanel = ({
           suggestedTags: topSuggestion?.suggestedTags || [],
           actualTags: tags
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           log.error('Failed to track suggestion', error)
         })
     }

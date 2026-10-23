@@ -1,4 +1,5 @@
-type Sodium = typeof import('libsodium-wrappers-sumo').default
+import type LibsodiumWrappersSumo from 'libsodium-wrappers-sumo'
+type Sodium = typeof LibsodiumWrappersSumo
 
 let sodiumPromise: Promise<Sodium> | null = null
 

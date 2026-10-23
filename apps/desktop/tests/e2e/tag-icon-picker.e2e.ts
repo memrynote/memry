@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tag Icon Picker E2E
  *

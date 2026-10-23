@@ -243,7 +243,7 @@ export class NoteBodyOutbox {
         this.deferredFlushes.delete(noteId)
         if (pushed) this.deps.recordPush?.(noteId, fullState ? 'snapshot' : 'confirmed', pushed)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         this.onFlushFailed(noteId, flush.rowIds, err)
       })
       .finally(() => {

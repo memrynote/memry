@@ -292,6 +292,7 @@ describe('medium cold renderer surfaces', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const onSelect = vi.fn()
     const onInputChange = vi.fn()
+    // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
     const inputRef = { current: null as NaturalDateInputRef | null }
 
     parseNaturalDate.mockReturnValueOnce({

@@ -90,6 +90,7 @@ describe('withErrorHandler', () => {
   it('uses fallback message for non-Error throws', async () => {
     // #given
     const handler = withErrorHandler(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw 'string error'
     }, 'Failed to create task')
 
@@ -103,6 +104,7 @@ describe('withErrorHandler', () => {
   it('uses default fallback when none provided', async () => {
     // #given
     const handler = withErrorHandler(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw 42
     })
 
@@ -208,6 +210,7 @@ describe('withDb', () => {
     mockGetDatabase.mockReturnValue(mockDb as never)
 
     const handler = withDb(async () => {
+      // oxlint-disable-next-line typescript/only-throw-error -- the test deliberately throws a non-Error to exercise the handler's fallback
       throw null
     }, 'Failed to update task')
 

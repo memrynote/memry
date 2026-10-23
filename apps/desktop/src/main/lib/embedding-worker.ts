@@ -261,7 +261,7 @@ async function loadEmbeddingPipeline(
     logger.info('Embedding model ready', { vision: withVision, audio: withAudio })
     return embedder
   })()
-    .catch((error) => {
+    .catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error)
       emitProgress('error', 0, `Error: ${message}`, modality)
       logger.error(modality ? `Failed to load ${label}encoder` : 'Failed to load embedding model', {

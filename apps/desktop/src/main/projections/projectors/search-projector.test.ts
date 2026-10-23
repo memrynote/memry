@@ -7,6 +7,8 @@ import { initializeFts, getFtsCount } from '../../database/fts'
 import { initializeFtsTasks } from '../../database/fts-tasks'
 import { initializeFtsInbox, getFtsInboxCount } from '../../database/fts-inbox'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as PromisesModule from 'fs/promises'
+import type * as DatabaseModule from '../../database'
 
 const getDatabase = vi.hoisted(() => vi.fn())
 const getIndexDatabase = vi.hoisted(() => vi.fn())
@@ -16,7 +18,7 @@ const openSpy = vi.hoisted(() => vi.fn())
 const statSpy = vi.hoisted(() => vi.fn())
 
 vi.mock('fs/promises', async () => {
-  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises')
+  const actual = await vi.importActual<typeof PromisesModule>('fs/promises')
   return {
     ...actual,
     default: { ...actual, open: openSpy, stat: statSpy },
@@ -26,7 +28,7 @@ vi.mock('fs/promises', async () => {
 })
 
 vi.mock('../../database', async () => {
-  const actual = await vi.importActual<typeof import('../../database')>('../../database')
+  const actual = await vi.importActual<typeof DatabaseModule>('../../database')
   return {
     ...actual,
     getDatabase,

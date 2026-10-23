@@ -12,7 +12,7 @@ export function resolveSyncServerUrl(override: string | undefined, isProd: boole
 
 export const SYNC_SERVER_URL: string = resolveSyncServerUrl(
   import.meta.env?.VITE_SYNC_SERVER_URL as string | undefined,
-  Boolean(import.meta.env?.PROD)
+  import.meta.env?.PROD
 )
 
 export const WEB_OAUTH_REDIRECT_PATH = '/auth/oauth/callback'

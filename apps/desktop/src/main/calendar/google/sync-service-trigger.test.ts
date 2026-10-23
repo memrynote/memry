@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as SyncServiceModule from './sync-service'
 
 const { mockDbHolder, powerMonitorHolder, syncNowMock } = vi.hoisted(() => ({
   mockDbHolder: { db: null as object | null },
@@ -47,7 +48,7 @@ vi.mock('../../database', () => ({
 }))
 
 vi.mock('./sync-service', async () => {
-  const actual = await vi.importActual<typeof import('./sync-service')>('./sync-service')
+  const actual = await vi.importActual<typeof SyncServiceModule>('./sync-service')
   return {
     ...actual,
     syncGoogleCalendarNow: syncNowMock

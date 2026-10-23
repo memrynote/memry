@@ -20,7 +20,7 @@ async function realProjection(markdown: string): Promise<string> {
   const blocks: any[] = []
   for (const seg of splitMarkdownPreservingBlanks(markdown)) {
     if (seg.type === 'content') {
-      blocks.push(...(await editor.tryParseMarkdownToBlocks(seg.text)))
+      blocks.push(...editor.tryParseMarkdownToBlocks(seg.text))
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
         blocks.push({ type: 'paragraph', content: [], children: [], props: {} })

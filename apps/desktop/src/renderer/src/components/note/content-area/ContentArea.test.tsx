@@ -6,6 +6,7 @@ import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
+import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
@@ -88,7 +89,7 @@ const contentAreaMocks = vi.hoisted(() => ({
 // only the routing matters, so it stands in as a probe for which kind was asked
 // for. Rendering the real one would reach `listVaultAttachments` over IPC.
 vi.mock('./attachment-picker-dialog', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./attachment-picker-dialog')>()),
+  ...(await importOriginal<typeof AttachmentPickerDialogModule>()),
   AttachmentPickerDialog: ({ kind }: { kind: string }) => (
     <div data-testid="attachment-picker-dialog" data-kind={kind} />
   )

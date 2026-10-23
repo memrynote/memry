@@ -561,14 +561,14 @@ export function createDesktopInboxDomain() {
     }),
     ...createInboxQueries({
       getItem: getInboxItem,
-      list: async (input = {}) => queryHandlers.handleList(input),
+      list: async (input) => queryHandlers.handleList(input),
       getJobs: async (input) => queryHandlers.handleGetJobs(input),
       getTags: async () => queryHandlers.handleGetTags(),
       getStats: async () => queryHandlers.handleGetStats(),
       getStaleThreshold: async () => queryHandlers.handleGetStaleThreshold(),
       setStaleThreshold: async (days) => queryHandlers.handleSetStaleThreshold(days),
-      listArchived: async (input = {}) => queryHandlers.handleListArchived(input),
-      getFilingHistory: async (input = {}) => queryHandlers.handleGetFilingHistory(input),
+      listArchived: async (input) => queryHandlers.handleListArchived(input),
+      getFilingHistory: async (input) => queryHandlers.handleGetFilingHistory(input),
       getPatterns: async () => queryHandlers.handleGetPatterns()
     })
   }

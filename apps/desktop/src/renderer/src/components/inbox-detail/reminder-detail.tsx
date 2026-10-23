@@ -99,7 +99,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   const handleNavigateToSource = useCallback(() => {
     if (!metadata) return
 
-    inboxService.markViewed(item.id).catch((err) => {
+    inboxService.markViewed(item.id).catch((err: unknown) => {
       log.warn('Failed to mark reminder viewed', err)
     })
 

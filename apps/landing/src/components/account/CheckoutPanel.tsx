@@ -123,12 +123,14 @@ export function CheckoutPanel({
     completedRef.current = false
     try {
       await openPaddleCheckout(plan, effectiveCadence, token, (event) => {
-        if (event.name === 'checkout.completed') {
+        // Paddle types event names as a string enum; importing it would pull @paddle/paddle-js out of its lazy chunk.
+        const eventName: string = event.name
+        if (eventName === 'checkout.completed') {
           completedRef.current = true
           setStatus('success')
-        } else if (event.name === 'checkout.closed' && !completedRef.current) {
+        } else if (eventName === 'checkout.closed' && !completedRef.current) {
           setStatus('canceled')
-        } else if (event.name === 'checkout.payment.failed') {
+        } else if (eventName === 'checkout.payment.failed') {
           setStatus('failed')
         }
       })

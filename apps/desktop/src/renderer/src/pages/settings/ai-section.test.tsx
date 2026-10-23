@@ -35,6 +35,7 @@ type EmbeddingProgressEvent = {
   status?: string
 }
 
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
 type SettingsApi = ReturnType<typeof createMockApi> & {
   onEmbeddingProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
   onVoiceModelProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void

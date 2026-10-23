@@ -451,9 +451,8 @@ const writeSnapshots = async (
           entry.snapshotData.byteLength - (previous?.size_bytes ?? 0) - entry.reservedBytes
         if (slot.sum !== undefined && slot.prune !== undefined) {
           const pruned = at(slot.prune).meta.changes ?? 0
-          const bytes = Number(
+          const bytes =
             ((at(slot.sum).results ?? []) as Array<{ total_bytes: number }>)[0]?.total_bytes ?? 0
-          )
           if (pruned > 0) storageDelta -= bytes
         }
         results[entry.index] = {

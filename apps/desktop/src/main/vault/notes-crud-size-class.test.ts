@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { MarkdownSizeClass, LargeFileReason } from '@memry/shared/markdown-class'
 import type { NoteSizeClass, NoteLargeFileReason } from '@memry/contracts/notes-api'
+import type * as PathsModule from '../lib/paths'
 
 const mocks = vi.hoisted(() => ({
   getNoteCacheById: vi.fn(),
@@ -41,7 +42,7 @@ vi.mock('./notes-io', () => ({
 }))
 
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   openVaultFile: async (_vault: string, relative: string) => ({
     stat: () => mocks.stat(`/vault/${relative}`),
     readFile: () => mocks.safeRead(`/vault/${relative}`),
@@ -155,6 +156,7 @@ describe('getNoteById size classification', () => {
  * runtime surprise at the IPC boundary.
  */
 type Equal<A, B> =
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
   (<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2 ? true : false
 // These only compile while the two declarations agree: if either union drifts,
 // `Equal` resolves to `false` and the initializer stops typechecking.

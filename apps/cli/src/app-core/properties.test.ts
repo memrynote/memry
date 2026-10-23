@@ -95,7 +95,7 @@ test('a write that fails partway leaves the old properties.md intact', async (t)
   // Simulate a crash mid-write: half the bytes reach the file, then the write fails.
   const realWriteFile = fs.writeFile
   t.mock.method(fs, 'writeFile', async (file: string, data: string) => {
-    await realWriteFile(file, String(data).slice(0, Math.floor(String(data).length / 2)))
+    await realWriteFile(file, data.slice(0, Math.floor(data.length / 2)))
     throw new Error('simulated crash')
   })
   try {

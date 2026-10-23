@@ -69,7 +69,7 @@ export function agentConversationRowToModel(
     backend: row.backend as AgentBackendId,
     backendModel: row.backendModel ?? null,
     trustList: parseJsonColumn(row.trustList, []),
-    pinned: Boolean(row.pinned),
+    pinned: row.pinned,
     vectorClock: parseJsonColumn(row.vectorClock, {}),
     fieldClocks: parseJsonColumn(row.fieldClocks, {}),
     createdAt: row.createdAt,

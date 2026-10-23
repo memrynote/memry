@@ -28,6 +28,7 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import type * as EngineModule from './engine'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -292,7 +293,7 @@ vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager 
  * `crdtProvider.open` a real observation of the dangerous call.
  */
 vi.mock('./engine', async () => {
-  const actual = await vi.importActual<typeof import('./engine')>('./engine')
+  const actual = await vi.importActual<typeof EngineModule>('./engine')
   class TestSyncEngine extends actual.SyncEngine {
     async start(): Promise<void> {
       /* intentional no-op */

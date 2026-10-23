@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * Spatial canvas M6 — in-place live editing. Double-click promotes ONE card to
  * active; click-away/Escape returns to idle. ↗ redirect stays distinct from

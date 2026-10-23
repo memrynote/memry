@@ -146,7 +146,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
         .then(() => {
           hub.refresh()
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           log.error('Failed to set note icon', extractErrorMessage(error))
         })
     },

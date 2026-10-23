@@ -267,7 +267,7 @@ async function main(): Promise<void> {
   console.log('Open memrynote → Switch Vault → choose this path to view.')
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error)
   process.exit(1)
 })

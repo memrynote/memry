@@ -13,6 +13,7 @@ import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { EmptyAttachmentError } from './attachment-errors'
+import type * as PromisesModule from 'node:fs/promises'
 
 let tmpDir: string
 
@@ -27,7 +28,7 @@ const fsMockState = vi.hoisted(() => ({
 }))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   return {
     ...actual,
     open: (async (...args: Parameters<typeof actual.open>) => {

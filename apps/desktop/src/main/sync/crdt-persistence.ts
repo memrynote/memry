@@ -458,7 +458,7 @@ async function probePersistence(persistence: CrdtPersistence): Promise<void> {
         () => {
           settle(resolve)
         },
-        (err) => {
+        (err: unknown) => {
           settle(() => reject(err instanceof Error ? err : new Error(String(err))))
         }
       )

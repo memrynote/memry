@@ -406,6 +406,7 @@ describe('useImportRun', () => {
   })
 
   it('falls back to the localized import error when the rejection is not an Error', async () => {
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
     installApi({ start: async () => Promise.reject('channel closed') })
     const { result } = renderHook(() => useImportRun())
 
@@ -631,6 +632,7 @@ describe('useImportRun', () => {
     })
     expect(result.current.error).toBe('ENOENT: wrong.zip')
 
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
     installApi({ preview: async () => Promise.reject('nope') })
     rerender()
     await act(async () => {

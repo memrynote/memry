@@ -22,7 +22,7 @@ type QueuedValue<T> = T | Error
 
 function createDbMock() {
   const allQueue: Array<QueuedValue<unknown[]>> = []
-  const getQueue: Array<QueuedValue<unknown | undefined>> = []
+  const getQueue: Array<QueuedValue<unknown>> = []
   return {
     allQueue,
     getQueue,

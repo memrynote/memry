@@ -288,6 +288,12 @@ export default defineConfig({
       rules: disable('unicorn/require-post-message-target-origin')
     },
     {
+      // Node build and packaging scripts are CommonJS (electron-builder hooks, bootstrap before
+      // dependencies exist), so `require` is the module system there, not a legacy import.
+      files: ['**/*.cjs', 'scripts/**/*.js', 'apps/desktop/scripts/**/*.js'],
+      rules: disable('typescript/no-require-imports')
+    },
+    {
       files: [`${RENDERER}/**/*.tsx`],
       rules: enableAll('i18n/no-jsx-text-literals', 'i18n/no-string-attribute-literals')
     },

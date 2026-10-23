@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow canvas-folder-rename.e2e.ts convention
 /**
  * Renaming a NOTES folder (Collections section) from the row's context menu.
  *
@@ -44,7 +43,7 @@ async function instrumentFocus(page: Page): Promise<void> {
       el
         ? `${el.tagName}${el.getAttribute('aria-label') ? `[${el.getAttribute('aria-label')}]` : ''}${
             el.getAttribute('data-tree-node-id') ? `{${el.getAttribute('data-tree-node-id')}}` : ''
-          }.${(el.className || '').toString().slice(0, 50)}`
+          }.${(el.getAttribute('class') ?? '').slice(0, 50)}`
         : 'null'
     const origFocus = HTMLElement.prototype.focus
     HTMLElement.prototype.focus = function (...args) {

@@ -1032,7 +1032,7 @@ export function registerNotesHandlers(): void {
         })
       } finally {
         if (!win.isDestroyed()) win.destroy()
-        await fs.rm(stagedHtmlPath, { force: true }).catch((error) => {
+        await fs.rm(stagedHtmlPath, { force: true }).catch((error: unknown) => {
           logger.warn('Failed to remove the staged export HTML', { stagedHtmlPath, error })
         })
       }

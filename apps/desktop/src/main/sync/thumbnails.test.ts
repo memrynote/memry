@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { generateThumbnail as ThumbnailsgenerateThumbnail } from './thumbnails'
 
 const mockGenerateThumbnailInImageProcess = vi.hoisted(() => vi.fn())
 
@@ -21,7 +22,7 @@ vi.mock('../lib/logger', () => ({
 }))
 
 describe('thumbnails', () => {
-  let generateThumbnail: typeof import('./thumbnails').generateThumbnail
+  let generateThumbnail: typeof ThumbnailsgenerateThumbnail
 
   beforeEach(async () => {
     vi.resetModules()

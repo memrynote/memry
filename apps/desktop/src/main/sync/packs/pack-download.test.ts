@@ -64,7 +64,7 @@ describe('downloadPackToFile', () => {
       fetchFn: fetchFn as unknown as typeof globalThis.fetch,
       maxAttempts: 1,
       sleep: async () => {}
-    }).catch((err: Error) => err)
+    }).catch((err: unknown) => err)
 
     expect(failure).toBeInstanceOf(Error)
     expect((failure as Error).message).not.toContain('deadbeefsecret')

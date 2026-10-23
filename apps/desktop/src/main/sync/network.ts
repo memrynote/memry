@@ -1,4 +1,5 @@
 import { SyncEventEmitter } from '@memry/sync-client/emitter'
+import type * as ElectronModule from 'electron'
 
 export interface NetworkMonitorDeps {
   getIsOnline: () => boolean
@@ -10,7 +11,7 @@ export interface NetworkMonitorDeps {
 
 function createElectronDeps(): NetworkMonitorDeps {
   // oxlint-disable-next-line typescript/no-require-imports -- lazy import avoids Electron in tests
-  const electron = require('electron') as typeof import('electron')
+  const electron = require('electron') as typeof ElectronModule
   return {
     getIsOnline: () => electron.net.online,
     onResume: (cb) => electron.powerMonitor.on('resume', cb),

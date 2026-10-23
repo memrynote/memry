@@ -273,7 +273,7 @@ function scheduleDeferredStart(): void {
   const delay = keyMaterialActivityRemainingMs() + DEFERRED_START_GRACE_MS
   deferredStartTimer = setTimeout(() => {
     deferredStartTimer = null
-    void startSyncRuntime().catch((err) => {
+    void startSyncRuntime().catch((err: unknown) => {
       log.warn('Deferred sync runtime start failed', {
         error: err instanceof Error ? err.message : String(err)
       })
@@ -895,7 +895,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         workerBridge,
         refreshAccessToken: () => refreshAccessToken(),
         calendarSyncOneSource: (sourceId) => {
-          void syncGoogleCalendarSource(db, sourceId).catch((err) => {
+          void syncGoogleCalendarSource(db, sourceId).catch((err: unknown) => {
             log.warn('calendarSyncOneSource failed', { sourceId, err })
           })
         },
@@ -927,7 +927,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           )
           void import('./session-teardown')
             .then(({ teardownSession }) => teardownSession('integrity'))
-            .catch((err) => {
+            .catch((err: unknown) => {
               log.error('Key-mismatch sign-out failed', err)
             })
         }
@@ -1036,9 +1036,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       trackMainEvent('sync_enabled', { surface: 'sync', action: 'enabled', result: 'success' })
 
-      seedPromise = seedExistingCrdtDocs(crdtProvider, runtimeAbort.signal).catch((err) => {
-        log.warn('Post-engine CRDT seed failed (non-fatal)', err)
-      })
+      seedPromise = seedExistingCrdtDocs(crdtProvider, runtimeAbort.signal).catch(
+        (err: unknown) => {
+          log.warn('Post-engine CRDT seed failed (non-fatal)', err)
+        }
+      )
 
       return engine
     } catch (error) {
@@ -1061,7 +1063,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       runtimeAbortController = null
       await getCrdtProvider()
         .destroy()
-        .catch((err) => {
+        .catch((err: unknown) => {
           log.error('Failed to destroy CrdtProvider after startup failure', err)
         })
       resetCrdtProvider()
@@ -1152,7 +1154,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   if (!active) {
     await getCrdtProvider()
       .destroy()
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.error('Failed to destroy CrdtProvider while runtime inactive', err)
       })
     resetCrdtProvider()
@@ -1166,12 +1168,12 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   }
 
   active.noteBodyOutbox.stop()
-  await active.workerBridge.stop().catch((err) => {
+  await active.workerBridge.stop().catch((err: unknown) => {
     log.error('Failed to stop sync worker', err)
   })
   await getCrdtProvider()
     .destroy()
-    .catch((err) => {
+    .catch((err: unknown) => {
       log.error('Failed to destroy CrdtProvider', err)
     })
   resetCrdtProvider()

@@ -18,6 +18,7 @@ import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as LocalMutationsModule from '../local-mutations'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-links-'))
 
@@ -70,7 +71,7 @@ vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn()
 // into the local sync adapter call recorded here.
 const mockLocalMutation = vi.fn()
 vi.mock('../local-mutations', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../local-mutations')>()),
+  ...(await importOriginal<typeof LocalMutationsModule>()),
   callLocalMutation: (...args: unknown[]) => mockLocalMutation(...args)
 }))
 

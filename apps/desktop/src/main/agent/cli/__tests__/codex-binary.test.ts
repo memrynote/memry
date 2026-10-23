@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as BinaryDetectionModule from '../binary-detection'
 
 const mocks = vi.hoisted(() => ({
   locateBinary: vi.fn<(name: string) => Promise<string | null>>(),
@@ -8,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 
 // Real `cacheBinaryDetection` — the caching contract is part of what is tested.
 vi.mock('../binary-detection', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../binary-detection')>()
+  const actual = await importOriginal<typeof BinaryDetectionModule>()
   return { ...actual, locateBinary: mocks.locateBinary, runBinaryCommand: mocks.runBinaryCommand }
 })
 

@@ -40,7 +40,7 @@ export function NoteSyncLine({ noteId }: { noteId: string }): React.JSX.Element 
         .then((syncState) => {
           if (!cancelled) setState(syncState)
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           log.warn('Could not read the note sync state', err)
         })
     }

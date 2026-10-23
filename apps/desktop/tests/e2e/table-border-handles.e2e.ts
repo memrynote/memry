@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * The table handles have to sit ON the cell border lines, not beside them.
  *
@@ -492,7 +491,7 @@ test.describe('Table border handles', () => {
       return {
         insideWrapper: Boolean(menu.closest('.tableWrapper')),
         hitIsMenu: Boolean(hit) && (hit === menu || menu.contains(hit as Node)),
-        hitDescription: hit ? `${hit.tagName}.${String(hit.className || '(no class)')}` : 'nothing',
+        hitDescription: hit ? `${hit.tagName}.${hit.className || '(no class)'}` : 'nothing',
         hitCursor: hit ? getComputedStyle(hit).cursor : 'none',
         menuBox,
         tableBox: rect(table),

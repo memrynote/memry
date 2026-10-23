@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E test; window.api typing lives in the renderer bundle
 /**
  * A template is a snapshot, so it must never carry a task's identity (#2331).
  *

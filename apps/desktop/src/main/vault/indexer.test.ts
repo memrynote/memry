@@ -28,6 +28,10 @@ import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-ca
 import { getNoteProperties } from '../database/queries/notes/property-queries'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
+import type * as PromisesModule from 'fs/promises'
+import type * as DatabaseModule from '../database'
+import type * as IndexerModule from './indexer'
+import type * as IndexModule from './index'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -65,7 +69,7 @@ const { unreadablePaths, loggerMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   return {
     ...actual,
     readFile: vi.fn((filePath: Parameters<typeof actual.readFile>[0], ...rest: unknown[]) => {
@@ -96,9 +100,9 @@ describe('indexer', () => {
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
-  let database: typeof import('../database')
-  let indexer: typeof import('./indexer')
-  let vaultIndex: typeof import('./index')
+  let database: typeof DatabaseModule
+  let indexer: typeof IndexerModule
+  let vaultIndex: typeof IndexModule
 
   beforeEach(async () => {
     // Clear progress tracking

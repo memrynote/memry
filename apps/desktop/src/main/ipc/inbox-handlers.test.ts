@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
+import type * as DomainModule from '../inbox/domain'
 
 // Track mock calls
 const handleCalls: unknown[][] = []
@@ -115,7 +116,7 @@ vi.mock('../inbox/runtime-effects', () => ({
 }))
 
 vi.mock('../inbox/domain', async () => {
-  const actual = await vi.importActual<typeof import('../inbox/domain')>('../inbox/domain')
+  const actual = await vi.importActual<typeof DomainModule>('../inbox/domain')
 
   return {
     ...actual,

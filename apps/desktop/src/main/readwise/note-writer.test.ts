@@ -35,6 +35,14 @@ import {
   flushProjectionEvents
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
+import type * as RuntimeEffectsModule from '../notes/runtime-effects'
+import type * as DomainModule from '../notes/domain'
+import type * as NoteWriterModule from './note-writer'
+import type * as NotesModule from '../vault/notes'
+import type * as LinksRepositoryModule from './links-repository'
+import type * as SyncStateModule from './sync-state'
+import type * as CrdtProviderModule from '../sync/crdt-provider'
+import type * as BlocknoteConverterModule from '../sync/blocknote-converter'
 
 vi.mock('electron', () => {
   const send = vi.fn()
@@ -48,7 +56,7 @@ vi.mock('electron', () => {
 })
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn(() => Promise.resolve()) }))
 vi.mock('../notes/runtime-effects', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../notes/runtime-effects')>()),
+  ...(await importOriginal<typeof RuntimeEffectsModule>()),
   syncNoteCreate: vi.fn(),
   syncNoteUpdate: vi.fn(),
   queueEmbeddedVaultFiles: vi.fn(),
@@ -56,7 +64,7 @@ vi.mock('../notes/runtime-effects', async (importOriginal) => ({
 }))
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => true) }))
 vi.mock('../notes/domain', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../notes/domain')>()
+  const actual = await importOriginal<typeof DomainModule>()
   return { ...actual, updateNoteCommand: vi.fn(actual.updateNoteCommand) }
 })
 
@@ -73,13 +81,13 @@ describe('upsertReadwiseNote', () => {
   let vault: TestVaultResult
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
-  let writer: typeof import('./note-writer')
-  let domain: typeof import('../notes/domain')
-  let notes: typeof import('../vault/notes')
-  let links: typeof import('./links-repository')
-  let state: typeof import('./sync-state')
-  let crdtProvider: typeof import('../sync/crdt-provider')
-  let converter: typeof import('../sync/blocknote-converter')
+  let writer: typeof NoteWriterModule
+  let domain: typeof DomainModule
+  let notes: typeof NotesModule
+  let links: typeof LinksRepositoryModule
+  let state: typeof SyncStateModule
+  let crdtProvider: typeof CrdtProviderModule
+  let converter: typeof BlocknoteConverterModule
   let fetchCalls: string[]
   let failingUrls: Set<string>
 

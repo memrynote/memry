@@ -664,7 +664,7 @@ describe('secret-storage', () => {
 
       const outcome = getSecret(SERVICE, ACCOUNT).then(
         () => 'resolved',
-        (err: Error) => err.name
+        (err) => err.name
       )
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
 
@@ -674,7 +674,7 @@ describe('secret-storage', () => {
     it('stops asking the OS keychain for the rest of the run once a read has timed out', async () => {
       vi.useFakeTimers()
       harness.keytarGet.mockImplementation(hangForever)
-      const first = getSecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      const first = getSecret(SERVICE, ACCOUNT).catch((err) => err.name)
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
       await expect(first).resolves.toBe('KeychainUnavailableError')
 
@@ -696,7 +696,7 @@ describe('secret-storage', () => {
       const recovered = vi.fn()
       onKeychainRecovered(recovered)
 
-      const first = getSecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      const first = getSecret(SERVICE, ACCOUNT).catch((err) => err.name)
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
       await expect(first).resolves.toBe('KeychainUnavailableError')
       await expect(getSecret(SERVICE, 'other-account')).rejects.toThrow(
@@ -725,7 +725,7 @@ describe('secret-storage', () => {
           })
       )
 
-      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err) => err.name)
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
       await expect(first).resolves.toBe('KeychainUnavailableError')
 
@@ -739,7 +739,7 @@ describe('secret-storage', () => {
     it('reports a latched keychain as absent only for callers that opted in', async () => {
       vi.useFakeTimers()
       harness.keytarGet.mockImplementation(hangForever)
-      const first = getSecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      const first = getSecret(SERVICE, ACCOUNT).catch((err) => err.name)
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
       await expect(first).resolves.toBe('KeychainUnavailableError')
 
@@ -828,8 +828,8 @@ describe('secret-storage', () => {
       vi.useFakeTimers()
       harness.keytarGet.mockImplementation(hangForever)
 
-      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
-      const queued = readLegacySecret(SERVICE, 'other-account').catch((err: Error) => err.name)
+      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err) => err.name)
+      const queued = readLegacySecret(SERVICE, 'other-account').catch((err) => err.name)
 
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
 
@@ -841,7 +841,7 @@ describe('secret-storage', () => {
     it('refuses writes and deletes once the keychain has latched', async () => {
       vi.useFakeTimers()
       harness.keytarGet.mockImplementation(hangForever)
-      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err: Error) => err.name)
+      const first = readLegacySecret(SERVICE, ACCOUNT).catch((err) => err.name)
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
       await expect(first).resolves.toBe('KeychainUnavailableError')
 
@@ -856,7 +856,7 @@ describe('secret-storage', () => {
 
       vi.useFakeTimers()
       harness.keytarGet.mockImplementation(hangForever)
-      const first = readLegacySecret(SERVICE, 'probe').catch((err: Error) => err.name)
+      const first = readLegacySecret(SERVICE, 'probe').catch((err) => err.name)
       await vi.advanceTimersByTimeAsync(KEYCHAIN_READ_TIMEOUT_MS)
       await expect(first).resolves.toBe('KeychainUnavailableError')
 

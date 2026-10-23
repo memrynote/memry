@@ -25,6 +25,9 @@ import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
+import type * as IndexModule from './index'
+import type * as DatabaseModule from '../database'
+import type * as NotesModule from './notes'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -74,9 +77,9 @@ describe('notes operations', () => {
   let testDb: TestDatabaseResult
 
   // Import modules after mocks are set up
-  let vaultIndex: typeof import('./index')
-  let database: typeof import('../database')
-  let notes: typeof import('./notes')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let notes: typeof NotesModule
   let flushProjectionEventsSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(async () => {
@@ -1646,7 +1649,7 @@ describe('notes operations', () => {
     })
 
     it('T367: returns notes with pagination', async () => {
-      const result = await notes.listNotes({ limit: 2 })
+      const result = notes.listNotes({ limit: 2 })
 
       expect(result.notes.length).toBe(2)
       expect(result.total).toBe(3)
@@ -1654,8 +1657,8 @@ describe('notes operations', () => {
     })
 
     it('T367: supports offset for pagination', async () => {
-      const page1 = await notes.listNotes({ limit: 2, offset: 0 })
-      const page2 = await notes.listNotes({ limit: 2, offset: 2 })
+      const page1 = notes.listNotes({ limit: 2, offset: 0 })
+      const page2 = notes.listNotes({ limit: 2, offset: 2 })
 
       expect(page1.notes.length).toBe(2)
       expect(page2.notes.length).toBe(1)
@@ -1664,21 +1667,21 @@ describe('notes operations', () => {
 
     it('T367: filters by folder', async () => {
       // Folder filter uses path prefix, so we need the full relative path
-      const result = await notes.listNotes({ folder: 'subfolder' })
+      const result = notes.listNotes({ folder: 'subfolder' })
 
       expect(result.notes.length).toBe(1)
       expect(result.notes[0].title).toBe('Note C')
     })
 
     it('T367: filters by tags', async () => {
-      const result = await notes.listNotes({ tags: ['alpha'] })
+      const result = notes.listNotes({ tags: ['alpha'] })
 
       expect(result.notes.length).toBe(2)
       expect(result.notes.every((n) => n.tags.includes('alpha'))).toBe(true)
     })
 
     it('T367: sorts by modified descending (default)', async () => {
-      const result = await notes.listNotes({})
+      const result = notes.listNotes({})
 
       // Most recently created should be first
       expect(result.notes[0].title).toBe('Note C')
@@ -1689,8 +1692,8 @@ describe('notes operations', () => {
     // ------------------------------------------------------------------
 
     it('#445: omitting fields keeps the full row byte-identical (back-compat)', async () => {
-      const legacy = await notes.listNotes({})
-      const explicitFull = await notes.listNotes({ fields: 'full' })
+      const legacy = notes.listNotes({})
+      const explicitFull = notes.listNotes({ fields: 'full' })
 
       expect(explicitFull).toEqual(legacy)
       expect(legacy.notes.every((n) => typeof n.snippet === 'string')).toBe(true)
@@ -1698,8 +1701,8 @@ describe('notes operations', () => {
     })
 
     it("#445: fields: 'tree' drops snippet and file metadata but keeps every field the sidebar renders", async () => {
-      const full = await notes.listNotes({})
-      const tree = await notes.listNotes({ fields: 'tree' })
+      const full = notes.listNotes({})
+      const tree = notes.listNotes({ fields: 'tree' })
 
       expect(tree.notes).toHaveLength(full.notes.length)
       expect(tree.total).toBe(full.total)
@@ -1749,13 +1752,11 @@ describe('notes operations', () => {
         })
       }
 
-      const fullBytes = JSON.stringify(await notes.listNotes({ limit: 10000 })).length
-      const treeBytes = JSON.stringify(
-        await notes.listNotes({ limit: 10000, fields: 'tree' })
-      ).length
+      const fullBytes = JSON.stringify(notes.listNotes({ limit: 10000 })).length
+      const treeBytes = JSON.stringify(notes.listNotes({ limit: 10000, fields: 'tree' })).length
 
       // Same rows either way — this is a payload cut, not a row cut.
-      expect((await notes.listNotes({ limit: 10000, fields: 'tree' })).notes).toHaveLength(503)
+      expect(notes.listNotes({ limit: 10000, fields: 'tree' }).notes).toHaveLength(503)
       expect(treeBytes).toBeLessThan(fullBytes * 0.5)
     })
   })
@@ -2158,7 +2159,7 @@ describe('notes operations', () => {
         content: 'Content.'
       })
 
-      const exists = await notes.noteExists(created.path)
+      const exists = notes.noteExists(created.path)
       expect(exists).toBe(true)
     })
 
@@ -2168,12 +2169,12 @@ describe('notes operations', () => {
         content: 'Content.'
       })
 
-      const exists = await notes.noteExists('Title Exists')
+      const exists = notes.noteExists('Title Exists')
       expect(exists).toBe(true)
     })
 
     it('T371: returns false for non-existent', async () => {
-      const exists = await notes.noteExists('Does Not Exist')
+      const exists = notes.noteExists('Does Not Exist')
       expect(exists).toBe(false)
     })
   })

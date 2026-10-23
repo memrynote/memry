@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import React from 'react'
+import type * as UseVaultModule from '@/hooks/use-vault'
 
 const mocks = vi.hoisted(() => ({
   status: { path: '/vaults/Active' } as { path: string } | null,
@@ -72,7 +73,7 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 vi.mock('@/hooks/use-vault', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-vault')>()),
+  ...(await importOriginal<typeof UseVaultModule>()),
   useVault: () => ({
     status: mocks.status,
     isLoading: false,

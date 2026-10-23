@@ -4,6 +4,7 @@ import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue
 import { setupTestDb, type TestDatabaseResult } from '@tests/utils/engine-mocks'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
+import type * as HttpClientModule from '../http-client'
 
 const { encryptPushBatchMock, postToServerMock, getHandlerMock, getRemoteSyncAdapterMock } =
   vi.hoisted(() => ({
@@ -32,7 +33,7 @@ vi.mock('../item-handlers', () => ({
 // Keep the real SyncServerError / RateLimitError classes: withRetry, withAuthRetry
 // and classifyError all branch on `instanceof` and on statusCode.
 vi.mock('../http-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../http-client')>()
+  const actual = await importOriginal<typeof HttpClientModule>()
   return { ...actual, postToServer: postToServerMock }
 })
 

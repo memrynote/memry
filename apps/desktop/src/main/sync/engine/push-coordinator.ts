@@ -33,6 +33,7 @@ import {
   PUSH_DEBOUNCE_MS,
   yieldToEventLoop
 } from './sync-context'
+import type { syncQueue } from '@memry/db-schema/schema/sync-queue'
 
 const log = createLogger('PushCoordinator')
 
@@ -711,9 +712,7 @@ export class PushCoordinator {
    * Keeping the newest row also keeps the row that live mutations coalesce
    * into (`attempts = 0`), so the payload-conditional ack still guards it.
    */
-  private deduplicateByItemId(
-    items: Array<typeof import('@memry/db-schema/schema/sync-queue').syncQueue.$inferSelect>
-  ): typeof items {
+  private deduplicateByItemId(items: Array<typeof syncQueue.$inferSelect>): typeof items {
     const seen = new Map<string, (typeof items)[0]>()
     const superseded: Array<{ id: string; payload: string }> = []
 

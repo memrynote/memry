@@ -3,13 +3,14 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { toUpdatePresentation } from '@/components/updater/update-presentation'
 import { buildUpdatePreset, type UpdatePresetName } from './use-app-updater'
+import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 
 // The renderer test project runs in jsdom, where `import.meta.url` is an http URL,
 // so the source is located from the package root instead.
 const SOURCE_PATH = resolve(process.cwd(), 'src/renderer/src/hooks/use-app-updater.ts')
 const SOURCE = readFileSync(SOURCE_PATH, 'utf8')
 
-function fullState(override: Partial<import('@memry/contracts/ipc-updater').AppUpdateState>) {
+function fullState(override: Partial<AppUpdateState>) {
   return {
     currentVersion: '2026.700.1',
     status: 'idle' as const,

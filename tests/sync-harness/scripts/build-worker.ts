@@ -40,7 +40,7 @@ if (process.argv[1] && process.argv[1].includes('build-worker')) {
     .then((out) => {
       console.log(`Worker bundled: ${out}`)
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       console.error('Build failed:', err)
       process.exit(1)
     })

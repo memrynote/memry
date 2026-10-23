@@ -37,7 +37,7 @@ async function seedNoteWithTag(page: Page, tag: string): Promise<void> {
       content: `Note body with #${tagName}`,
       tags: [tagName]
     })
-    return !!res?.success
+    return res?.success
   }, tag)
   expect(created).toBeTruthy()
 }

@@ -10,7 +10,7 @@ import type { CalendarProjectionItem } from '@/services/calendar-service'
  * external events never get here.
  */
 export function isEventDateMovable(item: CalendarProjectionItem): boolean {
-  return item.sourceType === 'event' && Boolean(item.editability?.canMove)
+  return item.sourceType === 'event' && item.editability?.canMove
 }
 
 function shiftLocalDays(iso: string, days: number): string {

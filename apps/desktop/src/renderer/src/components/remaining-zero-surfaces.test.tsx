@@ -23,6 +23,7 @@ import {
 } from './ui/breadcrumb'
 import { InputGroup, InputGroupAddon, InputGroupInput } from './ui/input-group'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import type * as TaskUtilsModule from '@/lib/task-utils'
 
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
@@ -84,7 +85,7 @@ vi.mock('@/lib/quick-add-parser', () => ({
 }))
 
 vi.mock('@/lib/task-utils', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/task-utils')>('@/lib/task-utils')
+  const actual = await vi.importActual<typeof TaskUtilsModule>('@/lib/task-utils')
   return {
     ...actual,
     formatDateKey: (date: Date) => date.toISOString().slice(0, 10)

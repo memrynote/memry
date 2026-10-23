@@ -278,7 +278,7 @@ describe('image-processing bridge', () => {
       generateThumbnailInImageProcess(`/tmp/timeout-${index}.jpg`, 'image/jpeg')
         .then(
           () => 'resolved',
-          (error: Error) => error.message
+          (error) => error.message
         )
         .then((outcome) => {
           outcomes.push(outcome)
@@ -315,7 +315,7 @@ describe('image-processing bridge', () => {
     const promises = Array.from({ length: 261 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/flood-${index}.jpg`, 'image/jpeg').then(
         () => 'resolved',
-        (error: Error) => error.message
+        (error) => error.message
       )
     )
 
@@ -336,7 +336,7 @@ describe('image-processing bridge', () => {
     const promises = Array.from({ length: 10 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/stop-${index}.jpg`, 'image/jpeg').then(
         () => 'resolved',
-        (error: Error) => error.message
+        (error) => error.message
       )
     )
 
@@ -356,7 +356,7 @@ describe('image-processing bridge', () => {
     const afterStop = Array.from({ length: 4 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/after-stop-${index}.jpg`, 'image/jpeg').then(
         () => 'resolved',
-        (error: Error) => error.message
+        (error) => error.message
       )
     )
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })

@@ -4,6 +4,9 @@ import os from 'os'
 import * as path from 'path'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import { makeCtx, makeNotePayload } from '@tests/utils/fixtures/sync-item-handlers'
+import type * as FrontmatterModule from '../../vault/frontmatter'
+import type * as BulkApplyModule from '../bulk-apply'
+import type * as FileOpsModule from '../../vault/file-ops'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-handler-'))
 
@@ -18,7 +21,7 @@ vi.mock('../../vault/notes', () => ({
 }))
 
 vi.mock('../../vault/frontmatter', async (importOriginal) => ({
-  mergeTagLists: (await importOriginal<typeof import('../../vault/frontmatter')>()).mergeTagLists,
+  mergeTagLists: (await importOriginal<typeof FrontmatterModule>()).mergeTagLists,
   parseNote: vi.fn(() => ({
     frontmatter: { id: 'note-1', title: 'a1', tags: ['local'] },
     content: 'old content'
@@ -109,7 +112,7 @@ vi.mock('../crdt-writeback', () => ({
 const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
 const mockDeleteSyncedVaultFile = vi.fn()
 vi.mock('../bulk-apply', async () => {
-  const actual = await vi.importActual<typeof import('../bulk-apply')>('../bulk-apply')
+  const actual = await vi.importActual<typeof BulkApplyModule>('../bulk-apply')
   return {
     ...actual,
     deleteSyncedVaultFile: (...args: unknown[]) => mockDeleteSyncedVaultFile(...args)
@@ -142,8 +145,7 @@ vi.mock('./note-handler-sync-helpers', () => ({
 }))
 
 vi.mock('../../vault/file-ops', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
+  const actual = await vi.importActual<typeof FileOpsModule>('../../vault/file-ops')
   return {
     ...actual,
     atomicWrite: vi.fn().mockResolvedValue(undefined)

@@ -563,7 +563,7 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     // empty or reset index it skipped every locked note. Re-run it now that
     // the walk has indexed them (#2978).
     if (result.indexed > 0) {
-      await checkLockedFilesAtOpen().catch((err) => {
+      await checkLockedFilesAtOpen().catch((err: unknown) => {
         logger.warn('Re-checking locked files after the index walk failed', err)
       })
       if (isStale()) return
@@ -669,7 +669,7 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
 
   void reconcileProjections()
     .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
-    .catch((error) => {
+    .catch((error: unknown) => {
       logger.error('Background projection reconcile failed:', error)
       trackMainError('vault', 'projection_reconcile', error)
     })
@@ -732,7 +732,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // set further down), and the ready broadcast has to name this vault.
   void getCrdtProvider()
     .initPersistence(vaultPath)
-    .catch((error) => {
+    .catch((error: unknown) => {
       logger.warn('CRDT persistence init failed (non-fatal):', error)
     })
 
@@ -767,7 +767,7 @@ async function openVault(vaultPath: string): Promise<void> {
   // encrypted snapshot, and adopt documents that arrived with the folder (USB,
   // git, Dropbox). Never blocks the open — a canvas failure must not cost the
   // user their notes.
-  void reconcileCanvasFiles(dataDb, vaultPath).catch((error) => {
+  void reconcileCanvasFiles(dataDb, vaultPath).catch((error: unknown) => {
     logger.error('Canvas file reconcile failed:', error)
   })
 
@@ -924,7 +924,7 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Locked files edited or removed while the app was closed get their locked
   // text back, and every lock is re-applied on disk (#2606).
-  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err) => {
+  const lockedFilesChecked = checkLockedFilesAtOpen().catch((err: unknown) => {
     logger.warn('Checking locked files at vault open failed', err)
   })
 
@@ -968,7 +968,7 @@ async function openVault(vaultPath: string): Promise<void> {
     markSyncIneligible()
     return
   }
-  void startSyncRuntime().catch((error) => {
+  void startSyncRuntime().catch((error: unknown) => {
     logger.error('Sync runtime start failed after vault open:', error)
     trackMainError('vault', 'sync_runtime_start', error)
   })
@@ -1114,7 +1114,7 @@ export function getConfig(): VaultConfig {
  * cannot hold vault close open.
  */
 function drainDeferredEmbeddings(): void {
-  void reconcileProjections(['embedding']).catch((error) => {
+  void reconcileProjections(['embedding']).catch((error: unknown) => {
     logger.error('Deferred embedding drain failed:', error)
     trackMainError('vault', 'projection_reconcile', error)
   })

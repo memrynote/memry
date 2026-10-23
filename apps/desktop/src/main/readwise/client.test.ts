@@ -65,7 +65,7 @@ describe('verifyToken', () => {
     const error = await verifyToken(TOKEN).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ReadwiseError)
     expect((error as ReadwiseError).code).toBe('invalid-token')
-    expect(String((error as Error).message)).not.toContain(TOKEN)
+    expect((error as Error).message).not.toContain(TOKEN)
   })
 
   it('maps a 5xx to server and a thrown fetch to network', async () => {
@@ -128,6 +128,7 @@ describe('exportPages', () => {
           init.signal?.addEventListener(
             'abort',
             () => {
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
               reject(init.signal?.reason)
             },
             { once: true }

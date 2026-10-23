@@ -158,7 +158,7 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     try {
       applyMergedReadwiseSettings(getDatabase(), merged.readwise)
       // Another device took Readwise over: this one gives up its token (D8).
-      void releaseTokenIfClaimedElsewhere().catch((err) => {
+      void releaseTokenIfClaimedElsewhere().catch((err: unknown) => {
         log.warn('Failed to release the Readwise token after a takeover:', err)
       })
     } catch (err) {
@@ -413,7 +413,7 @@ function applySyncedLocale(candidate: string | undefined): void {
     return
   }
 
-  applyLocale(parsed.data).catch((err) => {
+  applyLocale(parsed.data).catch((err: unknown) => {
     log.warn('Failed to apply synced locale:', err)
   })
 }

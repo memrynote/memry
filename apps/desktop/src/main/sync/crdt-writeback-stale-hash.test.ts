@@ -4,6 +4,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import type * as PathsModule from '../lib/paths'
 
 const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
@@ -73,7 +74,7 @@ vi.mock('../vault/notes', () => ({
   maybeCreateSignificantSnapshot: () => null
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: async (_vault: string, relative: string) =>
     h.files.get(`/vault/${relative}`) ?? null
 }))

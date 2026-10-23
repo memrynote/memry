@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => {
+  // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
   class Tray {
     constructor(icon: unknown) {
       if (mocks.trayThrows) throw new Error('no status notifier host')

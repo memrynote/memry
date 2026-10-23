@@ -1416,7 +1416,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   )
 
   const discardTask = useCallback((taskId: string) => {
-    tasksService.delete(taskId).catch((err) => {
+    tasksService.delete(taskId).catch((err: unknown) => {
       log.warn('Failed to delete a task whose conversion was undone', { taskId, err })
     })
   }, [])
@@ -1695,7 +1695,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // Asked about like any task leaving the note, even one converted this
         // session: this is a choice, not an undo.
         convertedCheckboxesRef.current.delete(blockId)
-        turnTaskIntoCheckbox(editor as any, blockId).catch((err) => {
+        turnTaskIntoCheckbox(editor as any, blockId).catch((err: unknown) => {
           log.warn('Failed to turn a task into a checkbox', { blockId, err })
         })
       }
@@ -2160,7 +2160,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         markTaskRemovalsHandled(editor, movedTaskIds)
         editor.removeBlocks([block])
         for (const taskId of movedTaskIds) {
-          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err) => {
+          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err: unknown) => {
             log.warn('Failed to relink a moved task', { taskId, err })
           })
         }
@@ -2225,6 +2225,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               toast.error(extractErrorMessage(err, t('wikiLinkMenu.copyFailed')))
             )
           return
+        default:
+          break
       }
       // Edit and unlink act on the chip as it was when the menu opened; a remote
       // edit since then may have moved or removed it.
@@ -2902,7 +2904,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }
 
   const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
-    relinkTaskNotes(taskId, change).catch((err) => {
+    relinkTaskNotes(taskId, change).catch((err: unknown) => {
       log.warn("Failed to update a task's linked notes", { taskId, err })
     })
   }
@@ -2948,7 +2950,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       .then((result) => {
         if (!result.success) toast.error(result.error ?? t('editor.taskRemoval.deleteFailed'))
       })
-      .catch((err) => toast.error(extractErrorMessage(err, t('editor.taskRemoval.deleteFailed'))))
+      .catch((err: unknown) =>
+        toast.error(extractErrorMessage(err, t('editor.taskRemoval.deleteFailed')))
+      )
   }
 
   // Cut removes the selection in the same synchronous dispatch that fires the

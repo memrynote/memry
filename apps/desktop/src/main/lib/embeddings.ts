@@ -1005,7 +1005,7 @@ class EmbeddingModelBridge {
         return
       }
 
-      void this.stop().catch((error) => {
+      void this.stop().catch((error: unknown) => {
         logger.warn('Embedding utility idle shutdown failed', {
           error: error instanceof Error ? error.message : String(error)
         })

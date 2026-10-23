@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type * as FileOpsModule from '../../vault/file-ops'
 
 const VAULT_ROOT = '/tmp/test-vault-binary'
 
@@ -64,8 +65,7 @@ vi.mock('../note-sync', () => ({
 }))
 
 vi.mock('../../vault/file-ops', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
+  const actual = await vi.importActual<typeof FileOpsModule>('../../vault/file-ops')
   return {
     ...actual,
     atomicWrite: vi.fn().mockResolvedValue(undefined),

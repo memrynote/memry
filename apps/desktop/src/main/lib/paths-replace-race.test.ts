@@ -2,6 +2,8 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: after a note file is opened and before the opened file is checked,
 // a save renames a new file over it, as the atomic write in vault/file-ops does.
@@ -16,7 +18,7 @@ function swapOnRecheck(probe: unknown): void {
 }
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     swapOnRecheck(probe)
     return actual.realpath(probe)
@@ -24,7 +26,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, realpath }, realpath }
 })
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   const native = (probe: string): string => {
     swapOnRecheck(probe)
     return actual.realpathSync.native(probe)

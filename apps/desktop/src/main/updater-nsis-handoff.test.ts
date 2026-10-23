@@ -102,6 +102,7 @@ vi.mock('electron-updater', () => ({
 
 vi.mock('./velopack-native', () => ({
   loadVelopack: () => ({
+    // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     UpdateManager: class {
       constructor() {
         throw new Error('This application is not properly installed')

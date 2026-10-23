@@ -6,6 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { MARKDOWN_SOURCE_MAP, writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as HtmlCommentsModule from '@memry/shared/html-comments'
+import type * as MarkdownSourceModule from '@memry/shared/markdown-source'
+import type * as NotesModule from '@main/database/queries/notes'
+import type * as PathsModule from '../lib/paths'
 
 const restoreThrows = vi.hoisted(() => ({ left: 0 }))
 // A build before #2741 parsed every note this way: no comment was masked, so
@@ -15,7 +19,7 @@ const parseBefore2741 = vi.hoisted(() => ({ on: false }))
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))
 
 vi.mock('@memry/shared/html-comments', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@memry/shared/html-comments')>()
+  const actual = await importOriginal<typeof HtmlCommentsModule>()
   return {
     ...actual,
     maskHtmlComments: (markdown: string) =>
@@ -23,7 +27,7 @@ vi.mock('@memry/shared/html-comments', async (importOriginal) => {
   }
 })
 vi.mock('@memry/shared/markdown-source', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@memry/shared/markdown-source')>()
+  const actual = await importOriginal<typeof MarkdownSourceModule>()
   return {
     ...actual,
     restoreMarkdownSource: (...args: Parameters<typeof actual.restoreMarkdownSource>) => {
@@ -76,7 +80,7 @@ vi.mock('./crdt-provider', () => ({
 vi.mock('./crdt-external-feed', () => ({ feedExternalEditToCrdt: async () => false }))
 vi.mock('./crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@main/database/queries/notes')>()),
+  ...(await importOriginal<typeof NotesModule>()),
   getNoteCacheById: (_db: unknown, noteId: string) => h.rows.get(noteId)
 }))
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => undefined }))
@@ -102,7 +106,7 @@ vi.mock('../vault/file-ops', () => ({
   deleteFile: vi.fn()
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../lib/paths')>()),
+  ...(await importOriginal<typeof PathsModule>()),
   readVaultFile: (_vault: string, relative: string) => readMockFile(`/vault/${relative}`)
 }))
 vi.mock('../vault/journal', () => ({

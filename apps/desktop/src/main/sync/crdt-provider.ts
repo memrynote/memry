@@ -441,7 +441,7 @@ export class CrdtProvider {
     if (!persistence) return Promise.resolve()
     const run = this.owedCompactions
       .then(() => fn(persistence))
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.error(failure, { error: err })
       })
     this.owedCompactions = run
@@ -1082,14 +1082,14 @@ export class CrdtProvider {
           )
           return push(noteId, state, coverage)
         })
-        await pushed.catch((err) => {
+        await pushed.catch((err: unknown) => {
           log.warn('Failed to push snapshot on close', { noteId, error: err })
         })
       }
       entry.pendingSnapshotBytes = 0
     }
 
-    await this.flushDoc(noteId).catch((err) => {
+    await this.flushDoc(noteId).catch((err: unknown) => {
       log.error('Failed to flush doc on close', { noteId, error: err })
     })
 
@@ -1234,7 +1234,7 @@ export class CrdtProvider {
     if (entry) entry.pendingSnapshotBytes = 0
 
     await this.close(noteId)
-    await this.persistence?.clearDocument(noteId).catch((err) => {
+    await this.persistence?.clearDocument(noteId).catch((err: unknown) => {
       log.warn('Failed to clear persisted CRDT doc during purge', { noteId, error: err })
     })
   }
@@ -1945,9 +1945,11 @@ export class CrdtProvider {
     }
 
     if (ok && this.persistence) {
-      await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc)).catch((err) => {
-        log.error('Failed to persist markdown-seeded CRDT doc', { noteId, error: err })
-      })
+      await this.persistence
+        .storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+        .catch((err: unknown) => {
+          log.error('Failed to persist markdown-seeded CRDT doc', { noteId, error: err })
+        })
     }
   }
 
@@ -2224,7 +2226,7 @@ export class CrdtProvider {
 
   private persistUpdate(noteId: string, update: Uint8Array): void {
     if (!this.persistence) return
-    this.persistence.storeUpdate(noteId, update).catch((err) => {
+    this.persistence.storeUpdate(noteId, update).catch((err: unknown) => {
       log.error('Failed to persist CRDT update', { noteId, error: err })
     })
   }
@@ -2253,12 +2255,12 @@ export class CrdtProvider {
 
     if (entry.lastEncodedSize > ENCODED_SIZE_COMPACTION_THRESHOLD && entry.windowIds.size === 0) {
       entry.accumulatedBytes = 0
-      this.compactDoc(noteId).catch((err) => {
+      this.compactDoc(noteId).catch((err: unknown) => {
         log.error('Failed to compact doc', { noteId, error: err })
       })
     } else if (entry.accumulatedBytes > ENCODED_SIZE_COMPACTION_THRESHOLD) {
       entry.accumulatedBytes = 0
-      this.flushDoc(noteId).catch((err) => {
+      this.flushDoc(noteId).catch((err: unknown) => {
         log.error('Failed to flush doc', { noteId, error: err })
       })
     }

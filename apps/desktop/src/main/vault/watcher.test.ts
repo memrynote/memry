@@ -24,6 +24,10 @@ import {
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
+import type * as FileOpsModule from './file-ops'
+import type * as FileScanModule from './file-scan'
+import type * as JournalFolderFollowModule from './journal-folder-follow'
+import type * as SceneFileModule from '../canvas/scene-file'
 
 const mockWatch = vi.hoisted(() => vi.fn())
 const baseConfig: VaultConfig = {
@@ -76,12 +80,12 @@ vi.mock('../notes/runtime-effects', () => ({
 // not open the file at all, by either route, and only a spy can tell "did not
 // read" from "read and ignored".
 vi.mock('./file-ops', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./file-ops')>()
+  const actual = await importOriginal<typeof FileOpsModule>()
   return { ...actual, safeRead: vi.fn(actual.safeRead) }
 })
 
 vi.mock('./file-scan', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./file-scan')>()
+  const actual = await importOriginal<typeof FileScanModule>()
   return { ...actual, scanMarkdownFile: vi.fn(actual.scanMarkdownFile) }
 })
 
@@ -120,12 +124,12 @@ vi.mock('./index', () => ({
 }))
 
 vi.mock('./journal-folder-follow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./journal-folder-follow')>()),
+  ...(await importOriginal<typeof JournalFolderFollowModule>()),
   followJournalFolder: vi.fn()
 }))
 
 vi.mock('../canvas/scene-file', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../canvas/scene-file')>()
+  const actual = await importOriginal<typeof SceneFileModule>()
   return { ...actual, readCanvasVaultFileSync: vi.fn(actual.readCanvasVaultFileSync) }
 })
 

@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import type * as ReactModule from '@blocknote/react'
 
 // The file block's PDF preview pulls pdf.js, which touches `DOMMatrix` at
 // import time and jsdom has none.
@@ -17,7 +18,7 @@ vi.mock('@/components/note/content-area/task-block/task-prefetch-context', () =>
 
 const created = vi.hoisted(() => ({ editor: null as { document: unknown[] } | null }))
 vi.mock('@blocknote/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@blocknote/react')>()
+  const actual = await importOriginal<typeof ReactModule>()
   return {
     ...actual,
     useCreateBlockNote: ((...args: Parameters<typeof actual.useCreateBlockNote>) => {

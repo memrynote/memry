@@ -373,7 +373,7 @@ export function scheduleWriteback(
     pendingTimers.delete(noteId)
     inFlightWritebacks.add(noteId)
     runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err) => {
+      .catch((err: unknown) => {
         reportWritebackFailure(noteId, err)
       })
       .finally(() => {
@@ -462,7 +462,7 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
 export async function settleWriteback(noteId: string): Promise<void> {
   const pending = pendingTimers.get(noteId)
   if (!pending) return
-  await writebackNow(noteId, pending.doc).catch((err) => {
+  await writebackNow(noteId, pending.doc).catch((err: unknown) => {
     reportWritebackFailure(noteId, err)
   })
 }
@@ -519,7 +519,7 @@ export async function flushPendingWritebacks(): Promise<void> {
   for (const [, { timer }] of pending) clearTimeout(timer)
   await Promise.all(
     pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
-      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err) => {
+      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
@@ -1009,7 +1009,7 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   void flushProjectionEvents()
 
   rememberIgnoredWrite(absolutePath)
-  await deleteFile(absolutePath).catch((err) => {
+  await deleteFile(absolutePath).catch((err: unknown) => {
     log.error('Failed to delete synced note file', { noteId, error: err })
   })
 

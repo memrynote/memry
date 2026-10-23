@@ -17,6 +17,7 @@ import { RepeatPicker } from './tasks/repeat-picker'
 import { TaskEmptyState } from './tasks/task-empty-state'
 import { TaskList } from './tasks/task-list'
 import { UpcomingEmptyState } from './tasks/upcoming-empty-state'
+import type * as TaskUtilsModule from '@/lib/task-utils'
 
 const mocks = vi.hoisted(() => ({
   countdown: null as string | null,
@@ -206,7 +207,7 @@ vi.mock('./tasks/filters/active-filters-bar', () => ({
 }))
 
 vi.mock('@/lib/task-utils', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/task-utils')>('@/lib/task-utils')
+  const actual = await vi.importActual<typeof TaskUtilsModule>('@/lib/task-utils')
   return {
     ...actual,
     hasActiveFilters: () => mocks.activeFilters

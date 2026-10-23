@@ -31,6 +31,7 @@ import {
   PREFLIGHT_MARK_STORE_OPS,
   type CrdtPreflightBindingInfo
 } from '@memry/sync-client/crdt-preflight-protocol'
+import type * as YLeveldbModule from 'y-leveldb'
 
 const PROBE_DOC = '__memry_preflight__'
 
@@ -125,7 +126,7 @@ async function main(): Promise<void> {
   const yLeveldbPath = childRequire.resolve('y-leveldb')
   const bindingInfo = resolveBindingInfo(yLeveldbPath)
   if (bindingInfo) mark(`${PREFLIGHT_MARK_BINDING_INFO}${JSON.stringify(bindingInfo)}`)
-  const { LeveldbPersistence } = childRequire('y-leveldb') as typeof import('y-leveldb')
+  const { LeveldbPersistence } = childRequire('y-leveldb') as typeof YLeveldbModule
   mark(PREFLIGHT_MARK_BINDING_LOADED)
 
   // y-leveldb opens its database lazily and never exposes the instance, so the
@@ -200,7 +201,7 @@ async function main(): Promise<void> {
 
 main().then(
   () => process.exit(0),
-  (err) => {
+  (err: unknown) => {
     console.error(err)
     process.exit(1)
   }

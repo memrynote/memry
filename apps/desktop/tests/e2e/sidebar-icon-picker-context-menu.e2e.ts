@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow canvas-folder-rename.e2e.ts convention
 /**
  * Opening the icon picker from a ROW'S CONTEXT MENU, not from its icon button (#2204).
  *

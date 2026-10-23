@@ -52,7 +52,7 @@ export function startSmartConnectionsDownload(): void {
     .then((result) => {
       if (!result.success) log.warn('Smart connections model did not load', result.error)
     })
-    .catch((error) => {
+    .catch((error: unknown) => {
       log.warn('Starting the smart connections download failed', error)
     })
 }
@@ -103,7 +103,7 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
           dispatch({ type: 'update', patch: { agent: ready.backend } })
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         log.warn('Detecting agents failed', error)
         if (!cancelled) setStatuses([])
       })

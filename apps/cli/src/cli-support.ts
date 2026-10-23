@@ -173,7 +173,7 @@ export function parseCliValue(value: string): unknown {
   }
 }
 
-export function parseJsonFlag(flags: Map<string, string[]>, key: string): unknown | undefined {
+export function parseJsonFlag(flags: Map<string, string[]>, key: string): unknown {
   if (!flags.has(key)) return undefined
   return parseCliValue(getFlag(flags, key) ?? '')
 }

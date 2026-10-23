@@ -134,7 +134,7 @@ const { rateLimiterOptions } = vi.hoisted(() => ({
 }))
 
 vi.mock('../middleware/rate-limit', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../middleware/rate-limit')>()
+  const actual = await importOriginal<typeof RateLimitModule>()
   return {
     ...actual,
     createRateLimiter: vi.fn().mockImplementation((options: RateLimitOptions) => {

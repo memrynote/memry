@@ -71,6 +71,8 @@ function applyInlineFormatting(attr: AttributeRun, text: string): string {
     case ANFontWeight.BoldItalic:
       out = `***${out}***`
       break
+    default:
+      break
   }
 
   if (attr.strikethrough) out = `~~${out}~~`

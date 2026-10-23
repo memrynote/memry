@@ -506,6 +506,7 @@ describe('navigation and keyboard hooks', () => {
       useFlushOnQuit()
     })
     await act(async () => {
+      // oxlint-disable-next-line typescript/await-thenable -- the registered flush listener returns a promise; the mock type erases it
       await mocks.taskListeners.flush('flush-1')
     })
     expect(mocks.flushAllPendingSaves).toHaveBeenCalled()

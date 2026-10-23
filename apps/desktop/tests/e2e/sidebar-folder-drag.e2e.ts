@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow canvas-folder-rename.e2e.ts convention
 /**
  * Dragging a notes folder onto another folder in the sidebar (#2206).
  *

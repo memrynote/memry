@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tags Rename + Delete E2E
  *

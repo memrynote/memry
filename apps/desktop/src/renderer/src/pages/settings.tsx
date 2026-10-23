@@ -283,6 +283,8 @@ function SettingsPageContent({
       return <InboxSettings />
     case 'calendar':
       return <CalendarSettingsSection />
+    default:
+      break
   }
 
   switch (page) {

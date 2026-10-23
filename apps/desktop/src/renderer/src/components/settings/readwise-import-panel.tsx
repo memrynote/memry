@@ -96,7 +96,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
       .then((raw) => {
         if (active) setStatus(unwrap(raw, t('import.dialog.error')))
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (active) setError(extractErrorMessage(err, t('import.dialog.error')))
       })
     return () => {

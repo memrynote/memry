@@ -53,6 +53,7 @@ interface ChannelSubscription {
 
 const channelSubscriptions = new Map<string, ChannelSubscription>()
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 export function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
   let subscription = channelSubscriptions.get(channel)
   if (!subscription) {

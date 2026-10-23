@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * Spatial canvas M2 — item cards (rectangle + read-only overlay preview).
  *

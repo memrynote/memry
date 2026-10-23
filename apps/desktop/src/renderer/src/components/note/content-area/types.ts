@@ -5,6 +5,8 @@
 
 import type { Block } from '@blocknote/core'
 import type { WritingToolsSession } from '../writing-tools/writing-tools-session'
+import type { XmlFragment } from 'yjs'
+import type { CriticMarkupMark } from '@memry/shared'
 
 // =============================================================================
 // HEADING TYPES
@@ -90,7 +92,7 @@ export interface HighlightInfo {
 }
 
 export interface CollaborationInfo {
-  fragment: import('yjs').XmlFragment
+  fragment: XmlFragment
   provider: { awareness?: unknown }
 }
 
@@ -193,7 +195,7 @@ export interface ContentAreaProps {
   /** Optional CriticMarkup review behavior for comments */
   review?: {
     plainMarkdown: string
-    marks: import('@memry/shared').CriticMarkupMark[]
+    marks: CriticMarkupMark[]
     hoveredMarkId: string | null
     onEditorReady?: (editor: unknown) => void
     onAddComment?: (selection: ReviewSelection) => void
@@ -203,7 +205,7 @@ export interface ContentAreaProps {
     onPlainMarkdownChange?: (markdown: string) => string
     onHoveredMarkChange?: (id: string | null) => void
     onMarkPositionsChange?: (positions: Record<string, number>) => void
-    onReplaceMarksFromYjs?: (marks: import('@memry/shared').CriticMarkupMark[]) => void
+    onReplaceMarksFromYjs?: (marks: CriticMarkupMark[]) => void
   }
   /**
    * The note page's writing tools (alternatives, ghosts, overflow). When

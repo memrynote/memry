@@ -7,6 +7,7 @@ import { TagsChannels } from '@memry/contracts/ipc-channels'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus } from '@memry/contracts/vault-api'
 import { insertNoteCache, setNoteTags } from '@main/database/queries/notes'
+import type * as DatabaseModule from '../database'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown, vault: '' }))
 
@@ -22,7 +23,7 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) }
 }))
 vi.mock('../database', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database')>()),
+  ...(await importOriginal<typeof DatabaseModule>()),
   getIndexDatabase: () => state.index,
   getDatabase: () => state.data,
   requireDatabase: () => state.data

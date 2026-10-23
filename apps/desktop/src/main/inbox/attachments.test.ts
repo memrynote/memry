@@ -25,6 +25,7 @@ import {
   ALLOWED_AUDIO_TYPES,
   ALLOWED_DOCUMENT_TYPES
 } from './attachments'
+import type * as PathsModule from '../lib/paths'
 
 // Mock the vault module
 vi.mock('../vault', () => ({
@@ -33,7 +34,7 @@ vi.mock('../vault', () => ({
 
 // Mock paths module
 vi.mock('../lib/paths', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const actual = await importOriginal<typeof PathsModule>()
   return {
     ...actual,
     toMemryFileUrl: vi.fn((path: string) => `memry-file://${encodeURIComponent(path)}`)

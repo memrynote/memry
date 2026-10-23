@@ -5,6 +5,7 @@
  * back as `false` so the provider keeps the note pending.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as HttpClientModule from './http-client'
 
 const { pushCrdtSnapshotBatchMock } = vi.hoisted(() => ({
   pushCrdtSnapshotBatchMock: vi.fn()
@@ -26,7 +27,7 @@ vi.mock('./crdt-encrypt', () => ({
 
 // SyncServerError stays real: the 404/413 branches are `instanceof` checks.
 vi.mock('./http-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./http-client')>()
+  const actual = await importOriginal<typeof HttpClientModule>()
   return { ...actual, pushCrdtSnapshotBatch: pushCrdtSnapshotBatchMock }
 })
 

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InboxDetailPanel } from './inbox-detail-panel'
 import type { InboxItemListItem } from '@/types'
+import type * as ReactModule from 'react'
 
 const invalidateQueries = vi.fn()
 const retryMutate = vi.fn()
@@ -116,7 +117,7 @@ vi.mock('./type-selector', () => ({
 }))
 
 vi.mock('./filing-section', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
+  const React = await vi.importActual<typeof ReactModule>('react')
   return {
     useFilingState: ({ item, isOpen }: { item: { id: string } | null; isOpen: boolean }) => {
       const [selectedFolder, setSelectedFolder] = React.useState<any>(null)

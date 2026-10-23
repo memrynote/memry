@@ -271,7 +271,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
               {message.complete && message.source && (
                 <SourcesDisclosure
                   source={message.source}
-                  open={Boolean(openSources[message.id])}
+                  open={openSources[message.id]}
                   animate={!prefersReducedMotion}
                   onToggle={() => {
                     setOpenSources((prev) => ({ ...prev, [message.id]: !prev[message.id] }))

@@ -62,7 +62,7 @@ export const createSqliteD1 = (): SqliteD1 => {
     // it is also the test for "this statement produces rows".
     const runSync = (): D1Result => {
       const rows = statement.reader ? (statement.all(...bindings) as Row[]) : []
-      const changes = statement.reader ? rows.length : Number(statement.run(...bindings).changes)
+      const changes = statement.reader ? rows.length : statement.run(...bindings).changes
       return {
         success: true,
         results: rows,

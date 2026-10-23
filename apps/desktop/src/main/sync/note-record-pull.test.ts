@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type * as ClientModule from '../database/client'
+import type * as IndexModule from '../vault/index'
 
 /**
  * A record pull of a note that this device already holds, through the real
@@ -10,13 +12,13 @@ let activeIndexDb: unknown = null
 let vaultRoot = ''
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => activeDb,
   getIndexDatabase: () => activeIndexDb
 }))
 
 vi.mock('../vault/index', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../vault/index')>()
+  const actual = await importOriginal<typeof IndexModule>()
   return { ...actual, getStatus: () => ({ ...actual.getStatus(), path: vaultRoot }) }
 })
 

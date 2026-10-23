@@ -117,7 +117,10 @@ import type {
   SyncErrorCategory,
   TriggerSyncResult,
   VaultBindingChoice,
-  VaultBindingState
+  VaultBindingState,
+  LargeNotesResult,
+  NoteSyncState,
+  UnsentNotesResult
 } from '@memry/contracts/ipc-sync-ops'
 import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
@@ -148,6 +151,7 @@ import type {
 } from '@memry/contracts/sticky-api'
 import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
+import type { SyncedSettings } from '../shared/contracts/settings-sync'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1900,9 +1904,7 @@ interface SyncOpsClientAPI {
     fieldPath: string,
     value: unknown
   ) => Promise<{ success: boolean; error?: string }>
-  getSyncedSettings: () => Promise<
-    import('../shared/contracts/settings-sync').SyncedSettings | null
-  >
+  getSyncedSettings: () => Promise<SyncedSettings | null>
   getStorageBreakdown: () => Promise<{
     used: number
     limit: number
@@ -1913,11 +1915,9 @@ interface SyncOpsClientAPI {
       other: number
     }
   } | null>
-  getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
-  getNoteSyncState: (
-    noteId: string
-  ) => Promise<import('@memry/contracts/ipc-sync-ops').NoteSyncState | null>
-  getUnsentNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').UnsentNotesResult>
+  getLargeNotes: () => Promise<LargeNotesResult>
+  getNoteSyncState: (noteId: string) => Promise<NoteSyncState | null>
+  getUnsentNotes: () => Promise<UnsentNotesResult>
   getVaultBinding: () => Promise<VaultBindingState>
   resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
   repairDeviceKeys: () => Promise<RepairDeviceKeysResult>

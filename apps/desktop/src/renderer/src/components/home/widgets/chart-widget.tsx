@@ -86,7 +86,7 @@ function useNotesData(
     properties,
     notes: view.notes,
     isLoading: view.isLoading,
-    error: view.error ? String(view.error) : null
+    error: view.error
   }
 }
 

@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type * as UseAppUpdaterModule from './use-app-updater'
 
 vi.mock('react-i18next', () => ({
   getI18n: () => ({
@@ -9,7 +10,7 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
-type Hooks = typeof import('./use-app-updater')
+type Hooks = typeof UseAppUpdaterModule
 
 const baseState: AppUpdateState = {
   currentVersion: '1.0.0',

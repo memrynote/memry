@@ -1,4 +1,3 @@
-// @ts-nocheck - E2E tests in development, follow notes.e2e.ts convention
 /**
  * Spatial canvas M3 — linking (bound arrows between item cards).
  *

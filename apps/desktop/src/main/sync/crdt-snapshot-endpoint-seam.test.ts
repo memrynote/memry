@@ -21,6 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as EngineModule from './engine'
 
 const runtimeMocks = vi.hoisted(() => {
   class SyncServerError extends Error {
@@ -290,7 +291,7 @@ vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager 
  * shipped implementation.
  */
 vi.mock('./engine', async () => {
-  const actual = await vi.importActual<typeof import('./engine')>('./engine')
+  const actual = await vi.importActual<typeof EngineModule>('./engine')
   class TestSyncEngine extends actual.SyncEngine {
     static instances: TestSyncEngine[] = []
     constructor(deps: ConstructorParameters<typeof actual.SyncEngine>[0]) {

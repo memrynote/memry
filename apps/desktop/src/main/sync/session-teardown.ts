@@ -148,13 +148,13 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
   if (reason !== 'shutdown') {
     void getCrdtProvider()
       .initPersistence()
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.warn('CRDT persistence re-init after session teardown failed', err)
       })
     // Google Calendar does not need a Memry session: restart the runner so a
     // still-connected account keeps polling, now without the push relay. After
     // a logout no account is left and the start is a no-op.
-    void startGoogleCalendarSyncRunner().catch((err) => {
+    void startGoogleCalendarSyncRunner().catch((err: unknown) => {
       log.warn('Google Calendar runner restart after session teardown failed', err)
     })
   }

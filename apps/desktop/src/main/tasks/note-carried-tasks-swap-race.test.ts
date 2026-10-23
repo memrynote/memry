@@ -2,6 +2,8 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
+import type * as FsModule from 'fs'
 
 // The seam: right after the outside-vault check resolves a note file, the file
 // is swapped for a link to a file outside the vault, before it is read or chmodded.
@@ -14,7 +16,7 @@ function swapOnce(probe: unknown): void {
 }
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     const real = await actual.realpath(probe)
     swapOnce(probe)
@@ -23,7 +25,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, default: { ...actual, realpath }, realpath }
 })
 vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>()
+  const actual = await importOriginal<typeof FsModule>()
   const native = (probe: string): string => {
     const real = actual.realpathSync.native(probe)
     swapOnce(probe)

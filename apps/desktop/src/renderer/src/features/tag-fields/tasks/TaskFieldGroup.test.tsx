@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ResolvedField, ResolvedTag } from '@memry/contracts/tag-schema'
 import type { TagSchemaSnapshot } from '@memry/contracts/tag-schema-api'
 import { TaskFieldGroups } from './TaskFieldGroup'
+import type * as EditorsModule from '@/components/note/info-section/editors'
 
 vi.mock('@/hooks/use-calendar-properties', () => ({
   useCalendarProperties: () => ({ isEnabled: () => false, setEnabled: vi.fn() })
@@ -14,7 +15,7 @@ vi.mock('@/hooks/use-property-definitions', () => ({
   usePropertyDefinitions: () => ({ refresh: vi.fn(), getDefinition: () => undefined })
 }))
 vi.mock('@/components/note/info-section/editors', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/components/note/info-section/editors')>()),
+  ...(await importOriginal<typeof EditorsModule>()),
   RelationEditor: ({
     value,
     targetTag,

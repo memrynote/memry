@@ -93,7 +93,7 @@ export function ReadwiseFirstImportPreview({
             : { status: 'ready', counts: toCounts(res.preview) }
         )
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (active) {
           setLoaded({
             status: 'error',

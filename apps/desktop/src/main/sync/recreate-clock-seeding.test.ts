@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type * as ClientModule from '../database/client'
+import type * as JournalModule from '../vault/journal'
 
 /**
  * #2409: a re-created deterministic id is minted with a clock that happens
@@ -11,13 +13,13 @@ let activeDb: unknown = null
 let activeIndexDb: unknown = null
 
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => activeDb,
   getIndexDatabase: () => activeIndexDb
 }))
 
 vi.mock('../vault/journal', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../vault/journal')>()),
+  ...(await importOriginal<typeof JournalModule>()),
   getJournalPath: (date: string) => `/nonexistent/journals/${date}.md`
 }))
 

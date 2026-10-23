@@ -88,7 +88,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
           if (!cancelled) setResults(response.results)
           return undefined
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas link picker: search failed', err)
             setResults([])
@@ -100,7 +100,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
           if (!cancelled) setEvents(response.events)
           return undefined
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas link picker: event search failed', err)
             setEvents([])

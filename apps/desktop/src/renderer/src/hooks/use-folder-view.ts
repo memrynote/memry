@@ -388,7 +388,7 @@ export function useFolderView({
    */
   const notesQuery = useInfiniteQuery({
     queryKey: folderViewKeys.notes(scope),
-    queryFn: async ({ pageParam = 0 }): Promise<ListWithPropertiesResponse> => {
+    queryFn: async ({ pageParam }): Promise<ListWithPropertiesResponse> => {
       // Fetch all available properties to avoid refetch when columns change
       // This is a trade-off: slightly larger payload vs better UX
       const result = await window.api.folderView.listWithProperties({

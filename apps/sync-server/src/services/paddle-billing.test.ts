@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { listPaddleInvoices, getPaddleInvoicePdfUrl } from './paddle-billing'
+import type { Bindings } from '../types'
 
 // ---------------------------------------------------------------------------
 // D1 mock helpers
@@ -25,7 +26,7 @@ function createEnv(options: {
     PADDLE_API_KEY: options.paddleApiKey ?? 'pdl_sandbox_key',
     PADDLE_ENVIRONMENT: 'sandbox' as const,
     fetch: options.paddleFetch
-  } as unknown as import('../types').Bindings
+  } as unknown as Bindings
 }
 
 // ---------------------------------------------------------------------------

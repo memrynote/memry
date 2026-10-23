@@ -21,6 +21,10 @@ import { createNoteDerivedStateProjector } from '../../projections/projectors/no
 import { insertProject } from '../../database/queries/projects'
 import { listTasks } from '../../database/queries/tasks'
 import type { NotePlanTaskDeps } from './noteplan-importer'
+import type * as IndexModule from '../../vault/index'
+import type * as DatabaseModule from '../../database'
+import type * as NoteplanImporterModule from './noteplan-importer'
+import type * as ImportContextModule from '../import-context'
 
 vi.mock('electron', () => {
   const send = vi.fn()
@@ -89,10 +93,10 @@ describe('notePlanImporter (integration)', () => {
   let dataDb: TestDatabaseResult
   let indexDb: TestDatabaseResult
 
-  let vaultIndex: typeof import('../../vault/index')
-  let database: typeof import('../../database')
-  let importer: typeof import('./noteplan-importer')
-  let importContext: typeof import('../import-context')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let importer: typeof NoteplanImporterModule
+  let importContext: typeof ImportContextModule
 
   beforeEach(async () => {
     tempVault = createTestVault('noteplan-import-test')
@@ -344,10 +348,10 @@ describe('notePlanImporter (real production deps)', () => {
   let tempVault: TestVaultResult
   let tempDbDir: string
 
-  let vaultIndex: typeof import('../../vault/index')
-  let database: typeof import('../../database')
-  let importer: typeof import('./noteplan-importer')
-  let importContext: typeof import('../import-context')
+  let vaultIndex: typeof IndexModule
+  let database: typeof DatabaseModule
+  let importer: typeof NoteplanImporterModule
+  let importContext: typeof ImportContextModule
 
   beforeEach(async () => {
     tempVault = createTestVault('noteplan-import-real-deps-test')

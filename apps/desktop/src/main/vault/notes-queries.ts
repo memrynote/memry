@@ -222,13 +222,15 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
       // would show the same excerpts twice under two labels, and inflate the
       // property card's mention count with matches it did not produce.
       if (!ref.via && sourceCache?.path && targetTitle) {
-        const content = await readVaultFile(getVaultRoot(), sourceCache.path).catch((err) => {
-          if (!(err instanceof OutsideVaultError)) throw err
-          logger.warn('Backlink source points outside the vault; its text is not read', {
-            sourceId: ref.sourceNoteId
-          })
-          return null
-        })
+        const content = await readVaultFile(getVaultRoot(), sourceCache.path).catch(
+          (err: unknown) => {
+            if (!(err instanceof OutsideVaultError)) throw err
+            logger.warn('Backlink source points outside the vault; its text is not read', {
+              sourceId: ref.sourceNoteId
+            })
+            return null
+          }
+        )
         if (content) {
           contexts = extractAllLinkContexts(stripMarkdownComments(content), targetTitle)
         }

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEditorSync } from './use-editor-sync'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { fetchLinkPreview } from '@/lib/url-metadata'
+import type * as CoreModule from '@blocknote/core'
 
 const blockNoteMocks = vi.hoisted(() => ({
   removeAndInsertBlocks: vi.fn((tr: any, blocksToRemove: any[], blocksToInsert: any[]) => {
@@ -16,7 +17,7 @@ const yUndoMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@blocknote/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@blocknote/core')>()
+  const actual = await importOriginal<typeof CoreModule>()
   return {
     ...actual,
     removeAndInsertBlocks: blockNoteMocks.removeAndInsertBlocks

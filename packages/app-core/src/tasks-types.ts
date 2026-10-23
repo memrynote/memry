@@ -11,7 +11,7 @@ export interface TaskRecord {
   dueTime: string | null
   durationMinutes: number | null
   startDate: string | null
-  repeatConfig: unknown | null
+  repeatConfig: unknown
   repeatFrom: string | null
   sourceNoteId: string | null
   completedAt: string | null
@@ -69,7 +69,7 @@ export interface CreateTaskInput {
   dueDate?: string | null
   dueTime?: string | null
   startDate?: string | null
-  repeatConfig?: unknown | null
+  repeatConfig?: unknown
   repeatFrom?: string | null
   sourceNoteId?: string | null
   priority?: number

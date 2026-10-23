@@ -320,6 +320,7 @@ describe('FilingSection', () => {
 
   it('keeps filing state scoped to the active item session', () => {
     const { result, rerender } = renderHook(
+      // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
       ({ currentItem, isOpen }: { currentItem: typeof item | null; isOpen: boolean }) =>
         useFilingState({ item: currentItem, isOpen }),
       { initialProps: { currentItem: item, isOpen: true } }

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultConfig, VaultStatus } from '@memry/contracts/vault-api'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import type * as ClientModule from '../database/client'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
 const sync = vi.hoisted(() => ({
@@ -18,7 +19,7 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn() }
 }))
 vi.mock('../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))

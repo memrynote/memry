@@ -138,7 +138,7 @@ describe('OCR engine', () => {
     vi.resetModules()
     const fresh = await import('./ocr-engine')
     const recognizeText = fresh.recognizeText
-    const crash = (): Promise<unknown> => recognizeText(source).catch((error: Error) => error)
+    const crash = (): Promise<unknown> => recognizeText(source).catch((error: unknown) => error)
     crashOnSpawn.value = true
     try {
       for (let i = 0; i < 3; i++) await crash()

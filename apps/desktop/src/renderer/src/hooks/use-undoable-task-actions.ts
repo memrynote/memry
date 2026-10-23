@@ -390,7 +390,7 @@ export const useUndoableTaskActions = ({
         undoableKeys[0] === 'parentId'
           ? 'Moved'
           : undoableKeys[0] === 'priority'
-            ? `Priority → ${String(updates.priority ?? '')}`
+            ? `Priority → ${updates.priority ?? ''}`
             : undoableKeys[0] === 'statusId'
               ? 'Status changed'
               : undoableKeys[0] === 'dueDate'

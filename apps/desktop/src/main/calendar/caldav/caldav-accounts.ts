@@ -136,6 +136,7 @@ export function hasCaldavAuthFailure(db: DataDb, accountId: string): boolean {
 
 export function setCaldavAuthFailure(db: DataDb, accountId: string, failed: boolean): void {
   const current = readAuthFailures(db)
+  // oxlint-disable-next-line typescript/no-unnecessary-type-conversion -- an absent key means not failed; the record's `boolean` type does not cover it
   if (Boolean(current[accountId]) === failed) return
   if (failed) current[accountId] = true
   else delete current[accountId]

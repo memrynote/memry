@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as LoginShellPathModule from '../login-shell-path'
 
 const mocks = vi.hoisted(() => ({ trackMainLog: vi.fn() }))
 
@@ -26,7 +27,7 @@ const probeThrows =
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
-const freshModule = async (): Promise<typeof import('../login-shell-path')> => {
+const freshModule = async (): Promise<typeof LoginShellPathModule> => {
   vi.resetModules()
   return import('../login-shell-path')
 }

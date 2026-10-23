@@ -21,7 +21,7 @@ async function mountEditor(markdown: string): Promise<BlockNoteEditor> {
   document.body.appendChild(el)
   editor.mount(el)
   mounted.push({ editor, el })
-  editor.replaceBlocks(editor.document, await editor.tryParseMarkdownToBlocks(markdown))
+  editor.replaceBlocks(editor.document, editor.tryParseMarkdownToBlocks(markdown))
   return editor
 }
 

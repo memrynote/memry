@@ -252,7 +252,7 @@ export async function renameJournalsForFormatChange(
         to: toRel,
         error
       })
-      await fs.rename(path.join(dir, to), path.join(dir, from)).catch((restoreError) => {
+      await fs.rename(path.join(dir, to), path.join(dir, from)).catch((restoreError: unknown) => {
         logger.error('Could not restore journal file name', { path: toRel, error: restoreError })
       })
     }

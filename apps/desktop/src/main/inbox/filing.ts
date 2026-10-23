@@ -750,7 +750,7 @@ export async function fileToFolder(
 
     // Binary types: move file directly (no markdown wrapper), preserving tags
     if (isBinaryType(item.type)) {
-      return fileBinaryToFolder(itemId, folderPath, tags)
+      return await fileBinaryToFolder(itemId, folderPath, tags)
     }
 
     // Text + link types: create markdown note

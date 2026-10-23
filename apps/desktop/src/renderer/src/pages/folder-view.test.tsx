@@ -3,6 +3,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { FolderViewPage } from './folder-view'
 import type React from 'react'
+import type * as TagsServiceModule from '@/services/tags-service'
+import type * as UseDisplayDensityModule from '@/hooks/use-display-density'
 
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
@@ -79,7 +81,7 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 vi.mock('@/services/tags-service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/tags-service')>()
+  const actual = await importOriginal<typeof TagsServiceModule>()
   return {
     ...actual,
     tagsService: {
@@ -104,7 +106,7 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 }))
 
 vi.mock('@/hooks/use-display-density', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/hooks/use-display-density')>()),
+  ...(await importOriginal<typeof UseDisplayDensityModule>()),
   useDisplayDensity: () => ({ density: 'comfortable', setDensity: mocks.setDensity })
 }))
 

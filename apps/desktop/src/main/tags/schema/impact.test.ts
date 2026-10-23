@@ -7,12 +7,13 @@ import {
   type TestDatabaseResult,
   type TestDb
 } from '@tests/utils/test-db'
+import type * as ClientModule from '../../database/client'
 
 const state = vi.hoisted(() => ({ data: null as unknown, index: null as unknown }))
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: () => [] } }))
 vi.mock('../../database/client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../database/client')>()),
+  ...(await importOriginal<typeof ClientModule>()),
   getDatabase: () => state.data,
   getIndexDatabase: () => state.index
 }))

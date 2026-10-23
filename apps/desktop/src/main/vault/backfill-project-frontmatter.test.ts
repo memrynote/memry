@@ -7,6 +7,7 @@ import { createTestDataDb, asClientDb, sql } from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { insertProject, insertProjectLink } from '@main/database/queries/projects'
 import { getSetting } from '@main/database/queries/settings'
+import type * as PathsModule from '../lib/paths'
 
 /**
  * A fake vault: `diskFiles` is the file the note actually has on disk,
@@ -53,7 +54,7 @@ vi.mock('./notes-io', () => ({
 }))
 // File bodies live in memory; the outside-vault check still runs on the real vault.
 vi.mock('../lib/paths', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const actual = await importOriginal<typeof PathsModule>()
   const { OutsideVaultError } = await import('../lib/errors')
   return {
     ...actual,

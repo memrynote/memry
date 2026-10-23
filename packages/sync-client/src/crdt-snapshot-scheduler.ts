@@ -131,7 +131,7 @@ export class CrdtSnapshotScheduler {
     this.due.clear()
     for (const noteId of noteIds) this.inFlight.add(noteId)
     void this.pushFn(noteIds)
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.warn('Deferred CRDT snapshot push failed', { noteIds, error: err })
       })
       .finally(() => {

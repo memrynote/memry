@@ -38,7 +38,7 @@ export function resetCanvasSyncService(): void {
  * clobbering good ink.
  */
 export class CanvasSyncService {
-  private controller: RecordSyncController<Record<string, unknown>, []>
+  private controller: RecordSyncController<Record<string, unknown>>
 
   constructor(private readonly deps: CanvasSyncDeps) {
     this.controller = new RecordSyncController({

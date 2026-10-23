@@ -113,7 +113,7 @@ async function disposeSession(
   // its worker would outlive the handle it was opened for.
   session.search?.cancel()
   session.search = null
-  await session.handle.close().catch((err) => {
+  await session.handle.close().catch((err: unknown) => {
     logger.warn('Failed to close large-file handle', { path: session.absolutePath, err })
   })
 }
@@ -171,7 +171,7 @@ export async function openLargeFileSession(noteId: string): Promise<LargeFileOpe
   // Open first, then measure through the handle. Stat-then-open reads whatever
   // the path points at by the time the open lands, which need not be the file
   // that was measured — and the whole session rests on that measurement.
-  const handle = await fs.open(absolutePath, 'r').catch((err) => {
+  const handle = await fs.open(absolutePath, 'r').catch((err: unknown) => {
     logger.warn('Failed to open large file', { path: cached.path, err })
     return null
   })

@@ -2,13 +2,14 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as PromisesModule from 'fs/promises'
 
 // The seam: right after the outside-vault check resolves the requested file,
 // the file is swapped for a link to a file outside the vault, before it is read.
 const race = vi.hoisted(() => ({ target: '', swap: (): void => {} }))
 
 vi.mock('fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs/promises')>()
+  const actual = await importOriginal<typeof PromisesModule>()
   const realpath = async (probe: string): Promise<string> => {
     const real = await actual.realpath(probe)
     if (race.target !== '' && probe === race.target) {

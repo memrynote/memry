@@ -351,6 +351,7 @@ describe('http-client', () => {
             init.signal.addEventListener(
               'abort',
               () => {
+                // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- rejecting with the abort reason or a non-Error value is what this test simulates
                 reject(init.signal.reason)
               },
               { once: true }

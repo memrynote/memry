@@ -58,7 +58,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
       (response) => {
         if (!cancelled) setProjects(response.projects)
       },
-      (err) => {
+      (err: unknown) => {
         if (!cancelled) {
           log.error('Canvas add-card: project list failed', err)
           setProjects([])
@@ -89,7 +89,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
           if (!cancelled) setResults(response.results)
           return undefined
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas add-card: search failed', err)
             setResults([])
@@ -103,7 +103,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
           }
           return undefined
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas add-card: file search failed', err)
             setFiles([])
@@ -115,7 +115,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
           if (!cancelled) setEvents(response.events)
           return undefined
         },
-        (err) => {
+        (err: unknown) => {
           if (!cancelled) {
             log.error('Canvas add-card: event search failed', err)
             setEvents([])

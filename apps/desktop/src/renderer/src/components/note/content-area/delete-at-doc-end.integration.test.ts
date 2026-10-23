@@ -39,7 +39,7 @@ async function mountEditorWithMarkdown(markdown: string): Promise<BlockNoteEdito
   editor.mount(el)
   mounted.push({ editor, el })
 
-  const blocks = await editor.tryParseMarkdownToBlocks(markdown)
+  const blocks = editor.tryParseMarkdownToBlocks(markdown)
   editor.replaceBlocks(editor.document, blocks)
   return editor
 }

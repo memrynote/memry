@@ -182,7 +182,7 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
           patch: { folder: { kind: 'new', parent, name: t('onboardingWizard.preview.notesName') } }
         })
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         log.warn('Reading the default vault folder failed', err)
       })
     // Runs once: later folder changes come from the user.

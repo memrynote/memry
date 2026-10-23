@@ -128,7 +128,7 @@ interface NotesTreeProps {
 }
 
 export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function NotesTree(
-  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps = {},
+  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps,
   ref
 ) {
   const { t } = useT('notes')

@@ -85,6 +85,7 @@ import { inboxService } from '@/services/inbox-service'
 import { reminderService } from '@/services/reminder-service'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { getI18n } from 'react-i18next'
+import type { CalendarEventReadOnlyMetadata } from '@/components/calendar/calendar-event-popover'
 
 const log = createLogger('CalendarPage')
 
@@ -302,7 +303,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     eventId: string | null
     draft: CalendarEventDraft
     anchorRect: AnchorRect
-    readOnlyMetadata?: import('@/components/calendar/calendar-event-popover').CalendarEventReadOnlyMetadata
+    readOnlyMetadata?: CalendarEventReadOnlyMetadata
   } | null>(null)
   const [inboxSnoozePopoverState, setInboxSnoozePopoverState] = useState<{
     item: CalendarProjectionItem
@@ -1037,7 +1038,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
             previous.dueDate,
             previous.dueTime,
             minutesBetween(previousStartAt, item.endAt)
-          ).catch((err) => {
+          ).catch((err: unknown) => {
             log.error('Failed to undo task reschedule', {
               taskId: item.sourceId,
               error: extractErrorMessage(err)
@@ -1060,7 +1061,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       // Register undo so Cmd+Z restores the previous time (handled globally in App.tsx).
       registerUndo(getI18n().getFixedT(null, 'calendar')('undo.moveEvent'), () => {
         void commitEventTimes(item.sourceId, previousStartAt, previousEndAt, item.isAllDay).catch(
-          (err) => {
+          (err: unknown) => {
             log.error('Failed to undo calendar event move', {
               eventId: item.sourceId,
               error: extractErrorMessage(err)

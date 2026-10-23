@@ -103,22 +103,22 @@ export function registerInboxHandlers(): void {
 
   ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, async (_, input) => {
     const result = await inboxDomain.captureText(CaptureTextSchema.parse(input))
-    trackInboxCaptured('text', Boolean(result?.success))
+    trackInboxCaptured('text', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, async (_, input) => {
     const result = await inboxDomain.captureLink(CaptureLinkSchema.parse(input))
-    trackInboxCaptured('link', Boolean(result?.success))
+    trackInboxCaptured('link', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, async (_, input) => {
     const result = await inboxDomain.captureImage(CaptureImageSchema.parse(input))
-    trackInboxCaptured('image', Boolean(result?.success))
+    trackInboxCaptured('image', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, async (_, input) => {
     const result = await inboxDomain.captureVoice(CaptureVoiceSchema.parse(input))
-    trackInboxCaptured('voice', Boolean(result?.success))
+    trackInboxCaptured('voice', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, handleCaptureClipIpc)
@@ -139,7 +139,7 @@ export function registerInboxHandlers(): void {
 
   ipcMain.handle(InboxChannels.invoke.FILE, async (_, input) => {
     const result = await inboxDomain.fileItem(FileItemSchema.parse(input))
-    trackInboxFiled('folder', Boolean(result?.success))
+    trackInboxFiled('folder', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, (_, itemId) =>
@@ -148,27 +148,27 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.TRACK_SUGGESTION, handleTrackSuggestionIpc)
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_NOTE, async (_, itemId, options) => {
     const result = await inboxDomain.convertToNote(itemId, options)
-    trackInboxFiled('note', Boolean(result?.success))
+    trackInboxFiled('note', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_TASK, async (_, itemId, input) => {
     const result = await inboxDomain.convertToTask(itemId, input)
-    trackInboxFiled('task', Boolean(result?.success))
+    trackInboxFiled('task', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_EVENT, async (_, itemId, input) => {
     const result = await inboxDomain.convertToEvent(itemId, input)
-    trackInboxFiled('event', Boolean(result?.success))
+    trackInboxFiled('event', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.CONVERT_TO_REMINDER, async (_, itemId, input) => {
     const result = await inboxDomain.convertToReminder(itemId, input)
-    trackInboxFiled('reminder', Boolean(result?.success))
+    trackInboxFiled('reminder', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, async (_, itemId, noteId, tags, options) => {
     const result = await inboxDomain.linkToNote(itemId, noteId, tags || [], options)
-    trackInboxFiled('linked', Boolean(result?.success))
+    trackInboxFiled('linked', result?.success)
     return result
   })
   ipcMain.handle(InboxChannels.invoke.SNOOZE, async (_, input) => {

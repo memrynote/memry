@@ -182,7 +182,7 @@ telemetry.post('/logs', async (c) => {
       // safeWaitUntil only guards the synchronous waitUntil() call, not this
       // promise — hashTelemetryId throws when TELEMETRY_HMAC_KEY is missing/
       // empty, which would otherwise surface as an unhandled rejection.
-      .catch((error) => {
+      .catch((error: unknown) => {
         logger.warn('Diagnostic log capture failed', {
           error: error instanceof Error ? error.message : String(error)
         })

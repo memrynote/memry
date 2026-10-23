@@ -5,6 +5,7 @@ import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
+import type * as PathsModule from '../lib/paths'
 
 type PreflightVerdict = {
   ok: boolean
@@ -25,7 +26,7 @@ const fsHooks = vi.hoisted(() => ({
 }))
 
 vi.mock('fs', async (importActual) => {
-  const actual = await importActual<typeof import('fs')>()
+  const actual = await importActual<typeof fs>()
   fsHooks.realRenameSync = actual.renameSync
   const renameSync = (from: string, to: string): void => {
     ;(fsHooks.renameSync ?? actual.renameSync)(from, to)
@@ -239,7 +240,7 @@ vi.mock('../vault/notes', () => ({
 // The file is opened through the real vault check, then read through the
 // `safeRead` fake at the mapped path; `stat` is real, as before.
 vi.mock('../lib/paths', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/paths')>()
+  const actual = await importOriginal<typeof PathsModule>()
   const { OutsideVaultError } = await import('../lib/errors')
   const fsp = await import('fs/promises')
   return {
