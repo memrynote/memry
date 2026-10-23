@@ -164,6 +164,10 @@ export interface MainIpcInvokeHandlers {
   "import:preview": (...args: [{ importId: string; importerId: string; sourcePaths: string[]; options?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ success: true; preview: import("../../../../../packages/contracts/src/import-channels").ImportPreview; }> | { success: false; error: string }>
   "import:readwise:connect": (...args: [{ token: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").ReadwiseStatusResult> | { success: false; error: string }>
   "import:readwise:disconnect": (...args: [unknown]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
+  "import:readwise:list-deleted": (...args: [unknown]) => Awaited<Promise<{ books: import("../../../../../packages/contracts/src/import-channels").ReadwiseDeletedBook[]; }> | { success: false; error: string }>
+  "import:readwise:refresh-book": (...args: [{ noteId: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
+  "import:readwise:reimport-book": (...args: [{ noteId: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
+  "import:readwise:restore-book": (...args: [{ readwiseBookId: number; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "import:readwise:set-options": (...args: [{ rootFolder?: string | undefined; folderLayout?: "flat" | "by-category" | undefined; categories?: { books?: boolean | undefined; articles?: boolean | undefined; tweets?: boolean | undefined; podcasts?: boolean | undefined; supplementals?: boolean | undefined; } | undefined; cadence?: "manual" | "daily" | "hourly" | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").ReadwiseStatusResult> | { success: false; error: string }>
   "import:readwise:status": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/import-channels").ReadwiseStatusResult> | { success: false; error: string }>
   "import:readwise:sync-now": (...args: [unknown]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>

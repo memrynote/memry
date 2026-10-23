@@ -16,7 +16,11 @@ describe('importApi.readwise', () => {
     ['connect', ReadwiseImportChannels.invoke.CONNECT, [{ token: 't' }]],
     ['disconnect', ReadwiseImportChannels.invoke.DISCONNECT, []],
     ['syncNow', ReadwiseImportChannels.invoke.SYNC_NOW, []],
-    ['setOptions', ReadwiseImportChannels.invoke.SET_OPTIONS, [{ cadence: 'daily' }]]
+    ['setOptions', ReadwiseImportChannels.invoke.SET_OPTIONS, [{ cadence: 'daily' }]],
+    ['reimportBook', ReadwiseImportChannels.invoke.REIMPORT_BOOK, [{ noteId: 'n1' }]],
+    ['refreshBook', ReadwiseImportChannels.invoke.REFRESH_BOOK, [{ noteId: 'n1' }]],
+    ['listDeleted', ReadwiseImportChannels.invoke.LIST_DELETED, []],
+    ['restoreBook', ReadwiseImportChannels.invoke.RESTORE_BOOK, [{ readwiseBookId: 7 }]]
   ] as const)('%s invokes its channel', async (method, channel, args) => {
     await (importApi.readwise[method] as (...a: unknown[]) => Promise<unknown>)(...args)
     expect(electronMock.ipcRenderer.invoke).toHaveBeenCalledWith(channel, ...args)

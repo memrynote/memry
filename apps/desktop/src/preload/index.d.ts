@@ -69,6 +69,9 @@ import type {
   OneNoteAuthStatusResult,
   OneNoteNotebooksResult,
   ReadwiseConnectInput,
+  ReadwiseBookCommandInput,
+  ReadwiseDeletedBook,
+  ReadwiseRestoreBookInput,
   ReadwiseSetOptionsInput,
   ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
@@ -2076,6 +2079,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
       disconnect: () => Promise<{ success: true }>
       syncNow: () => Promise<{ success: true }>
       setOptions: (input: ReadwiseSetOptionsInput) => Promise<ReadwiseStatusResult>
+      reimportBook: (input: ReadwiseBookCommandInput) => Promise<{ success: true }>
+      refreshBook: (input: ReadwiseBookCommandInput) => Promise<{ success: true }>
+      listDeleted: () => Promise<{ books: ReadwiseDeletedBook[] }>
+      restoreBook: (input: ReadwiseRestoreBookInput) => Promise<{ success: true }>
     }
   }
   updater: {

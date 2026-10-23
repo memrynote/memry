@@ -35,6 +35,15 @@ export function getLinkByReaderDocumentId(
     .get()
 }
 
+export function getLinkByNoteId(db: DataDb, noteId: string): ReadwiseLink | undefined {
+  return db
+    .select()
+    .from(readwiseLinks)
+    .where(eq(readwiseLinks.noteId, noteId))
+    .orderBy(asc(readwiseLinks.id))
+    .get()
+}
+
 export function listLinks(db: DataDb, state?: ReadwiseLinkState): ReadwiseLink[] {
   const query = db.select().from(readwiseLinks)
   return (state ? query.where(eq(readwiseLinks.state, state)) : query)

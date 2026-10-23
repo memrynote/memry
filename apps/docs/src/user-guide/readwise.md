@@ -61,6 +61,18 @@ After your first import, Memry syncs without being asked.
 - **Offline.** Memry skips a scheduled sync while the computer is offline and tries again on the next minute once it is back. A sync that fails because Readwise or the network is unavailable is retried after 5 minutes, then 10, 20 and so on, up to 6 hours between attempts. A sync that fails halfway writes what it finished, and the next one picks up from there.
 - **A token Readwise rejects.** Memry stops the schedule instead of trying again every hour. The row shows **Needs attention** until you connect again with a fresh token. Connecting resumes the schedule.
 
+## Fix one book
+
+Three cases that importing cannot fix on its own each have a command. They appear on a note that came from Readwise, and they write into the note even while it is open, because you asked for the change.
+
+- **Re-import from Readwise** rewrites the Readwise section from scratch. Use it after you edited the section and want Readwise's version back. It asks first, because text you wrote inside the section is lost. Text above and below the section and the note's properties stay. Afterwards the section counts as unedited again, so new highlights, edits and deletions from Readwise reach it as before.
+- **Refresh book info** writes the author, category, source and source link from Readwise into the note's properties. For an article it also saves the cover image. Readwise tags the note lacks are added. No tag is removed, so a tag you added stays, and a tag Readwise dropped stays too. The note keeps its title and its place in the vault. A field Readwise has no value for is left as it is. This is the only time Memry changes the properties after the note is created.
+- **Restore** brings back a note you deleted. Open the Readwise dialog and find **Deleted books**: each row has the book's title, the day you deleted the note and its highlight count. **Restore** creates the note again with all of its highlights. If a note for that book already exists, Memry links to it and does not make a second one.
+
+Find **Re-import from Readwise** and **Refresh book info** in the note's more menu (the three dots), under **Readwise**, and in the command palette.
+
+These commands need your token, so they run on the device that syncs with Readwise. On another device the two note commands are disabled and say that Readwise syncs on the other device, and **Deleted books** shows the same line. The list of deleted books lives on the syncing device too, so it starts empty when another device takes over.
+
 ## Choose where notes go
 
 Once you have imported, the dialog shows your choices.

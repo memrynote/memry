@@ -4,6 +4,7 @@ import { mockApp, mockElectron } from '@tests/utils/mock-electron'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { ReadwiseImportChannels } from '@memry/contracts/import-channels'
 import type { DataDb } from '../database/types'
+import { setSetting } from '../database/queries/settings'
 
 vi.mock('electron', () => ({ app: mockApp, ipcMain: mockElectron.ipcMain }))
 
@@ -153,5 +154,33 @@ describe('readwise import IPC handlers', () => {
     const status = await handlerFor(ReadwiseImportChannels.invoke.STATUS)({}, undefined)
     expect(status).toMatchObject({ connected: true, hasImported: true, needsAttention: false })
     expect(status.lastSyncAt).toEqual(expect.any(String))
+  })
+
+  it('status says this device pulls until another device holds the claim', async () => {
+    const status = handlerFor(ReadwiseImportChannels.invoke.STATUS)
+    expect(await status({}, undefined)).toMatchObject({
+      thisDevicePulls: true,
+      pullingDeviceName: null
+    })
+    setSetting(currentDb!, 'readwise', JSON.stringify({ syncDeviceId: 'other-device' }))
+    expect(await status({}, undefined)).toMatchObject({ thisDevicePulls: false })
+  })
+
+  it('refuses the four book commands over IPC on a device that does not pull', async () => {
+    setSetting(currentDb!, 'readwise', JSON.stringify({ syncDeviceId: 'other-device' }))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const calls: Array<[string, unknown]> = [
+      [ReadwiseImportChannels.invoke.REIMPORT_BOOK, { noteId: 'n1' }],
+      [ReadwiseImportChannels.invoke.REFRESH_BOOK, { noteId: 'n1' }],
+      [ReadwiseImportChannels.invoke.LIST_DELETED, undefined],
+      [ReadwiseImportChannels.invoke.RESTORE_BOOK, { readwiseBookId: 1 }]
+    ]
+    for (const [channel, input] of calls) {
+      const res = await handlerFor(channel)({}, input)
+      expect(res).toMatchObject({ success: false })
+      expect(String(res.error)).toMatch(/syncs on another device/)
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

@@ -235,7 +235,13 @@
     "readwiseRunUnavailable": "Readwise does not sync on this device.",
     "readwiseRunInProgress": "A Readwise import is already running. Try again when it finishes.",
     "readwiseOptionsFailed": "Could not save the Readwise settings",
-    "readwiseNotConnected": "Readwise is not connected. Paste your access token first."
+    "readwiseNotConnected": "Readwise is not connected. Paste your access token first.",
+    "readwiseSyncsElsewhere": "Readwise syncs on another device. Run this command there.",
+    "readwiseBookCommandFailed": "Could not complete the Readwise command",
+    "readwiseBookGone": "This book is no longer in your Readwise library.",
+    "readwiseNotLinked": "This note is not linked to a Readwise book.",
+    "readwiseNotDeleted": "This book is not in the deleted list.",
+    "readwiseBookBusy": "The note changed while the command ran. Try again."
   },
   "project": {
     "createFailed": "Failed to create project",

@@ -4,6 +4,7 @@ import { getMainI18n } from '../lib/main-i18n'
 import { getStatus } from '../vault'
 import { ReadwiseError, verifyToken } from './client'
 import { deleteReadwiseToken, getReadwiseToken, setReadwiseToken } from './secrets'
+import { pullingDeviceName, thisDevicePulls } from './pulling-device'
 import {
   getReadwiseScheduler,
   ReadwiseRunInProgressError,
@@ -37,7 +38,9 @@ export async function getReadwiseStatus(): Promise<ReadwiseStatusResult> {
     options: readReadwiseOptions(db),
     lastSyncAt: lastRun?.at ?? null,
     needsAttention: lastRun?.needsAttention ?? false,
-    hasImported: getCursor(db) !== null
+    hasImported: getCursor(db) !== null,
+    thisDevicePulls: thisDevicePulls(db),
+    pullingDeviceName: pullingDeviceName(db)
   }
 }
 

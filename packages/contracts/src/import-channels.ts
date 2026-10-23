@@ -377,7 +377,15 @@ export const ReadwiseImportChannels = {
     /** Ask the pulling device for a run now. */
     SYNC_NOW: 'import:readwise:sync-now',
     /** Change the synced options. */
-    SET_OPTIONS: 'import:readwise:set-options'
+    SET_OPTIONS: 'import:readwise:set-options',
+    /** Rewrite one book's section from scratch, after the user confirmed (D16). */
+    REIMPORT_BOOK: 'import:readwise:reimport-book',
+    /** Write one book's current Readwise info into the note's properties (D16). */
+    REFRESH_BOOK: 'import:readwise:refresh-book',
+    /** Link rows in state `note-deleted`, for the panel's Deleted books list (D16). */
+    LIST_DELETED: 'import:readwise:list-deleted',
+    /** Recreate the note of a deleted book (D16). */
+    RESTORE_BOOK: 'import:readwise:restore-book'
   }
 } as const
 
@@ -451,6 +459,23 @@ export const ReadwiseSetOptionsSchema = z.object({
 })
 export type ReadwiseSetOptionsInput = z.infer<typeof ReadwiseSetOptionsSchema>
 
+/** A book command on a note that has a Readwise link (D16). */
+export const ReadwiseBookCommandSchema = z.object({ noteId: z.string().min(1) })
+export type ReadwiseBookCommandInput = z.infer<typeof ReadwiseBookCommandSchema>
+
+export const ReadwiseRestoreBookSchema = z.object({
+  readwiseBookId: z.number().int().positive()
+})
+export type ReadwiseRestoreBookInput = z.infer<typeof ReadwiseRestoreBookSchema>
+
+export interface ReadwiseDeletedBook {
+  readwiseBookId: number
+  title: string
+  /** ISO time the link row went to `note-deleted`. */
+  deletedAt: string
+  highlightCount: number
+}
+
 export interface ReadwiseStatusResult {
   connected: boolean
   options: ReadwiseOptions
@@ -463,6 +488,10 @@ export interface ReadwiseStatusResult {
    * next run is the first import, which the dialog previews first (#1413).
    */
   hasImported: boolean
+  /** False when another device holds the claim. Book commands need the token, so they run on the pulling device (D8, D16). */
+  thisDevicePulls: boolean
+  /** The pulling device's name, when known. */
+  pullingDeviceName: string | null
 }
 
 /**

@@ -41,6 +41,7 @@ import {
   ReadwiseFirstImportPreview,
   type FirstImportState
 } from '@/components/settings/readwise-first-import-preview'
+import { ReadwiseDeletedBooks } from '@/components/settings/readwise-deleted-books'
 import { ReadwiseLocationSection } from '@/components/settings/readwise-location-section'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
@@ -324,6 +325,12 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           </SettingRow>
         </div>
       </section>
+
+      <ReadwiseDeletedBooks
+        pullsHere={status.thisDevicePulls}
+        pullingDeviceName={status.pullingDeviceName}
+        disabled={disabled}
+      />
 
       <div className="flex items-center justify-between gap-3">
         <p className="min-w-0 flex-1 text-xs/4 text-muted-foreground">

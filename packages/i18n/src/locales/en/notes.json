@@ -23,6 +23,26 @@
     "showPreview": "Show preview",
     "copyFailed": "Could not copy the link"
   },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Re-import from Readwise",
+    "refreshAction": "Refresh book info",
+    "syncsOn": "Readwise syncs on {device}.",
+    "syncsOnAnotherDevice": "Readwise syncs on another device.",
+    "takeOverHint": "Sync on that device, or take over in Settings → Import.",
+    "reimport": {
+      "title": "Re-import “{title}” from Readwise?",
+      "body": "The Readwise section is rewritten from scratch. Anything you wrote inside it is lost.",
+      "note": "Text outside the section and the note's properties stay as they are.",
+      "cancel": "Cancel",
+      "confirm": "Re-import"
+    },
+    "commands": {
+      "reimported": "Re-imported from Readwise",
+      "refreshed": "Book info refreshed",
+      "failed": "Could not complete the Readwise command"
+    }
+  },
   "page": {
     "empty": {
       "title": "No note selected",
