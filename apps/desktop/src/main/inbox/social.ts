@@ -15,7 +15,7 @@ function extractTweetId(url: string): string | null {
 function extractHandleFromPath(url: string): string {
   try {
     const handle = new URL(url).pathname.split('/').find(Boolean)
-    return handle ? `@${handle}` : ''
+    return handle === undefined ? '' : `@${handle}`
   } catch {
     return ''
   }

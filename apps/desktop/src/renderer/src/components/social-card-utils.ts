@@ -61,7 +61,7 @@ export function extractHandleFromUrl(url: string | null): string {
   if (!isTwitterHostname(hostname)) return ''
 
   const handle = getPathname(url).split('/').find(Boolean)
-  return handle ? `@${handle}` : ''
+  return handle === undefined ? '' : `@${handle}`
 }
 
 /**
