@@ -10,6 +10,7 @@ import { getReadwiseToken } from './secrets'
 import { readReadwiseOptions } from './settings'
 import { getReadwiseSyncService, type ReadwiseSyncService, type RunResult } from './sync-service'
 import { getCursor, getLastRun } from './sync-state'
+import { trackReadwiseSync } from './telemetry'
 
 const log = createLogger('Readwise:Scheduler')
 
@@ -168,7 +169,8 @@ export class ReadwiseScheduler {
   }
 
   private beginRun(token: string, origin: 'scheduled' | 'manual'): Promise<RunResult> {
-    this.lastAttemptAt = this.deps.now()
+    const startedAt = this.deps.now()
+    this.lastAttemptAt = startedAt
     const abort = new AbortController()
     this.abort = abort
     const run = this.deps
@@ -178,10 +180,12 @@ export class ReadwiseScheduler {
         (result) => {
           this.failures = 0
           this.nextRetryAt = 0
+          trackReadwiseSync(origin, this.deps.now() - startedAt, { result })
           return result
         },
         (error: unknown) => {
           this.noteFailure(error, origin)
+          trackReadwiseSync(origin, this.deps.now() - startedAt, { error })
           throw error
         }
       )
