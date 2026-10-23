@@ -18,12 +18,12 @@ ported.
 
 Explicitly out of v1:
 
-| Feature | Reason |
-|---|---|
-| Agent Chat | CLI spawn + localhost MCP impossible on iOS |
-| Importers | read local app databases; impossible in the iOS sandbox |
+| Feature         | Reason                                                   |
+| --------------- | -------------------------------------------------------- |
+| Agent Chat      | CLI spawn + localhost MCP impossible on iOS              |
+| Importers       | read local app databases; impossible in the iOS sandbox  |
 | Semantic search | `sqlite-vec` and `@huggingface/transformers` unavailable |
-| Canvas editing | Excalidraw is DOM-bound; read-only view only |
+| Canvas editing  | Excalidraw is DOM-bound; read-only view only             |
 
 FTS search stays. Canvas is read-only.
 
@@ -141,16 +141,16 @@ Estimated 3–4 days. Also a safety net desktop does not have today.
 
 Each gate must be green before the next phase starts.
 
-| Phase | Weeks | Work | Gate |
-|---|---|---|---|
-| 0 | 1–2 | Spike: fetch and decrypt one note on device | Byte parity with desktop crypto vectors |
-| 1 | 3–6 | `@memry/sync-client` extraction | Desktop tests green, behaviour unchanged |
-| 2 | 7–10 | Shell: auth, keys, SQLite, sync engine, read-only note list, client version gate + kill switch | Desktop write visible on phone in <5s |
-| 3 | 11–15 | Editor WebView + CRDT bridge + batching | Offline write and conflict pass; <50ms keystroke latency on a 50KB note |
-| 4 | 16–19 | tasks, journal, calendar, inbox, bookmarks, FTS, canvas read-only, reminders | All 12 sync types readable |
-| 5 | 20–22 | IAP, entitlement merge, paywall, double-subscription UI, privacy/export declarations | Sandbox purchase enables sync |
-| 6 | 23–25 | App Store prep, TestFlight | Review-ready build |
-| 7 | 26 | Submission + buffer | — |
+| Phase | Weeks | Work                                                                                           | Gate                                                                    |
+| ----- | ----- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 0     | 1–2   | Spike: fetch and decrypt one note on device                                                    | Byte parity with desktop crypto vectors                                 |
+| 1     | 3–6   | `@memry/sync-client` extraction                                                                | Desktop tests green, behaviour unchanged                                |
+| 2     | 7–10  | Shell: auth, keys, SQLite, sync engine, read-only note list, client version gate + kill switch | Desktop write visible on phone in <5s                                   |
+| 3     | 11–15 | Editor WebView + CRDT bridge + batching                                                        | Offline write and conflict pass; <50ms keystroke latency on a 50KB note |
+| 4     | 16–19 | tasks, journal, calendar, inbox, bookmarks, FTS, canvas read-only, reminders                   | All 12 sync types readable                                              |
+| 5     | 20–22 | IAP, entitlement merge, paywall, double-subscription UI, privacy/export declarations           | Sandbox purchase enables sync                                           |
+| 6     | 23–25 | App Store prep, TestFlight                                                                     | Review-ready build                                                      |
+| 7     | 26    | Submission + buffer                                                                            | —                                                                       |
 
 If the schedule slips, the tail of Phase 4 (canvas read-only, reminders) is cut
 first. Phases 0 and 1 are not skippable.

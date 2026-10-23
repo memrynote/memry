@@ -20,7 +20,15 @@ export { InboxChannels }
 // ============================================================================
 
 export type InboxItemType =
-  'link' | 'note' | 'image' | 'voice' | 'video' | 'clip' | 'pdf' | 'social' | 'reminder'
+  | 'link'
+  | 'note'
+  | 'image'
+  | 'voice'
+  | 'video'
+  | 'clip'
+  | 'pdf'
+  | 'social'
+  | 'reminder'
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
 export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'

@@ -27,12 +27,12 @@ Each failed job shows:
 
 Retrying re-queues the job. If retries keep failing, the underlying cause is likely:
 
-| Symptom | Likely cause | Fix |
-| --- | --- | --- |
-| "Network unreachable" | Offline | Reconnect |
-| "Unauthorized" | Sign-in expired | Sign in again |
-| "Quota exceeded" | Vault at storage limit | Free up space or upgrade |
-| "Blob hash mismatch" | Rare corruption | Push from the source device |
+| Symptom               | Likely cause           | Fix                         |
+| --------------------- | ---------------------- | --------------------------- |
+| "Network unreachable" | Offline                | Reconnect                   |
+| "Unauthorized"        | Sign-in expired        | Sign in again               |
+| "Quota exceeded"      | Vault at storage limit | Free up space or upgrade    |
+| "Blob hash mismatch"  | Rare corruption        | Push from the source device |
 
 ## Broken Source URLs
 

@@ -25,7 +25,11 @@ export type UnsafeDictionary = {
 }
 
 export type WideningTargetKind =
-  'anonymous object' | 'generic container' | 'object' | 'open dictionary' | 'unknown'
+  | 'anonymous object'
+  | 'generic container'
+  | 'object'
+  | 'open dictionary'
+  | 'unknown'
 
 export type WideningTarget = {
   readonly kind: WideningTargetKind

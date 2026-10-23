@@ -1,7 +1,11 @@
 export type CriticMarkupKind = 'addition' | 'deletion' | 'substitution' | 'comment'
 
 export type CriticMarkupCommentMentionKind =
-  'note' | 'task' | 'journal' | 'inbox' | 'calendar_event'
+  | 'note'
+  | 'task'
+  | 'journal'
+  | 'inbox'
+  | 'calendar_event'
 
 export interface CriticMarkupCommentMentionRef {
   kind: CriticMarkupCommentMentionKind
@@ -19,7 +23,11 @@ export interface CriticMarkupCommentAttachmentRef {
 }
 
 export type CriticMarkupCommentFormatMark =
-  'bold' | 'italic' | 'underline' | 'strikethrough' | 'code'
+  | 'bold'
+  | 'italic'
+  | 'underline'
+  | 'strikethrough'
+  | 'code'
 
 /** Inline formatting for a slice of a comment body, as UTF-16 offsets into it. */
 export interface CriticMarkupCommentFormatRange {

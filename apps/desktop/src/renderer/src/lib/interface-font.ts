@@ -66,7 +66,8 @@ export const FONT_FAMILY_MAP: Record<BuiltInFontFamily, string> = {
 }
 
 export type FontChoice =
-  { kind: 'builtin'; family: BuiltInFontFamily } | { kind: 'system'; family: string }
+  | { kind: 'builtin'; family: BuiltInFontFamily }
+  | { kind: 'system'; family: string }
 
 function isBuiltInFontFamily(value: string): value is BuiltInFontFamily {
   return (BUILT_IN_FONT_FAMILIES as readonly string[]).includes(value)

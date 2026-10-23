@@ -16,7 +16,15 @@ import type { ViewConfig, PropertyDisplay, SummaryConfig } from './folder-view-a
  * Property type for template properties
  */
 export type TemplatePropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'project'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+  | 'project'
 
 /**
  * A property definition within a template

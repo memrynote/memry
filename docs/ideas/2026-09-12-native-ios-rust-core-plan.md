@@ -79,13 +79,13 @@ This adds a third language to the repo. Accepted.
 
 ## What is reused from the repo
 
-| Reused as-is | Reused as specification | Rewritten |
-| --- | --- | --- |
-| Sync server | `packages/contracts/*` Zod schemas | Sync engine (`main/sync`, `sync-client`) |
-| Editor bundle (`apps/mobile/editor-web`) | `crypto-vectors.json` + new composite vectors | Crypto (`main/crypto`) |
-| Bridge protocol (`webview-bridge.ts`) | `sync-client/src/{vector-clock,field-merge}.ts` | Storage (`main/database`, `db-schema`) |
-| Design system (`DESIGN.md`, tokens) | Markdown grammar in `packages/shared` and `editor-schema/blocks/markdown.ts` | Domain logic (`main/vault`, `main/tasks`, `main/notes`, `main/journal`) |
-| | `specs/001-mobile-app/contracts/platform-adapters.md` (the ten seams) | Renderer-resident logic: folder-view expression engine, task grouping, quick-add and natural-date parsers, graph builder |
+| Reused as-is                             | Reused as specification                                                      | Rewritten                                                                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Sync server                              | `packages/contracts/*` Zod schemas                                           | Sync engine (`main/sync`, `sync-client`)                                                                                 |
+| Editor bundle (`apps/mobile/editor-web`) | `crypto-vectors.json` + new composite vectors                                | Crypto (`main/crypto`)                                                                                                   |
+| Bridge protocol (`webview-bridge.ts`)    | `sync-client/src/{vector-clock,field-merge}.ts`                              | Storage (`main/database`, `db-schema`)                                                                                   |
+| Design system (`DESIGN.md`, tokens)      | Markdown grammar in `packages/shared` and `editor-schema/blocks/markdown.ts` | Domain logic (`main/vault`, `main/tasks`, `main/notes`, `main/journal`)                                                  |
+|                                          | `specs/001-mobile-app/contracts/platform-adapters.md` (the ten seams)        | Renderer-resident logic: folder-view expression engine, task grouping, quick-add and natural-date parsers, graph builder |
 
 ## Out of scope on mobile, with reasons
 

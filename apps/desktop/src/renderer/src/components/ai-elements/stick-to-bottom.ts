@@ -60,7 +60,9 @@ export function scrollStateFor(metrics: ScrollMetrics): ConversationScrollState 
 }
 
 export type ConversationScrollAction =
-  { kind: 'stick' } | { kind: 'restore'; offset: number } | { kind: 'none' }
+  | { kind: 'stick' }
+  | { kind: 'restore'; offset: number }
+  | { kind: 'none' }
 
 export interface ConversationScrollInput {
   /** The live policy: what is stored, updated the moment the user scrolls. */

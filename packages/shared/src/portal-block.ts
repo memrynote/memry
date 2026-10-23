@@ -63,7 +63,13 @@ export interface PortalDefinition {
 }
 
 export type PortalStatus =
-  'ok' | 'missing-note' | 'missing-block' | 'locked' | 'cycle' | 'too-deep' | 'not-synced'
+  | 'ok'
+  | 'missing-note'
+  | 'missing-block'
+  | 'locked'
+  | 'cycle'
+  | 'too-deep'
+  | 'not-synced'
 
 export type ParsedPortal =
   | { ok: true; definition: PortalDefinition }

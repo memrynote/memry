@@ -181,7 +181,8 @@ export async function partitionInheritedLegacyStore({
  * the adopted path, or the pre-adoption one when its move failed.
  */
 export type PendingCrdtStoreRenameOutcome =
-  { status: 'open-target' } | { status: 'open-previous'; previousPath: string }
+  | { status: 'open-target' }
+  | { status: 'open-previous'; previousPath: string }
 
 /**
  * Rename this vault's store to match a uuid it has adopted since the store was

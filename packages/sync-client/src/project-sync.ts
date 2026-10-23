@@ -4,7 +4,11 @@ import { statuses } from '@memry/db-schema/schema/statuses'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import { type FieldClocks, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
+import {
+  type FieldClocks,
+  initAllFieldClocks,
+  PROJECT_SYNCABLE_FIELDS
+} from '@memry/sync-client/field-merge'
 import {
   hasOfflineClockData,
   incrementProjectClocksOffline,

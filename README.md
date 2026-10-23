@@ -96,7 +96,6 @@ Ship a workflow you love? Tell us. Something broken? Tell us louder.
  </picture>
 </a>
 
-
 <sub>
 
 AGPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>

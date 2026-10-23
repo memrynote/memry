@@ -23,7 +23,10 @@ export const noteMetadata = sqliteTable(
     attachmentId: text('attachment_id'),
     attachmentReferences: text('attachment_references', { mode: 'json' }).$type<string[] | null>(),
     localOnly: integer('local_only', { mode: 'boolean' }).notNull().default(false),
-    syncPolicy: text('sync_policy').$type<NoteSyncPolicy>().notNull().default(NoteSyncPolicies.SYNC),
+    syncPolicy: text('sync_policy')
+      .$type<NoteSyncPolicy>()
+      .notNull()
+      .default(NoteSyncPolicies.SYNC),
     journalDate: text('journal_date'),
     propertyDefinitionNames: text('property_definition_names', { mode: 'json' }).$type<
       string[] | null

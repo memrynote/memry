@@ -58,7 +58,8 @@ export class InboxSyncService {
   constructor(deps: InboxSyncDeps) {
     const load = (itemId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'inbox',

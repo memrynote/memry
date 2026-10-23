@@ -26,7 +26,9 @@ export const JOURNAL_DATE_KEY = 'date'
  * The persisted drill level. `day` deliberately has no `date`: see the header.
  */
 export type JournalDrill =
-  { type: 'day' } | { type: 'month'; year: number; month: number } | { type: 'year'; year: number }
+  | { type: 'day' }
+  | { type: 'month'; year: number; month: number }
+  | { type: 'year'; year: number }
 
 export const DEFAULT_JOURNAL_DRILL: JournalDrill = { type: 'day' }
 

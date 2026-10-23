@@ -88,7 +88,8 @@ test('sandbox generates a linked, populated vault', async () => {
         // Every task line is bound to a task row whose source is this note.
         for (const [, taskId] of raw.matchAll(/\{task:([^}]+)\}/g)) {
           const row = data.prepare('SELECT source_note_id FROM tasks WHERE id = ?').get(taskId) as
-            { source_note_id: string } | undefined
+            | { source_note_id: string }
+            | undefined
           assert.equal(row?.source_note_id, note.id, `${relative}: {task:${taskId}}`)
         }
 

@@ -16,7 +16,15 @@ import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { useT } from '@memry/i18n/renderer'
 
 type PropertyType =
-  'text' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect' | 'url' | 'rating' | 'project'
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'date'
+  | 'select'
+  | 'multiselect'
+  | 'url'
+  | 'rating'
+  | 'project'
 
 export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Element {
   const { t } = useT('common')

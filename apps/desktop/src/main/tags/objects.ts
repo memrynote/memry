@@ -184,7 +184,11 @@ export function fieldColumns(
  * dotless i both fold to "i".
  */
 export function foldForSearch(text: string): string {
-  return text.replace(/[İIı]/g, 'i').toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '')
+  return text
+    .replace(/[İIı]/g, 'i')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
 }
 
 function matchRank(title: string, query: string): number | null {

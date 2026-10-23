@@ -4,7 +4,12 @@ import { AIMenu, getDefaultAIMenuItems } from '@blocknote/xl-ai'
 import { SELECTION_COMMANDS, NO_SELECTION_COMMANDS } from './ai-commands'
 
 type AIResponseStatus =
-  'user-input' | 'thinking' | 'ai-writing' | 'error' | 'user-reviewing' | 'closed'
+  | 'user-input'
+  | 'thinking'
+  | 'ai-writing'
+  | 'error'
+  | 'user-reviewing'
+  | 'closed'
 
 export function CustomAIMenu(): React.JSX.Element {
   return (

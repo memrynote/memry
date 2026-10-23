@@ -20,7 +20,8 @@ if (!NOTE || !DB) {
 
 const db = new Database(DB, { readonly: true })
 const title = db.prepare('SELECT title FROM notes WHERE id = ?').get(NOTE) as
-  { title: string } | undefined
+  | { title: string }
+  | undefined
 if (!title) {
   // Never digest an absent title as "": it would produce a plausible hash that
   // silently disagrees with every other shell.

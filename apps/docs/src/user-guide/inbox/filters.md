@@ -6,12 +6,12 @@ Filter the inbox by content type and switch between Inbox / Triage / Archived / 
 
 ## The Four Views
 
-| View | What it shows |
-| --- | --- |
-| **Inbox** | Pending items waiting to be triaged |
-| **Triage** | A focused, card-based workflow (see [Triage Mode](/user-guide/inbox/triage)) |
-| **Archived** | Items you've already processed |
-| **Health** | Failed sync jobs and items needing attention (see [Health](/user-guide/inbox/health)) |
+| View         | What it shows                                                                         |
+| ------------ | ------------------------------------------------------------------------------------- |
+| **Inbox**    | Pending items waiting to be triaged                                                   |
+| **Triage**   | A focused, card-based workflow (see [Triage Mode](/user-guide/inbox/triage))          |
+| **Archived** | Items you've already processed                                                        |
+| **Health**   | Failed sync jobs and items needing attention (see [Health](/user-guide/inbox/health)) |
 
 Switch from the tabs at the top of the inbox view.
 
@@ -19,16 +19,16 @@ Switch from the tabs at the top of the inbox view.
 
 A row of icon buttons filters by content type:
 
-| Icon | Type |
-| --- | --- |
-| 🔗 | Links |
-| 📝 | Notes |
-| 🖼️ | Images |
-| 🎤 | Voice |
-| 🎞️ | Video |
-| ✂️ | Clips |
-| 📄 | PDFs |
-| 💬 | Social |
+| Icon | Type   |
+| ---- | ------ |
+| 🔗   | Links  |
+| 📝   | Notes  |
+| 🖼️   | Images |
+| 🎤   | Voice  |
+| 🎞️   | Video  |
+| ✂️   | Clips  |
+| 📄   | PDFs   |
+| 💬   | Social |
 
 Click any chip to filter to that type. Click again to remove.
 

@@ -53,7 +53,11 @@ export function sealSection(body: string, last: string): string {
 }
 
 export type SectionProblem =
-  'no-start' | 'no-end' | 'out-of-order' | 'inline-marker' | 'duplicate-markers'
+  | 'no-start'
+  | 'no-end'
+  | 'out-of-order'
+  | 'inline-marker'
+  | 'duplicate-markers'
 
 export type SectionRead<M extends { hash: string } = EndMarker> =
   | {

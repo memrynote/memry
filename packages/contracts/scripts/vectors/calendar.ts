@@ -607,10 +607,12 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
   }
   for (const r of db.reminders.values()) {
     if (r.targetType !== 'note_date') continue
-    if (!(
-      (r.status !== 'snoozed' && inRange(r.remindAt)) ||
-      (r.status === 'snoozed' && inRange(r.snoozedUntil))
-    ))
+    if (
+      !(
+        (r.status !== 'snoozed' && inRange(r.remindAt)) ||
+        (r.status === 'snoozed' && inRange(r.snoozedUntil))
+      )
+    )
       continue
     const [startAt, offset] = position(r)
     const note = db.notes.get(r.targetId as string)
@@ -663,10 +665,12 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
   for (const e of db.externals.values()) {
     const s = db.sources.get(e.sourceId as string)
     if (!s || e.archivedAt || s.archivedAt) continue
-    if (!(
-      (e.startAt as string) < q.endAt &&
-      ((e.endAt as string | null) ?? (e.startAt as string)) >= q.startAt
-    ))
+    if (
+      !(
+        (e.startAt as string) < q.endAt &&
+        ((e.endAt as string | null) ?? (e.startAt as string)) >= q.startAt
+      )
+    )
       continue
     if (!q.includeUnselectedSources && s.isSelected !== true) continue
     const provider = (s.provider as string) ?? 'google'

@@ -33,7 +33,8 @@ export class HomePageSyncService {
   constructor(deps: HomePageSyncDeps) {
     const load = (boardId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(homePages).where(eq(homePages.id, boardId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'home_page',

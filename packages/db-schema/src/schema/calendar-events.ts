@@ -2,11 +2,7 @@ import { sql } from 'drizzle-orm'
 import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 
-export type CalendarEventResponseStatus =
-  | 'needsAction'
-  | 'declined'
-  | 'tentative'
-  | 'accepted'
+export type CalendarEventResponseStatus = 'needsAction' | 'declined' | 'tentative' | 'accepted'
 
 export interface CalendarAttendee {
   email: string
@@ -65,14 +61,14 @@ export const calendarEvents = sqliteTable(
       string,
       unknown
     > | null>(),
-    recurrenceExceptions: text('recurrence_exceptions', { mode: 'json' }).$type<
-      string[] | null
-    >(),
+    recurrenceExceptions: text('recurrence_exceptions', { mode: 'json' }).$type<string[] | null>(),
     attendees: text('attendees', { mode: 'json' }).$type<CalendarAttendee[] | null>(),
     reminders: text('reminders', { mode: 'json' }).$type<CalendarReminders | null>(),
     visibility: text('visibility').$type<CalendarVisibility | null>(),
     colorId: text('color_id'),
-    conferenceData: text('conference_data', { mode: 'json' }).$type<CalendarConferenceData | null>(),
+    conferenceData: text('conference_data', {
+      mode: 'json'
+    }).$type<CalendarConferenceData | null>(),
     parentEventId: text('parent_event_id'),
     originalStartTime: text('original_start_time'),
     targetCalendarId: text('target_calendar_id'),

@@ -33,7 +33,8 @@ function createDb(options?: {
   }
   const entitlement = () =>
     raw.prepare('SELECT * FROM sync_entitlements WHERE user_id = ?').get('user-1') as
-      Record<string, unknown> | undefined
+      | Record<string, unknown>
+      | undefined
   return { db, entitlement }
 }
 

@@ -114,7 +114,8 @@ class VaultLockHandler extends BaseItemHandler<VaultLockSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(vaultLocks).where(eq(vaultLocks.id, itemId)).get() as
-      Record<string, unknown> | undefined
+      | Record<string, unknown>
+      | undefined
   }
 
   buildPushPayload(

@@ -95,7 +95,8 @@ export function anchorsInDoc(blocks: readonly DocBlock[]): Set<string> {
 }
 
 export type StampOutcome =
-  { kind: 'stamped' | 'existing'; anchor: string } | { kind: 'missing-block' }
+  | { kind: 'stamped' | 'existing'; anchor: string }
+  | { kind: 'missing-block' }
 
 /**
  * Give a block its ` ^anchor`, or report the one it has. The suffix goes at

@@ -40,7 +40,8 @@ export interface TreeStructure {
 
 /** One child of a folder (or of the vault root) in display order. */
 export type FolderEntry =
-  { type: 'folder'; folder: FolderNode } | { type: 'note'; note: NoteListItem }
+  | { type: 'folder'; folder: FolderNode }
+  | { type: 'note'; note: NoteListItem }
 
 /**
  * A level's folders and notes merged into the order the tree draws them.

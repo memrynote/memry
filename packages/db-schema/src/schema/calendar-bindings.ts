@@ -18,9 +18,10 @@ export const calendarBindings = sqliteTable(
     ownershipMode: text('ownership_mode').$type<CalendarBindingOwnershipMode>().notNull(),
     writebackMode: text('writeback_mode').$type<CalendarBindingWritebackMode>().notNull(),
     remoteVersion: text('remote_version'),
-    lastLocalSnapshot: text('last_local_snapshot', { mode: 'json' }).$type<
-      Record<string, unknown> | null
-    >(),
+    lastLocalSnapshot: text('last_local_snapshot', { mode: 'json' }).$type<Record<
+      string,
+      unknown
+    > | null>(),
     archivedAt: text('archived_at'),
     clock: text('clock', { mode: 'json' }).$type<VectorClock>(),
     syncedAt: text('synced_at'),
@@ -32,7 +33,11 @@ export const calendarBindings = sqliteTable(
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
   },
   (table) => [
-    uniqueIndex('idx_calendar_bindings_source').on(table.sourceType, table.sourceId, table.provider),
+    uniqueIndex('idx_calendar_bindings_source').on(
+      table.sourceType,
+      table.sourceId,
+      table.provider
+    ),
     uniqueIndex('idx_calendar_bindings_remote').on(
       table.provider,
       table.remoteCalendarId,

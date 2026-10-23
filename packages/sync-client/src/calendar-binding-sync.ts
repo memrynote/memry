@@ -41,7 +41,8 @@ export class CalendarBindingSyncService {
       getDeviceId: deps.getDeviceId,
       load: (id) =>
         deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, id)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const nextClock = nextLocalClock(
           deps.db,
@@ -65,7 +66,8 @@ export class CalendarBindingSyncService {
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
           deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get() as
-            Record<string, unknown> | undefined,
+            | Record<string, unknown>
+            | undefined,
           deviceId,
           (clock) =>
             deps.db

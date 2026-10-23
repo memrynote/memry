@@ -100,7 +100,12 @@ export interface SocialMetadata {
 }
 
 export type InboxMetadata =
-  LinkMetadata | ImageMetadata | VoiceMetadata | ClipMetadata | PdfMetadata | SocialMetadata
+  | LinkMetadata
+  | ImageMetadata
+  | VoiceMetadata
+  | ClipMetadata
+  | PdfMetadata
+  | SocialMetadata
 
 // Filing system types
 export interface Folder {

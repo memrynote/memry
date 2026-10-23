@@ -2,4 +2,11 @@ export type Translate = (key: string, values?: Record<string, string | number>) 
 
 /** The module each pane of the stage window draws. */
 export type StageFocus =
-  'home' | 'inbox' | 'journal' | 'calendar' | 'tasks' | 'graph' | 'canvas' | 'agent'
+  | 'home'
+  | 'inbox'
+  | 'journal'
+  | 'calendar'
+  | 'tasks'
+  | 'graph'
+  | 'canvas'
+  | 'agent'

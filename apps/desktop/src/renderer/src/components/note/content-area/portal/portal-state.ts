@@ -21,7 +21,8 @@ export type PortalWindowTarget = Exclude<PortalTarget, { kind: 'search' }>
  * window, and does not count toward depth.
  */
 export type PortalFrame =
-  { kind: 'window'; note: string; blocks?: readonly string[] } | { kind: 'host'; note: string }
+  | { kind: 'window'; note: string; blocks?: readonly string[] }
+  | { kind: 'host'; note: string }
 
 export interface PortalAncestry {
   /** Outermost first. */

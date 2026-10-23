@@ -268,7 +268,12 @@ export const CALENDAR_PROVIDER_UNSUPPORTED_PLATFORM = 'unsupported_platform'
 export type CalendarProviderScope = 'synced' | 'device'
 
 export type CalendarProviderIncrementalMode =
-  'sync-token' | 'delta-link' | 'sync-collection' | 'ctag-etag' | 'conditional-get' | 'full'
+  | 'sync-token'
+  | 'delta-link'
+  | 'sync-collection'
+  | 'ctag-etag'
+  | 'conditional-get'
+  | 'full'
 
 export type CalendarProviderAuthFlow = 'oauth2' | 'basic' | 'url' | 'os-permission'
 
@@ -574,7 +579,10 @@ export interface CalendarProjectionItem {
 }
 
 export type CalendarProviderAccountConnectionStatus =
-  'connected' | 'disconnected' | 'reconnect_required' | 'error'
+  | 'connected'
+  | 'disconnected'
+  | 'reconnect_required'
+  | 'error'
 
 export interface CalendarProviderAccountStatus {
   accountId: string

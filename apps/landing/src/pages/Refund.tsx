@@ -19,7 +19,8 @@ export function RefundPage() {
           </li>
           <li>
             Request a refund inside the app or email{' '}
-            <a href="mailto:billing@memrynote.com">billing@memrynote.com</a> from the account address.
+            <a href="mailto:billing@memrynote.com">billing@memrynote.com</a> from the account
+            address.
           </li>
           <li>
             Paddle, our merchant of record, returns the money to your original payment method.

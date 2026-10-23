@@ -1,4 +1,10 @@
-import type { TelemetryEvent, TelemetryEventName, TelemetryResult, TelemetrySurface, TelemetryErrorDetail } from '@memry/contracts/telemetry-api'
+import type {
+  TelemetryEvent,
+  TelemetryEventName,
+  TelemetryResult,
+  TelemetrySurface,
+  TelemetryErrorDetail
+} from '@memry/contracts/telemetry-api'
 
 /**
  * Engine-internal telemetry facade, mirroring desktop's `trackMainEvent` /
@@ -66,6 +72,9 @@ export const trackMainEvent = (
   sink?.trackEvent(name, options)
 }
 
-export const trackMainLog = (level: SyncDiagnosticLevel, options: SyncTelemetryLogOptions): void => {
+export const trackMainLog = (
+  level: SyncDiagnosticLevel,
+  options: SyncTelemetryLogOptions
+): void => {
   sink?.trackLog(level, options)
 }

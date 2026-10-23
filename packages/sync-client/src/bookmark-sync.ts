@@ -34,7 +34,8 @@ export class BookmarkSyncService {
   constructor(deps: BookmarkSyncDeps) {
     const load = (bookmarkId: string): Record<string, unknown> | undefined =>
       deps.db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get() as
-        Record<string, unknown> | undefined
+        | Record<string, unknown>
+        | undefined
 
     this.controller = new RecordSyncController({
       type: 'bookmark',

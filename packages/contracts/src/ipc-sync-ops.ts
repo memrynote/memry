@@ -146,10 +146,16 @@ export interface ResolveVaultBindingResult {
  * - `unavailable`: sync is not running on this device.
  */
 export type SyncNowBlockedReason =
-  'offline' | 'signed_out' | 'busy' | 'paused' | 'failed' | 'unavailable'
+  | 'offline'
+  | 'signed_out'
+  | 'busy'
+  | 'paused'
+  | 'failed'
+  | 'unavailable'
 
 export type TriggerSyncResult =
-  { success: true } | { success: false; reason: SyncNowBlockedReason; error?: string }
+  | { success: true }
+  | { success: false; reason: SyncNowBlockedReason; error?: string }
 
 export interface GetHistoryInput {
   limit?: number
@@ -246,7 +252,13 @@ export interface LargeNotesResult {
  * A record push the server calls a replay never does.
  */
 export type NoteSyncStateValue =
-  'not_syncing' | 'local_only' | 'pending' | 'sent' | 'confirmed' | 'not_recorded' | 'rejected'
+  | 'not_syncing'
+  | 'local_only'
+  | 'pending'
+  | 'sent'
+  | 'confirmed'
+  | 'not_recorded'
+  | 'rejected'
 
 /** Times are epoch milliseconds. */
 export interface NoteSyncState {

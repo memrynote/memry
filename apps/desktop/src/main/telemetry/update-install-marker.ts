@@ -44,7 +44,10 @@ export interface UpdateInstallAttempt {
 }
 
 export type UpdateInstallOutcome =
-  'applied' | 'did-not-apply' | 'handoff-applied' | 'handoff-fell-back'
+  | 'applied'
+  | 'did-not-apply'
+  | 'handoff-applied'
+  | 'handoff-fell-back'
 
 const markerPath = (): string => path.join(app.getPath('userData'), UPDATE_INSTALL_MARKER_FILENAME)
 

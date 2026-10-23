@@ -39,7 +39,8 @@ export class FolderConfigSyncService {
       getDeviceId: deps.getDeviceId,
       load: (path) =>
         deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, path)).get() as
-          Record<string, unknown> | undefined,
+          | Record<string, unknown>
+          | undefined,
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const newClock = nextLocalClock(
           deps.db,
@@ -63,7 +64,8 @@ export class FolderConfigSyncService {
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
           deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get() as
-            Record<string, unknown> | undefined,
+            | Record<string, unknown>
+            | undefined,
           deviceId,
           (clock) =>
             deps.db.update(folderConfigs).set({ clock }).where(eq(folderConfigs.path, itemId)).run()

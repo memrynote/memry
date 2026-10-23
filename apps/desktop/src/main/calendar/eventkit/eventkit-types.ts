@@ -6,7 +6,11 @@
 
 /** `EKAuthorizationStatus` for events. `write_only` (macOS 14+) cannot read. */
 export type EventKitAuthorizationStatus =
-  'not_determined' | 'restricted' | 'denied' | 'write_only' | 'full_access'
+  | 'not_determined'
+  | 'restricted'
+  | 'denied'
+  | 'write_only'
+  | 'full_access'
 
 export interface EventKitCalendar {
   /** `EKCalendar.calendarIdentifier`. */

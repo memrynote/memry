@@ -19,7 +19,8 @@ export interface OcrImageSource {
 }
 
 export type OcrMainToWorkerMessage =
-  { type: 'recognize'; requestId: number; source: OcrImageSource } | { type: 'shutdown' }
+  | { type: 'recognize'; requestId: number; source: OcrImageSource }
+  | { type: 'shutdown' }
 
 // Kept inline rather than imported from telemetry/log-ship.ts so this
 // electron-free file (reachable from ocr-worker.ts) never pulls electron into

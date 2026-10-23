@@ -99,7 +99,8 @@ export interface TopicCard {
 }
 
 export type FoldedItem =
-  { kind: 'section'; section: SectionView } | { kind: 'card'; card: TopicCard }
+  | { kind: 'section'; section: SectionView }
+  | { kind: 'card'; card: TopicCard }
 
 export interface FoldedView {
   level: FoldLevel

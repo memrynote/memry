@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
-import { createNoteContentStore, type NoteContentStore, type VaultStoreLayout } from './note-content-store'
+import {
+  createNoteContentStore,
+  type NoteContentStore,
+  type VaultStoreLayout
+} from './note-content-store'
 
 describe('createNoteContentStore', () => {
   let rootPath: string
@@ -43,10 +47,7 @@ describe('createNoteContentStore', () => {
       await store.write('notes/sub/deep/hello.md', 'hello world')
 
       // #then
-      const contents = await fs.readFile(
-        path.join(rootPath, 'notes/sub/deep/hello.md'),
-        'utf-8'
-      )
+      const contents = await fs.readFile(path.join(rootPath, 'notes/sub/deep/hello.md'), 'utf-8')
       expect(contents).toBe('hello world')
     })
 

@@ -151,7 +151,9 @@ describe('sanitizeSvg', () => {
   })
 
   it('catches obfuscated expression() in a style attribute', () => {
-    const out = clean('<svg><rect style="width:expr\tession(alert(1))"/><g style="fill:red"/></svg>')
+    const out = clean(
+      '<svg><rect style="width:expr\tession(alert(1))"/><g style="fill:red"/></svg>'
+    )
 
     expect(out).not.toContain('ession(')
     expect(out).toContain('style="fill:red"')
@@ -188,7 +190,9 @@ describe('sanitizeSvg', () => {
   })
 
   it('drops animation elements that retarget a reference', () => {
-    const out = clean('<svg><use href="#a"><animate attributeName="href" to="javascript:x"/></use></svg>')
+    const out = clean(
+      '<svg><use href="#a"><animate attributeName="href" to="javascript:x"/></use></svg>'
+    )
 
     expect(out).not.toMatch(/<animate/i)
     expect(out).toContain('href="#a"')

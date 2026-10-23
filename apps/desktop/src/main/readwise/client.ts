@@ -20,7 +20,11 @@ const MAX_RETRY_AFTER_SECONDS = 120
 const REQUEST_TIMEOUT_MS = 30_000
 
 export type ReadwiseErrorCode =
-  'invalid-token' | 'subscription-expired' | 'rate-limited' | 'network' | 'server'
+  | 'invalid-token'
+  | 'subscription-expired'
+  | 'rate-limited'
+  | 'network'
+  | 'server'
 
 /** Typed failure. Callers map `code` to user text. The message never holds the token. */
 export class ReadwiseError extends Error {

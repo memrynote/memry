@@ -255,8 +255,7 @@ export const signSetupToken = async (
   if (binding?.devicePublicKey) {
     claims.device_public_key = binding.devicePublicKey
     claims.renewable_until =
-      binding.renewableUntil ??
-      Math.floor(Date.now() / 1000) + SETUP_TOKEN_RENEWAL_WINDOW_SECONDS
+      binding.renewableUntil ?? Math.floor(Date.now() / 1000) + SETUP_TOKEN_RENEWAL_WINDOW_SECONDS
   }
   return signToken(claims, privateKey, SETUP_TOKEN_EXPIRY)
 }

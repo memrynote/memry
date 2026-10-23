@@ -73,8 +73,8 @@ order is irrelevant to the sum.
    - `tL == tR` → **local iff `'_offline' ∈ keys(L)` and `'_offline' ∉ keys(R)`
      and `differ`** (`:134-137`); **otherwise remote** (`:138-139`).
 6. Conflict flag, **only inside the tie branch**: `cmp === 'concurrent' &&
-differ` (`:141-151`). The recorded conflict carries `mergedClock =
-merge(L, R)` (`:149`).
+   differ` (`:141-151`). The recorded conflict carries `mergedClock =
+   merge(L, R)` (`:149`).
 7. `mergedFieldClocks[f] = merge(L, R)` **unconditionally**, on every field,
    whichever branch won (`:154`).
 8. `merged[f] = winner` **even when the winner is `undefined`**; the caller's
@@ -230,7 +230,7 @@ and a client that breaks any of them reintroduces divergence.**
   `ON CONFLICT … DO UPDATE SET … clock = excluded.clock`
   (`apps/sync-server/src/services/sync.ts:668-686`), `version = existing.version
   - 1` (`:575`), and `detectReplay`
-(`apps/sync-server/src/services/sync.ts:179-190`), which rejects only when **no**
+    (`apps/sync-server/src/services/sync.ts:179-190`), which rejects only when **no**
     incoming component exceeds the stored one. A concurrent push overwrites the
     row, so the earlier concurrent payload stops existing.
 - **P2 — a queued push is rebuilt from the live row at dequeue.**

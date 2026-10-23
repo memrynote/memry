@@ -24,7 +24,8 @@ export interface InsertTemplateArgs {
 }
 
 export type InsertTemplateResult =
-  { ok: true; insertedBlockIds: string[] } | { ok: false; reason: 'empty' | 'stale-block' }
+  | { ok: true; insertedBlockIds: string[] }
+  | { ok: false; reason: 'empty' | 'stale-block' }
 
 function withoutBlockIds(node: any): any {
   return {

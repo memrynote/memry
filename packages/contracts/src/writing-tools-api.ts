@@ -23,7 +23,8 @@ export type WritingAssistInput = z.infer<typeof WritingAssistInputSchema>
 export type WritingAssistResult = { kind: 'alternatives'; alternatives: string[] }
 
 export type WritingAssistResponse =
-  { success: true; result: WritingAssistResult } | { success: false; error: string }
+  | { success: true; result: WritingAssistResult }
+  | { success: false; error: string }
 
 /** The spelling data main forwards for a context menu the note editor claimed. */
 export interface EditorContextMenuSpelling {

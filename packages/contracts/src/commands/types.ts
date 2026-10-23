@@ -2,11 +2,19 @@ import type { ShortcutBinding } from '../settings-schemas'
 
 /** `ShortcutBinding` that differs by platform. `meta` already means Ctrl off macOS. */
 export type PlatformBinding =
-  ShortcutBinding | { readonly mac: ShortcutBinding; readonly other: ShortcutBinding }
+  | ShortcutBinding
+  | { readonly mac: ShortcutBinding; readonly other: ShortcutBinding }
 
 /** Where a command acts: the whole app, or the entity shown in the active tab. */
 export type CommandContext =
-  'app' | 'note' | 'journal' | 'project' | 'tasks' | 'canvas' | 'folder' | 'file'
+  | 'app'
+  | 'note'
+  | 'journal'
+  | 'project'
+  | 'tasks'
+  | 'canvas'
+  | 'folder'
+  | 'file'
 
 /**
  * The domain slice whose runtime owner supplies the command's behavior. A slice

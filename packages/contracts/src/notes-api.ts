@@ -405,7 +405,11 @@ export type DownloadAttachmentFromUrlInput = z.infer<typeof DownloadAttachmentFr
  * rather than to the photo itself, which answers with HTML.
  */
 export type DownloadAttachmentFromUrlFailure =
-  'not-an-image' | 'too-large' | 'offline' | 'failed' | 'write-failed'
+  | 'not-an-image'
+  | 'too-large'
+  | 'offline'
+  | 'failed'
+  | 'write-failed'
 
 export type DownloadAttachmentFromUrlResult =
   | {
@@ -583,7 +587,8 @@ export interface NoteCreateResponse {
 
 /** What adding a header tag did with that tag's template (`notes:update`). */
 export type NoteTagTemplateOutcome =
-  { kind: 'applied'; tag: string; undoToken: string } | { kind: 'offered'; tag: string }
+  | { kind: 'applied'; tag: string; undoToken: string }
+  | { kind: 'offered'; tag: string }
 
 export interface NoteUpdateResponse {
   success: boolean
