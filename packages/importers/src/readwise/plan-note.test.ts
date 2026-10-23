@@ -36,7 +36,7 @@ describe('planNote', () => {
       tags: ['productivity', 'to read']
     })
     expect(result.imageUrls).toEqual([COVER_URL])
-    expect(result.last).toBe('2026-10-22T18:05:00.000Z')
+    expect(result.last).toBe('2026-10-22T18:05:00.001Z')
     expect(result.section).toBe(
       [
         '<!-- readwise:start -->',
@@ -62,7 +62,7 @@ describe('planNote', () => {
         '  - Quote this in the talk',
         '- Second highlight ([Location 340](https://readwise.io/open/2), 2026-10-22)',
         '',
-        `<!-- readwise:end v1 last=2026-10-22T18:05:00.000Z hash=${hashSectionBody(
+        `<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=${hashSectionBody(
           result.section.split('\n').slice(2, -2).join('\n')
         )} -->`
       ].join('\n')

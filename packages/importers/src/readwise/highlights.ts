@@ -148,9 +148,10 @@ export function renderHighlights(
 }
 
 /**
- * The `last` a section records: the newest `created_at` of the highlights it
- * holds, held back to the oldest image still missing so that highlight comes
- * round again.
+ * The `last` a section records: one millisecond past the newest `created_at`
+ * of the highlights it holds, so those highlights fall strictly before it and a
+ * deleted one is not a candidate again (D5). Held back to the oldest image
+ * still missing, so that highlight comes round again.
  */
 export function newestCreatedAt(
   handled: ReadwiseHighlight[],
@@ -161,11 +162,14 @@ export function newestCreatedAt(
     .map((h) => Date.parse(toIsoInstant(h.created_at) ?? ''))
     .filter((ms) => !Number.isNaN(ms))
     .reduce((min, ms) => Math.min(min, ms), Number.POSITIVE_INFINITY)
-  let best = Date.parse(floor)
+  let newest = Number.NaN
   for (const highlight of handled) {
     const ms = Date.parse(toIsoInstant(highlight.created_at) ?? '')
-    if (!Number.isNaN(ms) && ms <= cap && (Number.isNaN(best) || ms > best)) best = ms
+    if (!Number.isNaN(ms) && ms <= cap && (Number.isNaN(newest) || ms > newest)) newest = ms
   }
+  const past = Number.isNaN(newest) ? newest : newest < cap ? newest + 1 : newest
+  const floorMs = Date.parse(floor)
+  const best = Number.isNaN(floorMs) || past > floorMs ? past : floorMs
   return Number.isNaN(best) ? EPOCH : new Date(best).toISOString()
 }
 

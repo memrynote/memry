@@ -392,7 +392,6 @@ async function appendToNote(
     addMarker = read.problem === 'no-end' || read.problem === 'no-start'
   }
 
-  const last = marker?.last ?? note.created.toISOString()
   const linkedIds = linkedHighlightIds(body)
   const wanted = (book.highlights ?? [])
     .filter((highlight) => !linkedIds.has(highlight.id))
@@ -400,7 +399,8 @@ async function appendToNote(
     .filter((url): url is string => url !== null)
   const images = await resolveImages(note.id, note.path, [...new Set(wanted)], fetch)
   const append = planAppend(book.highlights ?? [], {
-    last,
+    last: marker?.last ?? null,
+    noteCreated: note.created.toISOString(),
     linkedIds,
     timeZone: options.planOptions.timeZone,
     images

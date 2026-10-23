@@ -346,6 +346,94 @@ describe('upsertReadwiseNote', () => {
     expect(content.match(/readwise\.io\/open\/1\)/g)).toHaveLength(1)
   })
 
+  describe('a highlight the user removed stays removed (D5)', () => {
+    const at = (day: number) => `2030-01-0${day}T08:00:00.123456Z`
+    const dated = () => [
+      highlight(1, { created_at: at(1) }),
+      highlight(2, { created_at: at(2) }),
+      highlight(3, { created_at: at(3) })
+    ]
+    const dropHighlight = (n: number) => (content: string) =>
+      content
+        .split('\n')
+        .filter((line) => !line.includes(`Highlight ${n} `))
+        .join('\n')
+
+    it('does not bring back the newest highlight after the user deleted it', async () => {
+      const noteId = await created(book(1, { highlights: dated() }))
+      await userEdits(noteId, dropHighlight(3))
+
+      expect((await sync(book(1, { highlights: dated() }))).status).toBe('unchanged')
+      expect((await sync(book(1, { highlights: dated() }))).status).toBe('unchanged')
+      expect(await body(noteId)).not.toContain('open/3)')
+      expect(writes()).toBe(0)
+    })
+
+    it('keeps the newest one gone after an append moved last, and still appends a later highlight once', async () => {
+      const noteId = await created(book(1, { highlights: dated() }))
+      await userEdits(noteId, dropHighlight(3))
+      const later = [...dated(), highlight(4, { created_at: at(4) })]
+
+      expect((await sync(book(1, { highlights: later }))).status).toBe('appended')
+      expect((await sync(book(1, { highlights: later }))).status).toBe('unchanged')
+      await userEdits(noteId, dropHighlight(4))
+      expect((await sync(book(1, { highlights: later }))).status).toBe('unchanged')
+      const content = await body(noteId)
+      expect(content).not.toContain('open/3)')
+      expect(content).not.toContain('open/4)')
+      expect(content.match(/open\/2\)/g)).toHaveLength(1)
+    })
+
+    it('appends two new highlights with the same created_at together, and neither returns once removed', async () => {
+      const noteId = await created(book(1, { highlights: dated() }))
+      await userEdits(noteId, (content) => content.replace('Highlight 1 ', 'Highlight 1 mine '))
+      const both = [
+        ...dated(),
+        highlight(4, { created_at: at(5) }),
+        highlight(5, { created_at: at(5) })
+      ]
+
+      expect((await sync(book(1, { highlights: both }))).status).toBe('appended')
+      const content = await body(noteId)
+      expect(content.match(/open\/4\)/g)).toHaveLength(1)
+      expect(content.match(/open\/5\)/g)).toHaveLength(1)
+      await userEdits(noteId, dropHighlight(5))
+      expect((await sync(book(1, { highlights: both }))).status).toBe('unchanged')
+      expect(await body(noteId)).not.toContain('open/5)')
+    })
+
+    it('without a usable last, never appends a highlight older than the newest one the note links', async () => {
+      const noteId = await created(book(1, { highlights: dated() }))
+      await userEdits(noteId, (content) =>
+        dropHighlight(2)(content.replace(/<!-- readwise:end v1/, '<!-- readwise:end v2'))
+      )
+      const later = [...dated(), highlight(4, { created_at: at(4) })]
+
+      expect((await sync(book(1, { highlights: later }))).status).toBe('appended')
+      const content = await body(noteId)
+      expect(content).not.toContain('open/2)')
+      expect(content.match(/open\/4\)/g)).toHaveLength(1)
+      expect(content).toContain('<!-- readwise:end v2')
+    })
+
+    it('reads a section the old rule wrote (last equals the newest created_at) and appends a later highlight once', async () => {
+      const noteId = await created(book(1, { highlights: dated() }))
+      await userEdits(noteId, (content) =>
+        content
+          .replace(/last=\S+/, 'last=2030-01-03T08:00:00.123Z')
+          .replace('Highlight 1 ', 'Highlight 1 mine ')
+      )
+      const later = [...dated(), highlight(4, { created_at: at(4) })]
+
+      expect((await sync(book(1, { highlights: later }))).status).toBe('appended')
+      expect((await sync(book(1, { highlights: later }))).status).toBe('unchanged')
+      const content = await body(noteId)
+      expect(content.match(/open\/4\)/g)).toHaveLength(1)
+      expect(content.match(/open\/3\)/g)).toHaveLength(1)
+      expect(content).toContain('last=2030-01-04T08:00:00.124Z')
+    })
+  })
+
   it('makes zero writes for unchanged input', async () => {
     const source = book(1, { highlights: threeHighlights() })
     await created(source)
