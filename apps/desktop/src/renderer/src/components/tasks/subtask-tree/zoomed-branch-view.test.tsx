@@ -64,6 +64,7 @@ const renderZoomed = (zoomedId: string, allowNested: boolean): void => {
     openDraft: vi.fn()
   } as unknown as SubtaskTreeValue
   render(
+    // oxlint-disable-next-line react/jsx-no-constructed-context-values -- single-render test fixture; identity stability is irrelevant
     <SubtaskTreeContext.Provider value={tree}>
       <ZoomedBranchView
         task={tasks.find((t) => t.id === zoomedId)!}

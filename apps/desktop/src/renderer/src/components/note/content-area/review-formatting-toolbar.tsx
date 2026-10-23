@@ -41,6 +41,7 @@ export function ReviewFormattingToolbarController(props: ReviewFormattingToolbar
 
   return (
     <FormattingToolbarController
+      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
       formattingToolbar={(toolbarProps) => (
         <ReviewFormattingToolbar {...toolbarProps} {...props} variant="floating" />
       )}
@@ -303,11 +304,13 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
   if (selectionState.isMultiBlock) {
     // Caches last single-block selection across renders so the comment button
     // can reopen on a selection BlockNote has already cleared.
+    // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
     lastSelectionRef.current = null
   } else {
     const selected = getSelectableSelection(selectionState.selection)
     if (selected) {
       // Same selection cache; persists the prior frame's selection.
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       lastSelectionRef.current = selected
     }
   }
@@ -350,6 +353,7 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
   const label = t('comments.toolbarComment')
   const Icon = MessageCircle
   // Reads cached last single-block selection (written above) as a render fallback.
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   const cachedSelection = getSelectableSelection(lastSelectionRef.current)
   const renderSelection = getSelectableSelection(selectionState.selection) ?? cachedSelection
   const isDisabled = !renderSelection
@@ -398,6 +402,7 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
     <span
       className="review-formatting-toolbar-action"
       onPointerDownCapture={handlePreClickSelection}

@@ -90,6 +90,7 @@ export function CalendarItemChip({
     return `${startLabel} – ${endLabel} · ${formatDurationShort(durationMinutes, t)}`
   }, [isBlock, item.endAt, durationMinutes, startLabel, clockFormat, t])
 
+  // oxlint-disable-next-line react/purity -- now prop defaults to the wall clock on each render so ended items fade on time
   const faded = item.isTriggered || isDone || (!isSelected && hasEnded(item, now ?? new Date()))
   const chipVars = useMemo(
     () => (displayColor ? calendarColorChipVars(displayColor) : eventTypeChipVars(item.visualType)),
@@ -209,6 +210,7 @@ export function CalendarItemChip({
         )}
       />
       {showStatus && item.task && (
+        // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- stops drag start from the status checkbox inside; not itself a control
         <span
           data-testid="calendar-chip-status"
           className={cn(

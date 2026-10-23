@@ -39,6 +39,7 @@ export function LongTextEditor({
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [localValue])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {

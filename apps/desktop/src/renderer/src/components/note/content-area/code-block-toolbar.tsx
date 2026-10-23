@@ -91,6 +91,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
   const placement = useMemo(() => {
     void tick
     return block?.isConnected ? measure(block) : null
+    // oxlint-disable-next-line react/memo-dependencies -- listed deps are intentional invalidation triggers that the body does not read
   }, [block, tick])
 
   useEffect(() => {

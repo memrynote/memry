@@ -235,12 +235,14 @@ export function BulkFieldFill({
                         <span className="block truncate">{field.name}</span>
                       </th>
                     ))}
+                    {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- label provided by surrounding context; element is a layout cell or test fixture */}
                     {oneByOne && <th className="w-16" />}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row) => (
                     <tr key={row.noteId} className="border-b border-border last:border-b-0">
+                      {/* oxlint-disable-next-line jsx-a11y/control-has-associated-label -- label provided by surrounding context; element is a layout cell or test fixture */}
                       <td className="px-3 py-2">
                         <span className="flex items-center gap-2 truncate">
                           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-tint/15 text-[9px] font-semibold text-tint">

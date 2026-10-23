@@ -126,6 +126,7 @@ vi.mock('@/components/ui/select', async () => {
       onValueChange?: (value: string) => void
       value?: string
     }) => (
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- test mock; the provider value is rebuilt per render on purpose
       <SelectContext.Provider value={{ onValueChange }}>
         <div data-select-value={value}>{children}</div>
       </SelectContext.Provider>
@@ -166,7 +167,9 @@ vi.mock('@/components/ui/picker', () => {
     value?: string | string[] | null
     modal?: boolean
   }) => {
+    // oxlint-disable-next-line react/immutability -- test mock captures the latest handler so the test can invoke it
     mocks.pickerOpenChange = onOpenChange ?? null
+    // oxlint-disable-next-line react/immutability -- test mock captures the latest handler so the test can invoke it
     mocks.pickerValueChange = onValueChange ?? null
     return (
       <div data-picker-value={value} data-picker-modal={modal ? 'true' : 'false'}>

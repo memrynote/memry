@@ -132,6 +132,7 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
           </div>
           <div
             className="flex items-center gap-2.5 border-t border-border px-[18px] py-3.5 text-[13px] text-text-secondary"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             role="status"
           >
             <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
@@ -167,6 +168,7 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
           <button
             key={option}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             role="radio"
             aria-checked={cadence === option}
             onClick={() => {

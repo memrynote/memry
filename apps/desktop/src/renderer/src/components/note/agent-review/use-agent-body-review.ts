@@ -123,6 +123,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
 
   useEffect(() => {
     draftRef.current = null
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [toolCallId])
 
   useEffect(() => {
@@ -204,6 +205,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [toolCallId, conversationId, revision, t])
 
   const update = useCallback(
@@ -254,6 +256,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
     if (!live || live.current === null) return 0
     const next = live.draft ?? live.candidate ?? live.current
     return buildBodyChunks(live.current, next).filter((chunk) => chunk.kind === 'changed').length
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memo keyed on the live handle; the compiler-inferred deps are finer than the intended invalidation
   }, [live])
 
   if (!pending || !live) return null

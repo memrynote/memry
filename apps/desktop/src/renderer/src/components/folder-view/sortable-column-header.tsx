@@ -243,6 +243,7 @@ export function SortableColumnHeader({
     >
       <div className="flex items-center gap-1 min-w-0">
         {/* Drag handle - visible on hover */}
+        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- drag handle spreads dnd-kit listeners and attributes (role/tabIndex) at runtime */}
         <div
           {...attributes}
           {...listeners}
@@ -274,6 +275,7 @@ export function SortableColumnHeader({
           <input
             ref={inputRef}
             type="text"
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
             autoFocus
             value={editValue}
             aria-label={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.editColumnName')}
@@ -309,6 +311,7 @@ export function SortableColumnHeader({
 
       {/* Resize handle */}
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- resize separator is a draggable splitter; an <hr> cannot carry the pointer handlers or layout
         role="separator"
         aria-orientation="vertical"
         tabIndex={0}

@@ -72,6 +72,7 @@ export const StopRepeatingDialog = ({
 
         <div className="flex flex-col gap-3 py-4">
           {/* Keep this task option */}
+          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- control is a custom Radix/ARIA widget the rule cannot resolve */}
           <label
             className={cn(
               'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',
@@ -102,6 +103,7 @@ export const StopRepeatingDialog = ({
           </label>
 
           {/* Delete all option */}
+          {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- control is a custom Radix/ARIA widget the rule cannot resolve */}
           <label
             className={cn(
               'flex cursor-pointer items-start gap-3 rounded-sm border p-3 transition-colors',

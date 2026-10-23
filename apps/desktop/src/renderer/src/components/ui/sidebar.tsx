@@ -142,6 +142,7 @@ function SidebarProvider({
   React.useEffect(() => {
     // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- see above
     if (!isResizing) persistSidebarWidth()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- sidebarWidth is read from the external store by persistSidebarWidth; it is the re-run trigger
   }, [sidebarWidth, isResizing])
 
   const toggleSidebar = React.useCallback(() => {

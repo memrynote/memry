@@ -152,6 +152,7 @@ export function NoteNamesLine({ noteId, title, aliases, disabled }: NoteNamesLin
         )}
       </div>
       {draft && conflict && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         <p role="status" className="text-xs leading-4 text-text-tertiary">
           {conflict.isOtherTitle
             ? t('names.conflictTitle', { name: conflict.name })

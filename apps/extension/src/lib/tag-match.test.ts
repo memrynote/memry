@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { matchTags } from './TagEditor'
+import { matchTags } from './tag-match'
 
 describe('matchTags', () => {
   const vault = ['research', 'reading', 'ai', 'career', 'Recipes']

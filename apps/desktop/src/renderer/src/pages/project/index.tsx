@@ -301,6 +301,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const tabCounts = useMemo(
     () => ({
       ...hub.counts,
+      // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
       all: allSource ? buildAllRows({ ...allSource, now: new Date(), showDone }).length : 0
     }),
     [hub.counts, allSource, showDone]

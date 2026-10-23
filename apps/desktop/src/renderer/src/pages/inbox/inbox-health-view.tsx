@@ -238,6 +238,7 @@ function CaptureHeatmap({
             ))}
           </div>
           {dayNames.map((_, dayIdx) => (
+            // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no identity beyond position
             <div key={dayIdx} className="flex gap-0.75">
               {HEATMAP_HOURS.map((hour) => {
                 const val = (heatmap?.[hour]?.[dayIdx] ?? 0) + (heatmap?.[hour + 1]?.[dayIdx] ?? 0)

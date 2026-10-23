@@ -378,6 +378,7 @@ export function AccountSettings() {
   }, [state.status])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void loadStorage()
   }, [loadStorage])
 
@@ -398,6 +399,7 @@ export function AccountSettings() {
   }, [billingLoadFailed, state.status])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void loadBilling()
   }, [loadBilling])
 

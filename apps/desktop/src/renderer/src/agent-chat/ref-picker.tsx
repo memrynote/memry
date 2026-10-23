@@ -159,6 +159,7 @@ export function RefPicker({
   useEffect(() => {
     onItemsChange([])
     onSelectedIndexChange(-1)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- query is an intentional trigger: the list is dropped on every keystroke
   }, [onItemsChange, onSelectedIndexChange, query])
 
   // The sources behind the list are not cheap — an FTS query and a calendar
@@ -223,6 +224,7 @@ export function RefPicker({
 
   return createPortal(
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom rich-row popup list; native select/datalist cannot render these rows
       role="listbox"
       tabIndex={-1}
       data-ref-picker=""
@@ -243,6 +245,7 @@ export function RefPicker({
           <button
             key={`${result.kind}-${result.id}`}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- row of a custom rich-row listbox; native option cannot render the content
             role="option"
             aria-selected={selected}
             className={cn(

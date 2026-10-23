@@ -435,6 +435,7 @@ export const ConvertActions = ({
               </span>
             </div>
             <div
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- labelled button group; fieldset would change layout
               role="group"
               aria-label={t('convert.remindAt')}
               className="flex flex-wrap gap-1 ps-[34px] pe-2"

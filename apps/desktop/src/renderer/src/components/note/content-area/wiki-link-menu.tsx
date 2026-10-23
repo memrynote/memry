@@ -94,6 +94,7 @@ export function WikiLinkMenu({
         'overflow-y-auto rounded-md border bg-popover p-1',
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="listbox"
       aria-label={t('menus.wiki.aria')}
     >
@@ -112,6 +113,7 @@ export function WikiLinkMenu({
             <div
               key={`${item.type}-${item.id}`}
               className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={false}
               aria-disabled
@@ -133,6 +135,7 @@ export function WikiLinkMenu({
               key={`${item.type}-${item.id}`}
               className={itemClassName}
               onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={isSelected}
             >
@@ -154,6 +157,7 @@ export function WikiLinkMenu({
               key={`${item.type}-${item.id}`}
               className={itemClassName}
               onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={isSelected}
             >
@@ -172,6 +176,7 @@ export function WikiLinkMenu({
             <div
               key={`${item.type}-${item.id}-${item.target}`}
               className={itemClassName}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
               role="option"
               aria-selected={isSelected}
             >
@@ -226,6 +231,7 @@ export function WikiLinkMenu({
             key={`${item.type}-${item.id}-${item.target}`}
             className={itemClassName}
             onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
             role="option"
             aria-selected={isSelected}
           >

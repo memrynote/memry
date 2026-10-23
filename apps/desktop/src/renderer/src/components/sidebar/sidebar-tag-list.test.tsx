@@ -151,6 +151,7 @@ vi.mock('@/components/ui/picker', () => {
   }) => {
     const [open, setOpen] = useState(false)
     return (
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- test harness renders once; value identity does not matter
       <PickerContext.Provider value={{ open, setOpen, value, onValueChange }}>
         {children}
       </PickerContext.Provider>
@@ -200,6 +201,7 @@ vi.mock('@/components/ui/picker', () => {
     return (
       <button
         type="button"
+        // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props, jsx-a11y/prefer-tag-over-role -- test double for a Radix item; selection state is not under test; ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
         role="option"
         onClick={() => {
           onValueChange(value)

@@ -20,6 +20,7 @@ export const FileRow = ({ file, onOpen }: FileRowProps): React.JSX.Element => {
 
   return (
     <HubRow
+      // oxlint-disable-next-line react/static-components -- icon component is passed as a prop, stable per render of the row
       leading={<Icon className="size-4 text-muted-foreground" aria-hidden="true" />}
       onOpen={() => {
         onOpen(file.id)

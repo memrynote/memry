@@ -213,7 +213,9 @@ export default function App() {
   // ⌘↵ / Ctrl↵ saves when the card is ready. Ref keeps the handler fresh
   // without re-subscribing the listener on every render.
   const sendRef = useRef(onSend)
-  sendRef.current = onSend
+  useEffect(() => {
+    sendRef.current = onSend
+  })
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (

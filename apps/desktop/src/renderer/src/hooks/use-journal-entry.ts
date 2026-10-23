@@ -352,6 +352,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
   }, [updateMutation])
 
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   performSaveRef.current = performSave
 
   const scheduleSave = useCallback(() => {

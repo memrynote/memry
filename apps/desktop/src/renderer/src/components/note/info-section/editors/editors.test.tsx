@@ -29,6 +29,7 @@ vi.mock('@/components/ui/picker', () => {
     children: React.ReactNode
     onValueChange?: (value: string) => void
   }) => {
+    // oxlint-disable-next-line react/immutability -- test mock records the latest handler on a hoisted holder
     mocks.pickerValueChange = onValueChange ?? null
     return <div>{children}</div>
   }

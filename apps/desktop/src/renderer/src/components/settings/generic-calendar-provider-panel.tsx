@@ -486,6 +486,7 @@ function ProviderCalendarList({
     <div
       className="flex flex-col gap-3"
       aria-label={t('calendar.providers.calendars')}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       role="group"
     >
       {[...groups.entries()].map(([label, members]) => (

@@ -341,6 +341,7 @@ function WeekMiniMock() {
         <div className="grid grid-cols-7 gap-1 pb-2 text-center font-mono-accent text-[9px] uppercase tracking-wider text-muted">
           {weekDays.map((d, i) => (
             <span
+              // oxlint-disable-next-line react/no-array-index-key -- static demo grid; positional and never reordered
               key={`${d}-${i}`}
               className={cn(i === 2 && 'rounded-full bg-terracotta px-1 text-white')}
             >
@@ -351,6 +352,7 @@ function WeekMiniMock() {
         <div className="grid h-32 grid-cols-7 gap-1">
           {weekDays.map((day, i) => (
             <div
+              // oxlint-disable-next-line react/no-array-index-key -- static demo grid; positional and never reordered
               key={`${day}-${i}`}
               className={cn(
                 'relative rounded-md border border-border/30 bg-paper-alt/40',
@@ -361,6 +363,7 @@ function WeekMiniMock() {
                 .filter((b) => b.day === i)
                 .map((b, idx) => (
                   <span
+                    // oxlint-disable-next-line react/no-array-index-key -- static demo grid; positional and never reordered
                     key={idx}
                     className={cn('absolute inset-x-0.5 rounded border', weekTone[b.tone])}
                     style={{ top: `${b.top}%`, height: `${b.h}%` }}
@@ -427,6 +430,7 @@ function MonthMiniMock() {
       <div className="rounded-xl border border-border/60 bg-paper p-3">
         <div className="grid grid-cols-7 gap-1 pb-2 text-center font-mono-accent text-[9px] uppercase tracking-wider text-muted">
           {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+            // oxlint-disable-next-line react/no-array-index-key -- static demo grid; positional and never reordered
             <span key={`${d}-${i}`}>{d}</span>
           ))}
         </div>
@@ -437,6 +441,7 @@ function MonthMiniMock() {
             const hasItem = filled.has(day)
             return (
               <div
+                // oxlint-disable-next-line react/no-array-index-key -- static demo grid; positional and never reordered
                 key={i}
                 className={cn(
                   'relative aspect-square rounded-md border border-border/30 bg-paper-alt/30 text-[10px]',

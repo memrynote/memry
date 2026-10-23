@@ -157,6 +157,7 @@ export function AddPresetFieldsDialog({
               <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
                 {t('tagFields.hub.dialog.nameLabel')}
                 <Input
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
                   autoFocus
                   value={otherName}
                   maxLength={50}

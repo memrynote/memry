@@ -50,6 +50,7 @@ export const PickerTrigger = React.forwardRef<HTMLButtonElement, PickerTriggerPr
         <button
           ref={ref}
           type="button"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
           role="combobox"
           aria-controls={contentId}
           aria-expanded={open}

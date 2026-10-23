@@ -87,6 +87,7 @@ export function AttachmentRenameDialog({
         <div className="flex items-center gap-2">
           <Input
             ref={inputRef}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
             autoFocus
             value={value}
             aria-label={t('editor.attachmentRename.fieldLabel')}

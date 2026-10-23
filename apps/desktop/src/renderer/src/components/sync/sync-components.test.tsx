@@ -71,6 +71,7 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('qrcode.react', () => ({
+  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
   QRCodeSVG: ({ value }: { value: string }) => <div role="img">qr:{value}</div>
 }))
 

@@ -61,7 +61,9 @@ describe('TaskPathTitle', () => {
     const onRowClick = vi.fn()
     const value: DateViewValue = { tasks: [], pathOf: () => null, openPath }
     render(
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- test harness renders once; value identity does not matter
       <DateViewContext.Provider value={value}>
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children */}
         <div onClick={onRowClick}>
           <TaskPathTitle task={subtask} path={['Website relaunch', 'Launch checklist']}>
             <span>{subtask.title}</span>

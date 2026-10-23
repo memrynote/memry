@@ -3,6 +3,7 @@
  * Compact icon-only tab for pinned items
  */
 
+import { useCallback } from 'react'
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
@@ -37,6 +38,13 @@ export const PinnedTab = ({
     setActiveTab(tab.id, groupId)
   }
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      if (e.key === 'Enter' && e.target === e.currentTarget) setActiveTab(tab.id, groupId)
+    },
+    [setActiveTab, tab.id, groupId]
+  )
+
   const handleMouseDown = (e: React.MouseEvent): void => {
     // Middle-click to close (even pinned tabs)
     if (e.button === 1) {
@@ -64,6 +72,7 @@ export const PinnedTab = ({
             className
           )}
           onClick={handleClick}
+          onKeyDown={handleKeyDown}
           onMouseDown={handleMouseDown}
           role="tab"
           aria-selected={isActive}

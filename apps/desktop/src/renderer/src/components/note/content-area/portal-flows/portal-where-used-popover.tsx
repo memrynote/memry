@@ -135,6 +135,7 @@ export function PortalWhereUsedPopover({
   useEffect(() => {
     if (anchorEl === null) return
     const frame = requestAnimationFrame(() => {
+      // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
       rows()[0]?.focus()
     })
     return () => {

@@ -289,6 +289,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     return () => {
       container.removeEventListener('keydown', handleKeyDown)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete, actions])
 
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)

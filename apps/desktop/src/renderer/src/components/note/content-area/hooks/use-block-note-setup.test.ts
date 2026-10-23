@@ -158,6 +158,7 @@ describe('useBlockNoteSetup', () => {
     const { editor } = createEditor()
     let mode: 'visible' | 'hidden' = 'visible'
     const wrapper = ({ children }: { children: ReactNode }) =>
+      // oxlint-disable-next-line react/no-children-prop -- createElement(Activity, ...) forwards children through props to keep the wrapper a plain function
       createElement(Activity, { mode, children })
     // Recorded during render: renderHook's `result` is set from an effect, and
     // a hidden tree runs none.

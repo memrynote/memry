@@ -188,6 +188,7 @@ export const SaveFilterDialog = ({
               placeholder={tPhaseF(
                 'phaseF.componentsTasksFiltersSaveFilterDialog.eGHighPriorityThisWeek'
               )}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
               autoFocus
             />
             {error && <p className="text-sm text-destructive">{error}</p>}

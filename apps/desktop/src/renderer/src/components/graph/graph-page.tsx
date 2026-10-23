@@ -277,6 +277,7 @@ function GraphWorkspace({
 
   return (
     <div className="relative h-full w-full">
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- role=img labels the WebGL canvas container, which has no <img> equivalent */}
       <div role="img" aria-label={graphAriaLabel} className="h-full w-full">
         <GraphCanvas
           key={layoutEpoch}

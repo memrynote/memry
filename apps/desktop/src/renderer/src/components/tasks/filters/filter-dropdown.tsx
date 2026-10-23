@@ -114,6 +114,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   )
 }
 
+const NO_STATUSES: Status[] = []
+
 export const FilterDropdown = ({
   open,
   onOpenChange,
@@ -130,7 +132,7 @@ export const FilterDropdown = ({
   onApplySavedFilter,
   onSaveFilter,
   onToggleStarFilter,
-  statuses: statusesProp = [],
+  statuses: statusesProp = NO_STATUSES,
   children
 }: FilterDropdownProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')

@@ -161,6 +161,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
   )
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
     <div className="space-y-3" onKeyDown={handleKeyDown}>
       <div className="truncate text-sm font-medium">{title}</div>
 
@@ -243,6 +244,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
           size="sm"
           onClick={handleCreate}
           disabled={!projectId || !trimmedTitle || isSubmitting}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
           autoFocus
         >
           {isSubmitting ? 'Creating...' : 'Create'}

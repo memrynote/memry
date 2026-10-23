@@ -30,6 +30,7 @@ export function InitialSyncProgress({ className }: InitialSyncProgressProps) {
   return (
     <div
       className={className}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       role="status"
       aria-live="polite"
       aria-label={`${label}: ${hasTotal ? `${progress.current} of ${progress.total}` : 'in progress'}`}
@@ -38,6 +39,7 @@ export function InitialSyncProgress({ className }: InitialSyncProgressProps) {
         <span className="shrink-0">{label}</span>
         <div
           className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="progressbar"
           aria-valuenow={percent ?? undefined}
           aria-valuemin={0}

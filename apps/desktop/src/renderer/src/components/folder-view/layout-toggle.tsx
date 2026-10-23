@@ -45,6 +45,7 @@ export function LayoutToggle<T extends LayoutType>({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- labelled segmented-control group; fieldset would change layout
       role="group"
       aria-label={t('phaseF.componentsFolderViewViewSwitcher.layout')}
       className={cn('flex h-8 items-center gap-0.5 rounded-md bg-muted p-0.5', className)}

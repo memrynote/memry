@@ -347,6 +347,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreating(false)
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
     [isCreating, createNewNote]
   )
 
@@ -1075,6 +1076,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     },
     [
       isMoving,
+      // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
       deps,
       calculateTargetFolder,
       handleReorderFoldersInParent,

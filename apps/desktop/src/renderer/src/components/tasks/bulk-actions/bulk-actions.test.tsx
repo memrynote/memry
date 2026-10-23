@@ -142,6 +142,7 @@ describe('bulk action components', () => {
     const onClick = vi.fn()
 
     render(
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/prefer-tag-over-role -- pointer-only wrapper; keyboard access is provided by the focusable children; ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       <div role="button" tabIndex={0} onClick={onParentClick}>
         <SelectionCheckbox
           checked

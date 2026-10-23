@@ -67,6 +67,7 @@ export function SearchMatchRows({
         const { before, match, after } = occurrenceSnippet(occurrences.lines, hit, query)
         return (
           <Command.Item
+            // oxlint-disable-next-line react/no-array-index-key -- index is the occurrence identity (onOpen/matchValue take it)
             key={i}
             value={matchValue(item, i)}
             onSelect={() => {

@@ -45,6 +45,7 @@ export function useResolvedEntityId({
   // the first clear is still in flight — is cleared too.
   useEffect(() => {
     if (missing) notifyMissing()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [missing, id])
 
   return missing ? null : id

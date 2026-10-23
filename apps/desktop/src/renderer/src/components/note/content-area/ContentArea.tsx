@@ -671,11 +671,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [fetchNote]
   )
 
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   const resolveFileUrl = useRef(
     createNoteFileUrlResolver(
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       () => notePathRef.current,
       async () => (await vaultService.getStatus()).path ?? null,
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       fetchNotePath,
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
       () => noteIdRef.current
     )
   ).current
@@ -1273,6 +1277,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onCreate: runSideEffects ? openMentionCreate : undefined
   })
   const MentionSuggestionMenu = useCallback(
+    // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
     function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
       return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
     },
@@ -1335,6 +1340,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           element.dataset.criticMarkId === review.hoveredMarkId
         )
       )
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [review, review?.hoveredMarkId, review?.marks])
 
   useEffect(() => {
@@ -1355,6 +1361,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return () => {
       window.cancelAnimationFrame(frame)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [review, review?.marks])
 
   // Finder-style multi-block marquee selection
@@ -2065,9 +2072,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
    */
   const filePanelLabel = t('editor.filePanel.choose')
   const filePanelDeps = useRef({ editor, label: filePanelLabel, open: setAttachmentPicker })
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   filePanelDeps.current = { editor, label: filePanelLabel, open: setAttachmentPicker }
   const [VaultFilePanel] = useState(
     () =>
+      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
       function VaultFilePanel({ blockId }: FilePanelProps): React.ReactElement {
         const deps = filePanelDeps.current
         return (
@@ -2958,6 +2967,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return () => {
       container.removeEventListener('cut', onCut, true)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [editor])
 
   // The content a note opens with never reaches `onChange`. y-prosemirror
@@ -2976,6 +2986,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   })
   useEffect(() => {
     scanOpenedContent()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [editor])
 
   // Conversion turning on, once the setting is read or when the owner switches
@@ -2992,6 +3003,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     toast.error(aiError, { action: { label: tCommon('button.retry'), onClick: retryAI } })
   }
   const reportAIUnavailableRef = useRef(reportAIUnavailable)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   reportAIUnavailableRef.current = reportAIUnavailable
 
   // Cmd/Ctrl+J is the AI shortcut. Once the AI server failed to start no
@@ -3037,8 +3049,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // note-relative PDF/attachment ref load — see `note-file-url-context`.
   return (
     <NoteFileUrlProvider resolveFileUrl={resolveFileUrl} noteId={noteId}>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
       <div
         ref={containerRef}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="region"
         aria-label={t('editor.content.regionAria')}
         className={cn('content-area h-full flex flex-col relative', className)}
@@ -3053,6 +3067,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         {yjsFragment && <BodySyncPendingHint fragment={yjsFragment} />}
 
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
         <div
           ref={setEditorContainerRef}
           className={cn(

@@ -40,7 +40,7 @@ const InputOTPSlot = React.forwardRef<
       ref={ref}
       data-filled={char ? '' : undefined}
       className={cn(
-        'relative flex h-9 w-9 items-center justify-center border-y border-r border-input text-sm shadow-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md',
+        'relative flex h-9 w-9 items-center justify-center border-y border-e border-input text-sm shadow-sm transition-all first:rounded-s-md first:border-s last:rounded-e-md',
         isActive && 'z-10',
         className
       )}
@@ -61,6 +61,7 @@ const InputOTPSeparator = React.forwardRef<
   React.ElementRef<'div'>,
   React.ComponentPropsWithoutRef<'div'>
 >(({ ...props }, ref) => (
+  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
   <div ref={ref} role="separator" {...props}>
     <Minus />
   </div>

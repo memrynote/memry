@@ -52,6 +52,7 @@ function Harness({
     noteTitle: 'Cell Biology',
     removeFromPortal
   })
+  // oxlint-disable-next-line react/refs -- test harness exposes the hook's latest callback to the test body
   requestRef.current = guard.requestBlockRemoval
   return guard.dialog
 }

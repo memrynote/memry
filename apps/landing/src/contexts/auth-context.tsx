@@ -1,19 +1,9 @@
 // apps/landing/src/contexts/auth-context.tsx
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { SYNC_SERVER_URL } from '@/lib/account/config'
-import { browserAuthStorage, type AuthStorage } from '@/lib/account/auth-storage'
-import { createSyncApi, type SyncApi } from '@/lib/account/sync-api'
-
-interface AuthState {
-  ready: boolean
-  isSignedIn: boolean
-  storage: AuthStorage
-  api: SyncApi
-  refreshSignedIn: () => void
-  signOutLocal: () => void
-}
-
-const AuthContext = createContext<AuthState | null>(null)
+import { browserAuthStorage } from '@/lib/account/auth-storage'
+import { createSyncApi } from '@/lib/account/sync-api'
+import { AuthContext, type AuthState } from '@/contexts/use-auth'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const storage = useMemo(() => browserAuthStorage(), [])
@@ -59,10 +49,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
 }

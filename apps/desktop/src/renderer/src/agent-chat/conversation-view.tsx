@@ -58,6 +58,7 @@ export function ConversationView({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape-to-stop shortcut on the conversation region
     <section
       className="flex h-full min-h-0 flex-col bg-background"
       aria-label={t('agentChat.title')}
@@ -73,6 +74,7 @@ export function ConversationView({
       {conversation && !isWorkspace && <ConversationHeader conversation={conversation} />}
       {state.backendStatuses?.historyPersisted === false && (
         <p
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live-region wrapper; <output> carries form-result semantics and different default display
           role="status"
           className="shrink-0 border-b border-border/60 bg-muted/40 px-4 py-2 text-xs text-muted-foreground"
         >

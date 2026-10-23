@@ -361,6 +361,7 @@ function ScanProgress({
           {t('page.largeFile.viewer.preparing', { size: formatBytes(fileBytes) })}
         </p>
         <div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}

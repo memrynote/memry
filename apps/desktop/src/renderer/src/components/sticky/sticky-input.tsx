@@ -26,6 +26,7 @@ export function StickyInput({
     if (!textarea) return
     textarea.style.height = 'auto'
     textarea.style.height = `${Math.min(textarea.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- value re-triggers the textarea auto-grow
   }, [value, textareaRef])
 
   return (

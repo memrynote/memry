@@ -72,6 +72,7 @@ export function InlineProgress({
         <span className="tabular-nums">{value}</span>
       </div>
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- custom progress bar; native progress element cannot take this styling
         role="progressbar"
         aria-label={label}
         aria-valuemin={0}

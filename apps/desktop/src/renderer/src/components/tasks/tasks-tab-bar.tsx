@@ -39,6 +39,8 @@ interface TasksTabBarProps {
   className?: string
 }
 
+const NO_PROJECTS: Project[] = []
+const NO_SAVED_FILTERS: SavedFilter[] = []
 const TABS: TasksInternalTab[] = ['all', 'today', 'tomorrow', 'next7']
 
 export const TasksTabBar = ({
@@ -47,13 +49,13 @@ export const TasksTabBar = ({
   isArchivedScope = false,
   onArchivedScopeChange,
   counts,
-  projects = [],
+  projects = NO_PROJECTS,
   selectedProjectId,
   onProjectChange,
   onProjectEdit,
   defaultProjectId,
   onDefaultProjectChange,
-  savedFilters = [],
+  savedFilters = NO_SAVED_FILTERS,
   activeSavedFilterId,
   onApplySavedFilter,
   onUnstarSavedFilter,

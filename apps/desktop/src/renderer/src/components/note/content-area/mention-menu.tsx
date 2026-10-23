@@ -144,6 +144,7 @@ export function MentionMenu({
     >
       <div
         className="flex flex-col p-1 text-[13px] leading-4 [font-synthesis:none]"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="listbox"
         aria-label={t('menus.mention.aria')}
       >
@@ -173,6 +174,7 @@ export function MentionMenu({
                 key="now"
                 type="button"
                 className={itemClassName(isSelected)}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => onItemClick?.(item)}
@@ -189,6 +191,7 @@ export function MentionMenu({
                 key="date"
                 type="button"
                 className={itemClassName(isSelected)}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => onItemClick?.(item)}
@@ -205,6 +208,7 @@ export function MentionMenu({
                 key="remind"
                 type="button"
                 className={itemClassName(isSelected)}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => onItemClick?.(item)}
@@ -251,6 +255,7 @@ export function MentionMenu({
                 <button
                   type="button"
                   className={itemClassName(isSelected)}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => onItemClick?.(item)}
@@ -273,6 +278,7 @@ export function MentionMenu({
                 <button
                   type="button"
                   className={itemClassName(isSelected)}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => onItemClick?.(item)}
@@ -306,6 +312,7 @@ export function MentionMenu({
                 <button
                   type="button"
                   className={itemClassName(isSelected)}
+                  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => onItemClick?.(item)}
@@ -335,6 +342,7 @@ export function MentionMenu({
               <button
                 type="button"
                 className={itemClassName(isSelected)}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => onItemClick?.(item)}

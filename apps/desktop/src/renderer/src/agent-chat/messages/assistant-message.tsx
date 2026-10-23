@@ -85,6 +85,7 @@ function AssistantMessageContent({
       <AIMessage from="assistant" className="max-w-full">
         {toolsNotice}
         <MessageContent
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live-region wrapper; <output> carries form-result semantics and different default display
           role="status"
           aria-label={t('agentChat.thinking')}
           className="min-w-10 overflow-visible border-0 bg-transparent px-3 py-0 shadow-none"
@@ -142,6 +143,7 @@ function AssistantMessageContent({
           )
         )}
         {silentSince !== null && !typing && (
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live-region wrapper; <output> carries form-result semantics and different default display
           <div role="status" aria-label={t('agentChat.thinking')} className="mt-2">
             <ThinkingIndicator label={t('agentChat.thinking')} since={silentSince} />
           </div>

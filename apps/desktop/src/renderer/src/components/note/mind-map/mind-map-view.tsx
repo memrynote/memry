@@ -372,6 +372,7 @@ export function MindMapView({
           most is the one where opening a branch is what spent the last of the
           budget, which happens while the reader is already here. */}
       <p
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="status"
         className={capNotice === '' ? 'sr-only' : 'px-3 pb-2 text-xs text-text-tertiary'}
         data-testid="note-mind-map-cap-notice"
@@ -380,6 +381,7 @@ export function MindMapView({
       </p>
 
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="img"
         aria-label={t('mindMap.regionLabel', { title: noteTitle, count: map.nodeCount })}
         className="relative min-h-0 flex-1"

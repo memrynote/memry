@@ -119,6 +119,10 @@ const EMPTY_FORMULAS: Record<string, string> = {}
 const EMPTY_PROPERTY_TYPES: Record<string, PropertyType> = {}
 const EMPTY_HIGHLIGHTED: string[] = []
 const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
+const renderEmptyFormulaCell = (): React.JSX.Element => (
+  <span className="text-muted-foreground/50">—</span>
+)
+const EMPTY_ROW_IDS: Set<string> = new Set<string>()
 
 interface GroupedTableProps {
   /** Notes to display */
@@ -328,7 +332,7 @@ export function GroupedTable({
   showColumnBorders = false,
   showSummaries = false,
   summaries = EMPTY_SUMMARIES,
-  exitingRowIds = new Set<string>(),
+  exitingRowIds = EMPTY_ROW_IDS,
   scrollKey,
   className
 }: GroupedTableProps): React.JSX.Element {
@@ -672,7 +676,7 @@ export function GroupedTable({
                 ...baseColumn,
                 header: col.displayName ?? formulaName,
                 accessorFn: () => null,
-                cell: () => <span className="text-muted-foreground/50">—</span>
+                cell: renderEmptyFormulaCell
               }
             }
 

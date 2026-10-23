@@ -133,6 +133,7 @@ export function ProgressDots({
   return (
     <div
       className="flex items-center gap-1.5"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="progressbar"
       aria-valuemin={1}
       aria-valuemax={total}
@@ -198,6 +199,7 @@ export function OptionList({
     target.focus()
   }
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer handler only stops propagation/handles pointer; keyboard path exists on a child control
     <div
       role={role}
       aria-label={label}

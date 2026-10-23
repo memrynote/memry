@@ -363,6 +363,7 @@ const ProjectModalDialog = ({
                     placeholder={tPhaseF('phaseF.componentsTasksProjectModal.projectName')}
                     maxLength={50}
                     className={cn(errors.name && 'border-destructive')}
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
                     autoFocus
                   />
                   {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Container } from '@/components/layout/Container'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 import { registerWebDevice } from '@/lib/account/auth-client'
 import { authErrorMessage } from '@/lib/account/auth-error'
 import { SYNC_SERVER_URL } from '@/lib/account/config'

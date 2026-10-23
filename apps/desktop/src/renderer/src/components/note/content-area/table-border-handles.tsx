@@ -412,6 +412,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     if (!components || !containerEl) return components
 
     const Dropdown = components.Generic.Menu.Dropdown
+    // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
     const PortalledDropdown: FC<{ className?: string; children?: ReactNode; sub?: boolean }> = (
       props
     ) =>
@@ -446,6 +447,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     const view = getLiveProseMirrorView(editor)
     if (!view) {
       focusCellRef.current = null
+      // oxlint-disable-next-line react/set-state-in-effect -- state resets when its input changes; render-time derivation would need previous-value tracking
       setFocusRing(null)
       return
     }

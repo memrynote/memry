@@ -292,12 +292,14 @@ function SessionRestoreProbe({
   autoRestore?: boolean
   restoreFullSession?: boolean
 }) {
+  // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
   sessionSnapshot = useSessionRestore({ storage, autoRestore, restoreFullSession })
   return null
 }
 
 let manualSnapshot: ReturnType<typeof useManualPersistence> | null = null
 function ManualPersistenceProbe({ storage }: { storage: TabStorage }) {
+  // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
   manualSnapshot = useManualPersistence(storage)
   return null
 }
@@ -348,6 +350,7 @@ function StartupProbe({
   vaultPath?: string | null
   debounceMs: number
 }) {
+  // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
   sessionSnapshot = useTabSessionPersistence({ storage, vaultPath, debounceMs })
   return null
 }

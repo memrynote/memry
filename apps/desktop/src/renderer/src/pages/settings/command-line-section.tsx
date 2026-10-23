@@ -41,6 +41,7 @@ export function CommandLineSettings({
   }, [t])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void refresh()
   }, [refresh])
 
@@ -68,6 +69,7 @@ export function CommandLineSettings({
         setIsChanging(false)
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- t keeps the toast text in the current language
     [t]
   )
 
@@ -87,6 +89,7 @@ export function CommandLineSettings({
         setIsChanging(false)
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- t keeps the toast text in the current language
     [t]
   )
 

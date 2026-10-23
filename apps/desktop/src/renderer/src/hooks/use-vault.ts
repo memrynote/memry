@@ -440,6 +440,7 @@ export function useVaultList() {
     }
 
     void loadVaults()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [apply])
 
   const refresh = useCallback(async () => {

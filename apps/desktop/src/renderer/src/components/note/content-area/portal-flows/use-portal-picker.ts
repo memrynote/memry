@@ -86,6 +86,7 @@ export function usePortalPicker(
   const ancestryRef = useRef(ancestry)
   // Set while the picker is choosing a new target for an existing portal.
   const replacingRef = useRef<{ portalBlockId: string; tempBlockId: string } | null>(null)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   ancestryRef.current = ancestry
 
   const getItems = useCallback(

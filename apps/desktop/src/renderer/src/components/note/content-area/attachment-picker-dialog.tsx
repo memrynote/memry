@@ -333,6 +333,7 @@ export function AttachmentPickerDialog({
           <div className="flex items-center gap-2.5 border-b px-3.5" data-cmdk-input-wrapper="">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
               autoFocus
               value={query}
               onChange={(e) => {

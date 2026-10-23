@@ -260,6 +260,7 @@ export function ColumnHeader({
       <div className="flex items-center gap-1 min-w-0">
         {/* Drag handle - visible on hover */}
         {dragHandleProps && (
+          // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only affordance; the sortable header exposes the same action through its own keyboard handler; pointer-only drag/resize affordance; column reorder and sort have keyboard paths elsewhere
           <div
             {...(dragHandleProps.listeners as React.HTMLAttributes<HTMLDivElement>)}
             {...(dragHandleProps.attributes as React.HTMLAttributes<HTMLDivElement>)}
@@ -283,6 +284,7 @@ export function ColumnHeader({
           <input
             ref={inputRef}
             type="text"
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- focus moves here only after an explicit user action opens this editor/dialog/search field
             autoFocus
             value={editValue}
             onChange={(e) => {
@@ -318,6 +320,7 @@ export function ColumnHeader({
       </div>
 
       {/* Resize handle */}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only affordance; the sortable header exposes the same action through its own keyboard handler; pointer-only drag/resize affordance; column reorder and sort have keyboard paths elsewhere */}
       <div
         onMouseDown={handleResize}
         onTouchStart={handleResize}

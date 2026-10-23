@@ -115,6 +115,7 @@ export function CalendarProviderSections(): React.JSX.Element {
         }
       }
     }),
+    // oxlint-disable-next-line react/memo-dependencies -- registry is a stable object over a ref; no inputs to track
     []
   )
 

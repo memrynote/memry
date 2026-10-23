@@ -155,6 +155,7 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
               <ul className="flex flex-wrap gap-1">
                 {reminders.overrides.map((o, idx) => (
                   <li
+                    // oxlint-disable-next-line react/no-array-index-key -- static positional list without a stable id; items are never reordered
                     key={`${o.method}-${o.minutes}-${idx}`}
                     className="rounded-md bg-muted px-2 py-0.5 text-xs"
                   >

@@ -65,6 +65,7 @@ function ArchivedListItem({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- row click opens preview; keyboard access goes through the list keyboard handler
     <li
       className={cn(
         'group relative w-full',

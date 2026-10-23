@@ -37,8 +37,10 @@ export function usePortalUsageChips(
 ): void {
   const { t } = useT('notes')
   const labelRef = useRef((count: number) => t('portalFlows.usage.chipAria', { count }))
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   labelRef.current = (count) => t('portalFlows.usage.chipAria', { count })
   const onOpenRef = useRef(onOpen)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   onOpenRef.current = onOpen
 
   useEffect(() => {

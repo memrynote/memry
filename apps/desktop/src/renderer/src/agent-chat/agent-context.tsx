@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef
@@ -173,7 +174,9 @@ export function AgentProvider({
   // resubscribing on every conversation switch would tear down and rebuild the
   // IPC listener for no gain.
   const activeConversationIdRef = useRef(state.activeConversationId)
-  activeConversationIdRef.current = state.activeConversationId
+  useLayoutEffect(() => {
+    activeConversationIdRef.current = state.activeConversationId
+  }, [state.activeConversationId])
 
   // Streamed text is buffered here and committed once per animation frame. A
   // hidden window gets no frames, so a background window stops re-rendering

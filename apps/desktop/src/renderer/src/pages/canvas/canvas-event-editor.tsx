@@ -120,6 +120,7 @@ export const CanvasEventEditor = ({
     <div className={cn('pt-3', rootLayout)}>
       <CalendarEventForm
         mode="edit"
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of an inline editor/search field
         autoFocus={interactive}
         draft={draft}
         isSaving={isSaving}

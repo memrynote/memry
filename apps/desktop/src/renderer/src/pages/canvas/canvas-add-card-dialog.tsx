@@ -118,6 +118,7 @@ export function CanvasAddCardDialog({
   // existing item; the create row is one arrow-up away.
   useEffect(() => {
     if (!searching) {
+      // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
       setValue(flow.firstValue)
       return
     }

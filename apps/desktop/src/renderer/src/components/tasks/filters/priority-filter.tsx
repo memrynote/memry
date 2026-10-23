@@ -14,10 +14,7 @@ interface PriorityFilterProps {
   className?: string
 }
 
-const PRIORITY_DISPLAY: Record<
-  Priority,
-  { label: string; dot: string; checkBorder: string; checkBg: string; checkStroke: string }
-> = {
+const PRIORITY_DISPLAY = {
   urgent: {
     label: 'Urgent',
     dot: 'var(--task-priority-urgent)',
@@ -53,14 +50,25 @@ const PRIORITY_DISPLAY: Record<
     checkBg: 'var(--card)',
     checkStroke: 'var(--border)'
   }
-}
+} satisfies Record<
+  Priority,
+  { label: string; dot: string; checkBorder: string; checkBg: string; checkStroke: string }
+>
 
 const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
+
+const NO_COUNTS = {
+  urgent: 0,
+  high: 0,
+  medium: 0,
+  low: 0,
+  none: 0
+} satisfies Record<Priority, number>
 
 export const PriorityFilter = ({
   selectedPriorities,
   onChange,
-  taskCountByPriority = {} as Record<Priority, number>,
+  taskCountByPriority = NO_COUNTS,
   className
 }: PriorityFilterProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')

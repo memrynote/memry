@@ -108,6 +108,7 @@ function OverflowRow({ item, render, onDelete }: OverflowRowProps) {
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- handler only stops propagation or handles pointer for an enclosing widget; keyboard path is on the child control
     <li
       draggable
       onDragStart={(event) => {

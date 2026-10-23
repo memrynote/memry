@@ -126,6 +126,7 @@ export function NoteAttachmentsDialog({
       .finally(() => {
         setLoading(false)
       })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [open, noteId, getOriginalNames])
 
   const reveal = useCallback(

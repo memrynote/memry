@@ -28,6 +28,7 @@ export function useAccountVaults(): { load: LoadState; reload: () => void } {
     }
   }, [])
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
     void fetchVaults()
   }, [fetchVaults])
   return { load, reload: () => void fetchVaults() }

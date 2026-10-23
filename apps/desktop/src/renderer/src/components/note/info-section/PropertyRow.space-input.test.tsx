@@ -78,6 +78,7 @@ describe('PropertyRow space handling', () => {
   it('keeps the space when typing into a text property value', async () => {
     const user = userEvent.setup()
 
+    // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
     render(<PropertyRow property={property()} onValueChange={vi.fn()} autoFocus />)
 
     const input = screen.getByRole('textbox', { name: 'Empty' })
@@ -95,6 +96,7 @@ describe('PropertyRow space handling', () => {
       <PropertyRow
         property={property({ type: 'select', value: null })}
         onValueChange={vi.fn()}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
         autoFocus
       />
     )

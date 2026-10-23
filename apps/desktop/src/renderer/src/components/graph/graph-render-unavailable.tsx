@@ -15,6 +15,7 @@ export function GraphRenderUnavailable({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- status message block; <output> is for form results and would change semantics
       role="status"
       className={cn(
         'flex h-full flex-col items-center justify-center gap-3 p-8 text-center',

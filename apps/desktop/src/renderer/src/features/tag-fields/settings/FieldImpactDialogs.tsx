@@ -227,6 +227,7 @@ export function RenameFieldDialog({
     >
       <div className="flex flex-col gap-1.5">
         <Input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
           autoFocus
           value={name}
           disabled={running}

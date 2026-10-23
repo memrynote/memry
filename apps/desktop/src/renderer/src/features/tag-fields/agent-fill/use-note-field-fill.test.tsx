@@ -56,9 +56,11 @@ function proposal(name: string, value: string, extra: Partial<FieldFillProposal>
 const companyProposal = proposal('Company', 'Acme')
 const roleProposal = proposal('Role', 'CTO')
 
+const DEFAULT_GROUPS: FieldGroup[] = [personGroup]
+
 function Harness({
   noteId,
-  groups = [personGroup],
+  groups = DEFAULT_GROUPS,
   disabled = false
 }: {
   noteId: string | null

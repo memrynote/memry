@@ -49,12 +49,14 @@ describe('hint mode state/action contexts', () => {
 
     const ActionsOnly = memo(function ActionsOnly(): null {
       actionsSeen.push(useHintModeActions())
+      // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
       actionsRenders += 1
       return null
     })
 
     const StateOnly = memo(function StateOnly(): null {
       useHintModeState()
+      // oxlint-disable-next-line react/globals -- test harness intentionally captures render-time values for assertions
       stateRenders += 1
       return null
     })

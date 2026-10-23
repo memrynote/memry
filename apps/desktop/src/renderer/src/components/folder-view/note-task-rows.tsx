@@ -75,6 +75,7 @@ const ReminderMark = ({ taskId }: { taskId: string }): React.JSX.Element | null 
       size={13}
       className="shrink-0 text-muted-foreground"
       aria-label={t('folderView.noteTasks.reminder')}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- role=img labels an SVG icon component; no <img> applies
       role="img"
     />
   )

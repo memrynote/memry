@@ -161,6 +161,7 @@ export function MorphLine({ level, tokens, children }: MorphLineProps) {
     latest.current = to
     if (from.level === level) return
     if (prefersReducedMotion() || !canAnimate()) {
+      // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
       setTransition(null)
       return
     }

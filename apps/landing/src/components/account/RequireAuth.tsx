@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 import { parseCheckoutToken } from '@/lib/checkout-summary'
 
 export function RequireAuth({ children }: { children: ReactNode }) {

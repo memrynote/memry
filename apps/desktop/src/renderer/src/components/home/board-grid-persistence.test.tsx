@@ -56,14 +56,26 @@ function makeStore(board: HomePage) {
   return { board }
 }
 
-function Harness({ store }: { store: { board: HomePage } }): React.JSX.Element {
-  const [board, setBoard] = useState(store.board)
+function persistTo(store: { board: HomePage }): (board: HomePage) => void {
+  return (board) => {
+    store.board = board
+  }
+}
+
+function Harness({
+  initial,
+  onPersist
+}: {
+  initial: HomePage
+  onPersist: (board: HomePage) => void
+}): React.JSX.Element {
+  const [board, setBoard] = useState(initial)
   return (
     <TooltipProvider>
       <BoardGrid
         board={board}
         onChange={(next) => {
-          store.board = next
+          onPersist(next)
           setBoard(next)
         }}
       />
@@ -93,7 +105,7 @@ function dragWidget(dx: number, dy: number): void {
 describe('BoardGrid persistence', () => {
   it('persists a drag and restores it on remount', () => {
     const store = makeStore(initialBoard)
-    const first = render(<Harness store={store} />)
+    const first = render(<Harness initial={store.board} onPersist={persistTo(store)} />)
 
     const before = widgetPosition()
     dragWidget(Math.round(colStep * 3), Math.round(rowStep * 2))
@@ -107,7 +119,7 @@ describe('BoardGrid persistence', () => {
     first.unmount()
 
     // Remount from what was persisted — the arrangement must come back, not reset to the default.
-    render(<Harness store={makeStore(store.board) as { board: HomePage }} />)
+    render(<Harness initial={store.board} onPersist={persistTo(store)} />)
     expect(store.board.widgets[0]).toMatchObject({ x: moved.x, y: moved.y })
     const pos = widgetPosition()
     expect(pos.x).toBeGreaterThan(0)

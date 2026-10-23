@@ -30,6 +30,7 @@ export const TruncatedTabTitle = ({
     if (textRef.current) {
       setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- title/maxWidth change the DOM being measured
   }, [title, maxWidth])
 
   return (

@@ -10,6 +10,7 @@ import {
 import { IconPickerButton } from './icon-picker-button'
 
 vi.mock('@/components/note/note-title/EmojiPicker', () => ({
+  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double mirrors the real widget ARIA role
   EmojiPicker: () => <div role="dialog" aria-label="Emoji and icon picker" />
 }))
 

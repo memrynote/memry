@@ -55,6 +55,7 @@ function TaskRow({
     : (statuses.find((s) => s.id === task.statusId)?.color ?? '#A0A0A8')
 
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- dnd-kit attributes/listeners spread above supply the role and keyboard handlers
     <div
       ref={setNodeRef}
       data-testid="day-panel-task"
@@ -71,6 +72,7 @@ function TaskRow({
       }}
     >
       <div className="flex items-center gap-2 w-full">
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- dnd-kit attributes/listeners spread above supply the role and keyboard handlers */}
         <div
           onClick={(e) => {
             e.stopPropagation()
@@ -91,6 +93,7 @@ function TaskRow({
             }}
           />
         </div>
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- dnd-kit attributes/listeners spread above supply the role and keyboard handlers */}
         <div
           onClick={(e) => {
             e.stopPropagation()

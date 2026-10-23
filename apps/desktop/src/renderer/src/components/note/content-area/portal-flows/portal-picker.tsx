@@ -66,6 +66,7 @@ export function PortalPicker({
     listRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
       ?.scrollIntoView?.({ block: 'nearest' })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [selectedIndex])
 
   // Capture on the editor element, ahead of BlockNote's Enter handling, which
@@ -112,6 +113,7 @@ export function PortalPicker({
     if (itemSection !== section) {
       section = itemSection
       if (itemSection === 'create') {
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/control-has-associated-label -- ARIA role is intentional here and the native tag would change default styling or behavior; role=separator is decorative and needs no label
         rows.push(<div key="create-separator" role="separator" className="my-1 border-t" />)
       } else {
         rows.push(
@@ -129,6 +131,7 @@ export function PortalPicker({
         type="button"
         key={item.key}
         id={`bn-suggestion-menu-item-${index}`}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="option"
         aria-selected={isSelected}
         tabIndex={-1}
@@ -187,6 +190,7 @@ export function PortalPicker({
     >
       <div
         ref={listRef}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="listbox"
         aria-label={t('portalFlows.picker.aria')}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1 [font-synthesis:none]"

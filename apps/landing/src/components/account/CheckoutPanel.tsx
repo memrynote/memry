@@ -196,6 +196,7 @@ export function CheckoutPanel({
                   <button
                     key={option}
                     type="button"
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
                     role="radio"
                     aria-checked={active}
                     onClick={() => {
@@ -272,6 +273,7 @@ function PlanRow({
   return (
     <button
       type="button"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio card; native radio input would change the visuals
       role="radio"
       aria-checked={selected}
       disabled={disabled}
@@ -368,11 +370,13 @@ function OrderSummary({
       </div>
 
       {status === 'success' && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
         <p role="status" className="mt-4 text-sm text-sage">
           Payment complete. Return to Memrynote to finish activation.
         </p>
       )}
       {status === 'canceled' && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
         <p role="status" className="mt-4 text-sm text-muted">
           Checkout canceled.
         </p>
@@ -553,6 +557,7 @@ function ChangeQuote({
       </div>
 
       {status === 'done' && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
         <p role="status" className="mt-4 text-sm text-sage">
           Plan updated. Your new plan is active now.
         </p>

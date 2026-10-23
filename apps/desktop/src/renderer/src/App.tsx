@@ -771,6 +771,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
   // effect cleanups after this, and those read the flag to tell a hide from an
   // unmount (see `vault-workspace-lifecycle`).
   useLayoutEffect(() => {
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
     activePathRef.current = activePath
     for (const [path, lifecycle] of lifecyclesRef.current) {
       lifecycle.hidden = path !== activePath
@@ -791,6 +792,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       disposeVaultWorkspace(lifecycle)
       lifecyclesRef.current.delete(path)
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
   }, [kept])
   /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
@@ -800,6 +802,7 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       for (const lifecycle of lifecycles.values()) disposeVaultWorkspace(lifecycle)
       lifecycles.clear()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
   }, [])
 
   // Leaving a vault: stop its in-flight reads before main closes it, and mark
@@ -841,14 +844,17 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
       void client.cancelQueries()
       void client.invalidateQueries({ refetchType: 'none' })
     })
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- reads the vault registry refs (clients/lifecycles) that are intentionally outside React state
   }, [activePath])
 
   return (
     <>
+      {/* oxlint-disable-next-line react/refs -- lazy per-path client/lifecycle registry; created once per vault path and stable afterwards */}
       {kept.map((path) => (
         <Activity key={path} mode={path === activePath ? 'visible' : 'hidden'}>
           <div className="contents" inert={leaving && path === activePath}>
             <QueryClientProvider client={clientFor(path)}>
+              {/* oxlint-disable-next-line react/jsx-no-constructed-context-values -- lifecycleFor returns a registry-stable object per vault path */}
               <VaultWorkspaceLifecycleContext.Provider value={lifecycleFor(path)}>
                 <VaultScopeProvider vaultPath={path}>
                   <VaultWorkspace vaultPath={path} />

@@ -15,6 +15,7 @@ vi.mock('@/contexts/tasks', () => ({
 // receive the right task, project and callbacks.
 vi.mock('../rows/task-row', () => ({
   TaskRow: ({ task, project, onOpen, onToggleComplete, onStatusChange }: any) => (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept to preserve existing layout and styling of the element
     <div role="listitem" data-testid={`task-row-${task.id}`} data-project={project.id}>
       <button type="button" onClick={() => onOpen(task.id)}>
         {task.title}

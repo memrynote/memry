@@ -77,6 +77,7 @@ export function PortalStateCard({
     <PortalFrame
       focused={false}
       selected={false}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
       role="status"
       data-portal-state={status}
       className="flex items-center gap-2 py-1 text-[13px] leading-5 text-text-secondary"

@@ -130,11 +130,13 @@ export function useCloseGuardRegistry(): CloseGuardRegistry {
         resolvingRef.current = false
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- setPrompt is a stable callback; listed to satisfy hooks/exhaustive-deps
     [advance, setPrompt]
   )
 
   const pendingCanSave = pending
-    ? (guardsRef.current.get(pending.tabId)?.canSave?.() ?? true)
+    ? // oxlint-disable-next-line react/refs -- guard registry is a ref by design; re-read each render while a prompt is pending
+      (guardsRef.current.get(pending.tabId)?.canSave?.() ?? true)
     : false
 
   return useMemo(

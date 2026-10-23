@@ -41,6 +41,7 @@ export function ColorPicker({
       {/* Color grid */}
       <div className="mb-4 space-y-2">
         {COLOR_ROWS.map((row, rowIndex) => (
+          // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no id and never reorder
           <div key={rowIndex} className="flex gap-2">
             {row.map((colorName) => {
               const colors = TAG_COLORS[colorName]

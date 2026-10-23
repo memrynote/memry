@@ -292,6 +292,7 @@ function PropertyManager() {
 
           return (
             <div key={def.name}>
+              {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- row header toggles an accordion; the chevron control inside is the keyboard path */}
               <div
                 className="flex items-center justify-between min-h-11 py-2 shrink-0 group cursor-pointer"
                 onClick={() => {
@@ -533,6 +534,7 @@ function PropertyManager() {
           </DialogHeader>
           <div className="py-4 space-y-2">
             {COLOR_ROWS.map((row, rowIndex) => (
+              // oxlint-disable-next-line react/no-array-index-key -- COLOR_ROWS is a static palette grid that is never reordered
               <div key={rowIndex} className="flex gap-2 justify-center">
                 {row.map((colorName) => {
                   const clrs = TAG_COLORS[colorName]

@@ -202,6 +202,7 @@ function NoteSearch({
   return (
     <div className="grid gap-1">
       <input
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a just-opened popover/inline editor
         autoFocus
         value={query}
         onChange={(event) => {

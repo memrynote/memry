@@ -111,6 +111,7 @@ describe('NoteTitle - title editing', () => {
   })
 
   it('should auto-focus when autoFocus is true', () => {
+    // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
     renderWithI18n(<NoteTitle {...defaultProps} autoFocus />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })

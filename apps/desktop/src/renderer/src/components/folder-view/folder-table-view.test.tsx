@@ -164,6 +164,7 @@ vi.mock('@/components/tasks/task-row', () => ({
     renderTitle,
     actions
   }: any) => (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/prefer-tag-over-role, jsx-a11y/interactive-supports-focus -- test double; keyboard behaviour is not under test; test double mirrors the real widget ARIA role; test double; focus is not under test
     <div role="button" onClick={() => onClick(task.id)}>
       <button
         type="button"

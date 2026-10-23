@@ -180,5 +180,6 @@ export function usePortalWindowPlugin(options: {
   useEffect(() => {
     const view = viewRef.current
     if (view && !view.isDestroyed) setPortalWindowSpec(view, specRef.current)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [specKey])
 }

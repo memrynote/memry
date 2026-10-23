@@ -65,7 +65,8 @@ export const TodayTaskRow = ({
   // Calculate days overdue
   const daysOverdue =
     isOverdue && task.dueDate
-      ? differenceInDays(startOfDay(new Date()), startOfDay(task.dueDate))
+      ? // oxlint-disable-next-line react/purity -- 'now' must stay current across midnight; a mount-time snapshot would go stale
+        differenceInDays(startOfDay(new Date()), startOfDay(task.dueDate))
       : 0
 
   const handleRowClick = (): void => {
@@ -97,6 +98,7 @@ export const TodayTaskRow = ({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="button"
       tabIndex={onClick ? 0 : -1}
       onClick={onClick ? handleRowClick : undefined}

@@ -80,7 +80,10 @@ vi.mock('@/components/ui/dialog', () => ({
       >
         close recovery dialog
       </button>
-      {open ? <div role="dialog">{children}</div> : null}
+      {open ? (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- test double for the Radix dialog, which renders role=dialog on a div
+        <div role="dialog">{children}</div>
+      ) : null}
     </div>
   ),
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

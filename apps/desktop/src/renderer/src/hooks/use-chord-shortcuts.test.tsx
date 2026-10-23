@@ -89,6 +89,7 @@ interface CaptureProps {
 const Capture = ({ onState }: CaptureProps): null => {
   const { state } = useTabs()
   useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent -- test probe reports hook state to the test body
     onState(state)
   }, [state, onState])
   return null
@@ -126,7 +127,9 @@ const HookWithControls = ({ onState, onDispatch }: ControlProps): null => {
   useChordShortcuts()
   const { state, dispatch } = useTabs()
   useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent -- test probe reports hook state to the test body
     onState(state)
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent -- test probe reports hook state to the test body
     onDispatch(dispatch)
   }, [state, dispatch, onState, onDispatch])
   return null

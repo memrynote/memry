@@ -125,6 +125,7 @@ export function CliWidget({ className }: CliWidgetProps) {
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- history, input and demo are triggers: keep the newest line in view
   }, [history, input, demo])
 
   // The auto-play loop. Tears down on unmount or the moment `live` flips to false.

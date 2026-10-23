@@ -43,6 +43,7 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
       role="slider"
       tabIndex={-1}
       aria-valuemin={0}

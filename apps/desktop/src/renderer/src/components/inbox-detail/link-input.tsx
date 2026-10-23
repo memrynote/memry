@@ -31,6 +31,7 @@ const LinkedNoteRow = ({ note, onRemove }: LinkedNoteRowProps): React.JSX.Elemen
   const Icon = note.type === 'folder' ? Folder : FileText
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA list/listbox pattern on styled rows; native ul/li/select would change layout and behavior
     <div role="listitem" className={cn(DRAWER_ROW, 'group')}>
       {note.emoji ? (
         <NoteIconDisplay value={note.emoji} className="size-3.5 shrink-0" />
@@ -88,6 +89,7 @@ const SearchResultItem = ({
         'transition-colors duration-75',
         isHighlighted ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
       )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA list/listbox pattern on styled rows; native ul/li/select would change layout and behavior
       role="option"
       aria-selected={isHighlighted}
     >
@@ -292,6 +294,7 @@ export const LinkInput = ({
   return (
     <div ref={containerRef} className={cn('flex flex-col gap-0.5', className)}>
       {linkedNotes.length > 0 && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA list/listbox pattern on styled rows; native ul/li/select would change layout and behavior
         <div className="flex flex-col gap-0.5" role="list" aria-label={t('detail.linkedNotesAria')}>
           {linkedNotes.map((note) => (
             <LinkedNoteRow key={note.id} note={note} onRemove={handleRemoveNote} />
@@ -329,6 +332,7 @@ export const LinkInput = ({
             ref={dropdownRef}
             className="absolute z-50 start-[26px] end-0 mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-48 overflow-y-auto"
             id="link-input-listbox"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA list/listbox pattern on styled rows; native ul/li/select would change layout and behavior
             role="listbox"
           >
             {isSearching ? (
@@ -346,6 +350,7 @@ export const LinkInput = ({
                   <button
                     key="create"
                     type="button"
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA list/listbox pattern on styled rows; native ul/li/select would change layout and behavior
                     role="option"
                     aria-selected={index === highlightedIndex}
                     data-testid="link-input-create-note"

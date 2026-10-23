@@ -42,9 +42,10 @@ export const ResizeHandle = ({
 
         // Expand hit area with pseudo-element
         'before:absolute before:inset-0',
-        isHorizontal ? 'before:-left-1.5 before:-right-1.5' : 'before:-top-1.5 before:-bottom-1.5'
+        isHorizontal ? 'before:-inset-x-1.5' : 'before:-inset-y-1.5'
       )}
       onMouseDown={onResizeStart}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       role="separator"
       aria-orientation={isHorizontal ? 'vertical' : 'horizontal'}
       aria-label={tPhaseF('phaseF.componentsSplitViewResizeHandle.resizePanes')}

@@ -265,6 +265,7 @@ export function useNoteEditor(
   )
 
   // Keep ref in sync so cleanup always calls the latest version
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   performSaveRef.current = performSave
 
   // ============================================================================

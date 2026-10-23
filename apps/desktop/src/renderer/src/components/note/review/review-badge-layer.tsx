@@ -336,6 +336,7 @@ export function ReviewBadgeLayer({
       {showDraftFlyout && draftPanel && (
         <div
           className="critic-review-flyout critic-review-flyout-draft"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="dialog"
           aria-label={t('comments.railAria')}
           style={{ top: draftPanel.top, insetInlineStart: draftPanel.insetInlineStart }}
@@ -351,6 +352,7 @@ export function ReviewBadgeLayer({
       {panel && panelMarks.length > 0 && (
         <div
           className="critic-review-flyout"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="dialog"
           aria-label={t('comments.railAria')}
           style={{ top: panel.top, insetInlineStart: panel.insetInlineStart }}

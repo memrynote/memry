@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 
 import { DatePickerContent } from '@/components/tasks/date-picker-content'
 import type { DueDateFilter, DueDateFilterType } from '@/data/tasks-data'
@@ -37,11 +37,11 @@ export function DueDatePanel({
   onGoBack
 }: DueDatePanelProps): React.JSX.Element {
   const { t: tPhaseF } = useT('tasks')
-  const today = useMemo(() => {
+  const [today] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
-  }, [])
+  })
 
   const selectedDate = useMemo((): Date | null => {
     if (dueDate.type === 'today') return today

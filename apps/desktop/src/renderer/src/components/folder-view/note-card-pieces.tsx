@@ -68,6 +68,7 @@ export function NoteCardKindIcon({
 
   return (
     <Icon
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- role=img labels an SVG icon component; no <img> applies
       role="img"
       aria-label={label}
       data-testid={`kind-icon-${kind}`}

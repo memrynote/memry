@@ -37,6 +37,7 @@ export const LinkMentionPreviewCard = memo(function LinkMentionPreviewCard({
           <iframe
             src={getYouTubeEmbedUrl(videoId)}
             className="size-full"
+            // oxlint-disable-next-line react/iframe-missing-sandbox -- YouTube embed player needs allow-scripts with allow-same-origin; src is the fixed youtube embed URL
             sandbox="allow-scripts allow-same-origin allow-presentation"
             allow="autoplay; encrypted-media"
             title={preview.title || 'YouTube video'}

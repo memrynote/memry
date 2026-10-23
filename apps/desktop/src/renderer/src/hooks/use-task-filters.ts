@@ -300,6 +300,7 @@ export const useFilteredAndSortedTasks = ({
         filtersWithDebouncedSearch,
         sort,
         projects,
+        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
         new Date(),
         noteIndex
       ),

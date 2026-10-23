@@ -73,6 +73,7 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
   useEffect(() => {
     const trimmed = query.trim()
     if (!open || trimmed === '') {
+      // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
       setResults([])
       setFiles([])
       setEvents([])

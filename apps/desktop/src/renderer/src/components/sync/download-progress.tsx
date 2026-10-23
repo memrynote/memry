@@ -50,6 +50,7 @@ export const DownloadProgress = memo(function DownloadProgress({
         <div className="mt-1 flex items-center gap-2">
           <div
             className="h-1 flex-1 rounded-full bg-muted overflow-hidden"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
             role="progressbar"
             aria-valuenow={progress}
             aria-valuemin={0}

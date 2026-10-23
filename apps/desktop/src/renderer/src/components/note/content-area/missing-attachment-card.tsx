@@ -65,6 +65,7 @@ export function useAttachmentPresence(url: string): AttachmentPresence {
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
   }, [noteId, url, revision])
 
   return presence

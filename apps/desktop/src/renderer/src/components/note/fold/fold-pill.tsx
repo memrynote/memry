@@ -68,6 +68,7 @@ export function FoldPill(props: FoldPillProps) {
         caption && <span className="text-[11.5px] text-text-tertiary">{caption}</span>
       )}
       <div
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="group"
         aria-label={t('fold.pill.aria')}
         className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-background p-[3px] text-xs leading-4 shadow-[0_4px_14px_rgba(29,31,34,0.08)]"

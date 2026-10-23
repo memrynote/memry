@@ -160,10 +160,13 @@ export function PortalFlowsLayer({
   )
 
   const startReplaceRef = useRef(picker.startReplace)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   startReplaceRef.current = picker.startReplace
   const requestRef = useRef(requestBlockRemoval)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   requestRef.current = requestBlockRemoval
   const copyRef = useRef(copyPortalToBlock)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   copyRef.current = copyPortalToBlock
   useEffect(() => {
     if (!noteId) return

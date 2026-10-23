@@ -72,6 +72,7 @@ function AnyRelationPicker({ onSelect }: { onSelect: (uri: string) => void }): R
           <button
             key={item.id}
             type="button"
+            // oxlint-disable-next-line jsx-a11y/role-has-required-aria-props, jsx-a11y/prefer-tag-over-role -- required aria state is managed by the owning widget; ARIA widget pattern; native tag would change styling or behavior
             role="option"
             onClick={() => {
               onSelect(formatRelationUri(item.kind ?? kind, item.id))

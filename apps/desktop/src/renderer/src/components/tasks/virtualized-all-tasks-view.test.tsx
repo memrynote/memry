@@ -344,6 +344,7 @@ describe('VirtualizedAllTasksView in a date view', () => {
     }
 
     render(
+      // oxlint-disable-next-line react/jsx-no-constructed-context-values -- single-render test fixture; identity stability is irrelevant
       <DateViewContext.Provider value={dateView}>
         <VirtualizedAllTasksView
           tasks={[parent, child]}

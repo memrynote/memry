@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { Container } from '@/components/layout/Container'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/contexts/use-auth'
 import { trackLandingEvent } from '@/lib/analytics'
 
 const TABS = [

@@ -554,6 +554,7 @@ function useLiveGraph(
     }
     appliedRef.current = { data, options, themeKey }
     if (syncGraphologyGraph(graph, data, options, positionCache).changed) {
+      // oxlint-disable-next-line react/set-state-in-effect -- genuine external sync: graphology instance mutation; the counter only records that it changed
       setRevision((current) => current + 1)
     }
   }, [graph, data, options, themeKey, positionCache])
@@ -835,6 +836,7 @@ function LayoutManager({
       applyRandomLayout(graph)
     }
     // A patch can add nodes the static layouts have never placed.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- revision re-runs the layout when the graph gained nodes
   }, [layout, graph, revision])
 
   if (layout !== 'forceatlas2') return null

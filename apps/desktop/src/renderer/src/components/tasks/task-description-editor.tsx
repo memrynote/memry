@@ -137,6 +137,7 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
   }, [])
 
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls; pointer/hover handler is a convenience; keyboard access is provided by inner controls
     <section
       className={cn('task-description-editor relative', editable && 'cursor-text', className)}
       aria-label={ariaLabel}

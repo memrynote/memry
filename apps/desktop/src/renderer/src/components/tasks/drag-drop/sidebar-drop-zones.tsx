@@ -86,6 +86,7 @@ export const DroppableProjectItem = ({
   return (
     <div
       ref={setNodeRef}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
       role="button"
       tabIndex={0}
       onClick={handleClick}

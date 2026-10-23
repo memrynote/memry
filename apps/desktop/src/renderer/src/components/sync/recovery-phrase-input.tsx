@@ -113,6 +113,7 @@ export function RecoveryPhraseInput({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- form-level keydown/paste delegation for the inputs inside; the form itself is not a control
     <form
       onSubmit={submit}
       // Esc steps back to the unlock choice, not out of the host (the wizard listens on window).
@@ -132,12 +133,14 @@ export function RecoveryPhraseInput({
       <div className="wizard-step-enter wiz-delay-2 flex flex-col gap-3 pt-[26px]">
         {/* Column by column, like the phrase was shown: 1-6, 7-12... */}
         <div
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="group"
           aria-label={t('setup.recovery.inputLabel')}
           className="grid grid-flow-col grid-rows-8 gap-x-2.5 gap-y-1.5 @[540px]:grid-rows-6"
         >
           {words.map((word, index) => (
             <label
+              // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
               key={index}
               className={cn(
                 'flex h-[34px] w-[112px] items-center gap-2 rounded-[7px] bg-surface px-3 ring-1 ring-inset transition-shadow focus-within:ring-foreground @[540px]:w-[132px]',
@@ -154,6 +157,7 @@ export function RecoveryPhraseInput({
                 type="text"
                 value={word}
                 readOnly={isLoading}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
                 autoFocus={index === 0}
                 autoComplete="off"
                 autoCapitalize="off"

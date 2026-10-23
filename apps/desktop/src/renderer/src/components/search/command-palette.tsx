@@ -415,6 +415,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       : null
 
   const status = isIndexing ? (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live region; <output> would change inline display and styling
     <span role="status" className="flex items-center gap-2">
       {indexBuilt !== undefined && indexTotal !== undefined && indexTotal > 0 && (
         <span className="flex h-[3px] w-16 rounded-full bg-border" aria-hidden="true">

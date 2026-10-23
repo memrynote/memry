@@ -270,6 +270,7 @@ export function NoteEditorWidget({ className }: NoteEditorWidgetProps) {
               <span
                 ref={linkRef}
                 contentEditable={false}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- inline link chip inside a contentEditable region; a button element misbehaves there
                 role="button"
                 tabIndex={0}
                 aria-label="Preview linked note: Kaş travel notes"

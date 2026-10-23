@@ -448,6 +448,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
     return () => {
       cancelled = true
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- numPages re-measures once the document finishes loading into pdfRef
   }, [spreadStart, numPages])
 
   /**
@@ -768,9 +769,11 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
 
           {/* PDF content - with both horizontal and vertical scrolling.
               `tabIndex` so the arrow keys have somewhere to land. */}
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
           <div
             ref={pageScrollRef}
             data-testid="pdf-page-view"
+            // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scroll container must be keyboard focusable to scroll with arrow keys
             tabIndex={0}
             onKeyDown={handleKeyDown}
             className="flex-1 overflow-auto min-h-0 focus:outline-none"

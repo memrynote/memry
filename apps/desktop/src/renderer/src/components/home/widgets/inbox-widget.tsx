@@ -45,6 +45,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
     return (
       <ul className="flex flex-col gap-1" aria-busy="true" aria-label={t('state.loading')}>
         {Array.from({ length: 3 }).map((_, i) => (
+          // oxlint-disable-next-line react/no-array-index-key -- static skeleton placeholders
           <li key={i} className="flex items-center gap-1">
             <Skeleton className="h-4 w-full" />
           </li>

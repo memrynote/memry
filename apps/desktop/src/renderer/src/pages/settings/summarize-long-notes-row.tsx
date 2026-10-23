@@ -61,7 +61,9 @@ export function SummarizeLongNotesRow({
   }, [])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     if (checked) void refreshAgentStatus()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- agent and refreshKey re-trigger the status read
   }, [checked, agent, refreshKey, refreshAgentStatus])
 
   const refreshLastRun = useCallback(async () => {
@@ -75,6 +77,7 @@ export function SummarizeLongNotesRow({
 
   useEffect(() => {
     if (!checked) return
+    // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void refreshLastRun()
     return window.api.noteFold.onUpdated(() => void refreshLastRun())
   }, [checked, refreshLastRun])

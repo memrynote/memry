@@ -45,6 +45,7 @@ export function useReadwiseBookCommands(note: Note | null): ReadwiseBookCommands
     return () => {
       active = false
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [isLinked, noteId, t])
 
   const run = useCallback(

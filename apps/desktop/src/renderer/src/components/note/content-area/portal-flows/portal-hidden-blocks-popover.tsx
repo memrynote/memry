@@ -70,6 +70,7 @@ export function PortalHiddenBlocksPanel({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
     <div
       ref={panelRef}
       tabIndex={-1}
@@ -81,6 +82,7 @@ export function PortalHiddenBlocksPanel({
         <label className="flex items-center gap-2 border-b border-border px-3 py-2">
           <Search className="size-3.5 shrink-0 text-text-tertiary" aria-hidden />
           <input
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
             autoFocus
             value={query}
             onChange={(event) => {
@@ -94,13 +96,16 @@ export function PortalHiddenBlocksPanel({
         </label>
       ) : null}
       <ul
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- ARIA role is intentional here and the native tag would change default styling or behavior; listbox/option semantics on ul/li; selection keys are handled on the panel keydown
         role="listbox"
         aria-label={t('portalFlows.hiddenBlocks.title')}
         className="flex max-h-[320px] flex-col overflow-y-auto p-1"
       >
         {shown.map((row) => (
+          // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard selection is handled on the panel keydown (active-row model)
           <li
             key={row.key}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role, jsx-a11y/no-noninteractive-element-to-interactive-role -- ARIA role is intentional here and the native tag would change default styling or behavior; listbox/option semantics on ul/li; selection keys are handled on the panel keydown
             role="option"
             aria-selected={row === activeRow}
             className={cn(

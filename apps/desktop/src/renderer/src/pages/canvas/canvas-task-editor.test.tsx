@@ -27,6 +27,7 @@ vi.mock('@/components/tasks/interactive-status-badge', () => ({
   InteractiveStatusBadge: ({ onStatusChange }: { onStatusChange: (id: string) => void }) => (
     <button
       data-testid="status-badge"
+      aria-label="status-badge"
       onClick={() => {
         onStatusChange('done')
       }}
@@ -37,6 +38,7 @@ vi.mock('@/components/tasks/interactive-priority-badge', () => ({
   InteractivePriorityBadge: ({ onPriorityChange }: { onPriorityChange: (p: string) => void }) => (
     <button
       data-testid="priority-badge"
+      aria-label="priority-badge"
       onClick={() => {
         onPriorityChange('high')
       }}
@@ -54,12 +56,14 @@ vi.mock('@/components/tasks/interactive-due-date-badge', () => ({
     <>
       <button
         data-testid="date-badge"
+        aria-label="date-badge"
         onClick={() => {
           onDateChange(new Date('2026-08-01'))
         }}
       />
       <button
         data-testid="time-badge"
+        aria-label="time-badge"
         onClick={() => {
           onTimeChange('09:00')
         }}
@@ -71,6 +75,7 @@ vi.mock('@/components/tasks/task-description-editor', () => ({
   TaskDescriptionEditor: ({ onContentChange }: { onContentChange: (markdown: string) => void }) => (
     <button
       data-testid="description-editor"
+      aria-label="description-editor"
       onClick={() => {
         onContentChange('new body')
       }}

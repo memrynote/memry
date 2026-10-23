@@ -167,6 +167,7 @@ export const TaskRow = ({
 
   return (
     <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="button"
       tabIndex={onClick && interactive ? 0 : -1}
       onClick={interactive ? handleRowClick : undefined}
@@ -183,6 +184,7 @@ export const TaskRow = ({
       aria-busy={!interactive || undefined}
     >
       {isSelectionMode && showSelection && (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
         <div
           className="shrink-0"
           onClick={(e) => {
@@ -253,6 +255,7 @@ export const TaskRow = ({
       )}
 
       {path ? null : showProjectBadge && onProjectChange && interactive ? (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
         <div
           className="shrink-0"
           onClick={(e) => {

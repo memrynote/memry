@@ -45,9 +45,11 @@ export function useObjectSearch(
   return state
 }
 
+const NO_SELECTED: readonly string[] = []
+
 export function ObjectRelationPicker({
   targetTag,
-  selected = [],
+  selected = NO_SELECTED,
   onSelect
 }: {
   targetTag: string
@@ -95,6 +97,7 @@ export function ObjectRelationPicker({
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Search size={12} className="shrink-0 text-muted-foreground/60" />
         <input
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on mount for a dialog, popover, or inline editor
           autoFocus
           value={query}
           onChange={(event) => {
@@ -114,6 +117,7 @@ export function ObjectRelationPicker({
           {tagName}
         </span>
       </div>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics */}
       <div role="listbox" className="flex max-h-72 flex-col overflow-y-auto p-1">
         {matches.map((match, index) => {
           const uri = formatRelationUri('note', match.noteId)
@@ -122,6 +126,7 @@ export function ObjectRelationPicker({
             <button
               key={match.noteId}
               type="button"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
               role="option"
               aria-selected={index === active}
               onMouseEnter={() => {

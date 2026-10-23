@@ -44,6 +44,7 @@ function ApplyTemplateToNoteDialogActive({
         onClose()
       }
     },
+    // oxlint-disable-next-line react/memo-dependencies -- listed deps are intentional invalidation triggers that the body does not read
     [noteId, onClose, t]
   )
 

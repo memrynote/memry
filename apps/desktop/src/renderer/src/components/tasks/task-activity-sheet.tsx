@@ -108,6 +108,7 @@ export function TaskActivitySheet({
             // Keyed by position, not label: a row that arrives with an
             // unparseable timestamp groups under an empty label, and two of
             // those would collide on a label key.
+            // oxlint-disable-next-line react/no-array-index-key -- position disambiguates empty-label groups (see comment above)
             <div key={`${index}-${group.label}`} className="flex flex-col">
               <span className="sticky top-0 bg-background py-2 text-[11px] font-medium uppercase leading-3.5 text-text-tertiary [letter-spacing:0.05em]">
                 {group.label}

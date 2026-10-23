@@ -77,6 +77,7 @@ export function TagChip({
       {isSelected && <Check className="h-3 w-3" />}
       {onRemove && !disabled && isHovered && (
         <span
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
           role="button"
           tabIndex={0}
           onClick={handleRemove}
@@ -106,6 +107,7 @@ export function TagChip({
     return (
       <button
         type="button"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="option"
         aria-selected={isSelected}
         onClick={onClick}
@@ -125,6 +127,7 @@ export function TagChip({
   }
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- handler only stops propagation or handles pointer for an enclosing widget; keyboard path is on the child control
     <li
       onMouseEnter={() => {
         setIsHovered(true)

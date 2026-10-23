@@ -101,6 +101,7 @@ function ModelRow(): React.JSX.Element {
     >
       <span
         className="mt-[5px] flex h-1 overflow-hidden rounded-[2px] bg-surface-active"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
         role="progressbar"
         aria-label={t(`${K}.modelTitle`)}
         aria-valuemin={0}

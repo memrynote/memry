@@ -179,6 +179,7 @@ export const TaskActivityRow = memo(function TaskActivityRow({
         .join(' ')
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
     <div className="flex gap-2.5" role="listitem" aria-label={`${description} · ${time}`}>
       <div className="relative flex w-3 shrink-0 justify-center">
         <span

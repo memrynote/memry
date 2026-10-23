@@ -128,6 +128,7 @@ function SidebarCalendarHarness() {
           {
             title: 'Calendar',
             page: 'calendar' as never,
+            // oxlint-disable-next-line react/no-unstable-nested-components -- test fixture inline icon; identity does not matter
             icon: () => <span data-testid="calendar-nav-icon" />
           }
         ]}

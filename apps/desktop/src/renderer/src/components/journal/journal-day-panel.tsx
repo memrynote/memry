@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useToday } from '@/hooks/use-today'
 import {
   tasksService,
   onTaskCreated,
@@ -59,15 +60,13 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
     return map
   }, [projects])
 
-  const today = useMemo(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  }, [])
+  const today = useToday()
 
   const isToday = date === today
 
   useEffect(() => {
     onHoverColor?.(null)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- hover colour resets whenever the schedule items change
   }, [scheduleQuery.items, onHoverColor])
 
   const { data: tasks = [] } = useQuery({

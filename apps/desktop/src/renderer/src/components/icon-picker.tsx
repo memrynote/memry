@@ -511,6 +511,7 @@ export const IconPicker = ({
   const positionStyle = calculatePosition()
 
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- handlers only stop propagation to host modal layers
     <div
       ref={popoverRef}
       className={cn(
@@ -521,6 +522,7 @@ export const IconPicker = ({
         'animate-in fade-in-0 zoom-in-95 duration-200'
       )}
       style={positionStyle}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- floating popover positioned manually; native <dialog> adds top-layer behavior
       role="dialog"
       aria-label={tPhaseF('phaseF.componentsIconPicker.iconPicker')}
       // Keep interactions from reaching a host modal's dismiss + focus-trap layers,

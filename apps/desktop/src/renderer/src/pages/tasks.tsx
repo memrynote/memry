@@ -388,6 +388,7 @@ export const TasksPage = ({
   const showLocationToken = showLocationRequest?.requestedAt ?? null
   useEffect(() => {
     if (!showLocationRequest || !activeTab?.id) return
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent -- applies a one-shot request stamped on the tab by another surface, then clears it
     updateFiltersAndClearSaved({
       ...defaultFilters,
       folderPaths: showLocationRequest.folderPaths,
@@ -1289,6 +1290,7 @@ export const TasksPage = ({
                 >
                   <button
                     type="button"
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
                     role="radio"
                     aria-checked={activeView === 'list'}
                     aria-label={t('page.viewMode.list')}
@@ -1333,6 +1335,7 @@ export const TasksPage = ({
                   {availableViews.includes('kanban') && (
                     <button
                       type="button"
+                      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
                       role="radio"
                       aria-checked={activeView === 'kanban'}
                       aria-label={t('page.viewMode.kanban')}

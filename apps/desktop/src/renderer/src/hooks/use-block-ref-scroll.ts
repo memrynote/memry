@@ -16,8 +16,10 @@ export function useBlockRefScroll(
 ): void {
   const refKey = ref ? (ref.kind === 'portal' ? `portal:${ref.ordinal}` : `link:${ref.anchor}`) : ''
   const refValue = useRef(ref)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   refValue.current = ref
   const settled = useRef(onSettled)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   settled.current = onSettled
 
   useEffect(() => {

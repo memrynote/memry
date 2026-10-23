@@ -338,6 +338,7 @@ export const DueDatePicker = ({
         <Button
           ref={triggerRef}
           variant="outline"
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout
           role="combobox"
           aria-controls={pickerContentId}
           aria-expanded={isOpen}

@@ -541,6 +541,7 @@ export function CoverPickerDialog({
         <div className="flex items-center gap-2.5 border-b px-3.5">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a dialog/inline editor/search field the user just invoked
             autoFocus
             value={query}
             onChange={(e) => {
@@ -605,6 +606,7 @@ export function CoverPickerDialog({
                     key={itemKey(item)}
                     type="button"
                     onClick={() => void apply(item, false)}
+                    // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria attribute is valid for this widget pattern; lint role inference is incomplete
                     aria-selected={index === activeIndex}
                     className={cn(
                       'flex h-[76px] flex-col items-center justify-center gap-1 rounded-lg',
@@ -626,6 +628,7 @@ export function CoverPickerDialog({
                     key={itemKey(item)}
                     type="button"
                     onClick={() => void apply(item, false)}
+                    // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria attribute is valid for this widget pattern; lint role inference is incomplete
                     aria-selected={index === activeIndex}
                     aria-label={washName(item.id)}
                     title={washName(item.id)}
@@ -677,6 +680,7 @@ export function CoverPickerDialog({
                       key={itemKey(item)}
                       type="button"
                       onClick={() => void apply(item, false)}
+                      // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria attribute is valid for this widget pattern; lint role inference is incomplete
                       aria-selected={index === activeIndex}
                       aria-label={item.photo.authorName}
                       className={cn(
@@ -722,6 +726,7 @@ export function CoverPickerDialog({
                     key={itemKey(item)}
                     type="button"
                     onClick={() => void apply(item, false)}
+                    // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria attribute is valid for this widget pattern; lint role inference is incomplete
                     aria-selected={index === activeIndex}
                     className={cn(
                       'flex flex-col gap-1 rounded-lg p-0.5 text-start',
@@ -773,6 +778,7 @@ export function CoverPickerDialog({
                     key={itemKey(item)}
                     type="button"
                     onClick={() => void apply(item, false)}
+                    // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria attribute is valid for this widget pattern; lint role inference is incomplete
                     aria-selected={index === activeIndex}
                     disabled={linkDownload.kind === 'running'}
                     className={cn(

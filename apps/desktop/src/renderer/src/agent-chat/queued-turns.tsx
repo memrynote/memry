@@ -63,6 +63,7 @@ export function QueuedTurns({
               {isEditing ? (
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <Textarea
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of a just-opened popover/inline editor
                     autoFocus
                     aria-label={t('agentChat.composer.queue.editLabel')}
                     value={draft}
