@@ -27,6 +27,8 @@ Type to search across:
 
 Results are grouped by type. Each group shows its first five results; the last row of a longer group shows the rest. Every row has one hint on the right: the note's folder, the journal day, the task's due date, or the inbox item's site. A task row also shows its priority.
 
+Typing several words finds notes that contain all of them, anywhere and in any order. Notes and journal entries that contain the words side by side, as you typed them, come first. The last word can still be unfinished, so `this is rough` already puts a note with "this is roughly" on top. A search with one word, or with quotes, `AND`, `OR` or `NOT`, keeps its usual order.
+
 ## Preview
 
 The result you have selected is previewed beside the list. The preview never takes focus, so the arrow keys keep moving through results.
