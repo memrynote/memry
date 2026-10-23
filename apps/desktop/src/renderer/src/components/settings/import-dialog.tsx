@@ -331,11 +331,13 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
               onPointerDown={startImport}
               onClick={startImport}
             >
-              {needsPreview
-                ? t('import.preview.confirm')
+              {isAccountBased && accountState.confirmLabel
+                ? accountState.confirmLabel
                 : item?.id === 'readwise'
                   ? t('import.dialog.readwise.importNow')
-                  : t('import.dialog.start')}
+                  : needsPreview
+                    ? t('import.preview.confirm')
+                    : t('import.dialog.start')}
             </Button>
           )}
         </DialogFooter>

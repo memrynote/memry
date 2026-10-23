@@ -233,7 +233,8 @@
     "readwiseDisconnectFailed": "Could not disconnect Readwise",
     "readwiseSyncFailed": "Could not start the Readwise sync",
     "readwiseRunUnavailable": "Readwise import is not available in this build yet.",
-    "readwiseOptionsFailed": "Could not save the Readwise settings"
+    "readwiseOptionsFailed": "Could not save the Readwise settings",
+    "readwiseNotConnected": "Readwise is not connected. Paste your access token first."
   },
   "project": {
     "createFailed": "Failed to create project",

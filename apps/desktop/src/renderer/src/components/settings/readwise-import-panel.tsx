@@ -13,10 +13,8 @@ import { useT } from '@memry/i18n/renderer'
 import {
   READWISE_CADENCES,
   READWISE_CATEGORIES,
-  READWISE_FOLDER_LAYOUTS,
   type ReadwiseCadence,
   type ReadwiseCategory,
-  type ReadwiseFolderLayout,
   type ReadwiseSetOptionsInput,
   type ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
@@ -24,7 +22,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Select,
   SelectContent,
@@ -35,14 +32,16 @@ import {
 import {
   ACCENT_SWITCH,
   COMPACT_SELECT,
-  SEGMENTED,
-  SEGMENT_ITEM,
   SETTINGS_CARD,
   SETTINGS_GROUP_LABEL,
   SettingRow
 } from '@/components/settings/settings-primitives'
 import type { OneNotePanelState } from '@/components/settings/onenote-import-panel'
-import { useNoteFoldersQuery } from '@/hooks/use-notes-query'
+import {
+  ReadwiseFirstImportPreview,
+  type FirstImportState
+} from '@/components/settings/readwise-first-import-preview'
+import { ReadwiseLocationSection } from '@/components/settings/readwise-location-section'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
 const TOKEN_URL = 'https://readwise.io/access_token'
@@ -60,13 +59,13 @@ interface ReadwiseImportPanelProps {
 
 export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportPanelProps) {
   const { t } = useT('settings')
-  const { folders } = useNoteFoldersQuery()
   const [status, setStatus] = useState<ReadwiseStatusResult | null>(null)
   const [token, setToken] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [firstImport, setFirstImport] = useState<FirstImportState>({ ready: false, willImport: 0 })
 
   const mountedRef = useRef(true)
   useEffect(() => {
@@ -93,16 +92,23 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
 
   // Wrapped in queueMicrotask for the same reason as the OneNote panel: the
   // parent state update happens asynchronously.
-  const ready = Boolean(status?.connected && status.runAvailable)
+  // The first import waits for its preview. Later runs need only the connection.
+  const isFirstImport = Boolean(status?.connected && !status.hasImported)
+  const ready = Boolean(status?.connected && (!isFirstImport || firstImport.ready))
+  const confirmLabel = isFirstImport
+    ? firstImport.willImport > 0
+      ? t('import.dialog.readwise.importBooks', { count: firstImport.willImport })
+      : t('import.dialog.readwise.importNone')
+    : undefined
   useEffect(() => {
     let cancelled = false
     queueMicrotask(() => {
-      if (!cancelled) onStateChange({ ready, options: {} })
+      if (!cancelled) onStateChange({ ready, options: {}, confirmLabel })
     })
     return () => {
       cancelled = true
     }
-  }, [ready, onStateChange])
+  }, [ready, confirmLabel, onStateChange])
 
   const connect = async () => {
     if (!token.trim() || isConnecting) return
@@ -227,63 +233,25 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
   }
 
   const { options } = status
-  const folderPaths = folders.map((folder) => folder.path)
-  const folderOptions = folderPaths.includes(options.rootFolder)
-    ? folderPaths
-    : [options.rootFolder, ...folderPaths]
+
+  if (isFirstImport) {
+    return (
+      <ReadwiseFirstImportPreview
+        options={options}
+        disabled={disabled}
+        onSetOptions={(input) => void setOptions(input)}
+        onStateChange={setFirstImport}
+      />
+    )
+  }
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <section className="flex flex-col">
-        <h4 className={SETTINGS_GROUP_LABEL}>{t('import.dialog.readwise.groups.location')}</h4>
-        <div className={SETTINGS_CARD}>
-          <SettingRow
-            label={t('import.dialog.readwise.rootFolder.label')}
-            description={t('import.dialog.readwise.rootFolder.description')}
-          >
-            <Select
-              value={options.rootFolder}
-              onValueChange={(rootFolder) => void setOptions({ rootFolder })}
-              disabled={disabled}
-            >
-              <SelectTrigger
-                aria-label={t('import.dialog.readwise.rootFolder.label')}
-                className={`${COMPACT_SELECT} max-w-44 font-mono`}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" className="max-h-60 overflow-y-auto">
-                {folderOptions.map((path) => (
-                  <SelectItem key={path} value={path} className="font-mono text-xs/4">
-                    /{path}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingRow>
-          <SettingRow
-            label={t('import.dialog.readwise.layout.label')}
-            description={t('import.dialog.readwise.layout.description')}
-          >
-            <ToggleGroup
-              type="single"
-              value={options.folderLayout}
-              onValueChange={(value) => {
-                if (value) void setOptions({ folderLayout: value as ReadwiseFolderLayout })
-              }}
-              aria-label={t('import.dialog.readwise.layout.label')}
-              className={SEGMENTED}
-              disabled={disabled}
-            >
-              {READWISE_FOLDER_LAYOUTS.map((layout) => (
-                <ToggleGroupItem key={layout} value={layout} className={SEGMENT_ITEM}>
-                  {t(`import.dialog.readwise.layout.options.${layout}`)}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </SettingRow>
-        </div>
-      </section>
+      <ReadwiseLocationSection
+        options={options}
+        disabled={disabled}
+        onChange={(input) => void setOptions(input)}
+      />
 
       <section className="flex flex-col">
         <h4 className={SETTINGS_GROUP_LABEL}>{t('import.dialog.readwise.groups.categories')}</h4>
@@ -347,7 +315,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
               variant="outline"
               size="sm"
               onClick={() => void syncNow()}
-              disabled={disabled || isSyncing || !status.runAvailable}
+              disabled={disabled || isSyncing || !status.syncNowAvailable}
             >
               {t('import.dialog.readwise.syncNow.button')}
             </Button>

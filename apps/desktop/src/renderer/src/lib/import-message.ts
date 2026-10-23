@@ -50,7 +50,16 @@ const IMPORT_MESSAGE_KEYS: Record<ImportMessageCode, string> = {
   'todoist.emptyTitle': 'import.messages.todoist.emptyTitle',
   'todoist.unknownPriority': 'import.messages.todoist.unknownPriority',
   'todoist.unparsedDate': 'import.messages.todoist.unparsedDate',
-  'todoist.subtaskNoParent': 'import.messages.todoist.subtaskNoParent'
+  'todoist.subtaskNoParent': 'import.messages.todoist.subtaskNoParent',
+
+  'readwise.tokenMissing': 'import.messages.readwise.tokenMissing',
+  'readwise.tokenInvalid': 'import.messages.readwise.tokenInvalid',
+  'readwise.unreachable': 'import.messages.readwise.unreachable',
+  'readwise.categoryOff': 'import.messages.readwise.categoryOff',
+  'readwise.unchanged': 'import.messages.readwise.unchanged',
+  'readwise.sourceDeleted': 'import.messages.readwise.sourceDeleted',
+  'readwise.noteDeleted': 'import.messages.readwise.noteDeleted',
+  'readwise.busy': 'import.messages.readwise.busy'
 }
 
 /**
@@ -77,7 +86,8 @@ const IMPORT_STATUS_KEYS: Record<ImportStatusCode, string> = {
   'status.raindrop.importing': 'import.status.raindrop.importing',
   'status.roam.reading': 'import.status.roam.reading',
   'status.ticktick.importing': 'import.status.ticktick.importing',
-  'status.todoist.importing': 'import.status.todoist.importing'
+  'status.todoist.importing': 'import.status.todoist.importing',
+  'status.readwise.fetching': 'import.status.readwise.fetching'
 }
 
 /** Resolve an importer warning/error to display text in the active locale. */

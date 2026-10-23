@@ -14,14 +14,14 @@ export const READWISE_CATEGORIES = [
 export type ReadwiseCategory = (typeof READWISE_CATEGORIES)[number]
 
 export interface ReadwiseTag {
-  id?: number
+  id?: number | null
   name: string
 }
 
 export interface ReadwiseHighlight {
   id: number
-  is_deleted?: boolean
-  is_discard?: boolean
+  is_deleted?: boolean | null
+  is_discard?: boolean | null
   text?: string | null
   note?: string | null
   tags?: ReadwiseTag[] | null
@@ -29,12 +29,14 @@ export interface ReadwiseHighlight {
   location_type?: string | null
   highlighted_at?: string | null
   created_at?: string | null
+  /** Readwise server time: the run's cursor is the newest of these (D7). */
+  updated_at?: string | null
   readwise_url?: string | null
 }
 
 export interface ReadwiseBook {
   user_book_id: number
-  is_deleted?: boolean
+  is_deleted?: boolean | null
   title?: string | null
   readable_title?: string | null
   author?: string | null
