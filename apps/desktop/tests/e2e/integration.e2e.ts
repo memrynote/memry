@@ -485,10 +485,7 @@ test.describe('Cross-Feature Integration', () => {
 
     test('should handle concurrent operations', async ({ page }) => {
       // Test multiple operations happening at once
-      await Promise.all([
-        createNote(page, 'Concurrent Note 1', 'Content 1')
-        // Note: In real E2E tests, you'd need separate pages for true concurrency
-      ])
+      await createNote(page, 'Concurrent Note 1', 'Content 1')
 
       await page.waitForTimeout(1000)
       expect(true).toBe(true)

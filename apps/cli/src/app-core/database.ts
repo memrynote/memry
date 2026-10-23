@@ -78,7 +78,9 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
       tryRemoveStaleInitLock(lockPath)
       if (Date.now() - start > initLockTimeoutMs) {
-        throw new Error('Timed out waiting for vault database initialization lock.')
+        throw new Error('Timed out waiting for vault database initialization lock.', {
+          cause: error
+        })
       }
       sleepSync(50)
     }

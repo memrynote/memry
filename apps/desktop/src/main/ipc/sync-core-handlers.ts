@@ -6,8 +6,8 @@ import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { KEYCHAIN_ENTRIES, type KeychainEntry } from '@memry/contracts/crypto'
 import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
 import { EVENT_CHANNELS, type VaultRecoveryNeededEvent } from '@memry/contracts/ipc-events'
-import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
 import {
+  type StorageBreakdownResult,
   GetHistorySchema,
   GetNoteSyncStateSchema,
   ResolveVaultBindingSchema,

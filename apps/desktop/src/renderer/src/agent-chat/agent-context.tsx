@@ -240,7 +240,7 @@ export function AgentProvider({
         trackRendererError('agent_create_conversation', error)
         const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
         dispatch({ type: 'set_error', error: message })
-        throw new Error(message)
+        throw new Error(message, { cause: error })
       }
     },
     [t]
@@ -276,7 +276,7 @@ export function AgentProvider({
         dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: false })
         const message = extractErrorMessage(error, t('agentChat.errors.sendTurn'))
         dispatch({ type: 'set_error', error: message })
-        throw new Error(message)
+        throw new Error(message, { cause: error })
       }
     },
     [t]

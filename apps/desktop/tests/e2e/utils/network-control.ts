@@ -104,7 +104,8 @@ export async function waitForSyncOnline(page: Page, timeout = 15000): Promise<Sy
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(
-      `Timed out waiting for sync online. Last sync status: ${JSON.stringify(lastStatus)}\n${message}`
+      `Timed out waiting for sync online. Last sync status: ${JSON.stringify(lastStatus)}\n${message}`,
+      { cause: error }
     )
   }
 

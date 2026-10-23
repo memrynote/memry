@@ -123,12 +123,12 @@ function reconcileLinks(tx: DrizzleDb, projectId: string, remote: ProjectLinkSyn
 
   applyViewStateToMarkdownLinks(tx, projectId, markdownEntries)
 
-  const incomingIds = tableOwnedEntries.map((l) => l.id)
+  const incomingIds = new Set(tableOwnedEntries.map((l) => l.id))
 
   // Diff against table-owned rows only: a frontmatter-derived row is never in
   // this set, so it is never a delete candidate here.
   const existingIds = listTableOwnedProjectLinks(tx, projectId).map((l) => l.id)
-  const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id))
+  const idsToDelete = existingIds.filter((id) => !incomingIds.has(id))
 
   if (idsToDelete.length > 0) {
     tx.delete(projectLinks)

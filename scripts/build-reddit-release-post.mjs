@@ -51,7 +51,9 @@ function parseJson(raw, source) {
   try {
     return JSON.parse(raw)
   } catch (error) {
-    throw new Error(`Could not parse release JSON from ${source}: ${error.message}`)
+    throw new Error(`Could not parse release JSON from ${source}: ${error.message}`, {
+      cause: error
+    })
   }
 }
 

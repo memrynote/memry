@@ -1,6 +1,6 @@
 export const HUMANIZED_RELEASE_MARKER = 'memry-humanized-release-notes'
 
-const allowedHumanizedSections = ['New Features', 'Improvements', 'Fixes']
+const allowedHumanizedSections = new Set(['New Features', 'Improvements', 'Fixes'])
 
 function stripHtmlComments(text) {
   let output = ''
@@ -168,7 +168,7 @@ export function validateHumanizedReleaseMarkdown(markdown = '') {
       throw new Error('Humanized release notes must not include the Changelog section')
     }
 
-    if (!allowedHumanizedSections.includes(section.title)) {
+    if (!allowedHumanizedSections.has(section.title)) {
       throw new Error(`Unexpected release note section: ${section.title}`)
     }
 

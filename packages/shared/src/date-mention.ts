@@ -7,7 +7,17 @@
  */
 
 export type RemindOffset =
-  'none' | 'at' | '5m' | '10m' | '15m' | '30m' | '1h' | '2h' | '1d' | '2d' | '1w'
+  | 'none'
+  | 'at'
+  | '5m'
+  | '10m'
+  | '15m'
+  | '30m'
+  | '1h'
+  | '2h'
+  | '1d'
+  | '2d'
+  | '1w'
 
 export type DateMentionDateFormat = 'relative' | 'full'
 
@@ -31,7 +41,7 @@ export interface DateMentionData {
  */
 export const DATE_MENTION_TOKEN_REGEX = /\(\(date:([A-Za-z0-9,;_\\-]+)\)\)/g
 
-const REMIND_OFFSETS: ReadonlyArray<RemindOffset> = [
+const REMIND_OFFSETS: ReadonlySet<RemindOffset> = new Set([
   'none',
   'at',
   '5m',
@@ -43,7 +53,7 @@ const REMIND_OFFSETS: ReadonlyArray<RemindOffset> = [
   '1d',
   '2d',
   '1w'
-]
+])
 
 // Sub-day offsets subtract a fixed duration from the event instant.
 const SUBDAY_MS: Record<string, number> = {
@@ -116,7 +126,7 @@ export function parseDateMentionToken(encoded: string): DateMentionData | null {
     typeof obj.dateISO !== 'string' ||
     typeof obj.hasTime !== 'boolean' ||
     typeof obj.remind !== 'string' ||
-    !REMIND_OFFSETS.includes(obj.remind as RemindOffset)
+    !REMIND_OFFSETS.has(obj.remind as RemindOffset)
   ) {
     return null
   }

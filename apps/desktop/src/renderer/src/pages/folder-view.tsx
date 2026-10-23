@@ -323,7 +323,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     const query = columnSearchQuery.toLowerCase()
 
     // Get visible column IDs
-    const visibleIds = (activeView?.columns ?? DEFAULT_COLUMNS).map((c) => c.id)
+    const visibleIds = new Set((activeView?.columns ?? DEFAULT_COLUMNS).map((c) => c.id))
 
     // Find matching built-in columns
     const builtInMatches = builtInColumns
@@ -336,7 +336,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       .map((prop) => prop.name)
 
     // Only return columns that are currently visible
-    return [...builtInMatches, ...propMatches].filter((id) => visibleIds.includes(id))
+    return [...builtInMatches, ...propMatches].filter((id) => visibleIds.has(id))
   }, [columnSearchQuery, builtInColumns, availableProperties, activeView])
 
   // Breadcrumb trail starting at the real folder: ancestor folders › current folder

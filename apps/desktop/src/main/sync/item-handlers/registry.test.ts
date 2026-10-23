@@ -20,10 +20,10 @@ import { getAllHandlers, getHandler } from './index'
  * handler — `ItemApplier.apply` logs a warning and returns 'skipped' for an
  * unregistered type, which is silent data loss on the receiving device.
  */
-const NON_RECORD_TYPES: SyncItemType[] = [
+const NON_RECORD_TYPES: ReadonlySet<SyncItemType> = new Set([
   // Blobs pushed/pulled through the attachment outbox + R2, never a record row.
   'attachment'
-]
+])
 
 /**
  * Types excluded from the emit-via-`ctx.emit` probe only. They still have to
@@ -119,7 +119,7 @@ beforeEach(() => {
 describe('sync item handler registry', () => {
   it('registers a handler for every syncable item type', () => {
     const missing = SYNC_ITEM_TYPES.filter(
-      (type) => !NON_RECORD_TYPES.includes(type) && !getHandler(type)
+      (type) => !NON_RECORD_TYPES.has(type) && !getHandler(type)
     )
 
     expect(missing).toEqual([])
@@ -152,7 +152,7 @@ describe('sync item handler registry', () => {
     // renderer showing stale data until the app is restarted — the "vault is
     // updated but the app does not refresh" class of report.
     for (const type of SYNC_ITEM_TYPES) {
-      if (NON_RECORD_TYPES.includes(type)) continue
+      if (NON_RECORD_TYPES.has(type)) continue
       const exemption = EMIT_PROBE_EXEMPT[type]
       if (exemption) {
         it.skip(`${type}: emit probe skipped — ${exemption}`, () => {})

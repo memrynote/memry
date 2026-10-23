@@ -46,7 +46,15 @@ describe('project hub theme tokens', () => {
   it('only uses colour tokens that base.css defines', () => {
     // Token roots this app owns. A class whose first segment is one of these is
     // ours, so an undefined full name is a typo rather than a Tailwind builtin.
-    const roots = ['surface', 'accent', 'muted', 'foreground', 'border', 'sidebar', 'destructive']
+    const roots = new Set([
+      'surface',
+      'accent',
+      'muted',
+      'foreground',
+      'border',
+      'sidebar',
+      'destructive'
+    ])
     const classPattern = /(?:^|[\s'"`])(?:[a-z-]+:)*(?:bg|text|border)-([a-z][a-z0-9-]*)/g
 
     const offenders: string[] = []
@@ -56,7 +64,7 @@ describe('project hub theme tokens', () => {
       for (const match of source.matchAll(classPattern)) {
         const name = match[1]
         const root = name.split('-')[0]
-        if (!roots.includes(root)) continue
+        if (!roots.has(root)) continue
         if (tokens.has(name)) continue
         offenders.push(`${file.replace(HUB_DIR, '')} → ${match[0].trim()}`)
       }

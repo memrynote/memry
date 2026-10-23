@@ -888,9 +888,9 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.equal((await app.calendar.bindings.list({ provider: 'google' })).bindings.length, 1)
 
   const results = await app.search('CLI')
-  const resultKinds = results.map((result) => result.kind)
+  const resultKinds = new Set(results.map((result) => result.kind))
   for (const kind of ['calendar', 'inbox', 'journal', 'note', 'reminder', 'task', 'template']) {
-    assert.ok(resultKinds.includes(kind))
+    assert.ok(resultKinds.has(kind))
   }
   const searchStats = await app.searchStats()
   assert.ok(searchStats.totalNotes >= 3)

@@ -892,7 +892,7 @@ export class AttachmentSyncService {
         } catch (renameErr) {
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
           if (isDiskSpaceError(renameErr)) {
-            throw new Error(getMainI18n().t('errors:attachment.diskFull'))
+            throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })
           }
           throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
         }
@@ -918,7 +918,7 @@ export class AttachmentSyncService {
             path: destPath,
             chunksDone: downloadProgress.chunksCompleted
           })
-          throw new Error(getMainI18n().t('errors:attachment.diskFull'))
+          throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: err })
         }
         throw err
       }

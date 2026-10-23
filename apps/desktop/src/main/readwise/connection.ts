@@ -181,7 +181,7 @@ export async function syncReadwiseNow(): Promise<void> {
   } catch (err) {
     const t = getMainI18n().t
     if (err instanceof ReadwiseRunInProgressError) {
-      throw new Error(t('errors:importer.readwiseRunInProgress'))
+      throw new Error(t('errors:importer.readwiseRunInProgress'), { cause: err })
     }
     if (err instanceof ReadwiseUnavailableError) {
       throw new Error(

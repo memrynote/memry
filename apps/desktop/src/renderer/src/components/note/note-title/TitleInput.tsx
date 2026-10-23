@@ -1,5 +1,4 @@
-import type { KeyboardEvent } from 'react'
-import { useRef, useEffect, useCallback, useState, type RefObject } from 'react'
+import { type KeyboardEvent, useRef, useEffect, useCallback, useState, type RefObject } from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 

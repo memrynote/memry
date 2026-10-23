@@ -47,7 +47,13 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:InboxListView')
 
-const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml'
+])
 
 export interface InboxListViewProps {
   className?: string
@@ -776,7 +782,7 @@ export function InboxListView({
 
   const handleImageCapture = useCallback(
     async (file: File): Promise<void> => {
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
         toast.error(t('loading.unsupportedImageType', { type: file.type }))
         return
       }

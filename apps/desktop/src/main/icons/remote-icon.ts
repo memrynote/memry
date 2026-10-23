@@ -163,7 +163,7 @@ export async function downloadRemoteIcon(raw: string): Promise<RemoteIcon> {
     })
   } catch (error) {
     log.warn('Custom icon download failed', { host: url.hostname, error })
-    throw new Error(getMainI18n().t('errors:customIcon.downloadFailed'))
+    throw new Error(getMainI18n().t('errors:customIcon.downloadFailed'), { cause: error })
   } finally {
     clearTimeout(timeout)
   }
