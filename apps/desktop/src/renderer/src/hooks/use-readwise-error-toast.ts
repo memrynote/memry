@@ -34,7 +34,7 @@ export function useReadwiseErrorToast(openReadwise: () => void): void {
         })
       } catch (err) {
         // No vault open yet, or Readwise is not set up: there is nothing to tell.
-        log.debug('Readwise error toast check skipped', err)
+        log.info('Readwise error toast check skipped', err)
       }
     }
     void check()
