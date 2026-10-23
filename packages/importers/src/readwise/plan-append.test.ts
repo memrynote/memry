@@ -87,6 +87,20 @@ describe('planAppend', () => {
     expect(planAppend(highlights, { ...base, last: 'garbage' }).markdown).toContain('open/1)')
   })
 
+  it('without a usable last, still offers an older image highlight and holds last to it', () => {
+    const image = highlight(2, {
+      text: '![](https://img.example/a.png)',
+      created_at: '2026-10-08T00:00:00Z'
+    })
+    const plan = planAppend([highlight(3, { created_at: '2026-10-09T00:00:00Z' }), image], {
+      ...base,
+      last: null,
+      linkedIds: new Set([3])
+    })
+    expect(plan.markdown).toBe('')
+    expect(plan.last).toBe('2026-01-01T00:00:00.000Z')
+  })
+
   it('reads highlight ids back out of a note body', () => {
     const body =
       'x [Location 1](https://readwise.io/open/41) y\n- z ([Page 2](https://readwise.io/open/42), 2026-01-01)'

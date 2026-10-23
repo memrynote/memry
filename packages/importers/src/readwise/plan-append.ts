@@ -1,4 +1,10 @@
-import { EPOCH, isLiveHighlight, newestCreatedAt, renderHighlights } from './highlights.ts'
+import {
+  EPOCH,
+  imageHighlightUrl,
+  isLiveHighlight,
+  newestCreatedAt,
+  renderHighlights
+} from './highlights.ts'
 import { headingLevel, toIsoInstant } from './text.ts'
 import type { ReadwiseHighlight, SavedImages } from './types.ts'
 
@@ -20,19 +26,25 @@ export interface AppendPlan {
   last: string
 }
 
-function usableLastMs(
+/**
+ * `floor` is where candidates start. `held` is where an image highlight starts
+ * and what `last` is held to: without a usable `last` they differ, so a
+ * highlight held back for a failed image download is not skipped for good.
+ */
+function floors(
   last: string | null,
   noteCreated: string,
   present: ReadwiseHighlight[]
-): number {
+): { floor: number; held: number } {
   const lastMs = last === null ? Number.NaN : Date.parse(last)
-  if (!Number.isNaN(lastMs)) return lastMs
-  let floor = Date.parse(noteCreated)
+  if (!Number.isNaN(lastMs)) return { floor: lastMs, held: lastMs }
+  const held = Date.parse(noteCreated)
+  let floor = held
   for (const h of present) {
     const created = Date.parse(toIsoInstant(h.created_at) ?? '')
     if (!Number.isNaN(created) && (Number.isNaN(floor) || created + 1 > floor)) floor = created + 1
   }
-  return floor
+  return { floor, held }
 }
 
 /**
@@ -51,12 +63,13 @@ export function planAppend(
 ): AppendPlan {
   const live = highlights.filter(isLiveHighlight).filter((h) => headingLevel(h) === null)
   const present = live.filter((h) => linkedIds.has(h.id))
-  const lastMs = usableLastMs(last, noteCreated, present)
+  const { floor, held } = floors(last, noteCreated, present)
 
   const fresh = live.filter((h) => {
     if (linkedIds.has(h.id)) return false
     const created = Date.parse(toIsoInstant(h.created_at) ?? '')
-    return Number.isNaN(created) || Number.isNaN(lastMs) || created >= lastMs
+    const from = imageHighlightUrl(h) === null ? floor : held
+    return Number.isNaN(created) || Number.isNaN(from) || created >= from
   })
 
   const { markdown, rendered, missing } = renderHighlights(fresh, {
@@ -66,7 +79,7 @@ export function planAppend(
   const newLast = newestCreatedAt(
     [...rendered, ...present],
     missing,
-    Number.isNaN(lastMs) ? EPOCH : new Date(lastMs).toISOString()
+    Number.isNaN(held) ? EPOCH : new Date(held).toISOString()
   )
   return { markdown, last: newLast }
 }
