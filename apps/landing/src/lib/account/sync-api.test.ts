@@ -21,7 +21,7 @@ describe('sync api', () => {
       calls.push(url)
       if (
         url.endsWith('/auth/billing') &&
-        (init?.headers as Record<string, string> | undefined)?.Authorization === 'Bearer old'
+        (init?.headers as Record<string, string>).Authorization === 'Bearer old'
       ) {
         return new Response('{}', { status: 401 })
       }

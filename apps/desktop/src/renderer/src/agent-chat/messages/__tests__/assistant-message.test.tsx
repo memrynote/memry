@@ -461,9 +461,7 @@ describe('AssistantMessage', () => {
       Object.defineProperty(el, 'scrollTop', {
         configurable: true,
         get: () => top,
-        set: (v: number) => {
-          top = Math.max(0, Math.min(v, height - 180))
-        }
+        set: (v: number) => (top = Math.max(0, Math.min(v, height - 180)))
       })
       const landUnobserved = (h: number): void => {
         height = h

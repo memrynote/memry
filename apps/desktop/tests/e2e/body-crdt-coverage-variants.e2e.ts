@@ -411,10 +411,8 @@ test.describe('Body CRDT coverage variants', () => {
         electronAppB,
         pageA,
         pageB,
-        bootstrappedSyncPair
+        bootstrappedSyncPair: _bootstrappedSyncPair
       }) => {
-        bootstrappedSyncPair
-
         const title = `V${reconnectOrder}-${scenario.name}-${Date.now()}`
 
         await runOfflineOfflineMergeCase({
@@ -439,10 +437,8 @@ test.describe('Body CRDT coverage variants', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
-
     const singleWriterTitle = `V4 Receiver Open Single Writer ${Date.now()}`
     await runReceiverStateSingleWriterCase({
       electronAppA,
@@ -481,10 +477,8 @@ test.describe('Body CRDT coverage variants', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
-
     const singleWriterTitle = `V5 Receiver Closed Single Writer ${Date.now()}`
     await runReceiverStateSingleWriterCase({
       electronAppA,
@@ -524,7 +518,7 @@ test.describe('Body CRDT coverage variants', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
     test.slow()
     // Skipped on CI: this test exercises a sync-engine cursor race that is
@@ -544,7 +538,6 @@ test.describe('Body CRDT coverage variants', () => {
       !!process.env.CI,
       'sync engine cursor race on parallel reconnect push — see block comment'
     )
-    bootstrappedSyncPair
 
     const prefix = `V6 Two Notes Four Edits ${Date.now()}`
     const titleA = `${prefix} NoteA`

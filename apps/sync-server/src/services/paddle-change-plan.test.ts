@@ -118,8 +118,8 @@ describe('previewPlanChange', () => {
     const previewCall = paddleFetch.mock.calls.find(([url]) => String(url).endsWith('/preview'))
     expect(previewCall).toBeDefined()
     // Paddle's preview mirrors the update operation: POST answers 405 method_not_allowed.
-    expect((previewCall?.[1] as RequestInit | undefined)?.method).toBe('PATCH')
-    const sent = JSON.parse(String((previewCall?.[1] as RequestInit | undefined)?.body))
+    expect((previewCall?.[1] as RequestInit).method).toBe('PATCH')
+    const sent = JSON.parse(String((previewCall?.[1] as RequestInit).body))
     expect(sent.proration_billing_mode).toBe('prorated_immediately')
     expect(sent.items).toEqual([{ price_id: 'pri_plus_y', quantity: 1 }])
     // Paddle keeps stale custom_data unless it is resent, and the webhook writes it back.
@@ -144,7 +144,7 @@ describe('previewPlanChange', () => {
     expect(result.immediateChargeAmount).toBeNull()
 
     const previewCall = paddleFetch.mock.calls.find(([url]) => String(url).endsWith('/preview'))
-    const sent = JSON.parse(String((previewCall?.[1] as RequestInit | undefined)?.body))
+    const sent = JSON.parse(String((previewCall?.[1] as RequestInit).body))
     expect(sent.proration_billing_mode).toBe('prorated_next_billing_period')
   })
 

@@ -55,14 +55,12 @@ const test = base.extend<{
   electronApp: ElectronApplication
   page: Page
 }>({
-  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   testVaultPath: async ({}, use) => {
     const vaultPath = createTestVault('memry-e2e-vault-deletion-')
     await use(vaultPath)
     fs.rmSync(vaultPath, { recursive: true, force: true })
   },
 
-  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   syncBootstrap: async ({}, use) => {
     const bootstrap = await startSharedSyncBootstrap()
     try {

@@ -890,7 +890,7 @@ export class AttachmentSyncService {
           if (isDiskSpaceError(renameErr)) {
             throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })
           }
-          throw new Error(getMainI18n().t('errors:attachment.writeFailed'), { cause: renameErr })
+          throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
         }
         await unlink(statePath).catch(() => {})
       } catch (err) {

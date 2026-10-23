@@ -268,7 +268,9 @@ describe('sync onboarding components', () => {
     expect(createUrl).toHaveBeenCalledTimes(1)
     const text = await new Promise<string>((resolve) => {
       const reader = new FileReader()
-      reader.addEventListener('load', () => resolve(String(reader.result)))
+      reader.onload = () => {
+        resolve(String(reader.result))
+      }
       reader.readAsText(saved as unknown as Blob)
     })
     const words = phrase.split(' ')

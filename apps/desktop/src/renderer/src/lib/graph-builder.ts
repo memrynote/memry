@@ -1,4 +1,3 @@
-// oxlint-disable-next-line import/no-named-as-default -- graphology's types declare only the default export
 import Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { PINNED_ATTRIBUTE, type NodePosition } from './graph-physics'

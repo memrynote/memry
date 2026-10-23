@@ -1396,7 +1396,6 @@ describe('PushCoordinator', () => {
       }).then(() => {
         ctx.syncing = false
         ctx.inFlightSync = null
-        return undefined
       })
 
       coordinator.requestPush()

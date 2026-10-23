@@ -39,8 +39,8 @@ function useOcrLanguages(): OcrLanguagesState | null {
     let live = true
     window.api.ocrLanguages
       .get()
-      .then((languages) => {
-        if (live) setState(languages)
+      .then((next) => {
+        if (live) setState(next)
       })
       .catch((error: unknown) => log.error('Failed to read OCR languages', error))
     const unsubscribe = window.api.onOcrLanguagesChanged(setState)

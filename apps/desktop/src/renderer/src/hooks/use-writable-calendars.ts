@@ -42,8 +42,8 @@ export function useOtherWritableCalendars(): { groups: WritableCalendarGroup[] }
   useEffect(() => {
     let cancelled = false
     listOtherWritableCalendars()
-      .then((otherGroups) => {
-        if (!cancelled) setGroups(otherGroups)
+      .then((next) => {
+        if (!cancelled) setGroups(next)
       })
       .catch((error: unknown) => {
         log.warn('Could not list writable calendars from other providers', error)

@@ -145,7 +145,7 @@ const expectNoRawAccountId = (fetchSpy: ReturnType<typeof vi.fn>): void => {
 const captureEvents = (fetchSpy: ReturnType<typeof vi.fn>) => {
   const call = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
   expect(call).toBeDefined()
-  return JSON.parse((call?.[1] as RequestInit | undefined)?.body as string).batch as Array<{
+  return JSON.parse((call?.[1] as RequestInit).body as string).batch as Array<{
     event: string
     distinct_id: string
     properties: Record<string, unknown>
@@ -405,8 +405,8 @@ describe('POST /diagnostics/report — account identity', () => {
       expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith('/v1/logs'))).toBe(true)
     )
     const call = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/v1/logs'))
-    const record = JSON.parse((call?.[1] as RequestInit | undefined)?.body as string)
-      .resourceLogs[0].scopeLogs[0].logRecords[0]
+    const record = JSON.parse((call?.[1] as RequestInit).body as string).resourceLogs[0]
+      .scopeLogs[0].logRecords[0]
     const attribute = record.attributes.find((a: { key: string }) => a.key === 'posthogDistinctId')
     return attribute.value.stringValue
   }

@@ -59,7 +59,6 @@ function api(token) {
       headers['content-type'] = 'application/json; charset=UTF-8'
       body = JSON.stringify(json)
     } else if (type) headers['content-type'] = type
-    // oxlint-disable-next-line unicorn/no-invalid-fetch-options -- callers pass `json`/`body` only with POST or PUT
     const res = await fetch(url, { method, headers, body })
     if (!res.ok) throw await googleError(res)
     return res.json()

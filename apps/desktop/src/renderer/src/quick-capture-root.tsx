@@ -1,5 +1,5 @@
 import { ThemeProvider } from 'next-themes'
-import { QuickCapture } from './components/quick-capture'
+import QuickCapture from './components/quick-capture'
 import { AISettingsProvider } from './contexts/ai-settings-context'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
 

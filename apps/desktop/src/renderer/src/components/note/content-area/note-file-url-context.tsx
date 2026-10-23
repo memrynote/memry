@@ -79,8 +79,8 @@ export function useResolvedFileUrl(url: string): string | null {
       return
     }
     let cancelled = false
-    void resolve(url).then((resolvedUrl) => {
-      if (!cancelled) setResolved(resolvedUrl)
+    void resolve(url).then((next) => {
+      if (!cancelled) setResolved(next)
     })
     return () => {
       cancelled = true

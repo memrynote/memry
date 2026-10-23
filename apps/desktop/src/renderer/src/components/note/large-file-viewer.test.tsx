@@ -174,7 +174,7 @@ describe('LargeFileViewer', () => {
 
     const api = window.api as unknown as Record<string, unknown>
     api.notes = {
-      ...(api.notes as Record<string, unknown>),
+      ...((api.notes as Record<string, unknown>) ?? {}),
       largeFileOpen: mocks.open,
       largeFileReadLines: mocks.readLines,
       largeFileSearch: mocks.search,

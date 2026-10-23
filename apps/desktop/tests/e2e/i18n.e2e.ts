@@ -105,7 +105,7 @@ test.describe('i18n', () => {
     await waitForVaultReady(page)
     await dismissFirstRunOnboarding(page)
 
-    const reminderLabel = await electronApp.evaluate(async (_electron, key: string) => {
+    const reminderLabel = await electronApp.evaluate(async ({}, key: string) => {
       const hooks = (
         globalThis as typeof globalThis & {
           __memryTestHooks?: { translateInMain(k: string): Promise<string> }
@@ -117,7 +117,7 @@ test.describe('i18n', () => {
 
     expect(reminderLabel).toBe('Note reminder')
 
-    const exportTitle = await electronApp.evaluate(async (_electron, key: string) => {
+    const exportTitle = await electronApp.evaluate(async ({}, key: string) => {
       const hooks = (
         globalThis as typeof globalThis & {
           __memryTestHooks?: { translateInMain(k: string): Promise<string> }

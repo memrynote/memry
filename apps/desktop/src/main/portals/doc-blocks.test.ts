@@ -62,7 +62,7 @@ describe('stampAnchorInDoc', () => {
     ])
     stampAnchorInDoc(doc, 'b1', fixed)
     const block = listDocBlocks(doc)[0]
-    const delta = (block.content?.toArray().at(-1) as Y.XmlText | undefined)?.toDelta()
+    const delta = (block.content?.toArray().at(-1) as Y.XmlText).toDelta()
     expect(delta.at(-1)).toEqual({ insert: ' ^fix123' })
   })
 

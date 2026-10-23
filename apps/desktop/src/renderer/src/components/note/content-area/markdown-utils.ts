@@ -150,7 +150,8 @@ async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
     withPlainCheckboxMarkers(blocks) as never[]
   )
   const md = normalizeSerializedMarkdown(
-    writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
+    // oxlint-disable-next-line typescript/await-thenable -- `editor` is untyped, so TS picks the sync overload; serializers may be async
+    await writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements)
 }

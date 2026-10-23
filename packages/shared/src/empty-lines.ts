@@ -31,7 +31,6 @@ export function splitMarkdownPreservingBlanks(markdown: string): MarkdownSegment
     }
   }
 
-  // oxlint-disable-next-line no-control-regex -- NUL delimits the gap sentinel on purpose
   const parts = assembled.split(/\x00GAP:(\d+)\x00/)
   const segments: MarkdownSegment[] = []
 

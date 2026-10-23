@@ -152,7 +152,6 @@ export function findTriageWrites(source: string): TriageWrite[] {
   let match: RegExpExecArray | null
   while ((match = writeStart.exec(source)) !== null) {
     const end = source.indexOf('.run()', match.index)
-    // oxlint-disable-next-line unicorn/prefer-set-has -- `statement` is a string, and `includes` is a substring test
     const statement = source.slice(match.index, end === -1 ? source.length : end)
     const columns = TRIAGE_COLUMNS.filter((column) => statement.includes(column))
     if (columns.length === 0) continue

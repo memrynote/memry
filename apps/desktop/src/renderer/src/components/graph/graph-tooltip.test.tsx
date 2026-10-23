@@ -1,5 +1,4 @@
 import { render } from '@testing-library/react'
-// oxlint-disable-next-line import/no-named-as-default -- graphology's types declare only the default export
 import Graph from 'graphology'
 import { describe, expect, it, vi } from 'vitest'
 

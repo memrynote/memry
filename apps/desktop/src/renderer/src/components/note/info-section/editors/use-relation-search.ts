@@ -76,7 +76,7 @@ export function useRelationSearch(query: string): RelationSearchState {
       // Settled independently: one source failing must not blank the other.
       const searching = searchService.quick(trimmed).then(
         (response: { results: SearchResultItem[] }) => {
-          if (cancelled) return undefined
+          if (cancelled) return
           setNotes(
             response.results
               .filter((r) => r.metadata.type === 'note')
@@ -94,7 +94,6 @@ export function useRelationSearch(query: string): RelationSearchState {
                 : []
             )
           )
-          return undefined
         },
         (err: unknown) => {
           if (cancelled) return
@@ -108,7 +107,7 @@ export function useRelationSearch(query: string): RelationSearchState {
         .searchEvents({ query: trimmed, includeExternal: true })
         .then(
           (response: { events: CalendarEventSearchItem[] }) => {
-            if (cancelled) return undefined
+            if (cancelled) return
             setEvents(
               response.events.map((e) =>
                 e.kind === 'external_event'
@@ -121,7 +120,6 @@ export function useRelationSearch(query: string): RelationSearchState {
                   : { id: e.id, title: e.title, startAt: e.startAt }
               )
             )
-            return undefined
           },
           (err: unknown) => {
             if (cancelled) return
@@ -138,14 +136,13 @@ export function useRelationSearch(query: string): RelationSearchState {
         .then(() => canvasService.list())
         .then(
           (response) => {
-            if (cancelled) return undefined
+            if (cancelled) return
             setCanvases(
               response.canvases
                 .filter((c) => (c.title ?? '').toLowerCase().includes(lowered))
                 .slice(0, CANVAS_RESULT_LIMIT)
                 .map((c) => ({ id: c.id, title: c.title ?? '' }))
             )
-            return undefined
           },
           (err: unknown) => {
             if (cancelled) return

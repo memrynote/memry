@@ -87,7 +87,6 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
       const searching = searchService.quick(trimmed, NOTE_FILE_TYPES).then(
         (response) => {
           if (!cancelled) setResults(response.results)
-          return undefined
         },
         (err: unknown) => {
           if (!cancelled) {
@@ -101,7 +100,6 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
           if (!cancelled) {
             setFiles(response.results.filter((result) => result.metadata.type === 'note'))
           }
-          return undefined
         },
         (err: unknown) => {
           if (!cancelled) {
@@ -113,7 +111,6 @@ export function useCanvasAddSearch(open: boolean, query: string): CanvasAddSourc
       const searchingEvents = calendarService.searchEvents({ query: trimmed }).then(
         (response) => {
           if (!cancelled) setEvents(response.events)
-          return undefined
         },
         (err: unknown) => {
           if (!cancelled) {

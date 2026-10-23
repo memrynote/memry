@@ -1080,7 +1080,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
     }
   )
   assert.equal(taskStatsCode, 0)
-  assert.ok(((JSON.parse(stdout.at(-1) ?? '{}') as { total?: number }).total ?? 0) >= 2)
+  assert.ok((JSON.parse(stdout.at(-1) ?? '{}') as { total?: number }).total ?? 0 >= 2)
 
   const taskTagsCode = await runCli(['--vault', vaultPath, '--json', 'tasks', 'tags'], {
     stdout: (line) => stdout.push(line),
@@ -1834,7 +1834,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
     stderr: (line) => stderr.push(line)
   })
   assert.equal(inboxArchivedCode, 0)
-  assert.ok(((JSON.parse(stdout.at(-1) ?? '{}') as { total?: number }).total ?? 0) >= 2)
+  assert.ok((JSON.parse(stdout.at(-1) ?? '{}') as { total?: number }).total ?? 0 >= 2)
 
   const inboxFilingHistoryCode = await runCli(
     ['--vault', vaultPath, '--json', 'inbox', 'filing-history', '--limit', '10'],
@@ -1845,7 +1845,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
   )
   assert.equal(inboxFilingHistoryCode, 0)
   assert.ok(
-    ((JSON.parse(stdout.at(-1) ?? '{}') as { entries?: unknown[] }).entries?.length ?? 0) >= 3
+    (JSON.parse(stdout.at(-1) ?? '{}') as { entries?: unknown[] }).entries?.length ?? 0 >= 3
   )
 
   const inboxStaleThresholdCode = await runCli(
@@ -1879,7 +1879,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
     stderr: (line) => stderr.push(line)
   })
   assert.equal(searchStatsCode, 0)
-  assert.ok(((JSON.parse(stdout.at(-1) ?? '{}') as { totalNotes?: number }).totalNotes ?? 0) >= 4)
+  assert.ok((JSON.parse(stdout.at(-1) ?? '{}') as { totalNotes?: number }).totalNotes ?? 0 >= 4)
 
   const searchReasonCode = await runCli(
     [

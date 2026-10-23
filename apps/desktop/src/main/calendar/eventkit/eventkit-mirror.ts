@@ -135,7 +135,7 @@ export function recordAppleAccountState(
   const permission = state.permission ?? appleAccountPermission(existing) ?? 'not_determined'
   const error = state.error !== undefined ? state.error : permissionErrorCode(permission)
   const metadata: AppleAccountMetadata = {
-    ...(existing?.metadata as Record<string, unknown> | null),
+    ...((existing?.metadata as Record<string, unknown> | null) ?? {}),
     permission
   }
   const next = {

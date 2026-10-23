@@ -74,9 +74,8 @@ test.describe('Body CRDT delivery through the change feed (#2297)', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
     const title = `Feed Delivery ${Date.now()}`
     const initialBody = 'note body from A'
     const noteEdit = 'note edit through the feed'

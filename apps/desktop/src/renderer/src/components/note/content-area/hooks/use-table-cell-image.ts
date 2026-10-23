@@ -289,20 +289,17 @@ export function useTableCellImage({
 
     // Cleared so choosing the SAME file twice still fires `change`.
     input.value = ''
-    input.addEventListener(
-      'change',
-      () => {
-        const files = Array.from(input.files ?? []).filter(isImageFile)
-        if (files.length === 0) return
-        const doc = view.state.doc
-        view.dispatch(
-          view.state.tr.setSelection(TextSelection.create(doc, Math.min(at, doc.content.size)))
-        )
-        view.focus()
-        void insertImages(files)
-      },
-      { once: true }
-    )
+    input.onchange = () => {
+      const files = Array.from(input.files ?? []).filter(isImageFile)
+      input.onchange = null
+      if (files.length === 0) return
+      const doc = view.state.doc
+      view.dispatch(
+        view.state.tr.setSelection(TextSelection.create(doc, Math.min(at, doc.content.size)))
+      )
+      view.focus()
+      void insertImages(files)
+    }
     input.click()
   }, [editor, insertImages])
 

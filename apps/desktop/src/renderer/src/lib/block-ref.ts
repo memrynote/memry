@@ -32,10 +32,10 @@ export function findBlockRefBlockId(container: ParentNode | null, ref: BlockRef)
     return blockIdOf(portals[ref.ordinal])
   }
   const suffix = `#^${ref.anchor}`.toLowerCase()
-  const link = [...root.querySelectorAll('[data-wiki-link], a[href]')].find((el) => {
+  const links = [...root.querySelectorAll('[data-wiki-link], a[href]')].filter((el) => {
     if (insideWindow(el)) return false
     const target = el.getAttribute('data-target') ?? el.getAttribute('href') ?? ''
     return decoded(target).toLowerCase().endsWith(suffix)
   })
-  return blockIdOf(link)
+  return blockIdOf(links[0])
 }

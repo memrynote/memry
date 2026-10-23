@@ -751,7 +751,7 @@ describe('exceptionEvent', () => {
       ctx
     )
     const frames = (
-      result!.properties.$exception_list as {
+      result?.properties.$exception_list as {
         stacktrace: { frames: { function: string; filename: string; in_app: boolean }[] }
       }[]
     )[0].stacktrace.frames

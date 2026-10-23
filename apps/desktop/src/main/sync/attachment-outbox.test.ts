@@ -294,7 +294,6 @@ describe('attachment outbox', () => {
 
       // gone.pdf row dropped without calling upload for it
       expect(upload).toHaveBeenCalledTimes(2)
-      return undefined
     })
   })
 

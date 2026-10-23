@@ -15,57 +15,54 @@ function apiDevProxy(): PluginOption {
   return {
     name: 'api-dev-proxy',
     configureServer(server) {
-      // connect does not await a handler, so a rejection is forwarded to connect's error handler by hand.
-      server.middlewares.use('/api', (req, res, forward) => {
-        void (async () => {
-          const pathName = req.url?.split('?')[0]?.replace(/^\/api\//, '/')
-          const apiName = pathName?.match(/^\/([a-z0-9-]+)$/)?.[1]
+      server.middlewares.use('/api', async (req, res, next) => {
+        const pathName = req.url?.split('?')[0]?.replace(/^\/api\//, '/')
+        const apiName = pathName?.match(/^\/([a-z0-9-]+)$/)?.[1]
 
-          if (!apiName) {
-            forward()
-            return
+        if (!apiName) {
+          next()
+          return
+        }
+
+        let body: unknown
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(chunk as Buffer)
+
+          const rawBody = Buffer.concat(chunks).toString()
+          body = rawBody ? JSON.parse(rawBody) : undefined
+        }
+
+        const mod = await server.ssrLoadModule(`/api/${apiName}.ts`)
+        const vercelReq = { method: req.method, body } as never
+        const result = {
+          statusCode: 200,
+          body: '' as string,
+          headers: {} as Record<string, number | string | readonly string[]>
+        }
+        const vercelRes = {
+          status(code: number) {
+            result.statusCode = code
+            return this
+          },
+          setHeader(name: string, value: number | string | readonly string[]) {
+            result.headers[name] = value
+            return this
+          },
+          json(data: unknown) {
+            result.body = JSON.stringify(data)
+            return this
           }
+        } as never
 
-          let body: unknown
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            const chunks: Buffer[] = []
-            for await (const chunk of req) chunks.push(chunk as Buffer)
+        await mod.default(vercelReq, vercelRes)
 
-            const rawBody = Buffer.concat(chunks).toString()
-            body = rawBody ? JSON.parse(rawBody) : undefined
-          }
-
-          const mod = await server.ssrLoadModule(`/api/${apiName}.ts`)
-          const vercelReq = { method: req.method, body } as never
-          const result = {
-            statusCode: 200,
-            body: '' as string,
-            headers: {} as Record<string, number | string | readonly string[]>
-          }
-          const vercelRes = {
-            status(code: number) {
-              result.statusCode = code
-              return this
-            },
-            setHeader(name: string, value: number | string | readonly string[]) {
-              result.headers[name] = value
-              return this
-            },
-            json(data: unknown) {
-              result.body = JSON.stringify(data)
-              return this
-            }
-          } as never
-
-          await mod.default(vercelReq, vercelRes)
-
-          res.statusCode = result.statusCode
-          for (const [name, value] of Object.entries(result.headers)) {
-            res.setHeader(name, value)
-          }
-          res.setHeader('Content-Type', 'application/json')
-          res.end(result.body)
-        })().catch(forward)
+        res.statusCode = result.statusCode
+        for (const [name, value] of Object.entries(result.headers)) {
+          res.setHeader(name, value)
+        }
+        res.setHeader('Content-Type', 'application/json')
+        res.end(result.body)
       })
     }
   }

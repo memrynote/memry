@@ -3658,7 +3658,7 @@ describe('callouts on the CRDT path (#1846)', () => {
       // #when / #then the doc holds a real callout block again…
       const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
       expect(blocks?.[0]?.type).toBe('callout')
-      expect((blocks?.[0]?.props as { type: string } | undefined)?.type).toBe(type)
+      expect((blocks?.[0]?.props as { type: string }).type).toBe(type)
       // …and write-back reproduces the file byte-for-byte
       writeMarkdownSourceToYDoc(doc, null)
       expect(await yDocToMarkdown(doc)).toBe(markdown)
@@ -3678,7 +3678,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
       const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
       expect(blocks?.[0]?.type).toBe('callout')
-      expect((blocks?.[0]?.props as { fold: string } | undefined)?.fold).toBe(
+      expect((blocks?.[0]?.props as { fold: string }).fold).toBe(
         name.startsWith('closed') ? 'closed' : 'open'
       )
       writeMarkdownSourceToYDoc(doc, null)
@@ -3692,7 +3692,7 @@ describe('callouts on the CRDT path (#1846)', () => {
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-    expect((blocks?.[0]?.props as { fold: string } | undefined)?.fold).toBe('none')
+    expect((blocks?.[0]?.props as { fold: string }).fold).toBe('none')
     writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
@@ -3726,7 +3726,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
         const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
         expect(blocks?.[0]?.type).toBe('callout')
-        expect((blocks?.[0]?.props as { type: string } | undefined)?.type).toBe('mytype')
+        expect((blocks?.[0]?.props as { type: string }).type).toBe('mytype')
         writeMarkdownSourceToYDoc(doc, null)
         expect(await yDocToMarkdown(doc)).toBe(markdown)
       }
@@ -3801,7 +3801,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.[0]?.type).toBe('callout')
-    expect((blocks?.[0]?.props as { textColor: string } | undefined)?.textColor).toBe('red')
+    expect((blocks?.[0]?.props as { textColor: string }).textColor).toBe('red')
     writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })

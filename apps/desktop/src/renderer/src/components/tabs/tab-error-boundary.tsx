@@ -66,19 +66,19 @@ class TabErrorBoundaryImpl extends Component<
     return { hasError: true, error, reportMode: 'pending' }
   }
 
-  componentDidCatch(caught: Error, errorInfo: ErrorInfo): void {
-    log.error('Tab content error', caught, errorInfo)
-    trackRendererError('tab_error_boundary', caught)
-    this.props.onError?.(caught, errorInfo)
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    log.error('Tab content error', error, errorInfo)
+    trackRendererError('tab_error_boundary', error)
+    this.props.onError?.(error, errorInfo)
     const autoReport = this.props.onAutoReport
     if (!autoReport) {
       this.setState({ reportMode: 'manual' })
       return
     }
-    void autoReport(caught)
+    void autoReport(error)
       .catch(() => false)
       .then((handled) => {
-        if (this.state.error !== caught) return
+        if (this.state.error !== error) return
         this.setState({ reportMode: handled ? 'auto' : 'manual' })
       })
   }

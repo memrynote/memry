@@ -239,7 +239,6 @@ describe('image-processing bridge', () => {
       generateThumbnailInImageProcess(`/tmp/burst-${index}.jpg`, 'image/jpeg').then(
         () => {
           settled.push(`resolved-${index}`)
-          return undefined
         },
         () => {
           settled.push(`rejected-${index}`)
@@ -282,7 +281,6 @@ describe('image-processing bridge', () => {
         )
         .then((outcome) => {
           outcomes.push(outcome)
-          return undefined
         })
     )
 

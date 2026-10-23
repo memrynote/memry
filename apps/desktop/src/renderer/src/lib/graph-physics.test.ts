@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-// oxlint-disable-next-line import/no-named-as-default -- graphology's types declare only the default export
 import Graph from 'graphology'
 
 import { GraphPhysics } from './graph-physics'

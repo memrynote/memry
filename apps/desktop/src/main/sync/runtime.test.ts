@@ -948,7 +948,6 @@ describe('sync runtime', () => {
     let stopSettled = false
     const stopPromise = runtime.stopSyncRuntime().then(() => {
       stopSettled = true
-      return undefined
     })
 
     // Teardown must not wait out the parked start...

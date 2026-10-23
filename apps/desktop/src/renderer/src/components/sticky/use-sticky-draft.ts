@@ -88,7 +88,7 @@ export function useStickyDraft(): StickyDraftState {
             setDraftId(null)
           }
           setSaveStatus('idle')
-          return undefined
+          return
         }
         setSaveStatus('saving')
         const saved = await window.api.sticky.saveDraft({
@@ -103,7 +103,6 @@ export function useStickyDraft(): StickyDraftState {
         log.error('Failed to save the sticky draft', err)
         setSaveStatus('failed')
       }
-      return undefined
     })
     writing.current = run
     return run

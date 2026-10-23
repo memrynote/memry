@@ -89,7 +89,7 @@ describe('locale brace style', () => {
 
         for (const entry of strings) {
           try {
-            void new IntlMessageFormat(entry.value, locale)
+            new IntlMessageFormat(entry.value, locale)
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error)
             failures.push(`${entry.file} → ${entry.key}: ${message} (${entry.value})`)

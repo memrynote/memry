@@ -292,7 +292,7 @@ describe('initializeTelemetryRuntime', () => {
     await runtime.flush('manual')
 
     expect(calls).toHaveLength(1)
-    expect((calls[0].init?.headers as Record<string, string> | undefined)?.Authorization).toBe(
+    expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe(
       'Bearer jwt-token'
     )
   })

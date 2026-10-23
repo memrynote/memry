@@ -94,7 +94,6 @@ function animateTo(
     .then(() => {
       apply()
       animation.cancel()
-      return undefined
     })
     .catch(() => apply())
 }
@@ -224,14 +223,14 @@ export function VaultPager({
   const uncover = useCallback((animate: boolean) => {
     if (!coveringRef.current) return
     coveringRef.current = false
-    const dropCover = (): void => setCover(null)
+    const done = (): void => {
+      setCover(null)
+    }
     if (!animate || prefersReducedMotion()) {
-      dropCover()
+      done()
       return
     }
-    void animateTo(coverRef.current, { opacity: 1 }, { opacity: 0 }, REVEAL_MS, 'linear').then(
-      dropCover
-    )
+    void animateTo(coverRef.current, { opacity: 1 }, { opacity: 0 }, REVEAL_MS, 'linear').then(done)
   }, [])
 
   const isRtl = useCallback((): boolean => {

@@ -173,9 +173,8 @@ test.describe('Toggle write-back byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Toggle Gap ${Date.now()}`
@@ -216,9 +215,8 @@ test.describe('Toggle write-back byte stability', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Toggle Unterminated ${Date.now()}`

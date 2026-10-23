@@ -691,7 +691,9 @@ const emptyClientRect = {
 const emptyClientRects = {
   length: 0,
   item: () => null,
-  [Symbol.iterator]: () => [][Symbol.iterator]()
+  [Symbol.iterator]: function* () {
+    return
+  }
 } as DOMRectList
 
 if (!document.elementFromPoint) {

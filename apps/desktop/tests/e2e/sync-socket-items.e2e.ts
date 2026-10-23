@@ -65,9 +65,8 @@ test.describe('Sync socket items (#2300)', () => {
     pageA,
     pageB,
     proxyB,
-    bootstrappedSyncPair
+    bootstrappedSyncPair: _bootstrappedSyncPair
   }) => {
-    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const taskId = await pageA.evaluate(async () => {

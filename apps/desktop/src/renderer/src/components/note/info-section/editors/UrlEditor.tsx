@@ -14,8 +14,18 @@ interface UrlEditorProps {
 // URL validation: must have a dot and be parseable as URL
 const isValidUrl = (input: string): boolean => {
   if (!input) return true // Empty is valid
-  if (!input.includes('.')) return false // Must have at least one dot
-  return URL.canParse(input) || URL.canParse(`https://${input}`)
+  try {
+    if (!input.includes('.')) return false // Must have at least one dot
+    new URL(input)
+    return true
+  } catch {
+    try {
+      new URL(`https://${input}`)
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
 export function UrlEditor({

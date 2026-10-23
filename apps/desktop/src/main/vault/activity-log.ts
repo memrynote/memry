@@ -198,19 +198,18 @@ async function ensureMemryDir(s: ActivityState): Promise<void> {
 function writePending(s: ActivityState): Promise<void> {
   s.writeChain = s.writeChain
     .then(async () => {
-      if (!s.needsRewrite && s.pending.length === 0) return undefined
+      if (!s.needsRewrite && s.pending.length === 0) return
       await ensureMemryDir(s)
       if (s.needsRewrite) {
         s.needsRewrite = false
         s.pending = []
         const body = s.entries.map((entry) => JSON.stringify(entry)).join('\n')
         await writeFileAtomic(s.logPath, body ? `${body}\n` : '')
-        return undefined
+        return
       }
       const lines = s.pending
       s.pending = []
       await fsp.appendFile(s.logPath, `${lines.join('\n')}\n`, { encoding: 'utf-8', mode: 0o600 })
-      return undefined
     })
     .catch((error: unknown) => {
       logger.warn('Failed to write the vault activity log', { error })

@@ -175,11 +175,11 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         setDuration(0)
       }
 
-      mediaRecorder.addEventListener('error', (event) => {
+      mediaRecorder.onerror = (event) => {
         log.error('MediaRecorder error', event)
         optionsRef.current.onError({ kind: 'recorder-failed', cause: event })
         stopRecording(true)
-      })
+      }
 
       mediaRecorder.start()
       startTimeRef.current = Date.now()

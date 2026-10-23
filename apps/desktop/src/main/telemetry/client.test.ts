@@ -119,7 +119,7 @@ describe('createTelemetryClient', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toBe(deps.endpoint)
     expect(calls[0].init?.method).toBe('POST')
-    expect((calls[0].init?.headers as Record<string, string> | undefined)?.['Content-Type']).toBe(
+    expect((calls[0].init?.headers as Record<string, string>)['Content-Type']).toBe(
       'application/json'
     )
   })

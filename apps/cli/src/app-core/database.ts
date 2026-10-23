@@ -90,15 +90,11 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
     return fn()
   } finally {
     fs.closeSync(fd)
-    removeInitLock(lockPath)
-  }
-}
-
-function removeInitLock(lockPath: string): void {
-  try {
-    fs.unlinkSync(lockPath)
-  } catch (error) {
-    if (!isFileMissing(error)) throw error
+    try {
+      fs.unlinkSync(lockPath)
+    } catch (error) {
+      if (!isFileMissing(error)) throw error
+    }
   }
 }
 

@@ -477,7 +477,6 @@ describe('useJournalEntry dedicated hook', () => {
       act(() => {
         flush = flushAllPendingSaves().then(() => {
           flushed = true
-          return undefined
         })
       })
       await act(async () => {

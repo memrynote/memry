@@ -151,7 +151,7 @@ const request = (
   const { clientHeader, ...rest } = init
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(rest.headers as Record<string, string>)
+    ...((rest.headers as Record<string, string>) ?? {})
   }
   if (clientHeader) headers['x-memry-client'] = clientHeader
   // The push handler fires its broadcast through `executionCtx.waitUntil`, so

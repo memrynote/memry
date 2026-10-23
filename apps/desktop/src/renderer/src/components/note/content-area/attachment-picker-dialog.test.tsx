@@ -35,7 +35,7 @@ const uploadAttachment = vi.fn()
 function setupApi(): void {
   const api = window.api as unknown as Record<string, unknown>
   api.notes = {
-    ...(api.notes as Record<string, unknown>),
+    ...((api.notes as Record<string, unknown>) ?? {}),
     listVaultAttachments,
     insertExistingAttachment,
     uploadAttachment

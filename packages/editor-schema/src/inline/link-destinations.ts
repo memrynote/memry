@@ -23,7 +23,6 @@ const PLACEHOLDER = new RegExp(`MEMRYLNK${PROCESS_WORD}(\\d+)X`, 'g')
 // left to the parser, which keeps only the link text.
 const ALLOWED_URI =
   /^(?:(?:http|https|ftp|ftps|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z0-9+.-]+(?:[^a-z+.\-:]|$))/i
-// oxlint-disable-next-line no-control-regex -- matches control characters on purpose (CommonMark whitespace)
 const UNICODE_WHITESPACE = /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g
 
 /** BlockNote's `findClosingBracket` / `findClosingParen`. */

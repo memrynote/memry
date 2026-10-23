@@ -452,7 +452,6 @@ async function probePersistence(persistence: CrdtPersistence): Promise<void> {
         const loaded = await persistence.getYDoc(PERSISTENCE_PROBE_KEY)
         loaded.destroy()
         await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
-        return undefined
       })
       .then(
         () => settle(resolve),

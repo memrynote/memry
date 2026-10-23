@@ -52,7 +52,7 @@ describe('parseTodoistCsv', () => {
   })
 
   it('skips blank separator rows', () => {
-    const csv = HEADER + '\ntask,a,,,1,1,,,,,,,,,\n,,,,,,,,,,,,,,\n'
+    const csv = HEADER + '\n' + 'task,a,,,1,1,,,,,,,,,\n' + ',,,,,,,,,,,,,,\n'
     const rows = parseTodoistCsv(csv)
     expect(rows).toHaveLength(1)
     expect(rows[0].type).toBe('task')

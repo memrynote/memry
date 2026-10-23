@@ -190,7 +190,7 @@ export class SimulatedDevice {
         const signerKey = this.devicePublicKeys.get(item.signerDeviceId)
         if (!signerKey) {
           throw new Error(
-            `Unknown signer device: ${item.signerDeviceId}. Call registerPeerDevice() first.`
+            `Unknown signer device: ${item.signerDeviceId}. ` + `Call registerPeerDevice() first.`
           )
         }
 

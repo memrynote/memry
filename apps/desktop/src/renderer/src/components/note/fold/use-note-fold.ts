@@ -102,8 +102,8 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
     if (!noteId) return
     void window.api.noteFold
       .retry(noteId)
-      .then((retried) => {
-        if (retried?.noteId === noteId) setLayers(retried)
+      .then((next) => {
+        if (next?.noteId === noteId) setLayers(next)
         else void refresh()
       })
       .catch((error: unknown) => log.error('Failed to retry fold', { noteId, error }))

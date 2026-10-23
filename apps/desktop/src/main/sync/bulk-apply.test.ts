@@ -777,7 +777,6 @@ describe('bulk apply page session', () => {
       let quiescent = false
       const waited = whenPageApplyQuiescent(60_000).then(() => {
         quiescent = true
-        return undefined
       })
       await new Promise((resolve) => setTimeout(resolve, 10))
       expect(isPageApplyQuiescent()).toBe(false)
