@@ -14,6 +14,7 @@ import {
 } from './runtime-effects'
 import { clearRunFailure, getRunFailure, getRunProgress } from './run-status'
 import { readReadwiseOptions } from './settings'
+import { trackReadwiseConnected, trackReadwiseDisconnected } from './telemetry'
 import { clearRunState, getCursor, getLastRun, setLastRun } from './sync-state'
 
 const log = createLogger('ReadwiseConnection')
@@ -85,11 +86,11 @@ async function verifyPastedToken(token: string): Promise<void> {
   } catch (err) {
     const message = describeReadwiseError(err)
     if (message === null) throw err
-    throw new Error(message)
+    throw new Error(message, { cause: err })
   }
 }
 
-export async function connectReadwise(token: string): Promise<ReadwiseStatusResult> {
+async function connectReadwiseUntracked(token: string): Promise<ReadwiseStatusResult> {
   const vaultPath = requireVaultPath()
   const db = getDatabase()
   const authority = pullAuthority(db)
@@ -116,6 +117,10 @@ export async function connectReadwise(token: string): Promise<ReadwiseStatusResu
   return await getReadwiseStatus()
 }
 
+export async function connectReadwise(token: string): Promise<ReadwiseStatusResult> {
+  return await trackConnect('token', () => connectReadwiseUntracked(token))
+}
+
 /**
  * "Sync here instead" (D8). The token never travels between devices
  * (D2), so it is asked for again. The claim goes first and the call waits until
@@ -124,7 +129,7 @@ export async function connectReadwise(token: string): Promise<ReadwiseStatusResu
  * token and a clean run state: the first run is a full export that adopts the
  * notes by `readwise_url`.
  */
-export async function takeOverReadwise(token: string): Promise<ReadwiseStatusResult> {
+async function takeOverReadwiseUntracked(token: string): Promise<ReadwiseStatusResult> {
   const vaultPath = requireVaultPath()
   const db = getDatabase()
   const env = readPullEnv(db)
@@ -137,6 +142,25 @@ export async function takeOverReadwise(token: string): Promise<ReadwiseStatusRes
   return await getReadwiseStatus()
 }
 
+export async function takeOverReadwise(token: string): Promise<ReadwiseStatusResult> {
+  return await trackConnect('takeover', () => takeOverReadwiseUntracked(token))
+}
+
+/** One `readwise_connected` event per attempt, with the failure's code when it fails (D12). */
+async function trackConnect(
+  source: 'token' | 'takeover',
+  work: () => Promise<ReadwiseStatusResult>
+): Promise<ReadwiseStatusResult> {
+  try {
+    const status = await work()
+    trackReadwiseConnected(source)
+    return status
+  } catch (err) {
+    trackReadwiseConnected(source, err)
+    throw err
+  }
+}
+
 /** Deletes the token and the run state. Every note stays (D9). */
 export async function disconnectReadwise(): Promise<void> {
   const vaultPath = requireVaultPath()
@@ -147,6 +171,7 @@ export async function disconnectReadwise(): Promise<void> {
   // Only the pulling device's disconnect frees Readwise. The next device the
   // user connects claims (D8).
   if (readClaim(db).deviceId === readPullEnv(db).deviceId) clearClaim(db)
+  trackReadwiseDisconnected()
 }
 
 /** Runs now, or joins the scheduler's run, and resolves when it completes. */

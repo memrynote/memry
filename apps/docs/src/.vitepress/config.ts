@@ -219,6 +219,7 @@ function unifiedSidebar() {
         { text: 'Cryptography', link: '/architecture/cryptography' },
         { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
         { text: 'Calendar Providers', link: '/architecture/calendar-providers' },
+        { text: 'Readwise Vault Formats', link: '/architecture/readwise-vault-formats' },
         { text: 'Observability & Telemetry', link: '/architecture/observability' }
       ]
     },
