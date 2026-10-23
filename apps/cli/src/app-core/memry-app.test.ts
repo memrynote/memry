@@ -782,7 +782,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   )
   assert.equal((await app.bookmarks.toggle({ itemType: 'note', itemId: note.id })).bookmarked, true)
   const bookmarks = await app.bookmarks.list()
-  await app.bookmarks.reorder(bookmarks.map((item) => item.id).reverse())
+  await app.bookmarks.reorder(bookmarks.map((item) => item.id).toReversed())
   assert.equal((await app.bookmarks.getByItem('note', note.id))?.itemId, note.id)
   const bulkBookmarks = await app.bookmarks.bulkCreate([
     { itemType: 'task', itemId: childTask.id },

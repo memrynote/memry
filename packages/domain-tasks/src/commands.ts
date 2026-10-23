@@ -746,7 +746,7 @@ export function createTasksCommands({
         }
         const events: TasksDomainEvent[] = []
         // Deepest first, parent last.
-        for (const taskId of [...branch.reverse(), id]) {
+        for (const taskId of [...branch.toReversed(), id]) {
           const snapshot = repository.getTask(taskId)
           repository.deleteTask(taskId)
           events.push({ kind: 'taskDeleted', payload: { id: taskId, snapshot } })

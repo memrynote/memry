@@ -12,7 +12,6 @@ import {
   parseExpression,
   validateExpression,
   ParseError,
-  type ASTNode,
   type LiteralNode,
   type IdentifierNode,
   type MemberNode,

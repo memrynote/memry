@@ -68,7 +68,6 @@ import {
   unregisterSavedFiltersHandlers
 } from './saved-filters-handlers'
 import { getDatabase, requireDatabase } from '../database'
-import * as settingsQueries from '@main/database/queries/settings'
 import * as savedFiltersStore from '../settings/saved-filters-store'
 
 describe('saved-filters-handlers', () => {

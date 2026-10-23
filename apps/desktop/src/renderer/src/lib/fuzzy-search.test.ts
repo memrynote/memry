@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { fuzzySearch, highlightMatches, type FuzzyMatch } from './fuzzy-search'
+import { fuzzySearch, highlightMatches } from './fuzzy-search'
 
 // Use fake timers for deterministic dates
 beforeEach(() => {

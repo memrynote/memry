@@ -56,7 +56,7 @@ describe('encodeCbor', () => {
   it('emits every CBOR_FIELD_ORDER key even when the input is shuffled', () => {
     // #given input with keys in reverse order vs SYNC_ITEM
     const reversed: Record<string, unknown> = {}
-    for (const key of [...CBOR_FIELD_ORDER.SYNC_ITEM].reverse()) {
+    for (const key of [...CBOR_FIELD_ORDER.SYNC_ITEM].toReversed()) {
       reversed[key] = `value-${key}`
     }
 

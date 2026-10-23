@@ -265,7 +265,7 @@ describe('mixed paragraph and task blocks', () => {
   ]
 
   function byHand(editor: BlockNoteEditor, ids: string[], direction: 'indent' | 'outdent'): void {
-    for (const id of direction === 'indent' ? ids : [...ids].reverse()) {
+    for (const id of direction === 'indent' ? ids : [...ids].toReversed()) {
       if ((editor as any).getBlock(id)?.type === 'taskBlock') {
         if (direction === 'indent') indentTaskBlock(editor, id, { nested: false })
         else outdentTaskBlock(editor, id)

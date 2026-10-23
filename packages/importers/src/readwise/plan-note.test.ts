@@ -69,7 +69,7 @@ describe('planNote', () => {
   })
 
   it('renders identical bytes for identical input, whatever the highlight order', () => {
-    const reversed = { ...FULL_BOOK, highlights: [...(FULL_BOOK.highlights ?? [])].reverse() }
+    const reversed = { ...FULL_BOOK, highlights: [...(FULL_BOOK.highlights ?? [])].toReversed() }
     expect(plan(reversed).section).toBe(plan(FULL_BOOK).section)
   })
 

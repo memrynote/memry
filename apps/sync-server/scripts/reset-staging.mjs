@@ -167,7 +167,7 @@ async function main() {
   if (tables.length) {
     console.log(`D1: dropping ${tables.length} table(s)...`)
     const dropSql = [...tables]
-      .reverse()
+      .toReversed()
       .map((t) => `DROP TABLE IF EXISTS "${t}";`)
       .join('\n')
     wrangler(['d1', 'execute', DB_NAME, '--env', ENV, '--remote', '--yes', '--command', dropSql])

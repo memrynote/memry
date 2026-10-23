@@ -12,13 +12,7 @@
  */
 
 import { test, expect } from './fixtures'
-import {
-  waitForAppReady,
-  waitForVaultReady,
-  navigateTo,
-  SELECTORS,
-  SHORTCUTS
-} from './utils/electron-helpers'
+import { waitForAppReady, waitForVaultReady, navigateTo, SELECTORS } from './utils/electron-helpers'
 import * as path from 'path'
 import * as fs from 'fs'
 

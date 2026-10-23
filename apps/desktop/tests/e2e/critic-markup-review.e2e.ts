@@ -9,11 +9,7 @@ import {
   waitForAppReady,
   waitForVaultReady
 } from './utils/electron-helpers'
-import {
-  createNoteWithBody,
-  getNoteFileBodyById,
-  openNoteByHandle
-} from './utils/note-sync-helpers'
+import { createNoteWithBody, getNoteFileBodyById } from './utils/note-sync-helpers'
 
 const EDITOR_SELECTOR =
   '[aria-label="Rich text editor"] [contenteditable="true"], .bn-editor[contenteditable="true"], .bn-editor'

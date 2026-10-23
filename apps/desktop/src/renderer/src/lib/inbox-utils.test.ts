@@ -6,7 +6,6 @@ import {
   formatTimestamp,
   formatDuration,
   extractDomain,
-  type TimePeriod,
   type GroupedItems
 } from './inbox-utils'
 

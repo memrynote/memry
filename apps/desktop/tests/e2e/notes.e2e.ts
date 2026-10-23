@@ -26,8 +26,7 @@ import {
   navigateTo as _navigateTo,
   search,
   selectSearchResult as _selectSearchResult,
-  waitForToast as _waitForToast,
-  getToastMessage
+  waitForToast as _waitForToast
 } from './utils/electron-helpers'
 import { openNoteByHandle } from './utils/note-sync-helpers'
 import * as path from 'path'

@@ -21,10 +21,8 @@ import {
   search,
   SELECTORS,
   SHORTCUTS,
-  waitForToast,
   closeModal
 } from './utils/electron-helpers'
-import * as path from 'path'
 import * as fs from 'fs'
 
 test.describe('Cross-Feature Integration', () => {

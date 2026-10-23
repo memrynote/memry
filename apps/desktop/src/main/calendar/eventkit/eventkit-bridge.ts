@@ -31,12 +31,12 @@ const AUTHORIZATION_STATUSES: ReadonlySet<EventKitAuthorizationStatus> = new Set
   'write_only',
   'full_access'
 ])
-const EVENT_STATUSES: readonly EventKitEventStatus[] = [
+const EVENT_STATUSES: ReadonlySet<EventKitEventStatus> = new Set([
   'none',
   'confirmed',
   'tentative',
   'canceled'
-]
+])
 
 export interface EventKitBridgeOptions {
   /** The executable: the helper itself, or a test double. */
@@ -90,7 +90,7 @@ function toParticipant(raw: Record<string, unknown>): EventKitParticipant {
 function toEvent(raw: Record<string, unknown>): EventKitEvent | null {
   const calendarId = stringOrNull(raw.calendarId)
   if (!calendarId) return null
-  const status = EVENT_STATUSES.includes(raw.status as EventKitEventStatus)
+  const status = EVENT_STATUSES.has(raw.status as EventKitEventStatus)
     ? (raw.status as EventKitEventStatus)
     : 'none'
   return {

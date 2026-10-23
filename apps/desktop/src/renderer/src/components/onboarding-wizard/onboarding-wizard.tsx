@@ -43,7 +43,13 @@ const STAGE_FOCUS: Record<ModuleKey, StageFocus> = {
 const SELF_KEYED: ReadonlySet<StepId> = new Set(['account', 'ready', 'vault'])
 
 /** Steps whose Continue hint is a button that moves on, like their Enter key. */
-const HINT_CONTINUES: StepId[] = ['theme', 'modules', 'import', 'agent', 'storage']
+const HINT_CONTINUES: ReadonlySet<StepId> = new Set([
+  'theme',
+  'modules',
+  'import',
+  'agent',
+  'storage'
+])
 
 /** Hints before Continue and Back: the keys that move through the step's options. */
 const DEFAULT_CHOICE_HINTS: [string[], string][] = [[['↑', '↓'], 'choose']]
@@ -119,7 +125,7 @@ export function OnboardingWizard(): React.JSX.Element {
   const props = { state, dispatch }
   const key = (name: string): string => t(`onboardingWizard.keys.${name}`)
   const backHint: KeyHint = { keys: ['esc'], label: key('back'), onPress: back }
-  const continueHint: KeyHint = HINT_CONTINUES.includes(state.step)
+  const continueHint: KeyHint = HINT_CONTINUES.has(state.step)
     ? {
         keys: ['↵'],
         label: key('continue'),

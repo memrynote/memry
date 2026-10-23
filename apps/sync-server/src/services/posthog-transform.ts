@@ -295,7 +295,7 @@ export const parseStackFrames = (stack: string): RawFrame[] => {
   // Reversed after, because PostHog treats the LAST frame as the throw site
   // while a JS stack string is innermost-first — unreversed, every issue blames
   // the outermost caller.
-  return frames.slice(0, MAX_FRAMES).reverse()
+  return frames.slice(0, MAX_FRAMES).toReversed()
 }
 
 // Desktop versions are calendar-shaped ("2026.821.2"). Numeric segment compare;

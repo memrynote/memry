@@ -19,8 +19,7 @@ import {
   navigateTo,
   SELECTORS,
   SHORTCUTS,
-  getElementCount,
-  waitForToast
+  getElementCount
 } from './utils/electron-helpers'
 
 test.describe('Inbox Management', () => {

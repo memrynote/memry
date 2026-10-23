@@ -61,7 +61,7 @@ function describeErrorChain(err: unknown): string {
     current = (current as { cause?: unknown }).cause
   }
   if (parts.length === 0) return String(err)
-  return parts.reverse().join(' <- ')
+  return parts.toReversed().join(' <- ')
 }
 
 /** The part of node-gyp-build this file uses: resolve a binary without loading it. */

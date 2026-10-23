@@ -1,5 +1,3 @@
-import { AppError, ErrorCodes } from '../lib/errors'
-
 export interface User {
   id: string
   email: string

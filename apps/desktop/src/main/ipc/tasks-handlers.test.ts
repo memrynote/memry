@@ -164,7 +164,6 @@ vi.mock('../tasks/project-name-propagation', async (importOriginal) => {
 // Import after mocking
 import { registerTasksHandlers, unregisterTasksHandlers } from './tasks-handlers'
 import { getDatabase, requireDatabase } from '../database'
-import { generateId } from '../lib/id'
 import * as taskQueries from '@main/database/queries/tasks'
 import * as projectQueries from '@main/database/queries/projects'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'

@@ -180,7 +180,7 @@ function isCodeParagraph(node: Node | null): node is HTMLElement {
  * `<br>`; merge those runs so one fenced block comes out, not many.
  */
 export function mergeCodeParagraphs(body: Element): void {
-  const paragraphs = Array.from(body.querySelectorAll('p')).reverse()
+  const paragraphs = Array.from(body.querySelectorAll('p')).toReversed()
   for (const paragraph of paragraphs) {
     if (!paragraph.isConnected || !isCodeParagraph(paragraph)) continue
     const lineBreak = paragraph.nextElementSibling

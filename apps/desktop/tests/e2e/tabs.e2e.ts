@@ -9,11 +9,9 @@ import { test, expect } from './fixtures'
 import {
   waitForAppReady,
   waitForVaultReady,
-  navigateTo,
   createNote,
   SELECTORS,
   SHORTCUTS,
-  getElementCount,
   takeScreenshot
 } from './utils/electron-helpers'
 

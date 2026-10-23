@@ -16,7 +16,6 @@ import {
 } from '@/components/tasks/empty-states/section-empty-states'
 import { SubtaskDots } from '@/components/tasks/subtask-dots'
 import { SubtaskProgressBadge } from '@/components/tasks/subtask-progress-badge'
-import type { SidebarItem } from '@/contexts/tabs/types'
 
 // The reveal action's label branches on platform. Pin macOS so these
 // assertions read the Finder wording whatever host the suite runs on.

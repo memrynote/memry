@@ -3,7 +3,7 @@
  * Tests for keyboard shortcuts utilities: OS detection, input focus detection, and helpers.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   isMac,
   modifierKey,

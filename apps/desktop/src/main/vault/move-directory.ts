@@ -108,7 +108,7 @@ async function moveEntries(from: string, to: string, undo: UndoStep[]): Promise<
 }
 
 async function runUndo(undo: UndoStep[]): Promise<void> {
-  for (const step of undo.reverse()) {
+  for (const step of undo.toReversed()) {
     try {
       await step()
     } catch (error) {

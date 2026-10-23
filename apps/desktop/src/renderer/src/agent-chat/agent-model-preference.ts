@@ -34,7 +34,7 @@ const PROVIDERS: ReadonlySet<AgentProvider> = new Set([
   'local_openai_compatible'
 ])
 const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
-const CLAUDE_EFFORTS: ClaudeEffort[] = ['low', 'medium', 'high', 'xhigh', 'max']
+const CLAUDE_EFFORTS: ReadonlySet<ClaudeEffort> = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
 const CODEX_EFFORTS: CodexReasoningEffort[] = ['low', 'medium', 'high', 'xhigh']
 const LOCAL_EFFORTS: LocalReasoningEffort[] = ['default', 'high', 'max']
 
@@ -55,7 +55,7 @@ export function readAgentModelPreference(): AgentModelPreference | null {
     // Older persisted shapes carry no efforts/localModel; treat them as unset.
     const efforts: AgentModelPreference['efforts'] = {}
     if (parsed.efforts && typeof parsed.efforts === 'object') {
-      if (CLAUDE_EFFORTS.includes(parsed.efforts.claude_cli as ClaudeEffort)) {
+      if (CLAUDE_EFFORTS.has(parsed.efforts.claude_cli as ClaudeEffort)) {
         efforts.claude_cli = parsed.efforts.claude_cli
       }
       if (CODEX_EFFORTS.includes(parsed.efforts.codex_cli as CodexReasoningEffort)) {

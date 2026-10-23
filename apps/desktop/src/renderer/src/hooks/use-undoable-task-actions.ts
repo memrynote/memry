@@ -101,7 +101,7 @@ export const useUndoableTaskActions = ({
         // The direct subtasks take the deleted task's place, one level up.
         for (const child of children) updateTask(child.id, { parentId: task.parentId })
       } else {
-        for (const descendant of [...branch].reverse()) deleteTask(descendant.id)
+        for (const descendant of [...branch].toReversed()) deleteTask(descendant.id)
       }
       deleteTask(taskId)
 

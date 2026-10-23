@@ -13,9 +13,7 @@ vi.mock('@/data/task-model', async () => {
 
 import {
   // Types
-  type SubtaskProgress,
   type TaskWithSubtasks,
-  type SubtaskOperationResult,
   type CreateSubtaskOptions,
   // Helper functions
   isSubtask,

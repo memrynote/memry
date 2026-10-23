@@ -366,7 +366,7 @@ export class NoteBodyFeed {
         if (!merged && !isKnownNote(this.deps.ctx.deps.db, noteId)) this.dropRowlessBody(noteId)
         // Only a snapshot the doc now holds: a watermark for one it does not
         // makes the CRDT pull skip the baseline this note is owed.
-        const snapshot = [...bodies].reverse().find((body) => body.snapshot)?.snapshot
+        const snapshot = [...bodies].toReversed().find((body) => body.snapshot)?.snapshot
         if (merged && snapshot) await recordMergedSnapshot(provider, noteId, snapshot)
       } catch (err) {
         if (aborted()) return

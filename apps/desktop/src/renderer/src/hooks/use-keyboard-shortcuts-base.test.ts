@@ -10,8 +10,7 @@ import {
   isMac,
   getModifierSymbol,
   matchesShortcut,
-  bindingFromKeyboardEvent,
-  type KeyboardShortcut
+  bindingFromKeyboardEvent
 } from './use-keyboard-shortcuts-base'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 

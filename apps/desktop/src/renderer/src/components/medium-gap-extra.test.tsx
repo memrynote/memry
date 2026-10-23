@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ActiveFiltersBar } from './tasks/filters/active-filters-bar'

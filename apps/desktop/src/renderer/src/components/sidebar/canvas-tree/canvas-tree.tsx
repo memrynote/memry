@@ -466,7 +466,7 @@ export function CanvasTree({
     (key: string): string[] => {
       const index = rows.findIndex((node) => rowKeyOf(node) === key)
       if (index < 0) return []
-      return [...rows.slice(index + 1), ...rows.slice(0, index).reverse()].map(rowKeyOf)
+      return [...rows.slice(index + 1), ...rows.slice(0, index).toReversed()].map(rowKeyOf)
     },
     [rows]
   )
