@@ -39,6 +39,22 @@ function parameterName(parameter: Parameter, sourceText: string): string {
     : sourceText.replace(/\s*:\s*unknown\s*$/u, '')
 }
 
+/**
+ * A promise rejection handler receives whatever was thrown. `typescript/use-unknown-in-catch-callback-variable`
+ * requires that parameter to be annotated `unknown`, so it is the one callback parameter that stays unknown.
+ */
+function isRejectionHandler(node: ParameterOwner): boolean {
+  if (node.type !== 'ArrowFunctionExpression' && node.type !== 'FunctionExpression') return false
+  const call = node.parent
+  if (call?.type !== 'CallExpression' || call.callee.type !== 'MemberExpression') return false
+  const method = call.callee.property
+  if (method.type !== 'Identifier') return false
+  return (
+    (method.name === 'catch' && call.arguments[0] === node) ||
+    (method.name === 'then' && call.arguments[1] === node)
+  )
+}
+
 /** Disallow unknown inputs except explicitly named error-cause enrichment. */
 export const noUnknownParametersRule = defineRule({
   meta: {
@@ -54,6 +70,7 @@ export const noUnknownParametersRule = defineRule({
   },
   createOnce(context) {
     const checkParameters = (node: ParameterOwner) => {
+      if (isRejectionHandler(node)) return
       for (const parameter of node.params) {
         const annotation = parameterAnnotation(parameter)
         if (annotation?.typeAnnotation.type !== 'TSUnknownKeyword') continue
