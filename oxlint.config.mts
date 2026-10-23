@@ -81,7 +81,7 @@ export default defineConfig({
     // Swift app: the JS under it is generated bundles (editor, article-extract).
     'apps/ios/**',
     // Static assets served verbatim (e.g. the Excalidraw asset-path shim)
-    "apps/desktop/src/renderer/public/**",
+    'apps/desktop/src/renderer/public/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
     // Agent tooling and per-user scratch directories, not product code.
@@ -114,6 +114,9 @@ export default defineConfig({
         { allowShortCircuit: true, allowTaggedTemplates: true, allowTernary: true }
       ],
       ['no-empty-function', { allow: ['arrowFunctions'] }],
+      // The last `.then(cb)` of a chain is fire-and-forget (`void p.then(() => setState())`),
+      // so only a callback another `.then` consumes must return.
+      ['promise/always-return', { ignoreLastCallback: true }],
       ['max-lines', { max: 800, skipBlankLines: true, skipComments: true }],
       ['typescript/ban-ts-comment', { 'ts-ignore': 'allow-with-description' }],
       ['typescript/no-empty-object-type', { allowInterfaces: 'always' }],
@@ -202,10 +205,7 @@ export default defineConfig({
       'import/first',
       'import/no-duplicates',
       'import/no-cycle',
-      [
-        'typescript/switch-exhaustiveness-check',
-        { considerDefaultExhaustiveForUnions: true }
-      ],
+      ['typescript/switch-exhaustiveness-check', { considerDefaultExhaustiveForUnions: true }],
       ['typescript/return-await', 'error-handling-correctness-only'],
       'typescript/no-deprecated',
       'typescript/no-misused-spread',
@@ -247,7 +247,10 @@ export default defineConfig({
       'typescript/explicit-function-return-type',
       // Existing renderer files co-export providers/hooks, UI primitives and editor block
       // helpers; enforcing this needs broad file-splitting unrelated to lint correctness.
-      'react/only-export-components'
+      'react/only-export-components',
+      // State is updated by copy (`items.map((i) => ({ ...i, done: true }))`) in React,
+      // Zustand-style stores and sync merges; the rule's fix is to mutate in place.
+      'oxc/no-map-spread'
     ),
 
     // --- Repo guards ---
