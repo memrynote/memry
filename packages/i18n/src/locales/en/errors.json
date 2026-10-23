@@ -241,7 +241,13 @@
     "readwiseBookGone": "This book is no longer in your Readwise library.",
     "readwiseNotLinked": "This note is not linked to a Readwise book.",
     "readwiseNotDeleted": "This book is not in the deleted list.",
-    "readwiseBookBusy": "The note changed while the command ran. Try again."
+    "readwiseBookBusy": "The note changed while the command ran. Try again.",
+    "readwiseSyncsOnDevice": "Readwise syncs on {device}. Use “Sync on this device instead” to move it here.",
+    "readwiseAnotherDevice": "another device",
+    "readwiseNotReady": "Memry has not finished syncing with your other devices yet. Try again in a moment.",
+    "readwiseNeedsSync": "Turn on sync to move Readwise between devices.",
+    "readwiseClaimNotDelivered": "Could not tell your other devices yet. Check your connection and try again.",
+    "readwiseTakeOverFailed": "Could not move Readwise to this device"
   },
   "project": {
     "createFailed": "Failed to create project",

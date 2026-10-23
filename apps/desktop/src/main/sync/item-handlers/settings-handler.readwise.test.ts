@@ -16,6 +16,8 @@ vi.mock('../../vault/settings-cache', () => ({ writeCacheFromPreferences: vi.fn(
 vi.mock('../../tray', () => ({ applyTraySetting: vi.fn() }))
 vi.mock('../../ipc/locale-handler', () => ({ applyLocale: vi.fn(() => Promise.resolve()) }))
 vi.mock('../../database', () => ({ getDatabase: vi.fn() }))
+const release = vi.hoisted(() => vi.fn(() => Promise.resolve(false)))
+vi.mock('../../readwise/release', () => ({ releaseTokenIfClaimedElsewhere: release }))
 
 import { getDatabase } from '../../database'
 import { getSetting, setSetting } from '../../database/queries/settings'
@@ -60,5 +62,15 @@ describe('settingsHandler: readwise group', () => {
       syncDeviceId: 'device-B',
       categories: { books: false, tweets: false }
     })
+  })
+
+  it('hands a merged group to the old device so it can drop its token after a takeover (D8)', () => {
+    const readwise = { syncDeviceId: 'device-B', syncDeviceName: 'Laptop' }
+    mockGetSettings.mockReturnValue({ readwise })
+    const data = { settings: { readwise }, fieldClocks: {} } as SettingsSyncPayload
+
+    expect(settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)).toBe('applied')
+
+    expect(release).toHaveBeenCalledTimes(1)
   })
 })

@@ -12,6 +12,7 @@ import { readSection } from '@memry/importers/readwise'
 import { book, highlight } from '@memry/importers/readwise/fixtures'
 import type { ReadwiseBook } from '@memry/importers/readwise'
 import * as Y from 'yjs'
+import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { ReadwiseStub, type StubBook } from '@tests/utils/readwise-stub'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import {
@@ -27,7 +28,6 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
   imageFetch: vi.fn(),
-  syncState: { current: 'idle' as string },
   recordActivity: vi.fn()
 }))
 
@@ -56,9 +56,6 @@ vi.mock('../notes/runtime-effects', async (importOriginal) => ({
 }))
 vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
-}))
-vi.mock('../sync/runtime', () => ({
-  getSyncEngine: () => ({ currentState: mocks.syncState.current })
 }))
 vi.mock('../notes/domain', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../notes/domain')>()
@@ -122,7 +119,8 @@ describe('Readwise incremental sync', () => {
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
     mocks.secrets.clear()
-    mocks.syncState.current = 'idle'
+    // Sync off: no claim, this device pulls (D8). The gate itself is tested in pull-gate.test.ts.
+    markSyncIneligible()
     mocks.recordActivity.mockClear()
     mocks.imageFetch.mockReset()
     mocks.imageFetch.mockImplementation(async () => ({
@@ -174,6 +172,7 @@ describe('Readwise incremental sync', () => {
   })
 
   afterEach(async () => {
+    resetSyncDecision()
     await stopProjectionRuntime()
     vi.unstubAllGlobals()
     vi.restoreAllMocks()

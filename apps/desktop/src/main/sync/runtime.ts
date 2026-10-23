@@ -114,7 +114,11 @@ import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import { recoverDirtyItems } from './dirty-recovery'
-import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
+import {
+  markSyncEligible,
+  markSyncIneligible,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { createCrdtSnapshotBatchPush } from './crdt-snapshot-batch'
 import { createCrdtSnapshotPush } from './crdt-snapshot-push'
@@ -282,6 +286,9 @@ let vaultKeyFailureLogged = false
 let vaultKeyMismatchHandled = false
 
 function resetSyncServiceSingletons(): void {
+  // The next start decides again and must pull again before a Readwise run
+  // trusts the notes on disk (#1417).
+  resetSyncDecision()
   resetTaskSyncService()
   resetInboxSyncService()
   resetFilterSyncService()

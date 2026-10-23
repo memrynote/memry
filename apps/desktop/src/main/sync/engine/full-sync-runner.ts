@@ -26,6 +26,7 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
+import { markPullCompleted } from '@memry/sync-client/sync-eligibility'
 import { isKnownNote } from '../note-body-apply'
 import { listPackSeeded, packSeededKey } from './pack-seeded-docs'
 
@@ -479,6 +480,7 @@ export class FullSyncRunner {
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
       this.lastRunCaughtUp = pullDelivered
+      if (pullDelivered) markPullCompleted()
       if (!pullDelivered && pull.status === 'skipped') return pull
       return pullDelivered && pushesDelivered ? DELIVERED : INCOMPLETE
     } catch (error) {

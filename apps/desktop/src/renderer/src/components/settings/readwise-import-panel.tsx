@@ -42,6 +42,7 @@ import {
   type FirstImportState
 } from '@/components/settings/readwise-first-import-preview'
 import { ReadwiseDeletedBooks } from '@/components/settings/readwise-deleted-books'
+import { ReadwiseTakeoverSection } from '@/components/settings/readwise-takeover-section'
 import { ReadwiseLocationSection } from '@/components/settings/readwise-location-section'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
 
@@ -181,6 +182,16 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           </div>
         )}
       </div>
+    )
+  }
+
+  if (!status.thisDevicePulls) {
+    return (
+      <ReadwiseTakeoverSection
+        deviceName={status.pullingDeviceName}
+        disabled={disabled}
+        onTakenOver={setStatus}
+      />
     )
   }
 

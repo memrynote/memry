@@ -55,7 +55,7 @@ describe('readwise import IPC handlers', () => {
     result.close()
   })
 
-  it('registers all five channels and removes them again', () => {
+  it('registers every channel and removes them again', () => {
     for (const channel of Object.values(ReadwiseImportChannels.invoke)) handlerFor(channel)
     unregisterReadwiseImportHandlers()
     for (const channel of Object.values(ReadwiseImportChannels.invoke)) {
@@ -126,6 +126,23 @@ describe('readwise import IPC handlers', () => {
     const res = await handlerFor(ReadwiseImportChannels.invoke.DISCONNECT)({}, undefined)
     expect(res).toEqual({ success: true })
     expect(secrets.size).toBe(0)
+  })
+
+  it('take-over answers a failure envelope when sync is off, and stores nothing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 204 }))
+    )
+    const res = await handlerFor(ReadwiseImportChannels.invoke.TAKE_OVER)({}, { token: TOKEN })
+    expect(res).toMatchObject({ success: false })
+    expect(String(res.error)).toMatch(/Turn on sync/)
+    expect(secrets.size).toBe(0)
+  })
+
+  it('take-over rejects an empty token at the schema', async () => {
+    await expect(
+      handlerFor(ReadwiseImportChannels.invoke.TAKE_OVER)({}, { token: '  ' })
+    ).rejects.toThrow()
   })
 
   it('sync-now answers a failure envelope when Readwise is not connected', async () => {

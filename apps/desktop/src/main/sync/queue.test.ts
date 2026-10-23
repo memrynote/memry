@@ -651,6 +651,20 @@ describe('SyncQueueManager', () => {
     })
   })
 
+  describe('hasPendingItem', () => {
+    it('is true from the enqueue until the push is accepted, for that item only', () => {
+      const id = queue.enqueue(makeInput({ type: 'settings', itemId: 'synced_settings' }))
+      queue.enqueue(makeInput({ itemId: 'note-1' }))
+      expect(queue.hasPendingItem('synced_settings')).toBe(true)
+      expect(queue.hasPendingItem('unknown')).toBe(false)
+
+      queue.markSuccess(id)
+
+      expect(queue.hasPendingItem('synced_settings')).toBe(false)
+      expect(queue.hasPendingItem('note-1')).toBe(true)
+    })
+  })
+
   describe('dequeue/getPendingCount consistency', () => {
     it('dequeue finds items enqueued after a previous empty dequeue', () => {
       // #given first dequeue returns nothing

@@ -5,6 +5,7 @@ import { createLogger } from '../lib/logger'
 import { registerMinuteTick, unregisterMinuteTick } from '../lib/minute-tick'
 import { getStatus } from '../vault'
 import { ReadwiseError } from './client'
+import { canPull } from './pull-gate'
 import { getReadwiseToken } from './secrets'
 import { readReadwiseOptions } from './settings'
 import { getReadwiseSyncService, type ReadwiseSyncService, type RunResult } from './sync-service'
@@ -57,15 +58,6 @@ export class ReadwiseUnavailableError extends Error {
     )
     this.name = 'ReadwiseUnavailableError'
   }
-}
-
-/**
- * The seam for #1417 (D8): this device may pull only after memry sync completed
- * a pull since launch, and only when it is the claiming device. Until #1417
- * lands the device that holds the token always pulls.
- */
-export function canPull(): boolean {
-  return true
 }
 
 export interface SchedulerDeps {

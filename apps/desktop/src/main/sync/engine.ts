@@ -628,6 +628,11 @@ export class SyncEngine extends SyncEventEmitter {
     )
   }
 
+  /** True while the item's latest change waits in the push queue. */
+  hasQueuedItem(itemId: string): boolean {
+    return this.ctx.deps.queue.hasPendingItem(itemId)
+  }
+
   // --- Status & control ---
 
   getStatus(): GetSyncStatusResult {

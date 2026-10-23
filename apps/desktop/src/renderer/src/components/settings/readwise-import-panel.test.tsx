@@ -41,6 +41,7 @@ describe('ReadwiseImportPanel', () => {
   let syncNow: ReturnType<typeof vi.fn>
   let listDeleted: ReturnType<typeof vi.fn>
   let restoreBook: ReturnType<typeof vi.fn>
+  let takeOver: ReturnType<typeof vi.fn>
 
   beforeAll(async () => {
     i18n = await createRendererI18n({ locale: 'en' })
@@ -54,9 +55,19 @@ describe('ReadwiseImportPanel', () => {
     syncNow = vi.fn(() => Promise.resolve({ success: true }))
     listDeleted = vi.fn(() => Promise.resolve({ books: [] }))
     restoreBook = vi.fn(() => Promise.resolve({ success: true }))
+    takeOver = vi.fn(() => Promise.resolve(connectedStatus))
     ;(window as unknown as { api: unknown }).api = {
       import: {
-        readwise: { status, connect, disconnect, setOptions, syncNow, listDeleted, restoreBook }
+        readwise: {
+          status,
+          connect,
+          disconnect,
+          setOptions,
+          syncNow,
+          listDeleted,
+          restoreBook,
+          takeOver
+        }
       }
     }
   })
@@ -83,6 +94,35 @@ describe('ReadwiseImportPanel', () => {
     await screen.findByText('Where notes go')
     expect(screen.queryByLabelText('Access token')).not.toBeInTheDocument()
     await waitFor(() => expect(states[states.length - 1].ready).toBe(true))
+  })
+
+  it('names the pulling device and takes over with the token pasted again (D8)', async () => {
+    status.mockResolvedValue({ ...disconnectedStatus, thisDevicePulls: false, pullingDeviceName: 'Desk Mac' })
+    renderPanel()
+
+    expect(await screen.findByText('Readwise syncs on Desk Mac.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Connect' })).not.toBeInTheDocument()
+    const button = screen.getByRole('button', { name: 'Sync on this device instead' })
+    expect(button).toBeDisabled()
+
+    fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'tok-9' } })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(takeOver).toHaveBeenCalledWith({ token: 'tok-9' }))
+    await screen.findByText('Where notes go')
+  })
+
+  it('shows why a takeover failed and keeps the form', async () => {
+    status.mockResolvedValue({ ...disconnectedStatus, thisDevicePulls: false, pullingDeviceName: null })
+    takeOver.mockResolvedValue({ success: false, error: 'Turn on sync to move Readwise.' })
+    renderPanel()
+
+    expect(await screen.findByText('Readwise syncs on another device.')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Access token'), { target: { value: 'tok-9' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Sync on this device instead' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Turn on sync')
+    expect(screen.getByLabelText('Access token')).toBeInTheDocument()
   })
 
   it('shows the readable error for an invalid token and stays on the connect form', async () => {
