@@ -69,6 +69,7 @@ import {
 } from '@/pages/file-view-state'
 
 // Configure PDF.js worker - import from node_modules for Electron compatibility
+// oxlint-disable-next-line import/default -- Vite `?url` imports default-export the asset URL
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useT } from '@memry/i18n/renderer'
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker

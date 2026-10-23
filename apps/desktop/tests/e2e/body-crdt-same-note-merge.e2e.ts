@@ -211,8 +211,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M1 Same Note Different Blocks ${Date.now()}`
     const initialBody = 'shared top block\n\nshared bottom block'
     const expectedBody = 'shared top block from A\n\nshared bottom block from B'
@@ -242,8 +244,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M2 Same Block Different Positions ${Date.now()}`
     const initialBody = 'shared merge block'
     const expectedBody = 'A shared merge block B'
@@ -269,8 +273,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M3 Same Position Insert ${Date.now()}`
     const initialBody = 'shared merge block'
 
@@ -295,8 +301,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M4 A Online B Offline ${Date.now()}`
     const initialBody = 'shared live merge block'
     const expectedBody = 'A shared live merge block B'
@@ -322,8 +330,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M5 A Offline B Online ${Date.now()}`
     const initialBody = 'shared live merge block'
     const expectedBody = 'A shared live merge block B'
@@ -349,8 +359,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M6 Both Online ${Date.now()}`
     const initialBody = 'shared live merge block'
     const expectedBody = 'A shared live merge block B'
@@ -376,8 +388,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M7 NoteB Cross Edit ${Date.now()}`
     const initialBody = 'noteB shared merge block'
     const expectedBody = 'A noteB shared merge block B'
@@ -403,8 +417,10 @@ test.describe('Body CRDT same-note merge propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `M8 NoteA Cross Edit ${Date.now()}`
     const initialBody = 'noteA shared merge block'
     const expectedBody = 'B noteA shared merge block A'

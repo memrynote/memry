@@ -175,8 +175,10 @@ test.describe('Body CRDT different-note edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     await runDifferentNoteEditCase({
       electronAppA,
       electronAppB,
@@ -198,8 +200,10 @@ test.describe('Body CRDT different-note edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     await runDifferentNoteEditCase({
       electronAppA,
       electronAppB,
@@ -221,8 +225,10 @@ test.describe('Body CRDT different-note edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     await runDifferentNoteEditCase({
       electronAppA,
       electronAppB,
@@ -244,8 +250,10 @@ test.describe('Body CRDT different-note edit propagation', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     await runDifferentNoteEditCase({
       electronAppA,
       electronAppB,

@@ -64,6 +64,7 @@ import type { AppContext, Bindings } from '../types'
 const logger = createLogger('Auth')
 
 const OTP_EXPIRY_MINUTES = 10
+// oxlint-disable-next-line no-control-regex -- strips control characters on purpose
 const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
 const CHECKOUT_TOKEN_TTL_SECONDS = 10 * 60
 

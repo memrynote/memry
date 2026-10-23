@@ -66,7 +66,7 @@ beforeEach(() => {
 
   const api = window.api as unknown as Record<string, unknown>
   api.notes = {
-    ...((api.notes as Record<string, unknown>) ?? {}),
+    ...(api.notes as Record<string, unknown>),
     resolveAttachment: mocks.resolveAttachment,
     revealAttachmentInFinder: mocks.revealAttachmentInFinder,
     openAttachmentExternal: mocks.openAttachmentExternal,

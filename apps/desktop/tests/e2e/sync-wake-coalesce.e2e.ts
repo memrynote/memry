@@ -98,8 +98,9 @@ test.describe('Sync wake coalescing (#2290)', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
     // Attach the socket error listener early; the second call below resets the counts.
     await callHook(electronAppA, 'startSyncWakeProbeForTests')

@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+import { WebSocket } from 'ws'
 import { parseSyncSocketFrame, SYNC_SOCKET_ITEMS_HEADER } from '@memry/contracts/sync-socket'
 import { SyncEventEmitter } from '@memry/sync-client/emitter'
 import { createLogger } from '../lib/logger'

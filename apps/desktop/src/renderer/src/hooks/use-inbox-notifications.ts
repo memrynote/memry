@@ -36,7 +36,7 @@ export function useInboxNotifications(): void {
             .map((item) => item.id)
             .sort()
             .join(',')}`
-          new Notification(title, { body, icon: '/icon.png', tag })
+          void new Notification(title, { body, icon: '/icon.png', tag })
         }
 
         // One ICU message covers both shapes: the `=1` branch names the item,

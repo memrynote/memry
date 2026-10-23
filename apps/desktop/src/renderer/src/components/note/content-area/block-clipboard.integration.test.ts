@@ -62,12 +62,12 @@ beforeEach(() => {
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.addEventListener('load', () => {
       resolve(String(reader.result))
-    }
-    reader.onerror = () => {
+    })
+    reader.addEventListener('error', () => {
       reject(reader.error)
-    }
+    })
     reader.readAsText(blob)
   })
 }

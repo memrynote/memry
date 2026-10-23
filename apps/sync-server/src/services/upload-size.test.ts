@@ -77,8 +77,10 @@ describe('expectedEncryptedTotal', () => {
 
     // #then
     expect(ceiling).toBe(1064)
-    expect(ceiling > ceiling).toBe(false) // exactly at the limit: accepted
-    expect(ceiling + 1 > ceiling).toBe(true) // one byte over: rejected
+    // Strict `>` as blob.ts writes it: exactly at the limit is accepted, one byte over is rejected.
+    const exceeds = (total: number): boolean => total > ceiling
+    expect(exceeds(ceiling)).toBe(false)
+    expect(exceeds(ceiling + 1)).toBe(true)
   })
 })
 

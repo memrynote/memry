@@ -139,7 +139,7 @@ describe('crdt-preflight-child', () => {
             constructedWith.push(dir)
             // Real y-leveldb constructs the adapter in its own constructor;
             // the child's diagnostic depends on that, so the fake does too.
-            if (opts?.Level) new opts.Level(dir, {})
+            if (opts?.Level) void new opts.Level(dir, {})
           }
           storeUpdate = persistence.storeUpdate
           getYDoc = persistence.getYDoc

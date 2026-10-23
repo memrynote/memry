@@ -209,6 +209,7 @@ describe('startLoginShellPathAugmentation', () => {
     let settled = false
     const waiter = module.whenLoginShellPathApplied().then(() => {
       settled = true
+      return undefined
     })
 
     await flush()

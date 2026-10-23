@@ -45,7 +45,7 @@ import { ThemeProvider } from 'next-themes'
 import { useTitleBarSymbolColorSync } from '@/lib/window-controls-overlay'
 
 // Tab System imports
-import { TabProvider, useTabs } from '@/contexts/tabs'
+import { TabProvider, useActiveTab, useTabs, type TabType } from '@/contexts/tabs'
 import { TabsCommandBridge } from '@/contexts/tabs/tabs-command-bridge'
 import {
   AppCommandOwners,
@@ -108,8 +108,6 @@ import { useWeekStartSync } from '@/hooks/use-week-start-sync'
 import { trackTelemetry } from '@/lib/telemetry'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
-import { useActiveTab } from '@/contexts/tabs'
-import type { TabType } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'

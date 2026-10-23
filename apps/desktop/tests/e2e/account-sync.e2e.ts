@@ -4,8 +4,10 @@ test.describe('Account sync E2E', () => {
   test('shows bootstrapped account devices and signs out through account IPC', async ({
     pageA,
     syncBootstrap,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const before = await pageA.evaluate(async () => {
       return {
         account: await window.api.account.getInfo(),
@@ -28,8 +30,10 @@ test.describe('Account sync E2E', () => {
   test('revokes another device and forces that device to re-authenticate', async ({
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const [deviceA, deviceB] = await Promise.all([
       pageA.evaluate(async () => {
         const devices = await window.api.syncDevices.getDevices()

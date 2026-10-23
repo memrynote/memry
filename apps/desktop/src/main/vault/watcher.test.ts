@@ -887,7 +887,7 @@ describe('vault watcher', () => {
       fileType: 'image'
     })
 
-    const createdId = (createdCall?.[1] as { note: { id: string } }).note.id
+    const createdId = (createdCall?.[1] as { note: { id: string } } | undefined)?.note.id
     window.webContents.send.mockClear()
     fs.writeFileSync(imagePath, Buffer.from('updated-image'))
 
@@ -980,7 +980,7 @@ describe('vault watcher', () => {
     const updatedCall = window.webContents.send.mock.calls.find(
       (call: unknown[]) => call[0] === JournalChannels.events.ENTRY_UPDATED
     )
-    const emittedId = (updatedCall?.[1] as { entry: { id: string } }).entry.id
+    const emittedId = (updatedCall?.[1] as { entry: { id: string } } | undefined)?.entry.id
     const cachedJournal = indexDb.db
       .select()
       .from(noteCache)

@@ -281,6 +281,13 @@ export default defineConfig({
       }
     },
     {
+      // The main process has no `window`: every `postMessage` there goes to a worker_threads
+      // `parentPort`/`Worker` or a utility process, which take no target origin. The rule's
+      // security concern (`window.postMessage`) stays enforced everywhere else.
+      files: ['apps/desktop/src/main/**'],
+      rules: disable('unicorn/require-post-message-target-origin')
+    },
+    {
       files: [`${RENDERER}/**/*.tsx`],
       rules: enableAll('i18n/no-jsx-text-literals', 'i18n/no-string-attribute-literals')
     },

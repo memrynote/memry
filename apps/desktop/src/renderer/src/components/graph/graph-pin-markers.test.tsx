@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react'
+// oxlint-disable-next-line import/no-named-as-default -- graphology's types declare only the default export
 import Graph from 'graphology'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { GraphPinMarkers } from './graph-pin-markers'

@@ -7,7 +7,7 @@ vi.hoisted(() => {
   vi.stubGlobal('WebGL2RenderingContext', class {})
 })
 
-import Sigma from 'sigma'
+import { Sigma } from 'sigma'
 import { DEFAULT_SETTINGS, type Settings } from 'sigma/settings'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 

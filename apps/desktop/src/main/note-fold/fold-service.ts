@@ -122,6 +122,7 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
   }
 
   const pump = (): void => {
+    // oxlint-disable-next-line no-unmodified-loop-condition -- `disposed` and `running` change in other callbacks while the loop awaits
     while (!disposed && running < FOLD_CONCURRENCY && queue.length > 0) {
       const job = queue.shift()!
       running++

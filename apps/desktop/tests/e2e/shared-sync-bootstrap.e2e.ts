@@ -7,8 +7,10 @@ test.describe('Shared sync bootstrap', () => {
     pageA,
     pageB,
     syncServerUrl,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const serverUrlA = await electronAppA.evaluate(() => process.env.SYNC_SERVER_URL ?? null)
     const serverUrlB = await electronAppB.evaluate(() => process.env.SYNC_SERVER_URL ?? null)
 

@@ -400,8 +400,8 @@ describe('expression-parser', () => {
       })
 
       it('should parse floating point', () => {
-        const result = parseExpression('3.14159') as LiteralNode
-        expect(result).toEqual({ type: 'literal', value: 3.14159 })
+        const result = parseExpression('3.25') as LiteralNode
+        expect(result).toEqual({ type: 'literal', value: 3.25 })
       })
     })
 

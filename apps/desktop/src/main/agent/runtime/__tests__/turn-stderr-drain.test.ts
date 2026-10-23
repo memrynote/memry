@@ -250,7 +250,7 @@ describe('agent turns against a CLI that floods stderr', () => {
       exitCode: 1,
       stderr: expect.stringMatching(new RegExp(`^a{8158}${FATAL_TAIL}$`))
     })
-    expect((warned?.[1] as { stderr: string }).stderr).toHaveLength(8192)
+    expect((warned?.[1] as { stderr: string } | undefined)?.stderr).toHaveLength(8192)
     // No 'compacted' marker: a failed summary must never replace the history it
     // failed to summarize. The user's turn runs anyway, uncompacted.
     expect(messages.listByConversation('conversation-1').map((message) => message.role)).toEqual([
@@ -346,7 +346,7 @@ describe('agent turns against a CLI that floods stderr', () => {
       exitCode: 1,
       stderr: expect.stringMatching(new RegExp(`^a{8158}${FATAL_TAIL}$`))
     })
-    expect((warned?.[1] as { stderr: string }).stderr).toHaveLength(8192)
+    expect((warned?.[1] as { stderr: string } | undefined)?.stderr).toHaveLength(8192)
     // A failed title never costs the user their message: the turn still runs and
     // the conversation falls back to a title derived from what they typed.
     expect(conversations.update).toHaveBeenCalledWith(

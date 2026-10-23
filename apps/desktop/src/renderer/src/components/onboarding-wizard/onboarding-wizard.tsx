@@ -67,7 +67,15 @@ const CHOICE_HINTS: Partial<Record<StepId, [string[], string][]>> = {
 
 /** Steps that show the mini app window under their content. Import and Ready
  * have long lists, so the window would only show as a sliver. */
-const STAGED: StepId[] = ['welcome', 'theme', 'modules', 'agent', 'storage', 'account', 'vault']
+const STAGED: ReadonlySet<StepId> = new Set([
+  'welcome',
+  'theme',
+  'modules',
+  'agent',
+  'storage',
+  'account',
+  'vault'
+])
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -164,7 +172,7 @@ export function OnboardingWizard(): React.JSX.Element {
       authStep === 'recovery-confirm' ||
       authStep === 'recovery-input')
   const stage =
-    STAGED.includes(state.step) && !phraseOnScreen ? (
+    STAGED.has(state.step) && !phraseOnScreen ? (
       <StagePreview
         features={state.draft.features}
         aiEnabled={state.draft.aiEnabled}

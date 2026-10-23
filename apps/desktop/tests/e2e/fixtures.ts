@@ -19,6 +19,7 @@ export const test = base.extend<{
   page: Page
   testVaultPath: string
 }>({
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   testVaultPath: async ({}, use) => {
     const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-'))
 

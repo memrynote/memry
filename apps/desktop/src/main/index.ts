@@ -1220,10 +1220,10 @@ function startupErrorHtml(message: string, copy: PreBootCopy): string {
  * with a running process, no window, and the single-instance lock held. If a
  * real window already exists the failure came later — leave it untouched.
  */
-function ensureStartupWindow(error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error)
-  mainLog.error('startup failed before a window was shown:', error)
-  trackMainError('main_process', 'startup_failed_no_window', error)
+function ensureStartupWindow(startupError: unknown): void {
+  const message = startupError instanceof Error ? startupError.message : String(startupError)
+  mainLog.error('startup failed before a window was shown:', startupError)
+  trackMainError('main_process', 'startup_failed_no_window', startupError)
 
   if (BrowserWindow.getAllWindows().some((w) => !w.isDestroyed())) return
 
@@ -1410,7 +1410,7 @@ const appReady = app.whenReady().then(async () => {
   // mismatch we pin the other identity for the NEXT launch rather than relaunching
   // mid-startup — at most one flip, so this always terminates.
   verifySecretStoreIdentity()
-  if (headlessCliArgs) return
+  if (headlessCliArgs) return undefined
 
   // Test-only reproduction of the customer's "app won't open" case: a startup that
   // fails BEFORE the main window is created (ENOSPC on a full disk / GPU crash),
@@ -1429,7 +1429,7 @@ const appReady = app.whenReady().then(async () => {
   if (isPendingInstallInFlight()) {
     mainLog.info('pending update install in flight on launch; showing splash and exiting')
     await showInstallingUpdateWindowAndExit()
-    return
+    return undefined
   }
   // Normal boot commits — drop any leftover pending-install marker.
   clearPendingInstallMarker()
@@ -1867,6 +1867,7 @@ const appReady = app.whenReady().then(async () => {
     // click has to reach a window that was hidden rather than closed.
     if (isTrayActive()) showMainWindow()
   })
+  return undefined
 })
 
 // A throw anywhere in the async startup above (e.g. ENOSPC on a full disk opening

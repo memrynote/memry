@@ -357,8 +357,9 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Hard Break ${Date.now()}`
@@ -395,8 +396,9 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Reference Link ${Date.now()}`
@@ -443,8 +445,9 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Kanban Settings ${Date.now()}`
@@ -496,8 +499,9 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign Spelling ${Date.now()}`
@@ -551,8 +555,9 @@ test.describe('Foreign markdown round-trip', () => {
     pageA,
     electronAppA,
     vaultPathA,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
     const title = `Foreign CRLF ${Date.now()}`

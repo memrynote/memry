@@ -153,8 +153,9 @@ test.describe('Readwise: one pulling device (#1417)', () => {
     pageB,
     vaultPathA,
     vaultPathB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
     await installReadwiseStub(electronAppA, library())
     await installReadwiseStub(electronAppB, library())

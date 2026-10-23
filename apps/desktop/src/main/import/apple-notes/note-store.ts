@@ -136,7 +136,8 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
     if (errorCode(error) === 'ENOENT') {
       throw new Error(
         `Apple Notes database not found at ${dbPath}. Open the Notes app once to ` +
-          'create it, or select the “group.com.apple.notes” folder.'
+          'create it, or select the “group.com.apple.notes” folder.',
+        { cause: error }
       )
     }
     throw error

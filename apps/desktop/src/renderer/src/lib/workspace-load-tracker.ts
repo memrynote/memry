@@ -27,11 +27,11 @@ export function trackWorkspaceLoad<T>(load: T | PromiseLike<T>): Promise<T> {
   const promise = Promise.resolve(load)
   pending += 1
   notify()
-  const done = (): void => {
+  const settled = (): void => {
     pending -= 1
     notify()
   }
-  promise.then(done, done)
+  promise.then(settled, settled)
   return promise
 }
 

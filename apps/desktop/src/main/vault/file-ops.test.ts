@@ -416,7 +416,7 @@ describe('safeRead', () => {
     // #then the errno survives for diagnosis, and the code names it
     expect(error).toBeInstanceOf(NoteError)
     expect(error?.code).toBe(NoteErrorCode.READ_FAILED)
-    expect((error?.cause as NodeJS.ErrnoException).code).toBeTruthy()
+    expect((error?.cause as NodeJS.ErrnoException | undefined)?.code).toBeTruthy()
     expect(error?.telemetryCode).toMatch(/^NOTE_READ_FAILED:[A-Z0-9]+$/)
   })
 
@@ -652,7 +652,7 @@ describe('deleteFile', () => {
     // #then the errno survives for diagnosis, and the code names it
     expect(error).toBeInstanceOf(NoteError)
     expect(error?.code).toBe(NoteErrorCode.DELETE_FAILED)
-    expect((error?.cause as NodeJS.ErrnoException).code).toBeTruthy()
+    expect((error?.cause as NodeJS.ErrnoException | undefined)?.code).toBeTruthy()
     expect(error?.telemetryCode).toMatch(/^NOTE_DELETE_FAILED:[A-Z0-9]+$/)
   })
 

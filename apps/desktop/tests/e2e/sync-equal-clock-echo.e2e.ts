@@ -106,8 +106,9 @@ test.describe('Sync equal clock (#2294)', () => {
     pageB,
     electronAppB,
     vaultPathB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const taskIds = await pageB.evaluate(async (count) => {

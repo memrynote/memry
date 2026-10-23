@@ -282,7 +282,8 @@ describe('dirty-recovery', () => {
     expect(payloadFieldClocks?.title).toEqual({ 'device-A': 2 })
 
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-offline-create')).get()
-    expect((task?.clock as Record<string, number>)._offline).toBeUndefined()
+    expect(task).toBeDefined()
+    expect((task?.clock as Record<string, number> | undefined)?._offline).toBeUndefined()
     const fc = task?.fieldClocks as Record<string, Record<string, number>>
     expect(fc.title._offline).toBeUndefined()
   })

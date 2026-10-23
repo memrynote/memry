@@ -44,24 +44,29 @@ export const test = base.extend<{
   deviceIdB: string
   syncServerUrl: string | null
 }>({
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   syncServerUrl: async ({}, use) => {
     await use(null)
   },
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   deviceIdA: async ({}, use) => {
     await use(`e2e-${randomUUID()}-A`)
   },
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   deviceIdB: async ({}, use) => {
     await use(`e2e-${randomUUID()}-B`)
   },
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   vaultPathA: async ({}, use) => {
     const vaultPath = createTestVault('memry-e2e-deviceA-')
     await use(vaultPath)
     cleanupDir(vaultPath)
   },
 
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture dependencies from this destructuring, so a fixture with none still needs it
   vaultPathB: async ({}, use) => {
     const vaultPath = createTestVault('memry-e2e-deviceB-')
     await use(vaultPath)

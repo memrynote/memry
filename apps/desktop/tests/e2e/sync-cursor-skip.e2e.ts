@@ -66,8 +66,9 @@ test.describe('Sync cursor skip (#2283)', () => {
     electronAppA,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const projectId = await pageA.evaluate(async () => {

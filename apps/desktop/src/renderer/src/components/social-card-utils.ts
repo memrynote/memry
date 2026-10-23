@@ -60,8 +60,8 @@ export function extractHandleFromUrl(url: string | null): string {
   const hostname = getHostname(url)
   if (!isTwitterHostname(hostname)) return ''
 
-  const pathParts = getPathname(url).split('/').filter(Boolean)
-  return pathParts[0] ? `@${pathParts[0]}` : ''
+  const handle = getPathname(url).split('/').find(Boolean)
+  return handle ? `@${handle}` : ''
 }
 
 /**

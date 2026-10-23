@@ -109,8 +109,10 @@ test.describe('Sync field merge and queue retry E2E', () => {
     electronAppB,
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const seed = await pageA.evaluate(async () => {
@@ -255,8 +257,10 @@ test.describe('Sync field merge and queue retry E2E', () => {
     pageA,
     pageB,
     syncBootstrap,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     const originalTitle = `Deleted Note ${Date.now()}`

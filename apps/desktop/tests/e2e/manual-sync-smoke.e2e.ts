@@ -6,8 +6,10 @@ test.describe('Manual sync smoke', () => {
   test('A creates online, both trigger sync, B reaches idle and opens the note', async ({
     pageA,
     pageB,
-    bootstrappedSyncPair: _bootstrappedSyncPair
+    bootstrappedSyncPair
   }) => {
+    bootstrappedSyncPair
+
     const title = `H5 Sync Smoke ${Date.now()}`
     const body = 'manual sync line 1\n\nmanual sync line 2'
 

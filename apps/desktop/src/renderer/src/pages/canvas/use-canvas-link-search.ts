@@ -85,6 +85,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       const searching = searchService.quick(trimmed).then(
         (response) => {
           if (!cancelled) setResults(response.results)
+          return undefined
         },
         (err) => {
           if (!cancelled) {
@@ -96,6 +97,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       const searchingEvents = calendarService.searchEvents({ query: trimmed }).then(
         (response) => {
           if (!cancelled) setEvents(response.events)
+          return undefined
         },
         (err) => {
           if (!cancelled) {

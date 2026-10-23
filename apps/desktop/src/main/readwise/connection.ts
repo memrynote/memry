@@ -187,7 +187,8 @@ export async function syncReadwiseNow(): Promise<void> {
       throw new Error(
         err.reason === 'not-connected'
           ? t('errors:importer.readwiseNotConnected')
-          : t('errors:importer.readwiseRunUnavailable')
+          : t('errors:importer.readwiseRunUnavailable'),
+        { cause: err }
       )
     }
     const message = describeReadwiseError(err)
