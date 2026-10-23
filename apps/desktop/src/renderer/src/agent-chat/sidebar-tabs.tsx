@@ -136,7 +136,7 @@ export function SidebarTabs({
         </div>
         <div
           data-slot="day-panel-header-actions"
-          className="no-drag ms-auto flex shrink-0 items-center gap-2"
+          className="no-drag ms-auto flex min-w-0 items-center gap-2"
         >
           <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
             {resolvedActive !== 'agent' ? (
