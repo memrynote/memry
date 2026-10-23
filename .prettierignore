@@ -16,6 +16,9 @@ tsconfig.*.json
 apps/desktop/src/main/ipc/generated-ipc-invoke-map.ts
 apps/desktop/src/preload/generated-rpc.ts
 
+# Written one file per line by scripts/lint-ratchet.mjs; reformatting it makes every update a huge diff.
+scripts/lint-baseline.json
+
 # Golden byte-preservation fixtures: bytes (CRLF, BOM, missing final newline)
 # ARE the test contract — formatting them destroys what they assert.
 apps/desktop/src/main/vault/__fixtures__/golden-vault/
