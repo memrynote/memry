@@ -158,10 +158,9 @@ test.describe('Notes Management', () => {
       expect(true).toBe(true)
     })
 
-    test('T534: should update modified timestamp on edit', async ({
-      page,
-      testVaultPath: _testVaultPath
-    }) => {
+    test('T534: should update modified timestamp on edit', async ({ page, testVaultPath }) => {
+      const notesDir = path.join(testVaultPath, 'notes')
+
       // Get initial file modification times
       const initialStats: Map<string, number> = new Map()
       if (fs.existsSync(notesDir)) {
