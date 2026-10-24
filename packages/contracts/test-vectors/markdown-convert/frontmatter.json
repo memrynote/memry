@@ -1,0 +1,6586 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3522-markdown-convert",
+    "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
+    "note": "split, parse, serialize, dump, load and write of the note frontmatter (protocol 12.4): gray-matter 4.0.3 over js-yaml 3.15.1 and @memry/app-core/markdown. status \"error\" means the oracle threw; the message is not part of the contract.",
+    "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
+    "caseCount": 457
+  },
+  "cases": [
+    {
+      "id": "frontmatter/split/plain-block",
+      "op": "split",
+      "input": {
+        "raw": "---\ntitle: A\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\ntitle: A\n---\n",
+          "body": "body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/crlf-block",
+      "op": "split",
+      "input": {
+        "raw": "---\r\ntitle: A\r\n---\r\nbody\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\r\ntitle: A\r\n---\r\n",
+          "body": "body\r\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/bom-block",
+      "op": "split",
+      "input": {
+        "raw": "﻿---\ntitle: A\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "﻿---\ntitle: A\n---\n",
+          "body": "body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/no-frontmatter",
+      "op": "split",
+      "input": {
+        "raw": "just a body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "just a body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/empty-input",
+      "op": "split",
+      "input": {
+        "raw": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/only-delimiter",
+      "op": "split",
+      "input": {
+        "raw": "---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "---\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/unclosed-block",
+      "op": "split",
+      "input": {
+        "raw": "---\ntitle: A\nbody continues\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "---\ntitle: A\nbody continues\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/unclosed-crlf",
+      "op": "split",
+      "input": {
+        "raw": "---\r\ntitle: A\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "---\r\ntitle: A\r\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/no-final-newline",
+      "op": "split",
+      "input": {
+        "raw": "---\ntitle: A\n---"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\ntitle: A\n---",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/closing-at-eof-with-body-none",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\n",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/empty-block",
+      "op": "split",
+      "input": {
+        "raw": "---\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\n---\n",
+          "body": "body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/blank-line-separator",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\n\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\n",
+          "body": "\n\nbody\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/leading-blank-line",
+      "op": "split",
+      "input": {
+        "raw": "\n---\na: 1\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "\n---\na: 1\n---\nbody\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/four-dashes-open",
+      "op": "split",
+      "input": {
+        "raw": "----\na: 1\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "----\na: 1\n---\nbody\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/four-dashes-close",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n----\nbody\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n----\nbody\n---\n",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/spaces-after-open",
+      "op": "split",
+      "input": {
+        "raw": "--- \na: 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "--- \na: 1\n---\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/spaces-after-close",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n--- \nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "---\na: 1\n--- \nbody\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/horizontal-rule-body",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\ntext\n---\nmore\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\n",
+          "body": "text\n---\nmore\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/comment-lines",
+      "op": "split",
+      "input": {
+        "raw": "---\n# note\na: 1 # trailing\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\n# note\na: 1 # trailing\n---\n",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/lone-cr-open",
+      "op": "split",
+      "input": {
+        "raw": "---\r---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "---\r---\nbody\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/bom-only",
+      "op": "split",
+      "input": {
+        "raw": "﻿"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "﻿"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/bom-no-block",
+      "op": "split",
+      "input": {
+        "raw": "﻿body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": null,
+          "body": "﻿body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/unicode-body",
+      "op": "split",
+      "input": {
+        "raw": "---\nt: é\n---\n日本語 😀\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\nt: é\n---\n",
+          "body": "日本語 😀\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/mixed-eol",
+      "op": "split",
+      "input": {
+        "raw": "---\r\na: 1\n---\nbody\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\r\na: 1\n---\n",
+          "body": "body\r\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/close-with-cr-only-line",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\r\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\r\n",
+          "body": "body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/many-docs",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\nbody\n---\nb: 2\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\n",
+          "body": "body\n---\nb: 2\n---\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/dash-in-value",
+      "op": "split",
+      "input": {
+        "raw": "---\na: ---\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: ---\n---\n",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/closing-after-blank",
+      "op": "split",
+      "input": {
+        "raw": "---\n\n\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\n\n\n---\n",
+          "body": "body\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/nul-in-body",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\nx\u0000y\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\n",
+          "body": "x\u0000y\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/split/line-separator-body",
+      "op": "split",
+      "input": {
+        "raw": "---\na: 1\n---\nx y\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "block": "---\na: 1\n---\n",
+          "body": "x y\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/simple",
+      "op": "parse",
+      "input": {
+        "raw": "---\ntitle: Hello\ntags:\n  - a\n  - b\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "title": "Hello",
+            "tags": [
+              "a",
+              "b"
+            ]
+          },
+          "content": "body\n",
+          "rawFrontmatterBlock": "---\ntitle: Hello\ntags:\n  - a\n  - b\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/crlf",
+      "op": "parse",
+      "input": {
+        "raw": "---\r\ntitle: Hello\r\nn: 2\r\n---\r\nbody\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "title": "Hello",
+            "n": 2
+          },
+          "content": "body\r\n",
+          "rawFrontmatterBlock": "---\r\ntitle: Hello\r\nn: 2\r\n---\r\n",
+          "eol": "\r\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/bom",
+      "op": "parse",
+      "input": {
+        "raw": "﻿---\ntitle: Hello\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "title": "Hello"
+          },
+          "content": "body\n",
+          "rawFrontmatterBlock": "﻿---\ntitle: Hello\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/no-frontmatter",
+      "op": "parse",
+      "input": {
+        "raw": "body only\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "body only\n",
+          "rawFrontmatterBlock": null,
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/empty-block",
+      "op": "parse",
+      "input": {
+        "raw": "---\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "body\n",
+          "rawFrontmatterBlock": "---\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/comments-only",
+      "op": "parse",
+      "input": {
+        "raw": "---\n# a comment\n  # another\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "",
+          "rawFrontmatterBlock": "---\n# a comment\n  # another\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/comment-and-key",
+      "op": "parse",
+      "input": {
+        "raw": "---\n# lead\nkey: v\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "key": "v"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\n# lead\nkey: v\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/unclosed-block",
+      "op": "parse",
+      "input": {
+        "raw": "---\nkey: v\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "---\nkey: v\nbody\n",
+          "rawFrontmatterBlock": null,
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/no-final-newline",
+      "op": "parse",
+      "input": {
+        "raw": "---\nkey: v\n---\nbody"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "key": "v"
+          },
+          "content": "body",
+          "rawFrontmatterBlock": "---\nkey: v\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": false
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/only-whitespace-block",
+      "op": "parse",
+      "input": {
+        "raw": "---\n   \n\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "",
+          "rawFrontmatterBlock": "---\n   \n\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/blank-line-separator",
+      "op": "parse",
+      "input": {
+        "raw": "---\nkey: v\n---\n\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "key": "v"
+          },
+          "content": "\n\nbody\n",
+          "rawFrontmatterBlock": "---\nkey: v\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/bare-date",
+      "op": "parse",
+      "input": {
+        "raw": "---\ncreated: 2024-01-15\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "created": {
+              "$date": "2024-01-15T00:00:00.000Z"
+            }
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\ncreated: 2024-01-15\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/iso-datetime",
+      "op": "parse",
+      "input": {
+        "raw": "---\ncreated: 2024-01-15T10:30:00Z\nupdated: 2024-01-15 10:30:00.5 +02:00\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "created": {
+              "$date": "2024-01-15T10:30:00.000Z"
+            },
+            "updated": {
+              "$date": "2024-01-15T08:30:00.500Z"
+            }
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\ncreated: 2024-01-15T10:30:00Z\nupdated: 2024-01-15 10:30:00.5 +02:00\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/quoted-date-stays-string",
+      "op": "parse",
+      "input": {
+        "raw": "---\ncreated: \"2024-01-15\"\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "created": "2024-01-15"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\ncreated: \"2024-01-15\"\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/nested-map",
+      "op": "parse",
+      "input": {
+        "raw": "---\na:\n  b:\n    c: 1\n  d: [1, 2]\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": {
+              "b": {
+                "c": 1
+              },
+              "d": [
+                1,
+                2
+              ]
+            }
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na:\n  b:\n    c: 1\n  d: [1, 2]\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/flow-map",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: {x: 1, y: two}\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": {
+              "x": 1,
+              "y": "two"
+            }
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na: {x: 1, y: two}\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/list-top-level",
+      "op": "parse",
+      "input": {
+        "raw": "---\n- a\n- b\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": [
+            "a",
+            "b"
+          ],
+          "content": "",
+          "rawFrontmatterBlock": "---\n- a\n- b\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/scalar-top-level",
+      "op": "parse",
+      "input": {
+        "raw": "---\njust text\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": "just text",
+          "content": "",
+          "rawFrontmatterBlock": "---\njust text\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/null-top-level",
+      "op": "parse",
+      "input": {
+        "raw": "---\n~\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "",
+          "rawFrontmatterBlock": "---\n~\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/number-top-level",
+      "op": "parse",
+      "input": {
+        "raw": "---\n42\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": 42,
+          "content": "",
+          "rawFrontmatterBlock": "---\n42\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/invalid-yaml",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: [1, 2\n---\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/parse/tab-indent-error",
+      "op": "parse",
+      "input": {
+        "raw": "---\na:\n\tb: 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": null,
+            "b": 1
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na:\n\tb: 1\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/duplicate-key",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: 1\na: 2\n---\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/parse/anchors-merge",
+      "op": "parse",
+      "input": {
+        "raw": "---\nbase: &b {x: 1}\nuse:\n  <<: *b\n  y: 2\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "base": {
+              "x": 1
+            },
+            "use": {
+              "x": 1,
+              "y": 2
+            }
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\nbase: &b {x: 1}\nuse:\n  <<: *b\n  y: 2\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/multiline-literal",
+      "op": "parse",
+      "input": {
+        "raw": "---\ndesc: |\n  line one\n  line two\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "desc": "line one\nline two\n"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\ndesc: |\n  line one\n  line two\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/multiline-folded",
+      "op": "parse",
+      "input": {
+        "raw": "---\ndesc: >-\n  line one\n  line two\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "desc": "line one line two"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\ndesc: >-\n  line one\n  line two\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/quoted-keys",
+      "op": "parse",
+      "input": {
+        "raw": "---\n\"a b\": 1\n'c: d': 2\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a b": 1,
+            "c: d": 2
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\n\"a b\": 1\n'c: d': 2\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/integer-keys-order",
+      "op": "parse",
+      "input": {
+        "raw": "---\nb: 1\n2: x\na: 3\n1: y\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "1": "y",
+            "2": "x",
+            "b": 1,
+            "a": 3
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\nb: 1\n2: x\na: 3\n1: y\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/booleans-and-nulls",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: true\nb: No\nc: null\nd: ~\ne:\nf: yes\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": true,
+            "b": "No",
+            "c": null,
+            "d": null,
+            "e": null,
+            "f": "yes"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na: true\nb: No\nc: null\nd: ~\ne:\nf: yes\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/numbers",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: 1\nb: 1.5\nc: 0x1F\nd: 0o17\ne: 1_000\nf: .inf\ng: -.INF\nh: .nan\ni: 1e3\nj: 190:20:30\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": 1,
+            "b": 1.5,
+            "c": 31,
+            "d": "0o17",
+            "e": 1000,
+            "f": {
+              "$num": "Infinity"
+            },
+            "g": {
+              "$num": "-Infinity"
+            },
+            "h": {
+              "$num": "NaN"
+            },
+            "i": 1000,
+            "j": 685230
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na: 1\nb: 1.5\nc: 0x1F\nd: 0o17\ne: 1_000\nf: .inf\ng: -.INF\nh: .nan\ni: 1e3\nj: 190:20:30\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/unicode-values",
+      "op": "parse",
+      "input": {
+        "raw": "---\nt: 日本語 😀\nu: \"\\u00e9\\U0001F600\"\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "t": "日本語 😀",
+            "u": "é😀"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\nt: 日本語 😀\nu: \"\\u00e9\\U0001F600\"\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/document-markers-in-block",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: 1\n...\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": 1
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na: 1\n...\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/directive-in-block",
+      "op": "parse",
+      "input": {
+        "raw": "---\n%YAML 1.2\n---\na: 1\n---\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/parse/hash-in-first-line",
+      "op": "parse",
+      "input": {
+        "raw": "---\n#a\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "body\n",
+          "rawFrontmatterBlock": "---\n#a\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/language-line",
+      "op": "parse",
+      "input": {
+        "raw": "---yaml\na: 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "---yaml\na: 1\n---\n",
+          "rawFrontmatterBlock": null,
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/close-marker-lookalike",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: 1\n---x\nb: 2\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": 1
+          },
+          "content": "body\n",
+          "rawFrontmatterBlock": "---\na: 1\n---x\nb: 2\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/whitespace-then-comment",
+      "op": "parse",
+      "input": {
+        "raw": "---\n\n   \n  # c\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {},
+          "content": "",
+          "rawFrontmatterBlock": "---\n\n   \n  # c\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/set-and-omap",
+      "op": "parse",
+      "input": {
+        "raw": "---\ns: !!set {a, b}\no: !!omap\n  - a: 1\n  - b: 2\np: !!pairs\n  - a: 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "s": {
+              "a": null,
+              "b": null
+            },
+            "o": [
+              {
+                "a": 1
+              },
+              {
+                "b": 2
+              }
+            ],
+            "p": [
+              [
+                "a",
+                1
+              ]
+            ]
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\ns: !!set {a, b}\no: !!omap\n  - a: 1\n  - b: 2\np: !!pairs\n  - a: 1\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/binary",
+      "op": "parse",
+      "input": {
+        "raw": "---\nb: !!binary aGVsbG8=\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "b": {
+              "$bin": "aGVsbG8="
+            }
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\nb: !!binary aGVsbG8=\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/explicit-int-tag",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: !!int \"12\"\nb: !!str 12\nc: !!float 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": 12,
+            "b": "12",
+            "c": 1
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na: !!int \"12\"\nb: !!str 12\nc: !!float 1\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/unknown-tag",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: !custom x\n---\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/parse/alias-undefined",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: *missing\n---\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/parse/trailing-spaces-key",
+      "op": "parse",
+      "input": {
+        "raw": "---\na : 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": 1
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\na : 1\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/colon-in-value",
+      "op": "parse",
+      "input": {
+        "raw": "---\nurl: http://example.com:8080/a?b=c#frag\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "url": "http://example.com:8080/a?b=c#frag"
+          },
+          "content": "",
+          "rawFrontmatterBlock": "---\nurl: http://example.com:8080/a?b=c#frag\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/parse/multi-document-error",
+      "op": "parse",
+      "input": {
+        "raw": "---\na: 1\n---\nb: 2\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "frontmatter": {
+            "a": 1
+          },
+          "content": "b: 2\n---\n",
+          "rawFrontmatterBlock": "---\na: 1\n---\n",
+          "eol": "\n",
+          "hadTrailingNewline": true
+        }
+      }
+    },
+    {
+      "id": "frontmatter/serialize/unedited-same-content",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/unedited-new-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n",
+        "content": "new body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nnew body\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/unedited-new-body-no-final-newline",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two",
+        "content": "new body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nnew body"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-same-content",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags:\n  - a\n  - b\ncreated: 2024-01-15T00:00:00.000Z\n---\n\n\nbody one\nbody two\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-new-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n",
+        "content": "edited\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags:\n  - a\n  - b\ncreated: 2024-01-15T00:00:00.000Z\n---\n\n\nedited\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/crlf-new-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\r\ntitle: Hello\r\n---\r\n\r\nbody one\r\n",
+        "content": "x\ny\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\ntitle: Hello\r\n---\r\n\r\nx\r\ny\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/crlf-edited",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\r\ntitle: Hello\r\n---\r\n\r\nbody one\r\n",
+        "content": "x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\ntitle: Hello\r\n---\r\n\r\nx\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/crlf-body-with-lone-cr",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\r\ntitle: Hello\r\n---\r\n\r\nbody one\r\n",
+        "content": "a\rb\r\nc\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\ntitle: Hello\r\n---\r\n\r\na\rb\r\nc\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/no-frontmatter-new-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "old\n",
+        "content": "new\n\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "new\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/no-frontmatter-edited",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "old\n",
+        "content": "new\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "new\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/bom-unedited",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "﻿---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n",
+        "content": "x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "﻿---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nx\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/bom-edited",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "﻿---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n",
+        "content": "x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags:\n  - a\n  - b\ncreated: 2024-01-15T00:00:00.000Z\n---\n\n\nx\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/separator-kept",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\na: 1\n---\n\n\n\nbody\n",
+        "content": "\n\nnew\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 1\n---\n\n\n\nnew\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/separator-crlf",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\r\na: 1\r\n---\r\n\r\n\r\nbody\r\n",
+        "content": "new\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\na: 1\r\n---\r\n\r\n\r\nnew\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/empty-new-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n",
+        "content": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/empty-new-body-with-block",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\na: 1\n---\nx\n",
+        "content": "\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 1\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/strips-trailing-newlines",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\nbody one\nbody two\n",
+        "content": "tail\n\n\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: Hello\ntags: [a, b]\ncreated: 2024-01-15\n---\n\n\ntail\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/keeps-no-trailing-newline",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\na: 1\n---\nx",
+        "content": "y\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 1\n---\ny"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-date-respelled",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nd: 2024-01-15\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: 2024-01-15T00:00:00.000Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-comments-dropped",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\n# c\na: 1 # t\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 1\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-quotes-normalised",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: \"x\"\nb: 'y'\nc: z\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: x\nb: 'y'\nc: z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-key-order-integers",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nb: 1\n2: x\na: 3\n1: y\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'1': 'y'\n'2': x\nb: 1\na: 3\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-long-string-folds",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nd: word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: >-\n  word word word word word word word word word word word word word word word\n  word word word word word word word word word word word word word word word\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-multiline-literal",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nd: |\n  a\n  b\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: |\n  a\n  b\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-aliases-become-refs",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: &x [1, 2]\nb: *x\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: &ref_0\n  - 1\n  - 2\nb: *ref_0\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-aliased-map",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: &x {p: 1}\nb: *x\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: &ref_0\n  p: 1\nb: *ref_0\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-merge-key",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nbase: &b {x: 1}\nuse:\n  <<: *b\n  y: 2\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nbase:\n  x: 1\nuse:\n  x: 1\n  'y': 2\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-empty-map-drops-block",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "body\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-null-frontmatter-throws",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\n~\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": ""
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-list-frontmatter",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\n- a\n- b\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'0': a\n'1': b\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-scalar-frontmatter",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nabc\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'0': a\n'1': b\n'2': c\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-number-frontmatter",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\n42\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": ""
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-invalid-yaml-throws",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: [1\n---\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-unicode",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nt: 日本語 😀 é\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nt: \"日本語 \\U0001F600 é\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-binary",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\nb: !!binary aGVsbG8=\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nb: !<tag:yaml.org,2002:binary> aGVsbG8=\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-special-floats",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: .inf\nb: -.inf\nc: .nan\nd: 1e-7\ne: 1e21\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: .inf\nb: -.inf\nc: .nan\nd: 1.e-7\ne: 1e+21\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-bool-forms",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: Yes\nb: TRUE\nc: off\nd: null\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 'Yes'\nb: true\nc: 'off'\nd: null\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-crlf-multiline",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\r\nd: |\r\n  a\r\n  b\r\n---\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\nd: |\r\n  a\r\n  b\r\n---\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-set-omap-pairs",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\ns: !!set {a, b}\no: !!omap\n  - a: 1\np: !!pairs\n  - k: v\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ns:\n  a: null\n  b: null\no:\n  - a: 1\np:\n  - - k\n    - v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-timestamp-forms",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: 2001-12-14t21:59:43.10-05:00\nb: 2001-12-14 21:59:43.10 -5\nc: 2002-12-14\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 2001-12-15T02:59:43.100Z\nb: 2001-12-15T02:59:43.100Z\nc: 2002-12-14T00:00:00.000Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/edited-date-overflow",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": true,
+        "raw": "---\na: 2024-02-31\nb: 0050-01-01\nc: 2024-13-01\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 2024-03-02T00:00:00.000Z\nb: 1950-01-01T00:00:00.000Z\nc: 2025-01-01T00:00:00.000Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-plain-word",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "hello"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: hello\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-empty",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": ""
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: ''\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-true-word",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "true"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'true'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-null-word",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "null"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'null'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-tilde",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "~"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '~'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-yes",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "yes"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'yes'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-no-capitalised",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "No"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'No'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-y-letter",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "y"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'y'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-on-word",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "on"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'on'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-int-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "123"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '123'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-float-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "1.5"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '1.5'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-exp-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "1e3"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '1e3'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-hex-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "0x1F"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '0x1F'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-octal-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "0o7"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 0o7\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-date-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "2024-01-01"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '2024-01-01'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-datetime-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "2024-01-01T10:00:00Z"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '2024-01-01T10:00:00Z'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-merge-key-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "<<"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '<<'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-dash",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "-"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '-'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-dash-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "- x"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '- x'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-question",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "? x"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '? x'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-colon-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a: b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'a: b'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-space-hash",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a #b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'a #b'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-leading-hash",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "#a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '#a'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-inner-hash",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a#b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: a#b\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-leading-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": " lead"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: ' lead'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-trailing-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "trail "
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'trail '\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-newline-inside",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "multi\nline"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |-\n  multi\n  line\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-newline-trailing",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "multi\nline\n"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |\n  multi\n  line\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-only-newline",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "\n"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |+\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-double-newline",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\n\nb"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |-\n  a\n\n  b\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-keep-chomp",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\n\n"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |+\n  a\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-leading-newline-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "\n indented"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |2-\n\n   indented\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-more-indented-line",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\n  b\nc"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |-\n  a\n    b\n  c\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-tab",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "tab\there"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"tab\\there\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-single-quote",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "it's"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: it's\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-double-quote",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "say \"hi\""
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: say \"hi\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-backslash",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\\b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: a\\b\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-unicode-bmp",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "é ü 日本語"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: é ü 日本語\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-emoji",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "smile 😀"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"smile \\U0001F600\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-nbsp",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\_b\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-line-separator",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\Lb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-nul",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\u0000b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\0b\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-delete",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "ab"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\x7Fb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-next-line",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "ab"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\Nb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-bom",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "﻿a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"\\uFEFFa\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-flow-seq-chars",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "[a]"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '[a]'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-flow-map-chars",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "{a}"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '{a}'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-comma",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a, b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'a, b'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-at-sign",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "@at"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '@at'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-backtick",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "`tick"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '`tick'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-percent",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "%pct"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '%pct'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-bang",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "!bang"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '!bang'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-ampersand",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "&amp"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '&amp'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-star",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "*star"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '*star'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-pipe",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "|pipe"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '|pipe'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-gt",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": ">gt"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '>gt'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-equals",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "=eq"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '=eq'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-dash-dash-dash",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "---"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '---'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-long-foldable",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor end"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n  end\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-long-no-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-long-with-newline",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor \nsecond line"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor \n\n  second line\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-long-more-indented",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor \n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor "
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor \n    lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-long-url",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "https://example.com/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  https://example.com/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/path/\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-long-with-quote",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor it's lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor "
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n  it's lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod\n  tempor\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-width-boundary-80",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a\n  a\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-width-boundary-81",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: >-\n  a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a\n  a b\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-crlf-inside",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\r\nb"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\r\\nb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-cr-inside",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\rb"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\rb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-ten-lines",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "line 0\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: |-\n  line 0\n  line 1\n  line 2\n  line 3\n  line 4\n  line 5\n  line 6\n  line 7\n  line 8\n  line 9\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-colon-end",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "ends:"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'ends:'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-colon-no-space",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a:b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 'a:b'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-plain-with-dash-inside",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a-b - c"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: a-b - c\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-version-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "1.2.3"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: 1.2.3\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-signed-int-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "+12"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '+12'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-underscore-int-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "1_000"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '1_000'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-sexagesimal-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "1:30"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '1:30'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-inf-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": ".inf"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '.inf'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-nan-like",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": ".nan"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: '.nan'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-astral-only",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "😀"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"\\U0001F600\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-control-bell",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\u0007b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\ab\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-escape-char",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a\u001bb"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\eb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-non-char",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "a￾b"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: \"a\\uFFFEb\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/string-private-use",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k": "ab"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nk: ab\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-0",
+      "op": "dump",
+      "input": {
+        "value": {
+          "key with spaces": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nkey with spaces: v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-1",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a:b": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'a:b': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-2",
+      "op": "dump",
+      "input": {
+        "value": {
+          "true": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'true': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-3",
+      "op": "dump",
+      "input": {
+        "value": {
+          "123": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'123': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-4",
+      "op": "dump",
+      "input": {
+        "value": {
+          "": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-5",
+      "op": "dump",
+      "input": {
+        "value": {
+          "#k": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'#k': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-6",
+      "op": "dump",
+      "input": {
+        "value": {
+          "ключ": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nключ: v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-7",
+      "op": "dump",
+      "input": {
+        "value": {
+          "- k": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'- k': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-8",
+      "op": "dump",
+      "input": {
+        "value": {
+          "? k": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'? k': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-9",
+      "op": "dump",
+      "input": {
+        "value": {
+          "k: v": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'k: v': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-10",
+      "op": "dump",
+      "input": {
+        "value": {
+          "null": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'null': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-11",
+      "op": "dump",
+      "input": {
+        "value": {
+          "~": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'~': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-12",
+      "op": "dump",
+      "input": {
+        "value": {
+          "it's": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nit's: v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-13",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a\"b": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na\"b: v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-14",
+      "op": "dump",
+      "input": {
+        "value": {
+          "multi\nline": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n\"multi\\nline\": v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-15",
+      "op": "dump",
+      "input": {
+        "value": {
+          "1.5": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'1.5': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-16",
+      "op": "dump",
+      "input": {
+        "value": {
+          "2024-01-01": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'2024-01-01': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-17",
+      "op": "dump",
+      "input": {
+        "value": {
+          " lead": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n' lead': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-18",
+      "op": "dump",
+      "input": {
+        "value": {
+          "trail ": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'trail ': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-19",
+      "op": "dump",
+      "input": {
+        "value": {
+          "😀": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n\"\\U0001F600\": v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-20",
+      "op": "dump",
+      "input": {
+        "value": {
+          "tab\tkey": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n\"tab\\tkey\": v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-21",
+      "op": "dump",
+      "input": {
+        "value": {
+          "<<": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'<<': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-22",
+      "op": "dump",
+      "input": {
+        "value": {
+          "long word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'long word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ': v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/key-over-1024",
+      "op": "dump",
+      "input": {
+        "value": {
+          "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": "v"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n? kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk\n: v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-zero",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 0
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 0\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-negative-zero",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": {
+            "$num": "-0"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': -0.0\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-one",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 1
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 1\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-minus-one",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": -1
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': -1\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-half",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 1.5
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 1.5\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-e21",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 1e+21
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 1e+21\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-e-7",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 1e-7
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 1.e-7\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-long-fraction",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 123456789.123456
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 123456789.123456\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-point-three",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 0.30000000000000004
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 0.30000000000000004\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-nan",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": {
+            "$num": "NaN"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': .nan\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-inf",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": {
+            "$num": "Infinity"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': .inf\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-minus-inf",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": {
+            "$num": "-Infinity"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': -.inf\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-e100",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 1e+100
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 1e+100\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-min-double",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 5e-324
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 5.e-324\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-big-int",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 9007199254740992
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 9007199254740992\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-e-6",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 0.000001
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 0.000001\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-e20",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 100000000000000000000
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 100000000000000000000\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-negative-fraction",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": -0.25
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': -0.25\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-max-double",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 1.7976931348623157e+308
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 1.7976931348623157e+308\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/number-five-e-100",
+      "op": "dump",
+      "input": {
+        "value": {
+          "n": 5e-100
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'n': 5.e-100\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/bool-true",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": true,
+          "b": false
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: true\nb: false\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/null-value",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": null
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: null\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/date-midnight",
+      "op": "dump",
+      "input": {
+        "value": {
+          "d": {
+            "$date": "2024-01-15T00:00:00.000Z"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: 2024-01-15T00:00:00.000Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/date-ms",
+      "op": "dump",
+      "input": {
+        "value": {
+          "d": {
+            "$date": "2024-01-15T10:30:45.123Z"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: 2024-01-15T10:30:45.123Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/date-big-year",
+      "op": "dump",
+      "input": {
+        "value": {
+          "d": {
+            "$date": "+012345-01-01T00:00:00.000Z"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: +012345-01-01T00:00:00.000Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/date-early-year",
+      "op": "dump",
+      "input": {
+        "value": {
+          "d": {
+            "$date": "0001-01-01T00:00:00.000Z"
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: 0001-01-01T00:00:00.000Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/binary",
+      "op": "dump",
+      "input": {
+        "value": {
+          "b": {
+            "$bin": "aGVsbG8gd29ybGQ="
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nb: !<tag:yaml.org,2002:binary> aGVsbG8gd29ybGQ=\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/binary-tail-one",
+      "op": "dump",
+      "input": {
+        "value": {
+          "b": {
+            "$bin": "AQIDBA=="
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nb: !<tag:yaml.org,2002:binary> AQIDBA==\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/binary-empty",
+      "op": "dump",
+      "input": {
+        "value": {
+          "b": {
+            "$bin": ""
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nb: !<tag:yaml.org,2002:binary> AAAA\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/empty-seq",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: []\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/empty-map",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": {}
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: {}\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-scalars",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            1,
+            "two",
+            true,
+            null
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - 1\n  - two\n  - true\n  - null\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-nested",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              [
+                4,
+                5
+              ]
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - - 1\n    - 2\n  - - 3\n    - - 4\n      - 5\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-of-maps",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            {
+              "x": 1,
+              "y": 2
+            },
+            {
+              "z": 3
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - x: 1\n    'y': 2\n  - z: 3\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-of-empties",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            [],
+            {},
+            []
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - []\n  - {}\n  - []\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-multiline-strings",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            "x\ny",
+            "p\nq\n"
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - |-\n    x\n    y\n  - |\n    p\n    q\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-of-long-strings",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ",
+            "short"
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - >-\n    lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n    lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod\n    tempor \n  - short\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/map-depth-4",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": {
+            "b": {
+              "c": {
+                "d": "deep",
+                "e": [
+                  1
+                ]
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  b:\n    c:\n      d: deep\n      e:\n        - 1\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/map-integer-key-order",
+      "op": "dump",
+      "input": {
+        "value": {
+          "1": "y",
+          "2": "x",
+          "b": 1,
+          "a": 3,
+          "01": "z",
+          "4294967295": "w"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n'1': 'y'\n'2': x\nb: 1\na: 3\n'01': z\n'4294967295': w\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/map-empty-nested",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": {
+            "b": {}
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  b: {}\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/map-with-seq-of-seq-of-map",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            [
+              {
+                "k": "v"
+              }
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - - k: v\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/map-numeric-string-values",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": "1",
+          "b": "1.0",
+          "c": "true",
+          "d": "null"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: '1'\nb: '1.0'\nc: 'true'\nd: 'null'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-explicit-null-items",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            null,
+            null
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - null\n  - null\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/map-with-dollar-key",
+      "op": "dump",
+      "input": {
+        "value": {
+          "$map": {
+            "$date": "x",
+            "other": 1
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\n$date: x\nother: 1\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/seq-of-dates",
+      "op": "dump",
+      "input": {
+        "value": {
+          "a": [
+            {
+              "$date": "2024-01-15T00:00:00.000Z"
+            },
+            {
+              "$date": "2025-02-03T04:05:06.007Z"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na:\n  - 2024-01-15T00:00:00.000Z\n  - 2025-02-03T04:05:06.007Z\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/typical-note",
+      "op": "dump",
+      "input": {
+        "value": {
+          "title": "Weekly review: plan & ship",
+          "tags": [
+            "work",
+            "review",
+            "2024"
+          ],
+          "aliases": [],
+          "created": {
+            "$date": "2024-01-15T10:30:00.000Z"
+          },
+          "pinned": false,
+          "priority": 3,
+          "memry-id": "b0c1d2e3-0000-4000-8000-000000000000"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: 'Weekly review: plan & ship'\ntags:\n  - work\n  - review\n  - '2024'\naliases: []\ncreated: 2024-01-15T10:30:00.000Z\npinned: false\npriority: 3\nmemry-id: b0c1d2e3-0000-4000-8000-000000000000\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/typical-note-crlf",
+      "op": "dump",
+      "input": {
+        "value": {
+          "title": "Weekly review: plan & ship",
+          "tags": [
+            "work",
+            "review",
+            "2024"
+          ],
+          "aliases": [],
+          "created": {
+            "$date": "2024-01-15T10:30:00.000Z"
+          },
+          "pinned": false,
+          "priority": 3,
+          "memry-id": "b0c1d2e3-0000-4000-8000-000000000000"
+        },
+        "eol": "\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\ntitle: 'Weekly review: plan & ship'\r\ntags:\r\n  - work\r\n  - review\r\n  - '2024'\r\naliases: []\r\ncreated: 2024-01-15T10:30:00.000Z\r\npinned: false\r\npriority: 3\r\nmemry-id: b0c1d2e3-0000-4000-8000-000000000000\r\n---\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/typical-properties",
+      "op": "dump",
+      "input": {
+        "value": {
+          "status": "In Progress",
+          "rating": 4.5,
+          "link": "[[Other note]]",
+          "url": "https://x.test/a?b=c#d"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nstatus: In Progress\nrating: 4.5\nlink: '[[Other note]]'\nurl: 'https://x.test/a?b=c#d'\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/typical-properties-crlf",
+      "op": "dump",
+      "input": {
+        "value": {
+          "status": "In Progress",
+          "rating": 4.5,
+          "link": "[[Other note]]",
+          "url": "https://x.test/a?b=c#d"
+        },
+        "eol": "\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\nstatus: In Progress\r\nrating: 4.5\r\nlink: '[[Other note]]'\r\nurl: 'https://x.test/a?b=c#d'\r\n---\r\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/one-key",
+      "op": "dump",
+      "input": {
+        "value": {
+          "only": "one"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nonly: one\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/dump/unicode-keys-and-values",
+      "op": "dump",
+      "input": {
+        "value": {
+          "ключ": "значение",
+          "日本": [
+            "語",
+            "😀"
+          ]
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nключ: значение\n日本:\n  - 語\n  - \"\\U0001F600\"\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/load/plain-scalar",
+      "op": "load",
+      "input": {
+        "text": "hello"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "hello"
+      }
+    },
+    {
+      "id": "frontmatter/load/int-decimal",
+      "op": "load",
+      "input": {
+        "text": "a: 12"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 12
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-signed",
+      "op": "load",
+      "input": {
+        "text": "a: [-12, +12, 0, -0, +0]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            -12,
+            12,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-binary",
+      "op": "load",
+      "input": {
+        "text": "a: 0b1010"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 10
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-octal",
+      "op": "load",
+      "input": {
+        "text": "a: 0755"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 493
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-hex",
+      "op": "load",
+      "input": {
+        "text": "a: 0xFF"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 255
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-underscores",
+      "op": "load",
+      "input": {
+        "text": "a: 1_000_000"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1000000
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-sexagesimal",
+      "op": "load",
+      "input": {
+        "text": "a: 190:20:30"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 685230
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-huge",
+      "op": "load",
+      "input": {
+        "text": "a: 123456789012345678901234567890"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1.2345678901234568e+29
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-trailing-underscore-is-string",
+      "op": "load",
+      "input": {
+        "text": "a: 12_"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "12_"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/int-bad-octal-is-string",
+      "op": "load",
+      "input": {
+        "text": "a: 0789"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "0789"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/float-forms",
+      "op": "load",
+      "input": {
+        "text": "a: [1.5, -1.5, .5, 5., 1e3, 1.5E-3, +1.5, 1_0.5]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1.5,
+            -1.5,
+            0.5,
+            5,
+            1000,
+            0.0015,
+            1.5,
+            10.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/float-special",
+      "op": "load",
+      "input": {
+        "text": "a: [.inf, -.inf, +.Inf, .INF, .nan, .NaN, .NAN]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            {
+              "$num": "Infinity"
+            },
+            {
+              "$num": "-Infinity"
+            },
+            {
+              "$num": "Infinity"
+            },
+            {
+              "$num": "Infinity"
+            },
+            {
+              "$num": "NaN"
+            },
+            {
+              "$num": "NaN"
+            },
+            {
+              "$num": "NaN"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/float-sexagesimal",
+      "op": "load",
+      "input": {
+        "text": "a: 20:59.5"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1259.5
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/float-not-quite",
+      "op": "load",
+      "input": {
+        "text": "a: [1.2.3, 1e, e3, ., 1_.5, 0.]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            "1.2.3",
+            "1e",
+            "e3",
+            ".",
+            1.5,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/bool-forms",
+      "op": "load",
+      "input": {
+        "text": "a: [true, True, TRUE, false, False, FALSE, yes, no, on, off, y, n]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            true,
+            true,
+            true,
+            false,
+            false,
+            false,
+            "yes",
+            "no",
+            "on",
+            "off",
+            "y",
+            "n"
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/null-forms",
+      "op": "load",
+      "input": {
+        "text": "a: [~, null, Null, NULL, ]\nb:\nc: ~"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            null,
+            null,
+            null,
+            null
+          ],
+          "b": null,
+          "c": null
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-date",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-01-15"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-15T00:00:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-datetime-z",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-01-15T10:30:00Z"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-15T10:30:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-space-sep",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-01-15 10:30:00"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-15T10:30:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-offset",
+      "op": "load",
+      "input": {
+        "text": "a: 2001-12-14t21:59:43.10-05:00"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2001-12-15T02:59:43.100Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-short-offset",
+      "op": "load",
+      "input": {
+        "text": "a: 2001-12-14 21:59:43.10 -5"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2001-12-15T02:59:43.100Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-fraction-long",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-01-15T10:30:00.123456789Z"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-15T10:30:00.123Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-overflow-day",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-02-31"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-03-02T00:00:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-overflow-month",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-13-01"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2025-01-01T00:00:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-two-digit-year-quirk",
+      "op": "load",
+      "input": {
+        "text": "a: 0050-01-01"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "1950-01-01T00:00:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-single-digit-parts",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-1-5 1:02:03"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-05T01:02:03.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-single-digit-date-is-string",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-1-5"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "2024-1-5"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-trailing-text-is-string",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-01-15 extra"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "2024-01-15 extra"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-tz-minutes",
+      "op": "load",
+      "input": {
+        "text": "a: 2024-01-15T10:30:00+05:30"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-15T05:00:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-quoted-is-string",
+      "op": "load",
+      "input": {
+        "text": "a: \"2024-01-15\""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "2024-01-15"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/timestamp-key",
+      "op": "load",
+      "input": {
+        "text": "2024-01-15: x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "Mon Jan 15 2024 00:00:00 GMT+0000 (Coordinated Universal Time)": "x"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/single-quoted",
+      "op": "load",
+      "input": {
+        "text": "a: 'it''s'\nb: 'multi\n  line'"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "it's",
+          "b": "multi line"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/double-quoted-escapes",
+      "op": "load",
+      "input": {
+        "text": "a: \"tab\\there\\nnewline \\\" \\\\ \\/ \\0 \\a \\b \\e \\v \\f \\r \\N \\_ \\L \\P \\x41 \\u00e9 \\U0001F600\""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "tab\there\nnewline \" \\ / \u0000 \u0007 \b \u001b \u000b \f \r        A é 😀"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/double-quoted-surrogate-pair",
+      "op": "load",
+      "input": {
+        "text": "a: \"\\ud83d\\ude00\""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "😀"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/double-quoted-line-fold",
+      "op": "load",
+      "input": {
+        "text": "a: \"one\n  two\n\n  three\""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one two\nthree"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/double-quoted-escaped-newline",
+      "op": "load",
+      "input": {
+        "text": "a: \"one \\\n   two\""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one two"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/double-quoted-bad-escape",
+      "op": "load",
+      "input": {
+        "text": "a: \"\\q\""
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/double-quoted-bad-hex",
+      "op": "load",
+      "input": {
+        "text": "a: \"\\xZZ\""
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/unterminated-double",
+      "op": "load",
+      "input": {
+        "text": "a: \"oops"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/unterminated-single",
+      "op": "load",
+      "input": {
+        "text": "a: 'oops"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/literal-clip",
+      "op": "load",
+      "input": {
+        "text": "a: |\n  one\n  two\nb: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one\ntwo\n",
+          "b": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/literal-strip",
+      "op": "load",
+      "input": {
+        "text": "a: |-\n  one\n  two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one\ntwo"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/literal-keep",
+      "op": "load",
+      "input": {
+        "text": "a: |+\n  one\n\n\nb: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one\n\n\n",
+          "b": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/literal-indent-indicator",
+      "op": "load",
+      "input": {
+        "text": "a: |2\n    indented\n  base\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "  indented\nbase\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/literal-bad-indent-zero",
+      "op": "load",
+      "input": {
+        "text": "a: |0\n  x\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/literal-repeat-chomp",
+      "op": "load",
+      "input": {
+        "text": "a: |+-\n  x\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/folded-basic",
+      "op": "load",
+      "input": {
+        "text": "a: >\n  one\n  two\n\n  three\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one two\nthree\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/folded-strip",
+      "op": "load",
+      "input": {
+        "text": "a: >-\n  one\n  two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one two"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/folded-more-indented",
+      "op": "load",
+      "input": {
+        "text": "a: >\n  one\n    indented\n  two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one\n  indented\ntwo\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/folded-keep",
+      "op": "load",
+      "input": {
+        "text": "a: >+\n  one\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one\n\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/folded-comment-header",
+      "op": "load",
+      "input": {
+        "text": "a: > # comment\n  text\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "text\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/plain-multiline",
+      "op": "load",
+      "input": {
+        "text": "a: one\n  two\n  three\nb: x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one two three",
+          "b": "x"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/plain-with-hash",
+      "op": "load",
+      "input": {
+        "text": "a: one #comment\nb: two#notcomment"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "one",
+          "b": "two#notcomment"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/plain-with-colon",
+      "op": "load",
+      "input": {
+        "text": "a: http://x.test:80/p"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "http://x.test:80/p"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/plain-dash-start",
+      "op": "load",
+      "input": {
+        "text": "a: -x\nb: - y"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-seq",
+      "op": "load",
+      "input": {
+        "text": "a: [1, [2, 3], {x: 1}]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1,
+            [
+              2,
+              3
+            ],
+            {
+              "x": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-map",
+      "op": "load",
+      "input": {
+        "text": "a: {x: 1, y: [a, b], z: {q: ~}}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "x": 1,
+            "y": [
+              "a",
+              "b"
+            ],
+            "z": {
+              "q": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-multiline",
+      "op": "load",
+      "input": {
+        "text": "a: [\n  1,\n  2\n]\nb: {\n  x: 1\n}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1,
+            2
+          ],
+          "b": {
+            "x": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-trailing-comma",
+      "op": "load",
+      "input": {
+        "text": "a: [1, 2, ]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-missing-comma",
+      "op": "load",
+      "input": {
+        "text": "a: [1 2]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            "1 2"
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-pair-in-seq",
+      "op": "load",
+      "input": {
+        "text": "a: [x: 1, y: 2]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            {
+              "x": 1
+            },
+            {
+              "y": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-explicit-pair",
+      "op": "load",
+      "input": {
+        "text": "a: [? x : 1]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            {
+              "x": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-unterminated",
+      "op": "load",
+      "input": {
+        "text": "a: [1, 2"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-empty",
+      "op": "load",
+      "input": {
+        "text": "a: []\nb: {}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [],
+          "b": {}
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/flow-key-with-null-value",
+      "op": "load",
+      "input": {
+        "text": "a: {x, y}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "x": null,
+            "y": null
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/block-seq-top",
+      "op": "load",
+      "input": {
+        "text": "- a\n- b\n-\n- c"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          "a",
+          "b",
+          null,
+          "c"
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/block-seq-nested",
+      "op": "load",
+      "input": {
+        "text": "- - 1\n  - 2\n- - 3"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          [
+            1,
+            2
+          ],
+          [
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/block-seq-of-maps",
+      "op": "load",
+      "input": {
+        "text": "- a: 1\n  b: 2\n- c: 3"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "a": 1,
+            "b": 2
+          },
+          {
+            "c": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/block-seq-same-indent-as-parent",
+      "op": "load",
+      "input": {
+        "text": "a:\n- 1\n- 2\nb: 3"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1,
+            2
+          ],
+          "b": 3
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/block-map-nested",
+      "op": "load",
+      "input": {
+        "text": "a:\n  b:\n    c: 1\n  d: 2\ne: 3"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "b": {
+              "c": 1
+            },
+            "d": 2
+          },
+          "e": 3
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/block-map-bad-indent",
+      "op": "load",
+      "input": {
+        "text": "a:\n  b: 1\n c: 2"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/block-map-missing-colon",
+      "op": "load",
+      "input": {
+        "text": "a: 1\nb\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/block-map-no-space-after-colon",
+      "op": "load",
+      "input": {
+        "text": "a:1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "a:1"
+      }
+    },
+    {
+      "id": "frontmatter/load/explicit-key",
+      "op": "load",
+      "input": {
+        "text": "? a\n: 1\n? [x, y]\n: 2"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "x,y": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/explicit-key-without-value",
+      "op": "load",
+      "input": {
+        "text": "? a\n? b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": null,
+          "b": null
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/explicit-key-complex",
+      "op": "load",
+      "input": {
+        "text": "? - a\n  - b\n: value"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a,b": "value"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-int",
+      "op": "load",
+      "input": {
+        "text": "1: a\n2: b"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "1": "a",
+          "2": "b"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-float",
+      "op": "load",
+      "input": {
+        "text": "1.5: b\n.inf: c"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "1.5": "b",
+          "Infinity": "c"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-bool",
+      "op": "load",
+      "input": {
+        "text": "true: c\nno: d"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "true": "c",
+          "no": "d"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-null",
+      "op": "load",
+      "input": {
+        "text": "null: d"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "null": "d"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-tilde",
+      "op": "load",
+      "input": {
+        "text": "~: e"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "null": "e"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-null-and-tilde-collide",
+      "op": "load",
+      "input": {
+        "text": "null: d\n~: e"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/array-key",
+      "op": "load",
+      "input": {
+        "text": "[1, 2]: x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "1,2": "x"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/map-key",
+      "op": "load",
+      "input": {
+        "text": "{a: 1}: x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "[object Object]": "x"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/nested-array-key-error",
+      "op": "load",
+      "input": {
+        "text": "[[1], 2]: x"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/integer-key-order",
+      "op": "load",
+      "input": {
+        "text": "b: 1\n10: x\n2: y\na: 2\n01: z"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "1": "z",
+          "2": "y",
+          "10": "x",
+          "b": 1,
+          "a": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/duplicate-key-error",
+      "op": "load",
+      "input": {
+        "text": "a: 1\nb: 2\na: 3"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/duplicate-key-flow-error",
+      "op": "load",
+      "input": {
+        "text": "a: {x: 1, x: 2}"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/anchor-alias-scalar",
+      "op": "load",
+      "input": {
+        "text": "a: &x hello\nb: *x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "hello",
+          "b": "hello"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/anchor-alias-seq",
+      "op": "load",
+      "input": {
+        "text": "a: &x [1, 2]\nb: *x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1,
+            2
+          ],
+          "b": [
+            1,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/anchor-alias-map",
+      "op": "load",
+      "input": {
+        "text": "a: &x {p: 1}\nb: *x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "p": 1
+          },
+          "b": {
+            "p": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/alias-undefined",
+      "op": "load",
+      "input": {
+        "text": "a: *nope"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/alias-with-tag",
+      "op": "load",
+      "input": {
+        "text": "a: &x 1\nb: !!str *x"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/anchor-on-block-map",
+      "op": "load",
+      "input": {
+        "text": "a: &x\n  p: 1\nb: *x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "p": 1
+          },
+          "b": {
+            "p": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/anchor-on-block-seq",
+      "op": "load",
+      "input": {
+        "text": "a: &x\n- 1\n- 2\nb: *x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1,
+            2
+          ],
+          "b": [
+            1,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/anchor-top-level-scalar",
+      "op": "load",
+      "input": {
+        "text": "&x hello"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "hello"
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-basic",
+      "op": "load",
+      "input": {
+        "text": "base: &b {x: 1, y: 2}\nuse:\n  <<: *b\n  y: 3"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "base": {
+            "x": 1,
+            "y": 2
+          },
+          "use": {
+            "x": 1,
+            "y": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-list",
+      "op": "load",
+      "input": {
+        "text": "a: &a {p: 1}\nb: &b {q: 2}\nuse:\n  <<: [*a, *b]\n  r: 3"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "p": 1
+          },
+          "b": {
+            "q": 2
+          },
+          "use": {
+            "p": 1,
+            "q": 2,
+            "r": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-override-after",
+      "op": "load",
+      "input": {
+        "text": "base: &b {x: 1}\nuse:\n  <<: *b\n  x: 9"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "base": {
+            "x": 1
+          },
+          "use": {
+            "x": 9
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-scalar-error",
+      "op": "load",
+      "input": {
+        "text": "use:\n  <<: 5"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-null-error",
+      "op": "load",
+      "input": {
+        "text": "use:\n  <<:\n  x: 1"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-seq-of-seq",
+      "op": "load",
+      "input": {
+        "text": "a: &a [1, 2]\nuse:\n  <<: *a"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/merge-quoted-key-is-plain-key",
+      "op": "load",
+      "input": {
+        "text": "use:\n  \"<<\": 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "use": {
+            "<<": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-str",
+      "op": "load",
+      "input": {
+        "text": "a: !!str 12\nb: !!str\nc: !!str null"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "12",
+          "b": "",
+          "c": "null"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-int",
+      "op": "load",
+      "input": {
+        "text": "a: !!int \"12\"\nb: !!int 0x10"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 12,
+          "b": 16
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-int-bad",
+      "op": "load",
+      "input": {
+        "text": "a: !!int abc"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-float",
+      "op": "load",
+      "input": {
+        "text": "a: !!float 1\nb: !!float \"2.5\""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": 2.5
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-bool-bad",
+      "op": "load",
+      "input": {
+        "text": "a: !!bool maybe"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-null",
+      "op": "load",
+      "input": {
+        "text": "a: !!null ~\nb: !!null"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": null,
+          "b": null
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-seq-and-map",
+      "op": "load",
+      "input": {
+        "text": "a: !!seq [1]\nb: !!map {x: 1}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            1
+          ],
+          "b": {
+            "x": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-seq-on-map-error",
+      "op": "load",
+      "input": {
+        "text": "a: !!seq {x: 1}"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-timestamp",
+      "op": "load",
+      "input": {
+        "text": "a: !!timestamp 2024-01-15"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$date": "2024-01-15T00:00:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-binary",
+      "op": "load",
+      "input": {
+        "text": "a: !!binary aGVsbG8gd29ybGQ="
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$bin": "aGVsbG8gd29ybGQ="
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-binary-multiline",
+      "op": "load",
+      "input": {
+        "text": "a: !!binary |\n  aGVs\n  bG8=\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "$bin": "aGVsbG8="
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-binary-bad",
+      "op": "load",
+      "input": {
+        "text": "a: !!binary \"***\""
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-set",
+      "op": "load",
+      "input": {
+        "text": "a: !!set {x, y}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": {
+            "x": null,
+            "y": null
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-set-bad",
+      "op": "load",
+      "input": {
+        "text": "a: !!set {x: 1}"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-omap",
+      "op": "load",
+      "input": {
+        "text": "a: !!omap\n  - x: 1\n  - y: 2"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            {
+              "x": 1
+            },
+            {
+              "y": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-omap-duplicate",
+      "op": "load",
+      "input": {
+        "text": "a: !!omap\n  - x: 1\n  - x: 2"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-pairs",
+      "op": "load",
+      "input": {
+        "text": "a: !!pairs\n  - x: 1\n  - x: 2"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": [
+            [
+              "x",
+              1
+            ],
+            [
+              "x",
+              2
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-pairs-bad",
+      "op": "load",
+      "input": {
+        "text": "a: !!pairs\n  - [1]"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-unknown",
+      "op": "load",
+      "input": {
+        "text": "a: !foo bar"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-verbatim",
+      "op": "load",
+      "input": {
+        "text": "a: !<tag:yaml.org,2002:str> 12"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "12"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-bang-only",
+      "op": "load",
+      "input": {
+        "text": "a: ! 12"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "12"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-handle-directive",
+      "op": "load",
+      "input": {
+        "text": "%TAG !e! tag:yaml.org,2002:\n---\na: !e!str 12"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "12"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tag-duplicate-error",
+      "op": "load",
+      "input": {
+        "text": "a: !!str !!int 1"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/comments",
+      "op": "load",
+      "input": {
+        "text": "# top\na: 1 # trailing\n# between\nb: 2"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/comment-without-space-is-text",
+      "op": "load",
+      "input": {
+        "text": "a: x#y"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "x#y"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/document-start-marker",
+      "op": "load",
+      "input": {
+        "text": "---\na: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/document-end-marker",
+      "op": "load",
+      "input": {
+        "text": "a: 1\n...\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/two-documents-error",
+      "op": "load",
+      "input": {
+        "text": "a: 1\n---\nb: 2\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/empty-document",
+      "op": "load",
+      "input": {
+        "text": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": null
+      }
+    },
+    {
+      "id": "frontmatter/load/only-comment",
+      "op": "load",
+      "input": {
+        "text": "# nothing"
+      },
+      "expected": {
+        "status": "ok",
+        "output": null
+      }
+    },
+    {
+      "id": "frontmatter/load/only-marker",
+      "op": "load",
+      "input": {
+        "text": "---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": null
+      }
+    },
+    {
+      "id": "frontmatter/load/document-end-then-content-error",
+      "op": "load",
+      "input": {
+        "text": "a: 1\n...\nb: 2\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/yaml-directive",
+      "op": "load",
+      "input": {
+        "text": "%YAML 1.2\n---\na: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/yaml-directive-bad-major",
+      "op": "load",
+      "input": {
+        "text": "%YAML 2.0\n---\na: 1"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/yaml-directive-duplicate",
+      "op": "load",
+      "input": {
+        "text": "%YAML 1.2\n%YAML 1.2\n---\na: 1"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/yaml-directive-without-marker",
+      "op": "load",
+      "input": {
+        "text": "%YAML 1.2\na: 1"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/unknown-directive",
+      "op": "load",
+      "input": {
+        "text": "%FOO bar\n---\na: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/bom-start",
+      "op": "load",
+      "input": {
+        "text": "﻿a: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/nul-error",
+      "op": "load",
+      "input": {
+        "text": "a: 1\u0000"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/control-char-error",
+      "op": "load",
+      "input": {
+        "text": "a: \u0001"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/tab-indent-error",
+      "op": "load",
+      "input": {
+        "text": "a:\n\tb: 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": null,
+          "b": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/tab-in-value",
+      "op": "load",
+      "input": {
+        "text": "a: x\ty"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "x\ty"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/crlf-input",
+      "op": "load",
+      "input": {
+        "text": "a: 1\r\nb:\r\n  - x\r\n  - y\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": [
+            "x",
+            "y"
+          ]
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/cr-only-input",
+      "op": "load",
+      "input": {
+        "text": "a: 1\rb: 2\r"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/nested-seq-in-map-in-seq",
+      "op": "load",
+      "input": {
+        "text": "- a:\n  - 1\n  - 2\n  b: x"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "a": [
+              1,
+              2
+            ],
+            "b": "x"
+          }
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/unicode",
+      "op": "load",
+      "input": {
+        "text": "a: 日本語\nb: 😀\n\"ключ\": значение"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "日本語",
+          "b": "😀",
+          "ключ": "значение"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/line-separator-is-content",
+      "op": "load",
+      "input": {
+        "text": "a: x y"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": "x y"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/long-plain-key-value",
+      "op": "load",
+      "input": {
+        "text": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/deep-nesting",
+      "op": "load",
+      "input": {
+        "text": "k0:\n  k1:\n    k2:\n      k3:\n        k4:\n          k5:\n            k6:\n              k7:\n                k8:\n                  k9:\n                    k10:\n                      k11:\n                        k12:\n                          k13:\n                            k14:\n                              k15:\n                                k16:\n                                  k17:\n                                    k18:\n                                      k19:\n                                        k20:\n                                          k21:\n                                            k22:\n                                              k23:\n                                                k24:\n                                                  k25:\n                                                    k26:\n                                                      k27:\n                                                        k28:\n                                                          k29: leaf"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "k0": {
+            "k1": {
+              "k2": {
+                "k3": {
+                  "k4": {
+                    "k5": {
+                      "k6": {
+                        "k7": {
+                          "k8": {
+                            "k9": {
+                              "k10": {
+                                "k11": {
+                                  "k12": {
+                                    "k13": {
+                                      "k14": {
+                                        "k15": {
+                                          "k16": {
+                                            "k17": {
+                                              "k18": {
+                                                "k19": {
+                                                  "k20": {
+                                                    "k21": {
+                                                      "k22": {
+                                                        "k23": {
+                                                          "k24": {
+                                                            "k25": {
+                                                              "k26": {
+                                                                "k27": {
+                                                                  "k28": {
+                                                                    "k29": "leaf"
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/document-separator-in-plain",
+      "op": "load",
+      "input": {
+        "text": "a: x\n---y"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/colon-key-no-value",
+      "op": "load",
+      "input": {
+        "text": "a:"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": null
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/colon-only",
+      "op": "load",
+      "input": {
+        "text": ":"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/question-only",
+      "op": "load",
+      "input": {
+        "text": "?"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "null": null
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/dash-only",
+      "op": "load",
+      "input": {
+        "text": "-"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          null
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/star-only-error",
+      "op": "load",
+      "input": {
+        "text": "*"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/ampersand-only-error",
+      "op": "load",
+      "input": {
+        "text": "&"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/bang-only",
+      "op": "load",
+      "input": {
+        "text": "!"
+      },
+      "expected": {
+        "status": "ok",
+        "output": null
+      }
+    },
+    {
+      "id": "frontmatter/load/percent-start-plain-error",
+      "op": "load",
+      "input": {
+        "text": "%a"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/at-start-error",
+      "op": "load",
+      "input": {
+        "text": "@a"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/backtick-start-error",
+      "op": "load",
+      "input": {
+        "text": "`a"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/multiline-implicit-key-error",
+      "op": "load",
+      "input": {
+        "text": "? a\n  b\n: c\nd\ne: f"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "frontmatter/load/seq-bad-indent-error",
+      "op": "load",
+      "input": {
+        "text": "- a\n - b"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          "a - b"
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/json-like",
+      "op": "load",
+      "input": {
+        "text": "{\"a\": 1, \"b\": [true, null, \"x\"], \"c\": {\"d\": 1.5}}"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": [
+            true,
+            null,
+            "x"
+          ],
+          "c": {
+            "d": 1.5
+          }
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/plain-scalar-spans-lines-in-seq",
+      "op": "load",
+      "input": {
+        "text": "- one\n  two\n- three"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          "one two",
+          "three"
+        ]
+      }
+    },
+    {
+      "id": "frontmatter/load/sparse-lines",
+      "op": "load",
+      "input": {
+        "text": "a: 1\n\n\n\nb: 2\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/trailing-spaces",
+      "op": "load",
+      "input": {
+        "text": "a: 1   \nb: 2\t\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1,
+          "b": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/key-with-trailing-spaces",
+      "op": "load",
+      "input": {
+        "text": "a   : 1"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/quoted-key",
+      "op": "load",
+      "input": {
+        "text": "\"a b\": 1\n'c d': 2"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "a b": 1,
+          "c d": 2
+        }
+      }
+    },
+    {
+      "id": "frontmatter/load/complex-real-note",
+      "op": "load",
+      "input": {
+        "text": "title: \"Weekly: plan\"\ntags:\n  - work\n  - review\ncreated: 2024-01-15T10:30:00Z\npinned: false\naliases: []\nrating: 4.5\nurl: https://x.test/a?b=c#d\nnotes: |\n  first\n  second\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "title": "Weekly: plan",
+          "tags": [
+            "work",
+            "review"
+          ],
+          "created": {
+            "$date": "2024-01-15T10:30:00.000Z"
+          },
+          "pinned": false,
+          "aliases": [],
+          "rating": 4.5,
+          "url": "https://x.test/a?b=c#d",
+          "notes": "first\nsecond\n"
+        }
+      }
+    },
+    {
+      "id": "frontmatter/write/no-keys-body",
+      "op": "write",
+      "input": {
+        "value": {},
+        "content": "body\n\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "body\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/no-keys-empty",
+      "op": "write",
+      "input": {
+        "value": {},
+        "content": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": ""
+      }
+    },
+    {
+      "id": "frontmatter/write/keys-body",
+      "op": "write",
+      "input": {
+        "value": {
+          "title": "A",
+          "tags": [
+            "x"
+          ]
+        },
+        "content": "body text\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: A\ntags:\n  - x\n---\nbody text\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/keys-empty-body",
+      "op": "write",
+      "input": {
+        "value": {
+          "title": "A"
+        },
+        "content": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: A\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/keys-body-no-newline",
+      "op": "write",
+      "input": {
+        "value": {
+          "title": "A"
+        },
+        "content": "body"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: A\n---\nbody\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/keys-blank-body",
+      "op": "write",
+      "input": {
+        "value": {
+          "title": "A"
+        },
+        "content": "\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\ntitle: A\n---\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/date-value",
+      "op": "write",
+      "input": {
+        "value": {
+          "d": {
+            "$date": "2024-01-15T00:00:00.000Z"
+          }
+        },
+        "content": "x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: 2024-01-15T00:00:00.000Z\n---\nx\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/crlf-body-kept",
+      "op": "write",
+      "input": {
+        "value": {
+          "a": 1
+        },
+        "content": "a\r\nb\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\na: 1\n---\na\r\nb\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/unicode",
+      "op": "write",
+      "input": {
+        "value": {
+          "t": "日本語 😀"
+        },
+        "content": "日本語\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nt: \"日本語 \\U0001F600\"\n---\n日本語\n"
+      }
+    },
+    {
+      "id": "frontmatter/write/long-string",
+      "op": "write",
+      "input": {
+        "value": {
+          "d": "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor "
+        },
+        "content": "b"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nd: >-\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n  lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor\n---\nb\n"
+      }
+    }
+  ]
+}

@@ -8,6 +8,8 @@ publish = false
 description = "Desktop services of MemryNote. Never depends on tauri."
 
 [dependencies]
+# The markdown converter is a desktop-only feature of the core; iOS keeps it off.
+memry-core = { path = "../memry-core", default-features = false, features = ["markdown"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
