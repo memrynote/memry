@@ -67,7 +67,8 @@ export interface ReadwiseService {
 
 function oneOf<T extends string>(allowed: readonly T[], value: unknown, fallback: T): T {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value)
-    ? (value as T)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+      (value as T)
     : fallback
 }
 
@@ -160,6 +161,7 @@ export function createReadwiseService(dataDb: DataDb): ReadwiseService {
               'invalid-token'
             )
           : null,
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- partial value cast through its boundary type; precise type is not available
         counts: isRecord(parsed.counts) ? (parsed.counts as unknown as ReadwiseRunCounts) : null
       }
     } catch {
@@ -209,6 +211,7 @@ export function createReadwiseService(dataDb: DataDb): ReadwiseService {
         .all()
         .filter((row) => row.readwiseBookId !== null)
         .map((row) => ({
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
           readwiseBookId: row.readwiseBookId as number,
           noteId: row.noteId,
           deletedAt: row.updatedAt

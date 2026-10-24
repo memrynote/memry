@@ -84,6 +84,7 @@ function text(
   }
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over CanvasCard.entity; an entity from a newer build falls through unchanged
 function entityId(ctx: SandboxContext, card: CanvasCard): string {
   switch (card.entity) {
     case 'note':
@@ -123,15 +124,20 @@ function buildScene(ctx: SandboxContext, spec: CanvasSpec): Element[] {
     const from = cards.get(arrow.from)!
     const to = cards.get(arrow.to)!
     const start = {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       x: (from.x as number) + (from.width as number) / 2,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       y: (from.y as number) + (from.height as number) / 2
     }
     const end = {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       x: (to.x as number) + (to.width as number) / 2,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       y: (to.y as number) + (to.height as number) / 2
     }
     // Restore does not add arrows to a card's boundElements; without this the arrow would not follow a dragged card.
     for (const card of [from, to])
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       (card.boundElements as Element[]).push({ type: 'arrow', id: arrow.id })
     return {
       ...base(

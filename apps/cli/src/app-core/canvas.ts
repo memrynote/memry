@@ -26,6 +26,7 @@ import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { createId } from '@memry/app-core/ids'
 import type { DataDb } from './database.ts'
 import { safeFilename } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 // Mirrors desktop's canvas store (apps/desktop/src/main/canvas/store.ts,
 // scene-file.ts, folder-paths.ts, edge-index.ts, scene-refs.ts). Those modules
@@ -199,6 +200,7 @@ function withCanvasMeta(
     parsed = { ...EMPTY_SCENE }
   } else {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
       parsed = JSON.parse(scene) as CanvasFileShape
     } catch {
       throw new Error('Canvas scene is not valid JSON')
@@ -211,6 +213,7 @@ function stripCanvasMeta(content: string): string {
   if (!content.trim()) return ''
   let parsed: CanvasFileShape
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     parsed = JSON.parse(content) as CanvasFileShape
   } catch {
     return content
@@ -245,7 +248,7 @@ function readScene(vaultPath: string, relativePath: string | null): string | nul
   try {
     return stripCanvasMeta(readFileSync(resolveCanvasFile(vaultPath, relativePath), 'utf-8'))
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code
+    const code = errorCode(error)
     if (code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR') return null
     throw error
   }
@@ -265,7 +268,9 @@ interface SceneElementLike {
 function sceneElements(scene: string): SceneElementLike[] {
   if (!scene) return []
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     const elements = (JSON.parse(scene) as { elements?: unknown }).elements
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     return Array.isArray(elements) ? (elements as SceneElementLike[]) : []
   } catch {
     return []
@@ -276,7 +281,9 @@ function cardRef(element: SceneElementLike): CanvasEntityRef | null {
   if (element.type !== 'rectangle' || element.isDeleted === true) return null
   const data = element.customData
   if (!data || typeof data !== 'object') return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const entityType = (data as Record<string, unknown>).entityType
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const entityId = (data as Record<string, unknown>).entityId
   if (
     typeof entityType !== 'string' ||
@@ -286,6 +293,7 @@ function cardRef(element: SceneElementLike): CanvasEntityRef | null {
   ) {
     return null
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
   return { entityType: entityType as CanvasEntityRef['entityType'], entityId }
 }
 

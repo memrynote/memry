@@ -49,6 +49,7 @@ async function listOpenAiCompatibleModels(baseUrl: string): Promise<string[]> {
     signal: AbortSignal.timeout(LOCAL_REQUEST_TIMEOUT_MS)
   })
   if (!response.ok) throw new Error(`/v1/models returned HTTP ${response.status}`)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const payload = (await response.json()) as { data?: Array<{ id?: string }> }
   return (payload.data ?? []).flatMap((model) => (model.id ? [model.id] : []))
 }

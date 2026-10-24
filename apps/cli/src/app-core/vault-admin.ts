@@ -8,6 +8,7 @@ import type { VaultActivityEntry, VaultActivityFilter } from '@memry/contracts/v
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import type { DataDb } from './database.ts'
 import { getConfigPath, getMemryDir } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 export interface ActivityListOptions {
   limit?: number
@@ -41,6 +42,7 @@ const activityFilters: ReadonlySet<VaultActivityFilter> = new Set(['all', 'probl
 
 function isActivityEntry(value: unknown): value is VaultActivityEntry {
   if (!value || typeof value !== 'object') return false
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const entry = value as Record<string, unknown>
   return (
     entry.v === 1 &&
@@ -98,6 +100,7 @@ export function createVaultAdminService({
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
           throw new Error('not an object')
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
         existing = parsed as Record<string, unknown>
       } catch (error) {
         // Rewriting an unreadable config would lose the user's settings.
@@ -106,6 +109,7 @@ export function createVaultAdminService({
           cause: error
         })
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       const previous = existing.vaultIcon as { updatedAt?: unknown } | undefined
       const previousAt = typeof previous?.updatedAt === 'number' ? previous.updatedAt : 0
       const updatedAt = Math.max(Date.now(), previousAt + 1)
@@ -123,7 +127,7 @@ export function createVaultAdminService({
       try {
         content = await fs.readFile(activityPath, 'utf-8')
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
+        if (errorCode(error) === 'ENOENT') return []
         throw error
       }
       const entries: VaultActivityEntry[] = []

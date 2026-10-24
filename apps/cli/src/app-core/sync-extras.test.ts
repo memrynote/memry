@@ -227,7 +227,7 @@ test('sync large-notes reports notes near or over the sync ceiling', async () =>
       [near.id, 'approaching']
     ]
   )
-  assert.ok(result.notes[0]!.sizeBytes > result.notes[1]!.sizeBytes)
+  assert.ok(result.notes[0].sizeBytes > result.notes[1].sizeBytes)
 })
 
 test('sync binding reads the vault account choice', async () => {

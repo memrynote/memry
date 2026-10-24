@@ -14,6 +14,7 @@ import { parseMarkdownNote } from '@memry/app-core/markdown'
 import { ATTACHMENTS_DIR, normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import type { NotesService } from './notes.ts'
 import { propertiesFromFrontmatter } from './note-properties.ts'
+import { errorCode } from './errno.ts'
 
 export interface AttachmentResult {
   success: boolean
@@ -356,6 +357,7 @@ function renderNoteHtml(
   options: ExportHtmlOptions
 ): string {
   const includeMetadata = options.includeMetadata ?? true
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const contentHtml = marked.parse(wikiLinksToText(exportedBody(note.content, options))) as string
   const tags = note.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join('')
   const metadata = includeMetadata
@@ -516,7 +518,7 @@ export function createAttachmentsService({
         }
         return attachments
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
+        if (errorCode(error) === 'ENOENT') return []
         throw error
       }
     },

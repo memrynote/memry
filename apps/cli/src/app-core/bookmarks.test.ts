@@ -26,7 +26,7 @@ function createInMemoryDataDb(): DataDb {
     );
     CREATE UNIQUE INDEX idx_bookmarks_unique_item ON bookmarks (item_type, item_id);
   `)
-  return drizzle(sqlite, { schema: dataSchema }) as DataDb
+  return drizzle(sqlite, { schema: dataSchema })
 }
 
 // Bookmark row ids must be deterministic (`bmk_<itemType>_<itemId>`), not random

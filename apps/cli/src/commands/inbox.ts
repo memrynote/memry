@@ -127,6 +127,7 @@ export async function runInboxExtras(
     case 'capture-image':
     case 'capture-pdf':
     case 'capture-voice': {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
       const kind = parsed.subcommand.slice('capture-'.length) as 'image' | 'pdf' | 'voice'
       print(
         io,

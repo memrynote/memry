@@ -17,6 +17,7 @@ import type { DataDb } from './database.ts'
 import type { FoldersService } from './folders.ts'
 import type { NotesService } from './notes.ts'
 import { normalizePath } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
 export type InboxJobType = 'transcription' | 'metadata-scrape'
@@ -338,7 +339,7 @@ export function createInboxFilingService({
     try {
       await fs.rename(source, destination)
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error
+      if (errorCode(error) !== 'EXDEV') throw error
       await fs.copyFile(source, destination)
       await fs.unlink(source)
     }
@@ -514,6 +515,7 @@ export function createInboxFilingService({
         const key = folder === '.' ? '' : folder
         const entry = byFolder.get(key) ?? { count: 0, tags: new Map<string, number>() }
         entry.count += 1
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
         const rowTags = Array.isArray(row.tags) ? (row.tags as string[]) : []
         for (const tag of rowTags) {
           if (tag !== 'inbox') entry.tags.set(tag, (entry.tags.get(tag) ?? 0) + 1)

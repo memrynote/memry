@@ -375,10 +375,10 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
           dataDb: databases.dataDb
         })
       },
-      setIcon: vaultAdmin.setIcon,
-      listActivity: vaultAdmin.listActivity,
-      clearActivity: vaultAdmin.clearActivity,
-      listLocks: vaultAdmin.listLocks
+      setIcon: (icon) => vaultAdmin.setIcon(icon),
+      listActivity: (options) => vaultAdmin.listActivity(options),
+      clearActivity: () => vaultAdmin.clearActivity(),
+      listLocks: () => vaultAdmin.listLocks()
     },
     notes,
     folders,

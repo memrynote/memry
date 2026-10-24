@@ -61,7 +61,8 @@ function parseObject(value: string | null | undefined): Record<string, unknown> 
   try {
     const parsed: unknown = JSON.parse(value)
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+        (parsed as Record<string, unknown>)
       : {}
   } catch {
     return {}
@@ -77,7 +78,9 @@ function parseSelectOptions(value: string | null | undefined): SelectOption[] {
     if (!Array.isArray(parsed)) return []
     return parsed.flatMap((entry): SelectOption[] => {
       if (typeof entry === 'string') return [{ value: entry, color: DEFAULT_OPTION_COLOR }]
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
       if (entry && typeof entry === 'object' && typeof (entry as SelectOption).value === 'string') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
         return [entry as SelectOption]
       }
       return []
@@ -95,7 +98,8 @@ async function readFileEntries(
     const raw = await fs.readFile(path.join(getMemryDir(vaultPath), 'properties.md'), 'utf8')
     const properties = matter(raw).data.properties
     return properties && typeof properties === 'object' && !Array.isArray(properties)
-      ? (properties as Record<string, Record<string, unknown>>)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
+        (properties as Record<string, Record<string, unknown>>)
       : {}
   } catch {
     return {}
@@ -192,6 +196,7 @@ export function createPropertyToolsService({
         if (existing && existing.type !== PropertyTypes.STATUS) {
           throw new Error(`Property "${name}" is not a status property`)
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
         const key = (categoryKey ?? 'todo') as StatusCategoryKey
         if (!STATUS_CATEGORY_KEYS.includes(key)) {
           throw new Error(
@@ -212,6 +217,7 @@ export function createPropertyToolsService({
             ? saved(name, options)
             : properties.createDefinition({ name, type: PropertyTypes.STATUS, options })
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
         return existing as PropertyDefinition
       }
 

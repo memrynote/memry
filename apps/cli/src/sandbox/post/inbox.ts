@@ -51,6 +51,7 @@ export function inboxHistory({ ctx, data }: PostContext): void {
     updateItem.run(captured.toISOString(), later, later, later, later, id)
 
     if (!spec.filed) continue
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     const item = read.get(id) as {
       type: string
       content: string | null
@@ -68,6 +69,7 @@ export function inboxHistory({ ctx, data }: PostContext): void {
     )
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const rows = data
     .prepare('SELECT type, created_at, filed_at, archived_at FROM inbox_items')
     .all() as Array<{

@@ -175,6 +175,7 @@ export function createAttachmentToolsService({
         .join(encodeAttachmentUrl(newPart))
       content = content.replace(/<!-- file:(\{.*?\}) -->/g, (marker, json: string) => {
         try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
           const props = JSON.parse(json) as Record<string, unknown>
           if (typeof props.url !== 'string' || !props.url.endsWith(newPart)) return marker
           return `<!-- file:${JSON.stringify({ ...props, name: display.replace(/[{}]/g, '') })} -->`

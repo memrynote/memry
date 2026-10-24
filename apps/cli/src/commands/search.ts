@@ -40,6 +40,7 @@ export function parseSearchOptions(parsed: ParsedCli): SearchOptions {
     if (!(searchKinds as readonly string[]).includes(type)) {
       throw new Error(`Invalid --type: ${type} (use ${searchKinds.join('|')})`)
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
     return type as SearchResult['kind']
   })
   const tags = listFlag(parsed, 'tag').map((tag) => tag.replace(/^#/, ''))

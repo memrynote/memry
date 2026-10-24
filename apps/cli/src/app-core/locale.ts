@@ -27,6 +27,7 @@ export function createLocaleService({
     const configPath = getConfigPath(vaultPath)
     let config: Record<string, unknown> = {}
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
       config = JSON.parse(await fs.readFile(configPath, 'utf-8')) as Record<string, unknown>
     } catch {
       config = {}
@@ -36,7 +37,8 @@ export function createLocaleService({
       config.preferences &&
       typeof config.preferences === 'object' &&
       !Array.isArray(config.preferences)
-        ? (config.preferences as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (config.preferences as Record<string, unknown>)
         : {}
 
     await fs.mkdir(getMemryDir(vaultPath), { recursive: true })

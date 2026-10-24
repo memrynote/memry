@@ -5,12 +5,13 @@ import path from 'node:path'
 import { parseArgs } from 'node:util'
 
 import { generateSandboxAt } from './generate.ts'
+import { errorCode } from '../app-core/errno.ts'
 
 async function isMissingOrEmpty(dir: string): Promise<boolean> {
   try {
     return (await fs.readdir(dir)).length === 0
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return true
+    if (errorCode(error) === 'ENOENT') return true
     throw error
   }
 }

@@ -217,6 +217,13 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+function byStart(order: 'asc' | 'desc') {
+  return (left: { startAt: string }, right: { startAt: string }) =>
+    order === 'asc'
+      ? left.startAt.localeCompare(right.startAt)
+      : right.startAt.localeCompare(left.startAt)
+}
+
 export function createCalendarExtrasService({
   dataDb,
   indexDb,
@@ -291,12 +298,6 @@ export function createCalendarExtrasService({
         return [...upcoming.slice(0, cap), ...past.slice(0, cap)]
           .toSorted((left, right) => distance(left.startAt) - distance(right.startAt))
           .slice(0, cap)
-      }
-      function byStart(order: 'asc' | 'desc') {
-        return (left: { startAt: string }, right: { startAt: string }) =>
-          order === 'asc'
-            ? left.startAt.localeCompare(right.startAt)
-            : right.startAt.localeCompare(left.startAt)
       }
 
       const native = nearest(

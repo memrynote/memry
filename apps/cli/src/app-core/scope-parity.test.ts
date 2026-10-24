@@ -295,7 +295,7 @@ test('notes attach embeds the file desktop-style and queues the upload for sync'
       // insertion order is not a stable expectation.
       assert.deepEqual(
         queued.map((row) => row.diskPath).toSorted(),
-        [image.absolutePath, pdf.absolutePath].toSorted()
+        [image.absolutePath, pdf.absolutePath].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
       )
       // Attachment ids are minted by the upload path — the CLI must never
       // invent one, or peers request a blob the server does not have.

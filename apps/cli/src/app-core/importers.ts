@@ -215,6 +215,7 @@ function isRoamPageArray(value: unknown): value is RoamPage[] {
       (page) =>
         typeof page === 'object' &&
         page !== null &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
         typeof (page as { title?: unknown }).title === 'string'
     )
   )

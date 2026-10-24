@@ -139,6 +139,7 @@ function setNestedValue(target: Record<string, unknown>, keys: string[], value: 
     if (!current[part] || typeof current[part] !== 'object' || Array.isArray(current[part])) {
       current[part] = {}
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     current = current[part] as Record<string, unknown>
   }
   const last = keys.at(-1)
@@ -167,6 +168,7 @@ function parseQuarantinedItems(value: string | undefined): QuarantinedItemRecord
     if (!Array.isArray(parsed)) return []
     return parsed.flatMap((entry): QuarantinedItemRecord[] => {
       if (!entry || typeof entry !== 'object') return []
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
       const candidate = entry as Partial<QuarantinedItemRecord>
       if (
         typeof candidate.itemId !== 'string' ||
@@ -287,7 +289,8 @@ export function createSyncService({
       if (!row) return null
       const parsed = parseJson(row.value)
       return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (parsed as Record<string, unknown>)
         : {}
     },
 

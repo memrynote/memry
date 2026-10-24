@@ -120,18 +120,22 @@ function normalizeConfig(value: Record<string, unknown>, folderPath: string): Fo
     icon: typeof value.icon === 'string' ? value.icon : undefined,
     template: typeof value.template === 'string' ? value.template : undefined,
     inherit: value.inherit === undefined ? undefined : value.inherit !== false,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     views: Array.isArray(value.views) ? (value.views as FolderViewRecord[]) : undefined,
     formulas:
       value.formulas && typeof value.formulas === 'object'
-        ? (value.formulas as Record<string, string>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (value.formulas as Record<string, string>)
         : undefined,
     properties:
       value.properties && typeof value.properties === 'object'
-        ? (value.properties as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (value.properties as Record<string, unknown>)
         : undefined,
     summaries:
       value.summaries && typeof value.summaries === 'object'
-        ? (value.summaries as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (value.summaries as Record<string, unknown>)
         : undefined
   }
 }
