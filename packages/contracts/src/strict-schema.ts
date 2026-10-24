@@ -23,11 +23,13 @@ const schemaAt = (value: unknown): z.ZodType => value as z.ZodType
 const schemaList = (value: unknown): z.ZodType[] => value as z.ZodType[]
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- def.type was checked by the caller
 const schemaShape = (value: unknown): Record<string, z.ZodType> =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- def.type was checked by the caller
   value as Record<string, z.ZodType>
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- def.type was checked by the caller
 const schemaGetter = (value: unknown): (() => z.ZodType) => value as () => z.ZodType
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clone() takes the def of schema's own type, which a generic ZodType cannot name
 const cloneWith = (schema: z.ZodType, def: Record<string, unknown>): z.ZodType =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clone() takes the def of schema's own type, which a generic ZodType cannot name
   schema.clone(def as never)
 
 const WRAPPER_TYPES = new Set([
