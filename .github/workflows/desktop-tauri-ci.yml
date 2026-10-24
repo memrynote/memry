@@ -63,8 +63,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      # apps/extension/tsconfig.json extends a file `wxt prepare` generates, and type-aware lint
+      # rejects a project it cannot load. `--ignore-scripts` skipped it at install.
       - name: Lint
-        run: pnpm lint
+        run: |
+          pnpm --filter @memry/extension exec wxt prepare
+          pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
