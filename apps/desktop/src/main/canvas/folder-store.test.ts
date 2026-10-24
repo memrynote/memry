@@ -480,7 +480,7 @@ describe('canvas folder store', () => {
 
       const deleted = await deleteCanvasFolder(db, vault, VAULT_ID, 'Work', rmAsTrash)
 
-      expect(deleted.sort()).toEqual([outer.id, inner.id].sort())
+      expect(deleted.toSorted()).toEqual([outer.id, inner.id].toSorted())
       expect(folderRow('Work')?.deletedAt).toEqual(expect.any(Number))
       expect(folderRow('Work/Q3')?.deletedAt).toEqual(expect.any(Number))
       expect(folderPaths()).toEqual([])
@@ -530,7 +530,7 @@ describe('canvas folder store', () => {
 
       const deleted = await deleteCanvasFolder(db, vault, VAULT_ID, 'Work', rmAsTrash)
 
-      expect(deleted.sort()).toEqual([outer.id, inner.id].sort())
+      expect(deleted.toSorted()).toEqual([outer.id, inner.id].toSorted())
       expect(folderPaths()).toEqual([])
       expect(listCanvases(db, VAULT_ID)).toEqual([])
       expect(dirExists('Work')).toBe(false)

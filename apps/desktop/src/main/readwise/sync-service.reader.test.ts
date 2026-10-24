@@ -168,7 +168,7 @@ function doc(id: string, over: Record<string, unknown> = {}): StubDocument {
     reading_progress: 0.4,
     html_content: '<p>Full article text.</p>',
     ...over
-  } as StubDocument
+  }
 }
 
 describe('Readwise Reader documents', () => {
@@ -238,7 +238,7 @@ describe('Readwise Reader documents', () => {
       journalDateFormat: 'yyyy-MM-dd'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -528,7 +528,7 @@ describe('Readwise Reader documents', () => {
 
     const stem = (url: string) => imageFileStem(url)
     const attachmentNames = async (noteId: string) =>
-      (await attachments.listNoteAttachments(noteId)).map((file) => file.filename).sort()
+      (await attachments.listNoteAttachments(noteId)).map((file) => file.filename).toSorted()
 
     async function importArticle() {
       mocks.imageFetch.mockImplementation(async (url: string) => {
@@ -550,7 +550,9 @@ describe('Readwise Reader documents', () => {
       const note = await importArticle()
 
       const names = await attachmentNames(note.id)
-      expect(names).toEqual([COVER, SHOT, BARE, LAZY, SET].map((url) => `${stem(url)}.png`).sort())
+      expect(names).toEqual(
+        [COVER, SHOT, BARE, LAZY, SET].map((url) => `${stem(url)}.png`).toSorted()
+      )
       const ref = (url: string) => `../../attachments/${note.id}/${stem(url)}.png`
       expect(note.content).toContain(
         `<figure><img src="${ref(SHOT)}"><figcaption>Notes in MemryNote &amp; more</figcaption></figure>`

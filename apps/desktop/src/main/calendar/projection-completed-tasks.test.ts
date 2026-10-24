@@ -61,7 +61,7 @@ describe('completed tasks in the calendar projection', () => {
 
   it('keeps a completed task, flagged with its project and status, when asked for', () => {
     const items = taskItems(true)
-    expect(items.map((item) => item.sourceId).sort()).toEqual(['done', 'open'])
+    expect(items.map((item) => item.sourceId).toSorted()).toEqual(['done', 'open'])
     expect(items.find((item) => item.sourceId === 'done')?.task).toEqual({
       projectId,
       statusId: 'status-done',

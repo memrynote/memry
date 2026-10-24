@@ -78,7 +78,7 @@ describe('promoteExternalEvent (M2)', () => {
 
   beforeEach(() => {
     dbResult = createTestDataDb()
-    db = dbResult.db as unknown as DataDb
+    db = dbResult.db
     seedSource(dbResult.db)
   })
 

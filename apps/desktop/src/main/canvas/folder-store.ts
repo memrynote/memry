@@ -42,12 +42,8 @@ import {
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
 import { clearCanvasEdges } from './edge-index'
+import { errnoCode } from './errno'
 import { CanvasFolderError, CanvasFolderErrorCode } from './folder-errors'
-// Re-exported so every existing importer (and the sync handler) keeps reaching
-// these through the store; the class itself moved to a leaf module so
-// `folder-paths` can raise the same typed failures without importing its own
-// importer.
-export { CanvasFolderError, CanvasFolderErrorCode }
 import { liveFolderRow, storedFolderPath, type FolderTx } from './folder-lookup'
 import {
   canvasPathKey,
@@ -64,6 +60,12 @@ import {
   resolveCanvasFile
 } from './scene-file'
 import { releaseRemovedCanvasPaths } from './store'
+
+// Re-exported so every existing importer (and the sync handler) keeps reaching
+// these through the store; the class itself moved to a leaf module so
+// `folder-paths` can raise the same typed failures without importing its own
+// importer.
+export { CanvasFolderError, CanvasFolderErrorCode }
 
 const log = createLogger('CanvasFolderStore')
 
@@ -350,8 +352,8 @@ export function createCanvasFolder(
 
   const now = Date.now()
   const { row, ancestors } = db.transaction((tx) => {
-    const ancestors = mintAncestorFolderRows(tx, vaultId, stored, now)
-    if (existing) return { row: existing, ancestors }
+    const minted = mintAncestorFolderRows(tx, vaultId, stored, now)
+    if (existing) return { row: existing, ancestors: minted }
     return {
       row: upsertFolderRow(tx, {
         vaultId,
@@ -360,7 +362,7 @@ export function createCanvasFolder(
         createdAt: now,
         updatedAt: now
       }),
-      ancestors
+      ancestors: minted
     }
   })
   // After the rows exist, never inside the transaction: the queue write is its
@@ -512,7 +514,7 @@ function relocateFolder(
       undoMove()
     } catch (undoErr) {
       log.error('Could not move the canvas folder back after a failed index write', {
-        code: (undoErr as NodeJS.ErrnoException).code
+        code: errnoCode(undoErr)
       })
     }
     throw err
@@ -688,13 +690,13 @@ export async function deleteCanvasFolder(
     // so the folder the user deleted comes back, empty. A path that already has
     // a row is skipped, tombstone included — an earlier delete stands.
     const materialized: CanvasFolderRow[] = []
-    for (const folderPath of impliedFolderPaths(canonical, [
+    for (const impliedPath of impliedFolderPaths(canonical, [
       ...inside.map((row) => row.folder),
       ...folders.map((folder) => folder.path)
     ])) {
       const row = insertFolderRowIfAbsent(tx, {
         vaultId,
-        path: folderPath,
+        path: impliedPath,
         createdAt: now,
         updatedAt: now,
         deletedAt: now
@@ -729,7 +731,7 @@ export async function deleteCanvasFolder(
       // in the app, here and on every other device, and what is left behind is
       // a directory the user can remove themselves.
       log.warn('Could not trash canvas folder; leaving the directory in place', {
-        code: (err as NodeJS.ErrnoException).code
+        code: errnoCode(err)
       })
     }
   }

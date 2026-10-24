@@ -74,7 +74,7 @@ describe('google-channel-manager', () => {
       await mgr.ensureChannelForSource({ sourceId: 'src-1', calendarId: 'cal@group.google.com' })
 
       expect(deps.registerOnServer).toHaveBeenCalledTimes(1)
-      const registerArg = deps.registerOnServer.mock.calls[0]![0] as {
+      const registerArg = deps.registerOnServer.mock.calls[0][0] as {
         channelId: string
         sourceId: string
         token: string
@@ -87,7 +87,7 @@ describe('google-channel-manager', () => {
       expect(registerArg.expiresAt).toBe(Math.floor(FIXED_NOW_MS / 1000) + TTL_SECONDS)
 
       expect(deps.client.watchCalendar).toHaveBeenCalledTimes(1)
-      const watchArg = deps.client.watchCalendar.mock.calls[0]![0] as {
+      const watchArg = deps.client.watchCalendar.mock.calls[0][0] as {
         calendarId: string
         channelId: string
         token: string
@@ -260,7 +260,7 @@ describe('google-channel-manager', () => {
         resourceId: 'resource-channel-1'
       })
       expect(deps.client.watchCalendar).toHaveBeenCalledTimes(2)
-      const secondWatch = deps.client.watchCalendar.mock.calls[1]![0] as { channelId: string }
+      const secondWatch = deps.client.watchCalendar.mock.calls[1][0] as { channelId: string }
       expect(secondWatch.channelId).toBe('channel-2')
       expect(mgr.getActiveChannelCount()).toBe(1)
     })
@@ -277,8 +277,8 @@ describe('google-channel-manager', () => {
       expect(JSON.stringify({ count: mgr.getActiveChannelCount() })).not.toContain('token-1')
       // The webhook verifies Google's X-Goog-Channel-Token against the server-side
       // HMAC of what was registered, so both must receive the identical token.
-      const registerArg = deps.registerOnServer.mock.calls[0]![0] as { token: string }
-      const watchArg = deps.client.watchCalendar.mock.calls[0]![0] as { token: string }
+      const registerArg = deps.registerOnServer.mock.calls[0][0] as { token: string }
+      const watchArg = deps.client.watchCalendar.mock.calls[0][0] as { token: string }
       expect(registerArg.token).toBe(watchArg.token)
       expect(registerArg).not.toHaveProperty('tokenHash')
     })

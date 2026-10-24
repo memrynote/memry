@@ -4,7 +4,7 @@
  * server does. Only the transport is a function call.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import {
   asClientDb,
   asSyncDb,
@@ -36,6 +36,9 @@ import { clearClaim, readClaim, writeClaim } from './claim'
 import { pullAuthority, type PullEnv } from './pull-gate'
 import { READWISE_SETTINGS_KEY, applyMergedReadwiseSettings } from './settings'
 
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
+
 beforeAll(async () => {
   await sodium.ready
 })
@@ -63,7 +66,7 @@ describe('the Readwise claim travels with synced settings', () => {
   }
 
   /** The app on this device is the one running: its DB and its settings manager. */
-  function use(device: Device) {
+  function switchDevice(device: Device) {
     currentDb = device.db
     return initSettingsSyncManager({
       db: asSyncDb(device.result.db),
@@ -74,11 +77,11 @@ describe('the Readwise claim travels with synced settings', () => {
 
   /** What settings sync does on a pull: merge the payload, then apply the merged group. */
   function receive(device: Device, from: Device): void {
-    const payload = use(from).getPayload()
-    const manager = use(device)
+    const payload = switchDevice(from).getPayload()
+    const manager = switchDevice(device)
     manager.mergeRemote(payload)
     const merged = manager.getSettings().readwise
-    if (merged) applyMergedReadwiseSettings(device.db, merged as Record<string, unknown>)
+    if (merged) applyMergedReadwiseSettings(device.db, merged)
   }
 
   let a: Device
@@ -94,12 +97,12 @@ describe('the Readwise claim travels with synced settings', () => {
   })
 
   it('a claim reaches the other device, and a takeover there supersedes it everywhere', () => {
-    use(a)
+    switchDevice(a)
     writeClaim(a.db, { deviceId: 'dev-a', deviceName: 'Desk Mac' })
     receive(b, a)
     expect(readClaim(b.db)).toEqual({ deviceId: 'dev-a', deviceName: 'Desk Mac' })
 
-    use(b)
+    switchDevice(b)
     writeClaim(b.db, { deviceId: 'dev-b', deviceName: 'Laptop' })
     receive(a, b)
 
@@ -112,11 +115,11 @@ describe('the Readwise claim travels with synced settings', () => {
   })
 
   it('disconnect clears the claim with an explicit null that reaches the other device', () => {
-    use(a)
+    switchDevice(a)
     writeClaim(a.db, { deviceId: 'dev-a', deviceName: 'Desk Mac' })
     receive(b, a)
 
-    use(a)
+    switchDevice(a)
     clearClaim(a.db)
     const payload = getSettingsSyncManager()!.getPayload()
     expect(payload.settings.readwise).toMatchObject({ syncDeviceId: null, syncDeviceName: null })
@@ -136,13 +139,13 @@ describe('the Readwise claim travels with synced settings', () => {
   })
 
   it('clearing a claim that does not exist sends nothing', () => {
-    const manager = use(a)
+    const manager = switchDevice(a)
     clearClaim(a.db)
     expect(manager.getPayload().fieldClocks).toEqual({})
   })
 
   it('an older build keeps the claim: it strips the group but echoes the clocks', () => {
-    use(a)
+    switchDevice(a)
     writeClaim(a.db, { deviceId: 'dev-a', deviceName: 'Desk Mac' })
     const local = getSettingsSyncManager()!.getPayload()
 
@@ -167,7 +170,7 @@ describe('the Readwise claim travels with synced settings', () => {
   })
 
   it('the cursor, the retry list, the run state and the link rows never enter the sync payload', () => {
-    const manager = use(a)
+    const manager = switchDevice(a)
     setCursor(a.db, '2026-10-03T09:59:59.000Z')
     addRetry(a.db, 4242, 'rate limited')
     setFullPassPending(a.db, true)
@@ -186,7 +189,7 @@ describe('the Readwise claim travels with synced settings', () => {
     ]) {
       expect(wire).not.toContain(local)
     }
-    expect(Object.keys(manager.getPayload().fieldClocks).sort()).toEqual([
+    expect(Object.keys(manager.getPayload().fieldClocks).toSorted()).toEqual([
       'readwise.syncDeviceId',
       'readwise.syncDeviceName'
     ])
@@ -202,7 +205,7 @@ describe('the Readwise claim travels with synced settings', () => {
       READWISE_SETTINGS_KEY,
       JSON.stringify({ cadence: 'daily', journalHighlights: true })
     )
-    use(a)
+    switchDevice(a)
     writeClaim(a.db, { deviceId: 'dev-a', deviceName: null })
     expect(JSON.parse(getSetting(a.db, READWISE_SETTINGS_KEY)!)).toEqual({
       cadence: 'daily',

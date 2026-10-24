@@ -226,7 +226,7 @@ describe('triggerGoogleCalendarSyncNow (focus/resume/manual refresh)', () => {
     // #when the OS emits a resume event
     const handler = powerMonitorHolder.resumeHandlers[0]
     expect(handler).toBeDefined()
-    handler!()
+    handler()
 
     // #then a sync kicks off immediately
     await Promise.resolve()

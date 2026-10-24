@@ -49,7 +49,7 @@ afterEach(() => {
 
 describe('listDocuments', () => {
   it('reads the four saved locations and never requests feed', async () => {
-    fetchMock.mockImplementation(async () => listPage([]))
+    fetchMock.mockImplementation(() => listPage([]))
     await ids(listDocuments({ token: TOKEN, withHtmlContent: false, limiter: newLimiter() }))
     expect(requested().map((url) => url.searchParams.get('location'))).toEqual([
       'new',
@@ -67,7 +67,7 @@ describe('listDocuments', () => {
       .mockResolvedValueOnce(listPage([doc('a')], 'c1'))
       .mockResolvedValueOnce(listPage([doc('b')], 'c2'))
       .mockResolvedValueOnce(listPage([doc('c')]))
-      .mockImplementation(async () => listPage([]))
+      .mockImplementation(() => listPage([]))
     const result = await ids(
       listDocuments({ token: TOKEN, withHtmlContent: false, limiter: newLimiter() })
     )
@@ -80,7 +80,7 @@ describe('listDocuments', () => {
   })
 
   it('sends updatedAfter, and withHtmlContent only when asked', async () => {
-    fetchMock.mockImplementation(async () => listPage([]))
+    fetchMock.mockImplementation(() => listPage([]))
     await ids(listDocuments({ token: TOKEN, withHtmlContent: false, limiter: newLimiter() }))
     expect(requested()[0].searchParams.has('withHtmlContent')).toBe(false)
     expect(requested()[0].searchParams.has('updatedAfter')).toBe(false)
@@ -107,7 +107,7 @@ describe('listDocuments', () => {
           doc('rss', { location: 'feed' })
         ])
       )
-      .mockImplementation(async () => listPage([]))
+      .mockImplementation(() => listPage([]))
     expect(
       await ids(listDocuments({ token: TOKEN, withHtmlContent: false, limiter: newLimiter() }))
     ).toEqual(['top'])
@@ -118,7 +118,7 @@ describe('listDocuments', () => {
       .mockResolvedValueOnce(
         listPage([doc('t', { tags: { Reading: { name: 'Reading', type: 'manual' } }, extra: 1 })])
       )
-      .mockImplementation(async () => listPage([]))
+      .mockImplementation(() => listPage([]))
     const pages: ReaderDocument[][] = []
     for await (const page of listDocuments({
       token: TOKEN,
@@ -149,7 +149,7 @@ describe('listDocuments', () => {
     fetchMock
       .mockResolvedValueOnce(new Response('{}', { status: 429, headers: { 'Retry-After': '7' } }))
       .mockResolvedValueOnce(listPage([doc('a')]))
-      .mockImplementation(async () => listPage([]))
+      .mockImplementation(() => listPage([]))
     const run = ids(listDocuments({ token: TOKEN, withHtmlContent: false, limiter: newLimiter() }))
     await vi.advanceTimersByTimeAsync(6_999)
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -160,7 +160,7 @@ describe('listDocuments', () => {
 
   it('aborts during the rate-limit wait', async () => {
     vi.useFakeTimers()
-    fetchMock.mockImplementation(async () => listPage([doc('x')], 'more'))
+    fetchMock.mockImplementation(() => listPage([doc('x')], 'more'))
     const limiter = new RequestLimiter(1, 60_000)
     const controller = new AbortController()
     const run = ids(

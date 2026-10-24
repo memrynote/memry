@@ -186,9 +186,10 @@ export function createCaldavWriteAdapter(
       if (recurrenceId) {
         // One occurrence of a series: exclude it, keep the series.
         for (let attempt = 0; attempt < 2; attempt += 1) {
+          const storedData = attempt === 0 ? stored(href) : null
           const object =
-            attempt === 0 && stored(href) && ifMatch
-              ? { href, etag: ifMatch, data: stored(href) as string }
+            storedData && ifMatch
+              ? { href, etag: ifMatch, data: storedData }
               : await currentObject(href)
           if (!object) return
           try {

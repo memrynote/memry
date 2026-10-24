@@ -339,16 +339,18 @@ export function patchICalendar(
   const root = parseICalendar(raw)
   const master = masterOf(root)
   let target = master
-  if (options.recurrenceId) {
+  const { recurrenceId } = options
+  if (recurrenceId) {
     target =
       root
         .getAllSubcomponents('vevent')
-        .find((vevent) => recurrenceIdMatches(vevent, options.recurrenceId as string)) ?? null
+        .find((vevent) => recurrenceIdMatches(vevent, recurrenceId)) ?? null
     if (!target) {
       if (!master) throw new Error('Cannot add an occurrence to an object without a master event')
       // A deep copy: ICAL.Component wraps the jCal array it is given, so
       // sharing it would edit the master too.
-      target = new ICAL.Component(structuredClone(master.toJSON()) as unknown[])
+      const masterJCal: unknown[] = structuredClone(master.toJSON())
+      target = new ICAL.Component(masterJCal)
       for (const name of ['rrule', 'exdate', 'rdate']) target.removeAllProperties(name)
       target.removeAllSubcomponents('valarm')
       target.addProperty(
@@ -459,10 +461,9 @@ export function icalToRemoteEvent(
 ): RemoteCalendarEvent {
   const root = parseICalendar(raw)
   const master = masterOf(root)
-  const override = input.recurrenceId
-    ? root
-        .getAllSubcomponents('vevent')
-        .find((vevent) => recurrenceIdMatches(vevent, input.recurrenceId as string))
+  const { recurrenceId } = input
+  const override = recurrenceId
+    ? root.getAllSubcomponents('vevent').find((vevent) => recurrenceIdMatches(vevent, recurrenceId))
     : undefined
   const vevent = override ?? master ?? root.getFirstSubcomponent('vevent')
   if (!vevent) throw new Error('The calendar object has no event')

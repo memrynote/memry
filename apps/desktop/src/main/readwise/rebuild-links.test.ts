@@ -25,7 +25,7 @@ describe('rebuildLinks', () => {
     data = createTestDataDb()
     index = createTestIndexDb()
     db = asClientDb(data.db)
-    indexDb = index.db as unknown as IndexDb
+    indexDb = index.db
   })
   afterEach(() => {
     data.close()

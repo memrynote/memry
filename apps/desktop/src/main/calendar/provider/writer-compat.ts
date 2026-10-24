@@ -43,8 +43,9 @@ export interface WriterCompatDeps {
 }
 
 /** Same ordering as the sync server's `isVersionBelow`: numeric major.minor.patch. */
+const parse = (value: string): number[] => value.split('.').map((part) => Number(part))
+
 export function isAppVersionBelow(version: string, minimum: string): boolean {
-  const parse = (value: string): number[] => value.split('.').map((part) => Number(part))
   const [aMajor, aMinor = 0, aPatch = 0] = parse(version)
   const [bMajor, bMinor = 0, bPatch = 0] = parse(minimum)
   if ([aMajor, aMinor, aPatch].some((part) => !Number.isFinite(part))) return true

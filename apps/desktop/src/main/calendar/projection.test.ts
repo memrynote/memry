@@ -24,7 +24,7 @@ describe('getCalendarRangeProjection', () => {
     db = dbResult.db
 
     indexDbResult = createTestIndexDb()
-    indexDb = indexDbResult.db as unknown as IndexDb
+    indexDb = indexDbResult.db
 
     const seeded = seedTestData(db)
     projectId = seeded.projectId
@@ -846,7 +846,7 @@ describe('getCalendarRangeProjection', () => {
 
     const noteItems = items.filter((i) => i.sourceType === 'note')
     expect(noteItems).toHaveLength(2)
-    const ids = noteItems.map((i) => i.projectionId).sort()
+    const ids = noteItems.map((i) => i.projectionId).toSorted()
     expect(ids).toEqual(['note:n2:Deadline', 'note:n2:Published'])
   })
 

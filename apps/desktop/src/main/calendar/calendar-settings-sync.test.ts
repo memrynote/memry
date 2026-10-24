@@ -5,7 +5,6 @@ import {
   resetSettingsSyncManager
 } from '@memry/sync-client/settings-sync'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { getSetting, setSetting as writeRaw } from '../database/queries/settings'
 import { deleteSetting, setSetting, setSettingWriteListener } from '../settings/settings-store'
@@ -22,7 +21,7 @@ function manager(db: TestDataDb): { sync: SettingsSyncManager; enqueue: ReturnTy
   const queue = { enqueue } as unknown as SyncQueueManager
   return {
     sync: new SettingsSyncManager({
-      db: db as unknown as DrizzleDb,
+      db: db,
       queue,
       getDeviceId: () => 'desktop-a'
     }),
@@ -46,7 +45,7 @@ describe('calendar settings sync (spec 007 D3a)', () => {
     writeRaw(db, 'calendar', JSON.stringify({ weekStartDay: 'sunday' }))
     const enqueue = vi.fn()
     const sync = initSettingsSync({
-      db: db as unknown as DrizzleDb,
+      db: db,
       queue: { enqueue } as unknown as SyncQueueManager,
       getDeviceId: () => 'desktop-a'
     })

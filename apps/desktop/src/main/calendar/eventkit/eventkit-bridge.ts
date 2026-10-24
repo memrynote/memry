@@ -56,9 +56,7 @@ function stringOrNull(value: unknown): string | null {
 }
 
 function toStatus(value: unknown): EventKitAuthorizationStatus {
-  return AUTHORIZATION_STATUSES.has(value as EventKitAuthorizationStatus)
-    ? (value as EventKitAuthorizationStatus)
-    : 'denied'
+  return [...AUTHORIZATION_STATUSES].find((status) => status === value) ?? 'denied'
 }
 
 function toCalendar(raw: Record<string, unknown>): EventKitCalendar | null {
@@ -90,9 +88,7 @@ function toParticipant(raw: Record<string, unknown>): EventKitParticipant {
 function toEvent(raw: Record<string, unknown>): EventKitEvent | null {
   const calendarId = stringOrNull(raw.calendarId)
   if (!calendarId) return null
-  const status = EVENT_STATUSES.has(raw.status as EventKitEventStatus)
-    ? (raw.status as EventKitEventStatus)
-    : 'none'
+  const status = [...EVENT_STATUSES].find((candidate) => candidate === raw.status) ?? 'none'
   return {
     calendarId,
     eventId: stringOrNull(raw.eventId),
@@ -113,10 +109,7 @@ function toEvent(raw: Record<string, unknown>): EventKitEvent | null {
     lastModified: stringOrNull(raw.lastModified),
     occurrenceStart: stringOrNull(raw.occurrenceStart),
     attendees: records(raw.attendees).map(toParticipant),
-    organizer:
-      raw.organizer && typeof raw.organizer === 'object'
-        ? toParticipant(raw.organizer as Record<string, unknown>)
-        : null,
+    organizer: records([raw.organizer]).map(toParticipant)[0] ?? null,
     alarmMinutes: Array.isArray(raw.alarmMinutes)
       ? raw.alarmMinutes.filter((value): value is number => Number.isFinite(value))
       : [],
@@ -150,7 +143,7 @@ export function createEventKitBridge(options: EventKitBridgeOptions): EventKitBr
     if (!line.trim()) return
     let message: Record<string, unknown>
     try {
-      message = JSON.parse(line) as Record<string, unknown>
+      message = JSON.parse(line)
     } catch {
       log.warn('Unreadable line from the EventKit helper')
       return
@@ -170,12 +163,15 @@ export function createEventKitBridge(options: EventKitBridgeOptions): EventKitBr
     if (!entry) return
     pending.delete(message.id)
     if (entry.timer) clearTimeout(entry.timer)
-    const error = message.error as { code?: unknown; message?: unknown } | undefined
+    const error = message.error
     if (error) {
+      const fields = typeof error === 'object' ? error : {}
+      const code = 'code' in fields ? fields.code : undefined
+      const detail = 'message' in fields ? fields.message : undefined
       entry.reject(
         new EventKitBridgeError(
-          typeof error.code === 'string' ? error.code : 'helper_error',
-          typeof error.message === 'string' ? error.message : undefined
+          typeof code === 'string' ? code : 'helper_error',
+          typeof detail === 'string' ? detail : undefined
         )
       )
       return

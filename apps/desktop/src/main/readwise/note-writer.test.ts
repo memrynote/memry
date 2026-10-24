@@ -126,7 +126,7 @@ describe('upsertReadwiseNote', () => {
       journalDateFormat: 'yyyy-MM-dd'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -509,7 +509,7 @@ describe('upsertReadwiseNote', () => {
 
     expect((await notes.getNoteById(noteId))!.properties.author).toBe('Someone Else')
     for (const [input] of vi.mocked(domain.updateNoteCommand).mock.calls) {
-      expect(Object.keys(input).sort()).toEqual(['content', 'id', 'ignoreInlineTags'])
+      expect(Object.keys(input).toSorted()).toEqual(['content', 'id', 'ignoreInlineTags'])
     }
   })
 
@@ -602,7 +602,7 @@ describe('upsertReadwiseNote', () => {
     const source = book(1, { highlights: threeHighlights() })
     const outcomes = await Promise.all([sync(source), sync(source)])
 
-    expect(outcomes.map((outcome) => outcome.status).sort()).toEqual(['created', 'unchanged'])
+    expect(outcomes.map((outcome) => outcome.status).toSorted()).toEqual(['created', 'unchanged'])
     expect(fs.readdirSync(path.join(vault.path, 'Readwise', 'Books'))).toHaveLength(1)
   })
 

@@ -120,7 +120,8 @@ export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       try {
         signal?.throwIfAborted()
       } catch (reason) {
-        reject(reason as Error)
+        // oxlint-disable-next-line promise/prefer-promise-reject-errors, typescript/prefer-promise-reject-errors -- rejects with the AbortSignal reason unchanged; callers observe signal.reason (often a DOMException or custom value)
+        reject(reason)
       }
     }
     const timer = setTimeout(() => {
@@ -165,12 +166,16 @@ export async function readwiseGet(options: ReadwiseRequestOptions): Promise<Resp
         method: 'GET',
         headers: { Authorization: `Token ${token}` },
         signal: signal
-          ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+          ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
+            AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
           : AbortSignal.timeout(REQUEST_TIMEOUT_MS)
       })
     } catch (error) {
       if (signal?.aborted) throw signal.reason
-      logger.warn('Readwise request failed', { path, error: (error as Error).name })
+      logger.warn('Readwise request failed', {
+        path,
+        error: error instanceof Error ? error.name : undefined
+      })
       throw new ReadwiseError('network', 'Could not reach Readwise', { cause: error })
     }
 

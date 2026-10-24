@@ -64,6 +64,7 @@ import { rewriteCanvasEdges } from './edge-index'
 import { extractEntityRefsFromScene } from './scene-refs'
 import { recordAsset } from './assets/asset-store'
 import { readMemryAssets } from './assets/memry-assets'
+import { errnoCode } from './errno'
 import { decryptCanvasLibraryItemForVault, decryptCanvasSceneForVault } from './encryption'
 import { folderSegments, isDescendantFolder, MAX_CANVAS_FOLDER_DEPTH } from './folder-paths'
 import { readCanvasLibrary, writeCanvasLibrary } from './library-file'
@@ -144,7 +145,7 @@ function listCanvasFolderDirs(vaultPath: string): string[] {
   }
 
   walk(root, [])
-  return found.sort()
+  return found.toSorted()
 }
 
 /**
@@ -176,7 +177,7 @@ function canonicalizeDirName(parentAbs: string, name: string): string {
   } catch (err) {
     // Name-free: directory names are user content and this reaches telemetry.
     log.warn('Could not rename a canvas folder to its portable name', {
-      code: (err as NodeJS.ErrnoException).code
+      code: errnoCode(err)
     })
     return name
   }
@@ -276,7 +277,7 @@ function restoreMissingFolderDirs(
     } catch (err) {
       // Name-free: folder paths are user content and this reaches telemetry.
       log.warn('Could not restore the directory of a canvas folder', {
-        code: (err as NodeJS.ErrnoException).code
+        code: errnoCode(err)
       })
     }
   }
@@ -320,7 +321,7 @@ function restoreMissingFolderDirs(
  */
 function pruneTombstonedFolderDirs(vaultPath: string, folders: string[]): number {
   let pruned = 0
-  const deepestFirst = [...folders].sort(
+  const deepestFirst = [...folders].toSorted(
     (a, b) => folderSegments(b).length - folderSegments(a).length
   )
   for (const folder of deepestFirst) {
@@ -451,11 +452,7 @@ export async function reconcileCanvasFiles(
     const items: CanvasLibraryItem[] = []
     for (const row of rows) {
       try {
-        items.push(
-          JSON.parse(
-            decryptCanvasLibraryItemForVault(row.itemCiphertext, vaultKey)
-          ) as CanvasLibraryItem
-        )
+        items.push(JSON.parse(decryptCanvasLibraryItemForVault(row.itemCiphertext, vaultKey)))
       } catch (err) {
         log.warn('Skipping unreadable canvas library item', { id: row.id, err })
       }

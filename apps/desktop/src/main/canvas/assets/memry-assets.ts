@@ -29,7 +29,7 @@ const CANVAS_ASSET_MARKER = '/canvas-assets/'
 export function extractSceneFileRefs(sceneJson: string): { fileId: string; ref: string }[] {
   let files: unknown
   try {
-    const parsed = JSON.parse(sceneJson) as { files?: unknown }
+    const parsed: { files?: unknown } = JSON.parse(sceneJson)
     files = parsed.files
   } catch {
     return []
@@ -37,8 +37,9 @@ export function extractSceneFileRefs(sceneJson: string): { fileId: string; ref: 
   if (!files || typeof files !== 'object') return []
 
   const refs: { fileId: string; ref: string }[] = []
-  for (const [fileId, file] of Object.entries(files as Record<string, unknown>)) {
-    const dataURL = (file as { dataURL?: unknown } | null)?.dataURL
+  for (const [fileId, file] of Object.entries(files)) {
+    const dataURL =
+      typeof file === 'object' && file !== null && 'dataURL' in file ? file.dataURL : undefined
     if (typeof dataURL === 'string' && dataURL.startsWith(MEMRY_FILE_PREFIX)) {
       refs.push({ fileId, ref: dataURL })
     }
@@ -70,8 +71,11 @@ export function contentHashFromRef(ref: string): string | null {
  */
 export function readMemryAssets(sceneJson: string): MemryAssetDescriptor[] {
   try {
-    const parsed = JSON.parse(sceneJson) as { memryAssets?: unknown }
-    return Array.isArray(parsed.memryAssets) ? (parsed.memryAssets as MemryAssetDescriptor[]) : []
+    const parsed: { memryAssets?: unknown } = JSON.parse(sceneJson)
+    const descriptors: MemryAssetDescriptor[] | undefined = Array.isArray(parsed.memryAssets)
+      ? parsed.memryAssets
+      : undefined
+    return descriptors ?? []
   } catch {
     return []
   }
@@ -84,7 +88,7 @@ export function readMemryAssets(sceneJson: string): MemryAssetDescriptor[] {
  * corrupt the scene by dropping it.
  */
 export function writeMemryAssets(sceneJson: string, descriptors: MemryAssetDescriptor[]): string {
-  const parsed = JSON.parse(sceneJson) as Record<string, unknown>
+  const parsed: Record<string, unknown> = JSON.parse(sceneJson)
   parsed.memryAssets = descriptors
   return JSON.stringify(parsed)
 }

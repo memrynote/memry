@@ -190,7 +190,7 @@ describe('Readwise journal highlights', () => {
       journalDateFormat: 'YYYY-MM-DD'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -246,7 +246,7 @@ describe('Readwise journal highlights', () => {
       .select()
       .from(readwiseHighlights)
       .all()
-      .sort((a, b) => a.highlightId - b.highlightId)
+      .toSorted((a, b) => a.highlightId - b.highlightId)
   const edit = (bookId: number, change: (b: StubBook) => void) => {
     change(readwise.books.find((b) => b.user_book_id === bookId)!)
   }
@@ -487,7 +487,7 @@ describe('Readwise journal highlights', () => {
           .select()
           .from(readwiseHighlights)
           .all()
-          .sort((a, b) => a.highlightId - b.highlightId)
+          .toSorted((a, b) => a.highlightId - b.highlightId)
       ).toEqual(rowsOfA)
 
       // A highlight of a book without a note re-renders the day from B's index.

@@ -112,9 +112,13 @@ async function isRateLimited(response: UnsplashResponse): Promise<boolean> {
  */
 function toPhoto(raw: unknown): UnsplashPhoto | null {
   if (typeof raw !== 'object' || raw === null) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const record = raw as Record<string, unknown>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const urls = (record.urls ?? {}) as Record<string, unknown>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const links = (record.links ?? {}) as Record<string, unknown>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const user = (record.user ?? {}) as Record<string, unknown>
 
   const parsed = UnsplashPhotoSchema.safeParse({
@@ -179,6 +183,7 @@ export async function searchPhotos(
     return { ok: false, reason: 'failed' }
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const results = (body as { results?: unknown })?.results
   if (!Array.isArray(results)) {
     logger.error('Unsplash search returned no results array')

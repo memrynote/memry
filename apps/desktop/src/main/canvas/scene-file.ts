@@ -39,6 +39,7 @@ import path from 'path'
 import { createLogger } from '../lib/logger'
 import { readVaultFileSync } from '../lib/paths'
 import { sanitizeFilename } from '../vault/file-ops'
+import { errnoCode } from './errno'
 import {
   canvasPathKey,
   folderSegments,
@@ -152,7 +153,7 @@ export function withCanvasMeta(scene: string, meta: CanvasFileMeta): string {
     parsed = { ...EMPTY_SCENE }
   } else {
     try {
-      parsed = JSON.parse(scene) as CanvasFileShape
+      parsed = JSON.parse(scene)
     } catch {
       log.warn('Canvas scene is not JSON; writing an empty document', { id: meta.id })
       parsed = { ...EMPTY_SCENE }
@@ -185,7 +186,7 @@ function canonicalize(
   out.elements = elements ?? []
   out.appState = appState ?? {}
   out.files = files ?? {}
-  for (const key of Object.keys(rest).sort()) {
+  for (const key of Object.keys(rest).toSorted()) {
     out[key] = (rest as Record<string, unknown>)[key]
   }
   return out
@@ -200,7 +201,7 @@ export function stripCanvasMeta(content: string): string {
   if (!content.trim()) return ''
   let parsed: CanvasFileShape
   try {
-    parsed = JSON.parse(content) as CanvasFileShape
+    parsed = JSON.parse(content)
   } catch {
     return content
   }
@@ -209,7 +210,7 @@ export function stripCanvasMeta(content: string): string {
 
 export function readCanvasMeta(content: string): CanvasFileMeta | null {
   try {
-    const parsed = JSON.parse(content) as CanvasFileShape
+    const parsed: CanvasFileShape = JSON.parse(content)
     const meta = parsed.memry
     if (!meta || typeof meta.id !== 'string' || !meta.id) return null
     return {
@@ -260,7 +261,7 @@ function withTransientFsRetrySync<T>(operation: () => T, operationName: string):
     try {
       return operation()
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code ?? ''
+      const code = errnoCode(err) ?? ''
       if (!TRANSIENT_FS_ERROR_CODES.has(code)) throw err
       // Errno and attempt only — never the path, which is title-derived.
       log.warn(
@@ -326,7 +327,7 @@ export function readCanvasVaultFileSync(vaultPath: string, relativePath: string)
       'readCanvasFile'
     )
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code
+    const code = errnoCode(err)
     // ENOENT is the "no document" answer the callers expect. ENOTDIR/EISDIR
     // mean the path no longer names a file (a folder took its place after a
     // copy) — report it the same way rather than taking the surface down.
@@ -353,7 +354,7 @@ function rmdirIfEmpty(absDir: string): boolean {
     rmdirSync(absDir)
     return true
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code
+    const code = errnoCode(err)
     if (code === 'ENOENT') return true
     // ENOTEMPTY (EEXIST on some platforms) is the expected refusal, not a fault.
     if (code !== 'ENOTEMPTY' && code !== 'EEXIST') {
@@ -382,7 +383,7 @@ function pruneEmptyDirs(absDir: string, depth: number): boolean {
   } catch (err) {
     // Already gone is the outcome this was asked for; anything else (a file
     // where the directory was, no permission) means leave it alone.
-    return (err as NodeJS.ErrnoException).code === 'ENOENT'
+    return errnoCode(err) === 'ENOENT'
   }
 
   for (const entry of entries) {
@@ -466,8 +467,8 @@ export function deleteCanvasFileSync(absolutePath: string): void {
   try {
     withTransientFsRetrySync(() => unlinkSync(absolutePath), 'deleteCanvasFile')
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      log.warn('Could not delete canvas file', { code: (err as NodeJS.ErrnoException).code })
+    if (errnoCode(err) !== 'ENOENT') {
+      log.warn('Could not delete canvas file', { code: errnoCode(err) })
     }
   }
 }
@@ -505,7 +506,7 @@ export function listCanvasFiles(vaultPath: string): string[] {
     } catch {
       return // an unreadable directory must not take the whole listing down
     }
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of entries.toSorted((a, b) => a.name.localeCompare(b.name))) {
       if (entry.name.startsWith('.')) continue
       if (entry.isDirectory()) {
         walk(path.join(absDir, entry.name), [...relSegments, entry.name])
@@ -516,7 +517,7 @@ export function listCanvasFiles(vaultPath: string): string[] {
   }
 
   walk(root, [])
-  return found.sort()
+  return found.toSorted()
 }
 
 /**
@@ -630,7 +631,7 @@ export function renameCanvasFile(vaultPath: string, from: string, to: string): s
     return to
   } catch (err) {
     log.warn('Could not rename canvas file; keeping the previous path', {
-      code: (err as NodeJS.ErrnoException).code
+      code: errnoCode(err)
     })
     return from
   }

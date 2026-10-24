@@ -7,7 +7,7 @@ import {
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import type { DataDb, IndexDb } from '../../database'
+import type { DataDb } from '../../database'
 import { getCalendarRangeProjection } from '../projection'
 import { ExternalEventReadOnlyError, promoteExternalEvent } from '../promote-external-event'
 import {
@@ -163,7 +163,7 @@ describe('capabilities drive projection and promotion exactly as the provider co
     seedExternal(dataDb.db, provider)
     const { items } = getCalendarRangeProjection(
       dataDb.db as unknown as DataDb,
-      indexDb.db as unknown as IndexDb,
+      indexDb.db,
       {
         startAt: '2026-09-24T00:00:00.000Z',
         endAt: '2026-09-25T00:00:00.000Z',

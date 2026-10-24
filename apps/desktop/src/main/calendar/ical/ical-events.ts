@@ -210,7 +210,8 @@ export function parseICalendar(text: string): ICAL.Component {
   try {
     const parsed: unknown = ICAL.parse(text)
     const jCal = Array.isArray(parsed) && Array.isArray(parsed[0]) ? parsed[0] : parsed
-    root = new ICAL.Component(jCal as unknown[])
+    if (!Array.isArray(jCal)) throw new ICalParseError()
+    root = new ICAL.Component(jCal)
   } catch {
     throw new ICalParseError()
   }

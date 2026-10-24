@@ -1,6 +1,9 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { decrypt, encrypt } from '../crypto/encryption'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 export const CANVAS_AT_REST_VERSION = 1 as const
 
@@ -37,7 +40,7 @@ function seal(plaintext: string, vaultKey: Uint8Array, ad: Uint8Array): string {
 }
 
 function open(serializedEnvelope: string, vaultKey: Uint8Array, ad: Uint8Array): string {
-  const envelope = JSON.parse(serializedEnvelope) as CanvasEnvelope
+  const envelope: CanvasEnvelope = JSON.parse(serializedEnvelope)
   if (envelope.version !== CANVAS_AT_REST_VERSION) {
     throw new Error(`Unsupported canvas envelope version: ${envelope.version}`)
   }

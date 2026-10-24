@@ -85,6 +85,7 @@ function toVector(blob: unknown): Float32Array | null {
 }
 
 function readVector(noteId: string): Float32Array | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   const row = getRawIndexDatabase()
     .prepare('SELECT embedding FROM vec_note_similar WHERE note_id = ?')
     .get(noteId) as { embedding: unknown } | undefined
@@ -100,6 +101,7 @@ function readVectors(noteIds: readonly string[]): Map<string, Float32Array> {
   // One point lookup per id: vec0 answers primary-key reads directly, and an
   // IN list over a virtual table is not guaranteed to use that path.
   for (const id of noteIds) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
     const row = statement.get(id) as { embedding: unknown } | undefined
     const vector = row ? toVector(row.embedding) : null
     if (vector) out.set(id, vector)
@@ -109,6 +111,7 @@ function readVectors(noteIds: readonly string[]): Map<string, Float32Array> {
 
 /** Nearest stored vectors, closest first, as cosine similarity. */
 function nearest(vector: Float32Array, k: number): Array<{ noteId: string; similarity: number }> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   const rows = getRawIndexDatabase()
     .prepare(
       `SELECT note_id, distance FROM vec_note_similar

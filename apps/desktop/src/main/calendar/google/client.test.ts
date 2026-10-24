@@ -49,6 +49,11 @@ import {
   storeGoogleCalendarTokens
 } from './keychain'
 
+const requestUrl = (input: RequestInfo | URL): string =>
+  input instanceof Request ? input.url : String(input)
+// oxlint-disable-next-line typescript/no-base-to-string -- these fakes only ever receive string bodies; String() keeps the old "undefined" text for a missing body
+const bodyText = (init?: RequestInit): string => String(init?.body)
+
 describe('google calendar client — push channels (Task 7)', () => {
   const keytarStore = new Map<string, string>()
   const fetchMock = vi.fn<typeof fetch>()
@@ -89,15 +94,15 @@ describe('google calendar client — push channels (Task 7)', () => {
       vi.spyOn(Date, 'now').mockReturnValue(nowMs)
 
       fetchMock.mockImplementation(async (input, init) => {
-        const url = String(input)
+        const url = requestUrl(input)
         expect(url).toBe(
           'https://www.googleapis.com/calendar/v3/calendars/primary%40group.calendar.google.com/events/watch'
         )
         expect(init?.method).toBe('POST')
-        expect((init?.headers as Record<string, string>).Authorization).toBe(
+        expect((init?.headers as Record<string, string> | undefined)?.Authorization).toBe(
           'Bearer seeded-access-token'
         )
-        const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+        const body = JSON.parse(bodyText(init)) as Record<string, unknown>
         expect(body).toEqual({
           id: 'channel-abc',
           token: 'plaintext-secret-xyz',
@@ -159,10 +164,10 @@ describe('google calendar client — push channels (Task 7)', () => {
   describe('stopChannel', () => {
     it('POSTs channels.stop with {id, resourceId} and resolves on 204', async () => {
       fetchMock.mockImplementation(async (input, init) => {
-        const url = String(input)
+        const url = requestUrl(input)
         expect(url).toBe('https://www.googleapis.com/calendar/v3/channels/stop')
         expect(init?.method).toBe('POST')
-        const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+        const body = JSON.parse(bodyText(init)) as Record<string, unknown>
         expect(body).toEqual({ id: 'channel-abc', resourceId: 'resource-123' })
         return new Response(null, { status: 204 })
       })
@@ -379,9 +384,9 @@ describe('google calendar client — push channels (Task 7)', () => {
           )
         )
         .mockImplementationOnce(async (input, init) => {
-          expect(String(input)).toBe('https://www.googleapis.com/calendar/v3/calendars')
+          expect(requestUrl(input)).toBe('https://www.googleapis.com/calendar/v3/calendars')
           expect(init?.method).toBe('POST')
-          expect(JSON.parse(String(init?.body))).toEqual({
+          expect(JSON.parse(bodyText(init))).toEqual({
             summary: 'Team',
             timeZone: 'UTC'
           })
@@ -425,7 +430,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     it('maps rich all-day events and switches query shape for sync cursors', async () => {
       fetchMock
         .mockImplementationOnce(async (input) => {
-          const url = new URL(String(input))
+          const url = new URL(requestUrl(input))
           expect(url.pathname).toBe('/calendar/v3/calendars/primary/events')
           expect(url.searchParams.get('showDeleted')).toBe('true')
           expect(url.searchParams.get('singleEvents')).toBe('true')
@@ -491,7 +496,7 @@ describe('google calendar client — push channels (Task 7)', () => {
           )
         })
         .mockImplementationOnce(async (input) => {
-          const url = new URL(String(input))
+          const url = new URL(requestUrl(input))
           expect(url.searchParams.get('syncToken')).toBe('cursor-2')
           expect(url.searchParams.has('timeMin')).toBe(false)
           expect(url.searchParams.has('timeMax')).toBe(false)
@@ -597,7 +602,7 @@ describe('google calendar client — push channels (Task 7)', () => {
       const requested: URL[] = []
       fetchMock
         .mockImplementationOnce(async (input) => {
-          requested.push(new URL(String(input)))
+          requested.push(new URL(requestUrl(input)))
           // Google omits nextSyncToken while a nextPageToken exists.
           return new Response(
             JSON.stringify({
@@ -615,7 +620,7 @@ describe('google calendar client — push channels (Task 7)', () => {
           )
         })
         .mockImplementationOnce(async (input) => {
-          requested.push(new URL(String(input)))
+          requested.push(new URL(requestUrl(input)))
           return new Response(
             JSON.stringify({
               nextSyncToken: 'cursor-final',
@@ -656,7 +661,7 @@ describe('google calendar client — push channels (Task 7)', () => {
       const requested: URL[] = []
       fetchMock
         .mockImplementationOnce(async (input) => {
-          requested.push(new URL(String(input)))
+          requested.push(new URL(requestUrl(input)))
           return new Response(
             JSON.stringify({
               nextPageToken: 'delta-page-2',
@@ -666,7 +671,7 @@ describe('google calendar client — push channels (Task 7)', () => {
           )
         })
         .mockImplementationOnce(async (input) => {
-          requested.push(new URL(String(input)))
+          requested.push(new URL(requestUrl(input)))
           return new Response(
             JSON.stringify({
               nextSyncToken: 'cursor-delta-final',
@@ -690,7 +695,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     it('makes exactly one request when the first page is the last page', async () => {
       const requested: URL[] = []
       fetchMock.mockImplementationOnce(async (input) => {
-        requested.push(new URL(String(input)))
+        requested.push(new URL(requestUrl(input)))
         return new Response(
           JSON.stringify({
             nextSyncToken: 'cursor-single',
@@ -739,7 +744,7 @@ describe('google calendar client — push channels (Task 7)', () => {
       let capturedUrl = ''
       let capturedInit: RequestInit | undefined
       fetchMock.mockImplementationOnce(async (input, init) => {
-        capturedUrl = String(input)
+        capturedUrl = requestUrl(input)
         capturedInit = init
         return new Response(
           JSON.stringify({
@@ -791,8 +796,10 @@ describe('google calendar client — push channels (Task 7)', () => {
         'https://www.googleapis.com/calendar/v3/calendars/primary/events/google-event-1'
       )
       expect(capturedInit?.method).toBe('PATCH')
-      expect((capturedInit?.headers as Record<string, string>)['If-Match']).toBe('etag-old')
-      expect(JSON.parse(String(capturedInit?.body))).toMatchObject({
+      expect((capturedInit?.headers as Record<string, string> | undefined)?.['If-Match']).toBe(
+        'etag-old'
+      )
+      expect(JSON.parse(bodyText(capturedInit))).toMatchObject({
         summary: 'Updated',
         description: 'Notes',
         location: 'Room',
@@ -823,7 +830,7 @@ describe('google calendar client — push channels (Task 7)', () => {
     it('clears a removed event colour on update but leaves it out of a create', async () => {
       const bodies: unknown[] = []
       fetchMock.mockImplementation(async (_input, init) => {
-        bodies.push(JSON.parse(String(init?.body)))
+        bodies.push(JSON.parse(bodyText(init)))
         return new Response(
           JSON.stringify({
             id: 'google-event-1',

@@ -15,7 +15,8 @@ export function publishRunStatus(db: DataDb, run: { changed: boolean; now: Date 
   const group = readReadwiseGroup(db)
   const stored =
     typeof group.status === 'object' && group.status !== null && !Array.isArray(group.status)
-      ? (group.status as Record<string, unknown>)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
+        (group.status as Record<string, unknown>)
       : {}
   const lastRun = getLastRun(db)
   const error = lastRun?.needsAttention ? (lastRun.attention ?? 'invalid-token') : null

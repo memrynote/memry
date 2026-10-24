@@ -3,11 +3,11 @@ import { diffLibraryItems, serializeLibraryItem, type StoredLibraryItem } from '
 import type { CanvasLibraryItem } from '@memry/contracts/canvas-api'
 
 function item(id: string, extra: Record<string, unknown> = {}): CanvasLibraryItem {
-  return { id, status: 'unpublished', created: 1, elements: [], ...extra } as CanvasLibraryItem
+  return { id, status: 'unpublished', created: 1, elements: [], ...extra }
 }
 
 function stored(...items: CanvasLibraryItem[]): StoredLibraryItem[] {
-  return items.map((it) => ({ id: it.id, json: serializeLibraryItem(it) }))
+  return items.map((entry) => ({ id: entry.id, json: serializeLibraryItem(entry) }))
 }
 
 describe('diffLibraryItems', () => {

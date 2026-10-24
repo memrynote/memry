@@ -68,7 +68,7 @@ describe.skipIf(!RADICALE_BIN)('CalDAV against a live Radicale server', () => {
       secrets.delete(`${service}:${account}`)
     )
     dbResult = createTestDataDb()
-    db = dbResult.db as unknown as DataDb
+    db = dbResult.db
   })
 
   afterAll(async () => {
@@ -96,7 +96,7 @@ describe.skipIf(!RADICALE_BIN)('CalDAV against a live Radicale server', () => {
       .where(eq(calendarExternalEvents.sourceId, sourceId))
       .all()
       .map((row) => row.title)
-      .sort()
+      .toSorted()
   }
 
   function cursor(): string | null {

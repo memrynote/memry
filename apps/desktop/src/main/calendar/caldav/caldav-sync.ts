@@ -349,16 +349,16 @@ export async function syncCaldavNow(
   db: DataDb,
   deps: CaldavSyncDeps & { accountId?: string } = {}
 ): Promise<{ synced: number; failed: number; retryAfterMs?: number }> {
-  const accounts = listCaldavAccountSources(db).filter(
-    (account) =>
-      account.accountId &&
-      (!deps.accountId || account.accountId === deps.accountId) &&
-      readAccountMetadata(account)
+  const accounts = listCaldavAccountSources(db).flatMap((account) =>
+    account.accountId &&
+    (!deps.accountId || account.accountId === deps.accountId) &&
+    readAccountMetadata(account)
+      ? [{ accountId: account.accountId }]
+      : []
   )
 
   const outcomes = await Promise.all(
-    accounts.map(async (account) => {
-      const accountId = account.accountId as string
+    accounts.map(async ({ accountId }) => {
       // Another device's account: the mirror arrives through sync, and this
       // device has no password to pull with.
       if (!(await readCaldavPassword(accountId))) {

@@ -352,6 +352,7 @@ export async function pushSourceToGoogleCalendar(
   if (!routedAccountId) {
     throw new Error('No connected Google account to push to')
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tests inject a partial client (Pick of the methods this path calls); production passes the full client
   const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient }, routedAccountId)
   const resolvedCalendarId = await resolveTargetCalendarId(
     db,
@@ -377,6 +378,7 @@ export async function deleteSourceFromGoogleCalendar(
   }
 
   const routedAccountId = resolveTargetGoogleAccountId(db, target, existingBinding)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tests inject a partial client (Pick of the methods this path calls); production passes the full client
   const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient }, routedAccountId)
   return await deleteSourceFromProvider(db, 'google', target, { adapter: client })
 }
@@ -480,6 +482,7 @@ async function syncGoogleCalendarSourceInner(
   }
 
   const clientAccountId = source.accountId ?? resolveDefaultGoogleAccountId(db)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tests inject a partial client (Pick of the methods this path calls); production passes the full client
   const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient }, clientAccountId)
   const now = getNow()
   const isInitialSync = !source.syncCursor

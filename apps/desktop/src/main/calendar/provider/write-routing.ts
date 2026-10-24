@@ -63,7 +63,7 @@ export function findLiveBinding(db: DataDb, target: CalendarSyncTarget): Calenda
     )
     .all()
   if (rows.length === 0) return null
-  return [...rows].sort(
+  return [...rows].toSorted(
     (left, right) =>
       left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id)
   )[0]

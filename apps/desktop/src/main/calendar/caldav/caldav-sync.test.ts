@@ -85,7 +85,7 @@ describe('CalDAV read adapter against a recorded fixture server (#1399)', () => 
       .from(calendarExternalEvents)
       .where(eq(calendarExternalEvents.sourceId, sourceId))
       .all()
-      .sort((left, right) => left.remoteEventId.localeCompare(right.remoteEventId))
+      .toSorted((left, right) => left.remoteEventId.localeCompare(right.remoteEventId))
   }
 
   it('discovers through a redirect to the partition host and keeps event calendars only', async () => {
@@ -93,7 +93,8 @@ describe('CalDAV read adapter against a recorded fixture server (#1399)', () => 
     const sourceId = await connect(server)
 
     const sources = dbResult.db.select().from(calendarSources).all()
-    expect(sources.map((source) => [source.kind, source.title]).sort()).toEqual([
+    const kindsAndTitles = sources.map((source) => [source.kind, source.title])
+    expect(kindsAndTitles.toSorted((left, right) => left[0].localeCompare(right[0]))).toEqual([
       ['account', 'me'],
       ['calendar', 'Work']
     ])
@@ -240,7 +241,7 @@ describe('CalDAV read adapter against a recorded fixture server (#1399)', () => 
       const withIcal = rows(sourceId).filter(
         (row) => (row.rawPayload as { ical?: string } | null)?.ical
       )
-      expect(withIcal.map((row) => row.title).sort()).toEqual(['Lunch', 'Standup (moved)'])
+      expect(withIcal.map((row) => row.title).toSorted()).toEqual(['Lunch', 'Standup (moved)'])
     })
 
     it('an invalid sync token clears the cursor and pulls in full (ProviderGoneError)', async () => {

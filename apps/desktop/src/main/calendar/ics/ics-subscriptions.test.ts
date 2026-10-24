@@ -277,7 +277,7 @@ describe('ICS calendar subscriptions', () => {
 
     const [item] = getCalendarRangeProjection(
       dataDb(),
-      indexResult.db as unknown as IndexDb,
+      indexResult.db,
       {
         startAt: '2026-04-01T00:00:00.000Z',
         endAt: '2026-07-01T00:00:00.000Z',

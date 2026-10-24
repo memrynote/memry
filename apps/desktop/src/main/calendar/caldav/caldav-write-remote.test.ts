@@ -240,7 +240,7 @@ describe('CalDAV bound objects changed on the server', () => {
       .from(calendarExternalEvents)
       .all()
       .map((row) => row.startAt)
-      .sort()
+      .toSorted()
     expect(mirrored).toEqual([
       '2026-10-01T09:00:00.000Z',
       '2026-10-15T09:00:00.000Z',

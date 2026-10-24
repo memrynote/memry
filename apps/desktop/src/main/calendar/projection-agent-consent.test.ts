@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import type { DataDb, IndexDb } from '../database'
+import type { DataDb } from '../database'
 import { getCalendarRangeProjection } from './projection'
 
 const NOW = '2026-09-24T08:00:00.000Z'
@@ -59,7 +59,7 @@ describe('agent read allow-list on the range projection (#1394)', () => {
   }): string[] {
     const { items } = getCalendarRangeProjection(
       dataDb.db as unknown as DataDb,
-      indexDb.db as unknown as IndexDb,
+      indexDb.db,
       {
         startAt: '2026-09-24T00:00:00.000Z',
         endAt: '2026-09-25T00:00:00.000Z',
@@ -71,7 +71,7 @@ describe('agent read allow-list on the range projection (#1394)', () => {
     return items
       .filter((item) => item.sourceType === 'external_event')
       .map((item) => item.source.provider ?? '')
-      .sort()
+      .toSorted()
   }
 
   it('keeps ICS events out while only Google is consented', () => {

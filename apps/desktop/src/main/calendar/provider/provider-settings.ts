@@ -83,7 +83,8 @@ export function readCalendarProviderSettings(
   const raw = getSetting(db, shape.key)
   if (!raw) return { ...shape.defaults }
   try {
-    return { ...shape.defaults, ...(JSON.parse(raw) as Partial<CalendarProviderSettings>) }
+    const parsed: Partial<CalendarProviderSettings> = JSON.parse(raw)
+    return { ...shape.defaults, ...parsed }
   } catch {
     return { ...shape.defaults }
   }

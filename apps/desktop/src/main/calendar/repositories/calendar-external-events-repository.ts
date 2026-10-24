@@ -26,6 +26,7 @@ export function upsertCalendarExternalEvent(
     db.insert(calendarExternalEvents).values(event).run()
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- get() on the row this function just wrote cannot be undefined
   return db
     .select()
     .from(calendarExternalEvents)

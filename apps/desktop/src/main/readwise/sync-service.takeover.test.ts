@@ -157,7 +157,7 @@ describe('one pulling device', () => {
     (await notes.getNoteById(links.getLinkByBookId(db(), bookId)!.noteId))!
 
   /** Makes `device` the running app: its data DB, its settings sync, its sync identity. */
-  async function use(device: Device) {
+  async function switchDevice(device: Device) {
     current = device
     const database = await import('../database')
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(device.result.db))
@@ -228,7 +228,7 @@ describe('one pulling device', () => {
       attachmentsFolder: 'attachments',
       journalDateFormat: 'yyyy-MM-dd'
     } satisfies VaultConfig)
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -246,7 +246,7 @@ describe('one pulling device', () => {
 
     deviceA = createDevice('dev-a', 'Desk Mac')
     deviceB = createDevice('dev-b', 'Laptop')
-    await use(deviceA)
+    await switchDevice(deviceA)
     resetWrites()
     await secrets.setReadwiseToken(vault.path, TOKEN)
     markSyncIneligible()
@@ -297,18 +297,18 @@ describe('one pulling device', () => {
       library()
       await sync()
       await flushProjectionEvents()
-      const filesAfterA = noteFiles().sort()
+      const filesAfterA = noteFiles().toSorted()
       const noteIds = [1, 2, 3].map((id) => links.getLinkByBookId(db(), id)!.noteId)
       expect(filesAfterA).toHaveLength(3)
 
       // B: its own data DB, so no links, no cursor and no retry list. The vault is the one memry sync delivered.
-      await use(deviceB)
+      await switchDevice(deviceB)
       expect(state.getCursor(db())).toBeNull()
       resetWrites()
 
       const { result, events } = await sync()
 
-      expect(noteFiles().sort()).toEqual(filesAfterA)
+      expect(noteFiles().toSorted()).toEqual(filesAfterA)
       expect(writes()).toBe(0)
       expect(result).toMatchObject({ added: 0, updated: 0, appended: 0, failed: 0 })
       expect(events.map((e) => e.result)).toEqual(['unchanged', 'unchanged', 'unchanged'])
@@ -328,7 +328,7 @@ describe('one pulling device', () => {
       await flushProjectionEvents()
       readwise.books[0].highlights.push(hl(13, 30, 5))
 
-      await use(deviceB)
+      await switchDevice(deviceB)
       resetWrites()
       await sync()
 
@@ -345,7 +345,7 @@ describe('one pulling device', () => {
       library()
       await sync()
       await flushProjectionEvents()
-      await use(deviceB)
+      await switchDevice(deviceB)
       syncOn(false)
       claim.writeClaim(db(), { deviceId: 'dev-b', deviceName: 'Laptop' })
       resetWrites()
@@ -368,7 +368,7 @@ describe('one pulling device', () => {
 
     it('a device another device claimed never reads Readwise', async () => {
       library()
-      await use(deviceB)
+      await switchDevice(deviceB)
       syncOn()
       claim.writeClaim(db(), { deviceId: 'dev-a', deviceName: 'Desk Mac' })
       const before = readwise.requests.length
@@ -484,7 +484,7 @@ describe('one pulling device', () => {
 
   describe('takeover', () => {
     async function deviceBSeesClaimOnA() {
-      await use(deviceB)
+      await switchDevice(deviceB)
       claim.writeClaim(db(), { deviceId: 'dev-a', deviceName: 'Desk Mac' })
       // Written by memry sync's apply, not by this device's own edit.
       current.queue.removeByItemId('synced_settings')
@@ -545,7 +545,7 @@ describe('one pulling device', () => {
     })
 
     it('a device that is not the claimant leaves the claim alone when it disconnects', async () => {
-      await use(deviceB)
+      await switchDevice(deviceB)
       syncOn()
       claim.writeClaim(db(), { deviceId: 'dev-a', deviceName: 'Desk Mac' })
       await connection.disconnectReadwise()
