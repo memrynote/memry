@@ -26,6 +26,9 @@ allowBuilds:
   unrs-resolver: true
   react-native-libsodium: set this to true or false
   tesseract.js: false
+  # wdio's external driver downloads; the Tauri harness uses the embedded driver only.
+  edgedriver: false
+  geckodriver: false
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
