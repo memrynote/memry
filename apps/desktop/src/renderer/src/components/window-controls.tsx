@@ -117,7 +117,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
                     : 'text-text-tertiary/40 cursor-default'
                 )}
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft className="size-4 rtl:rotate-180" />
               </button>
             </ContextMenuTrigger>
             <ContextMenuContent className="z-[70] w-64">
@@ -155,7 +155,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
                     : 'text-text-tertiary/40 cursor-default'
                 )}
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight className="size-4 rtl:rotate-180" />
               </button>
             </ContextMenuTrigger>
             <ContextMenuContent className="z-[70] w-64">

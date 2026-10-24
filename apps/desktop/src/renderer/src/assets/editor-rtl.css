@@ -1,0 +1,69 @@
+/* RTL fixes for the BlockNote editor.
+   BlockNote's stylesheet (@blocknote/core, @blocknote/shadcn) is physical: nested
+   indent, guide lines, list markers, the quote bar and table headers all use
+   left/right. Nothing there reads `dir`, so a RTL locale left nested lists flat and
+   put the quote bar on the wrong side. These rules mirror them for [dir='rtl'].
+   The stylesheet is JS-imported and lands after this file, so each selector
+   outranks the BlockNote one instead of relying on order. */
+
+/* Nested blocks indent from the inline start; the guide line follows. base.css sets
+   the LTR guide offset to -14px with !important, so the mirror needs it too. */
+:root[dir='rtl'] .bn-block-group .bn-block-group {
+  margin-left: 0;
+  margin-inline-start: 24px;
+}
+
+:root[dir='rtl'] .bn-block-group .bn-block-group > .bn-block-outer::before {
+  left: auto !important;
+  right: -14px !important;
+}
+
+:root[dir='rtl'] .bn-block-outer[data-prev-depth-change] {
+  margin-left: 0;
+  margin-inline-start: calc(10px * var(--x));
+}
+
+:root[dir='rtl'] .bn-block-outer[data-prev-depth-change] .bn-block-outer[data-prev-depth-change] {
+  margin-inline-start: 0;
+}
+
+/* The marker's gap to the text sits on the text side. */
+:root[dir='rtl'] .bn-block-content[data-content-type='bulletListItem']::before,
+:root[dir='rtl'] .bn-block-content[data-content-type='numberedListItem']::before {
+  padding-right: 0;
+  padding-inline-end: 4px;
+}
+
+:root[dir='rtl'] [data-content-type='quote'] blockquote {
+  border-left: 0 !important;
+  border-right: 3px solid currentcolor !important;
+}
+
+:root[dir='rtl'] .bn-editor [data-content-type='table'] th {
+  text-align: start;
+}
+
+:root[dir='rtl'] .bn-block-column {
+  padding: 12px 25px 12px 15px;
+}
+
+:root[dir='rtl'] .bn-block-column:first-child {
+  padding-right: 0;
+}
+
+:root[dir='rtl'] .bn-block-column:last-child {
+  padding-left: 0;
+}
+
+/* Code reads left to right whatever the UI language. */
+:root[dir='rtl'] .bn-block-content[data-content-type='codeBlock'] > pre,
+:root[dir='rtl'] .bn-inline-content code {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Each paragraph takes its direction from its first strong character, so an English
+   line in an Arabic note (or the reverse) keeps its punctuation and alignment. */
+.bn-editor .bn-inline-content {
+  unicode-bidi: plaintext;
+}

@@ -201,7 +201,7 @@ import { useObjectIdentityLookup } from '@/features/tag-fields/use-tag-schemas'
 import { useInlineTagObject } from '@/features/tag-fields/use-inline-tag-object'
 import { capNoteTaskTree, taskDepthBelow } from './hooks/task-block-marquee-indent'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
-import { useT } from '@memry/i18n/renderer'
+import { useDirection, useT } from '@memry/i18n/renderer'
 import { AllSelection, TextSelection } from '@tiptap/pm/state'
 import { yUndoPluginKey } from 'y-prosemirror'
 import type { EditorContextMenuSpelling } from '@memry/contracts/writing-tools-api'
@@ -269,15 +269,19 @@ const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, h
 /**
  * Moves BlockNote's side menu out of the bullet-fold gutter.
  *
- * The menu is placed `left-start` with no offset, so its drag handle lands on
- * the exact pixels the fold chevron uses — and both surface on the same hover.
- * Only in LTR: RTL puts the chevron on the block's other side, where the menu
- * was never in the way.
+ * The menu is placed flush against the block's inline start (`left-start` in LTR,
+ * `right-start` in RTL) with no offset, so its drag handle
+ * lands on the exact pixels the fold chevron uses, and both surface on the same
+ * hover. It moves away from the block by the gutter's width, which is the +x
+ * direction in RTL.
  */
 const BULLET_FOLD_HANDLE_OFFSET = {
   name: 'bulletFoldGutter',
   fn: ({ x, elements }: { x: number; elements: { floating: HTMLElement } }) => ({
-    x: elements.floating.ownerDocument.documentElement.dir === 'rtl' ? x : x - BULLET_FOLD_GUTTER
+    x:
+      elements.floating.ownerDocument.documentElement.dir === 'rtl'
+        ? x + BULLET_FOLD_GUTTER
+        : x - BULLET_FOLD_GUTTER
   })
 }
 
@@ -452,6 +456,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 }: ContentAreaEditorProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const direction = useDirection()
   const portalAncestry = usePortalAncestryNotes()
   const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
   const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
@@ -3302,7 +3307,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               only Delete + Colors. This one keeps both and adds Turn into,
               Duplicate, Move to and Comment. */}
             {/* BlockNote pins the drag/plus handle flush against the block's
-              inline start (`placement: 'left-start'`, no offset), which is
+              inline start (`left-start`, or `right-start` in RTL, no offset), which is
               exactly where the bullet-fold chevron sits. Both appear on the
               same hover, so the handle moves over by the width of the gutter
               the chevron claims. Written out rather than imported from
@@ -3313,7 +3318,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               onRequestMove={requestBlockMove}
               onRequestInsertTemplate={requestTemplateInsert}
               floatingUIOptions={{
-                useFloatingOptions: { middleware: [BULLET_FOLD_HANDLE_OFFSET] }
+                useFloatingOptions: {
+                  // BlockNote hardcodes `left-start`, the block's end in RTL.
+                  placement: direction === 'rtl' ? 'right-start' : 'left-start',
+                  middleware: [BULLET_FOLD_HANDLE_OFFSET]
+                }
               }}
             />
             {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
