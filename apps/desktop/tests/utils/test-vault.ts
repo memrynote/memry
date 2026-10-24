@@ -98,7 +98,7 @@ export interface CreateNoteOptions {
  * Create a test note file in the vault.
  */
 export function createTestNote(vault: TestVaultResult, options: CreateNoteOptions): string {
-  const id = options.id || `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const id = options.id || `note-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   const folder = options.folder ? path.join(vault.notesDir, options.folder) : vault.notesDir
   const filename = `${options.title.replace(/[^a-zA-Z0-9-_]/g, '-')}.md`
   const filePath = path.join(folder, filename)

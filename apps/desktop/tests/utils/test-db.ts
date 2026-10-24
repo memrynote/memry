@@ -57,10 +57,10 @@ export function asSyncDb(db: TestDb): SyncDrizzleDb {
 export function trackPreparedSql(result: TestDatabaseResult): string[] {
   const sources: string[] = []
   const original = result.sqlite.prepare.bind(result.sqlite)
-  result.sqlite.prepare = ((source: string) => {
+  result.sqlite.prepare = (source: string) => {
     sources.push(source)
     return original(source)
-  }) as typeof result.sqlite.prepare
+  }
   return sources
 }
 

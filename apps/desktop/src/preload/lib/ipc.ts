@@ -17,10 +17,14 @@ import type {
  */
 export function logListenerError(channel: string, error: unknown): void {
   const message = `[PreloadIpc] Listener for "${channel}" threw`
-  const sink = (globalThis as typeof globalThis & { __electronLog?: unknown }).__electronLog as
-    | { error?: (...data: unknown[]) => void }
-    | undefined
-  if (typeof sink?.error === 'function') {
+  const sink: unknown = (globalThis as typeof globalThis & { __electronLog?: unknown })
+    .__electronLog
+  if (
+    (typeof sink === 'object' || typeof sink === 'function') &&
+    sink !== null &&
+    'error' in sink &&
+    typeof sink.error === 'function'
+  ) {
     sink.error(message, error)
     return
   }
@@ -76,6 +80,7 @@ export function subscribe<T>(channel: string, callback: (payload: T) => void): (
     ipcRenderer.on(channel, handler)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T is the caller's assertion about the untyped IPC payload; the channel is only ever fed payloads of that shape
   const wrapped = callback as IpcCallback
   subscription.callbacks.push(wrapped)
 

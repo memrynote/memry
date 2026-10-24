@@ -152,6 +152,29 @@ import type {
 import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 import type { SyncedSettings } from '../shared/contracts/settings-sync'
+import type {
+  NoteFileType,
+  SearchResponse,
+  QuickSearchResponse,
+  SearchStats,
+  SearchReason,
+  IndexRebuildProgress
+} from '@memry/contracts/search-api'
+import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
+import type {
+  PortalGetUsageInput,
+  PortalGetUsageResult,
+  PortalSearchInput,
+  PortalSearchResult,
+  PortalStampAnchorInput,
+  PortalStampAnchorResult,
+  PortalUsageChangedEvent
+} from '@memry/contracts/portals-api'
+import type {
+  ListVaultActivityInput,
+  ListVaultActivityResult,
+  VaultActivityRetentionDays
+} from '@memry/contracts/vault-activity-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1068,32 +1091,6 @@ export type InboxProcessingErrorEvent = InboxRpc.InboxProcessingErrorEvent
 export type LinkPreviewData = InboxRpc.LinkPreviewData
 
 export type InboxClientAPI = InboxRpc.InboxClientAPI
-
-// Search types
-import type {
-  NoteFileType,
-  SearchResponse,
-  QuickSearchResponse,
-  SearchStats,
-  SearchReason,
-  IndexRebuildProgress
-} from '@memry/contracts/search-api'
-
-import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
-import type {
-  PortalGetUsageInput,
-  PortalGetUsageResult,
-  PortalSearchInput,
-  PortalSearchResult,
-  PortalStampAnchorInput,
-  PortalStampAnchorResult,
-  PortalUsageChangedEvent
-} from '@memry/contracts/portals-api'
-import type {
-  ListVaultActivityInput,
-  ListVaultActivityResult,
-  VaultActivityRetentionDays
-} from '@memry/contracts/vault-activity-api'
 
 export interface SearchClientAPI {
   query(params: {
