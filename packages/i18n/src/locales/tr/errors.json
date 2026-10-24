@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Planınız, bu hesaptaki kasa sayısından daha azını eşitliyor; bu nedenle bu kasa yalnızca bu cihazda kalıyor. Ayarlar → Hesap bölümünden hesabınızdan bir kasa kaldırın ya da planınızı yükseltin.",
     "certificatePinFailed": "Güvenli bağlantı kurulamadı. Ağ bağlantınızı kontrol edin.",
     "deviceKeyMismatch": "Bu cihazın güvenlik anahtarı artık hesabınız için kayıtlı anahtarla eşleşmiyor, bu yüzden sunucu değişikliklerini reddediyor. Cihazı yeniden kaydetmek için bu cihazda tekrar oturum açın.",
+    "deviceKeysMissing": "Cihaz anahtarları eksik olduğu için bu cihazdaki değişiklikler yüklenmiyor. Geri yüklemek için Onar'ı seçin. Bu cihazda anahtarlar artık yoksa yeniden oturum açarsınız ve kurtarma ifadenize ihtiyaç duyabilirsiniz. Eşitlenmemiş notlar, görevler ve projeler korunur.",
     "keychainUnavailable": "Memry şu anda eşitleme anahtarlarını sistem anahtar zincirinizden okuyamadığı için eşitleme duraklatıldı. Anahtar zincirinizin kilidini açtığınızda eşitleme kendiliğinden devam eder; devam etmezse Memry'yi yeniden başlatın. Hiçbir şey silinmedi.",
     "unknown": "Beklenmeyen bir eşitleme hatası oluştu. Otomatik olarak yeniden denenecek.",
     "statusFetchFailed": "Eşitleme durumu alınamadı",
@@ -106,6 +107,10 @@
     "triggerFailed": "Eşitlenemedi",
     "pauseFailed": "Eşitleme duraklatılamadı",
     "resumeFailed": "Eşitleme sürdürülemedi",
+    "syncNowSignedOut": "Eşitleme için bu cihazda yeniden oturum açmanız gerekiyor.",
+    "syncNowBusy": "Eşitleme zaten çalışıyor. Birazdan yeniden deneyin.",
+    "syncNowPaused": "Eşitleme çalışırken duraklatıldı. Eşitleme menüsünden sürdürün.",
+    "openAccountSettings": "Ayarları aç",
     "settingsNotInitialized": "Ayar eşitlemesi başlatılmadı",
     "securityQuarantinePermanent": "Bir eşitleme öğesi doğrulanamadı ve güvenlik nedeniyle karantinaya alındı.",
     "securityQuarantineRetry": "Bir eşitleme öğesinin imzası doğrulanamadı; yeniden denenecek.",
@@ -132,6 +137,7 @@
   "ai": {
     "inlineDisabled": "Yapay zeka ile satır içi düzenleme devre dışı",
     "listOllamaModelsFailed": "Ollama modelleri listelenemedi",
+    "writingAssistInvalid": "Bu istek yapay zeka modeline gönderilemedi.",
     "apiKeyMissing": "Yazma araçlarını kullanmak için Ayarlar → Yapay Zeka bölümüne {provider} API anahtarını ekle.",
     "apiKeyInvalid": "{provider} API anahtarın reddedildi. Ayarlar → Yapay Zeka bölümünden kontrol et.",
     "ollamaUnreachable": "Ollama çalışmıyor. \"ollama serve\" ile başlat ya da Ayarlar → Yapay Zeka bölümünden başka bir sağlayıcı seç.",
@@ -186,7 +192,8 @@
     "promoteExternalEventFailed": "Harici takvim etkinliği yerel etkinliğe dönüştürülemedi",
     "onlyCalendarSourcesRetryable": "Yalnızca takvim kaynakları yeniden denenebilir",
     "invalidProviderSettings": "Geçersiz takvim sağlayıcısı ayarları",
-    "getExternalEventFailed": "Bu etkinlik yüklenemedi. Etkinlik hâlâ takviminizde; tekrar açmayı deneyin."
+    "getExternalEventFailed": "Bu etkinlik yüklenemedi. Etkinlik hâlâ takviminizde; tekrar açmayı deneyin.",
+    "listLinkedNotesFailed": "Bu etkinliğe bağlı notlar yüklenemedi."
   },
   "canvasFolder": {
     "exists": "Burada bu adda bir tuval klasörü zaten var.",
@@ -213,10 +220,35 @@
     "previewFailed": "Önizleme oluşturulamadı",
     "listFailed": "İçe aktarıcılar listelenemedi",
     "appleNotesFoldersFailed": "Apple Notes klasörleriniz okunamadı",
+    "appleNotesPasswordFailed": "Notlar parolası denetlenemedi.",
     "onenoteStatusFailed": "OneNote bağlantı durumu okunamadı",
     "onenoteConnectFailed": "Microsoft ile oturum açılamadı",
     "onenoteDisconnectFailed": "Microsoft hesabının bağlantısı kesilemedi",
-    "onenoteNotebooksFailed": "OneNote not defterleri yüklenemedi"
+    "onenoteNotebooksFailed": "OneNote not defterleri yüklenemedi",
+    "readwiseStatusFailed": "Readwise bağlantı durumu okunamadı",
+    "readwiseConnectFailed": "Readwise'a bağlanılamadı",
+    "readwiseInvalidToken": "Readwise bu belirteci kabul etmedi. readwise.io/access_token adresinden yeniden kopyalayın.",
+    "readwiseRateLimited": "Readwise şu anda istekleri sınırlıyor. Bir dakika sonra yeniden deneyin.",
+    "readwiseUnreachable": "Readwise'a ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+    "readwiseDisconnectFailed": "Readwise bağlantısı kesilemedi",
+    "readwiseSyncFailed": "Readwise eşitlemesi başlatılamadı",
+    "readwiseRunUnavailable": "Readwise bu cihazda eşitlenmiyor.",
+    "readwiseRunInProgress": "Bir Readwise içe aktarması zaten çalışıyor. Bittiğinde yeniden deneyin.",
+    "readwiseOptionsFailed": "Readwise ayarları kaydedilemedi",
+    "readwiseNotConnected": "Readwise bağlı değil. Önce erişim belirtecinizi yapıştırın.",
+    "readwiseSyncsElsewhere": "Readwise başka bir cihazda eşitleniyor. Bu komutu orada çalıştırın.",
+    "readwiseBookCommandFailed": "Readwise komutu tamamlanamadı",
+    "readwiseBookGone": "Bu kitap artık Readwise kitaplığınızda yok.",
+    "readwiseNotLinked": "Bu not bir Readwise kitabına bağlı değil.",
+    "readwiseNotDeleted": "Bu kitap silinenler listesinde değil.",
+    "readwiseBookBusy": "Komut çalışırken not değişti. Yeniden deneyin.",
+    "readwiseSyncsOnDevice": "Readwise, {device} üzerinde eşitleniyor. Buraya taşımak için “Bunun yerine burada eşitle” seçeneğini kullanın.",
+    "readwiseAnotherDevice": "başka bir cihaz",
+    "readwiseNotReady": "Memry, diğer cihazlarınızla eşitlemeyi henüz tamamlamadı. Birazdan yeniden deneyin.",
+    "readwiseNeedsSync": "Readwise'ı cihazlar arasında taşımak için eşitlemeyi açın.",
+    "readwiseClaimNotDelivered": "Diğer cihazlarınıza henüz bildirilemedi. Bağlantınızı denetleyip yeniden deneyin.",
+    "readwiseTakeOverFailed": "Readwise bu cihaza taşınamadı",
+    "readwiseCancelFailed": "Readwise eşitlemesi iptal edilemedi"
   },
   "project": {
     "createFailed": "Proje oluşturulamadı",
@@ -240,7 +272,8 @@
     "renameFailed": "Özellik yeniden adlandırılamadı",
     "createDefinitionFailed": "Özellik tanımı oluşturulamadı",
     "updateDefinitionFailed": "Özellik tanımı güncellenemedi",
-    "setCalendarVisibilityFailed": "Takvim özelliği görünürlüğü ayarlanamadı"
+    "setCalendarVisibilityFailed": "Takvim özelliği görünürlüğü ayarlanamadı",
+    "definitionsFileUnreadable": "Özellik değişiklikleri kaydedilemiyor çünkü .memry/properties.md okunamıyor. Bu dosyayı düzeltin ya da kaldırın, sonra yeniden deneyin."
   },
   "reminder": {
     "notFound": "Hatırlatıcı bulunamadı",
@@ -300,7 +333,8 @@
     "deleteManyFailed": "Görevler silinemedi",
     "moveManyFailed": "Görevler taşınamadı",
     "archiveManyFailed": "Görevler arşivlenemedi",
-    "projectMissing": "Bu proje artık mevcut değil"
+    "projectMissing": "Bu proje artık mevcut değil",
+    "invalidParent": "Görev oraya taşınamaz"
   },
   "taskStatus": {
     "createFailed": "Durum oluşturulamadı",
@@ -324,6 +358,12 @@
   "vaultLock": {
     "noteReadOnly": "Sahibi bu notu salt okunur yaptı.",
     "folderReadOnly": "Sahibi bu klasörü salt okunur yaptı."
+  },
+  "ocrLanguages": {
+    "unreachable": "Memry'nin sunucusuna ulaşılamadı. Hâlihazırdaki diller çalışmaya devam eder; Memry bir sonraki başlatmada yeniden dener.",
+    "unavailable": "Memry'nin sunucusu bu dili henüz sunmuyor. Hâlihazırdaki diller çalışmaya devam eder.",
+    "corrupt": "İndirilen veri Memry'nin beklediğiyle eşleşmediği için kullanılmadı. Yeniden indirmek için tekrar deneyin.",
+    "saveFailed": "Dil verisi bu bilgisayara kaydedilemedi. Boş disk alanını denetleyin, sonra yeniden deneyin."
   },
   "tagFields": {
     "reservedName": "\"{name}\" ayrılmış bir ad, alan adı olamaz",

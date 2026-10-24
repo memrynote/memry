@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Portal kopyalanamadı",
+    "hiddenCount": "{count} gizli",
+    "windowFailed": "Bu portal açılamadı. Bunun yerine kaynak notu açın.",
+    "noTarget": "Bu portalın henüz bir hedefi yok. Tanıma bir not ekleyin ya da bloğu kaldırın.",
+    "invalidJson": "Bu portalın tanımı geçerli bir JSON değil. Aşağıdan düzeltin ya da bloğu kaldırın.",
+    "invalidShape": "Bu portalın tanımında not veya arama yok. Aşağıdan düzeltin ya da bloğu kaldırın.",
+    "search": {
+      "editQuery": "Sorguyu düzenle",
+      "count": "{count, plural, one {# blok} other {# blok}}",
+      "loading": "Aranıyor…",
+      "empty": "Bu sorguyla eşleşen blok yok.",
+      "failed": "Arama çalıştırılamadı.",
+      "retry": "Tekrar dene",
+      "truncated": "İlk {count} eşleşme gösteriliyor."
+    },
+    "copiedContents": "İçerik kopyalandı",
+    "copiedLink": "Bağlantı kopyalandı",
+    "actionFailed": "Bu portal değiştirilemedi",
+    "keepsOneBlock": "Bir portal en az bir blok içerir. Bunun yerine portalı kaldırın.",
+    "expandChildren": "Alt blokları göster",
+    "collapseChildren": "Alt blokları gizle",
+    "toolbar": {
+      "label": "Portal",
+      "include": "“{block}” bloğunu dahil et",
+      "locked": "{note} kilitli · salt okunur",
+      "more": "Daha fazla",
+      "openBeside": "{note} notunu yanda aç",
+      "click": "Tıkla",
+      "copyContents": "İçeriği kopyala",
+      "copyLink": "Bağlantıyı kopyala",
+      "remove": "Portalı kaldır",
+      "removeHint": "{note} tüm bloklarını korur"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Kaynak not silindi. Referans korundu.",
+        "action": "Kaldır"
+      },
+      "missingBlock": {
+        "text": "Blok {source} içinde silindi.",
+        "action": "Başka birini seç"
+      },
+      "notSynced": {
+        "text": "Kaynak notun eşitlenmesi bekleniyor.",
+        "action": "Yeniden dene"
+      },
+      "cycle": {
+        "text": "Bu portal kendisine geri dönüyor.",
+        "action": "Kaynağı aç"
+      },
+      "tooDeep": {
+        "text": "Portallar en fazla {max} seviye iç içe geçer. Bu portal bağlantı olarak açılır.",
+        "action": "Kaynağı aç"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Hızlı kayıt alanına odaklan",
@@ -43,6 +100,50 @@
     "showInFileManager": "Dosya yöneticisinde göster",
     "openInDefaultApp": "Varsayılan uygulamada aç",
     "revealFailed": "Klasörde gösterilemedi"
+  },
+  "commands": {
+    "runFailed": "Bu komut çalıştırılamadı. Tekrar deneyin."
+  },
+  "commandsPalette": {
+    "title": "Komutlar",
+    "placeholder": "Bir komut yazın…",
+    "groups": {
+      "navigation": "Gezinme",
+      "create": "Oluştur",
+      "tabs": "Sekmeler",
+      "editor": "Düzenleyici",
+      "view": "Görünüm",
+      "app": "Uygulama",
+      "note": "Not",
+      "settings": "Ayarlar",
+      "sync": "Eşitleme",
+      "help": "Yardım",
+      "project": "Proje",
+      "tasks": "Görevler",
+      "canvas": "Tuval",
+      "folder": "Klasör",
+      "file": "Dosya"
+    },
+    "contexts": {
+      "note": "Bu not",
+      "journal": "Bu günlük",
+      "project": "Bu proje",
+      "tasks": "Bu görevler",
+      "canvas": "Bu tuval",
+      "folder": "Bu klasör",
+      "tag": "Bu etiket",
+      "file": "Bu dosya"
+    },
+    "recent": "Son kullanılanlar",
+    "empty": "“{query}” ile eşleşen komut yok",
+    "searchHint": "Notlarda ara: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# komut} other {# komut}}"
+    },
+    "actions": {
+      "run": "Çalıştır",
+      "searchNotes": "Notlarda ara"
+    }
   },
   "tabs": {
     "pin": "Sekmeyi sabitle",
@@ -131,6 +232,20 @@
     "openInTab": "Sohbeti sekmede aç",
     "stop": "Durdur",
     "thinking": "Ajan düşünüyor",
+    "toolsUnavailable": "Bu model için kasa araçları kapalı. Araç denetimini geçemediği için yalnızca sohbet edebilir.",
+    "toolsUnavailableWithDetail": "Bu model için kasa araçları kapalı. Araç denetimini geçemediği için yalnızca sohbet edebilir. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Bu model için kasa araçları kapalı. Sağlayıcı, araç içeren bir deneme isteğini reddetti; bu yüzden model yalnızca sohbet edebilir.",
+      "noToolCall": "Bu model için kasa araçları kapalı. Bir deneme isteğini aracı çağırmadan yanıtladı; bu yüzden yalnızca sohbet edebilir.",
+      "toolResultRejected": "Bu model için kasa araçları kapalı. Bir deneme aracını çağırdı ama sonucu geri aldıktan sonra başarısız oldu; bu yüzden yalnızca sohbet edebilir.",
+      "streamingUnsupported": "Bu model için kasa araçları kapalı. Sağlayıcı deneme yanıtını akış olarak göndermedi; bu yüzden model yalnızca sohbet edebilir.",
+      "providerSaid": "Sağlayıcının yanıtı: {detail}",
+      "wroteToolCall": "Model bir araç çağrısını metin olarak yazdı ve hiçbir şey çalışmadı."
+    },
+    "stepLimit": {
+      "notice": "Adım sınırında durduruldu.",
+      "continue": "Devam"
+    },
     "enable": {
       "title": "memrynote ajanını etkinleştir",
       "description": "memrynote ajanı, kasanız hakkında sohbet etmek için seçtiğiniz yerel ajan CLI aracını kullanır. Claude mesajları Anthropic'e, Codex mesajları OpenAI'ye gönderir.",
@@ -275,6 +390,15 @@
       "addContext": "Bağlam ekle",
       "addContextWithPermissions": "Bağlam ekle ({permissions})",
       "mentionContext": "Bir not, görev veya etkinlikten bahset",
+      "files": {
+        "attach": "Metin dosyası ekle",
+        "refused": {
+          "unsupportedType": "{name} desteklenen bir metin dosyası değil. .txt, .md, .log, .csv, .tsv, .json, .yaml veya .yml dosyası ekleyin.",
+          "notText": "{name} UTF-8 metin dosyası değil. Bunun yerine bir metin dosyası ekleyin.",
+          "tooLarge": "{name} eklenirse bu mesaj 100 KB sınırını aşar. Bir dosyayı kaldırın ya da daha küçük bir dosya ekleyin.",
+          "readFailed": "{name} okunamadı. Dosyanın hâlâ var olduğunu ve açabildiğinizi denetleyin, sonra yeniden ekleyin."
+        }
+      },
       "voice": {
         "start": "Sesle yazmayı başlat",
         "stop": "Sesle yazmayı durdur",
@@ -340,6 +464,14 @@
           "extraHigh": "Ekstra yüksek"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Varsayılan",
+          "default": "Varsayılan derinlik",
+          "high": "Yüksek",
+          "max": "En yüksek"
+        }
+      },
       "permissionsLabel": "Ajan izinleri: {access}, web araması: {webSearch}",
       "permissions": {
         "label": "İzinler",
@@ -347,6 +479,17 @@
         "tools": "Araçlar"
       },
       "modelSettingsLabel": "Ajan model ayarları: {model}, {settings}",
+      "queue": {
+        "label": "Sıradaki mesajlar",
+        "queueMessage": "Mesajı sıraya al",
+        "edit": "Sıradaki mesajı düzenle",
+        "editLabel": "Sıradaki mesaj metni",
+        "remove": "Sıradaki mesajı kaldır",
+        "save": "Kaydet",
+        "cancel": "İptal",
+        "sending": "Gönderiliyor…",
+        "notSent": "Gönderilmedi. Yeniden göndermek için düzenleyin ya da kaldırın."
+      },
       "unavailable": {
         "vaultToolsOnly": "Bu modelle yalnızca kasa araçları"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Bilgilendirme onayı kaydedilemedi",
       "resolveWindow": "Ajan kaynak penceresi belirlenemedi",
       "detectCli": "Ajan arka uçları algılanamadı",
-      "loadDisclosure": "Bilgilendirme onayı yüklenemedi"
+      "loadDisclosure": "Bilgilendirme onayı yüklenemedi",
+      "turnFailed": "Yanıt bir hatayla durdu. Mesajınız korundu, yeniden gönderebilirsiniz."
     },
     "actions": {
       "copy": "Kopyala",
@@ -576,6 +720,7 @@
       "newFolder2": "Yeni klasör",
       "newProject": "Yeni proje",
       "bookmarks": "Yer imleri",
+      "chart": "Çizelge",
       "tags": "Etiketler",
       "reorderSection": "Yeniden sırala: {section}",
       "dropFilesToImport": "İçe aktarılacak dosyaları bırakın",
@@ -863,6 +1008,11 @@
       "cancel": "İptal",
       "remove2": "Kaldır",
       "inYourAccount": "Hesabınızda",
+      "trySandbox": "Deneme kasasını dene",
+      "sandboxVault": "Deneme kasası",
+      "sandboxPreparing": "Deneme kasası hazırlanıyor…",
+      "sandboxFailed": "Deneme kasası hazırlanamadı",
+      "resetSandbox": "Deneme kasasını sıfırla",
       "itemsCount": "{count} öğe",
       "untitledVault": "Kasa",
       "downloadVaultTitle": "“{name}” kasasını indir",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Açtığınız notlar burada görünür",
       "bookmarks": "Yer imleri",
       "tasks": "Görevler",
+      "chart": "Çizelge",
       "calendar": "Takvim",
       "calendarToday": "Bugün",
       "openCalendar": "Takvimi aç",
@@ -978,6 +1129,9 @@
     "edit": "Düzenle",
     "done": "Tamam",
     "addWidget": "Widget ekle",
+    "cover": {
+      "add": "Kapak ekle"
+    },
     "empty": {
       "title": "Panonuz boş",
       "body": "Widget'lar notlarınızı, görevlerinizi ve yer imlerinizi tek bir sakin yerde bir araya getirir.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Simgeyi değiştir…",
     "resetIcon": "Simgeyi sıfırla",
     "iconButton": "{name} kasasının simgesini değiştir",
+    "leaveSandbox": "{name} kasasına dön",
     "iconFailed": "Kasa simgesi değiştirilemedi"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Tür",
     "filterModified": "Değiştirilme",
     "matches": "Eşleşmeler",
+    "matchesMore": "{count, plural, one {# eşleşme daha} other {# eşleşme daha}}",
+    "matchesHide": "Eşleşmeleri gizle",
+    "matchOf": "{index}. eşleşme, toplam {total}",
     "showMore": "{count} tane daha göster",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Sonraki bölüm",
       "open": "Aç",
       "openNote": "Notu aç",
+      "openAtMatch": "Eşleşmede aç",
       "openFile": "Dosyayı aç",
       "openJournal": "Günlüğü aç",
       "openTask": "Görevi aç",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Etiket seç",
       "addTag": "Etiket ekle",
       "showAll": "Tümünü göster",
+      "hideMatches": "Eşleşmeleri gizle",
       "searchEverywhere": "Her yerde ara",
       "clearFilters": "Filtreleri temizle"
     },
