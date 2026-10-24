@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "A csomagja kevesebb széf szinkronizálását teszi lehetővé, mint amennyi ebben a fiókban van, ezért ez a széf ezen az eszközön marad. Távolítson el egy széfet a fiókjából itt: Beállítások → Fiók, vagy váltson nagyobb csomagra.",
     "certificatePinFailed": "Nem sikerült biztonságos kapcsolatot létesíteni. Ellenőrizze a hálózati kapcsolatot.",
     "deviceKeyMismatch": "Az eszköz biztonsági kulcsa már nem egyezik a fiókjához regisztrált kulccsal, ezért a szerver elutasítja a módosításait. Az újraregisztráláshoz jelentkezzen be újra ezen az eszközön.",
+    "deviceKeysMissing": "Az ezen az eszközön végzett módosítások nem töltődnek fel, mert hiányoznak az eszköz kulcsai. A visszaállításukhoz válassza a Javítás lehetőséget. Ha az eszköz már nem rendelkezik a kulcsaival, újra be kell jelentkeznie, és szükség lehet a helyreállítási kifejezésre. A még nem szinkronizált jegyzeteket, feladatokat és projekteket megőrizzük.",
     "keychainUnavailable": "A szinkronizálás szünetel, mert a Memry jelenleg nem tudja beolvasni a szinkronizálási kulcsait a rendszer kulcskarikájából. Oldja fel a kulcskarikát, és a szinkronizálás magától folytatódik; ha mégsem, indítsa újra a Memryt. Semmi sem törlődött.",
     "unknown": "Váratlan szinkronizálási hiba történt. A Memry automatikusan újrapróbálkozik.",
     "statusFetchFailed": "Nem sikerült lekérni a szinkronizálási állapotot",
@@ -106,6 +107,10 @@
     "triggerFailed": "A szinkronizálás sikertelen",
     "pauseFailed": "Nem sikerült szüneteltetni a szinkronizálást",
     "resumeFailed": "Nem sikerült folytatni a szinkronizálást",
+    "syncNowSignedOut": "A szinkronizáláshoz újra be kell jelentkeznie ezen az eszközön.",
+    "syncNowBusy": "A szinkronizálás már fut. Próbálja újra egy pillanat múlva.",
+    "syncNowPaused": "A szinkronizálás futás közben szüneteltetve lett. Folytassa a szinkronizálás menüből.",
+    "openAccountSettings": "Beállítások megnyitása",
     "settingsNotInitialized": "A beállítások szinkronizálása nincs inicializálva",
     "securityQuarantinePermanent": "Egy szinkronizálási elemet nem sikerült ellenőrizni, ezért biztonsági okokból karanténba helyeztük.",
     "securityQuarantineRetry": "Egy szinkronizálási elem aláírásának ellenőrzése sikertelen volt, ezért újra megpróbáljuk.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "A szövegközi MI-szerkesztés ki van kapcsolva",
-    "listOllamaModelsFailed": "Nem sikerült listázni az Ollama-modelleket"
+    "listOllamaModelsFailed": "Nem sikerült listázni az Ollama-modelleket",
+    "writingAssistInvalid": "Ezt a kérést nem lehetett elküldeni az MI-modellnek.",
+    "apiKeyMissing": "Az íróeszközök használatához adja meg a(z) {provider} API-kulcsát a Beállítások → MI részben.",
+    "apiKeyInvalid": "A(z) {provider} API-kulcsát elutasították. Ellenőrizze a Beállítások → MI részben.",
+    "ollamaUnreachable": "Az Ollama nem fut. Indítsa el az „ollama serve” paranccsal, vagy válasszon másik szolgáltatót a Beállítások → MI részben.",
+    "providerUnreachable": "Nem sikerült elérni a(z) {provider} szolgáltatót. Ellenőrizze az internetkapcsolatot, és próbálja újra."
   },
   "auth": {
     "notAuthenticated": "Nincs bejelentkezve",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "Nem sikerült átvenni a külső naptáreseményt",
     "onlyCalendarSourcesRetryable": "Csak naptárforrások próbálhatók újra",
     "invalidProviderSettings": "Érvénytelen naptárszolgáltató-beállítások",
-    "getExternalEventFailed": "Nem sikerült betölteni ezt az eseményt. Továbbra is szerepel a naptárában; próbálja meg újra megnyitni."
+    "getExternalEventFailed": "Nem sikerült betölteni ezt az eseményt. Továbbra is szerepel a naptárában; próbálja meg újra megnyitni.",
+    "listLinkedNotesFailed": "Nem sikerült betölteni az eseményhez csatolt jegyzeteket."
   },
   "canvasFolder": {
     "exists": "Itt már létezik ilyen nevű vászonmappa.",
@@ -209,10 +220,35 @@
     "previewFailed": "Nem sikerült létrehozni az előnézetet",
     "listFailed": "Nem sikerült listázni az importálókat",
     "appleNotesFoldersFailed": "Nem sikerült beolvasni az Apple Notes-mappákat",
+    "appleNotesPasswordFailed": "Nem sikerült ellenőrizni a Jegyzetek jelszavát.",
     "onenoteStatusFailed": "Nem sikerült beolvasni a OneNote-kapcsolat állapotát",
     "onenoteConnectFailed": "A Microsoft-bejelentkezés sikertelen",
     "onenoteDisconnectFailed": "Nem sikerült leválasztani a Microsoft-fiókot",
-    "onenoteNotebooksFailed": "Nem sikerült betölteni a OneNote-jegyzetfüzeteket"
+    "onenoteNotebooksFailed": "Nem sikerült betölteni a OneNote-jegyzetfüzeteket",
+    "readwiseStatusFailed": "Nem sikerült beolvasni a Readwise-kapcsolat állapotát",
+    "readwiseConnectFailed": "Nem sikerült csatlakozni a Readwise-hoz",
+    "readwiseInvalidToken": "A Readwise nem fogadta el ezt a tokent. Másolja ki újra a readwise.io/access_token oldalról.",
+    "readwiseRateLimited": "A Readwise jelenleg korlátozza a kéréseket. Próbálja újra egy perc múlva.",
+    "readwiseUnreachable": "Nem sikerült elérni a Readwise-t. Ellenőrizze a kapcsolatot, és próbálja újra.",
+    "readwiseDisconnectFailed": "Nem sikerült leválasztani a Readwise-t",
+    "readwiseSyncFailed": "Nem sikerült elindítani a Readwise-szinkronizálást",
+    "readwiseRunUnavailable": "A Readwise nem szinkronizál ezen az eszközön.",
+    "readwiseRunInProgress": "Egy Readwise-importálás már fut. Próbálja újra, amikor befejeződött.",
+    "readwiseOptionsFailed": "Nem sikerült menteni a Readwise beállításait",
+    "readwiseNotConnected": "A Readwise nincs csatlakoztatva. Előbb illessze be a hozzáférési tokent.",
+    "readwiseSyncsElsewhere": "A Readwise egy másik eszközön szinkronizál. Ott futtassa ezt a parancsot.",
+    "readwiseBookCommandFailed": "Nem sikerült végrehajtani a Readwise-parancsot",
+    "readwiseBookGone": "Ez a könyv már nincs a Readwise-könyvtárában.",
+    "readwiseNotLinked": "Ez a jegyzet nincs Readwise-könyvhöz kapcsolva.",
+    "readwiseNotDeleted": "Ez a könyv nincs a törölt elemek listájában.",
+    "readwiseBookBusy": "A jegyzet megváltozott a parancs futása közben. Próbálja újra.",
+    "readwiseSyncsOnDevice": "A Readwise itt szinkronizál: {device}. Az áthelyezéséhez használja a „Szinkronizálás itt” lehetőséget.",
+    "readwiseAnotherDevice": "másik eszköz",
+    "readwiseNotReady": "A Memry még nem fejezte be a szinkronizálást a többi eszközével. Próbálja újra egy pillanat múlva.",
+    "readwiseNeedsSync": "A Readwise eszközök közötti áthelyezéséhez kapcsolja be a szinkronizálást.",
+    "readwiseClaimNotDelivered": "Még nem sikerült értesíteni a többi eszközét. Ellenőrizze a kapcsolatot, és próbálja újra.",
+    "readwiseTakeOverFailed": "Nem sikerült a Readwise-t erre az eszközre áthelyezni",
+    "readwiseCancelFailed": "Nem sikerült megszakítani a Readwise-szinkronizálást"
   },
   "project": {
     "createFailed": "Nem sikerült létrehozni a projektet",
@@ -236,7 +272,8 @@
     "renameFailed": "Nem sikerült átnevezni a tulajdonságot",
     "createDefinitionFailed": "Nem sikerült létrehozni a tulajdonságdefiníciót",
     "updateDefinitionFailed": "Nem sikerült frissíteni a tulajdonságdefiníciót",
-    "setCalendarVisibilityFailed": "Nem sikerült beállítani a naptártulajdonság láthatóságát"
+    "setCalendarVisibilityFailed": "Nem sikerült beállítani a naptártulajdonság láthatóságát",
+    "definitionsFileUnreadable": "A tulajdonságmódosítások nem menthetők, mert a .memry/properties.md nem olvasható. Javítsa vagy távolítsa el a fájlt, majd próbálja újra."
   },
   "reminder": {
     "notFound": "Az emlékeztető nem található",
@@ -262,6 +299,7 @@
     "shortcutInUse": "A(z) {shortcut} billentyűparancs már használatban van"
   },
   "tag": {
+    "renameInProgress": "A(z) #{from} átnevezése erre: #{to} még folyamatban van. Próbálja újra, amikor befejeződött.",
     "mergeSameTag": "A forrás- és a célcímke azonos",
     "categoryNameRequired": "A kategória neve kötelező",
     "pinNoteFailed": "Nem sikerült kitűzni a jegyzetet",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "Nem sikerült törölni a feladatokat",
     "moveManyFailed": "Nem sikerült áthelyezni a feladatokat",
     "archiveManyFailed": "Nem sikerült archiválni a feladatokat",
-    "projectMissing": "Az a projekt már nem létezik"
+    "projectMissing": "Az a projekt már nem létezik",
+    "invalidParent": "A feladat nem kerülhet ide"
   },
   "taskStatus": {
     "createFailed": "Nem sikerült létrehozni az állapotot",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "A tulajdonos írásvédetté tette ezt a jegyzetet.",
     "folderReadOnly": "A tulajdonos írásvédetté tette ezt a mappát."
+  },
+  "ocrLanguages": {
+    "unreachable": "A Memry szervere nem érhető el. A már meglévő nyelvek továbbra is működnek, a Memry a következő indításkor újra megpróbálja.",
+    "unavailable": "A Memry szervere még nem kínálja ezt a nyelvet. A már meglévő nyelvek továbbra is működnek.",
+    "corrupt": "A letöltött adatok nem egyeztek a Memry által várttal, ezért nem lettek felhasználva. Az újbóli letöltéshez próbálja újra.",
+    "saveFailed": "A nyelvi adatokat nem sikerült menteni erre a számítógépre. Ellenőrizze a szabad lemezterületet, majd próbálja újra."
+  },
+  "tagFields": {
+    "reservedName": "A(z) „{name}” foglalt, ezért nem lehet mezőnév",
+    "duplicateField": "A(z) #{definedBy} címkének már van „{name}” nevű mezője",
+    "unknownField": "Ennek a címkének nincs „{name}” nevű mezője",
+    "inheritedField": "A(z) „{name}” a(z) #{definedBy} címkéből származik. Ott szerkessze",
+    "cycle": "A(z) #{parent} már ebből a címkéből veszi a mezőit",
+    "unreadableSchema": "A Memry egy újabb verziója módosította ezt a címkét. A szerkesztéséhez frissítse a Memryt",
+    "relationTargetRequired": "Válassza ki, melyik címkére mutasson ez a kapcsolat",
+    "editFailed": "Nem sikerült módosítani a címke mezőit",
+    "previewFailed": "Nem sikerült megszámolni, mire hat ez a módosítás",
+    "snapshotFailed": "Nem sikerült betölteni a címkemezőket",
+    "renameRunning": "Egy másik mező átnevezése még folyamatban van ({from} → {to}). Próbálja újra, ha elkészült."
   }
 }

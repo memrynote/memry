@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Nem sikerült átmásolni a portált",
+    "hiddenCount": "{count} rejtett",
+    "windowFailed": "Ezt a portált nem sikerült megnyitni. Nyissa meg inkább a forrásjegyzetet.",
+    "noTarget": "Ennek a portálnak még nincs célja. Adjon jegyzetet a definícióhoz, vagy távolítsa el a blokkot.",
+    "invalidJson": "Ennek a portálnak a definíciója nem érvényes JSON. Javítsa lent, vagy távolítsa el a blokkot.",
+    "invalidShape": "Ennek a portálnak a definíciójában nincs jegyzet vagy keresés. Javítsa lent, vagy távolítsa el a blokkot.",
+    "search": {
+      "editQuery": "Lekérdezés szerkesztése",
+      "count": "{count, plural, one {# blokk} other {# blokk}}",
+      "loading": "Keresés…",
+      "empty": "Egy blokk sem felel meg ennek a lekérdezésnek.",
+      "failed": "A keresést nem sikerült lefuttatni.",
+      "retry": "Újrapróbálkozás",
+      "truncated": "Az első {count} találat látható."
+    },
+    "copiedContents": "Tartalom átmásolva",
+    "copiedLink": "Hivatkozás átmásolva",
+    "actionFailed": "Nem sikerült módosítani ezt a portált",
+    "keepsOneBlock": "Egy portálnak legalább egy blokkot meg kell tartania. Inkább távolítsa el a portált.",
+    "expandChildren": "Gyermekelemek megjelenítése",
+    "collapseChildren": "Gyermekelemek elrejtése",
+    "toolbar": {
+      "label": "Portál",
+      "include": "„{block}” felvétele",
+      "locked": "{note} zárolva · csak olvasható",
+      "more": "Továbbiak",
+      "openBeside": "{note} megnyitása mellette",
+      "click": "Kattintás",
+      "copyContents": "Tartalom másolása",
+      "copyLink": "Hivatkozás másolása",
+      "remove": "Portál eltávolítása",
+      "removeHint": "{note} minden blokkját megtartja"
+    },
+    "states": {
+      "missingNote": {
+        "text": "A forrásjegyzetet törölték. A hivatkozás megmarad.",
+        "action": "Eltávolítás"
+      },
+      "missingBlock": {
+        "text": "A blokkot törölték itt: {source}.",
+        "action": "Másik választása"
+      },
+      "notSynced": {
+        "text": "Várakozás a forrásjegyzet szinkronizálására.",
+        "action": "Újrapróbálkozás"
+      },
+      "cycle": {
+        "text": "Ez a portál önmagára mutat vissza.",
+        "action": "Forrás megnyitása"
+      },
+      "tooDeep": {
+        "text": "A portálok legfeljebb {max} szintig ágyazhatók egymásba. Ez hivatkozásként nyílik meg.",
+        "action": "Forrás megnyitása"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Rögzítési mező fókuszálása",
@@ -43,6 +100,50 @@
     "showInFileManager": "Megjelenítés a fájlkezelőben",
     "openInDefaultApp": "Megnyitás az alapértelmezett alkalmazásban",
     "revealFailed": "Nem sikerült megjeleníteni a mappában"
+  },
+  "commands": {
+    "runFailed": "A parancsot nem sikerült futtatni. Próbálja újra."
+  },
+  "commandsPalette": {
+    "title": "Parancsok",
+    "placeholder": "Írjon be egy parancsot…",
+    "groups": {
+      "navigation": "Navigáció",
+      "create": "Létrehozás",
+      "tabs": "Lapok",
+      "editor": "Szerkesztő",
+      "view": "Nézet",
+      "app": "Alkalmazás",
+      "note": "Jegyzet",
+      "settings": "Beállítások",
+      "sync": "Szinkronizálás",
+      "help": "Súgó",
+      "project": "Projekt",
+      "tasks": "Feladatok",
+      "canvas": "Vászon",
+      "folder": "Mappa",
+      "file": "Fájl"
+    },
+    "contexts": {
+      "note": "Ez a jegyzet",
+      "journal": "Ez a napló",
+      "project": "Ez a projekt",
+      "tasks": "Ezek a feladatok",
+      "canvas": "Ez a vászon",
+      "folder": "Ez a mappa",
+      "tag": "Ez a címke",
+      "file": "Ez a fájl"
+    },
+    "recent": "Legutóbbiak",
+    "empty": "Nincs a(z) „{query}” kifejezésre illő parancs",
+    "searchHint": "Jegyzetek keresése: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# parancs} other {# parancs}}"
+    },
+    "actions": {
+      "run": "Futtatás",
+      "searchNotes": "Jegyzetek keresése"
+    }
   },
   "tabs": {
     "pin": "Lap kitűzése",
@@ -131,6 +232,20 @@
     "openInTab": "Beszélgetés megnyitása lapon",
     "stop": "Leállítás",
     "thinking": "Az ügynök gondolkodik",
+    "toolsUnavailable": "A széfeszközök ki vannak kapcsolva ennél a modellnél. Nem felelt meg az eszközellenőrzésen, ezért csak csevegni tud.",
+    "toolsUnavailableWithDetail": "A széfeszközök ki vannak kapcsolva ennél a modellnél. Nem felelt meg az eszközellenőrzésen, ezért csak csevegni tud. {detail}",
+    "toolsOff": {
+      "toolsRejected": "A széfeszközök ki vannak kapcsolva ennél a modellnél. A szolgáltató elutasította az eszközöket tartalmazó próbakérést, ezért a modell csak csevegni tud.",
+      "noToolCall": "A széfeszközök ki vannak kapcsolva ennél a modellnél. Az eszköz meghívása nélkül válaszolt egy próbakérésre, ezért csak csevegni tud.",
+      "toolResultRejected": "A széfeszközök ki vannak kapcsolva ennél a modellnél. Meghívott egy próbaeszközt, de az eredmény visszaérkezése után hibázott, ezért csak csevegni tud.",
+      "streamingUnsupported": "A széfeszközök ki vannak kapcsolva ennél a modellnél. A szolgáltató nem streamelt próbaválaszt, ezért a modell csak csevegni tud.",
+      "providerSaid": "A szolgáltató üzenete: {detail}",
+      "wroteToolCall": "A modell szövegként írt le egy eszközhívást, és semmi sem futott le."
+    },
+    "stepLimit": {
+      "notice": "A lépéskorlátnál leállt.",
+      "continue": "Folytatás"
+    },
     "enable": {
       "title": "A memrynote-ügynök engedélyezése",
       "description": "A memrynote-ügynök a kiválasztott helyi CLI-ügynököt használja a széfével kapcsolatos csevegéshez. A Claude az Anthropic, a Codex az OpenAI szervereire küldi az üzeneteket.",
@@ -275,6 +390,15 @@
       "addContext": "Kontextus hozzáadása",
       "addContextWithPermissions": "Kontextus hozzáadása ({permissions})",
       "mentionContext": "Jegyzet, feladat vagy esemény említése",
+      "files": {
+        "attach": "Szövegfájl csatolása",
+        "refused": {
+          "unsupportedType": "A(z) {name} nem támogatott szövegfájl. Csatoljon .txt, .md, .log, .csv, .tsv, .json, .yaml vagy .yml fájlt.",
+          "notText": "A(z) {name} nem UTF-8 szövegfájl. Csatoljon inkább szövegfájlt.",
+          "tooLarge": "A(z) {name} miatt az üzenet túllépné a 100 KB-os korlátot. Távolítson el egy fájlt, vagy csatoljon kisebbet.",
+          "readFailed": "A(z) {name} nem olvasható. Ellenőrizze, hogy a fájl még létezik-e, és meg tudja-e nyitni, majd csatolja újra."
+        }
+      },
       "voice": {
         "start": "Hangdiktálás indítása",
         "stop": "Hangdiktálás leállítása",
@@ -340,6 +464,14 @@
           "extraHigh": "Extra magas"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Alapértelmezett",
+          "default": "Alapértelmezett mélység",
+          "high": "Magas",
+          "max": "Maximális"
+        }
+      },
       "permissionsLabel": "Ügynök jogosultságai: {access}, webes keresés: {webSearch}",
       "permissions": {
         "label": "Jogosultságok",
@@ -347,6 +479,17 @@
         "tools": "Eszközök"
       },
       "modelSettingsLabel": "Ügynök modellbeállításai: {model}, {settings}",
+      "queue": {
+        "label": "Sorban álló üzenetek",
+        "queueMessage": "Üzenet sorba állítása",
+        "edit": "Sorban álló üzenet szerkesztése",
+        "editLabel": "Sorban álló üzenet szövege",
+        "remove": "Sorban álló üzenet eltávolítása",
+        "save": "Mentés",
+        "cancel": "Mégse",
+        "sending": "Küldés…",
+        "notSent": "Nem lett elküldve. Szerkessze az újraküldéshez, vagy távolítsa el."
+      },
       "unavailable": {
         "vaultToolsOnly": "Ezzel a modellel csak a széf eszközei"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Nem sikerült menteni a tájékoztató elfogadását",
       "resolveWindow": "Nem sikerült azonosítani az ügynök forrásablakát",
       "detectCli": "Nem sikerült észlelni az ügynökök háttérrendszereit",
-      "loadDisclosure": "Nem sikerült betölteni a tájékoztató elfogadási állapotát"
+      "loadDisclosure": "Nem sikerült betölteni a tájékoztató elfogadási állapotát",
+      "turnFailed": "A válasz hibával leállt. Az üzenete megmaradt, így újra elküldheti."
     },
     "actions": {
       "copy": "Másolás",
@@ -576,6 +720,7 @@
       "newFolder2": "Új mappa",
       "newProject": "Új projekt",
       "bookmarks": "Könyvjelzők",
+      "chart": "Diagram",
       "tags": "Címkék",
       "reorderSection": "Átrendezés: {section}",
       "dropFilesToImport": "Az importáláshoz ejtse ide a fájlokat",
@@ -863,6 +1008,11 @@
       "cancel": "Mégse",
       "remove2": "Eltávolítás",
       "inYourAccount": "A fiókjában",
+      "trySandbox": "Próbálja ki a homokozó széfet",
+      "sandboxVault": "Homokozó széf",
+      "sandboxPreparing": "A homokozó előkészítése…",
+      "sandboxFailed": "Nem sikerült előkészíteni a homokozó széfet",
+      "resetSandbox": "Homokozó széf visszaállítása",
       "itemsCount": "{count} elem",
       "untitledVault": "Széf",
       "downloadVaultTitle": "„{name}” letöltése",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "A megnyitott jegyzetei itt jelennek meg",
       "bookmarks": "Könyvjelzők",
       "tasks": "Feladatok",
+      "chart": "Diagram",
       "calendar": "Naptár",
       "calendarToday": "Ma",
       "openCalendar": "Naptár megnyitása",
@@ -978,6 +1129,9 @@
     "edit": "Szerkesztés",
     "done": "Kész",
     "addWidget": "Widget hozzáadása",
+    "cover": {
+      "add": "Borító hozzáadása"
+    },
     "empty": {
       "title": "A tábla üres",
       "body": "A widgetek egyetlen nyugodt helyre gyűjtik össze a jegyzeteit, feladatait és könyvjelzőit.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Ikon módosítása…",
     "resetIcon": "Ikon visszaállítása",
     "iconButton": "Ikon módosítása: {name}",
+    "leaveSandbox": "Vissza ide: {name}",
     "iconFailed": "Nem sikerült módosítani a széf ikonját"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Típus",
     "filterModified": "Módosítva",
     "matches": "Találatok",
+    "matchesMore": "{count, plural, one {# további találat} other {# további találat}}",
+    "matchesHide": "Találatok elrejtése",
+    "matchOf": "{index}. találat / {total}",
     "showMore": "Még {count} megjelenítése",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Következő szakasz",
       "open": "Megnyitás",
       "openNote": "Jegyzet megnyitása",
+      "openAtMatch": "Megnyitás a találatnál",
       "openFile": "Fájl megnyitása",
       "openJournal": "Napló megnyitása",
       "openTask": "Feladat megnyitása",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Címke kiválasztása",
       "addTag": "Címke hozzáadása",
       "showAll": "Összes megjelenítése",
+      "hideMatches": "Találatok elrejtése",
       "searchEverywhere": "Keresés mindenhol",
       "clearFilters": "Szűrők törlése"
     },
