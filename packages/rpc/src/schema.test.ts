@@ -47,7 +47,7 @@ describe('defineMethod', () => {
 
   it('preserves readonly param arrays without copying', () => {
     const params = ['id', 'options'] as const
-    const spec = defineMethod<(id: string, options: object) => Promise<void>>({
+    const spec = defineMethod<(id: string, options: Record<string, unknown>) => Promise<void>>({
       channel: 'x:do',
       params
     })
