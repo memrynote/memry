@@ -68,7 +68,7 @@ const signChallenge = async (
     )
   )
 
-const decodeJti = (token: string): string => JSON.parse(atob(token.split('.')[1]!)).jti as string
+const decodeJti = (token: string): string => JSON.parse(atob(token.split('.')[1])).jti as string
 
 /** Records every consumed_setup_tokens insert so single-use can be asserted. */
 const createEnv = (

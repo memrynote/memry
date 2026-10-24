@@ -40,7 +40,7 @@ const createNamespace = () => {
     get: vi.fn((id: string) => {
       let instance = instances.get(id)
       if (!instance) {
-        instance = new RateLimiter({} as DurableObjectState, {} as never)
+        instance = new RateLimiter({} as DurableObjectState, {})
         ;(instance as unknown as { ctx: { storage: unknown } }).ctx.storage = makeStorage()
         instances.set(id, instance)
       }

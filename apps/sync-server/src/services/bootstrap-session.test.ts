@@ -53,7 +53,7 @@ describe('bootstrap session tokens', () => {
     )
     const [payload] = token.split('.')
     // Swap the userId inside the payload without re-signing.
-    const decoded = JSON.parse(Buffer.from(payload!, 'base64url').toString())
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString())
     decoded.userId = 'victim'
     const forged = `${Buffer.from(JSON.stringify(decoded)).toString('base64url')}.${token.split('.')[1]}`
 

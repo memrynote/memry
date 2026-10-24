@@ -34,7 +34,7 @@ const seedVaultWithSnapshots = (
     const noteId = `n-${i}`
     const blobKey = `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
     const bytes = new TextEncoder().encode(JSON.stringify({ n: `${userId}-${i}` }))
-    storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
+    storage.put(blobKey, bytes.slice().buffer)
     harness.raw
       .prepare(
         `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
@@ -108,7 +108,7 @@ describe('runPackBackfill', () => {
       }
     })
 
-    const result = await runPackBackfill(harness.db, brokenStorage as R2Bucket, 4)
+    const result = await runPackBackfill(harness.db, brokenStorage, 4)
     // u-fine still got its pack despite u-broken failing.
     expect(
       (

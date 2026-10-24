@@ -137,7 +137,7 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
     attachments = {
       chunkHashes: pageRows.map((row) => row.hash),
       ...(hasMore && pageRows.length > 0
-        ? { nextChunkCursor: pageRows[pageRows.length - 1]!.hash }
+        ? { nextChunkCursor: pageRows[pageRows.length - 1].hash }
         : {})
     }
   }

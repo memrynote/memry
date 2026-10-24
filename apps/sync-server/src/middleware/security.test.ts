@@ -34,7 +34,7 @@ describe('securityHeaders', () => {
     })
     c.header = vi.fn((_name: string, _value: string) => {
       callOrder.push('header')
-    }) as typeof c.header
+    })
 
     // #when
     await securityHeaders(c as never, next)

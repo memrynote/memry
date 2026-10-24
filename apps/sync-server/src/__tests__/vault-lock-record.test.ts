@@ -47,10 +47,10 @@ const seed = async (): Promise<void> => {
   ])) as CryptoKeyPair
   signingKey = keyPair.privateKey
   const publicKey = Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       keyPair.publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
   harness.raw

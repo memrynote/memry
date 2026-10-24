@@ -43,7 +43,7 @@ export const claimExceptionBudget = async (
         .bind(key, requested, now, windowStart, requested, requested, windowStart, now),
       db.prepare('SELECT count FROM rate_limits WHERE key = ?').bind(key)
     ])
-    const row = (result[1] as D1Result).results?.[0] as { count: number } | undefined
+    const row = result[1].results?.[0] as { count: number } | undefined
     const used = row?.count ?? requested
     // `used` already includes this batch; grant the part of it that still fits.
     const granted = Math.min(requested, Math.max(0, EXCEPTION_BUDGET_PER_HOUR - (used - requested)))

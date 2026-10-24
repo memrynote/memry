@@ -126,9 +126,7 @@ export const checkEmailRateLimit = async (db: D1Database, email: string): Promis
     db.prepare('SELECT count, window_start FROM rate_limits WHERE key = ?').bind(key)
   ])
 
-  const row = (result[1] as D1Result).results?.[0] as
-    | { count: number; window_start: number }
-    | undefined
+  const row = result[1].results?.[0] as { count: number; window_start: number } | undefined
   const count = row?.count ?? 0
 
   if (count > MAX_EMAIL_REQUESTS) {

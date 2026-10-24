@@ -921,7 +921,7 @@ auth.post('/refresh', refreshRateLimit, async (c) => {
       issuer: 'memry-sync',
       audience: 'memry-client'
     })
-    claims = result.payload as typeof claims
+    claims = result.payload
   } catch (err) {
     if (isJwtExpiredError(err)) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Refresh token has expired', 401)

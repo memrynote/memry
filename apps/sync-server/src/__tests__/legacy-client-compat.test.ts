@@ -50,10 +50,10 @@ const seed = async (): Promise<void> => {
   // Workers' `exportKey` overloads do not model raw Ed25519 export, which Node's
   // WebCrypto (what these tests run on) supports.
   const publicKey = Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       keyPair.publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
   harness.raw
@@ -156,15 +156,10 @@ const request = (
   if (clientHeader) headers['x-memry-client'] = clientHeader
   // The push handler fires its broadcast through `executionCtx.waitUntil`, so
   // the request needs one exactly as the Workers runtime supplies.
-  return app.request(
-    path,
-    { ...rest, headers },
-    env as unknown as Record<string, unknown>,
-    {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined
-    } as unknown as ExecutionContext
-  )
+  return app.request(path, { ...rest, headers }, env, {
+    waitUntil: () => undefined,
+    passThroughOnException: () => undefined
+  } as unknown as ExecutionContext)
 }
 
 const itemRow = (itemId: string) =>

@@ -91,7 +91,7 @@ const buildApp = () => {
 type App = ReturnType<typeof buildApp>
 
 const sign = async (key: CryptoKey, bytes: Uint8Array) =>
-  toB64(await crypto.subtle.sign('Ed25519', key, bytes as unknown as ArrayBuffer))
+  toB64(await crypto.subtle.sign('Ed25519', key, bytes))
 
 const attest = (claim: DeleteClaim, key: CryptoKey = signingKey) =>
   sign(key, encodeSignaturePayload(deleteAttestationPayload(claim), 'DELETE_ATTESTATION'))
@@ -148,7 +148,7 @@ const request = (app: App, path: string, init: RequestInit = {}) =>
       ...init,
       headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) }
     },
-    env as unknown as Record<string, unknown>,
+    env,
     {
       waitUntil: () => undefined,
       passThroughOnException: () => undefined

@@ -45,10 +45,10 @@ const b64 = (length: number, fill: number) => Buffer.alloc(length, fill).toStrin
 
 const exportRawPublicKey = async (publicKey: CryptoKey): Promise<string> =>
   Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
 const seedDevice = async (deviceId: string, revoked = false): Promise<void> => {
@@ -143,7 +143,7 @@ const buildItem = async (options: {
         )
       ).toString('base64')
 
-  return { ...item, signature, signerDeviceId } as PushItemInput
+  return { ...item, signature, signerDeviceId }
 }
 
 const push = (items: PushItemInput[], deviceId = DEVICE_A) =>

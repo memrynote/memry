@@ -268,7 +268,7 @@ describe('presigned direct transfers (#1836)', () => {
         env
       )
       expect(res.status).toBe(201)
-      const raw = (await res.text()) as string
+      const raw = await res.text()
       expect(JSON.parse(raw)).toEqual({
         sessionId: expect.any(String),
         expiresAt: expect.any(Number)
@@ -367,14 +367,14 @@ describe('presigned direct transfers (#1836)', () => {
       })
 
     const headByKey = (sizes: Record<string, number | null>): void => {
-      vi.mocked(env.STORAGE.head).mockImplementation((async (key: string) => {
+      vi.mocked(env.STORAGE.head).mockImplementation(async (key: string) => {
         for (const [fragment, size] of Object.entries(sizes)) {
           if (key.includes(fragment)) {
             return (size === null ? null : { size }) as unknown as R2Object
           }
         }
         return null
-      }) as unknown as (key: string) => Promise<R2Object | null>)
+      })
     }
 
     it('head-verifies claims, registers blob_chunks rows and merges session state', async () => {
@@ -507,14 +507,14 @@ describe('presigned direct transfers (#1836)', () => {
     const chunkKey = (hash: string): string => `user-1/vaults/vault-1/chunks/${hash}`
 
     const headByKey = (sizes: Record<string, number | null>): void => {
-      vi.mocked(env.STORAGE.head).mockImplementation((async (key: string) => {
+      vi.mocked(env.STORAGE.head).mockImplementation(async (key: string) => {
         for (const [fragment, size] of Object.entries(sizes)) {
           if (key.includes(fragment)) {
             return (size === null ? null : { size }) as unknown as R2Object
           }
         }
         return null
-      }) as unknown as (key: string) => Promise<R2Object | null>)
+      })
     }
 
     it('deletes armed keys the client never registered when the session is aborted', async () => {

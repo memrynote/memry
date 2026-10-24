@@ -742,9 +742,7 @@ describe('vault transfer', () => {
 
 describe('createLinkingSession', () => {
   beforeEach(() => {
-    vi.spyOn(crypto, 'randomUUID').mockReturnValue(
-      'new-session-id' as `${string}-${string}-${string}-${string}-${string}`
-    )
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('new-session-id')
   })
 
   it('should call db.batch with cancel + insert statements', async () => {

@@ -66,7 +66,7 @@ if (values['persist-to'] && env !== 'local') {
   process.exit(1)
 }
 
-const bucket = BUCKETS[env as Env]
+const bucket = BUCKETS[env]
 const dataDir = resolve(values.dir)
 const target =
   env === 'local'

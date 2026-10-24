@@ -178,7 +178,7 @@ blob.get('/blob/:blob_key', blobDownloadLimit, async (c) => {
     headers.set('Accept-Ranges', 'bytes')
     obj.writeHttpMetadata(headers)
 
-    const body = obj as R2ObjectBody
+    const body = obj
     const total = obj.size
     const range = obj.range as R2Range & { offset?: number; length?: number }
     const start = range.offset ?? 0

@@ -36,7 +36,7 @@ export const setupAuthMiddleware: MiddlewareHandler<AppContext> = async (c, next
       issuer: REQUIRED_ISSUER,
       audience: REQUIRED_AUDIENCE
     })
-    payload = result.payload as typeof payload
+    payload = result.payload
   } catch (err) {
     if (isJwtExpiredError(err)) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Setup token has expired', 401)

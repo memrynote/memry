@@ -102,7 +102,7 @@ const sha256Hex = async (data: string): Promise<string> => {
 const hmac = async (key: Uint8Array, data: string): Promise<Uint8Array> => {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key as BufferSource,
+    key,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']

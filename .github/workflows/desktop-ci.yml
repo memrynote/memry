@@ -116,6 +116,10 @@ jobs:
           pnpm --filter @memry/extension exec wxt prepare
           pnpm lint
 
+      # Root pnpm typecheck skips the extension; wxt prepare ran in the Lint step.
+      - name: Typecheck extension
+        run: pnpm --filter @memry/extension exec node ../../scripts/typecheck.mjs
+
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
 

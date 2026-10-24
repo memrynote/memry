@@ -76,7 +76,7 @@ const post = async (path: string, body: unknown): Promise<Response> => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     },
-    env as unknown as Record<string, unknown>,
+    env,
     {
       waitUntil: (promise: Promise<unknown>) => {
         scheduled.push(promise)
