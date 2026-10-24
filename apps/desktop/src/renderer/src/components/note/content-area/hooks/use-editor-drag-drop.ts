@@ -76,10 +76,10 @@ export function useEditorDragDrop({ containerRef }: EditorDragDropParams): Edito
   // Highlight drop target block with subtle background. useLayoutEffect avoids
   // running after paint and removes a no-pass-live-state-to-parent false positive.
   useLayoutEffect(() => {
-    if (!dropTarget || !containerRef.current) return
+    if (!dropTarget || !containerRef.current) return undefined
 
     const blockElement = containerRef.current.querySelector(`[data-id="${dropTarget.blockId}"]`)
-    if (!blockElement) return
+    if (!blockElement) return undefined
 
     blockElement.classList.add('bg-primary/5', 'transition-colors', 'duration-150')
 

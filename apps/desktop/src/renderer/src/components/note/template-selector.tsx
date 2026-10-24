@@ -70,19 +70,19 @@ export function TemplateSelector({
 
     const searchLower = search.toLowerCase()
     return templates.filter(
-      (t) =>
-        t.name.toLowerCase().includes(searchLower) ||
-        t.description?.toLowerCase().includes(searchLower)
+      (template) =>
+        template.name.toLowerCase().includes(searchLower) ||
+        template.description?.toLowerCase().includes(searchLower)
     )
   }, [templates, search])
 
   // Separate built-in and custom templates
   const builtInTemplates = useMemo(
-    () => filteredTemplates.filter((t) => t.isBuiltIn),
+    () => filteredTemplates.filter((template) => template.isBuiltIn),
     [filteredTemplates]
   )
   const customTemplates = useMemo(
-    () => filteredTemplates.filter((t) => !t.isBuiltIn),
+    () => filteredTemplates.filter((template) => !template.isBuiltIn),
     [filteredTemplates]
   )
 

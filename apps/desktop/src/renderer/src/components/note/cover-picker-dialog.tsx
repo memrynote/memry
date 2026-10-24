@@ -138,6 +138,7 @@ type CoverPickerItem =
   | { kind: 'photo'; photo: UnsplashPhoto }
   | { kind: 'link'; url: string }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
 function itemKey(item: CoverPickerItem): string {
   switch (item.kind) {
     case 'wash':
@@ -256,7 +257,7 @@ export function CoverPickerDialog({
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     notesService
       .listVaultAttachments()
@@ -298,7 +299,7 @@ export function CoverPickerDialog({
   // lets the real search wait for the Photos tab: the tab's existence is settled
   // before the user can reach it.
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     void unsplashService
       .search({ query: '' })
@@ -319,8 +320,8 @@ export function CoverPickerDialog({
   // the query is a local filter, and a local filter has no business leaving the
   // device or spending the hourly quota.
   useEffect(() => {
-    if (!open || !photosConfigured || tab !== 'photos') return
-    if (photoCache.current.has(photoQuery)) return
+    if (!open || !photosConfigured || tab !== 'photos') return undefined
+    if (photoCache.current.has(photoQuery)) return undefined
     let cancelled = false
     const timer = setTimeout(() => {
       unsplashService
@@ -360,6 +361,7 @@ export function CoverPickerDialog({
 
   const washName = useCallback((id: CoverWashId) => t(`cover.picker.wash.${id}`), [t])
 
+  // oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
   const items = useMemo<CoverPickerItem[]>(() => {
     const trimmed = query.trim().toLowerCase()
     switch (tab) {

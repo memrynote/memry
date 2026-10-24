@@ -37,6 +37,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ) => {
     const { t: tPhaseF } = useT('tasks')
     const internalRef = useRef<HTMLInputElement>(null)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- forwardRef's ref is an object ref for every caller of this input; callback refs are not passed
     const inputRef = (ref as React.RefObject<HTMLInputElement>) || internalRef
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {

@@ -74,7 +74,7 @@ const tab = (id: string, title: string, isPinned = false): Record<string, unknow
 
 const group = (tabs: Record<string, unknown>[]): Record<string, unknown> => ({
   id: 'group-1',
-  activeTabId: (tabs[0]?.id as string) ?? null,
+  activeTabId: tabs[0]?.id ?? null,
   tabs
 })
 

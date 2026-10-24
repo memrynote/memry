@@ -69,7 +69,7 @@ export function rankCommands<T extends RankableCommand>(
       return { command, index, recent, score: match + (recent === -1 ? 0 : RECENT_BOOST) }
     })
     .filter(({ score, recent }) => score > (recent === -1 ? 0 : RECENT_BOOST))
-    .sort(
+    .toSorted(
       (a, b) =>
         b.score - a.score ||
         Number(b.command.contextual ?? false) - Number(a.command.contextual ?? false) ||

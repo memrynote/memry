@@ -61,14 +61,13 @@ vi.mock('./tab-context-menu', () => ({
 /** Strip geometry jsdom does not compute — drives the chevron gutter state. */
 const strip = { scrollLeft: 0, scrollWidth: 1000, clientWidth: 300 }
 
-const defineMetric = (name: 'scrollWidth' | 'clientWidth' | 'scrollLeft'): PropertyDescriptor =>
-  ({
-    configurable: true,
-    get: () => strip[name],
-    set: (value: number) => {
-      strip[name] = value
-    }
-  }) as PropertyDescriptor
+const defineMetric = (name: 'scrollWidth' | 'clientWidth' | 'scrollLeft'): PropertyDescriptor => ({
+  configurable: true,
+  get: () => strip[name],
+  set: (value: number) => {
+    strip[name] = value
+  }
+})
 
 const originalDescriptors = new Map<string, PropertyDescriptor | undefined>()
 

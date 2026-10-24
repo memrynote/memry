@@ -26,25 +26,34 @@ export function renderInlineSpec<Spec>(
   editorOptions: Record<string, unknown> = {}
 ): { dom: HTMLElement; contentDOM?: HTMLElement } {
   const schema = BlockNoteSchema.create({
-    inlineContentSpecs: {
-      ...defaultInlineContentSpecs,
-      [type]: spec
-    } as never
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `Spec` is caller-typed; BlockNote's spec-map generics cannot express a computed key
+    inlineContentSpecs: { ...defaultInlineContentSpecs, [type]: spec } as never
   })
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- options are forwarded opaquely to the real editor constructor
   const editor = BlockNoteEditor.create({ schema, ...editorOptions } as never)
 
-  // SAFETY: every spec built by `createInlineContentSpec` carries this
-  // `implementation.render`; the parameter is generic only so callers keep
-  // their own spec type at the call site.
+  if (!hasRender(spec)) throw new Error(`inline spec "${type}" has no implementation.render`)
+  return spec.implementation.render({ type, ...inlineContent }, updateInlineContent, editor)
+}
+
+interface RenderableSpec {
+  implementation: {
+    render: (
+      content: unknown,
+      update: () => void,
+      editor: unknown
+    ) => { dom: HTMLElement; contentDOM?: HTMLElement }
+  }
+}
+
+// Every spec built by `createInlineContentSpec` carries this `implementation.render`.
+function hasRender(spec: unknown): spec is RenderableSpec {
+  if (typeof spec !== 'object' || spec === null || !('implementation' in spec)) return false
+  const { implementation } = spec
   return (
-    spec as unknown as {
-      implementation: {
-        render: (
-          content: unknown,
-          update: () => void,
-          editor: unknown
-        ) => { dom: HTMLElement; contentDOM?: HTMLElement }
-      }
-    }
-  ).implementation.render({ type, ...inlineContent }, updateInlineContent, editor)
+    typeof implementation === 'object' &&
+    implementation !== null &&
+    'render' in implementation &&
+    typeof implementation.render === 'function'
+  )
 }

@@ -45,7 +45,7 @@ describe('pasting a "Copy as portal" fence', () => {
     const editor = BlockNoteEditor.create({
       pasteHandler: handleEditorPaste,
       initialContent: [{ type: 'paragraph', content: '' }]
-    }) as BlockNoteEditor
+    })
     const el = document.createElement('div')
     document.body.appendChild(el)
     editor.mount(el)

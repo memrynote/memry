@@ -351,10 +351,10 @@ describe('major renderer gap surfaces', () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith('phaseI.toasts.noteExportedSuccessfully', {
       description: '/tmp/note.pdf'
     })
-    act(() => vi.advanceTimersByTime(800))
+    void act(() => vi.advanceTimersByTime(800))
     expect(onOpenChange).toHaveBeenCalledWith(false)
     pdfDialog.unmount()
-    act(() => vi.advanceTimersByTime(200))
+    void act(() => vi.advanceTimersByTime(200))
 
     const htmlDialog = renderWithProviders(
       <ExportDialog open onOpenChange={onOpenChange} noteId="note-1" noteTitle="Plan" />

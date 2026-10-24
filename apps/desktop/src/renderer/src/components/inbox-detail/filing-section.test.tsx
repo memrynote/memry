@@ -8,7 +8,7 @@ import { FilingSection, useFilingState } from './filing-section'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, values?: Record<string, unknown>) =>
+    t: (key: string, values?: Record<string, string | number | undefined>) =>
       values?.name ? `${key}:${values.name}` : key.split('.').at(-1) || key
   })
 }))
@@ -323,7 +323,7 @@ describe('FilingSection', () => {
     expect(result.current.canFile).toBe(false)
 
     act(() => {
-      result.current.setSelectedFolder({ id: 'Archive', name: 'Archive', path: 'Archive' } as any)
+      result.current.setSelectedFolder({ id: 'Archive', name: 'Archive', path: 'Archive' })
       result.current.setTags(['done'])
       result.current.setLinkedNotes([{ id: 'note-1', title: 'Note', type: 'note' } as any])
     })

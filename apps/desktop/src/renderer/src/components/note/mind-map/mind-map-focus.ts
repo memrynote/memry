@@ -38,7 +38,7 @@ export function mindMapHrefForBlock(map: MindMap, blockId: string): string | nul
   // Elements carry the NODE id, which is stable within one build. (The library
   // replaces it on import; nothing here reads the live scene.)
   const element = map.elements.find((candidate) => candidate.id === node.id)
-  if (!element || element.type !== 'rectangle') return null
+  if (element?.type !== 'rectangle') return null
 
   return mindMapHrefOf(element)
 }

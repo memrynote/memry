@@ -112,6 +112,10 @@ function containerAnchor(container: PMNode | null | undefined): string | null {
 }
 
 /** Where a block sits in the document: its container, parent container and earlier siblings. */
+function anchored(node: PMNode): Anchored {
+  return { blockId: String(node.attrs.id), anchor: containerAnchor(node) }
+}
+
 function locate(doc: PMNode, blockId: string) {
   let found: { pos: number; node: PMNode } | null = null
   doc.descendants((node, pos) => {
@@ -162,7 +166,7 @@ export function planReconcile(
     .filter((entry): entry is { id: string; at: NonNullable<ReturnType<typeof locate>> } =>
       Boolean(entry.at && !holdsCaret(entry.at.node, entry.at.pos))
     )
-    .sort((x, y) => x.at.pos - y.at.pos)
+    .toSorted((x, y) => x.at.pos - y.at.pos)
   if (placed.length === 0) return null
 
   const rootAnchors = new Set(roots(def))
@@ -178,10 +182,6 @@ export function planReconcile(
     const rootIds = new Set(
       window.visible.filter((b) => rootAnchors.has(b.anchor ?? '')).map((b) => b.blockId)
     )
-    const anchored = (node: PMNode): Anchored => ({
-      blockId: String(node.attrs.id),
-      anchor: containerAnchor(node)
-    })
     for (const { id, at } of placed) {
       const created = anchored(at.node)
       const parentId = at.parent ? String(at.parent.attrs.id) : null
@@ -231,7 +231,7 @@ export function planBackspaceAtStart(view: EditorView, def: PortalDefinition): P
   if (!window || !isBlocksTarget(def) || $head.depth < 2 || $head.parentOffset !== 0) return null
   const container = $head.node($head.depth - 1)
   const block = window.visible.find((b) => b.blockId === String(container.attrs.id))
-  if (!block || block.text !== '' || !block.anchor || !roots(def).includes(block.anchor)) {
+  if (block?.text !== '' || !block.anchor || !roots(def).includes(block.anchor)) {
     return null
   }
   const next = removeRoot(def, block.anchor)

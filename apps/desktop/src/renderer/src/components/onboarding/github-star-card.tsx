@@ -41,10 +41,6 @@ export function GithubStarCard(): React.JSX.Element | null {
 
   if (state === 'hidden') return null
 
-  const settle = (): void => {
-    localStorage.setItem(STAR_PROMPT_KEY, 'done')
-  }
-
   const CARD =
     'mb-2 rounded-[10px] border border-sidebar-border bg-background shadow-xs animate-in fade-in slide-in-from-bottom-1 motion-reduce:animate-none group-data-[collapsible=icon]:hidden'
 
@@ -108,4 +104,8 @@ export function GithubStarCard(): React.JSX.Element | null {
       </div>
     </section>
   )
+}
+
+function settle(): void {
+  localStorage.setItem(STAR_PROMPT_KEY, 'done')
 }

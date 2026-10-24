@@ -154,12 +154,13 @@ export function normalizeLinkMentions(blocks: Block[]): { blocks: Block[]; didCh
     // A code block's own text is literal; blocks nested under it are not code.
     if (block.content && block.type !== 'codeBlock') {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
-        const normalized = normalizeInlineContent(block.content as any)
+        const normalized = normalizeInlineContent(block.content)
         if (normalized.didChange) {
           blockChanged = true
-          nextBlock = { ...nextBlock, content: normalized.content as any }
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Block.content is typed per block type; the normalizer returns the same content kind it was given
+          nextBlock = { ...nextBlock, content: normalized.content } as Block
         }
-      } else if ((block.content as any).type === 'tableContent') {
+      } else if (block.content.type === 'tableContent') {
         const normalized = normalizeTableContent(block.content)
         if (normalized.didChange) {
           blockChanged = true
@@ -169,7 +170,7 @@ export function normalizeLinkMentions(blocks: Block[]): { blocks: Block[]; didCh
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeLinkMentions(block.children as Block[])
+      const normalizedChildren = normalizeLinkMentions(block.children)
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }

@@ -72,7 +72,7 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   }, [refresh, long])
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     return window.api.noteFold.onUpdated((event: { noteId: string }) => {
       if (event.noteId === noteId) void refresh()
     })
@@ -102,8 +102,8 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
     if (!noteId) return
     void window.api.noteFold
       .retry(noteId)
-      .then((next) => {
-        if (next?.noteId === noteId) setLayers(next)
+      .then((retried) => {
+        if (retried?.noteId === noteId) setLayers(retried)
         else void refresh()
       })
       .catch((error: unknown) => log.error('Failed to retry fold', { noteId, error }))
@@ -118,7 +118,7 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
     setPhase({ folded, settling })
   }
   useEffect(() => {
-    if (!phase.settling) return
+    if (!phase.settling) return undefined
     const timer = setTimeout(() => setPhase((p) => ({ ...p, settling: false })), FOLD_CROSSFADE_MS)
     return () => clearTimeout(timer)
   }, [phase])

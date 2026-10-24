@@ -154,6 +154,8 @@ export function attachmentKindMatches(mimeType: string, kind: AttachmentKind): b
       return mime === 'text/html'
     case 'file':
       return true
+    default:
+      return false
   }
 }
 
@@ -236,7 +238,7 @@ export function AttachmentPickerDialog({
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     notesService
       .listVaultAttachments()

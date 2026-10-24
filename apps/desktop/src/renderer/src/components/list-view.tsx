@@ -361,6 +361,7 @@ const ListView = ({
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent): void => {
       if (quickFileItemId && containerRef.current) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mousedown target is an element in the list container
         const target = e.target as HTMLElement
         const itemRow = target.closest(`[data-item-id="${quickFileItemId}"]`)
         if (!itemRow) {

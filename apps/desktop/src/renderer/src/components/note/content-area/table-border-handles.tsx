@@ -206,7 +206,7 @@ function locate(
 ): { wrapper: HTMLElement; table: HTMLTableElement; rowIndex: number; colIndex: number } | null {
   const wrapper = cell.closest<HTMLElement>('.tableWrapper')
   const table = cell.closest('table')
-  const row = cell.parentElement as HTMLTableRowElement | null
+  const row = cell.closest('tr')
   if (!wrapper || !table || !row || row.cells.length === 0) return null
 
   const rowIndex = Array.prototype.indexOf.call(table.rows, row)
@@ -275,6 +275,17 @@ function pointExtensionAtCell(cell: HTMLTableCellElement): void {
   )
 }
 
+/** Centre a bar on the border line that STARTS at `edge`. */
+const onLineFrom = (edge: number): number => edge - (BAR_THICKNESS - CELL_BORDER) / 2
+/** Centre a bar on the border line that ENDS at `edge`. */
+const onLineTo = (edge: number): number => onLineFrom(edge - CELL_BORDER)
+
+/** The nub's own extent, and where it starts, for a segment of `span`. */
+const nub = (segmentStart: number, span: number): { start: number; length: number } => {
+  const length = Math.min(BAR_LENGTH, span)
+  return { start: segmentStart + (span - length) / 2, length }
+}
+
 /**
  * Measure the bars for one hovered cell, in the wrapper's content coordinates.
  *
@@ -288,19 +299,8 @@ function measure(cell: HTMLTableCellElement): Geometry | null {
 
   const { inlineStartOf, blockStartOf } = wrapperCoords(wrapper)
 
-  /** Centre a bar on the border line that STARTS at `edge`. */
-  const onLineFrom = (edge: number): number => edge - (BAR_THICKNESS - CELL_BORDER) / 2
-  /** Centre a bar on the border line that ENDS at `edge`. */
-  const onLineTo = (edge: number): number => onLineFrom(edge - CELL_BORDER)
-
   const tableRect = table.getBoundingClientRect()
   const cellRect = cell.getBoundingClientRect()
-
-  /** The nub's own extent, and where it starts, for a segment of `span`. */
-  const nub = (segmentStart: number, span: number): { start: number; length: number } => {
-    const length = Math.min(BAR_LENGTH, span)
-    return { start: segmentStart + (span - length) / 2, length }
-  }
 
   const alongCell = nub(blockStartOf(cellRect), cellRect.height)
   const acrossCell = nub(inlineStartOf(cellRect), cellRect.width)
@@ -590,7 +590,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   }, [tableHandles])
 
   useEffect(() => {
-    if (!containerEl) return
+    if (!containerEl) return undefined
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (isMenuPinned()) return
@@ -607,7 +607,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   }, [containerEl, openKeyboardMenu, isMenuPinned])
 
   useEffect(() => {
-    if (!containerEl) return
+    if (!containerEl) return undefined
 
     const handlePointerOver = (event: PointerEvent): void => {
       if (isMenuPinned()) return
@@ -653,7 +653,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   // move the border lines the bars and the ring are pinned to.
   const table = geometry?.wrapper.querySelector('table') ?? null
   useEffect(() => {
-    if (!table) return
+    if (!table) return undefined
     const observer = new ResizeObserver(remeasure)
     observer.observe(table)
     return () => observer.disconnect()
@@ -661,7 +661,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
 
   const focusTable = focusRing?.wrapper.querySelector('table') ?? null
   useEffect(() => {
-    if (!focusTable) return
+    if (!focusTable) return undefined
     const observer = new ResizeObserver(resolveFocus)
     observer.observe(focusTable)
     return () => observer.disconnect()

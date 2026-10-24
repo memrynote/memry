@@ -225,7 +225,7 @@ function predictFor(
       return firstCompletion(getTagOptions(trigger.query, tags), typed)
     // Note titles are arbitrary user data, so `[[` gets the picker instead of a
     // guess. CaptureBar reads the trigger and opens the dropdown.
-    case 'noteLink':
+    default:
       return null
   }
 }

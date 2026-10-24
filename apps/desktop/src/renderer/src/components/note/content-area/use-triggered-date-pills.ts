@@ -124,7 +124,7 @@ export function useTriggeredDatePills(
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
     return watchFiredPills(container, () => firedRef.current)
   }, [containerRef])
 }
@@ -144,7 +144,7 @@ export function useFiredDatePillAnchors(noteId: string | undefined): Set<string>
   })
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     return window.api.onReminderDue((event) => {
       const matches = event.reminders.some(
         (r) => r.targetType === 'note_date' && r.targetId === noteId

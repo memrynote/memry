@@ -128,22 +128,22 @@ export function CalendarTaskPopover({
 
   const handleToggleComplete = useCallback((): void => {
     if (!task) return
-    const taskId = task.id
+    const currentTaskId = task.id
     if (task.completedAt) {
-      tasksService.uncomplete(taskId).catch((err: unknown) => {
+      tasksService.uncomplete(currentTaskId).catch((err: unknown) => {
         toast.error(extractErrorMessage(err, t('task-popover.errors.could-not-save')))
       })
       return
     }
     tasksService
-      .complete({ id: taskId })
+      .complete({ id: currentTaskId })
       .then(() => {
         onDismiss()
         toast(t('chip.task-completed'), {
           action: {
             label: tCommon('action.undo'),
             onClick: () => {
-              tasksService.uncomplete(taskId).catch((err: unknown) => {
+              tasksService.uncomplete(currentTaskId).catch((err: unknown) => {
                 log.error('undo complete failed:', err)
               })
             }
@@ -286,12 +286,14 @@ export function CalendarTaskPopover({
             }
           }}
           onPointerDownOutside={(e) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; handler only runs for element targets
             const target = e.target as HTMLElement | null
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
               e.preventDefault()
             }
           }}
           onInteractOutside={(e) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; handler only runs for element targets
             const target = e.target as HTMLElement | null
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
               e.preventDefault()

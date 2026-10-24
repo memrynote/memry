@@ -1,4 +1,4 @@
-import { useState, useCallback, type FormEvent } from 'react'
+import { useState, useCallback, type SyntheticEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -23,6 +23,7 @@ function parseQrData(raw: string): { sessionId: string; ephemeralPublicKey: stri
       typeof (parsed as Record<string, unknown>).sessionId === 'string' &&
       typeof (parsed as Record<string, unknown>).ephemeralPublicKey === 'string'
     ) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- parsed is a JSON object whose fields are validated right below
       const obj = parsed as Record<string, string>
       return { sessionId: obj.sessionId, ephemeralPublicKey: obj.ephemeralPublicKey }
     }
@@ -47,7 +48,7 @@ export function LinkingCodeEntry({
   const isValid = parsed !== null
 
   const handleSubmit = useCallback(
-    (e: FormEvent) => {
+    (e: SyntheticEvent) => {
       e.preventDefault()
       if (!parsed) return
 

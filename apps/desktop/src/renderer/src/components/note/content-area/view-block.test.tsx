@@ -20,16 +20,15 @@ import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type { NoteWithProperties } from '@/hooks/use-folder-view'
 import { addDays, localDayKey } from '@/lib/property-chart/chart-model'
 
-const mocks = vi.hoisted(() => ({
-  openSidebarItem: vi.fn(),
-  getPropertyRows: vi.fn(),
-  folderView: {
-    rows: [] as NoteWithProperties[],
-    properties: [] as Array<{ name: string; type: string; usageCount: number }>,
-    scope: null as unknown,
-    initialViewName: undefined as string | undefined
-  }
-}))
+const mocks = vi.hoisted(() => {
+  const folderView: {
+    rows: NoteWithProperties[]
+    properties: Array<{ name: string; type: string; usageCount: number }>
+    scope: unknown
+    initialViewName: string | undefined
+  } = { rows: [], properties: [], scope: null, initialViewName: undefined }
+  return { openSidebarItem: vi.fn(), getPropertyRows: vi.fn(), folderView }
+})
 
 // pdf.js touches `DOMMatrix` at import time, which jsdom has none of. The rest
 // of the schema is real.

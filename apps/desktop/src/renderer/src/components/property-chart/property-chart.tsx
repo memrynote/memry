@@ -87,7 +87,7 @@ function ChartBody({
       days
         .map((d) => d.value)
         .filter((v): v is number => v !== null && v > 0)
-        .sort((a, b) => a - b),
+        .toSorted((a, b) => a - b),
     [days]
   )
   const describe = (day: ChartDay): string => describeDay(kind, day, t, format)

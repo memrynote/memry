@@ -57,6 +57,7 @@ function useCardCopy(status: PortalCardStatus, source: string): CardCopy {
         action: t('portalBlock.states.tooDeep.action')
       }
     case 'not-synced':
+    default:
       return {
         icon: RefreshCw,
         text: t('portalBlock.states.notSynced.text'),

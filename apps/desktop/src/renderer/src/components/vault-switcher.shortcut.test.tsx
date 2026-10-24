@@ -73,7 +73,7 @@ vi.mock('@/components/ui/picker', async () => {
     React.useEffect(() => {
       const content = ref.current
       if (!open || !content || !onOpenAutoFocus) return
-      const listener = onOpenAutoFocus as EventListener
+      const listener = onOpenAutoFocus
       content.addEventListener('autoFocusOnMount', listener)
       content.dispatchEvent(new CustomEvent('autoFocusOnMount', { cancelable: true }))
       content.removeEventListener('autoFocusOnMount', listener)
@@ -112,7 +112,7 @@ vi.mock('@/components/ui/picker', async () => {
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) => (vars?.name ? `${key}:${vars.name}` : key)
+    t: (key: string, vars?: Record<string, string>) => (vars?.name ? `${key}:${vars.name}` : key)
   })
 }))
 vi.mock('@/hooks/use-vault', () => ({

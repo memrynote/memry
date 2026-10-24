@@ -1,7 +1,7 @@
 import 'katex/dist/katex.min.css'
 
 import { useState } from 'react'
-import katex from 'katex'
+import { renderToString } from 'katex'
 import { createReactBlockSpec } from '@blocknote/react'
 import { mathBlockConfig } from '@memry/editor-schema/blocks'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -43,7 +43,7 @@ interface MathBlockEditor {
  */
 function renderFormula(latex: string): { markup: string } | { error: string } {
   try {
-    return { markup: katex.renderToString(latex, { displayMode: true, throwOnError: true }) }
+    return { markup: renderToString(latex, { displayMode: true, throwOnError: true }) }
   } catch (err) {
     return { error: extractErrorMessage(err, latex) }
   }
@@ -51,6 +51,7 @@ function renderFormula(latex: string): { markup: string } | { error: string } {
 
 export function MathBlockRenderer({ block, editor }: { block: MathBlockNode; editor: unknown }) {
   const { t } = useT('notes')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote hands the renderer its editor as `unknown`; this is the structural subset the block reads
   const mathEditor = editor as MathBlockEditor
   const latex = block.props.latex
   // The popup's working copy. The block is updated when the popup closes
@@ -148,6 +149,7 @@ export function getMathSlashMenuItem(
   return {
     title: labels.title,
     onItemClick: () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote hands the renderer its editor as `unknown`; this is the structural subset the block reads
       const mathEditor = editor as MathBlockEditor
       const currentBlock = mathEditor.getTextCursorPosition().block
       mathEditor.updateBlock(currentBlock, { type: 'mathBlock', props: { latex: '' } })

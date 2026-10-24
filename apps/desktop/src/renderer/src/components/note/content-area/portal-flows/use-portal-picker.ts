@@ -15,7 +15,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { notesService } from '@/services/notes-service'
 import type { EditorSchema } from '../editor-schema'
-import { updatePortalDefinition, type PortalEditorLike } from '../portal/portal-definition'
+import { updatePortalDefinition } from '../portal/portal-definition'
 import { searchPortalBlocks, stampPortalAnchor } from './portal-api'
 import { blockDefinition, insertPortalBlock, noteDefinition } from './portal-insert'
 import { PORTAL_PICKER_TRIGGER } from './portal-slash-items'
@@ -151,11 +151,9 @@ export function usePortalPicker(
       const replacing = replacingRef.current
       replacingRef.current = null
       if (replacing && editor.getTextCursorPosition().block.id === replacing.tempBlockId) {
-        const changed = updatePortalDefinition(
-          editor as unknown as PortalEditorLike,
-          replacing.portalBlockId,
-          { target: definition.target }
-        )
+        const changed = updatePortalDefinition(editor, replacing.portalBlockId, {
+          target: definition.target
+        })
         editor.removeBlocks([replacing.tempBlockId])
         if (!changed) toast.error(t('portalFlows.picker.retargetFailed'))
         return

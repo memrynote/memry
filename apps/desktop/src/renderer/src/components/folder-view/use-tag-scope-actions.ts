@@ -65,7 +65,7 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
   }, [tag, totalNotes, closeTab])
 
   useEffect(() => {
-    if (tag === null) return
+    if (tag === null) return undefined
     const key = foldTag(tag)
     const offRenamed = onTagRenamed((event) => {
       if (foldTag(event.oldName) === key) closeTab()

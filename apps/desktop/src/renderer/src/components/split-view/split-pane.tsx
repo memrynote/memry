@@ -55,7 +55,7 @@ export const SplitPane = ({
 
   // Handle resize move and end
   useEffect(() => {
-    if (!isResizing) return
+    if (!isResizing) return undefined
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return

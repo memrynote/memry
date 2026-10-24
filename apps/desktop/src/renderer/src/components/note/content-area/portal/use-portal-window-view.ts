@@ -33,9 +33,9 @@ export function usePortalInlineMarks(
 ): void {
   const view = usePortalWindow(instance)?.view
   useEffect(() => {
-    if (!view || view.isDestroyed) return
+    if (!view || view.isDestroyed) return undefined
     const tiptap = (view.dom as HTMLElement & { editor?: unknown }).editor
-    if (!tiptap) return
+    if (!tiptap) return undefined
     const plugin = createPortalInlinePlugin(handlers)
     return registerEditorPlugin({ _tiptapEditor: tiptap }, plugin)
   }, [view, handlers])

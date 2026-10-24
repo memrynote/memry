@@ -492,7 +492,7 @@ describe('VirtualizedNotesTree', () => {
       width: 100,
       height: 30,
       toJSON: () => ({})
-    } as DOMRect)
+    })
 
     fireEvent.dragStart(source, { dataTransfer })
     fireEvent.dragOver(target, { dataTransfer, clientY: 28 })
@@ -605,7 +605,7 @@ describe('VirtualizedNotesTree', () => {
     const folderRow = (name: string) =>
       screen.getByText(name).closest('[role="treeitem"]') as HTMLElement
     const storedExpanded = () =>
-      (JSON.parse(localStorage.getItem('sidebar-tree-expanded') ?? '[]') as string[]).sort()
+      (JSON.parse(localStorage.getItem('sidebar-tree-expanded') ?? '[]') as string[]).toSorted()
 
     beforeEach(() => {
       localStorage.setItem('sidebar-tree-expanded', JSON.stringify(['folder-Other']))
@@ -898,7 +898,7 @@ describe('VirtualizedNotesTree', () => {
       width: 100,
       height: 100,
       toJSON: () => ({})
-    } as DOMRect)
+    })
 
     const actionsRef = createRef<VirtualizedTreeActions | null>()
     const onMove = vi.fn<(operation: MoveOperation) => void>()

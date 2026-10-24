@@ -49,7 +49,7 @@ export function FoldPill(props: FoldPillProps) {
   const failed = layers.status === 'failed'
   const [copied, setCopied] = useState(false)
   useEffect(() => {
-    if (!copied) return
+    if (!copied) return undefined
     const timer = setTimeout(() => setCopied(false), 1500)
     return () => clearTimeout(timer)
   }, [copied])
@@ -70,7 +70,7 @@ export function FoldPill(props: FoldPillProps) {
   })
   useEffect(() => {
     const bar = barRef.current
-    if (!bar) return
+    if (!bar) return undefined
     const stepper = createWheelStepper(40, 200, true)
     const onWheel = (event: WheelEvent): void => {
       event.preventDefault()

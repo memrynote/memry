@@ -85,12 +85,13 @@ export function classifyBlocks(editor: any, ids: readonly string[]): ClassifiedB
   view.state.doc.descendants((node: any) => {
     if (kindById.size === wanted.size) return false
     if (node.type.name !== 'blockContainer') return true
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ProseMirror node attrs are untyped; the node's schema defines this attr
     const id = node.attrs?.id as string | undefined
     if (!id || !wanted.has(id) || kindById.has(id)) return true
     const inner = node.firstChild
-    if (inner && inner.type.isTextblock) {
+    if (inner?.type.isTextblock) {
       kindById.set(id, 'textblock')
-    } else if (inner && inner.type.name === 'taskBlock') {
+    } else if (inner?.type.name === 'taskBlock') {
       kindById.set(id, 'taskBlock')
     } else {
       kindById.set(id, 'other')
@@ -205,6 +206,7 @@ function persistParent(taskId: string, parentId: string | null, parents: TaskPar
  * block nested there has its row, whose DB parent then keeps the depth.
  */
 export function capNoteTaskTree(editor: any, blockId: string): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const doc = (editor?.document ?? []) as DocBlock[]
   const top = doc.find(
     (block) => block.id === blockId || locateBlock(block.children ?? [], blockId)
@@ -235,6 +237,7 @@ export function indentTaskBlock(
   blockId: string,
   options: TaskIndentOptions
 ): TaskIndentOutcome {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const doc = (editor?.document ?? []) as DocBlock[]
   const location = locateBlock(doc, blockId)
   if (!location) return { kind: 'skipped', id: blockId, reason: 'block-not-found' }
@@ -256,11 +259,13 @@ export function indentTaskBlock(
   }
 
   const parents = options.parents ?? NO_TASK_PARENTS
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   const treeParentId = location.parent?.props?.taskId as string | undefined
   if (location.parent?.type === 'taskBlock' && treeParentId && block.props?.taskId) {
     return indentListedTask(editor, location, treeParentId, parents, options.title)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   const newParentTaskId = prev.props.taskId as string
   const titled = withTitle(block, options.title)
   const movedChild: DocBlock = {
@@ -281,6 +286,7 @@ export function indentTaskBlock(
   }
 
   // A draft has no row yet; its create reads `parentTaskId` off the block.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   if (block.props?.taskId) persistParent(block.props.taskId as string, newParentTaskId, parents)
 
   return { kind: 'indented', id: blockId, newParentTaskId }
@@ -302,6 +308,7 @@ function indentListedTask(
   const depth = noteTaskDepth(block.props?.taskId, treeParentId, parents)
   let prevDepth = noteTaskDepth(prev.props?.taskId, treeParentId, parents)
   if (prevDepth < depth) return { kind: 'skipped', id: block.id, reason: 'already-nested' }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   let newParentTaskId = prev.props?.taskId as string
   for (; prevDepth > depth; prevDepth -= 1) {
     const up = parents.get(newParentTaskId)
@@ -309,6 +316,7 @@ function indentListedTask(
     newParentTaskId = up
   }
   if (title !== undefined) editor.updateBlock(block, { props: { title } })
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   persistParent(block.props?.taskId as string, newParentTaskId, parents)
   return { kind: 'indented', id: block.id, newParentTaskId }
 }
@@ -323,6 +331,7 @@ export function outdentTaskBlock(
   blockId: string,
   options: Pick<TaskIndentOptions, 'title' | 'parents'> = {}
 ): TaskIndentOutcome {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const doc = (editor?.document ?? []) as DocBlock[]
   const location = locateBlock(doc, blockId)
   if (!location) return { kind: 'skipped', id: blockId, reason: 'parent-not-found' }
@@ -336,6 +345,7 @@ export function outdentTaskBlock(
   }
 
   const parents = options.parents ?? NO_TASK_PARENTS
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   const treeParentId = parent.props.taskId as string
   const child = location.siblings[location.index]
   if (noteTaskDepth(child.props?.taskId, treeParentId, parents) > 1) {
@@ -345,7 +355,8 @@ export function outdentTaskBlock(
   const grandparent = locateBlock(doc, parent.id)?.parent ?? null
   const newParentTaskId =
     grandparent?.type === 'taskBlock' && grandparent.props?.taskId
-      ? (grandparent.props.taskId as string)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+        (grandparent.props.taskId as string)
       : ''
 
   // The rows shown under this one leave with it, as its own subtasks.
@@ -372,6 +383,7 @@ export function outdentTaskBlock(
   }
 
   if (child.props?.taskId) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
     persistParent(child.props.taskId as string, newParentTaskId || null, parents)
   }
 
@@ -390,9 +402,11 @@ function outdentListedTask(
   parents: TaskParents,
   title: string | undefined
 ): TaskIndentOutcome {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   const treeParentId = treeParent.props?.taskId as string
   const rows = location.siblings
   const block = rows[location.index]
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
   const taskId = block.props?.taskId as string
   const oldParentId = parents.get(taskId)
   const newParentTaskId = oldParentId ? parents.get(oldParentId) : undefined

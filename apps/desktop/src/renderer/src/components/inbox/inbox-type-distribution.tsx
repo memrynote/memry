@@ -48,7 +48,7 @@ export function InboxTypeDistribution({ stats }: InboxTypeDistributionProps): Re
   }
 
   const sortedTypes = Object.entries(stats.itemsByType)
-    .sort(([, a], [, b]) => b - a)
+    .toSorted(([, a], [, b]) => b - a)
     .filter(([, count]) => count > 0)
 
   const maxCount = sortedTypes.length > 0 ? sortedTypes[0][1] : 0

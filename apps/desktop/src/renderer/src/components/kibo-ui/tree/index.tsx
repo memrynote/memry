@@ -215,7 +215,7 @@ export const TreeProvider = ({
 
   // Persist expandedIds to localStorage (debounced)
   useEffect(() => {
-    if (!persistKey) return
+    if (!persistKey) return undefined
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
@@ -228,7 +228,7 @@ export const TreeProvider = ({
 
   // Sync save on app close (catches the debounce window)
   useEffect(() => {
-    if (!persistKey) return
+    if (!persistKey) return undefined
     const handleBeforeUnload = () => {
       try {
         localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
@@ -697,7 +697,7 @@ export const TreeNodeTrigger = ({
 
   // Direct DOM focus - much faster than React state updates
   const focusNode = useCallback((targetNodeId: string) => {
-    const element = document.querySelector(`[data-tree-node-id="${targetNodeId}"]`) as HTMLElement
+    const element = document.querySelector<HTMLElement>(`[data-tree-node-id="${targetNodeId}"]`)
     if (element) {
       element.focus()
     }
@@ -835,7 +835,7 @@ export const TreeNodeTrigger = ({
 
   const handleDragLeave = useCallback(
     (e: React.DragEvent) => {
-      const relatedTarget = e.relatedTarget as HTMLElement
+      const relatedTarget = e.relatedTarget instanceof Node ? e.relatedTarget : null
       if (!triggerRef.current?.contains(relatedTarget)) {
         setDragState({ dropTargetId: null, dropPosition: null })
       }
@@ -885,6 +885,9 @@ export const TreeNodeTrigger = ({
   }, [])
 
   const effectiveIcon = getEffectiveIcon(nodeId)
+  const treeIndentStyle: React.CSSProperties & { '--tree-indent': string } = {
+    '--tree-indent': `${level * (indent ?? 0) + 4}px`
+  }
 
   return (
     <>
@@ -924,12 +927,12 @@ export const TreeNodeTrigger = ({
             // arrow navigation had nothing to start from once the menu closed.
             onContextMenu={() => triggerRef.current?.focus()}
             onKeyDown={handleKeyDown}
-            onDragStartCapture={handleDragStart as unknown as React.DragEventHandler}
+            onDragStartCapture={handleDragStart}
             onDragEndCapture={handleDragEnd}
-            onDragOverCapture={handleDragOver as unknown as React.DragEventHandler}
-            onDragLeaveCapture={handleDragLeave as unknown as React.DragEventHandler}
-            onDropCapture={handleDropEvent as unknown as React.DragEventHandler}
-            style={{ '--tree-indent': `${level * (indent ?? 0) + 4}px` } as React.CSSProperties}
+            onDragOverCapture={handleDragOver}
+            onDragLeaveCapture={handleDragLeave}
+            onDropCapture={handleDropEvent}
+            style={treeIndentStyle}
             {...props}
           >
             {/* Drop indicator - before */}
@@ -957,6 +960,7 @@ export const TreeNodeTrigger = ({
             )}
 
             <TreeLines />
+            {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- m.div types children as MotionValue | ReactNode; TreeNodeProps.children is ReactNode, narrowing is sound */}
             {children as ReactNode}
           </m.div>
         </ContextMenuTrigger>

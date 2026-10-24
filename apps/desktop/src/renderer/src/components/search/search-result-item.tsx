@@ -56,6 +56,7 @@ function ResultIcon({ item }: { item: SearchResultItemType }): React.JSX.Element
   }
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; the implicit fallthrough is unreachable for typed input
 function trailingHint(item: SearchResultItemType, locale: string): string | null {
   const meta = item.metadata
   switch (meta.type) {

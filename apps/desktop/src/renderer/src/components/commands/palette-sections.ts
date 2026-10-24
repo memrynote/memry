@@ -56,7 +56,8 @@ const GROUP_RANK = {
   file: 14
 } as const satisfies Record<CommandGroup, number>
 
-const GROUP_ORDER = (Object.keys(GROUP_RANK) as CommandGroup[]).sort(
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys returns string[]; GROUP_RANK is satisfies Record<CommandGroup, number>
+const GROUP_ORDER = (Object.keys(GROUP_RANK) as CommandGroup[]).toSorted(
   (a, b) => GROUP_RANK[a] - GROUP_RANK[b]
 )
 

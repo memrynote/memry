@@ -101,7 +101,7 @@ describe('assignLanes', () => {
     // #when
     const result = assignLanes([a, b, c])
     // #then
-    const lanes = result.map((r) => r.lane).sort()
+    const lanes = result.map((r) => r.lane).toSorted((x, y) => x - y)
     expect(lanes).toEqual([0, 1, 2])
     expect(result.every((r) => r.laneCount === 3)).toBe(true)
   })

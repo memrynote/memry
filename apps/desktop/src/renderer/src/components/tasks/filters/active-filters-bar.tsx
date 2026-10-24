@@ -22,6 +22,12 @@ interface ActiveFiltersBarProps {
   className?: string
 }
 
+const formatShortDate = (date: Date | string): string =>
+  (date instanceof Date ? date : new Date(date)).toLocaleDateString(getActiveLocale(), {
+    month: 'short',
+    day: 'numeric'
+  })
+
 const RemoveButton = ({
   onClick,
   label
@@ -180,7 +186,7 @@ export const ActiveFiltersBar = ({
     if (filters.projectIds.length > 0) {
       const projectEntries = filters.projectIds
         .map((id) => projects.find((p) => p.id === id))
-        .filter(Boolean) as Project[]
+        .filter((p): p is Project => p !== undefined)
       const names = projectEntries.map((p) => p.name).join(', ')
       const firstColor = projectEntries[0]?.color
       result.push(
@@ -249,12 +255,7 @@ export const ActiveFiltersBar = ({
         filters.dueDate.customStart &&
         filters.dueDate.customEnd
       ) {
-        const fmt = (d: Date | string): string =>
-          (d instanceof Date ? d : new Date(d)).toLocaleDateString(getActiveLocale(), {
-            month: 'short',
-            day: 'numeric'
-          })
-        label = `${fmt(filters.dueDate.customStart)} – ${fmt(filters.dueDate.customEnd)}`
+        label = `${formatShortDate(filters.dueDate.customStart)} – ${formatShortDate(filters.dueDate.customEnd)}`
       }
       result.push(
         <PillWrapper key="dueDate">

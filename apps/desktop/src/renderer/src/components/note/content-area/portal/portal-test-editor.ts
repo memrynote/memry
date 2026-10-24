@@ -20,14 +20,18 @@ export function unmountTestEditors(): void {
   }
 }
 
-export const para = (text: string, children?: PartialBlock[]): PartialBlock =>
-  ({ type: 'paragraph', content: text, children }) as PartialBlock
+export const para = (text: string, children?: PartialBlock[]): PartialBlock => ({
+  type: 'paragraph',
+  content: text,
+  children
+})
 
 export function mountTestEditor(blocks: PartialBlock[]): {
   editor: BlockNoteEditor
   view: EditorView
 } {
   const doc = new Y.Doc()
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- the tests drive the app schema through the default BlockNoteEditor surface; the two schema generics do not unify
   const editor = BlockNoteEditor.create(
     withCollaborationIfLive(doc.getXmlFragment(CRDT_FRAGMENT_NAME), { schema: editorSchema })
   ) as unknown as BlockNoteEditor
@@ -36,6 +40,6 @@ export function mountTestEditor(blocks: PartialBlock[]): {
   editor.mount(el)
   mounted.push({ editor, el, doc })
   editor.replaceBlocks(editor.document, blocks)
-  const view = (editor as unknown as { _tiptapEditor: { view: EditorView } })._tiptapEditor.view
+  const view = editor._tiptapEditor.view
   return { editor, view }
 }

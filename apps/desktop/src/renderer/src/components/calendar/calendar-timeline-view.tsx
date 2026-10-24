@@ -715,7 +715,7 @@ function groupLabel(
       return t(`timeline.status.${group.heading.status}`)
     case 'priority':
       return t(`timeline.priority.${group.heading.priority}`)
-    case 'all':
+    default:
       return t('timeline.tasks-column')
   }
 }

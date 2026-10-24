@@ -86,9 +86,9 @@ export function ReviewBadgeLayer({
   )
 
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     let frame: number | null = null
     const compute = () => {
@@ -145,11 +145,12 @@ export function ReviewBadgeLayer({
 
   // Clicking marked text opens the panel right under the clicked span.
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handleClick = (event: MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = event.target as HTMLElement | null
       const span = target?.closest<HTMLElement>('[data-critic-mark-id]')
       if (!span || !container.contains(span) || span.closest('.critic-review-flyout')) return
@@ -167,9 +168,10 @@ export function ReviewBadgeLayer({
 
   // Dismiss the panel on outside press or Escape (no popover primitive).
   useEffect(() => {
-    if (!panel) return
+    if (!panel) return undefined
 
     const handlePointerDown = (event: PointerEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = event.target as HTMLElement | null
       if (target) {
         // A synchronous re-render (the pencil switching a card into edit mode)
@@ -189,6 +191,7 @@ export function ReviewBadgeLayer({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       // Let the comment composer consume Escape to cancel editing first.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       if ((event.target as HTMLElement | null)?.closest('.critic-comment-composer')) return
       setPanel(null)
     }
@@ -236,10 +239,11 @@ export function ReviewBadgeLayer({
 
   // Paint the drafted selection like an existing comment while composing.
   useEffect(() => {
-    if (!active || !review.activeDraft) return
-    if (typeof CSS === 'undefined' || !CSS.highlights || typeof Highlight === 'undefined') return
+    if (!active || !review.activeDraft) return undefined
+    if (typeof CSS === 'undefined' || !CSS.highlights || typeof Highlight === 'undefined')
+      return undefined
     const range = review.getActiveDraftDomRange()
-    if (!range) return
+    if (!range) return undefined
     CSS.highlights.set(DRAFT_HIGHLIGHT_NAME, new Highlight(range))
     return () => {
       CSS.highlights.delete(DRAFT_HIGHLIGHT_NAME)
@@ -249,7 +253,7 @@ export function ReviewBadgeLayer({
 
   // Mirror the rail's inline-hover sync while it is unmounted.
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
     syncInlineHoverClass(review.hoveredMarkId)
     return () => syncInlineHoverClass(null)
   }, [active, review.hoveredMarkId])

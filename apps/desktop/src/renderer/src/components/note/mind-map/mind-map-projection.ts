@@ -141,6 +141,12 @@ export interface Projection {
   reachedNodeCap: boolean
 }
 
+/** One more thing hidden behind `node`. Returned so callers can chain. */
+function fold(node: MindMapNode): MindMapNode {
+  node.foldedCount += 1
+  return node
+}
+
 /**
  * Turns a block tree into the logical map.
  *
@@ -223,12 +229,6 @@ export function projectBlocks(
     const counts = tallies.get(node) ?? new Map<MindMapContentKind, number>()
     counts.set(kind, (counts.get(kind) ?? 0) + 1)
     tallies.set(node, counts)
-  }
-
-  /** One more thing hidden behind `node`. Returned so callers can chain. */
-  const fold = (node: MindMapNode): MindMapNode => {
-    node.foldedCount += 1
-    return node
   }
 
   /**

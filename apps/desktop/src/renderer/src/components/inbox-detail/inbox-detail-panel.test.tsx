@@ -20,7 +20,7 @@ let querySuggestions = [
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, params?: Record<string, unknown>) =>
+    t: (key: string, params?: Record<string, string | number | undefined>) =>
       params?.modifier ? `${key.split('.').at(-1)} ${params.modifier}` : key.split('.').at(-1),
     i18n: { dir: () => 'ltr' }
   })

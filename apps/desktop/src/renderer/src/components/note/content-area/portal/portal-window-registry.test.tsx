@@ -145,12 +145,13 @@ describe('portal window registry', () => {
       return {
         blockId,
         instanceId: 'a',
-        editor: host.editor as unknown as PortalHandle['editor'],
+        editor: host.editor,
         definition: parsed.definition,
         sourceNoteId: 'src',
         hostNoteId: undefined
       }
     }
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the test tsconfig has no strictNullChecks narrowing here: state is possibly undefined
     const parent = getPortalWindowState(a.view)!.ancestors[0]!
     let done = false
     await act(async () => {

@@ -49,7 +49,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
 
     // Parse input as user types (debounced)
     useEffect(() => {
-      if (!value.trim()) return
+      if (!value.trim()) return undefined
 
       const timer = setTimeout(() => {
         const result = parseNaturalDate(value)

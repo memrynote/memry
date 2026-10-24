@@ -65,9 +65,9 @@ export function TagInputPopup({
 
   const matchingTags = useMemo(() => {
     const base = searchQuery.trim()
-      ? availableTags.filter((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      ? availableTags.filter((tag) => tag.name.toLowerCase().includes(searchQuery.toLowerCase()))
       : availableTags
-    return base.filter((t) => !currentTagIds.includes(t.id))
+    return base.filter((tag) => !currentTagIds.includes(tag.id))
   }, [availableTags, searchQuery, currentTagIds])
 
   const fieldRows = useMemo(() => {
@@ -81,7 +81,10 @@ export function TagInputPopup({
   const filteredTags = useMemo(() => {
     if (fieldRows.length === 0) return matchingTags
     const rowIds = new Set(fieldRows.map((row) => row.tag.id))
-    return [...fieldRows.map((row) => row.tag), ...matchingTags.filter((t) => !rowIds.has(t.id))]
+    return [
+      ...fieldRows.map((row) => row.tag),
+      ...matchingTags.filter((tag) => !rowIds.has(tag.id))
+    ]
   }, [fieldRows, matchingTags])
   const chipTags = filteredTags.slice(fieldRows.length)
   const activeIndex = focusedIndex === -1 && fieldRows.length > 0 ? 0 : focusedIndex

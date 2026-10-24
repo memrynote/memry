@@ -109,7 +109,7 @@ export function NoteAttachmentsDialog({
     window.api.notes
       .listAttachments(noteId)
       .then((attachments: AttachmentRow[]) => {
-        setRows([...attachments].sort((a, b) => a.filename.localeCompare(b.filename)))
+        setRows(attachments.toSorted((a, b) => a.filename.localeCompare(b.filename)))
       })
       .catch((err: unknown) => {
         // `t` from useT is not identity-stable across renders; pulling the
@@ -217,6 +217,7 @@ export function collectOriginalNames(editor: unknown): Map<string, string> {
   const visit = (blocks: unknown): void => {
     if (!Array.isArray(blocks)) return
     for (const block of blocks) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attachment blocks are walked structurally; every member reads only these optional fields
       const b = block as {
         type?: string
         props?: { url?: string; name?: string }
@@ -236,6 +237,7 @@ export function collectOriginalNames(editor: unknown): Map<string, string> {
       visit(b.children)
     }
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
   visit((editor as { document?: unknown } | null | undefined)?.document)
   return map
 }

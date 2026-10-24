@@ -36,7 +36,7 @@ let activeDrag: ActiveDrag | null = null
 
 /** The block container under a point, or null when the point is outside the document. */
 function blockIdAtPoint(editor: Editor, x: number, y: number): string | null {
-  const view = (editor as unknown as { prosemirrorView?: EditorView }).prosemirrorView
+  const view: EditorView | undefined = editor.prosemirrorView
   const hit = view?.posAtCoords({ left: x, top: y })
   if (!view || !hit) return null
   const $pos = view.state.doc.resolve(hit.inside >= 0 ? hit.inside : hit.pos)
@@ -64,7 +64,7 @@ export function usePortalBlockDrop({
   const { t } = useT('notes')
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     const sourceNoteId = noteId
 
     const onDragStart = (event: DragEvent): void => {

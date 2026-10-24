@@ -85,6 +85,7 @@ function moveOne(
   // transaction, which cannot join the one in flight. `liftListItem` reads only
   // `selection` and `tr` and dispatches the same `tr` back.
   const schema = tr.doc.type.schema
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- liftListItem reads only `selection` and `tr` off its EditorState; no full state exists mid-transaction
   return liftListItem(schema.nodes.blockContainer)({ selection: tr.selection, tr } as any, () => {})
 }
 

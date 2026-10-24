@@ -61,7 +61,7 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
     // render below derives the empty case straight from `value` instead of
     // resetting state in response to a prop change, so a stale `resolved`
     // from a prior non-empty value never leaks through.
-    if (value.length === 0) return
+    if (value.length === 0) return undefined
 
     let cancelled = false
     void (async () => {

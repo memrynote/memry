@@ -145,7 +145,7 @@ export function TaskPrefetchProvider({
   // the cache they populate isn't derivable during render. Only the async
   // callbacks set state here, so this is not a synchronous prop-driven reset.
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     let cancelled = false
     void (async () => {
@@ -172,7 +172,7 @@ export function TaskPrefetchProvider({
   // halves of where a new task block would land. Read here rather than per
   // block so N drafts cost one pair of IPC calls.
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     let cancelled = false
     const load = (): void => {

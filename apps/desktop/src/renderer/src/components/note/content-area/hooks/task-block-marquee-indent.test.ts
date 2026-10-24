@@ -53,7 +53,7 @@ function expectSkipped(outcome: TaskIndentOutcome, reason: TaskIndentOutcome['re
 describe('task-block marquee indent helpers', () => {
   beforeEach(() => {
     vi.mocked(tasksService.update).mockReset()
-    vi.mocked(tasksService.update).mockResolvedValue({ success: true } as never)
+    vi.mocked(tasksService.update).mockResolvedValue({ success: true })
   })
 
   it('classifies selected ids from the ProseMirror document', () => {

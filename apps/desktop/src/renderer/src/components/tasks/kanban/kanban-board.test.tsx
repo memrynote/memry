@@ -32,19 +32,19 @@ vi.mock('./kanban-column', () => ({
       <h2>{column.title}</h2>
       <span>focused:{focusedTaskId ?? 'none'}</span>
       <span>project badge:{String(showProjectBadge)}</span>
-      {tasks.map((task) => (
-        <button key={task.id} onClick={() => onTaskClick?.(task.id)}>
-          {task.title}
+      {tasks.map((columnTask) => (
+        <button key={columnTask.id} onClick={() => onTaskClick?.(columnTask.id)}>
+          {columnTask.title}
         </button>
       ))}
-      {tasks.map((task) => (
-        <button key={`${task.id}-complete`} onClick={() => onToggleComplete(task.id)}>
-          complete {task.id}
+      {tasks.map((columnTask) => (
+        <button key={`${columnTask.id}-complete`} onClick={() => onToggleComplete(columnTask.id)}>
+          complete {columnTask.id}
         </button>
       ))}
-      {tasks.map((task) => (
-        <button key={`${task.id}-select`} onClick={() => onToggleSelect?.(task.id)}>
-          select {task.id}
+      {tasks.map((columnTask) => (
+        <button key={`${columnTask.id}-select`} onClick={() => onToggleSelect?.(columnTask.id)}>
+          select {columnTask.id}
         </button>
       ))}
       <button onClick={() => onQuickAdd?.('Quick task', column.id)}>quick add {column.id}</button>

@@ -50,7 +50,7 @@ function eventItem(overrides: Partial<CalendarProjectionItem> = {}): CalendarPro
     snoozeOffsetMinutes: null,
     editability: { canMove: true, canResize: true, canEditText: true, canDelete: true },
     ...overrides
-  } as CalendarProjectionItem
+  }
 }
 
 function chipOf(title = 'Planning'): HTMLElement {

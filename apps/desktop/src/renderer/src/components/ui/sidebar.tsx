@@ -145,7 +145,7 @@ function SidebarProvider({
   }, [sidebarWidth, isResizing])
 
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    return isMobile ? setOpenMobile((wasOpen) => !wasOpen) : setOpen((wasOpen) => !wasOpen)
   }, [isMobile, setOpen, setOpenMobile])
 
   // ⌘B is Bold in the note editor, so the command's spec stands down there.
@@ -237,6 +237,9 @@ function Sidebar({
   }
 
   if (isMobile) {
+    const mobileStyle: React.CSSProperties & { '--sidebar-width': string } = {
+      '--sidebar-width': SIDEBAR_WIDTH_MOBILE
+    }
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
@@ -244,11 +247,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-          style={
-            {
-              '--sidebar-width': SIDEBAR_WIDTH_MOBILE
-            } as React.CSSProperties
-          }
+          style={mobileStyle}
           side={side}
         >
           <SheetHeader className="sr-only">
@@ -355,7 +354,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
       hasDraggedRef.current = false
       setIsResizing(true)
 
-      const sidebarEl = (e.target as HTMLElement).closest('[data-side]')
+      const sidebarEl = (e.target instanceof Element ? e.target : null)?.closest('[data-side]')
       const side = sidebarEl?.getAttribute('data-side') || 'left'
       let didFinish = false
 
@@ -728,7 +727,9 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<'div'> & {
   showIcon?: boolean
 }) {
-  const width = '70%'
+  const skeletonStyle: React.CSSProperties & { '--skeleton-width': string } = {
+    '--skeleton-width': '70%'
+  }
 
   return (
     <div
@@ -741,11 +742,7 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            '--skeleton-width': width
-          } as React.CSSProperties
-        }
+        style={skeletonStyle}
       />
     </div>
   )

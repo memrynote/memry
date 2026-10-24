@@ -43,6 +43,7 @@ function useCaldavCopy(): {
   errorMessage: (code: string, presetId: string | null) => string
 } {
   const { t } = useT('settings')
+  // oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; the implicit fallthrough is unreachable for typed input
   const presetName = (id: CaldavPresetId): string => {
     switch (id) {
       case 'icloud':
@@ -321,6 +322,7 @@ function CaldavAccountFields({
         <CalendarFieldRow label={t('calendar.caldav.presetLabel')}>
           <select
             value={presetId}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the <select> only renders CaldavPresetId options
             onChange={(event) => onPresetChange(event.target.value as CaldavPresetId)}
             aria-label={t('calendar.caldav.presetLabel')}
             className="h-7 w-full rounded-md border border-border bg-transparent px-2 text-xs/4 text-foreground"

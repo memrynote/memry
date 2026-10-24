@@ -76,7 +76,7 @@ export const TaskSubissuesSection = ({
           ? (doneStatus?.color ?? status?.color ?? 'var(--text-tertiary)')
           : (status?.color ?? 'var(--text-tertiary)')
 
-        const title = (
+        const titleNode = (
           <span
             className={cn(
               'min-w-0 truncate',
@@ -98,7 +98,7 @@ export const TaskSubissuesSection = ({
               className={DRAWER_ROW}
             >
               <StatusIcon type={type} color={color} className="size-3.5" />
-              {title}
+              {titleNode}
             </button>
           )
         }
@@ -119,7 +119,7 @@ export const TaskSubissuesSection = ({
               onClick={() => onOpenSubtask(sub.id)}
               className="flex min-w-0 grow items-center gap-2 text-start"
             >
-              {title}
+              {titleNode}
               {progress && progress.total > 0 && (
                 <span className="ms-auto flex shrink-0 items-center gap-1 text-[11px] text-text-tertiary tabular-nums">
                   {progress.completed}/{progress.total}

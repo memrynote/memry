@@ -154,6 +154,7 @@ export function GenericCalendarProviderPanel({
     (source) => !source.isMemryManaged
   )
   const pushEnabled =
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- provider settings are an untyped bag; only this optional flag is read
     (settings as { pushEventsToProvider?: boolean } | null | undefined)?.pushEventsToProvider !==
     false
   const error =

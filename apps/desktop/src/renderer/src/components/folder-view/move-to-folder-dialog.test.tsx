@@ -55,8 +55,8 @@ describe('MoveToFolderDialog', () => {
       { path: 'Archive', icon: null },
       { path: 'Projects/memrynote', icon: null },
       { path: 'Writing', icon: null }
-    ] as any)
-    vi.mocked(notesService.createFolder).mockResolvedValue({ success: true } as any)
+    ])
+    vi.mocked(notesService.createFolder).mockResolvedValue({ success: true })
     const api = getMockApi() as any
     api.folderView = {
       getFolderSuggestions: vi.fn().mockResolvedValue({

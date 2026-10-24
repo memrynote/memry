@@ -1144,7 +1144,7 @@ export function VirtualizedNotesTree({
   useLayoutEffect(() => {
     if (!scrollContainerRef?.current || !parentRef.current) {
       setScrollMargin(0)
-      return
+      return undefined
     }
 
     const scrollElement = scrollContainerRef.current
@@ -1439,9 +1439,11 @@ export function VirtualizedNotesTree({
   const handleDragLeave = useCallback(
     (e: React.DragEvent) => {
       // SAFETY: only passed to `Node.contains`, which accepts any node or null.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- focus event relatedTarget is an element or null; used with .closest
       const relatedTarget = e.relatedTarget as HTMLElement
       // SAFETY: `currentTarget` during dispatch is the element this listener is
       // attached to — the row div rendered below — so it is always an HTMLElement.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- currentTarget is the element the handler is attached to
       const currentTarget = e.currentTarget as HTMLElement
       if (!currentTarget.contains(relatedTarget)) {
         setDragState({
@@ -1535,6 +1537,7 @@ export function VirtualizedNotesTree({
       // selection.
       // SAFETY: only `tagName` and the optional `closest` are read, both guarded
       // for absence, so a non-element target degrades to "no row".
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event target is an element inside the tree
       const target = e.target as HTMLElement | null
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
 

@@ -231,36 +231,30 @@ describe('useTimeGridMarquee', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     const grid = document.createElement('div')
     Object.defineProperty(grid, 'scrollTop', { value: 10, writable: true })
-    grid.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          top: 100,
-          left: 20,
-          bottom: 300,
-          right: 420,
-          width: 400,
-          height: 200,
-          x: 20,
-          y: 100,
-          toJSON: () => ({})
-        }) as DOMRect
-    )
+    grid.getBoundingClientRect = vi.fn(() => ({
+      top: 100,
+      left: 20,
+      bottom: 300,
+      right: 420,
+      width: 400,
+      height: 200,
+      x: 20,
+      y: 100,
+      toJSON: () => ({})
+    }))
     const gutter = document.createElement('div')
     const column = document.createElement('div')
-    column.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          top: 100,
-          left: 120,
-          bottom: 300,
-          right: 220,
-          width: 100,
-          height: 200,
-          x: 120,
-          y: 100,
-          toJSON: () => ({})
-        }) as DOMRect
-    )
+    column.getBoundingClientRect = vi.fn(() => ({
+      top: 100,
+      left: 120,
+      bottom: 300,
+      right: 220,
+      width: 100,
+      height: 200,
+      x: 120,
+      y: 100,
+      toJSON: () => ({})
+    }))
     grid.append(gutter, column)
     const ref = { current: grid } as React.RefObject<HTMLDivElement | null>
     const scrollRef = createMockScrollRef({ top: 100, bottom: 300, height: 200 })
@@ -328,20 +322,17 @@ describe('useTimeGridMarquee', () => {
 
     const grid = document.createElement('div')
     Object.defineProperty(grid, 'scrollTop', { value: 0, writable: true })
-    grid.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          top: 100,
-          left: GRID_LEFT,
-          bottom: 1252,
-          right: GRID_LEFT + COLUMN_WIDTH * COLUMN_COUNT,
-          width: COLUMN_WIDTH * COLUMN_COUNT,
-          height: 1152,
-          x: GRID_LEFT,
-          y: 100,
-          toJSON: () => ({})
-        }) as DOMRect
-    )
+    grid.getBoundingClientRect = vi.fn(() => ({
+      top: 100,
+      left: GRID_LEFT,
+      bottom: 1252,
+      right: GRID_LEFT + COLUMN_WIDTH * COLUMN_COUNT,
+      width: COLUMN_WIDTH * COLUMN_COUNT,
+      height: 1152,
+      x: GRID_LEFT,
+      y: 100,
+      toJSON: () => ({})
+    }))
     const ref = { current: grid } as React.RefObject<HTMLDivElement | null>
     const { result } = renderHook(() =>
       useTimeGridMarquee({
@@ -384,40 +375,38 @@ describe('useTimeGridMarquee', () => {
 
     const scroller = document.createElement('div')
     scroller.scrollTop = initialScrollTop
-    scroller.getBoundingClientRect = () =>
-      ({
-        top: VIEWPORT_TOP,
-        bottom: VIEWPORT_TOP + VIEWPORT_HEIGHT,
-        left: 0,
-        right: 400,
-        width: 400,
-        height: VIEWPORT_HEIGHT,
-        x: 0,
-        y: VIEWPORT_TOP,
-        toJSON: () => ({})
-      }) as DOMRect
+    scroller.getBoundingClientRect = () => ({
+      top: VIEWPORT_TOP,
+      bottom: VIEWPORT_TOP + VIEWPORT_HEIGHT,
+      left: 0,
+      right: 400,
+      width: 400,
+      height: VIEWPORT_HEIGHT,
+      x: 0,
+      y: VIEWPORT_TOP,
+      toJSON: () => ({})
+    })
 
     const grid = document.createElement('div')
     // The grid rides the scroll: its viewport-relative top moves as the
     // container scrolls, which is what lets the selection follow along.
-    grid.getBoundingClientRect = () =>
-      ({
-        top: VIEWPORT_TOP - scroller.scrollTop,
-        bottom: VIEWPORT_TOP - scroller.scrollTop + GRID_HEIGHT,
-        left: 0,
-        right: 400,
-        width: 400,
-        height: GRID_HEIGHT,
-        x: 0,
-        y: VIEWPORT_TOP - scroller.scrollTop,
-        toJSON: () => ({})
-      }) as DOMRect
+    grid.getBoundingClientRect = () => ({
+      top: VIEWPORT_TOP - scroller.scrollTop,
+      bottom: VIEWPORT_TOP - scroller.scrollTop + GRID_HEIGHT,
+      left: 0,
+      right: 400,
+      width: 400,
+      height: GRID_HEIGHT,
+      x: 0,
+      y: VIEWPORT_TOP - scroller.scrollTop,
+      toJSON: () => ({})
+    })
 
     return {
       grid,
       scroller,
-      gridRef: { current: grid } as RefObject<HTMLDivElement | null>,
-      scrollRef: { current: scroller } as RefObject<HTMLElement | null>
+      gridRef: { current: grid },
+      scrollRef: { current: scroller }
     }
   }
 

@@ -27,7 +27,7 @@ export interface PortalsPreloadApi {
 }
 
 function portalsApi(): PortalsPreloadApi {
-  const api = (window.api as unknown as { portals?: PortalsPreloadApi }).portals
+  const api: PortalsPreloadApi | undefined = window.api.portals
   if (!api) throw new Error('portals API is not available in this build')
   return api
 }

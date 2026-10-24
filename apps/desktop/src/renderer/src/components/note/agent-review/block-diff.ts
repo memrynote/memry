@@ -97,7 +97,9 @@ export function buildBlockDiff<T extends DiffableBlock>(
             ...newItem.block,
             id: nextId(DIFF_BLOCK_ID_PREFIX.modified),
             content: diffInlineContent(
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               oldItem.block.content as unknown[],
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               newItem.block.content as unknown[]
             )
           },
@@ -133,6 +135,7 @@ export function buildBlockDiff<T extends DiffableBlock>(
     merged.map((entry) => entry.block),
     merged.map((entry) => entry.depth)
   )
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   return { blocks: blocks as T[], changeCount }
 }
 
@@ -175,7 +178,9 @@ function isStyledText(item: unknown): item is StyledText {
   return (
     Boolean(item) &&
     typeof item === 'object' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
     (item as { type?: unknown }).type === 'text' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
     typeof (item as { text?: unknown }).text === 'string'
   )
 }
@@ -184,7 +189,9 @@ function isLink(item: unknown): item is LinkContent {
   return (
     Boolean(item) &&
     typeof item === 'object' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
     (item as { type?: unknown }).type === 'link' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
     Array.isArray((item as { content?: unknown }).content)
   )
 }
@@ -297,6 +304,7 @@ function rebuild(marked: { unit: Unit; marker: Marker | null }[]): unknown[] {
     }
     const styles = marker ? markStyles(unit.styles, marker) : unit.styles
     const key = JSON.stringify(styles)
+    // oxlint-disable-next-line typescript/prefer-optional-chain -- TS narrows `run` to never here (assigned in a closure), so `run?.key` fails typecheck
     if (run && run.key === key) {
       run.text += unit.char
       continue

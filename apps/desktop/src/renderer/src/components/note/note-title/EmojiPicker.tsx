@@ -60,7 +60,7 @@ export function EmojiPicker({
 
   useLayoutEffect(() => {
     const el = contentRef.current
-    if (!el || !isOpen) return
+    if (!el || !isOpen) return undefined
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]

@@ -196,7 +196,7 @@ function toNodes(
   mode: SidebarSortMode
 ): CanvasTreeNode[] {
   const folderNodes: CanvasTreeNode[] = [...folders.values()]
-    .sort(compareCanvasFolders(mode))
+    .toSorted(compareCanvasFolders(mode))
     .map((folder) => {
       const children = toNodes(folder.folders, folder.canvases, depth + 1, mode)
       return {
@@ -212,7 +212,7 @@ function toNodes(
     })
 
   const canvasNodes: CanvasTreeNode[] = [...canvases]
-    .sort(compareCanvases(mode))
+    .toSorted(compareCanvases(mode))
     .map((canvas) => ({ kind: 'canvas', canvas, depth }))
 
   // Folders first, then canvases — the concatenation IS the rule.

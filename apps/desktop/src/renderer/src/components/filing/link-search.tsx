@@ -152,8 +152,10 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     const handleClickOutside = (e: MouseEvent): void => {
       if (
         dropdownRef.current &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; mousedown on document always targets a Node
         !dropdownRef.current.contains(e.target as Node) &&
         inputRef.current &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; mousedown on document always targets a Node
         !inputRef.current.contains(e.target as Node)
       ) {
         setIsDropdownOpen(false)

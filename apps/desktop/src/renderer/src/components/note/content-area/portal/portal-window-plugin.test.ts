@@ -45,7 +45,7 @@ function hiddenTexts(el: HTMLElement): string[] {
 
 const mount = (blocks: Parameters<typeof mountPortalWindow>[0], spec: PortalWindowSpec) => {
   const mounted = mountPortalWindow(blocks, spec)
-  return { ...mounted, el: mounted.view.dom as HTMLElement }
+  return { ...mounted, el: mounted.view.dom }
 }
 
 describe('portal window plugin', () => {

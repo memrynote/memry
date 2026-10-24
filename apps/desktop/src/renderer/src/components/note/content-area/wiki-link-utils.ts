@@ -9,13 +9,15 @@ import { createWikiLinkInlineContent, hasWikiLinkMarks } from './wiki-link'
 // HEADING EXTRACTION
 // =============================================================================
 
+const HEADING_LEVELS: readonly HeadingInfo['level'][] = [1, 2, 3, 4, 5, 6]
+
 export function extractHeadings(blocks: Block[]): HeadingInfo[] {
   const headings: HeadingInfo[] = []
   let position = 0
 
   function processBlock(block: Block): void {
     if (block.type === 'heading') {
-      const level = (block.props?.level as 1 | 2 | 3 | 4 | 5 | 6) || 1
+      const level = HEADING_LEVELS.find((l) => l === block.props?.level) ?? 1
       const text = Array.isArray(block.content)
         ? block.content
             .map((item) => {
@@ -38,7 +40,7 @@ export function extractHeadings(blocks: Block[]): HeadingInfo[] {
     }
 
     if (block.children && Array.isArray(block.children)) {
-      block.children.forEach((child) => processBlock(child as Block))
+      block.children.forEach((child) => processBlock(child))
     }
   }
 
@@ -235,7 +237,7 @@ export function normalizeInlineContent(content: string | Array<any>): {
         didChange = true
         next.push(...segments)
       } else {
-        next.push(item as any)
+        next.push(item)
       }
       continue
     }
@@ -341,12 +343,13 @@ export function normalizeWikiLinks(
     // not code, and skipping it left every link there as raw `[[…]]`.
     if (block.content && block.type !== 'codeBlock' && block.id !== options?.skipBlockId) {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
-        const normalized = normalizeInlineContent(block.content as any)
+        const normalized = normalizeInlineContent(block.content)
         if (normalized.didChange) {
           blockChanged = true
-          nextBlock = { ...nextBlock, content: normalized.content as any }
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Block.content is typed per block type; the normalizer returns the same content kind it was given
+          nextBlock = { ...nextBlock, content: normalized.content } as Block
         }
-      } else if ((block.content as any).type === 'tableContent') {
+      } else if (block.content.type === 'tableContent') {
         const normalized = normalizeTableContent(block.content)
         if (normalized.didChange) {
           blockChanged = true
@@ -356,7 +359,7 @@ export function normalizeWikiLinks(
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeWikiLinks(block.children as Block[], options)
+      const normalizedChildren = normalizeWikiLinks(block.children, options)
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }

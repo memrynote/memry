@@ -60,10 +60,7 @@ export function SortSelector({
   const primary = order?.[0]
 
   const sortableBuiltIn = useMemo(
-    () =>
-      builtInColumns.filter((col) =>
-        SORTABLE_BUILT_IN.includes(col.id as (typeof SORTABLE_BUILT_IN)[number])
-      ),
+    () => builtInColumns.filter((col) => (SORTABLE_BUILT_IN as readonly string[]).includes(col.id)),
     [builtInColumns]
   )
 

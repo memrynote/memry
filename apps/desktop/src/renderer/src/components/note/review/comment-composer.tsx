@@ -199,11 +199,12 @@ export function CommentComposer({
 
   useEffect(() => {
     const composer = composerRef.current
-    if (!composer) return
+    if (!composer) return undefined
 
     const ownerDocument = composer.ownerDocument
     const ownerWindow = ownerDocument.defaultView ?? window
     const handlePointerDown = (event: PointerEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = event.target as Node | null
       if (!target) return
       // The mention picker renders in a body-level portal, so its options sit

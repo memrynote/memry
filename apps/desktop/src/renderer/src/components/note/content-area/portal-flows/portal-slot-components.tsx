@@ -86,6 +86,7 @@ function HiddenBlocksSlot({
     onClose()
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- radix `virtualRef` takes a non-null RefObject; the popover opens only once the anchor element exists
   const anchorRef = { current: anchorEl } as RefObject<HTMLElement>
   return (
     <Popover open={scope !== null && anchorEl !== null} onOpenChange={(open) => !open && onClose()}>

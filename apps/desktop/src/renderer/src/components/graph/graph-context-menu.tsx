@@ -15,6 +15,7 @@ import {
 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type Graph from 'graphology'
+import { readNodeAttrs } from './graph-node-attrs'
 import {
   hasTag,
   isEditableGraphNode,
@@ -82,7 +83,10 @@ export function GraphContextMenu({
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent): void {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target instanceof Node ? e.target : null)
+      ) {
         onClose()
       }
     }
@@ -99,7 +103,7 @@ export function GraphContextMenu({
 
   if (!graph.hasNode(menu.nodeId)) return <></>
 
-  const nodeTags = (graph.getNodeAttribute(menu.nodeId, 'tags') as string[] | undefined) ?? []
+  const nodeTags = readNodeAttrs(graph.getNodeAttributes(menu.nodeId)).tags ?? []
 
   return (
     <div
@@ -178,8 +182,8 @@ function MainMenu({
 }: MainMenuProps): React.JSX.Element {
   const { t } = useT('graph')
   const attrs = graph.getNodeAttributes(nodeId)
-  const label = (attrs.label as string) || t('context-menu.untitled')
-  const isUnresolved = attrs.isUnresolved as boolean
+  const { label: rawLabel, isUnresolved } = readNodeAttrs(attrs)
+  const label = rawLabel || t('context-menu.untitled')
   const isPinned = attrs[PINNED_ATTRIBUTE] === true
   // A collapsed category's super-node stands for many notes: no open or copy.
   const isGroup = attrs.nodeType === 'group'
@@ -384,7 +388,7 @@ function LinkPicker({
     graph.forEachNode((id, attrs) => {
       if (results.length >= MAX_PICKER_RESULTS) return
       if (id === sourceId || !isEditableGraphNode(graph, id)) return
-      const nodeLabel = (attrs.label as string) ?? ''
+      const nodeLabel = readNodeAttrs(attrs).label ?? ''
       if (needle && !nodeLabel.toLowerCase().includes(needle)) return
       results.push({ id, label: nodeLabel })
     })
@@ -439,11 +443,11 @@ function TagPicker({
   const suggestions = useMemo(() => {
     const all = new Set<string>()
     graph.forEachNode((_id, attrs) => {
-      for (const tag of (attrs.tags as string[] | undefined) ?? []) all.add(tag)
+      for (const tag of readNodeAttrs(attrs).tags ?? []) all.add(tag)
     })
     return [...all]
       .filter((tag) => !hasTag(nodeTags, tag) && (!typed || tag.toLowerCase().includes(typed)))
-      .sort((a, b) => a.localeCompare(b))
+      .toSorted((a, b) => a.localeCompare(b))
       .slice(0, MAX_PICKER_RESULTS)
   }, [graph, nodeTags, typed])
 

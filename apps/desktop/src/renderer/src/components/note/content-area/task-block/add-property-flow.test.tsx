@@ -9,11 +9,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TaskBlockRenderer, type TaskBlock, type TaskBlockEditor } from './task-block-renderer'
 
-const mocks = vi.hoisted(() => ({
-  update: vi.fn(),
-  taskState: { task: null as unknown, isLoading: false, isDeleted: false },
-  projects: [] as unknown[]
-}))
+const mocks = vi.hoisted(() => {
+  const taskState: { task: unknown; isLoading: boolean; isDeleted: boolean } = {
+    task: null,
+    isLoading: false,
+    isDeleted: false
+  }
+  const projects: unknown[] = []
+  return { update: vi.fn(), taskState, projects }
+})
 
 vi.mock('@/hooks/use-reminders', () => ({
   useNextTaskReminders: () => new Map<string, string>()

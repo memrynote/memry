@@ -72,6 +72,7 @@ export const PrioritySelect = ({
   )
 
   return (
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the picker's option list is the closed Priority set; its onValueChange types the value as string
     <Picker value={value} onValueChange={(v) => onChange(v as Priority)}>
       <Picker.Trigger
         variant="button"

@@ -77,6 +77,7 @@ const DEFAULT_FILTER_THRESHOLD = 8
 function loadExpanded(): Set<string> {
   try {
     const stored = localStorage.getItem(EXPANDED_STORAGE_KEY)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse of a persisted value; a wrong shape is caught by the surrounding try/catch or the consumer
     if (stored) return new Set(JSON.parse(stored) as string[])
   } catch {
     // Ignore parse errors — a corrupt key just means "nothing expanded".
@@ -437,7 +438,7 @@ export function CanvasTree({
    * `document.body`, which ends keyboard navigation of the tree.
    */
   React.useEffect(() => {
-    if (!pendingFocus) return
+    if (!pendingFocus) return undefined
     const timer = setTimeout(() => focusRow(pendingFocus), 0)
     return () => clearTimeout(timer)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- rows re-runs the focus attempt until the target row exists (see comment above)
@@ -446,7 +447,7 @@ export function CanvasTree({
   // Closes the window above. Deliberately NOT keyed on `rows`, so a later
   // refresh cannot extend it.
   React.useEffect(() => {
-    if (!pendingFocus) return
+    if (!pendingFocus) return undefined
     const timer = setTimeout(() => setPendingFocus(null), FOCUS_SETTLE_MS)
     return () => clearTimeout(timer)
   }, [pendingFocus])
@@ -664,6 +665,7 @@ export function CanvasTree({
 
   const handleDragLeave = React.useCallback((event: React.DragEvent) => {
     // Moving onto a child still counts as being over the row.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- relatedTarget is an EventTarget, and in a DOM drag event it is a Node or null
     const next = event.relatedTarget as Node | null
     if (next && event.currentTarget.contains(next)) return
     setDropTarget(null)
@@ -681,6 +683,7 @@ export function CanvasTree({
       const payload = readDragPayload(event.dataTransfer, dragging)
       if (!canDrop(payload, folder)) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- canDrop above accepted the payload, which is the narrowing the type cannot express
       const drag = payload as CanvasDragPayload
       // No optimistic move: the canvas/folder events refresh the tree.
       void run(async () => {

@@ -134,7 +134,7 @@ export function BulkActionBar({
   )
 
   const handlePinSelected = async (): Promise<void> => {
-    if (!scope || scope.kind !== 'tag' || noteRowIds.length === 0) return
+    if (scope?.kind !== 'tag' || noteRowIds.length === 0) return
     const tag = scope.tag
     setIsPinning(true)
     try {

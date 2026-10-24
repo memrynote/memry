@@ -47,6 +47,7 @@ const SRAnnouncer = ({ className }: SRAnnouncerProps): React.JSX.Element => {
         padding: 0,
         margin: '-1px',
         overflow: 'hidden',
+        // oxlint-disable-next-line typescript/no-deprecated -- standard sr-only clip pattern; clipPath alone is not equivalent in all engines
         clip: 'rect(0, 0, 0, 0)',
         whiteSpace: 'nowrap',
         border: 0

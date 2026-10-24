@@ -30,7 +30,7 @@ export function MultiselectEditor({
 
   const selectedOptions = value
     .map((v) => options.find((o) => o.value === v))
-    .filter(Boolean) as SelectOption[]
+    .filter((option): option is SelectOption => Boolean(option))
   const orphanValues = value.filter((v) => !options.find((o) => o.value === v))
 
   const handleToggle = (val: string) => {

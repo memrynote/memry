@@ -170,7 +170,7 @@ export const AutocompleteDropdown = ({
   // Add/remove keyboard listener — skipped while controlled, so the caller's
   // own handler is the only one acting on a key.
   useEffect(() => {
-    if (isControlled) return
+    if (isControlled) return undefined
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown, isControlled])

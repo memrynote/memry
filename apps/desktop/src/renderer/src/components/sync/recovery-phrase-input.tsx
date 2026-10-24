@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, type SyntheticEvent, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { AlertCircle, Clipboard, Loader2 } from '@/lib/icons'
@@ -47,7 +47,7 @@ export function RecoveryPhraseInput({
   const cells = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
-    if (!isLoading) return
+    if (!isLoading) return undefined
     const timer = setInterval(() => {
       setProgressStep((prev) => Math.min(prev + 1, PROGRESS_STEPS.length - 1))
     }, STEP_INTERVAL_MS)
@@ -102,7 +102,7 @@ export function RecoveryPhraseInput({
     }
   }
 
-  const submit = (event: FormEvent): void => {
+  const submit = (event: SyntheticEvent): void => {
     event.preventDefault()
     if (!complete || isLoading) return
     setProgressStep(0)

@@ -65,9 +65,9 @@ export function usePortalDeleteGuard({
 
   const requestBlockRemoval = useCallback(
     async (blockIds: readonly string[]): Promise<void> => {
-      const blocks = blockIds.flatMap((id) => {
+      const blocks = blockIds.flatMap<GuardBlock>((id) => {
         const block = editor.getBlock(id)
-        return block ? [block as unknown as GuardBlock] : []
+        return block ? [block] : []
       })
       if (blocks.length === 0) return
 
@@ -121,16 +121,14 @@ export function usePortalDeleteGuard({
   )
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     // Local edits only: a delete that arrived from sync was somebody else's
     // call, made in a note that owns the block.
     return editor.onChange((_editor, context) => {
       const removed = context
         .getChanges()
-        .flatMap((change) =>
-          change.type === 'delete' && change.source.type === 'local'
-            ? [change.block as unknown as GuardBlock]
-            : []
+        .flatMap<GuardBlock>((change) =>
+          change.type === 'delete' && change.source.type === 'local' ? [change.block] : []
         )
       if (removed.length > 0) void onKeyboardDelete(removed)
     }, false)

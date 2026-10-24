@@ -58,6 +58,7 @@ export function FolderWidget({ config }: WidgetComponentProps): React.JSX.Elemen
   const propertyTypes = useMemo(() => {
     const map: Record<string, PropertyType> = {}
     for (const prop of availableProperties) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property types come from the vault as plain strings; the column renderer falls back for unknown ones
       map[prop.name] = prop.type as PropertyType
     }
     return map

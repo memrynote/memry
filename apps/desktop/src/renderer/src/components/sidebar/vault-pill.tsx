@@ -53,10 +53,10 @@ export function VaultPill({ vaults, activePath }: VaultPillProps) {
 
   useLayoutEffect(() => {
     const el = scrollerRef.current
-    if (!el) return
+    if (!el) return undefined
     const measure = (): void => setOverflowing(el.scrollWidth > el.clientWidth + 1)
     measure()
-    if (typeof ResizeObserver !== 'function') return
+    if (typeof ResizeObserver !== 'function') return undefined
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     if (el.firstElementChild) observer.observe(el.firstElementChild)

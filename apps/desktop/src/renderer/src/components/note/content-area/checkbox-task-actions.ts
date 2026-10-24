@@ -20,10 +20,13 @@ export interface CheckboxTaskActions {
   toCheckbox: (blockId: string) => void
 }
 
-const registry = new WeakMap<object, CheckboxTaskActions>()
+/** The BlockNote editor instance (or any object identity) the entry is keyed by. */
+type EditorOwner = WeakKey
+
+const registry = new WeakMap<EditorOwner, CheckboxTaskActions>()
 
 export function registerCheckboxTaskActions(
-  editor: object,
+  editor: EditorOwner,
   actions: CheckboxTaskActions
 ): () => void {
   registry.set(editor, actions)
@@ -32,6 +35,6 @@ export function registerCheckboxTaskActions(
   }
 }
 
-export function getCheckboxTaskActions(editor: object): CheckboxTaskActions | undefined {
+export function getCheckboxTaskActions(editor: EditorOwner): CheckboxTaskActions | undefined {
   return registry.get(editor)
 }

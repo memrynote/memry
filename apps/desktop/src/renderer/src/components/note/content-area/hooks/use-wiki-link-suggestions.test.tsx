@@ -113,8 +113,8 @@ describe('useWikiLinkSuggestions', () => {
     ])
 
     act(() => {
-      result.current.handleWikiLinkSelect(missing[0])
-      result.current.handleWikiLinkSelect({ ...missing[0], target: '' })
+      void result.current.handleWikiLinkSelect(missing[0])
+      void result.current.handleWikiLinkSelect({ ...missing[0], target: '' })
     })
     expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
       1,

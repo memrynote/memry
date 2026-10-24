@@ -11,6 +11,8 @@ const LOAD_DELAY_MS = 80
 
 const NONE: Occurrences = { lines: [], hits: [] }
 
+const keyOf = (item: SearchResultItem): string => `${resultValue(item)}@${item.modifiedAt}`
+
 /**
  * Occurrences of the query in each result's body, read from the local vault.
  * A result missing from the map has not loaded yet, and one with no hits is
@@ -27,12 +29,11 @@ export function useOccurrences(
 
   if (cache.current.needle !== needle) cache.current = { needle, byKey: new Map() }
 
-  const keyOf = (item: SearchResultItem): string => `${resultValue(item)}@${item.modifiedAt}`
   const missing = items.filter((item) => !cache.current.byKey.has(keyOf(item)))
   const missingToken = missing.map(keyOf).join('|')
 
   useEffect(() => {
-    if (!needle || missing.length === 0) return
+    if (!needle || missing.length === 0) return undefined
     let cancelled = false
     const target = cache.current
     const timer = setTimeout(() => {

@@ -13,7 +13,9 @@
 
 import { trackTelemetry } from '@/lib/telemetry'
 
-export type UnclaimedTokenKind = 'mention' | 'date' | 'callout_marker'
+const UNCLAIMED_TOKEN_KINDS = ['mention', 'date', 'callout_marker'] as const
+
+export type UnclaimedTokenKind = (typeof UNCLAIMED_TOKEN_KINDS)[number]
 
 export type UnclaimedTokenCounts = Partial<Record<UnclaimedTokenKind, number>>
 
@@ -70,6 +72,11 @@ interface WalkableBlock {
   children?: unknown
 }
 
+function walkableBlocks(blocks: readonly unknown[]): readonly WalkableBlock[] {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- editor documents and parser output are block arrays; every field is read optionally
+  return blocks as WalkableBlock[]
+}
+
 function visitBlocks(
   blocks: readonly WalkableBlock[],
   counts: Required<UnclaimedTokenCounts>
@@ -87,9 +94,7 @@ function visitBlocks(
       for (const row of (content as { rows?: Array<{ cells: unknown[] }> }).rows ?? []) {
         for (const cell of row.cells ?? []) {
           const cellContent =
-            cell && typeof cell === 'object' && 'content' in cell
-              ? (cell as { content: unknown }).content
-              : cell
+            cell && typeof cell === 'object' && 'content' in cell ? cell.content : cell
           visitInlineContent(cellContent, counts, false)
         }
       }
@@ -98,16 +103,16 @@ function visitBlocks(
     }
 
     if (Array.isArray(block.children) && block.children.length > 0) {
-      visitBlocks(block.children as WalkableBlock[], counts)
+      visitBlocks(walkableBlocks(block.children), counts)
     }
   }
 }
 
 export function countUnclaimedTokens(blocks: readonly unknown[]): UnclaimedTokenCounts {
   const counts: Required<UnclaimedTokenCounts> = { mention: 0, date: 0, callout_marker: 0 }
-  visitBlocks(blocks as WalkableBlock[], counts)
+  visitBlocks(walkableBlocks(blocks), counts)
   const found: UnclaimedTokenCounts = {}
-  for (const kind of ['mention', 'date', 'callout_marker'] as const) {
+  for (const kind of UNCLAIMED_TOKEN_KINDS) {
     if (counts[kind] > 0) found[kind] = counts[kind]
   }
   return found
@@ -138,7 +143,7 @@ function flush(): void {
 
 export function reportUnclaimedTokens(blocks: readonly unknown[]): void {
   const counts = countUnclaimedTokens(blocks)
-  const kinds = Object.keys(counts) as UnclaimedTokenKind[]
+  const kinds = UNCLAIMED_TOKEN_KINDS.filter((kind) => kind in counts)
   if (kinds.length === 0) return
 
   for (const kind of kinds) {

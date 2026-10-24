@@ -142,6 +142,7 @@ function carriesAttachment(block: AnyBlock): boolean {
     (node) =>
       typeof node === 'object' &&
       node !== null &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inline content nodes are a union; every member exposes an optional string type
       (node as { type?: string }).type === 'inlineImage'
   )
 }
@@ -274,6 +275,7 @@ function TurnIntoItem() {
 function TaskToCheckboxItem() {
   const { t } = useT('notes')
   const editor = useBlockNoteEditor<any, any, any>()
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
   const block = useCurrentBlock() as (AnyBlock & { children?: unknown[] }) | undefined
   const actions = getCheckboxTaskActions(editor)
 
@@ -374,8 +376,10 @@ function CommentItem({ onAddComment }: { onAddComment?: (selection: ReviewSelect
 
   const addComment = useCallback(() => {
     if (!block || !onAddComment) return
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- the assertion bridges two unrelated structural types; the unknown hop is deliberate; BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const typed = editor as unknown as BlockNoteEditor
     const state = getProseMirrorState(typed)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the any-typed editor exposes prosemirrorView at runtime
     const view = (editor as { prosemirrorView?: { dispatch: (tr: unknown) => void } })
       .prosemirrorView
     const range = findBlockInlineRange(state.doc, block.id)

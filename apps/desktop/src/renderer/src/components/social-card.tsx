@@ -281,6 +281,7 @@ const SocialPreview = ({
 }: SocialPreviewProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('inbox')
   // Try to get social metadata
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- InboxMetadata is a union; this preview is only rendered for social items
   const socialMeta = metadata as SocialMetadata | null
   const platform = socialMeta?.platform || detectPlatformFromUrl(sourceUrl)
   const isLoading = processingStatus === 'pending' || processingStatus === 'processing'

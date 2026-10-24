@@ -50,7 +50,7 @@ function paragraph(content: unknown[]): Block[] {
 async function survivingUrls(editor: BlockNoteEditor, blocks: Block[]): Promise<string[]> {
   const markdown = await serializeBlocksPreservingBlanks(editor, blocks)
   const reparsed = editor.tryParseMarkdownToBlocks(markdown)
-  const { blocks: normalized } = normalizeLinkMentions(reparsed as Block[])
+  const { blocks: normalized } = normalizeLinkMentions(reparsed)
 
   const urls: string[] = []
   const walk = (items: unknown[]): void => {
@@ -115,7 +115,7 @@ describe('a link mention survives the markdown round trip', () => {
     const url = "https://x.test/_*!~'()?a=b"
     const first = await serializeBlocksPreservingBlanks(editor, paragraph([mention(url)]))
     const reparsed = editor.tryParseMarkdownToBlocks(first)
-    const { blocks } = normalizeLinkMentions(reparsed as Block[])
+    const { blocks } = normalizeLinkMentions(reparsed)
     const second = await serializeBlocksPreservingBlanks(editor, blocks)
     expect(second).toBe(first)
   })
@@ -143,7 +143,7 @@ describe('a mangled token already on disk heals on open', () => {
     )
 
     expect(didChange).toBe(true)
-    const content = (blocks[0] as Block).content as Array<Record<string, any>>
+    const content = blocks[0].content as Array<Record<string, any>>
     expect(content[0].type).toBe('linkMention')
     expect(content[0].props.url).toBe(expected)
   })

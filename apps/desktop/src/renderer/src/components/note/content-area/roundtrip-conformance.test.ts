@@ -65,13 +65,13 @@ const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } 
 // actually saves, with the author's bytes recorded at load (#1915).
 async function roundTrip(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-  const normalized = normalizeNoteBlocks(parsed as Block[], markdown)
-  return await serializeBlocksPreservingBlanks(editor, normalized as Block[])
+  const normalized = normalizeNoteBlocks(parsed, markdown)
+  return await serializeBlocksPreservingBlanks(editor, normalized)
 }
 
 async function roundTripPreservingSource(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-  const normalized = normalizeNoteBlocks(parsed as Block[], markdown) as Block[]
+  const normalized = normalizeNoteBlocks(parsed, markdown)
   const canonical = await serializeBlocksPreservingBlanks(editor, normalized)
   return serializeMarkdownPreservingSource(
     editor,
@@ -144,7 +144,7 @@ describe('plain checkboxes, renderer pipeline', () => {
   it('opens a `{check}` line as a plain checkbox, marker off the text', async () => {
     const markdown = '- [x] Pack **the** passport {check}\n- [ ] Book flights'
     const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-    const [plain, ordinary] = normalizeNoteBlocks(parsed as Block[], markdown)
+    const [plain, ordinary] = normalizeNoteBlocks(parsed, markdown)
 
     expect(plain.type).toBe('checkListItem')
     expect(plain.props).toMatchObject({ checked: true, plain: true })
@@ -154,7 +154,7 @@ describe('plain checkboxes, renderer pipeline', () => {
 
   it('writes the marker for a checkbox made plain in the editor', async () => {
     const parsed = await parseMarkdownPreservingBlanks(editor, '- [ ] Passport')
-    const [checkbox] = normalizeNoteBlocks(parsed as Block[], '- [ ] Passport')
+    const [checkbox] = normalizeNoteBlocks(parsed, '- [ ] Passport')
     const plain = { ...checkbox, props: { ...checkbox.props, plain: true } } as Block
     expect(await serializeBlocksPreservingBlanks(editor, [plain])).toBe('- [ ] Passport {check}')
   })
@@ -164,7 +164,7 @@ describe('task titles from the source, renderer pipeline', () => {
   it('does not give a task the text of a hidden copy of its line', async () => {
     const markdown = '<!--\n- [ ] OLD COMMENT {task:t1}\n-->\n\n- [ ] **new** {task:t1}'
     const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-    const titles = normalizeNoteBlocks(parsed as Block[], markdown)
+    const titles = normalizeNoteBlocks(parsed, markdown)
       .filter((block) => (block.type as string) === 'taskBlock')
       .map((block) => (block.props as { title: string }).title)
     expect(titles).toEqual(['**new**'])

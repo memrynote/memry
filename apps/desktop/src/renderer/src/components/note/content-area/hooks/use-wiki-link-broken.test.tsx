@@ -4,7 +4,6 @@
  */
 
 import { Schema } from '@tiptap/pm/model'
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { EditorState } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
 import { renderHook } from '@testing-library/react'
@@ -102,7 +101,7 @@ function brokenTargetsOf(state: EditorState): string[] {
   const decorations = WIKI_LINK_BROKEN_PLUGIN_KEY.getState(state)?.decorations
   if (!decorations) return []
   return decorations.find().map((decoration) => {
-    const node = (state.doc as ProseMirrorNode).nodeAt(decoration.from)
+    const node = state.doc.nodeAt(decoration.from)
     return typeof node?.attrs.target === 'string' ? node.attrs.target : ''
   })
 }

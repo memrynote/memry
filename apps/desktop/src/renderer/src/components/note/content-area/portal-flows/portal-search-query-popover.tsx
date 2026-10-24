@@ -7,7 +7,7 @@
  * @module note/content-area/portal-flows/portal-search-query-popover
  */
 
-import { useState, type FormEvent, type ReactElement, type RefObject } from 'react'
+import { useState, type SubmitEvent, type ReactElement, type RefObject } from 'react'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,7 @@ export function PortalSearchQueryPopover({
   onSubmit,
   onClose
 }: PortalSearchQueryPopoverProps): ReactElement {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix types virtualRef as a non-null ref; anchorEl is null only while `open` is false, when the anchor is never measured
   const anchorRef = { current: anchorEl } as RefObject<HTMLElement>
   return (
     <Popover open={anchorEl !== null} onOpenChange={(open) => !open && onClose()}>
@@ -66,7 +67,7 @@ export function PortalSearchQueryForm({
   const target = targetFromDraft(draft)
   const set = (patch: Partial<PortalSearchDraft>): void => setDraft({ ...draft, ...patch })
 
-  const submit = (event: FormEvent): void => {
+  const submit = (event: SubmitEvent): void => {
     event.preventDefault()
     if (target) onSubmit(target)
   }

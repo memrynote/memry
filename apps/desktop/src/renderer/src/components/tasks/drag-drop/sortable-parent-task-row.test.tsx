@@ -323,9 +323,7 @@ describe('SortableParentTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-parent-task-row') as HTMLDivElement).style.transform).toBe(
-      ''
-    )
+    expect(screen.getByTestId('sortable-parent-task-row').style.transform).toBe('')
   })
 
   it('suppresses source-section transforms for active parent rows during cross-section drags', () => {
@@ -375,9 +373,7 @@ describe('SortableParentTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-parent-task-row') as HTMLDivElement).style.transform).toBe(
-      ''
-    )
+    expect(screen.getByTestId('sortable-parent-task-row').style.transform).toBe('')
   })
 
   it('keeps sortable transforms enabled for same-section parent reorders', () => {
@@ -427,7 +423,7 @@ describe('SortableParentTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-parent-task-row') as HTMLDivElement).style.transform).toBe(
+    expect(screen.getByTestId('sortable-parent-task-row').style.transform).toBe(
       'translate3d(0px, 48px, 0)'
     )
   })

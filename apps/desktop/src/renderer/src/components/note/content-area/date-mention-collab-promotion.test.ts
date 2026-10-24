@@ -51,7 +51,9 @@ const legacyEncode = (obj: unknown): string =>
 
 /** A base64url run as a markdown escaper would have left it. */
 const markdownEscaped = (run: string): string =>
-  [...run].map((c) => (c === '_' || c === '-' ? `\\${c}` : c)).join('')
+  Array.from(run)
+    .map((c) => (c === '_' || c === '-' ? `\\${c}` : c))
+    .join('')
 
 const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement; doc: Y.Doc }> = []
 

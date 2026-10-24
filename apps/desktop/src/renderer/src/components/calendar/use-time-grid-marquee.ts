@@ -120,7 +120,8 @@ function buildSelection(
   const scrollTop = el?.scrollTop ?? 0
   const columnEl = getColumnElement
     ? getColumnElement(columnIndex)
-    : ((el?.children?.[columnIndex + 1] as HTMLElement | undefined) ?? null)
+    : // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- HTMLCollection indexes as Element; grid columns are HTMLElements and tests pass plain objects
+      ((el?.children?.[columnIndex + 1] as HTMLElement | undefined) ?? null)
   const colRect = columnEl?.getBoundingClientRect()
   const fallbackColumnWidth = (gridRect?.width ?? 0) / Math.max(columnCount, 1)
   const anchorRect = {

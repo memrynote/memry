@@ -127,7 +127,7 @@ export function EventProjectField({
     // Nothing to reload for an unsaved event, and the canvas mounts one form
     // per event card — subscribing there would buy a listener per idle card
     // whose callback can only ever no-op.
-    if (!isEdit || !eventId) return
+    if (!isEdit || !eventId) return undefined
     return onProjectUpdated(() => {
       // `linkItemToProject` / `unlinkItemFromProject` publish `projectUpdated`
       // *before* they resolve, so reloading on our own writes would fetch the

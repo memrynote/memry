@@ -117,7 +117,7 @@ export const InfoSection = memo(function InfoSection({
   )
 
   useEffect(() => {
-    if (!internalNewlyAdded.id) return
+    if (!internalNewlyAdded.id) return undefined
     const clearHighlightTimer = window.setTimeout(() => {
       setInternalNewlyAdded((current) =>
         current.id === internalNewlyAdded.id ? { ...current, id: null } : current

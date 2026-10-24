@@ -31,7 +31,7 @@ export function NoteNamesLine({ noteId, title, aliases, disabled }: NoteNamesLin
   const conflict = useNameConflict(draft ? noteId : null, text)
 
   useEffect(() => {
-    if (!noteId || disabled) return
+    if (!noteId || disabled) return undefined
     return onNoteNameInputRequest(noteId, () => {
       setText('')
       setDraft({ mode: 'add' })

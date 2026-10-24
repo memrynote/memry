@@ -181,8 +181,8 @@ export function GoogleCalendarConnection(): React.JSX.Element {
   // per mount via the ref above; settings.onboardingCompleted flips to true
   // on confirm/skip so later mounts stay quiet.
   useEffect(() => {
-    if (!statusData?.connected) return
-    if (onboardingPromptShownRef.current) return
+    if (!statusData?.connected) return undefined
+    if (onboardingPromptShownRef.current) return undefined
     let cancelled = false
     void window.api.settings.getCalendarGoogleSettings().then((settings) => {
       if (cancelled) return

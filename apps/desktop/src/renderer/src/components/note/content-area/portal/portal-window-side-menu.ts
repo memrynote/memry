@@ -90,9 +90,15 @@ function innermostClosestEditor(view: ViewWithPluginViews, coords: Point): Close
   return closest
 }
 
+/** ProseMirror's undeclared internals (`pluginViews`, `domObserver`) on a view. */
+function withPluginViews(view: EditorView): ViewWithPluginViews {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- ProseMirror declares neither field, so no narrower route from EditorView exists
+  return view as unknown as ViewWithPluginViews
+}
+
 /** Patch the side menu of `view`, if it has one and is not patched yet. */
 export function innermostEditorWins(view: EditorView): void {
-  const withViews = view as unknown as ViewWithPluginViews
+  const withViews = withPluginViews(view)
   for (const pluginView of withViews.pluginViews ?? []) {
     if (typeof pluginView.findClosestEditorElement !== 'function' || patched.has(pluginView)) {
       continue
@@ -107,7 +113,7 @@ interface TiptapDom extends HTMLElement {
 }
 
 function ignorePresentationMarks(view: EditorView): void {
-  const observer = (view as unknown as ViewWithPluginViews).domObserver
+  const observer = withPluginViews(view).domObserver
   const register = observer?.registerMutation
   if (!observer || !register || guardedObservers.has(observer)) return
   guardedObservers.add(observer)

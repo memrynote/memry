@@ -82,7 +82,7 @@ export function WhiteboardBlockRenderer({ block }: { block: WhiteboardNode }): R
   }, [canvasId])
 
   useEffect(() => {
-    if (!enabled || !canvasId) return
+    if (!enabled || !canvasId) return undefined
     let cancelled = false
 
     const load = async (): Promise<void> => {

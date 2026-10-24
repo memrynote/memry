@@ -18,7 +18,7 @@ export function ReleaseNotesDevTrigger(): null {
   const { openTab } = useTabs()
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return
+    if (!import.meta.env.DEV) return undefined
 
     const open = (version = '2026.999.9'): void => {
       openTab({
@@ -34,12 +34,11 @@ export function ReleaseNotesDevTrigger(): null {
       })
     }
 
-    const win = window as unknown as { openReleaseNotesDemo?: (version?: string) => void }
-    win.openReleaseNotesDemo = open
+    Reflect.set(window, 'openReleaseNotesDemo', open)
     log.info('dev helper ready — run openReleaseNotesDemo() in the console to open the tab')
 
     return () => {
-      delete win.openReleaseNotesDemo
+      Reflect.deleteProperty(window, 'openReleaseNotesDemo')
     }
   }, [openTab])
 

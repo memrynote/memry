@@ -754,7 +754,7 @@ export const RelationCell = memo(function RelationCell({
   )
 
   useEffect(() => {
-    if (uris.length === 0) return
+    if (uris.length === 0) return undefined
 
     let cancelled = false
     void (async () => {
@@ -1111,7 +1111,7 @@ function useTagOverflow(
 
   useLayoutEffect(() => {
     const el = containerRef.current
-    if (!el) return
+    if (!el) return undefined
 
     const GAP = 4 // matches gap-1
     const RESERVE = 44 // room for the "+N" chip

@@ -21,7 +21,7 @@ export function OutgoingLinksSection({
   const [visibleCount, setVisibleCount] = useState(initialCount)
 
   const sortedLinks = useMemo(
-    () => [...links].sort((a, b) => a.targetTitle.localeCompare(b.targetTitle)),
+    () => links.toSorted((a, b) => a.targetTitle.localeCompare(b.targetTitle)),
     [links]
   )
 

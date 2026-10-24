@@ -25,14 +25,15 @@ interface PrimaryActionContext {
   activeDate: DatePresetId | null
 }
 
+const toggle = (active: boolean): PrimaryActionKey =>
+  active ? 'searchPalette.actions.removeFilter' : 'searchPalette.actions.addFilter'
+
 /** The verb the action bar shows for Enter on the selected row. */
 export function primaryActionKey(
   value: string,
   { results, activeTypes, activeDate }: PrimaryActionContext
 ): PrimaryActionKey | null {
   const [kind, a, b] = value.split(':')
-  const toggle = (active: boolean): PrimaryActionKey =>
-    active ? 'searchPalette.actions.removeFilter' : 'searchPalette.actions.addFilter'
   switch (kind) {
     case 'result': {
       const item = results.flatMap((g) => g.results).find((r) => resultValue(r) === value)
@@ -60,9 +61,11 @@ export function primaryActionKey(
     case 'scope':
       return a === 'tag'
         ? 'searchPalette.actions.chooseTag'
-        : toggle(activeTypes.includes(a as ContentType))
+        : // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a is the second segment of the palette value, which the palette builds from a ContentType
+          toggle(activeTypes.includes(a as ContentType))
     case 'filter':
       if (a === 'tag') return 'searchPalette.actions.chooseTag'
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- b is the third segment of the palette value, which the palette builds from a ContentType
       return toggle(a === 'type' ? activeTypes.includes(b as ContentType) : activeDate === b)
     case 'tag':
       return 'searchPalette.actions.addTag'

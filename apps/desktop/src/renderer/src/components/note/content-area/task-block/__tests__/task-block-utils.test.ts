@@ -110,9 +110,9 @@ describe('normalizeTaskBlocks', () => {
     const { blocks: result, didChange } = normalizeTaskBlocks(blocks, null)
     expect(didChange).toBe(true)
     expect(result[0].type).toBe('taskBlock')
-    expect((result[0].props as any).taskId).toBe('abc-123')
-    expect((result[0].props as any).title).toBe('Buy groceries')
-    expect((result[0].props as any).checked).toBe(false)
+    expect(result[0].props.taskId).toBe('abc-123')
+    expect(result[0].props.title).toBe('Buy groceries')
+    expect(result[0].props.checked).toBe(false)
   })
 
   it('preserves checked state from checkListItem', () => {
@@ -127,7 +127,7 @@ describe('normalizeTaskBlocks', () => {
     ] as any[]
 
     const { blocks: result } = normalizeTaskBlocks(blocks, null)
-    expect((result[0].props as any).checked).toBe(true)
+    expect(result[0].props.checked).toBe(true)
   })
 
   it('leaves regular checkListItem untouched', () => {
@@ -233,9 +233,9 @@ describe('normalizeTaskBlocks with nested children', () => {
     expect(parent.children).toHaveLength(1)
     const child = parent.children![0]
     expect(child.type).toBe('taskBlock')
-    expect((child.props as any).taskId).toBe('sub-1')
-    expect((child.props as any).title).toBe('Buy milk')
-    expect((child.props as any).parentTaskId).toBe('task-parent')
+    expect(child.props.taskId).toBe('sub-1')
+    expect(child.props.title).toBe('Buy milk')
+    expect(child.props.parentTaskId).toBe('task-parent')
   })
 
   it('leaves non-task children untouched', () => {
@@ -314,15 +314,15 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
 
     const sub1 = result[0].children![0]
     expect(sub1.type).toBe('taskBlock')
-    expect((sub1.props as any).taskId).toBe('s1')
-    expect((sub1.props as any).parentTaskId).toBe('p1')
-    expect((sub1.props as any).checked).toBe(true)
+    expect(sub1.props.taskId).toBe('s1')
+    expect(sub1.props.parentTaskId).toBe('p1')
+    expect(sub1.props.checked).toBe(true)
 
     const sub2 = result[0].children![1]
     expect(sub2.type).toBe('taskBlock')
-    expect((sub2.props as any).taskId).toBe('s2')
-    expect((sub2.props as any).parentTaskId).toBe('p1')
-    expect((sub2.props as any).checked).toBe(false)
+    expect(sub2.props.taskId).toBe('s2')
+    expect(sub2.props.parentTaskId).toBe('p1')
+    expect(sub2.props.checked).toBe(false)
   })
 
   it('preserves nested children when converting parent checkListItem to taskBlock (markdown deserialization case)', () => {
@@ -358,20 +358,20 @@ describe('subtask round-trip: serialize → parse → normalize', () => {
     // #then - parent converted AND children preserved + converted with correct parentTaskId
     expect(didChange).toBe(true)
     expect(result[0].type).toBe('taskBlock')
-    expect((result[0].props as any).taskId).toBe('p1')
-    expect((result[0].props as any).parentTaskId).toBe('')
+    expect(result[0].props.taskId).toBe('p1')
+    expect(result[0].props.parentTaskId).toBe('')
     expect(result[0].children).toHaveLength(2)
 
     const sub1 = result[0].children![0]
     expect(sub1.type).toBe('taskBlock')
-    expect((sub1.props as any).taskId).toBe('s1')
-    expect((sub1.props as any).parentTaskId).toBe('p1')
-    expect((sub1.props as any).checked).toBe(true)
+    expect(sub1.props.taskId).toBe('s1')
+    expect(sub1.props.parentTaskId).toBe('p1')
+    expect(sub1.props.checked).toBe(true)
 
     const sub2 = result[0].children![1]
     expect(sub2.type).toBe('taskBlock')
-    expect((sub2.props as any).taskId).toBe('s2')
-    expect((sub2.props as any).parentTaskId).toBe('p1')
-    expect((sub2.props as any).checked).toBe(false)
+    expect(sub2.props.taskId).toBe('s2')
+    expect(sub2.props.parentTaskId).toBe('p1')
+    expect(sub2.props.checked).toBe(false)
   })
 })

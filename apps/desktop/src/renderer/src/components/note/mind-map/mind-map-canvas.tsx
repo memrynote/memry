@@ -42,13 +42,7 @@ import { useReducedMotion } from 'motion/react'
 import { useTheme } from 'next-themes'
 import { ExternalLink, Link } from '@/lib/icons'
 import { copySceneAsImage, copySceneAsVector, toSkeleton } from './mind-map-export'
-import {
-  hitMindMapBox,
-  mindMapBoxRect,
-  mindMapHoverAnchor,
-  mindMapHrefOf,
-  type MindMapHitElement
-} from './mind-map-hover'
+import { hitMindMapBox, mindMapBoxRect, mindMapHoverAnchor, mindMapHrefOf } from './mind-map-hover'
 import type { MindMapElement } from './mind-map-types'
 import './mind-map-canvas.css'
 
@@ -218,15 +212,12 @@ export function MindMapCanvas({
    * be handed to the camera. `customData` is what survives.
    */
   const elementForHref = useCallback((href: string) => {
-    const api = apiRef.current
-    if (!api) return null
+    const sceneApi = apiRef.current
+    if (!sceneApi) return null
     return (
-      api
+      sceneApi
         .getSceneElements()
-        .find(
-          (element) =>
-            !element.isDeleted && mindMapHrefOf(element as unknown as MindMapHitElement) === href
-        ) ?? null
+        .find((element) => !element.isDeleted && mindMapHrefOf(element) === href) ?? null
     )
   }, [])
 
@@ -238,14 +229,14 @@ export function MindMapCanvas({
   // centring step deliberately does not change it — and both land in the same
   // frame, so the whole-map view is never a thing the user sees on the way past.
   useEffect(() => {
-    const api = apiRef.current
-    if (!api) return
-    api.updateScene({ elements: convertToExcalidrawElements(toSkeleton(elements)) })
-    api.scrollToContent(undefined, { fitToContent: true, animate: false })
+    const sceneApi = apiRef.current
+    if (!sceneApi) return
+    sceneApi.updateScene({ elements: convertToExcalidrawElements(toSkeleton(elements)) })
+    sceneApi.scrollToContent(undefined, { fitToContent: true, animate: false })
 
     const href = focusRef.current
     const target = href === null ? null : elementForHref(href)
-    if (target) api.scrollToContent(target, { animate: false })
+    if (target) sceneApi.scrollToContent(target, { animate: false })
   }, [elements, elementForHref])
 
   /**
@@ -256,16 +247,16 @@ export function MindMapCanvas({
    * travels in `customData`, the one field that survives the conversion.
    */
   const hitAt = useCallback((point: PointerPosition) => {
-    const api = apiRef.current
-    if (!api) return null
-    const scene = viewportCoordsToSceneCoords(point, api.getAppState())
-    return hitMindMapBox(api.getSceneElements() as unknown as readonly MindMapHitElement[], scene)
+    const sceneApi = apiRef.current
+    if (!sceneApi) return null
+    const scene = viewportCoordsToSceneCoords(point, sceneApi.getAppState())
+    return hitMindMapBox(sceneApi.getSceneElements(), scene)
   }, [])
 
   const syncHover = useCallback((): void => {
-    const api = apiRef.current
+    const sceneApi = apiRef.current
     const pointer = pointerRef.current
-    if (!api || !pointer) {
+    if (!sceneApi || !pointer) {
       setHovered(null)
       return
     }
@@ -276,13 +267,12 @@ export function MindMapCanvas({
       return
     }
 
-    const anchor = mindMapHoverAnchor(hit, api.getAppState())
+    const anchor = mindMapHoverAnchor(hit, sceneApi.getAppState())
     // Same box, same place — hand back the very same object so React does not
     // re-render. The affordance is pinned to the BOX, so moving the pointer
     // inside one node costs nothing at all.
     setHovered((current) =>
-      current &&
-      current.drawing === elements &&
+      current?.drawing === elements &&
       current.href === hit.href &&
       current.x === anchor.x &&
       current.y === anchor.y
@@ -300,8 +290,8 @@ export function MindMapCanvas({
    * the whole flight.
    */
   const syncFocus = useCallback((): void => {
-    const api = apiRef.current
-    if (!api || focusedHref === null) {
+    const sceneApi = apiRef.current
+    if (!sceneApi || focusedHref === null) {
       setFocusRect(null)
       return
     }
@@ -312,7 +302,7 @@ export function MindMapCanvas({
       return
     }
 
-    const rect = mindMapBoxRect(target, api.getAppState())
+    const rect = mindMapBoxRect(target, sceneApi.getAppState())
     // Same box, same place: hand back the very same object so a pan that does
     // not move this node does not re-render the ring.
     setFocusRect((current) =>
@@ -333,7 +323,7 @@ export function MindMapCanvas({
    * change, a pan tick included, and each answer costs a scene read.
    */
   useEffect(() => {
-    if (!api) return
+    if (!api) return undefined
     const unsubscribe = api.onChange(() => {
       if (frameRef.current !== null) return
       frameRef.current = requestAnimationFrame(() => {
@@ -402,11 +392,11 @@ export function MindMapCanvas({
    */
   const focus = useCallback(
     (href: string): boolean => {
-      const api = apiRef.current
-      const target = api ? elementForHref(href) : null
-      if (!api || !target) return false
+      const sceneApi = apiRef.current
+      const target = sceneApi ? elementForHref(href) : null
+      if (!sceneApi || !target) return false
 
-      api.scrollToContent(target, {
+      sceneApi.scrollToContent(target, {
         animate: !prefersReducedMotion,
         duration: FOCUS_CAMERA_MS
       })
@@ -443,15 +433,15 @@ export function MindMapCanvas({
   // of exporting from the live surface is that it holds whatever the map shows
   // right now, expanded branches included.
   const copyImage = useCallback(async (): Promise<void> => {
-    const api = apiRef.current
-    if (!api) return
-    await copySceneAsImage(api)
+    const sceneApi = apiRef.current
+    if (!sceneApi) return
+    await copySceneAsImage(sceneApi)
   }, [])
 
   const copyVector = useCallback(async (): Promise<void> => {
-    const api = apiRef.current
-    if (!api) return
-    await copySceneAsVector(api)
+    const sceneApi = apiRef.current
+    if (!sceneApi) return
+    await copySceneAsVector(sceneApi)
   }, [])
 
   const controls = useMemo<MindMapControls>(
@@ -465,7 +455,7 @@ export function MindMapCanvas({
   }, [controls, onControlsChange])
 
   // Discarded rather than cleared: see `MindMapHoverState.drawing`.
-  const hover = hovered && hovered.drawing === elements ? hovered : null
+  const hover = hovered?.drawing === elements ? hovered : null
   const label = hover ? (hoverLabels.get(hover.href) ?? null) : null
   // A link out of the note is drawn differently on the map; the affordance says
   // the same thing with its icon.

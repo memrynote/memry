@@ -12,7 +12,7 @@
  */
 
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform'
+import { ReplaceAroundStep, ReplaceStep, type Step } from '@tiptap/pm/transform'
 import { ySyncPluginKey } from 'y-prosemirror'
 import { isAnchorRepair } from './anchor-visibility-plugin'
 import { portalWindowKey } from './portal-window-plugin'
@@ -27,16 +27,21 @@ const isStructural = (step: ReplaceAroundStep): boolean =>
   (step as ReplaceAroundStep & { structure?: boolean }).structure === true
 
 /** True when a step puts content strictly inside one of `spans`. */
-function insertsInside(tr: { steps: readonly unknown[] }, hidden: readonly Span[]): boolean {
+function insertsInside(tr: { steps: readonly Step[] }, hidden: readonly Span[]): boolean {
   let spans = hidden
-  for (const step of tr.steps as Array<ReplaceStep | ReplaceAroundStep>) {
+  for (const step of tr.steps) {
     // A structural wrap (Tab sinking a block, Shift+Tab lifting one) re-seats
     // closing tokens that sit at the end of a hidden block; it adds no content.
-    const inserted =
+    const insertedAt =
       step instanceof ReplaceStep
         ? step.slice.size > 0
+          ? step.from
+          : undefined
         : step instanceof ReplaceAroundStep && !isStructural(step) && step.slice.size > 0
-    if (inserted && spans.some((h) => step.from > h.from && step.from < h.to)) return true
+          ? step.from
+          : undefined
+    if (insertedAt !== undefined && spans.some((h) => insertedAt > h.from && insertedAt < h.to))
+      return true
     const map = step.getMap()
     spans = spans.map((h) => ({ from: map.map(h.from, 1), to: map.map(h.to, -1) }))
   }

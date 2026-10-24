@@ -60,7 +60,7 @@ export function TagManager() {
   const editInputRef = useRef<HTMLInputElement>(null)
 
   const filteredTags = search.trim()
-    ? tags.filter((t) => t.name.toLowerCase().includes(search.toLowerCase().trim()))
+    ? tags.filter((tag) => tag.name.toLowerCase().includes(search.toLowerCase().trim()))
     : tags
 
   const handleStartRename = useCallback((tagName: string) => {
@@ -316,10 +316,10 @@ export function TagManager() {
               </SelectTrigger>
               <SelectContent className="max-h-60">
                 {tags
-                  .filter((t) => t.name !== mergeSource)
-                  .map((t) => (
-                    <SelectItem key={t.name} value={t.name}>
-                      {t.name} ({t.count})
+                  .filter((tag) => tag.name !== mergeSource)
+                  .map((tag) => (
+                    <SelectItem key={tag.name} value={tag.name}>
+                      {tag.name} ({tag.count})
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -347,7 +347,7 @@ export function TagManager() {
               <div key={rowIndex} className="flex gap-2 justify-center">
                 {row.map((colorName) => {
                   const clrs = TAG_COLORS[colorName]
-                  const currentTag = tags.find((t) => t.name === colorTarget)
+                  const currentTag = tags.find((tag) => tag.name === colorTarget)
                   const isSelected = currentTag?.color === colorName
 
                   return (
@@ -369,7 +369,7 @@ export function TagManager() {
                 })}
                 {rowIndex === COLOR_ROWS.length - 1 && (
                   <CustomColorSwatch
-                    value={tags.find((t) => t.name === colorTarget)?.color ?? ''}
+                    value={tags.find((tag) => tag.name === colorTarget)?.color ?? ''}
                     onChange={(hex) => void handleColorChange(hex)}
                   />
                 )}

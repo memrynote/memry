@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, values?: Record<string, unknown>) =>
+    t: (key: string, values?: Record<string, string | number>) =>
       values?.count === undefined ? key : `${key}:${values.count}`
   })
 }))
@@ -473,9 +473,9 @@ describe('NotesTree isolated coverage', () => {
       expect(localStorage.getItem('sidebar-section-collections-expanded')).toBe('true')
     )
     fireEvent.click(screen.getByRole('button', { name: 'reveal pending' }))
-    act(() => vi.advanceTimersByTime(100))
+    void act(() => vi.advanceTimersByTime(100))
     expect(mocks.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
-    act(() => vi.advanceTimersByTime(2000))
+    void act(() => vi.advanceTimersByTime(2000))
 
     fireEvent.click(screen.getByRole('button', { name: 'confirm delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'close delete' }))

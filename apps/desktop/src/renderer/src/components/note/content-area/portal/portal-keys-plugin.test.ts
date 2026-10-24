@@ -25,12 +25,11 @@ import { mountTestEditor, para, unmountTestEditors } from './portal-test-editor'
 
 afterEach(unmountTestEditors)
 
-const portal = (): PartialBlock =>
-  ({
-    type: 'codeBlock',
-    props: { language: 'memry-portal' },
-    content: '{"note":"src"}'
-  }) as PartialBlock
+const portal = (): PartialBlock => ({
+  type: 'codeBlock',
+  props: { language: 'memry-portal' },
+  content: '{"note":"src"}'
+})
 
 /** The caret at the start (or end) of the block with this text. */
 function caretIn(

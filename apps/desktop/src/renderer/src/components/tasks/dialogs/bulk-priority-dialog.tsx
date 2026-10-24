@@ -96,6 +96,7 @@ export const BulkPriorityDialog = ({
           {/* Priority options */}
           <RadioGroup
             value={selectedPriority}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the radio group's option list is the closed Priority set; its onValueChange types the value as string
             onValueChange={(value) => setSelectedPriority(value as Priority)}
             className="space-y-2"
           >

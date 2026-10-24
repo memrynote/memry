@@ -3,7 +3,6 @@ import { BlockNoteEditor } from '@blocknote/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'
-import type { Block } from './types'
 
 // Issue #1641: "I can't even cut and paste the text into the row and have to
 // re-write it." These run against a real mounted BlockNote editor and a real
@@ -302,7 +301,7 @@ describe('pasting into a table cell', () => {
     placeCursorAfter(editor, 'Nobody')
     pastePlainText(editor, ' (unassigned)')
 
-    const markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
+    const markdown = await serializeBlocksPreservingBlanks(editor, editor.document)
     expect(markdown).toContain('(unassigned)')
 
     const reopened = await parseMarkdownPreservingBlanks(editor, markdown)

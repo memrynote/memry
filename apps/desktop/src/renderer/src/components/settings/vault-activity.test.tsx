@@ -5,7 +5,7 @@ import type { ListVaultActivityResult } from '@memry/contracts/vault-activity-ap
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) =>
+    t: (key: string, vars?: Record<string, string | number>) =>
       vars?.path
         ? `${key}:${String(vars.path)}`
         : vars?.importer

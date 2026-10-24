@@ -262,7 +262,7 @@ export function useTableCellImage({
    */
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -289,8 +289,10 @@ export function useTableCellImage({
 
     // Cleared so choosing the SAME file twice still fires `change`.
     input.value = ''
+    // oxlint-disable-next-line unicorn/prefer-add-event-listener -- assignment replaces the handler a cancelled picker left on this persistent input; addEventListener would stack handlers and insert images twice
     input.onchange = () => {
       const files = Array.from(input.files ?? []).filter(isImageFile)
+      // oxlint-disable-next-line unicorn/prefer-add-event-listener -- pairs with the onchange assignment above
       input.onchange = null
       if (files.length === 0) return
       const doc = view.state.doc
@@ -305,7 +307,7 @@ export function useTableCellImage({
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container || !editable) return
+    if (!container || !editable) return undefined
 
     const imageFilesFrom = (data: DataTransfer | null): File[] =>
       Array.from(data?.files ?? []).filter(isImageFile)
@@ -341,6 +343,7 @@ export function useTableCellImage({
      * the caret happened to be, which for a drop onto a table is never right.
      */
     const onDrop = (e: DragEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = e.target as HTMLElement | null
       if (!target?.closest?.('td, th')) return
 

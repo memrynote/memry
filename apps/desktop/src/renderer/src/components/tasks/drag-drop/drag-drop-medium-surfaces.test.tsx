@@ -98,7 +98,7 @@ function createStatus(overrides: Partial<Status> = {}): Status {
     type: 'todo',
     order: 0,
     ...overrides
-  } as Status
+  }
 }
 
 function createTask(overrides: Partial<Task> = {}): Task {

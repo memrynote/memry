@@ -150,7 +150,7 @@ export function JournalNavigationRow({
         return { prev: t('nav.previousDay'), next: t('nav.nextDay') }
       case 'month':
         return { prev: t('nav.previousMonth'), next: t('nav.nextMonth') }
-      case 'year':
+      default:
         return { prev: t('nav.previousYear'), next: t('nav.nextYear') }
     }
   }
@@ -169,7 +169,7 @@ export function JournalNavigationRow({
 
         {/* Today button - show in day view if not today */}
         {viewState.type === 'day' && !isToday && (
-          <div className="ml-1">
+          <div className="ms-1">
             <TodayButton onClick={onToday} />
           </div>
         )}
@@ -225,13 +225,13 @@ export function JournalNavigationRow({
               <DropdownMenuItem onClick={onFocusToggle}>
                 {isCompact ? (
                   <>
-                    <Maximize2 className="mr-2 size-4" />
+                    <Maximize2 className="me-2 size-4" />
                     <span>{t('action.fullMode')}</span>
                     <DropdownMenuShortcut>⌘\</DropdownMenuShortcut>
                   </>
                 ) : (
                   <>
-                    <Minimize2 className="mr-2 size-4" />
+                    <Minimize2 className="me-2 size-4" />
                     <span>{t('action.compactMode')}</span>
                     <DropdownMenuShortcut>⌘\</DropdownMenuShortcut>
                   </>
@@ -242,7 +242,7 @@ export function JournalNavigationRow({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onVersionHistory}>
-                    <History className="mr-2 size-4" />
+                    <History className="me-2 size-4" />
                     {t('action.versionHistory')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onExport}>{t('action.export')}</DropdownMenuItem>

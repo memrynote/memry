@@ -1,4 +1,4 @@
-import i18next from 'i18next'
+import i18next, { changeLanguage, getFixedT } from 'i18next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -227,7 +227,7 @@ const SNOOZE_EXPECTATIONS: PresetExpectation[] = [
 ]
 
 describe('reminder preset labels and offsets', () => {
-  const originalGetFixedT = i18next.getFixedT
+  const originalGetFixedT = getFixedT
   let calls: TranslateCall[]
 
   beforeEach(() => {
@@ -244,6 +244,7 @@ describe('reminder preset labels and offsets', () => {
       keyPrefix?: string
     ) => (key: string, options?: Record<string, unknown>) => string
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- patching the shared instance's method; a named import binding can't be reassigned
     i18next.getFixedT = ((lng: string | null, ns: string, keyPrefix?: string) => {
       const t = realGetFixedT(lng, ns, keyPrefix)
       return (key: string, options?: Record<string, unknown>) => {
@@ -254,6 +255,7 @@ describe('reminder preset labels and offsets', () => {
   })
 
   afterEach(() => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- restoring the shared instance's method; a named import binding can't be reassigned
     i18next.getFixedT = originalGetFixedT
     vi.useRealTimers()
   })
@@ -318,14 +320,14 @@ describe('reminder preset labels and offsets', () => {
 
 describe('reminder preset labels follow the active language', () => {
   afterEach(async () => {
-    await i18next.changeLanguage('en')
+    await changeLanguage('en')
   })
 
   it('re-reads every label from the language active at read time', async () => {
     expect(standardPresets[0].label).toBe('Later Today')
     expect(snoozePresets[0].label).toBe('In 15 Minutes')
 
-    await i18next.changeLanguage('de')
+    await changeLanguage('de')
 
     // Same getters, no re-import: the labels must follow the switch.
     expect(standardPresets[0].label).toBe('Später heute')

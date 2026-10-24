@@ -259,7 +259,7 @@ describe('wiki-link utils', () => {
     })
 
     it('carries marks through an aliased link that is the whole run', () => {
-      const { segments, didChange } = splitTextWithWikiLinks('[[A|b]]', { bold: true } as any)
+      const { segments, didChange } = splitTextWithWikiLinks('[[A|b]]', { bold: true })
       expect(didChange).toBe(true)
       expect(segments).toEqual([
         { type: 'wikiLink', props: { target: 'A', alias: 'b', bold: true } }
@@ -305,7 +305,7 @@ describe('wiki-link utils', () => {
     // exactly as they always have. This is the line the narrowing must not
     // cross: every unmarked wiki link in every vault takes this path.
     it('an UNMARKED run still promotes everywhere it used to', () => {
-      const result = splitTextWithWikiLinks('See [[Roadmap]] for details', { bold: false } as any)
+      const result = splitTextWithWikiLinks('See [[Roadmap]] for details', { bold: false })
       expect(result.didChange).toBe(true)
       expect(result.segments).toEqual([
         { type: 'text', text: 'See ', styles: { bold: false } },

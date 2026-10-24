@@ -114,6 +114,7 @@ export function SyncHistoryPanel(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <Select
             value={filter.type}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
             onValueChange={(v) => setFilter({ type: v as HistoryTypeFilter })}
           >
             <SelectTrigger
@@ -139,6 +140,7 @@ export function SyncHistoryPanel(): React.JSX.Element {
           </Select>
           <Select
             value={filter.period}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
             onValueChange={(v) => setFilter({ period: v as HistoryPeriodFilter })}
           >
             <SelectTrigger

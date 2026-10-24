@@ -113,6 +113,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
     if (!item || run.isRunning) return
     if (isAccountBased) {
       if (!AccountPanel || !accountState.ready) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- importer options are typed per importer; run.start takes them as an opaque record
       void run.start(item.id, [], accountState.options as Record<string, unknown>)
       return
     }
@@ -120,6 +121,7 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
     void run.start(
       item.id,
       paths,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the importer's options payload is a plain JSON object forwarded as-is
       appleNotesSourcePath ? (appleNotesState.options as Record<string, unknown>) : undefined
     )
   }

@@ -56,6 +56,7 @@ const pageLoaders = {
  * second request.
  */
 export const prefetchPageModule = (key: string): void => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an unknown key yields undefined and is skipped by the `if (loader)` check
   const loader = pageLoaders[key as keyof typeof pageLoaders]
   if (loader) void loader().catch(() => {})
 }

@@ -77,7 +77,7 @@ export function withHostFrame(
 ): PortalAncestry {
   if (!hostNoteId) return ancestry
   const last = ancestry.frames[ancestry.frames.length - 1]
-  if (last && last.note === hostNoteId) return ancestry
+  if (last?.note === hostNoteId) return ancestry
   return { frames: [...ancestry.frames, { kind: 'host', note: hostNoteId }] }
 }
 

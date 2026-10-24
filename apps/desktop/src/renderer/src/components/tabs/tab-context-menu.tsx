@@ -33,7 +33,7 @@ export const TabContextMenu = ({
   const { t } = useT('common')
 
   const group = state.tabGroups[groupId]
-  const tabIndex = group?.tabs.findIndex((t) => t.id === tab.id) ?? -1
+  const tabIndex = group?.tabs.findIndex((candidate) => candidate.id === tab.id) ?? -1
   const hasTabsToRight = tabIndex < (group?.tabs.length ?? 0) - 1
   const hasOtherTabs = (group?.tabs.length ?? 0) > 1
 

@@ -36,8 +36,8 @@ function mount(open: Record<string, { mode: 'show' | 'hide'; ids: string[] }>) {
     toggleFold: vi.fn()
   }
   registerEditorPlugin(mounted.editor, createPortalInlinePlugin({ current: handlers }))
-  const root = mounted.view.dom as HTMLElement
-  const dnaId = getPortalWindowState(mounted.view)!.visible[0]!.blockId
+  const root = mounted.view.dom
+  const dnaId = getPortalWindowState(mounted.view)!.visible[0].blockId
   return { ...mounted, root, handlers, dnaId }
 }
 

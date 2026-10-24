@@ -1,4 +1,4 @@
-import { useState, useCallback, type FormEvent } from 'react'
+import { useState, useCallback, type SyntheticEvent } from 'react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +29,7 @@ export function EmailEntryForm({
   const displayError = error ?? validationError
 
   const handleSubmit = useCallback(
-    (e: FormEvent) => {
+    (e: SyntheticEvent) => {
       e.preventDefault()
       setValidationError(null)
       const result = emailSchema.safeParse(email.trim())

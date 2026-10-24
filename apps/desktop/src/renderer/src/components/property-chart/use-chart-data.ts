@@ -89,6 +89,7 @@ export function useOptionColors(property: string | undefined): ReadonlyMap<strin
     }
     const add = (list: unknown): void => {
       if (!Array.isArray(list)) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; each option is type-checked in the loop body
       for (const option of list as SelectOption[]) {
         if (typeof option?.value === 'string' && typeof option.color === 'string') {
           colors.set(option.value, option.color)
@@ -96,6 +97,7 @@ export function useOptionColors(property: string | undefined): ReadonlyMap<strin
       }
     }
     add(parsed)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- parsed is the JSON of a stored property config; categories are null-checked per entry
     const categories = (parsed as { categories?: StatusCategories } | null)?.categories
     if (categories) for (const category of Object.values(categories)) add(category?.options)
     return colors

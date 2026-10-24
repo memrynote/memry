@@ -5,8 +5,8 @@ const mocks = vi.hoisted(() => ({
   selectVault: vi.fn(),
   switchVault: vi.fn(),
   auth: {
-    status: 'unauthenticated' as string,
-    email: 'kaan@example.com' as string | null
+    status: 'unauthenticated',
+    email: 'kaan@example.com'
   }
 }))
 

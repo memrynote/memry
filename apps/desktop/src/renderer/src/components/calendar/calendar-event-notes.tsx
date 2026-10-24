@@ -123,7 +123,7 @@ export function CalendarEventNotes({
       if (!empty && !isRelationValue(current)) {
         throw new Error(t('eventNotes.propertyTaken', { name: EVENT_LINK_PROPERTY }))
       }
-      const uris = empty ? [] : (current as string[])
+      const uris = isRelationValue(current) ? current : []
       if (!uris.includes(uri)) {
         const result = await propertiesService.merge(note.id, {
           [EVENT_LINK_PROPERTY]: [...uris, uri]

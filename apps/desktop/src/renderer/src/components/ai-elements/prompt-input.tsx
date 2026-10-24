@@ -1,4 +1,4 @@
-import type { ComponentProps, FormEvent } from 'react'
+import type { ComponentProps, SyntheticEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,7 +9,7 @@ export interface PromptInputMessage {
 }
 
 export type PromptInputProps = Omit<ComponentProps<'form'>, 'onSubmit'> & {
-  onSubmit: (message: PromptInputMessage, event: FormEvent<HTMLFormElement>) => void
+  onSubmit: (message: PromptInputMessage, event: SyntheticEvent<HTMLFormElement>) => void
 }
 
 export function PromptInput({

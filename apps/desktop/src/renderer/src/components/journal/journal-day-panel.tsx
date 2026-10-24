@@ -28,7 +28,7 @@ import { droppedDuration } from '@/components/calendar/drop-time'
 
 const log = createLogger('JournalDayPanel')
 
-const PRIORITY_REVERSE_MAP: Record<Priority, number> = {
+const PRIORITY_REVERSE_MAP: Record<Priority, 0 | 1 | 2 | 3 | 4> = {
   none: 0,
   low: 1,
   medium: 2,
@@ -143,7 +143,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
     try {
       await tasksService.update({
         id,
-        priority: PRIORITY_REVERSE_MAP[priority] as 0 | 1 | 2 | 3 | 4
+        priority: PRIORITY_REVERSE_MAP[priority]
       })
     } catch (err) {
       log.error('Failed to update task priority', err)

@@ -69,7 +69,7 @@ export function usePdfDisplayMenu({
 
   const isOpen = state !== null
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return undefined
 
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return
@@ -100,6 +100,7 @@ export function usePdfDisplayMenu({
     }
 
     const handleClickAway = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       if ((e.target as HTMLElement).closest('[data-inline-choice-menu]')) return
       close()
     }

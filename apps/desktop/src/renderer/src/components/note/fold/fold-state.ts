@@ -45,6 +45,7 @@ function toggled(set: ReadonlySet<string>, value: string): ReadonlySet<string> {
   return next
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
 export function foldReducer(state: FoldState, action: FoldAction): FoldState {
   switch (action.type) {
     case 'setLevel':

@@ -172,7 +172,7 @@ export const InboxDetailPanel = ({
             id: path,
             name: path.split('/').pop() || path || t('detail.notesRoot'),
             path: path
-          } as Folder
+          }
         })
     }
     return []

@@ -52,7 +52,7 @@ const serverSchema = createMemrySchema({
   inline: createServerInlineSpecs()
 })
 
-const sorted = (values: readonly string[]): string[] => [...values].sort()
+const sorted = (values: readonly string[]): string[] => [...values].toSorted()
 
 type ConfigMap = Record<string, unknown>
 

@@ -39,7 +39,7 @@ vi.mock('@/components/diagnostics/incident-report-provider', () => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
+    t: (key: string, options?: Record<string, string | number>) =>
       options?.count === undefined ? key : `${key}:${options.count}`
   })
 }))

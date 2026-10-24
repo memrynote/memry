@@ -79,7 +79,7 @@ export function buildDayTimeline(
  * in the cluster shares the cluster's column count.
  */
 export function packColumns(items: TimelineItem[]): PlacedTimelineItem[] {
-  const sorted = [...items].sort((a, b) => a.startMin - b.startMin || b.endMin - a.endMin)
+  const sorted = [...items].toSorted((a, b) => a.startMin - b.startMin || b.endMin - a.endMin)
   const placed: PlacedTimelineItem[] = []
   let cluster: PlacedTimelineItem[] = []
   let columnEnds: number[] = []

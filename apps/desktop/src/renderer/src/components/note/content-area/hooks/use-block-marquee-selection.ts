@@ -418,9 +418,9 @@ export function useBlockMarqueeSelection({
   }, [editor, blockContainerRef, recomputeHighlightRects, taskParents])
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
     const trigger = triggerContainerEl
-    if (!trigger) return
+    if (!trigger) return undefined
 
     const onMouseDown = (event: globalThis.MouseEvent): void => {
       if (event.button !== 0) return
@@ -464,6 +464,7 @@ export function useBlockMarqueeSelection({
         trigger.setAttribute(ACTIVE_ATTR, 'true')
         try {
           const view = editor?.prosemirrorView
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
           const dom = view?.dom as HTMLElement | undefined
           dom?.blur()
         } catch (err) {
@@ -600,6 +601,7 @@ export function useBlockMarqueeSelection({
   }, [enabled, triggerContainerEl, editor, blockContainerRef])
 
   const getTopLevelSelectedIds = useCallback((): string[] => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const doc = Array.isArray(editor?.document) ? (editor.document as BlockNode[]) : null
     return doc
       ? topLevelSelectedBlockIds(doc, selectedRef.current)
@@ -634,6 +636,7 @@ export function useBlockMarqueeSelection({
   // top-level blocks are marked: children sit inside their parent's highlight,
   // and delete/cut remove them with the parent anyway.
   const selectAllBlocks = useCallback((): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const doc = Array.isArray(editor?.document) ? (editor.document as BlockNode[]) : []
     if (doc.length === 0) return
     teardownDragRef.current?.()
@@ -643,6 +646,7 @@ export function useBlockMarqueeSelection({
     setMarqueeRect(null)
     setIsActive(false)
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       ;(editor?.prosemirrorView?.dom as HTMLElement | undefined)?.blur()
     } catch (err) {
       log.warn('Failed to blur PM view on select all', err)
@@ -673,13 +677,14 @@ export function useBlockMarqueeSelection({
   )
 
   useEffect(() => {
-    if (selectedBlockIds.size === 0) return
+    if (selectedBlockIds.size === 0) return undefined
     return claimKeysForBlockSelection(selectedRef)
   }, [selectedBlockIds])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (enabled && isSelectAllShortcut(event)) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
         const viewDom = editor?.prosemirrorView?.dom as HTMLElement | undefined
         // Keydown inside the editor targets its contenteditable root; nested
         // editable surfaces (inputs in node views) keep their native select-all.
@@ -759,6 +764,7 @@ export function useBlockMarqueeSelection({
       if (!view || !event.clipboardData) return
       const ids = getTopLevelSelectedIds()
       if (ids.length === 0) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const doc = Array.isArray(editor.document) ? (editor.document as BlockNode[]) : []
       try {
         selectBlocksInProseMirror(view, ids, ids.length === doc.length)

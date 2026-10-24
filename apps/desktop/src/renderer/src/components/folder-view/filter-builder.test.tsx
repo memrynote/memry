@@ -58,7 +58,12 @@ vi.mock('./filter-row', () => ({
     onRemove,
     nestingLevel = 0
   }: {
-    condition: { id: string; property: string; operator: string; value: unknown }
+    condition: {
+      id: string
+      property: string
+      operator: string
+      value: string | number | boolean | null | undefined
+    }
     onChange: (condition: {
       id: string
       property: string

@@ -73,7 +73,7 @@ export function CustomColorSwatch({
   }, [onChange])
   useEffect(() => {
     const el = inputRef.current
-    if (!el) return
+    if (!el) return undefined
     const commit = () => onChangeRef.current(el.value)
     el.addEventListener('change', commit)
     return () => el.removeEventListener('change', commit)

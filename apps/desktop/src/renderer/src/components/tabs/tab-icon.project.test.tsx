@@ -29,20 +29,19 @@ vi.mock('@/lib/render-note-icon', () => ({
   )
 }))
 
-const makeProject = (overrides: Partial<Project> = {}): Project =>
-  ({
-    id: 'p1',
-    name: 'Memry',
-    description: '',
-    icon: 'Folder',
-    color: '#11aa55',
-    statuses: [],
-    isDefault: false,
-    isArchived: false,
-    createdAt: new Date(0),
-    taskCount: 0,
-    ...overrides
-  }) as Project
+const makeProject = (overrides: Partial<Project> = {}): Project => ({
+  id: 'p1',
+  name: 'Memry',
+  description: '',
+  icon: 'Folder',
+  color: '#11aa55',
+  statuses: [],
+  isDefault: false,
+  isArchived: false,
+  createdAt: new Date(0),
+  taskCount: 0,
+  ...overrides
+})
 
 const setProjects = (next: Project[]): void => {
   projects.length = 0

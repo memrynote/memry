@@ -384,7 +384,7 @@ describe('missing small component surfaces', () => {
         isOpen
         onClose={onClose}
         onConfirm={onConfirm}
-        project={{ id: 'project-1', name: 'Work', taskCount: 2 } as never}
+        project={{ id: 'project-1', name: 'Work', taskCount: 2 }}
       />
     )
 
@@ -401,7 +401,7 @@ describe('missing small component surfaces', () => {
         isOpen
         onClose={onClose}
         onConfirm={onConfirm}
-        project={{ id: 'project-2', name: 'Empty', taskCount: 0 } as never}
+        project={{ id: 'project-2', name: 'Empty', taskCount: 0 }}
       />
     )
     expect(screen.getByText(/thisProjectHasNoTasks/)).toBeInTheDocument()

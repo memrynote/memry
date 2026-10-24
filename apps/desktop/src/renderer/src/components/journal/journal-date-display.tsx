@@ -44,13 +44,13 @@ export function JournalDateDisplay({ viewState, dateParts, className }: JournalD
 
   if (viewState.type === 'day' && dateParts) {
     const fog = FOG_CONFIG[timeOfDay]
+    const fogStyle: CSSProperties & Record<'--fog-tint' | '--fog-tint-2', string> = {
+      '--fog-tint': fog.tint,
+      '--fog-tint-2': fog.tint2
+    }
     return (
       <div className={cn('relative flex flex-col', className)}>
-        <div
-          className="journal-date-fog"
-          style={{ '--fog-tint': fog.tint, '--fog-tint-2': fog.tint2 } as CSSProperties}
-          aria-hidden="true"
-        />
+        <div className="journal-date-fog" style={fogStyle} aria-hidden="true" />
         <h1
           className="relative z-[1] text-[42px] tracking-[-0.02em] leading-12 font-normal text-text-bright"
           style={{ fontFamily: 'var(--font-heading)' }}

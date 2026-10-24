@@ -185,6 +185,7 @@ export function useCriticMarkupReview({
   }, [onMarkdownChange])
 
   const handleEditorReady = useCallback((editor: unknown) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     editorRef.current = editor as BlockNoteHost | null
   }, [])
 
@@ -203,7 +204,7 @@ export function useCriticMarkupReview({
   const getActiveDraftSelectionRect = useCallback((): DraftSelectionRect | null => {
     const draft = activeDraftRef.current
     const tiptap = editorRef.current?._tiptapEditor
-    if (!draft || draft.from === undefined || draft.to === undefined || !tiptap) return null
+    if (draft?.from === undefined || draft.to === undefined || !tiptap) return null
     try {
       const start = tiptap.view.coordsAtPos(draft.from)
       const end = tiptap.view.coordsAtPos(draft.to, -1)
@@ -221,7 +222,7 @@ export function useCriticMarkupReview({
   const getActiveDraftDomRange = useCallback((): Range | null => {
     const draft = activeDraftRef.current
     const tiptap = editorRef.current?._tiptapEditor
-    if (!draft || draft.from === undefined || draft.to === undefined || !tiptap) return null
+    if (draft?.from === undefined || draft.to === undefined || !tiptap) return null
     try {
       const start = tiptap.view.domAtPos(draft.from)
       const end = tiptap.view.domAtPos(draft.to)

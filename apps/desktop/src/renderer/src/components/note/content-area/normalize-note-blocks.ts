@@ -37,8 +37,8 @@ export function normalizeNoteBlocks(blocks: Block[], source: string | null): Blo
   normalized = normalizeInlineCheckboxes(normalized).blocks
   // Before the task pass, though the two never claim the same line: one ends
   // in `{check}`, the other in `{task:<id>}`.
-  normalized = normalizePlainCheckboxes(normalized as any[]).blocks as Block[]
-  const result = normalizeTaskBlocks(normalized as any[], source).blocks as Block[]
+  normalized = normalizePlainCheckboxes(normalized).blocks
+  const result = normalizeTaskBlocks(normalized, source).blocks
   // Anything still literal after the chain is a token the note will render
   // broken. Counted, never surfaced — see unclaimed-token-telemetry.ts (#1848).
   reportUnclaimedTokens(result)

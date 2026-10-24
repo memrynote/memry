@@ -858,8 +858,14 @@ describe('GraphCanvas', () => {
       }
 
       expect(onLayoutChange).toHaveBeenCalledTimes(1)
-      expect(Object.keys(onLayoutChange.mock.calls[0][0]).sort()).toEqual(
-        graphCanvasMocks.sigmaContainerProps?.graph.nodes().sort()
+      expect(
+        Object.keys(onLayoutChange.mock.calls[0][0]).toSorted((a, b) =>
+          a < b ? -1 : a > b ? 1 : 0
+        )
+      ).toEqual(
+        graphCanvasMocks.sigmaContainerProps?.graph
+          .nodes()
+          .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
       )
     })
 

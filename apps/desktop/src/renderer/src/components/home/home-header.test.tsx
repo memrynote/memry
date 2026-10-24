@@ -36,7 +36,7 @@ const items: CalendarProjectionItem[] = [
     },
     binding: null,
     snoozeOffsetMinutes: null
-  } as CalendarProjectionItem,
+  },
   {
     projectionId: 'task-1',
     sourceType: 'task',
@@ -64,7 +64,7 @@ const items: CalendarProjectionItem[] = [
     },
     binding: null,
     snoozeOffsetMinutes: null
-  } as CalendarProjectionItem
+  }
 ]
 
 vi.mock('@/hooks/use-calendar-range', () => ({

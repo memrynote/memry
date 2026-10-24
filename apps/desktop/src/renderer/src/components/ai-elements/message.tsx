@@ -61,10 +61,17 @@ const memryUrlTransform: UrlTransform = (url, key, node) => {
   if (url.startsWith('memry://')) return url
   return defaultUrlTransform(url, key, node)
 }
-const defaultSanitizePlugin = defaultRehypePlugins.sanitize as unknown as [
-  Plugin,
-  { protocols?: Record<string, string[]> }
-]
+type SanitizePluginEntry = [Plugin, { protocols?: Record<string, string[]> }]
+
+function isSanitizePluginEntry(entry: Pluggable | undefined): entry is SanitizePluginEntry {
+  return Array.isArray(entry) && entry.length >= 2
+}
+
+const sanitizeEntry = defaultRehypePlugins.sanitize
+if (!isSanitizePluginEntry(sanitizeEntry)) {
+  throw new Error('streamdown default sanitize plugin must be a [plugin, options] tuple')
+}
+const defaultSanitizePlugin = sanitizeEntry
 const memrySanitizePlugin: Pluggable = [
   defaultSanitizePlugin[0],
   {

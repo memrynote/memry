@@ -224,9 +224,6 @@ const log = createLogger('ContentArea')
  */
 const EDITOR_MENU_SPELLING_WAIT_MS = 400
 
-/** The schema-agnostic editor `getLiveProseMirrorView` reads the view off. */
-type LiveViewEditor = Parameters<typeof getLiveProseMirrorView>[0]
-
 /** The editor's own right-click menu, as captured when it opened. */
 interface EditorMenuTarget {
   x: number
@@ -254,6 +251,7 @@ function collectBlockIds(blocks: Array<{ id: string; children?: unknown[] }>): S
   const walk = (list: Array<{ id: string; children?: unknown[] }>): void => {
     for (const block of list) {
       ids.add(block.id)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block children are blocks of the same schema as the list being walked
       if (block.children?.length) walk(block.children as typeof list)
     }
   }
@@ -410,6 +408,12 @@ interface ContentAreaEditorProps extends ContentAreaProps {
   yjsFragment?: Y.XmlFragment
   yjsDoc?: Y.Doc
   isRemoteUpdateRef?: React.RefObject<boolean>
+}
+
+const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
+  relinkTaskNotes(taskId, change).catch((err: unknown) =>
+    log.warn("Failed to update a task's linked notes", { taskId, err })
+  )
 }
 
 const ContentAreaEditor = memo(function ContentAreaEditor({
@@ -716,6 +720,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         numberedListItem: t('editor.content.listPlaceholder'),
         checkListItem: t('editor.content.todoPlaceholder')
       },
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       dictionary: { ...coreEn, ai: aiEn } as any,
       // Dropping a block on another block's left or right edge puts the two
       // side by side, the way Notion does; anywhere else is BlockNote's own
@@ -790,13 +795,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     reviewMarksRef.current = review?.marks ?? []
     reviewMarkdownToEditorOffsetRef.current = review?.getEditorOffsetForMarkdownSourceOffset
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const tiptap = (editor as any)._tiptapEditor
     if (!tiptap?.view?.dispatch) return
     tiptap.view.dispatch(tiptap.state.tr.setMeta('criticMarkupDecorations', true))
   }, [editor, review?.getEditorOffsetForMarkdownSourceOffset, review?.marks])
 
   useEffect(() => {
-    if (!isReviewEnabled || !yjsDoc) return
+    if (!isReviewEnabled || !yjsDoc) return undefined
 
     const array = yjsDoc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
     const applyYjsMarks = (): void => {
@@ -828,7 +834,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [isReviewEnabled, review?.marks, yjsDoc])
 
   useEffect(() => {
-    if (!isReviewEnabled) return
+    if (!isReviewEnabled) return undefined
 
     const plugin = createCriticMarkupDecorationPlugin(
       () => reviewMarksRef.current,
@@ -961,6 +967,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           editor.updateBlock(block, { content: newContent })
         }
         editor.insertBlocks(
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
           [{ type: 'youtubeEmbed' as any, props: { videoId, videoUrl: url } }],
           block,
           'after'
@@ -974,6 +981,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         if (newContent !== null) {
           editor.updateBlock(block, { content: newContent })
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         editor.insertBlocks([{ type: 'bookmark' as any, props: { url, domain } }], block, 'after')
 
         fetchLinkPreview(url)
@@ -1037,6 +1045,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     (anchorId: string, mutate: (content: any[], index: number) => any[]) => {
       const walk = (blocks: any[]): boolean => {
         for (const block of blocks) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
           const content = (block.content ?? []) as any[]
           if (Array.isArray(content)) {
             const index = content.findIndex(
@@ -1105,8 +1114,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Click-to-edit: open the popover seeded from a clicked pill's data-* props.
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
     const handleClick = (event: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = event.target as HTMLElement | null
       const pill = target?.closest<HTMLElement>('[data-date-mention]')
       if (!pill) return
@@ -1120,9 +1130,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         value: {
           dateISO,
           hasTime: pill.getAttribute('data-has-time') === 'true',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-* attributes on date pills are written by the date mention renderer with these value sets
           dateFormat: (pill.getAttribute('data-date-format') ||
             'relative') as DateMentionValue['dateFormat'],
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-* attributes on date pills are written by the date mention renderer with these value sets
           remind: (pill.getAttribute('data-remind') || 'none') as DateMentionValue['remind'],
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-* attributes on date pills are written by the date mention renderer with these value sets
           timeFormat: (pill.getAttribute('data-time-format') ||
             'system') as DateMentionValue['timeFormat']
         }
@@ -1149,6 +1162,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // reuse the standard pill insert at the resulting caret.
   const insertDatePillAtRange = useCallback(
     (from: number, to: number, value: DateMentionValue) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const tiptap = (editor as any)._tiptapEditor
       if (!tiptap?.view) return
       tiptap.view.dispatch(tiptap.view.state.tr.delete(from, to))
@@ -1291,11 +1305,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const triggerEl = marqueeZoneEl ?? innerContainerEl
 
   useEffect(() => {
-    if (!review) return
+    if (!review) return undefined
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handlePointerOver = (event: PointerEvent | FocusEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = event.target as HTMLElement | null
       const mark = target?.closest<HTMLElement>('[data-critic-mark-id]')
       if (!mark) return
@@ -1303,9 +1318,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
 
     const handlePointerOut = (event: PointerEvent | FocusEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = event.target as HTMLElement | null
       const mark = target?.closest<HTMLElement>('[data-critic-mark-id]')
       if (!mark) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const relatedTarget = event.relatedTarget as HTMLElement | null
       const relatedMark = relatedTarget?.closest<HTMLElement>('[data-critic-mark-id]')
       if (relatedMark?.dataset.criticMarkId === mark.dataset.criticMarkId) return
@@ -1340,9 +1357,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [review, review?.hoveredMarkId, review?.marks])
 
   useEffect(() => {
-    if (!review?.onMarkPositionsChange) return
+    if (!review?.onMarkPositionsChange) return undefined
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
     const frame = window.requestAnimationFrame(() => {
       const root = container.closest<HTMLElement>('.marquee-zone') ?? container
       const rootTop = root.getBoundingClientRect().top
@@ -1399,10 +1416,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const restoreCheckbox = useCallback(
     (blockId: string, content: unknown, checked: boolean) => {
       const stale = editor.getBlock(blockId)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
       if (!stale || (stale.props as any)?.taskId) return
       editor.updateBlock(stale, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         type: 'checkListItem' as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         props: { checked } as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         content: content as any
       })
     },
@@ -1423,7 +1444,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const keepCheckboxPlain = useCallback(
     (blockId: string) => {
       const block = editor.getBlock(blockId)
-      if (!block || block.type !== 'checkListItem' || (block.props as any)?.plain) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      if (block?.type !== 'checkListItem' || (block.props as any)?.plain) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       editor.updateBlock(block, { props: { plain: true } as any })
     },
     [editor]
@@ -1435,13 +1458,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     (blockId: string) => {
       const converted = convertedCheckboxesRef.current.get(blockId)
       const block = editor.getBlock(blockId)
-      if (!converted || !block || block.type !== 'taskBlock') return
+      if (!converted || block?.type !== 'taskBlock') return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
       if ((block.props as any)?.taskId !== converted.taskId) return
       convertedCheckboxesRef.current.delete(blockId)
       markTaskRemovalsHandled(editor, [converted.taskId])
       editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         type: 'checkListItem' as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         props: { checked: !!(block.props as any)?.checked, plain: true } as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         content: converted.content as any
       })
       discardTask(converted.taskId)
@@ -1533,6 +1560,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // Markdown is the source of truth: a checkbox that arrives already
       // ticked (`- [x] Buy milk`, typically from an import or an external
       // editor) becomes a task that is already done.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const wasChecked = !!(block.props as any)?.checked
 
       // An Obsidian Tasks line carries its plugin fields in the text. They are
@@ -1549,6 +1577,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const isDone = wasChecked || doneAt !== null
 
       editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         type: 'taskBlock' as any,
         props: { taskId: '', title, checked: isDone }
       })
@@ -1559,6 +1588,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // convertCheckboxToSubtask, but races are possible), respect the
         // live parentTaskId and create as a subtask.
         const liveBlock = editor.getBlock(blockId)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
         const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
 
         // Everything that can fail sits inside this try: the project lookup
@@ -1631,13 +1661,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               return
             }
             if (freshBlock) {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               const currentTitle = (freshBlock.props as any).title || parsed.title
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
               // `checked` off the live block, not the `isDone` read before the
               // create: the row is tickable while the id is in flight, and
               // writing the stale value back would clear the tick the user just
               // made. The renderer replays that tick against the row as soon as
               // the id lands, and markdown is what the reconciler believes.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               const currentChecked = !!(freshBlock.props as any).checked
               editor.updateBlock(freshBlock, {
                 props: {
@@ -1680,13 +1713,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // The block menu's Turn into "Task" converts through this same path, and its
   // "Turn into checkbox" goes the other way (checkbox-task-actions.ts).
   useEffect(() => {
-    if (!runSideEffects) return
+    if (!runSideEffects) return undefined
     return registerCheckboxTaskActions(editor, {
       toTask: (blockId) => convertCheckboxToTask(blockId),
       toCheckbox: (blockId) => {
         // Asked about like any task leaving the note, even one converted this
         // session: this is a choice, not an undo.
         convertedCheckboxesRef.current.delete(blockId)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         turnTaskIntoCheckbox(editor as any, blockId).catch((err: unknown) =>
           log.warn('Failed to turn a task into a checkbox', { blockId, err })
         )
@@ -1712,6 +1746,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       // Same markdown-wins rule as convertCheckboxToTask: an already-ticked
       // nested checkbox becomes a completed subtask.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const wasChecked = !!(block.props as any)?.checked
 
       // And the same field lift. Left on the line, a due date would be
@@ -1723,6 +1758,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const isDone = wasChecked || doneAt !== null
 
       editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         type: 'taskBlock' as any,
         props: { taskId: '', title, checked: isDone, parentTaskId }
       })
@@ -1758,9 +1794,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               return
             }
             if (freshBlock) {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               const currentTitle = (freshBlock.props as any).title || title
               // Live `checked`, same reason as the top-level path: the block is
               // tickable while the create is in flight.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               const currentChecked = !!(freshBlock.props as any).checked
               editor.updateBlock(freshBlock, {
                 props: {
@@ -1836,6 +1874,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // demote-repair won't catch it (block prop already matches the tree
         // parent, so no mismatch fires).
         const liveBlock = editor.getBlock(blockId)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
         const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
 
         // Inside the try: `listProjects` rejects when no vault is open, and an
@@ -1897,11 +1936,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (result.success && result.task) {
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               const currentTitle = (freshBlock.props as any).title || parsed.title
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
               const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
               // Live `checked`, not a hardcoded `false`: a draft row is
               // tickable while the create is in flight, and the renderer
               // replays that tick against the row once the id lands.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
               const currentChecked = !!(freshBlock.props as any).checked
               editor.updateBlock(freshBlock, {
                 props: {
@@ -2015,7 +2057,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // the caret. When the editor was never focused there is no text cursor, so
   // the last block anchors the insert and the template lands at the end.
   useEffect(() => {
-    if (!openTemplateInsertRef) return
+    if (!openTemplateInsertRef) return undefined
     openTemplateInsertRef.current = () => {
       const blocks = editor.document
       let anchor: TemplateAnchor | null = null
@@ -2036,7 +2078,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [editor, openTemplateInsertRef])
 
   useEffect(() => {
-    if (!flushMarkdownRef) return
+    if (!flushMarkdownRef) return undefined
     flushMarkdownRef.current = () => flushPendingMarkdown()
     return () => {
       flushMarkdownRef.current = null
@@ -2069,7 +2111,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const [VaultFilePanel] = useState(
     () =>
       // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
-      function VaultFilePanel({ blockId }: FilePanelProps): React.ReactElement {
+      function VaultFilePanelContent({ blockId }: FilePanelProps): React.ReactElement {
         const deps = filePanelDeps.current
         return (
           <div className="bn-panel z-30 rounded-lg border bg-popover p-1 shadow-md">
@@ -2134,6 +2176,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // bookmark, colors) survive the trip instead of being flattened.
         // `serializeBlocksPreservingBlanks` is typed against BlockNote's default
         // schema; the note editor's schema is a superset, so widen at the call.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         const markdown = await serializeBlocksPreservingBlanks(editor, [block] as never)
         if (!markdown.trim()) return
 
@@ -2148,6 +2191,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         // The tasks moved with their lines: they belong to the target note
         // now, so the removal here must neither delete them nor ask about them.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
         const movedTaskIds = taskIdsInBlocks([block] as never)
         markTaskRemovalsHandled(editor, movedTaskIds)
         editor.removeBlocks([block])
@@ -2199,7 +2243,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const runWikiLinkMenuAction = useCallback(
     (menu: WikiLinkMenuTarget, action: WikiLinkMenuAction) => {
-      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const view = getLiveProseMirrorView(editor)
       switch (action) {
         case 'open':
           onInternalLinkClickRef.current?.(menu.target)
@@ -2245,7 +2289,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (!blockId) return null
 
       const block = editor.getBlock(blockId)
-      if (!block || block.type !== 'image') return null
+      if (block?.type !== 'image') return null
       const { url, name } = block.props as { url?: string; name?: string }
       if (!url) return null
 
@@ -2259,6 +2303,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
   const handleEditorDoubleClick = useCallback(
     (e: React.MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const img = (e.target as HTMLElement).closest('img')
       if (!img) return
       const image = resolveImageFromElement(img)
@@ -2284,7 +2329,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const blockId = imageRenameTarget?.blockId
       if (!blockId) return
       const block = editor.getBlock(blockId)
-      if (block && block.type === 'image') {
+      if (block?.type === 'image') {
         // A rename keeps the image's crop (#3170), which rides in its name.
         const { crop } = parseImageCrop((block.props as { name?: string }).name ?? '')
         editor.updateBlock(block, {
@@ -2312,7 +2357,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const image = containerRef.current?.querySelector<HTMLImageElement>(
         `[data-id="${CSS.escape(blockId)}"] img.bn-visual-media`
       )
-      if (!block || block.type !== 'image' || !image?.src) {
+      if (block?.type !== 'image' || !image?.src) {
         toast.error(t('editor.imageCrop.unavailable'))
         return
       }
@@ -2328,7 +2373,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       setImageCropTarget(null)
       if (!blockId) return
       const block = editor.getBlock(blockId)
-      if (!block || block.type !== 'image') return
+      if (block?.type !== 'image') return
       const name = (block.props as { name?: string }).name ?? ''
       editor.updateBlock(block, { props: { name: withImageCrop(name, crop) } })
     },
@@ -2341,9 +2386,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Writing tools: the note page's session decorates this editor and owns
   // alternatives, ghosts and overflow (see writing-tools-session.ts).
   useEffect(() => {
-    if (!writingTools || !yjsDoc) return
+    if (!writingTools || !yjsDoc) return undefined
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
     return writingTools.attach({ editor, doc: yjsDoc, container })
   }, [editor, writingTools, yjsDoc])
 
@@ -2359,7 +2404,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // selection change by the time the DOM event is handled.
   const describeEditorMenu = useCallback(
     (x: number, y: number, spelling: EditorContextMenuSpelling | null): EditorMenuTarget | null => {
-      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const view = getLiveProseMirrorView(editor)
       if (!view || !writingTools) return null
       const { from, to, empty } = view.state.selection
       const clickPos = view.posAtCoords({ left: x, top: y })?.pos ?? null
@@ -2426,8 +2471,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const openEditorMenu = useCallback(
     (e: React.MouseEvent) => {
       if (!writingTools || !editable) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = e.target as HTMLElement
-      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const view = getLiveProseMirrorView(editor)
       if (!view || !view.dom.contains(target)) return
       // Form fields and non-editable islands inside blocks (task titles,
       // embeds, widgets) keep their own menu.
@@ -2454,7 +2500,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const replaceSpelling = useCallback(
     (menu: EditorMenuTarget, suggestion: string) => {
-      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const view = getLiveProseMirrorView(editor)
       const word = menu.spelling?.misspelledWord
       if (!view || !word) return
       const { doc } = view.state
@@ -2479,7 +2525,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const runEditorMenuAction = useCallback(
     (menu: EditorMenuTarget, action: EditorMenuAction) => {
-      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const view = getLiveProseMirrorView(editor)
       if (!view || !writingTools) return
       const restoreSelection = (): void => {
         view.focus()
@@ -2498,6 +2544,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           // ProseMirror's own cut/copy handlers serialize the slice, and a cut
           // goes through the same task-aware path as ⌘X.
           restoreSelection()
+          // oxlint-disable-next-line typescript/no-deprecated -- no replacement: execCommand is the only way to run the editor's own cut/copy handlers from this menu
           document.execCommand(action)
           return
         case 'selectAll':
@@ -2520,6 +2567,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           return
         case 'comment':
           restoreSelection()
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
           review?.onAddComment?.(getEditorSelectionFromState(editor as BlockNoteEditor, view.state))
           return
         case 'addAlternative':
@@ -2583,6 +2631,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   const handleEditorContextMenu = useCallback(
     (e: React.MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = e.target as HTMLElement
 
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
@@ -2591,14 +2640,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         if (!blockId) return
 
         const block = editor.getBlock(blockId)
-        if (!block || block.type !== 'checkListItem' || !runSideEffects) return
+        if (block?.type !== 'checkListItem' || !runSideEffects) return
 
         e.preventDefault()
         convertCheckboxToTask(blockId)
         return
       }
 
-      const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+      const view = getLiveProseMirrorView(editor)
       const chip = view ? wikiLinkAtCoords(view, e.clientX, e.clientY) : null
       if (chip) {
         e.preventDefault()
@@ -2622,6 +2671,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         setImageMenuTarget({
           x: e.clientX,
           y: e.clientY,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
           src: (target.closest('img') as HTMLImageElement).currentSrc,
           ...image
         })
@@ -2652,9 +2702,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // down cleanly.
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const findPreviousTaskBlock = (currentBlockId: string): any => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const doc = editor.document as any[]
       const idx = doc.findIndex((b: any) => b.id === currentBlockId)
       if (idx <= 0) return null
@@ -2677,12 +2728,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // Skip when the keypress originated in a regular HTML control (the
       // taskBlock title input or any other input/textarea) — those have
       // their own Backspace semantics handled inside the renderer.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = e.target as HTMLElement | null
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
       // Nor from a whiteboard: that Backspace deletes a shape, and the caret it
       // would be read against is wherever the note last left it.
       if (isFromWhiteboard(e)) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const tiptap = (editor as any)._tiptapEditor
       if (!tiptap) return
       const sel = tiptap.state.selection
@@ -2691,6 +2744,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (sel.$from.parentOffset !== 0) return
 
       const cursor = editor.getTextCursorPosition()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const currentBlock = cursor?.block as any
       if (!currentBlock) return
       // The taskBlock's own renderer handles its own Backspace path.
@@ -2734,6 +2788,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         else remoteAuthoredBlocksRef.current.add(change.block.id)
       }
       knownTaskBlockIdsRef.current = analyzeTaskIntents(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         editor.document as any[],
         dismissedBlocksRef.current
       ).currentTaskIds
@@ -2741,6 +2796,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
     for (const change of changes ?? []) remoteAuthoredBlocksRef.current.delete(change.block.id)
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
       openedBlockIds: openedBlockIdsRef.current,
       convertChecklists,
@@ -2764,10 +2820,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const empty = editor.getBlock(intents.emptyCheckbox.blockId)
       if (empty) {
         editor.updateBlock(empty, {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
           type: 'taskBlock' as any,
           props: {
             taskId: '',
             title: '',
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
             checked: !!(empty.props as any)?.checked,
             parentTaskId: intents.emptyCheckbox.parentTaskId
           }
@@ -2833,14 +2891,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       for (const blockId of blockIds) {
         const block = editor.getBlock(blockId)
         if (block?.type === 'checkListItem') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
           editor.updateBlock(block, { props: { plain: true } as any })
         }
       }
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     if (typeof (editor as any).transact !== 'function') {
       apply()
       return
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     ;(editor as any).transact((tr: any) => {
       tr.setMeta?.('addToHistory', false)
       apply()
@@ -2856,6 +2917,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (converted.taskId !== taskId) continue
       const block = editor.getBlock(blockId)
       if (block?.type === 'checkListItem') return blockId
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
       if (block?.type === 'taskBlock' && !(block.props as any)?.taskId) return blockId
       return null
     }
@@ -2870,20 +2932,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const block = editor.getBlock(blockId)
     if (block?.type === 'taskBlock') {
       editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         type: 'checkListItem' as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         props: { checked: !!(block.props as any)?.checked, plain: true } as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         content: converted?.content as any
       })
     } else {
       keepCheckboxPlain(blockId)
     }
     discardTask(taskId)
-  }
-
-  const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
-    relinkTaskNotes(taskId, change).catch((err: unknown) =>
-      log.warn("Failed to update a task's linked notes", { taskId, err })
-    )
   }
 
   // The task stays; this note just stops being one of its linked notes.
@@ -2937,7 +2996,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // this container sits above ProseMirror's own listener.
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
     const onCut = (): void => {
       cutInProgressRef.current = true
       setTimeout(() => {
@@ -2960,7 +3019,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // It also records which blocks the note opened with: those convert like any
   // other checkbox, even under a plain one (see `TaskIntentOptions`).
   const scanOpenedContent = useEffectEvent(() => {
-    openedBlockIdsRef.current = collectBlockIds(editor.document as any[])
+    openedBlockIdsRef.current = collectBlockIds(editor.document)
     applyTaskIntents()
   })
   useEffect(() => {
@@ -2986,7 +3045,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Cmd/Ctrl+J is the AI shortcut. Once the AI server failed to start no
   // extension handles it, so say why instead of doing nothing.
   useEffect(() => {
-    if (!aiEnabled || !aiError) return
+    if (!aiEnabled || !aiError) return undefined
     const onKeyDown = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault()
@@ -3087,11 +3146,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 // The panel stays open across changes, so the editor takes focus back
                 // only when the menu closes. Focusing it per change would pull focus
                 // out of the panel and Radix would close it.
-                getLiveProseMirrorView(editor as unknown as LiveViewEditor)?.focus()
+                getLiveProseMirrorView(editor)?.focus()
               }}
               onDisplayChange={(patch) => {
                 const menu = wikiLinkMenu
-                const view = getLiveProseMirrorView(editor as unknown as LiveViewEditor)
+                const view = getLiveProseMirrorView(editor)
                 if (view) setWikiLinkDisplayAt(view, menu.pos, menu.target, patch)
               }}
               onAction={(action) => {
@@ -3284,6 +3343,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     // Plain headings already fold their section (bullet-collapse-plugin),
                     // so the toggle variants are not offered. Existing toggle headings
                     // in notes keep working.
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
                     .filter((item) => !(item as { key?: string }).key?.startsWith('toggle_heading'))
                     .map((item) => {
                       // Same reasoning for `/check`: `checkListItem` is a BLOCK,
@@ -3295,6 +3355,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                       // "Check List" from a menu is asking for a checkbox, and
                       // the task is one ⌘Enter away (`As linked task`). Typing
                       // `[] ` is still the quick way to a task.
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
                       if ((item as { key?: string }).key === 'check_list') {
                         return inCell
                           ? {
@@ -3305,6 +3366,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                           : {
                               ...item,
                               onItemClick: () =>
+                                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the slash menu insert takes the schema's block shape, which a literal cannot name
                                 insertOrUpdateBlockForSlashMenu(editor, {
                                   type: 'checkListItem',
                                   props: { plain: true }
@@ -3318,6 +3380,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                       // attachment" command the user had to know existed. The
                       // picker offers upload and the vault's own files together,
                       // narrowed to the kind that was asked for.
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
                       const key = (item as { key?: string }).key
                       if (key === 'table') {
                         return { ...item, onItemClick: openTableSizePicker }
@@ -3356,6 +3419,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   // "attach a PDF" or "add a picture or a video" is what people
                   // are actually after and neither word matched anything before.
                   const fileItem = defaults.find(
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
                     (item) => (item as { key?: string }).key === 'file'
                   )
                   const kindItems = fileItem
@@ -3583,6 +3647,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                   const items: SlashMenuItem[] = [
                     ...defaults.map((item) => ({
                       ...item,
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
                       id: (item as { key?: string }).key ?? item.title
                     })),
                     ...kindItems.map((item) => ({ ...item, id: item.key })),

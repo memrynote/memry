@@ -61,7 +61,7 @@ vi.mock('./mind-map-canvas', () => ({
     // What the surface was handed, so a test can read it without a canvas.
     mocks.hoverLabels = hoverLabels
     useEffect(() => {
-      if (!mocks.handsControlsUp) return
+      if (!mocks.handsControlsUp) return undefined
       onControlsChange?.({
         fit: mocks.fit,
         copyImage: mocks.copyImage,
@@ -215,7 +215,7 @@ describe('MindMapView toolbar', () => {
     })
     const huge: MindMapSourceBlock[] = Array.from({ length: 12 }, (_, top) => [
       section(`h1-${top}`, 1, `Section ${top}`),
-      ...Array.from({ length: 12 }, (_, mid) => [
+      ...Array.from({ length: 12 }, (__, mid) => [
         section(`h2-${top}-${mid}`, 2, `Part ${top}.${mid}`),
         {
           id: `b-${top}-${mid}`,

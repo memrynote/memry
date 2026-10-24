@@ -60,7 +60,7 @@ export function useTagSuggestions({
   // with the old tag's stored color/icon (#3051).
   useLayoutEffect(() => {
     const tiptap = editor._tiptapEditor
-    if (!tiptap) return
+    if (!tiptap) return undefined
 
     const reconcile = (): void => {
       const colorMap = tagColorMapRef.current
@@ -73,7 +73,9 @@ export function useTagSuggestions({
 
       state.doc.descendants((node: any, pos: number) => {
         if (node.type.name === 'hashTag') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ProseMirror node attrs are untyped; the node's schema defines this attr
           const tagKey = foldTag(node.attrs.tag as string)
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ProseMirror node attrs are untyped; the node's schema defines this attr
           const correctColor = colorMap.get(tagKey) || defaultTagColorName(node.attrs.tag as string)
           const correctIcon = iconMap?.get(tagKey) ?? ''
           if (node.attrs.color !== correctColor || (node.attrs.icon ?? '') !== correctIcon) {
@@ -107,9 +109,10 @@ export function useTagSuggestions({
   // Tag pill click handler — navigates to tag drill-down
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handleTagClick = (e: MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const pill = (e.target as HTMLElement).closest<HTMLElement>('.inline-hash-tag')
       if (!pill) return
 
@@ -140,7 +143,7 @@ export function useTagSuggestions({
       if (!hashTagNodeType) return
 
       const oldNode = tiptap.state.doc.nodeAt(nodePos)
-      if (!oldNode || oldNode.type.name !== 'hashTag') return
+      if (oldNode?.type.name !== 'hashTag') return
 
       const icon = tagIconMapRef.current?.get(foldTag(tag)) ?? ''
       const newNode = hashTagNodeType.create({ tag, color, icon })

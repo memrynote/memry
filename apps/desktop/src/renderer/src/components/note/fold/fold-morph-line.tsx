@@ -170,12 +170,12 @@ export function MorphLine({ level, tokens, children }: MorphLineProps) {
   }, [level, tokens, children])
 
   useLayoutEffect(() => {
-    if (!transition) return
+    if (!transition) return undefined
     const incoming = incomingRef.current
     const outgoing = outgoingRef.current
     if (!incoming || !outgoing) {
       setTransition(null)
-      return
+      return undefined
     }
     let animations =
       transition.plan.mode === 'morph' ? wordAnimations(transition.plan, incoming, outgoing) : null

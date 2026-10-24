@@ -90,7 +90,7 @@ function tableCells(blocks: Block[]): string[][] {
 }
 
 async function roundTrip(editor: BlockNoteEditor): Promise<string[][]> {
-  const markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
+  const markdown = await serializeBlocksPreservingBlanks(editor, editor.document)
   return tableCells(await parseMarkdownPreservingBlanks(editor, markdown))
 }
 
@@ -144,7 +144,7 @@ describe('insertTableLines', () => {
       ['', '', ''],
       ['A4', 'B4', 'C4']
     ]
-    expect(tableCells(editor.document as Block[])).toEqual(expected)
+    expect(tableCells(editor.document)).toEqual(expected)
     // The header row stays the header, so markdown gives back the same table.
     expect(await roundTrip(editor)).toEqual(expected)
   })
@@ -161,7 +161,7 @@ describe('insertTableLines', () => {
       ['A3', '', '', 'B3', 'C3'],
       ['A4', '', '', 'B4', 'C4']
     ]
-    expect(tableCells(editor.document as Block[])).toEqual(expected)
+    expect(tableCells(editor.document)).toEqual(expected)
     expect(await roundTrip(editor)).toEqual(expected)
   })
 
@@ -170,7 +170,7 @@ describe('insertTableLines', () => {
 
     run(editor, (view) => insertTableLines(view.state, cellPos(editor, 'A4'), 'row', 'after'))
 
-    expect(tableCells(editor.document as Block[])).toHaveLength(5)
+    expect(tableCells(editor.document)).toHaveLength(5)
   })
 })
 
@@ -185,7 +185,7 @@ describe('deleteTableLines', () => {
       ['A1', 'B1', 'C1'],
       ['A4', 'B4', 'C4']
     ]
-    expect(tableCells(editor.document as Block[])).toEqual(expected)
+    expect(tableCells(editor.document)).toEqual(expected)
     expect(await roundTrip(editor)).toEqual(expected)
   })
 
@@ -196,7 +196,7 @@ describe('deleteTableLines', () => {
     run(editor, (view) => deleteTableLines(view.state, cellPos(editor, 'A1'), 'column'))
 
     const expected = [['C1'], ['C2'], ['C3'], ['C4']]
-    expect(tableCells(editor.document as Block[])).toEqual(expected)
+    expect(tableCells(editor.document)).toEqual(expected)
     expect(await roundTrip(editor)).toEqual(expected)
   })
 

@@ -59,6 +59,7 @@ export function LayoutToggle<T extends LayoutType>({
             key={opt.type}
             type="button"
             onClick={() => {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- option types are a LayoutType union; T narrows it per caller
               if (!selected) onChange(opt.type as T)
             }}
             aria-pressed={selected}

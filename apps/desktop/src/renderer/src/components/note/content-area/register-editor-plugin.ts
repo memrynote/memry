@@ -1,5 +1,5 @@
 import { yUndoPluginKey } from 'y-prosemirror'
-import type { Plugin } from '@tiptap/pm/state'
+import type { EditorState, Plugin } from '@tiptap/pm/state'
 import type * as Y from 'yjs'
 
 /**
@@ -36,7 +36,7 @@ interface UndoManagerInternals {
 }
 
 interface TiptapEditorLike {
-  state?: unknown
+  state?: EditorState
   registerPlugin?: (
     plugin: Plugin,
     handlePlugins?: (plugin: Plugin, plugins: Plugin[]) => Plugin[]
@@ -44,8 +44,12 @@ interface TiptapEditorLike {
   unregisterPlugin?: (nameOrPluginKey: unknown) => void
 }
 
+function hasTiptapEditor(editor: unknown): editor is { _tiptapEditor?: TiptapEditorLike } {
+  return typeof editor === 'object' && editor !== null
+}
+
 function getTiptapEditor(editor: unknown): TiptapEditorLike | undefined {
-  const tiptap = (editor as { _tiptapEditor?: TiptapEditorLike } | undefined)?._tiptapEditor
+  const tiptap = hasTiptapEditor(editor) ? editor._tiptapEditor : undefined
   if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return undefined
   return tiptap
 }
@@ -53,8 +57,7 @@ function getTiptapEditor(editor: unknown): TiptapEditorLike | undefined {
 function rearmEditorUndoManager(tiptap: TiptapEditorLike): void {
   const state = tiptap.state
   if (!state) return
-  // oxlint-disable-next-line typescript/no-explicit-any
-  rearmUndoManager(yUndoPluginKey.getState(state as any)?.undoManager)
+  rearmUndoManager(yUndoPluginKey.getState(state)?.undoManager)
 }
 
 /**

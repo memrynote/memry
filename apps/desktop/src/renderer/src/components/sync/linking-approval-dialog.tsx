@@ -43,7 +43,7 @@ export function LinkingApprovalDialog({
   const [sasLoading, setSasLoading] = useState(false)
 
   useEffect(() => {
-    if (!event?.sessionId || !open) return
+    if (!event?.sessionId || !open) return undefined
     let cancelled = false
     // Defer the loading flag so the rule sees an asynchronous setter call —
     // avoids no-adjust-state-on-prop-change while still flipping the spinner

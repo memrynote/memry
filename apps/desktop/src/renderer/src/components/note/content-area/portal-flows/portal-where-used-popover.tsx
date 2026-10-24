@@ -118,6 +118,7 @@ export function PortalWhereUsedPopover({
   onClose
 }: PortalWhereUsedPopoverProps): ReactElement {
   const { t } = useT('notes')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- radix `virtualRef` takes a non-null RefObject; the popover opens only once the anchor element exists
   const anchorRef = { current: anchorEl } as RefObject<HTMLElement>
   const contentRef = useRef<HTMLDivElement>(null)
   const portals = hosts.filter((host) => !isLink(host))
@@ -129,7 +130,7 @@ export function PortalWhereUsedPopover({
   // Open on the first row: the chip is a mouse-or-keyboard target and the
   // popover is only useful once a row can take Enter.
   useEffect(() => {
-    if (anchorEl === null) return
+    if (anchorEl === null) return undefined
     const frame = requestAnimationFrame(() => {
       // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
       rows()[0]?.focus()
@@ -142,7 +143,8 @@ export function PortalWhereUsedPopover({
     const all = rows()
     if (all.length === 0) return
     event.preventDefault()
-    const at = all.indexOf(document.activeElement as HTMLElement)
+    const active = document.activeElement
+    const at = active instanceof HTMLElement ? all.indexOf(active) : -1
     const step = event.key === 'ArrowDown' ? 1 : -1
     all[(at + step + all.length) % all.length]?.focus()
   }

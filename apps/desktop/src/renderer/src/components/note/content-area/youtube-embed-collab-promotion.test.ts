@@ -71,8 +71,8 @@ describe('opening a collaborative note promotes a stored YouTube image', () => {
 
     // #then the CRDT holds the embed, so every device and the vault file get it
     // Y.XmlElement#toString lowercases node names.
-    expect(fragment.toString()).toContain('<youtubeembed alt="Embedded YouTube video"')
-    expect(fragment.toString()).not.toContain('<image')
+    expect(fragment.toJSON()).toContain('<youtubeembed alt="Embedded YouTube video"')
+    expect(fragment.toJSON()).not.toContain('<image')
     expect(editor.document[0]).toMatchObject({
       type: 'youtubeEmbed',
       props: { videoId: 'dQw4w9WgXcQ', videoUrl: VIDEO_URL, alt: 'Embedded YouTube video' }

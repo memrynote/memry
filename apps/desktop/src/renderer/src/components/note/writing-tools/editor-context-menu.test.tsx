@@ -23,6 +23,7 @@ const BASE: EditorMenuContext = {
 
 /** Entries as `action` / `action!` (disabled) / `---` / `spell:<word>` tokens. */
 function tokens(entries: EditorMenuEntry[]): string[] {
+  // oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
   return entries.map((entry) => {
     switch (entry.kind) {
       case 'separator':

@@ -150,6 +150,7 @@ function VersionHistorySession({
 
   // Handle keyboard navigation and focus management
   useEffect(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
     previousFocusRef.current = document.activeElement as HTMLElement
 
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -168,7 +168,8 @@ export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
         const at = containerForEvent(view, event)
         if (!at) return
         event.stopPropagation()
-        const { direction } = (event as CustomEvent<PortalExitDetail>).detail
+        if (!(event instanceof CustomEvent)) return
+        const { direction }: PortalExitDetail = event.detail
         leaveWindow(view, editor, at, direction)
       }
       const onSelect = (event: Event): void => {

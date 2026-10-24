@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
+      // oxlint-disable-next-line typescript/no-base-to-string -- test mock; title is always a string in these renders
       values?.title ? `${key}:${String(values.title)}` : key
   })
 }))

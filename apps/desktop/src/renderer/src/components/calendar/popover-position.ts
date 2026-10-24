@@ -85,14 +85,14 @@ export function useAnchoredPopoverPosition(
   const viewportHeight = useSyncExternalStore(subscribeToViewport, getViewportHeight)
 
   useLayoutEffect(() => {
-    if (!node) return
+    if (!node) return undefined
     const measure = (): void => {
       const height = measureNaturalHeight(node)
       // Layout-less environments (jsdom) report 0; keep the estimate there.
       if (height > 0) setMeasuredHeight(height)
     }
     measure()
-    if (typeof ResizeObserver === 'undefined') return
+    if (typeof ResizeObserver === 'undefined') return undefined
     const observer = new ResizeObserver(measure)
     observer.observe(node)
     return () => observer.disconnect()

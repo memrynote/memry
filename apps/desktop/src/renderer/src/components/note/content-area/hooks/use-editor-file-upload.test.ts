@@ -298,7 +298,7 @@ describe('useEditorFileUpload', () => {
       mimeType: 'application/pdf'
     })
     const { result, editor } = setup({
-      fetchNotePath: vi.fn(async () => 'notes/work/Review.md' as string | undefined)
+      fetchNotePath: vi.fn(async () => 'notes/work/Review.md')
     })
 
     await act(async () => {

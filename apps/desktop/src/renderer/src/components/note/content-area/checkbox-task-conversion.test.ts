@@ -42,7 +42,7 @@ const editor = BlockNoteEditor.create({ schema: editorSchema, _headless: true } 
 /** Open the line, convert its checkbox the way ContentArea does, save. */
 async function convertAndSave(line: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, line)
-  const [checkbox] = normalizeNoteBlocks(parsed as Block[], line)
+  const [checkbox] = normalizeNoteBlocks(parsed, line)
   const task = {
     ...checkbox,
     type: 'taskBlock',
@@ -85,7 +85,7 @@ describe('task to plain checkbox', () => {
 
   async function open(markdown: string): Promise<string> {
     const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
-    live.replaceBlocks(live.document, normalizeNoteBlocks(parsed as Block[], markdown))
+    live.replaceBlocks(live.document, normalizeNoteBlocks(parsed, markdown))
     return live.document[0].id
   }
 
@@ -94,7 +94,7 @@ describe('task to plain checkbox', () => {
       '- [x] Read the [lease](https://example.com/lease) **today** {task:t1}'
     )
 
-    await turnTaskIntoCheckbox(editor as never, taskId)
+    await turnTaskIntoCheckbox(editor, taskId)
 
     const [checkbox] = live.document
     expect(checkbox.type).toBe('checkListItem')
@@ -107,7 +107,7 @@ describe('task to plain checkbox', () => {
   it('refuses a task with subtasks under it', async () => {
     const taskId = await open('- [ ] Trip {task:t1}\n  - [ ] Pack {task:t2}')
 
-    await turnTaskIntoCheckbox(editor as never, taskId)
+    await turnTaskIntoCheckbox(editor, taskId)
 
     expect(live.document[0].type).toBe('taskBlock')
   })

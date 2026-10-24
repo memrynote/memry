@@ -56,6 +56,7 @@ export function renderInlineCheckbox(
 ) {
   const checked = toChecked(inlineContent.props.checked)
 
+  // oxlint-disable-next-line oxc/no-this-in-exported-function -- BlockNote invokes the inline spec render with its own `this`; the test calls this export with a bound `this` to reach the nodeView branch
   if (this?.renderType !== 'nodeView') {
     // Serialization and the clipboard. The TOKEN element, not the control: an
     // `<input>` reaches the vault as `[x]` only through BlockNote 0.47's rehype

@@ -62,6 +62,7 @@ function loadSortPreference(): TagSortOption {
   try {
     const saved = localStorage.getItem(SORT_STORAGE_KEY)
     if (saved && SORT_OPTIONS.some((o) => o.value === saved)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- saved was just checked against SORT_OPTIONS values, which are TagSortOption
       return saved as TagSortOption
     }
   } catch {
@@ -73,6 +74,7 @@ function loadSortPreference(): TagSortOption {
 function loadExpandedState(): Set<string> {
   try {
     const saved = localStorage.getItem(EXPANDED_STORAGE_KEY)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse of a persisted value; a wrong shape is caught by the surrounding try/catch or the consumer
     if (saved) return new Set(JSON.parse(saved) as string[])
   } catch {
     /* ignore */
@@ -127,7 +129,7 @@ function sortTreeNodes(
   compare: (a: TagTreeNode, b: TagTreeNode) => number
 ): TagTreeNode[] {
   return [...nodes]
-    .sort(compare)
+    .toSorted(compare)
     .map((node) => ({ ...node, children: sortTreeNodes(node.children, compare) }))
 }
 
@@ -184,7 +186,7 @@ function TagTreeItem({
 
   React.useLayoutEffect(() => {
     const el = labelRef.current
-    if (!el) return
+    if (!el) return undefined
     const measure = (): void => setIsLabelTruncated(el.scrollWidth > el.clientWidth)
     measure()
     const observer = new ResizeObserver(measure)
@@ -369,6 +371,7 @@ export function SidebarTagList({
 
   const handleSortChange = React.useCallback(
     (value: string): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
       void setSortMode(value as SidebarSortMode)
     },
     [setSortMode]
@@ -540,7 +543,7 @@ export function SidebarTagList({
     )
   }
 
-  const allTags = tags.filter((t) => t.count > 0)
+  const allTags = tags.filter((tag) => tag.count > 0)
 
   if (allTags.length === 0) {
     return (
