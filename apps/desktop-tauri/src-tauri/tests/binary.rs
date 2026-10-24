@@ -9,6 +9,13 @@ use tauri::test::{
 use tauri::webview::InvokeRequest;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 
+// The origin Tauri treats as local: `http://tauri.localhost` on Windows, `tauri://localhost`
+// elsewhere. Any other origin is remote, and ACL rejects its calls to app commands.
+#[cfg(windows)]
+const LOCAL_ORIGIN: &str = "http://tauri.localhost";
+#[cfg(not(windows))]
+const LOCAL_ORIGIN: &str = "tauri://localhost";
+
 #[derive(Deserialize)]
 struct Meta {
     tag: String,
@@ -42,7 +49,7 @@ fn invoke(
             cmd: cmd.into(),
             callback: CallbackFn(0),
             error: CallbackFn(1),
-            url: "tauri://localhost".parse().expect("url"),
+            url: LOCAL_ORIGIN.parse().expect("url"),
             body,
             headers,
             invoke_key: INVOKE_KEY.to_string(),
