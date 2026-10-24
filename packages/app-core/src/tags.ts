@@ -146,7 +146,7 @@ export function createTagsService({
         tagsByKey.set(key, existing)
       }
 
-      return [...tagsByKey.values()].sort((a, b) => a.name.localeCompare(b.name))
+      return [...tagsByKey.values()].toSorted((a, b) => a.name.localeCompare(b.name))
     },
 
     async notes(name) {
@@ -155,7 +155,7 @@ export function createTagsService({
       const tag = (await this.list()).find((item) => tagKey(item.name) === tagKey(normalized))
       const taggedNotes = (await allTaggedNotes(notes))
         .filter((note) => hasTag(note.tags, normalized))
-        .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
+        .toSorted((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
         .map((note) => ({
           id: note.id,
           path: note.path,
@@ -313,7 +313,7 @@ export function createTagsService({
         .select()
         .from(taskTags)
         .all()
-        .filter((row) => tagKey(row.tag) === tagKey(normalized))) {
+        .filter((candidate) => tagKey(candidate.tag) === tagKey(normalized))) {
         dataDb
           .delete(taskTags)
           .where(and(eq(taskTags.taskId, row.taskId), eq(taskTags.tag, row.tag)))
@@ -324,7 +324,7 @@ export function createTagsService({
         .select()
         .from(inboxItemTags)
         .all()
-        .filter((row) => tagKey(row.tag) === tagKey(normalized))) {
+        .filter((candidate) => tagKey(candidate.tag) === tagKey(normalized))) {
         dataDb.delete(inboxItemTags).where(eq(inboxItemTags.id, row.id)).run()
       }
 

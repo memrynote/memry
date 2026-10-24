@@ -144,10 +144,8 @@ function readCalendarGoogleSettings(dataDb: DataDb): CalendarGoogleSettings {
   if (!row) return { ...calendarGoogleSettingsDefaults }
 
   try {
-    return {
-      ...calendarGoogleSettingsDefaults,
-      ...(JSON.parse(row.value) as Partial<CalendarGoogleSettings>)
-    }
+    const stored: Partial<CalendarGoogleSettings> = JSON.parse(row.value)
+    return { ...calendarGoogleSettingsDefaults, ...stored }
   } catch {
     return { ...calendarGoogleSettingsDefaults }
   }
@@ -247,7 +245,7 @@ function sourceMeta(row: typeof calendarSources.$inferSelect): CalendarProjectio
 }
 
 function sortProjectionItems(items: CalendarProjectionItem[]): CalendarProjectionItem[] {
-  return [...items].sort((left, right) => {
+  return [...items].toSorted((left, right) => {
     if (left.startAt !== right.startAt) return left.startAt.localeCompare(right.startAt)
     return left.projectionId.localeCompare(right.projectionId)
   })

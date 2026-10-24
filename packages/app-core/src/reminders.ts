@@ -100,6 +100,7 @@ function nowIso(): string {
 function toReminder(row: typeof reminders.$inferSelect): ReminderRecord {
   return {
     id: row.id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- text column; this core is the only writer, and rejecting a value a newer build wrote would hide the reminder
     targetType: row.targetType as ReminderTargetType,
     targetId: row.targetId,
     remindAt: row.remindAt,
@@ -109,6 +110,7 @@ function toReminder(row: typeof reminders.$inferSelect): ReminderRecord {
     highlightEnd: row.highlightEnd,
     title: row.title,
     note: row.note,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- text column; this core is the only writer, and rejecting a value a newer build wrote would hide the reminder
     status: row.status as ReminderStatus,
     triggeredAt: row.triggeredAt,
     dismissedAt: row.dismissedAt,

@@ -241,8 +241,12 @@ function toSetting(row: typeof settings.$inferSelect): SettingRecord {
   }
 }
 
+function isSettingsGroupName(name: string): name is SettingsGroupName {
+  return name in settingsGroupDefaults
+}
+
 function normalizeGroupName(name: string): SettingsGroupName {
-  if (name in settingsGroupDefaults) return name as SettingsGroupName
+  if (isSettingsGroupName(name)) return name
   throw new Error(`Unknown settings group: ${name}`)
 }
 
@@ -456,6 +460,7 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
     },
 
     async groups() {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys widens to string[]; the keys are the SettingsGroupName union by construction
       return (Object.keys(settingsGroupDefaults) as SettingsGroupName[]).map((name) => ({
         name,
         value: readGroup(name)
