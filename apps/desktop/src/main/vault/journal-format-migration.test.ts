@@ -219,7 +219,7 @@ describe('renameJournalsForFormatChange', () => {
 
     await revertJournalRenames(vaultPath, 'journal', moved)
 
-    expect(fs.readdirSync(path.join(vaultPath, 'journal')).sort()).toEqual([
+    expect(fs.readdirSync(path.join(vaultPath, 'journal')).toSorted()).toEqual([
       '2025-01-14.md',
       '2025-01-15.md'
     ])
@@ -262,7 +262,10 @@ describe('renameJournalsForFormatChange under a read-only lock (#2606)', () => {
   }
 
   function journalFiles(): string[] {
-    return fs.readdirSync(path.join(vaultPath, 'journal'), { recursive: true }).map(String).sort()
+    return fs
+      .readdirSync(path.join(vaultPath, 'journal'), { recursive: true })
+      .map(String)
+      .toSorted()
   }
 
   beforeEach(() => {

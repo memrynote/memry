@@ -292,6 +292,7 @@ function readConfig(): StoreSchema {
     const configPath = getConfigPath()
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, 'utf-8')
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
       const parsed = JSON.parse(content) as Partial<StoreSchema>
       return { ...defaultData, ...parsed }
     }
@@ -365,8 +366,8 @@ export function getCurrentVaultPath(): string | null {
 /**
  * Set the current vault path
  */
-export function setCurrentVaultPath(path: string | null): void {
-  store.set('currentVault', path)
+export function setCurrentVaultPath(vaultPath: string | null): void {
+  store.set('currentVault', vaultPath)
 }
 
 /**

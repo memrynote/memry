@@ -14,7 +14,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import os from 'node:os'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 // `attachments.ts` imports `net` from electron; fetchFn is injected instead.
 vi.mock('electron', () => ({
@@ -47,6 +47,12 @@ import { holdCanvasAssetChunks, releaseCanvasAssetHolds, type ChunkHoldDeps } fr
 import { listAssetsByCanvas } from './asset-store'
 import { readMemryAssets, sceneWithCurrentAssetRows } from './memry-assets'
 
+const requestUrl = (input: RequestInfo | URL): string =>
+  input instanceof Request ? input.url : String(input)
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
+
 type Harness = {
   start(): Promise<void>
   stop(): Promise<void>
@@ -68,8 +74,7 @@ let deviceId: string
 let userId: string
 const cleanup: string[] = []
 
-const realFetch = (input: Parameters<typeof fetch>[0], init?: RequestInit) =>
-  fetch(input as RequestInfo, init)
+const realFetch = (input: Parameters<typeof fetch>[0], init?: RequestInit) => fetch(input, init)
 
 async function seedUser(): Promise<void> {
   const db = await server.getD1()
@@ -255,19 +260,19 @@ async function storageUsed(): Promise<number> {
 
 /** An old server: no hold routes, so they answer 404 like any unknown path. */
 const oldServerFetch = ((input: Parameters<typeof fetch>[0], init?: RequestInit) =>
-  String(input).includes('/attachments/holds')
+  requestUrl(input).includes('/attachments/holds')
     ? Promise.resolve(new Response('Not Found', { status: 404 }))
     : realFetch(input, init)) as typeof fetch
 
 async function restoredBytes(dev: Device, scene: string): Promise<Buffer> {
   const [descriptor] = readMemryAssets(scene)
-  return readFile(canvasAssetDiskPath(dev.vaultPath, descriptor!.filename))
+  return readFile(canvasAssetDiskPath(dev.vaultPath, descriptor.filename))
 }
 
 beforeAll(async () => {
   await sodium.ready
   const mod = await import('@memry/sync-harness/simulated-server')
-  server = new mod.SimulatedServer() as Harness
+  server = new mod.SimulatedServer()
   await server.start()
   baseUrl = (await server.getDirectUrl()).origin
 }, 180_000)
@@ -304,7 +309,7 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
 
     // P deletes A; 30 days later P frees it and the cron reaps the chunks.
     await deleteAndFree(p, a.id)
-    expect(await storedChunks(original!.chunkHashes)).toBe(0)
+    expect(await storedChunks(original.chunkHashes)).toBe(0)
 
     // Q comes back online and pushes B; P pulls it.
     const pushedB = await push(q, b.id, b.scene)
@@ -316,13 +321,13 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
     // The hold, not an upload ref, keeps the re-uploaded chunks through the cron.
     const [healed] = readMemryAssets(pushedB)
     await server.triggerScheduled()
-    expect(await storedChunks(healed!.chunkHashes)).toBe(healed!.chunkHashes.length)
+    expect(await storedChunks(healed.chunkHashes)).toBe(healed.chunkHashes.length)
 
     // Q drops the image from B: its hold goes, and the cron frees the chunks.
     const emptied = JSON.stringify({ type: 'excalidraw', files: {} })
     await reconcileCanvasAssets(q.ctx, b.id, emptied)
     await server.triggerScheduled()
-    expect(await storedChunks(healed!.chunkHashes)).toBe(0)
+    expect(await storedChunks(healed.chunkHashes)).toBe(0)
   })
 
   it('heals a canvas edited offline that outlived the peer freeing it', async () => {
@@ -347,7 +352,7 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
     // Q's first hold reports the chunks gone; the re-upload's own hold then fails.
     let holdCalls = 0
     const flakyHold = ((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-      if (String(input).endsWith('/attachments/holds') && ++holdCalls === 2) {
+      if (requestUrl(input).endsWith('/attachments/holds') && ++holdCalls === 2) {
         return Promise.resolve(new Response('unavailable', { status: 503 }))
       }
       return realFetch(input, init)
@@ -397,7 +402,7 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
     const pushedB = await push(q, b.id, b.scene)
     const pushedC = await push(q, c.id, c.scene)
     const [asset] = readMemryAssets(pushedB)
-    const hashes = asset!.chunkHashes
+    const hashes = asset.chunkHashes
 
     // P frees A, its only canvas with the image: the upload ref goes, so only
     // the holds of B and C keep the chunks. Then both devices show B and C.
@@ -445,6 +450,6 @@ describe('canvas asset chunk holds against the real sync-server (#3022)', () => 
     await reconcileCanvasAssets(p.ctx, a.id, JSON.stringify({ type: 'excalidraw', files: {} }))
     expect(listAssetsByCanvas(p.db, a.id)).toEqual([])
     await server.triggerScheduled()
-    expect(await storedChunks(asset!.chunkHashes)).toBe(0)
+    expect(await storedChunks(asset.chunkHashes)).toBe(0)
   })
 })

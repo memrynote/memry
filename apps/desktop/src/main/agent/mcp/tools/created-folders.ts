@@ -12,6 +12,7 @@ async function folderExists(absolutePath: string): Promise<boolean> {
     await access(absolutePath)
     return true
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Node fs/net errors carry .code but catch values are typed Error/unknown
     return (error as NodeJS.ErrnoException).code !== 'ENOENT'
   }
 }
@@ -39,6 +40,7 @@ export function createdFoldersReply(folders: string[]): CreatedFoldersReply {
 }
 
 function field(value: unknown, key: string): unknown {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   return value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined
 }
 

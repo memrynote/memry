@@ -420,6 +420,7 @@ async function repairCorruptFtsIndexes(vaultPath: string): Promise<void> {
 
     const startedAt = Date.now()
     const results = await rebuildProjections(['search'])
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const rebuilt = results.search as { notes: number } | undefined
 
     emitIndexRecovered({
@@ -973,6 +974,7 @@ async function openVault(vaultPath: string): Promise<void> {
 function pendingRootPropertyPaths(value: string | null): string[] {
   if (!value || value === ROOT_PROPERTIES_MIGRATION_DONE) return []
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; paths is checked with Array.isArray and filtered to strings
     const parsed = JSON.parse(value) as { paths?: unknown }
     return Array.isArray(parsed.paths)
       ? parsed.paths.filter((path): path is string => typeof path === 'string')
@@ -1035,8 +1037,8 @@ async function replaceOpenVault(vaultPath: string): Promise<SelectVaultResponse>
   // this vault without opening its data.db (best-effort: re-stamps next open)
   try {
     const { getOrCreateVaultUuid } = await import('../agent/storage/vault-id')
-    const { getDatabase } = await import('../database/client')
-    vaultInfo.vaultUuid = getOrCreateVaultUuid(getDatabase())
+    const { getDatabase: getClientDatabase } = await import('../database/client')
+    vaultInfo.vaultUuid = getOrCreateVaultUuid(getClientDatabase())
   } catch (err) {
     // vault opened without a data db (or uuid minting failed) — the registry
     // keeps any previously stored uuid (createVaultInfo carries it forward),

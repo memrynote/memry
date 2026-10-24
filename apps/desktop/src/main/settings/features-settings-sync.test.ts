@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SettingsSyncManager } from '@memry/sync-client/settings-sync'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { setSetting } from '../database/queries/settings'
 import { seedFeaturesSyncedSettings } from './features-settings-sync'
@@ -13,7 +12,7 @@ describe('seedFeaturesSyncedSettings', () => {
   beforeEach(() => {
     db = createTestDataDb()
     sync = new SettingsSyncManager({
-      db: db as unknown as DrizzleDb,
+      db,
       queue: { enqueue: vi.fn() } as unknown as SyncQueueManager,
       getDeviceId: () => 'desktop-a'
     })

@@ -112,7 +112,7 @@ async function readOAuthErrorBody(response: Response): Promise<{
     return { raw: '', parsed: {} }
   }
   try {
-    const parsed = JSON.parse(raw) as GoogleOAuthErrorBody
+    const parsed: GoogleOAuthErrorBody = JSON.parse(raw)
     return { raw, parsed }
   } catch {
     return { raw, parsed: {} }
@@ -261,7 +261,7 @@ async function fetchUserInfo(accessToken: string): Promise<z.infer<typeof Google
     const body = await response.text().catch(() => '')
     let apiStatus: string | undefined
     try {
-      const parsedBody = JSON.parse(body) as { error?: { status?: string } }
+      const parsedBody: { error?: { status?: string } } = JSON.parse(body)
       apiStatus = parsedBody.error?.status
     } catch {
       // body may be plain text or empty
@@ -290,7 +290,7 @@ async function fetchPrimaryCalendar(
     const body = await response.text().catch(() => '')
     let apiStatus: string | undefined
     try {
-      const parsedBody = JSON.parse(body) as { error?: { status?: string } }
+      const parsedBody: { error?: { status?: string } } = JSON.parse(body)
       apiStatus = parsedBody.error?.status
     } catch {
       // body may be plain text or empty

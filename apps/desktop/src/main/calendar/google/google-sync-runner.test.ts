@@ -9,7 +9,7 @@ const {
   hasConnectionMock,
   ensurePushMock
 } = vi.hoisted(() => ({
-  mockDbHolder: { db: {} as object },
+  mockDbHolder: { db: {} },
   powerMonitorHolder: {
     resumeHandlers: [] as Array<() => void>
   },

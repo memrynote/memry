@@ -11,7 +11,7 @@ export function readCalendarGoogleSettings(db: DataDb): CalendarGoogleSettings {
   const raw = getSetting(db, CALENDAR_GOOGLE_SETTINGS_KEY)
   if (!raw) return { ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS }
   try {
-    const parsed = JSON.parse(raw) as Partial<CalendarGoogleSettings>
+    const parsed: Partial<CalendarGoogleSettings> = JSON.parse(raw)
     return { ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS, ...parsed }
   } catch {
     return { ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS }

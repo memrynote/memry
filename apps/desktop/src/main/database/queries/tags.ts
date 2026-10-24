@@ -115,8 +115,8 @@ export function getAllTagsWithCounts(indexDb: IndexDb, dataDb: DataDb): TagWithC
   }
 
   return [
-    ...[...merged.values()].filter((tag) => tag.count > 0).sort((a, b) => b.count - a.count),
-    ...registered.sort((a, b) => a.name.localeCompare(b.name))
+    ...[...merged.values()].filter((tag) => tag.count > 0).toSorted((a, b) => b.count - a.count),
+    ...registered.toSorted((a, b) => a.name.localeCompare(b.name))
   ]
 }
 

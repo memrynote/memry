@@ -39,7 +39,7 @@ const externalRuntimeDependencies = [
 
 describe('runtime dependencies', () => {
   it('ships exactly the native/unbundleable modules as production dependencies', () => {
-    const dependencies = Object.keys(packageJson.dependencies ?? {}).sort()
+    const dependencies = Object.keys(packageJson.dependencies ?? {}).toSorted()
 
     expect(dependencies).toEqual(externalRuntimeDependencies)
   })

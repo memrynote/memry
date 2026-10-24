@@ -542,7 +542,7 @@ describe('inbox suggestions', () => {
 
     expect(folders[0]?.destination.path).toBe('notes/recipes')
     expect(folders.find((f) => f.destination.path === 'notes/misc')?.confidence ?? 1).toBeLessThan(
-      folders[0]!.confidence
+      folders[0].confidence
     )
   })
 

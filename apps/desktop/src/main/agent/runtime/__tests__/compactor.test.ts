@@ -15,12 +15,10 @@ function message(input: {
     id: input.id,
     conversationId: 'conversation-1',
     role,
-    content:
-      input.content ??
-      ({
-        role: 'user',
-        data: { text: input.id }
-      } as MessageContent),
+    content: input.content ?? {
+      role: 'user',
+      data: { text: input.id }
+    },
     toolCallId: null,
     attachments: [],
     status: 'completed',

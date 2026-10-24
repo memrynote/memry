@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const mockLog = vi.hoisted(() => ({
   debug: vi.fn(),

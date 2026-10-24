@@ -161,7 +161,7 @@ function searchNotes(
     }
     return {
       id: row.id,
-      type: 'note' as ContentType,
+      type: 'note',
       title: row.title,
       snippet: row.snippet,
       score: Math.abs(row.rank),
@@ -211,7 +211,7 @@ function searchJournals(
     }
     return {
       id: row.id,
-      type: 'journal' as ContentType,
+      type: 'journal',
       title: row.title,
       snippet: row.snippet,
       score: Math.abs(row.rank),
@@ -266,7 +266,7 @@ function searchTasks(dataDb: DataDb, ftsQuery: string, limit: number): SearchRes
     }
     return {
       id: row.id,
-      type: 'task' as ContentType,
+      type: 'task',
       title: row.title,
       snippet: row.snippet,
       score: Math.abs(row.rank),
@@ -302,6 +302,7 @@ function searchInbox(dataDb: DataDb, ftsQuery: string, limit: number): SearchRes
   return rows.map((row) => {
     const metadata: InboxResultMetadata = {
       type: 'inbox',
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       itemType: row.type as InboxResultMetadata['itemType'],
       sourceUrl: row.sourceUrl,
       sourceTitle: row.sourceTitle,
@@ -309,7 +310,7 @@ function searchInbox(dataDb: DataDb, ftsQuery: string, limit: number): SearchRes
     }
     return {
       id: row.id,
-      type: 'inbox' as ContentType,
+      type: 'inbox',
       title: row.title,
       snippet: row.snippet,
       score: Math.abs(row.rank),
@@ -440,6 +441,7 @@ function getInboxTitles(
     type: 'inbox' as ContentType,
     metadata: {
       type: 'inbox' as const,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       itemType: r.itemType as InboxResultMetadata['itemType'],
       sourceUrl: r.sourceUrl,
       sourceTitle: r.sourceTitle,
@@ -519,6 +521,7 @@ function applyPostFilters(
   return filtered
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- switch over the closed ContentType union is exhaustive; a default would hide new members from the compiler
 function loadFuzzyCandidates(
   indexDb: IndexDb,
   dataDb: DataDb,
@@ -709,7 +712,7 @@ export function quickSearch(
 
   const allResults = response.groups
     .flatMap((g) => g.results)
-    .sort((a, b) => b.normalizedScore - a.normalizedScore)
+    .toSorted((a, b) => b.normalizedScore - a.normalizedScore)
     .slice(0, 20)
 
   const queryTimeMs = Math.round(performance.now() - startTime)

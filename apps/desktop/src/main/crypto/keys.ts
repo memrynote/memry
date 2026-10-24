@@ -1,4 +1,4 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import {
   ARGON2_PARAMS,
@@ -15,6 +15,9 @@ import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { encodeCbor } from './cbor'
 import { retrieveKey } from './keychain'
 import { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const KDF_CONTEXT_MAP: Record<string, { ctx: string; id: number }> = {
   'memry-vault-key-v1': { ctx: 'memryvlt', id: 1 },

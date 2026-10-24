@@ -167,7 +167,7 @@ function booksOfDay(
 /** The book note's current title, or null when the book has no note to link. */
 async function bookTitle(db: DataDb, bookId: number): Promise<string | null> {
   const link = getLinkByBookId(db, bookId)
-  if (!link || link.state !== 'linked') return null
+  if (link?.state !== 'linked') return null
   return (await getNoteById(link.noteId))?.title ?? null
 }
 
@@ -191,7 +191,7 @@ export async function flushJournal(db: DataDb, options: FlushOptions): Promise<v
     return titles.get(bookId) ?? null
   }
 
-  for (const date of Object.keys(pending).sort()) {
+  for (const date of Object.keys(pending).toSorted()) {
     if (options.stopped()) return
     let outcome: DayWrite | 'failed'
     const stays: Record<string, number> = {}

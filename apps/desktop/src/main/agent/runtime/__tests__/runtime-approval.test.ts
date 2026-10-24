@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 const mocks = vi.hoisted(() => ({
   setWriteGate: vi.fn(),
@@ -28,6 +28,9 @@ import {
   revokeAllTurnWriteGrants,
   type TurnWriteGrant
 } from '../../turn-grants'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 /**
  * One capability per conversation per test. Minting twice for the same

@@ -69,6 +69,7 @@ const healthPath = (): string => path.join(app.getPath('userData'), UPDATE_INSTA
 
 const parseHealth = (raw: string): UpdateInstallHealth | null => {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
     const parsed = JSON.parse(raw) as Partial<UpdateInstallHealth>
     if (!parsed || typeof parsed !== 'object') return null
     const { fromVersion, targetVersion, consecutiveFailures, escalated } = parsed
@@ -127,7 +128,7 @@ export const recordUpdateInstallFailure = (
 ): { consecutiveFailures: number; stuck: boolean } => {
   const existing = readHealth()
   const previous =
-    existing && existing.fromVersion === fromVersion && existing.targetVersion === targetVersion
+    existing?.fromVersion === fromVersion && existing.targetVersion === targetVersion
       ? existing
       : null
   const consecutiveFailures = Math.min(

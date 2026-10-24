@@ -111,7 +111,7 @@ describe('embedding chunks (real sqlite-vec)', () => {
 
     await projector.project(upsert('n', `${filler(200)} saffron`))
     expect(count('vec_note_chunks')).toBeGreaterThan(0)
-    await projector.project({ type: 'note.deleted', noteId: 'n' } as ProjectionEvent)
+    await projector.project({ type: 'note.deleted', noteId: 'n' })
     expect(count('vec_note_chunks')).toBe(0)
     expect(count('vec_notes')).toBe(0)
     expect(count('note_embedding_state')).toBe(0)
@@ -129,7 +129,7 @@ describe('embedding chunks (real sqlite-vec)', () => {
     ).toHaveLength(1)
     expect(count('vec_note_similar')).toBe(1)
 
-    await projector.project({ type: 'note.deleted', noteId: 'n' } as ProjectionEvent)
+    await projector.project({ type: 'note.deleted', noteId: 'n' })
     expect(count('vec_note_similar')).toBe(0)
   })
 

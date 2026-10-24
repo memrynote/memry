@@ -204,7 +204,7 @@ describe('vault watcher', () => {
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
     vi.mocked(updateFtsContent).mockImplementation(() => false)
     vi.mocked(updateNoteEmbedding).mockResolvedValue(false)
-    vi.mocked(getConfig).mockReturnValue(baseConfig as never)
+    vi.mocked(getConfig).mockReturnValue(baseConfig)
 
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])
@@ -327,7 +327,7 @@ describe('vault watcher', () => {
       .where(eq(noteTags.noteId, noteId))
       .all()
       .map((tag) => tag.tag)
-      .sort()
+      .toSorted()
     expect(tags).toEqual(['Alpha', 'Beta'])
 
     const links = indexDb.db.select().from(noteLinks).where(eq(noteLinks.sourceId, noteId)).all()
@@ -411,7 +411,7 @@ describe('vault watcher', () => {
       .where(eq(noteTags.noteId, noteId))
       .all()
       .map((tag) => tag.tag)
-      .sort()
+      .toSorted()
     expect(indexedTags).toEqual(['Declared', 'hashtag'])
 
     // …but only what the file itself declares is handed to the CRDT
@@ -573,7 +573,7 @@ describe('vault watcher', () => {
     trigger('addDir', path.join(vault.path, 'Finder'))
     trigger('addDir', path.join(vault.path, 'Finder', 'Empty'))
     trigger('addDir', path.join(vault.path, 'Styled'))
-    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, excludePatterns: ['ignored'] } as never)
+    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, excludePatterns: ['ignored'] })
     trigger('addDir', vault.path)
     trigger('addDir', path.join(vault.path, 'journal'))
     trigger('addDir', path.join(vault.path, 'journal', '2026'))
@@ -582,7 +582,9 @@ describe('vault watcher', () => {
     trigger('addDir', path.join(vault.path, 'ignored', 'deep'))
 
     const rows = dataDb.db.select().from(folderConfigs).all()
-    expect(rows.map((r) => [r.path, r.icon]).sort()).toEqual([
+    expect(
+      rows.toSorted((a, b) => a.path.localeCompare(b.path)).map((r) => [r.path, r.icon])
+    ).toEqual([
       ['Finder', null],
       ['Finder/Empty', null],
       ['Styled', 'star']
@@ -641,11 +643,17 @@ describe('vault watcher', () => {
     await vi.advanceTimersByTimeAsync(1000)
 
     const rows = dataDb.db.select().from(folderConfigs).all()
-    expect(rows.map((r) => [r.path, r.icon]).sort()).toEqual([
+    expect(
+      rows.toSorted((a, b) => a.path.localeCompare(b.path)).map((r) => [r.path, r.icon])
+    ).toEqual([
       ['Back', null],
       ['journal', null]
     ])
-    expect(enqueueLocalSyncDelete.mock.calls.map((c) => c.slice(0, 2)).sort()).toEqual([
+    expect(
+      enqueueLocalSyncDelete.mock.calls
+        .map((c) => c.slice(0, 2))
+        .toSorted((a, b) => String(a[1]).localeCompare(String(b[1])))
+    ).toEqual([
       ['folder_config', 'Gone'],
       ['folder_config', 'Gone/Child']
     ])
@@ -765,7 +773,7 @@ describe('vault watcher', () => {
   })
 
   it('skips attachments/ and watches the folder a non-default attachmentsFolder names', async () => {
-    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, attachmentsFolder: 'files' } as never)
+    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, attachmentsFolder: 'files' })
     const mockWatcher = {
       on: vi.fn(() => mockWatcher),
       once: vi.fn((event: string, handler: () => void) => {
@@ -886,7 +894,7 @@ describe('vault watcher', () => {
       fileType: 'image'
     })
 
-    const createdId = (createdCall?.[1] as { note: { id: string } }).note.id
+    const createdId = (createdCall![1] as { note: { id: string } }).note.id
     window.webContents.send.mockClear()
     fs.writeFileSync(imagePath, Buffer.from('updated-image'))
 
@@ -979,7 +987,7 @@ describe('vault watcher', () => {
     const updatedCall = window.webContents.send.mock.calls.find(
       (call: unknown[]) => call[0] === JournalChannels.events.ENTRY_UPDATED
     )
-    const emittedId = (updatedCall?.[1] as { entry: { id: string } }).entry.id
+    const emittedId = (updatedCall![1] as { entry: { id: string } }).entry.id
     const cachedJournal = indexDb.db
       .select()
       .from(noteCache)
@@ -1804,7 +1812,7 @@ describe('vault watcher', () => {
     }
 
     function makeCanvas(title: string) {
-      vi.mocked(requireDatabase).mockReturnValue(asClientDb(dataDb.db) as never)
+      vi.mocked(requireDatabase).mockReturnValue(asClientDb(dataDb.db))
       vi.mocked(getStatus).mockReturnValue({ path: vault.path } as never)
       const canvas = createCanvas(
         asClientDb(dataDb.db),
@@ -1848,7 +1856,7 @@ describe('vault watcher', () => {
 
     function isLive(id: string): boolean {
       const row = dataDb.db.select().from(canvases).where(eq(canvases.id, id)).get()
-      return row !== undefined && row.deletedAt === null
+      return row?.deletedAt === null
     }
 
     it('stays when iCloud evicted it to a .icloud placeholder (#3004)', async () => {
@@ -2017,7 +2025,7 @@ describe('vault watcher', () => {
         ([channel]) => channel === CanvasFolderChannels.invoke.DELETE
       )![1]
       const db = asClientDb(dataDb.db)
-      vi.mocked(requireDatabase).mockReturnValue(db as never)
+      vi.mocked(requireDatabase).mockReturnValue(db)
       vi.mocked(getStatus).mockReturnValue({ path: vault.path } as never)
       const canvas = createCanvas(db, vault.path, getOrCreateVaultUuid(db), {
         title: 'Plan',

@@ -77,7 +77,7 @@ function replayFetch(fixture: string): typeof fetch {
   const ollama = fixture.endsWith('.ndjson')
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     if (String(url).endsWith('/models')) return json({ data: [{ id: MODEL }] })
-    const body = JSON.parse(String(init?.body)) as {
+    const body = JSON.parse(typeof init?.body === 'string' ? init.body : '') as {
       stream?: boolean
       tools?: unknown[]
       messages: Array<{ role: string }>

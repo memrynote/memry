@@ -25,6 +25,7 @@ function nameRows(input: NoteNamesInput, keptAliases: readonly string[]): NoteNa
   )) {
     rows.push({
       noteId: input.noteId,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       key: nameKey(alias) as string,
       display: alias,
       kind: 'alias'
@@ -33,11 +34,12 @@ function nameRows(input: NoteNamesInput, keptAliases: readonly string[]): NoteNa
   return rows
 }
 
+const sig = (row: NoteName): string => `${row.kind}\u0000${row.key}\u0000${row.display}`
+
 export function reindexNoteNames(db: IndexDb, input: NoteNamesInput): NameKey[] {
   const before = db.select().from(noteNames).where(eq(noteNames.noteId, input.noteId)).all()
   const kept = before.filter((row) => row.kind === 'alias').map((row) => row.display)
   const after = nameRows(input, kept)
-  const sig = (row: NoteName): string => `${row.kind}\u0000${row.key}\u0000${row.display}`
   const beforeSigs = new Set(before.map(sig))
   const afterSigs = new Set(after.map(sig))
   if (before.length === after.length && after.every((row) => beforeSigs.has(sig(row)))) return []
@@ -47,6 +49,7 @@ export function reindexNoteNames(db: IndexDb, input: NoteNamesInput): NameKey[] 
   const changed = new Set<string>()
   for (const row of before) if (!afterSigs.has(sig(row))) changed.add(row.key)
   for (const row of after) if (!beforeSigs.has(sig(row))) changed.add(row.key)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   return [...changed] as NameKey[]
 }
 
@@ -57,6 +60,7 @@ export function deleteNoteNames(db: IndexDb, noteId: string): NameKey[] {
     .where(eq(noteNames.noteId, noteId))
     .all()
   db.delete(noteNames).where(eq(noteNames.noteId, noteId)).run()
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   return keys.map((row) => row.key as NameKey)
 }
 

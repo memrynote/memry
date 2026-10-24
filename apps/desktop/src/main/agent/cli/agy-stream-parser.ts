@@ -58,6 +58,7 @@ export function createAgyStreamParser(onEvent: (event: BackendEvent) => void): A
 
 function parseLine(line: string, emittedAssistantText: boolean): BackendEvent {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is one stream-json line from the CLI; every field is checked before use
     const obj = JSON.parse(line) as Record<string, unknown>
     return translate(obj, emittedAssistantText)
   } catch {

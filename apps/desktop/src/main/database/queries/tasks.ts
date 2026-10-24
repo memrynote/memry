@@ -187,6 +187,7 @@ export function listTasks(db: DataDb, options: ListTasksOptions = {}): Task[] {
   let query = db.select().from(tasks)
 
   if (conditions.length > 0) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle where() narrows the builder type; assertion restores the dynamic-query type
     query = query.where(and(...conditions)) as typeof query
   }
 
@@ -219,6 +220,7 @@ export function countTasks(
   let query = db.select({ count: count() }).from(tasks)
 
   if (conditions.length > 0) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle where() narrows the builder type; assertion restores the dynamic-query type
     query = query.where(and(...conditions)) as typeof query
   }
 

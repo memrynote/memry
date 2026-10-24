@@ -202,6 +202,7 @@ export const appleNotesImporter: Importer = {
       )
 
       // ---- Notes (with body data) ----
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
       const notes = db
         .prepare(
           'SELECT nd.znote AS pk, zcso.ztitle1 AS title, zcso.zfolder AS folder, ' +
@@ -318,6 +319,7 @@ export const appleNotesImporter: Importer = {
               continue
             }
             try {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
               const att = attachmentStmt.get(attachmentId) as AttachmentRow | undefined
               if (!att) {
                 ctx.reportSkipped(attachmentId, 'attachment not found')

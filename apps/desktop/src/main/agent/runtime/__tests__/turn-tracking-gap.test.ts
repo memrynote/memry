@@ -110,6 +110,7 @@ async function startChild(
   await waitForReady(readyFile)
 
   const handle: BackendRunHandle = {
+    // oxlint-disable-next-line eslint/require-yield -- drains stdout and deliberately emits no events
     events: (async function* () {
       for await (const chunk of stdout) void chunk
     })(),
@@ -208,7 +209,7 @@ function createMessageStore(opts: { failOn?: Message['role'] } = {}): MessageSto
       message.status = status
       return message
     }
-  } as unknown as MessageStore
+  }
 }
 
 function createConversationStore(): ConversationStore {

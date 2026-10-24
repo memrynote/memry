@@ -26,6 +26,7 @@ const CONFIG_KEY = 'vaultIcon'
 function readRawConfig(vaultPath: string): Record<string, unknown> | null {
   try {
     const parsed: unknown = JSON.parse(fs.readFileSync(getConfigPath(vaultPath), 'utf-8'))
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
   } catch {
     return null
@@ -40,9 +41,11 @@ function readRawConfig(vaultPath: string): Record<string, unknown> | null {
 export function readVaultIcon(vaultPath: string): StoredVaultIcon | null {
   const raw = readRawConfig(vaultPath)?.[CONFIG_KEY]
   if (!raw || typeof raw !== 'object') return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const { value, updatedAt, pendingSync } = raw as Record<string, unknown>
   if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt)) return null
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     value: VaultIconSchema.safeParse(value).success ? (value as string) : null,
     updatedAt,
     pendingSync: pendingSync === true

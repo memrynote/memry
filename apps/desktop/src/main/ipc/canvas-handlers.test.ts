@@ -117,7 +117,7 @@ describe('canvas handlers registration', () => {
     expect(() => registerCanvasHandlers()).not.toThrow()
 
     const registered = handleMock.mock.calls.map(([channel]) => channel)
-    expect(registered.sort()).toEqual([...INVOKE_CHANNELS].sort())
+    expect(registered.toSorted()).toEqual([...INVOKE_CHANNELS].toSorted())
   })
 
   it('unregisters every canvas invoke channel', async () => {
@@ -128,7 +128,7 @@ describe('canvas handlers registration', () => {
     unregisterCanvasHandlers()
 
     const removed = removeMock.mock.calls.map(([channel]) => channel)
-    expect(removed.sort()).toEqual([...INVOKE_CHANNELS].sort())
+    expect(removed.toSorted()).toEqual([...INVOKE_CHANNELS].toSorted())
   })
 })
 
@@ -172,7 +172,7 @@ async function registerAndGetHandlers(): Promise<Record<string, Handler>> {
   registerCanvasHandlers()
   const map: Record<string, Handler> = {}
   for (const [channel, handler] of handleMock.mock.calls) {
-    map[channel as string] = handler as Handler
+    map[channel] = handler
   }
   return map
 }
@@ -223,7 +223,7 @@ describe('canvas asset IPC handlers', () => {
       expect(fileIdArg).toBe('file-1')
       expect(mimeTypeArg).toBe('image/png')
       expect(bytesArg).toBeInstanceOf(Uint8Array)
-      expect(Array.from(bytesArg as Uint8Array)).toEqual([137, 80, 78, 71])
+      expect(Array.from(bytesArg)).toEqual([137, 80, 78, 71])
       expect(result).toMatchObject({ deduped: false })
     })
   })
@@ -663,7 +663,7 @@ describe('canvas live-ownership handlers', () => {
     const { BrowserWindow } = await import('electron')
     const handlers = await registerAndGetHandlers()
 
-    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null as never)
+    vi.mocked(BrowserWindow.fromWebContents).mockReturnValue(null)
     expect(await handlers[CanvasChannels.invoke.LIVE_OPENED]({ sender: {} }, 'canvas-1')).toEqual({
       ok: false
     })

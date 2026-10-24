@@ -93,7 +93,7 @@ describe('resolveObsidianVaultOpen', () => {
         before[path.join('Daily Notes', '2026-10-20.md')],
       [path.join('attachments', 'photo.png')]: before[path.join('attachments', 'photo.png')]
     })
-    expect(fs.readdirSync(root).sort()).toEqual(['My Vault', 'My Vault-memrynote'])
+    expect(fs.readdirSync(root).toSorted()).toEqual(['My Vault', 'My Vault-memrynote'])
   })
 
   it.each([
@@ -138,7 +138,7 @@ describe('resolveObsidianVaultOpen', () => {
 
     expect(opened).toBe(copy)
     expect(snapshot(copy)).toEqual(copyBefore)
-    expect(fs.readdirSync(root).sort()).toEqual(['My Vault', 'My Vault-memrynote'])
+    expect(fs.readdirSync(root).toSorted()).toEqual(['My Vault', 'My Vault-memrynote'])
   })
 
   it('leaves a folder that only shares the copy name alone and copies to the next name', async () => {

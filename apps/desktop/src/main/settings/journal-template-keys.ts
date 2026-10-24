@@ -53,6 +53,7 @@ export function sanitizeWeekdayTemplateMap(value: unknown): WeekdayTemplateMap {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
 
   const result: WeekdayTemplateMap = {}
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
     if (!isWeekdayKey(key)) continue
     if (entry === null) {

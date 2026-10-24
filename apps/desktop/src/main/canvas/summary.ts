@@ -51,8 +51,8 @@ function cardRef(element: SceneElementLike): CanvasEntityRef | null {
   if (element.type !== 'rectangle') return null
   const data = element.customData
   if (!data || typeof data !== 'object') return null
-  const entityType = (data as Record<string, unknown>).entityType
-  const entityId = (data as Record<string, unknown>).entityId
+  const entityType = 'entityType' in data ? data.entityType : undefined
+  const entityId = 'entityId' in data ? data.entityId : undefined
   if (!isEntityType(entityType) || typeof entityId !== 'string' || entityId.length === 0) {
     return null
   }
@@ -69,7 +69,7 @@ export function summarizeScene(scene: string): CanvasSceneSummary {
 
   let elements: unknown
   try {
-    const parsed = JSON.parse(scene) as { elements?: unknown }
+    const parsed: { elements?: unknown } = JSON.parse(scene)
     elements = parsed.elements
   } catch {
     return emptySummary()
@@ -83,7 +83,8 @@ export function summarizeScene(scene: string): CanvasSceneSummary {
   let textChars = 0
   let textsTruncated = false
 
-  for (const element of elements as SceneElementLike[]) {
+  const sceneElements: SceneElementLike[] = elements
+  for (const element of sceneElements) {
     if (element.isDeleted === true) continue
     elementCount++
 

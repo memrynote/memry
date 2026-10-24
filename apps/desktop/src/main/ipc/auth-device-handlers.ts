@@ -94,8 +94,10 @@ function parseRemoteDevices(raw: unknown): RemoteDeviceRow[] | null {
   }
 
   const devices: RemoteDeviceRow[] = []
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   for (const device of (raw as { devices: unknown[] }).devices) {
     if (!device || typeof device !== 'object') return null
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const row = device as Record<string, unknown>
     if (
       typeof row.id !== 'string' ||
@@ -126,6 +128,7 @@ function mapLocalDevice(row: LocalDeviceRow) {
   return {
     id: row.id,
     name: row.name,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     platform: row.platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android',
     linkedAt: row.linkedAt.getTime(),
     lastSyncAt: row.lastSyncAt?.getTime(),
@@ -538,6 +541,7 @@ export function registerAuthDeviceHandlers(): void {
             devices: remoteDevices.map((device) => ({
               id: device.id,
               name: device.name,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
               platform: device.platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android',
               linkedAt: toTimestampMs(device.createdAt)!,
               lastSyncAt: toTimestampMs(device.lastSyncAt),

@@ -37,6 +37,7 @@ function textOf(content: Y.XmlElement): string {
   let text = ''
   for (const child of content.toArray()) {
     if (child instanceof Y.XmlText) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Y.Text.toDelta() returns any-shaped ops; fields are checked before use
       for (const op of child.toDelta() as { insert?: unknown }[]) {
         text += typeof op.insert === 'string' ? op.insert : INLINE_ELEMENT
       }
@@ -123,6 +124,7 @@ export function stampAnchorInDoc(
     const last = content.toArray().at(-1)
     if (last instanceof Y.XmlText) {
       const attributes: Record<string, null> = {}
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Y.Text.toDelta() returns any-shaped ops; fields are checked before use
       for (const op of last.toDelta() as { attributes?: Record<string, unknown> }[]) {
         for (const name of Object.keys(op.attributes ?? {})) attributes[name] = null
       }

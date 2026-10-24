@@ -12,6 +12,7 @@ export async function secureDeleteFile(filePath: string): Promise<void> {
   try {
     handle = await open(filePath, 'r+')
   } catch (err) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       return
     }

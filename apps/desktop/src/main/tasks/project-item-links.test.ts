@@ -30,7 +30,7 @@ describe('project item link reroute', () => {
     isMarkdownNote.mockReturnValue(true)
     getEntityPropertiesRecord.mockReturnValue({ project: ['Beta'] })
 
-    const result = await linkProjectItem({} as never, domain as never, {
+    const result = await linkProjectItem({} as never, domain, {
       projectId: 'p1',
       itemType: 'note',
       itemId: 'n1'
@@ -45,7 +45,7 @@ describe('project item link reroute', () => {
     isMarkdownNote.mockReturnValue(true)
     getEntityPropertiesRecord.mockReturnValue({ project: ['Alpha'] })
 
-    await linkProjectItem({} as never, domain as never, {
+    await linkProjectItem({} as never, domain, {
       projectId: 'p1',
       itemType: 'note',
       itemId: 'n1'
@@ -58,7 +58,7 @@ describe('project item link reroute', () => {
     isMarkdownNote.mockReturnValue(false)
     domainLink.mockResolvedValue({ success: true })
 
-    await linkProjectItem({} as never, domain as never, {
+    await linkProjectItem({} as never, domain, {
       projectId: 'p1',
       itemType: 'file',
       itemId: 'f1'
@@ -72,7 +72,7 @@ describe('project item link reroute', () => {
     isMarkdownNote.mockReturnValue(true)
     getEntityPropertiesRecord.mockReturnValue({ project: ['Alpha', 'Beta'] })
 
-    await unlinkProjectItem({} as never, domain as never, {
+    await unlinkProjectItem({} as never, domain, {
       projectId: 'p1',
       itemType: 'note',
       itemId: 'n1'
@@ -88,7 +88,7 @@ describe('project item link reroute', () => {
     isMarkdownNote.mockReturnValue(false)
     domainUnlink.mockResolvedValue({ success: true })
 
-    const result = await unlinkProjectItem({} as never, domain as never, {
+    const result = await unlinkProjectItem({} as never, domain, {
       projectId: 'p1',
       itemType: 'file',
       itemId: 'f1'
@@ -135,7 +135,7 @@ describe('project item link reroute', () => {
       isMarkdownNote.mockReturnValue(true)
       getEntityPropertiesRecord.mockReturnValue({ project: [] })
 
-      const result = await linkProjectItem({} as never, domain as never, {
+      const result = await linkProjectItem({} as never, domain, {
         projectId: 'p1',
         itemType: 'file',
         itemId: 'n1'
@@ -150,7 +150,7 @@ describe('project item link reroute', () => {
       isMarkdownNote.mockReturnValue(false)
       domainLink.mockResolvedValue({ success: true })
 
-      const result = await linkProjectItem({} as never, domain as never, {
+      const result = await linkProjectItem({} as never, domain, {
         projectId: 'p1',
         itemType: 'file',
         itemId: 'f1'

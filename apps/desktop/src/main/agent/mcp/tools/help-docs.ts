@@ -144,7 +144,7 @@ export function searchHelp(query: string, limit = 5): HelpSearchHit[] {
       return { s, score }
     })
     .filter((r) => r.score > 0)
-    .sort((x, y) => y.score - x.score)
+    .toSorted((x, y) => y.score - x.score)
     .slice(0, limit)
     .map(({ s }) => ({
       page: s.page,

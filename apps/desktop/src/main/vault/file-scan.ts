@@ -61,6 +61,7 @@ export async function scanMarkdownFile(
 
   try {
     for await (const chunk of stream) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       const text = chunk as string
       hasher.update(text)
       characterCount += text.length
@@ -76,6 +77,7 @@ export async function scanMarkdownFile(
       }
     }
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     const code = (error as NodeJS.ErrnoException).code
     if (code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR') return null
     throw error

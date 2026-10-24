@@ -154,7 +154,9 @@ export function replaceObjectInstances(
 ): number {
   const existing = new Map(listObjectRows(db, source.id, object.href).map((row) => [row.id, row]))
   const deviceId = getCurrentDeviceId(db)
-  const ordered = [...instances].sort((left, right) => left.startAt.localeCompare(right.startAt))
+  const ordered = [...instances].toSorted((left, right) =>
+    left.startAt.localeCompare(right.startAt)
+  )
   const seen = new Set<string>()
   let changed = 0
 
@@ -188,7 +190,7 @@ export function replaceObjectInstances(
       visibility: null,
       colorId: null,
       conferenceData: null,
-      rawPayload: rawPayload as unknown as Record<string, unknown>,
+      rawPayload: { ...rawPayload },
       archivedAt: null,
       // Same first clock `seedUnclocked` would assign: a clock-less row fails
       // the whole push batch (#1215).

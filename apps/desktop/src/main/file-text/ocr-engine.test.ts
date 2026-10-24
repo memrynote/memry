@@ -130,19 +130,19 @@ describe('OCR engine', () => {
     vi.useFakeTimers()
     vi.resetModules()
     const fresh = await import('./ocr-engine')
-    const recognizeText = fresh.recognizeText
-    const crash = (): Promise<unknown> => recognizeText(source).catch((error: unknown) => error)
+    const freshRecognize = fresh.recognizeText
+    const crash = (): Promise<unknown> => freshRecognize(source).catch((error: unknown) => error)
     crashOnSpawn.value = true
     try {
       for (let i = 0; i < 3; i++) await crash()
       expect(workers).toHaveLength(3)
 
-      await expect(recognizeText(source)).rejects.toThrow('OCR is paused')
+      await expect(freshRecognize(source)).rejects.toThrow('OCR is paused')
       expect(workers).toHaveLength(3)
 
       crashOnSpawn.value = false
       await vi.advanceTimersByTimeAsync(10 * 60_000)
-      await expect(recognizeText(source)).resolves.toBe('Heron count')
+      await expect(freshRecognize(source)).resolves.toBe('Heron count')
     } finally {
       crashOnSpawn.value = false
       fresh.stopOcr()

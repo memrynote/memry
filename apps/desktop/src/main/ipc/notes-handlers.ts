@@ -238,8 +238,8 @@ export function registerNotesHandlers(): void {
   // notes:get-by-path - Get a note by path
   ipcMain.handle(
     NotesChannels.invoke.GET_BY_PATH,
-    createStringHandler(async (path) => {
-      return getNoteByPath(path)
+    createStringHandler(async (notePath) => {
+      return getNoteByPath(notePath)
     })
   )
 
@@ -318,7 +318,7 @@ export function registerNotesHandlers(): void {
       const indexDb = getIndexDatabase()
       const resolved = resolveLinkTarget(indexDb, title)
       const result = resolved?.note
-      if (!result || result.fileType !== 'markdown') return null
+      if (!resolved || result?.fileType !== 'markdown') return null
 
       const tags = getNoteTags(indexDb, result.id)
       const dataDb = getDatabase()
@@ -537,9 +537,9 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.CREATE_FOLDER,
     createStringHandler(
-      withErrorHandler(async (path) => {
-        await createFolder(path)
-        syncFolderConfigCreate(path)
+      withErrorHandler(async (folderPath) => {
+        await createFolder(folderPath)
+        syncFolderConfigCreate(folderPath)
         return { success: true }
       }, 'errors:folder.createFailed')
     )

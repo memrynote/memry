@@ -62,7 +62,7 @@ describe('stampAnchorInDoc', () => {
     ])
     stampAnchorInDoc(doc, 'b1', fixed)
     const block = listDocBlocks(doc)[0]
-    const delta = (block.content?.toArray().at(-1) as Y.XmlText).toDelta()
+    const delta = (block.content!.toArray().at(-1) as Y.XmlText).toDelta()
     expect(delta.at(-1)).toEqual({ insert: ' ^fix123' })
   })
 
@@ -77,7 +77,7 @@ describe('stampAnchorInDoc', () => {
     ])
     const seen: string[][] = []
     stampAnchorInDoc(doc, 'b2', (taken) => {
-      seen.push([...taken].sort())
+      seen.push([...taken].toSorted())
       return 'fix123'
     })
     expect(seen).toEqual([['taken1', 'taken2']])

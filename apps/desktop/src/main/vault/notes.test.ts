@@ -2118,7 +2118,7 @@ describe('notes operations', () => {
         // #then every row points at the new path, ids kept, none left behind
         expect(listNoteCacheUnderFolder(testDb.db, 'Work')).toEqual([])
         expect(
-          listNoteCacheUnderFolder(testDb.db, 'Archive/Work').sort((a, b) =>
+          listNoteCacheUnderFolder(testDb.db, 'Archive/Work').toSorted((a, b) =>
             a.path.localeCompare(b.path)
           )
         ).toEqual(
@@ -2126,7 +2126,7 @@ describe('notes operations', () => {
             { id: top.id, path: 'Archive/Work/Top.md' },
             { id: deep.id, path: 'Archive/Work/Sub/Deep.md' },
             { id: 'image-in-work', path: 'Archive/Work/pic.png' }
-          ].sort((a, b) => a.path.localeCompare(b.path))
+          ].toSorted((a, b) => a.path.localeCompare(b.path))
         )
         expect(listNoteCacheUnderFolder(testDb.db, 'Other')).toEqual([
           { id: outside.id, path: outside.path }

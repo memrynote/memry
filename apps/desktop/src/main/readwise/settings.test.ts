@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import {
   createTestDataDb,
   asClientDb,
@@ -29,6 +29,9 @@ import {
   readReadwiseOptions,
   writeReadwiseOptions
 } from './settings'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready
@@ -70,7 +73,7 @@ describe('readwise synced settings group', () => {
       folderLayout: 'flat',
       categories: { supplementals: true }
     })
-    expect(Object.keys(manager.getPayload().fieldClocks).sort()).toEqual([
+    expect(Object.keys(manager.getPayload().fieldClocks).toSorted()).toEqual([
       'readwise.categories.supplementals',
       'readwise.folderLayout'
     ])
@@ -87,7 +90,7 @@ describe('readwise synced settings group', () => {
     writeReadwiseOptions(db, { readerDocuments: true, readerFullText: true })
 
     expect(readReadwiseOptions(db)).toMatchObject({ readerDocuments: true, readerFullText: true })
-    expect(Object.keys(manager.getPayload().fieldClocks).sort()).toEqual([
+    expect(Object.keys(manager.getPayload().fieldClocks).toSorted()).toEqual([
       'readwise.readerDocuments',
       'readwise.readerFullText'
     ])

@@ -60,6 +60,8 @@ const BLOCK_ELEMENTS = new Set([
 const ELEMENT_NODE = 1
 const TEXT_NODE = 3
 
+const isElement = (node: Node): node is Element => node.nodeType === ELEMENT_NODE
+
 export async function readHtmlText(html: string): Promise<string> {
   // Lazy so jsdom stays out of the startup set; see import/_shared/lazy-jsdom.ts.
   const { JSDOM } = await import('../import/_shared/lazy-jsdom')
@@ -79,15 +81,15 @@ export async function readHtmlText(html: string): Promise<string> {
         out.push(item.nodeValue ?? '')
         continue
       }
-      if (item.nodeType !== ELEMENT_NODE) continue
-      const name = (item as Element).tagName
+      if (!isElement(item)) continue
+      const name = item.tagName
       if (HIDDEN_ELEMENTS.has(name)) continue
       if (name === 'PRE') {
-        out.push(codeBlock(codeText(item as Element)))
+        out.push(codeBlock(codeText(item)))
         continue
       }
       if (INLINE_CODE_ELEMENTS.has(name)) {
-        out.push(codeSpan(codeText(item as Element)))
+        out.push(codeSpan(codeText(item)))
         continue
       }
       if (name === 'BR') {
@@ -114,8 +116,8 @@ function codeText(element: Element): string {
       parts.push(node.nodeValue ?? '')
       continue
     }
-    if (node.nodeType !== ELEMENT_NODE) continue
-    const name = (node as Element).tagName
+    if (!isElement(node)) continue
+    const name = node.tagName
     if (HIDDEN_ELEMENTS.has(name)) continue
     if (name === 'BR') parts.push('\n')
     for (let child = node.lastChild; child; child = child.previousSibling) stack.push(child)

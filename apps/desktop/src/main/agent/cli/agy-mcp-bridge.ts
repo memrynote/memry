@@ -100,6 +100,7 @@ export function createBridge(target: BridgeTarget, write: (message: unknown) => 
         write({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })
         return
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
       await forward(payload, (payload as { id?: JsonRpcId } | null)?.id)
     }
   }

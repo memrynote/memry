@@ -4,7 +4,7 @@ import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-externa
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import type { DataDb, IndexDb } from '../../database'
+import type { DataDb } from '../../database'
 import type {
   EventKitAuthorizationStatus,
   EventKitBridge,
@@ -213,7 +213,7 @@ describe('macOS Calendar provider (#2374)', () => {
       expect(
         sources()
           .map((row) => row.id)
-          .sort()
+          .toSorted()
       ).toEqual([
         'apple-eventkit-account:this-mac',
         appleCalendarSourceId('home'),
@@ -222,7 +222,7 @@ describe('macOS Calendar provider (#2374)', () => {
       expect(
         events()
           .map((row) => row.title)
-          .sort()
+          .toSorted()
       ).toEqual(['Review', 'Stand-up'])
       expect(result.status).toMatchObject({ connected: true, hasLocalAuth: true })
       expect(result.status.accounts[0]).toMatchObject({
@@ -464,7 +464,7 @@ describe('macOS Calendar provider (#2374)', () => {
       await connect()
       const projection = getCalendarRangeProjection(
         db,
-        indexDb.db as unknown as IndexDb,
+        indexDb.db,
         { startAt: soon(-48), endAt: soon(72), includeUnselectedSources: false },
         []
       )

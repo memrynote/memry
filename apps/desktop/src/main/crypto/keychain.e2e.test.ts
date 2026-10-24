@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import type { KeychainEntry } from '@memry/contracts/crypto'
 
 import { deleteKey, retrieveKey, storeKey } from './keychain'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const e2e = process.env.KEYCHAIN_E2E === '1'
 

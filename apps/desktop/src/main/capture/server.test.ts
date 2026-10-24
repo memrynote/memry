@@ -247,7 +247,7 @@ describe('capture server', () => {
   })
 
   describe('POST /tags', () => {
-    const authed = {
+    const tagsAuthed = {
       Authorization: `Bearer ${TOKEN}`,
       Origin: 'chrome-extension://abc',
       'X-Memry-Capture': '1'
@@ -255,20 +255,20 @@ describe('capture server', () => {
 
     it('returns tag names, most used first, to a paired extension', async () => {
       origins.add('chrome-extension://abc')
-      const r = await req(port, '/tags', { method: 'POST', headers: authed })
+      const r = await req(port, '/tags', { method: 'POST', headers: tagsAuthed })
       expect(r.status).toBe(200)
       expect(await r.json()).toEqual({ tags: ['reading', 'rare'] })
     })
 
     it('rejects an unpaired origin', async () => {
-      const r = await req(port, '/tags', { method: 'POST', headers: authed })
+      const r = await req(port, '/tags', { method: 'POST', headers: tagsAuthed })
       expect(r.status).toBe(401)
     })
 
     it('answers 503 vault-closed with no vault open', async () => {
       origins.add('chrome-extension://abc')
       vaultOpen = false
-      const r = await req(port, '/tags', { method: 'POST', headers: authed })
+      const r = await req(port, '/tags', { method: 'POST', headers: tagsAuthed })
       expect(r.status).toBe(503)
     })
   })
@@ -388,7 +388,7 @@ describe('capture server', () => {
 
     resolveFn(true)
     // let the .then() run
-    await new Promise((r) => setTimeout(r, 0))
+    await new Promise((done) => setTimeout(done, 0))
     expect(openPairingWindowMock).toHaveBeenCalledTimes(1)
 
     await stop()
@@ -408,7 +408,7 @@ describe('capture server', () => {
       headers: { Origin: 'chrome-extension://ext-consent-false', 'X-Memry-Capture': '1' }
     })
     expect(r.status).toBe(202)
-    await new Promise((r) => setTimeout(r, 0))
+    await new Promise((done) => setTimeout(done, 0))
     expect(openPairingWindowMock).not.toHaveBeenCalled()
 
     await stop()
@@ -464,7 +464,7 @@ describe('capture server', () => {
     expect(requestPairConsent).toHaveBeenCalledTimes(1)
 
     resolveFn(true)
-    await new Promise((r) => setTimeout(r, 0))
+    await new Promise((done) => setTimeout(done, 0))
 
     await stop()
     port = await (await import('./server')).startCaptureServer()

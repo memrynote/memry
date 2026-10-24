@@ -132,6 +132,7 @@ export async function readLoginShellPath(
     // A numeric `code` means the shell ran and exited non-zero; a string errno
     // means it never started; `null` is the timeout kill. That keeps the three
     // apart the way the synchronous `result.status` check did.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     const code = (error as { code?: unknown } | null)?.code
     if (typeof code === 'number') return probeFailed(`status_${code}`)
     return probeFailed(code === null ? 'status_none' : 'spawn_error')

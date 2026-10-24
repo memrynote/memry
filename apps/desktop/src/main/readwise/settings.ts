@@ -31,7 +31,8 @@ export function readReadwiseGroup(db: DataDb): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(raw)
     return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
+        (parsed as Record<string, unknown>)
       : {}
   } catch (err) {
     // The row only holds the user's choices; defaults take over until the user
@@ -43,7 +44,8 @@ export function readReadwiseGroup(db: DataDb): Record<string, unknown> {
 
 function oneOf<T extends string>(allowed: readonly T[], value: unknown, fallback: T): T {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value)
-    ? (value as T)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
+      (value as T)
     : fallback
 }
 
@@ -53,7 +55,8 @@ export function readReadwiseOptions(db: DataDb): ReadwiseOptions {
   const defaults = READWISE_OPTIONS_DEFAULTS
   const storedCategories =
     typeof stored.categories === 'object' && stored.categories !== null
-      ? (stored.categories as Record<string, unknown>)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
+        (stored.categories as Record<string, unknown>)
       : {}
 
   const categories = { ...defaults.categories }
@@ -136,7 +139,8 @@ export function writeReadwiseOptions(db: DataDb, updates: ReadwiseSetOptionsInpu
   if (updates.categories) {
     const categories: Record<string, unknown> =
       typeof stored.categories === 'object' && stored.categories !== null
-        ? { ...(stored.categories as Record<string, unknown>) }
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
+          { ...(stored.categories as Record<string, unknown>) }
         : {}
     for (const [category, enabled] of Object.entries(updates.categories)) {
       if (enabled === undefined) continue

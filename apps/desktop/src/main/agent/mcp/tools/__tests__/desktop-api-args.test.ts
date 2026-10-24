@@ -76,13 +76,13 @@ function preloadParams(): PreloadParam[] {
       else if (checker.isArrayType(member)) kinds.add('array')
       else kinds.add('object')
     }
-    return [...kinds].sort()
+    return [...kinds].toSorted()
   }
   const literalsOf = (type: ts.Type): string[] | null => {
     const members = checker.getNonNullableType(type)
     const options = members.isUnion() ? members.types : [members]
     if (!options.every((option) => option.isStringLiteral())) return null
-    return options.map((option) => (option as ts.StringLiteralType).value).sort()
+    return options.map((option) => option.value).toSorted()
   }
 
   const params: PreloadParam[] = []
@@ -135,11 +135,12 @@ function jsonKinds(schema: JsonSchema): string[] {
     }
   }
   visit(schema)
-  return [...kinds].sort()
+  return [...kinds].toSorted()
 }
 
 function jsonLiterals(schema: JsonSchema): string[] | null {
-  if (schema.enum) return schema.enum.map(String).sort()
+  if (schema.enum) return schema.enum.map(String).toSorted()
+  // oxlint-disable-next-line typescript/no-base-to-string -- JSON Schema `const` is a scalar literal here, never an object
   if (schema.const !== undefined) return [String(schema.const)]
   return null
 }
@@ -168,7 +169,7 @@ describe('desktop API object arguments', () => {
     for (const param of params) {
       const id = `${param.operation}:${param.name}`
       if (OPEN_RECORDS.has(id)) continue
-      const operation = param.operation as (typeof AgentMcpDesktopOperations)[number]
+      const operation = param.operation
       const base = SWEEP_BASE[id] ?? SWEEP_BASE[param.operation] ?? {}
       const input = { ...base, zzSweep: 1 }
       const args: unknown[] = desktopOperationParamNames(operation).map(() => 'x')
@@ -274,7 +275,7 @@ describe('desktop API argument schemas', () => {
       const declared = [
         ...(LEGACY_KINDS[id] ?? param.kinds),
         ...(nullAsAbsent ? ['null'] : [])
-      ].sort()
+      ].toSorted()
       if (declared.length > 0 && jsonKinds(item).join() !== declared.join()) {
         mismatches.push(
           `${id}: declared ${declared.join('|')}, schema ${jsonKinds(item).join('|')}`

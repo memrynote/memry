@@ -25,6 +25,7 @@ export const readTelemetryConfig = (): TelemetryConfigOnDisk => {
     const configPath = getConfigPath()
     if (!fs.existsSync(configPath)) return {}
     const raw = fs.readFileSync(configPath, 'utf-8')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the on-disk telemetry config; fields are read defensively below
     const parsed = JSON.parse(raw) as TelemetryConfigOnDisk
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch (error) {

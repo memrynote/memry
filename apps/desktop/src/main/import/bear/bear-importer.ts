@@ -18,7 +18,7 @@ function escapeRegExp(value: string): string {
 
 interface NoteStash {
   folderName: string
-  mdEntry: ZipEntry
+  mdEntry: ZipEntry | undefined
   infoRaw: unknown
   assetEntries: Map<string, ZipEntry>
 }
@@ -95,7 +95,7 @@ export const bearImporter: Importer = {
         if (!noteMap.has(folder)) {
           noteMap.set(folder, {
             folderName,
-            mdEntry: undefined as unknown as ZipEntry,
+            mdEntry: undefined,
             infoRaw,
             assetEntries: new Map()
           })
@@ -117,7 +117,7 @@ export const bearImporter: Importer = {
         if (!noteMap.has(folder)) {
           noteMap.set(folder, {
             folderName,
-            mdEntry: undefined as unknown as ZipEntry,
+            mdEntry: undefined,
             infoRaw: null,
             assetEntries: new Map()
           })

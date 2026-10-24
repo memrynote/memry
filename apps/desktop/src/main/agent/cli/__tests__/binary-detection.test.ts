@@ -175,7 +175,7 @@ describe('runBinaryCommand and the login-shell PATH', () => {
     const detection = await import('../binary-detection')
 
     let release: (path: string) => void = () => {}
-    loginShellPath.startLoginShellPathAugmentation({
+    void loginShellPath.startLoginShellPathAugmentation({
       packaged: true,
       platform: 'darwin',
       env: { PATH: '/usr/bin' },

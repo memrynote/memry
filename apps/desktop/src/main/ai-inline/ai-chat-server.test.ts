@@ -321,11 +321,11 @@ describe('AI inline chat server', () => {
   it('keeps a listening server closable after a post-listen error', async () => {
     const created: http.Server[] = []
     const createServer = http.createServer.bind(http) as (...args: unknown[]) => http.Server
-    const spy = vi.spyOn(http, 'createServer').mockImplementation(((...args: unknown[]) => {
+    const spy = vi.spyOn(http, 'createServer').mockImplementation((...args: unknown[]) => {
       const instance = createServer(...args)
       created.push(instance)
       return instance
-    }) as typeof http.createServer)
+    })
 
     try {
       const port = await startChatServer(settings)

@@ -1,9 +1,12 @@
 import * as bip39 from 'bip39'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import type { RecoveryPhraseResult } from '@memry/contracts/crypto'
 
 import { deriveMasterKey } from './keys'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 // Callers MUST call secureCleanup(result.seed) after using the seed for key derivation.
 // The seed contains sensitive key material that should not persist in memory.

@@ -43,6 +43,7 @@ describe('#2854 deleting a parent task', () => {
     })
 
   const remainingIds = (): string[] =>
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- all() returns unknown[]; without the cast row is unknown (TS18046)
     (clientDb.all(sql`SELECT id FROM tasks ORDER BY id`) as Array<{ id: string }>).map(
       (row) => row.id
     )
@@ -76,11 +77,11 @@ describe('#2854 deleting a parent task', () => {
 
     expect(result.success).toBe(true)
     expect(remainingIds()).toEqual(['lone'])
-    expect(publisher.taskDeleted.mock.calls.map(([payload]) => payload.id).sort()).toEqual([
-      'child',
-      'grandchild',
-      'root'
-    ])
+    expect(
+      publisher.taskDeleted.mock.calls
+        .map(([payload]) => payload.id)
+        .toSorted((a, b) => a.localeCompare(b))
+    ).toEqual(['child', 'grandchild', 'root'])
   })
 
   it('keeps subtasks that were moved out before the delete', async () => {

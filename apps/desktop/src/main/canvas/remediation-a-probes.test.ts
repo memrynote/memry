@@ -87,7 +87,7 @@ function canvasSubdirs(): string[] {
     .readdirSync(path.join(vault, CANVAS_DIR), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort()
+    .toSorted()
 }
 
 describe('P1 — a canvas moved into a folder requested as CON', () => {

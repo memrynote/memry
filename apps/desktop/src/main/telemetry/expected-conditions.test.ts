@@ -28,6 +28,7 @@ describe('markExpectedCondition', () => {
   it('leaves the marker off the JSON shape (non-enumerable)', () => {
     const error = markExpectedCondition(new Error('boom'))
     expect(Object.keys(error)).toEqual([])
+    // oxlint-disable-next-line typescript/no-misused-spread -- spreading the Error instance is the behavior under test: the marker must not copy
     expect(JSON.stringify({ ...error })).toBe('{}')
   })
 

@@ -25,7 +25,10 @@ describe('createQueueStore — incremental writes', () => {
   const bytesWrittenBy = (run: () => void): number => {
     const write = vi.spyOn(fs, 'writeFileSync')
     run()
-    const total = write.mock.calls.reduce((sum, call) => sum + String(call[1]).length, 0)
+    const total = write.mock.calls.reduce(
+      (sum, call) => sum + (typeof call[1] === 'string' ? call[1].length : call[1].byteLength),
+      0
+    )
     write.mockRestore()
     return total
   }

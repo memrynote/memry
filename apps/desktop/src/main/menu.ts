@@ -105,6 +105,21 @@ export function bindingToAccelerator(binding: ShortcutBinding): string | null {
  */
 export type ShortcutOverrides = Record<string, ShortcutBinding>
 
+// Bridge item: a click that dispatches a command to the renderer. When an
+// accelerator is given it is display-only (registerAccelerator: false) — the
+// renderer/editor owns the shortcut, so registering it here would swallow the
+// keydown in the main process on Windows/Linux before the editor sees it.
+const cmd = (
+  command: MenuCommandId,
+  label: string,
+  accelerator?: string
+): MenuItemConstructorOptions => ({
+  id: command,
+  label,
+  ...(accelerator ? { accelerator, registerAccelerator: false } : {}),
+  click: () => sendMenuCommand(command)
+})
+
 export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = {}): Menu {
   const t = i18n.getFixedT(null, 'menu')
   const isMac = process.platform === 'darwin'
@@ -117,21 +132,6 @@ export function buildAppMenu(i18n: I18nInstance, overrides: ShortcutOverrides = 
     const binding = overrides[id] ?? resolvePlatformBinding(COMMANDS[id].keyboard.default, isMac)
     return bindingToAccelerator(binding) ?? undefined
   }
-
-  // Bridge item: a click that dispatches a command to the renderer. When an
-  // accelerator is given it is display-only (registerAccelerator: false) — the
-  // renderer/editor owns the shortcut, so registering it here would swallow the
-  // keydown in the main process on Windows/Linux before the editor sees it.
-  const cmd = (
-    command: MenuCommandId,
-    label: string,
-    accelerator?: string
-  ): MenuItemConstructorOptions => ({
-    id: command,
-    label,
-    ...(accelerator ? { accelerator, registerAccelerator: false } : {}),
-    click: () => sendMenuCommand(command)
-  })
 
   // Never derive user-facing names from app.name: it resolves to the package
   // name (@memry/desktop) in production and must stay that way — the default

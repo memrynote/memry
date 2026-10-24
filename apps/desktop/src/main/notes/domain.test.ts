@@ -48,7 +48,7 @@ import * as runtimeEffects from './runtime-effects'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 
 /** What `updateNote` resolves to for a write that left the header list as it was. */
-function outcome(note: object): Awaited<ReturnType<typeof noteVault.updateNote>> {
+function outcome(note: Record<string, unknown>): Awaited<ReturnType<typeof noteVault.updateNote>> {
   return { note, headerTagChange: null } as unknown as Awaited<
     ReturnType<typeof noteVault.updateNote>
   >
@@ -167,9 +167,7 @@ describe('notes domain adapter', () => {
   })
 
   it('enqueues sync delete before removing the note', async () => {
-    vi.mocked(noteVault.deleteNote).mockResolvedValue(
-      undefined as Awaited<ReturnType<typeof noteVault.deleteNote>>
-    )
+    vi.mocked(noteVault.deleteNote).mockResolvedValue(undefined)
 
     await deleteNoteCommand('note-1')
 
@@ -178,9 +176,7 @@ describe('notes domain adapter', () => {
   })
 
   it('cleans up project links + home notes after deleting a note', async () => {
-    vi.mocked(noteVault.deleteNote).mockResolvedValue(
-      undefined as Awaited<ReturnType<typeof noteVault.deleteNote>>
-    )
+    vi.mocked(noteVault.deleteNote).mockResolvedValue(undefined)
 
     await deleteNoteCommand('note-1')
 
@@ -188,9 +184,7 @@ describe('notes domain adapter', () => {
   })
 
   it("drops the deleted note from its tasks' links, keeping the tasks", async () => {
-    vi.mocked(noteVault.deleteNote).mockResolvedValue(
-      undefined as Awaited<ReturnType<typeof noteVault.deleteNote>>
-    )
+    vi.mocked(noteVault.deleteNote).mockResolvedValue(undefined)
 
     await deleteNoteCommand('note-1')
 

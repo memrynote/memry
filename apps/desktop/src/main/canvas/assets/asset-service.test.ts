@@ -356,7 +356,7 @@ describe('canvas asset service', () => {
       expect(
         listAssetsByCanvas(db, 'canvas-b')
           .map((r) => r.contentHash)
-          .sort()
+          .toSorted()
       ).toEqual(['hashA', 'hashC'])
 
       // Safe unlink: hashB's file removed (orphan); hashA (kept) and hashC
@@ -441,7 +441,7 @@ describe('canvas asset service', () => {
       expect(
         listAssetsByCanvas(db, 'canvas-a')
           .map((r) => r.contentHash)
-          .sort()
+          .toSorted()
       ).toEqual(['hashA', 'hashB'])
     })
 
@@ -459,16 +459,16 @@ describe('canvas asset service', () => {
       const bytes = Buffer.from('reupload-bytes')
       await uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
       const [row] = listAssetsByCanvas(db, 'canvas-a')
-      const scene = injectSceneAssetSidecar(ctx, 'canvas-a', sceneWithHashes([row!.contentHash]))
+      const scene = injectSceneAssetSidecar(ctx, 'canvas-a', sceneWithHashes([row.contentHash]))
       ctx.holdChunks = vi
         .fn()
-        .mockResolvedValueOnce({ status: 'ok', missing: new Set([row!.contentHash]) })
+        .mockResolvedValueOnce({ status: 'ok', missing: new Set([row.contentHash]) })
         .mockResolvedValueOnce({ status: 'failed', retryable: true })
 
       expect(await holdCanvasAssetsForPush(ctx, 'canvas-a', scene)).toBe(false)
 
       expect(dereference).toHaveBeenCalledExactlyOnceWith(['enc-2-0', 'enc-2-1'])
-      expect(listAssetsByCanvas(db, 'canvas-a')[0]!.chunkHashes).toEqual(row!.chunkHashes)
+      expect(listAssetsByCanvas(db, 'canvas-a')[0].chunkHashes).toEqual(row.chunkHashes)
     })
   })
 
@@ -508,6 +508,7 @@ describe('canvas asset service', () => {
       fs.mkdirSync(path.dirname(presentPath), { recursive: true })
       fs.writeFileSync(presentPath, Buffer.from('already-here'))
 
+      // oxlint-disable-next-line typescript/no-misused-promises -- vi.fn() mock type resolves its implementation return to void; the service awaits this download
       downloadAttachment.mockImplementation(async (attachmentId: string, targetPath: string) => {
         if (attachmentId === 'a-failing') throw new Error('network down')
         fs.mkdirSync(path.dirname(targetPath), { recursive: true })
@@ -593,7 +594,7 @@ describe('canvas asset service', () => {
 
       const descriptors = listCanvasAssetDescriptors(ctx, 'canvas-a')
 
-      expect(descriptors.map((d) => d.fileId).sort()).toEqual(['file-d1', 'file-d2'])
+      expect(descriptors.map((d) => d.fileId).toSorted()).toEqual(['file-d1', 'file-d2'])
       const d1 = descriptors.find((d) => d.fileId === 'file-d1')
       expect(d1).toEqual({
         fileId: 'file-d1',

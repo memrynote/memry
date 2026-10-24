@@ -99,6 +99,7 @@ async function write(document: ReaderDocument, options: ReaderNoteOptions): Prom
     title: plan.title,
     folder: plan.folder,
     properties,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; element type is the one stored by writers of this field
     tags: Array.isArray(tags) ? (tags as string[]) : undefined,
     content: bodyOf(plan),
     plainChecklists: true

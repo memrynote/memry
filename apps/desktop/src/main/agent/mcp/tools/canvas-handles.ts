@@ -10,8 +10,6 @@
  * @module agent/mcp/tools/canvas-handles
  */
 
-import type { CanvasEntityRef } from '@memry/contracts/canvas-api'
-
 import { getCalendarEventById } from '../../../calendar/repositories/calendar-events-repository'
 import { readSceneElements } from '../../../canvas/elements'
 import { canvasPathKey, normalizeStoredFolder } from '../../../canvas/folder-paths'
@@ -117,6 +115,7 @@ async function resolveCanvasItem(
 }
 
 /** The entity's title, or null when it no longer exists. */
+// oxlint-disable-next-line typescript/consistent-return -- an unrecognised entityType falls through to undefined, which resolveCanvasItem keeps as not-missing; returning null would mark it missing
 async function resolveCanvasItemTitle(
   dataDb: DataDb,
   ref: CanvasEntityRefLike
@@ -268,7 +267,7 @@ export function createCanvasHandles(dataDb: DataDb): VaultServiceHandles['canvas
       const result = await invokeCanvasWrite(windowId, {
         canvasId,
         op: 'add',
-        items: input.items as CanvasEntityRef[]
+        items: input.items
       })
       return toCanvasWriteOutcome(canvasId, result)
     },
@@ -278,7 +277,7 @@ export function createCanvasHandles(dataDb: DataDb): VaultServiceHandles['canvas
       const result = await invokeCanvasWrite(windowId, {
         canvasId,
         op: 'remove',
-        items: [input.item as CanvasEntityRef]
+        items: [input.item]
       })
       return toCanvasWriteOutcome(canvasId, result)
     }

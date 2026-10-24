@@ -1,10 +1,13 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { z } from 'zod'
 
 import type { DataDb } from '../../database/types'
 import { computeProviderAuthConfirm, constantTimeEqual, decrypt, encrypt } from '../../crypto'
 import { getGoogleCalendarTokens, storeGoogleCalendarRefreshToken } from './keychain'
 import { listGoogleAccountIds } from './oauth'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const PROVIDER_AUTH_TRANSFER_VERSION = 1 as const
 const PROVIDER_AUTH_AAD_PREFIX = 'google-provider-auth-transfer-v1'

@@ -182,6 +182,7 @@ function readJob(db: DataDb): FieldRenameJob | null {
   if (raw === null) return null
   let job: Partial<FieldRenameJob> = {}
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     job = JSON.parse(raw) as Partial<FieldRenameJob>
   } catch (err) {
     log.warn('Rename job setting is not JSON', { err })

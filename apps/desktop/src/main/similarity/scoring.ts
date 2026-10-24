@@ -95,7 +95,7 @@ export function scoreNeighbourTags(
     if (entry.sims.length < minSupport) continue
     const confidence = corroboratedSimilarity(entry.sims)
     if (confidence < minConfidence) continue
-    const tag = [...entry.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0]
+    const tag = [...entry.spellings.entries()].toSorted((a, b) => b[1] - a[1])[0][0]
     scored.push({ tag, confidence, support: entry.sims.length })
   }
 
@@ -178,6 +178,7 @@ export function clusterBySimilarity(
     }
     if (bestA < 0 || best < options.threshold) break
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     const merged = [...(members[bestA] as number[]), ...(members[bestB] as number[])]
     members[bestA] = merged
     members[bestB] = null
@@ -192,7 +193,7 @@ export function clusterBySimilarity(
   const ungrouped: string[] = []
   for (const cluster of members) {
     if (!cluster) continue
-    const ids = [...cluster].sort((a, b) => a - b).map((index) => items[index].id)
+    const ids = [...cluster].toSorted((a, b) => a - b).map((index) => items[index].id)
     if (ids.length >= 2) groups.push(ids)
     else ungrouped.push(ids[0])
   }

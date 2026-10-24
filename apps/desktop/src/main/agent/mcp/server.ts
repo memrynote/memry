@@ -2,7 +2,7 @@ import http from 'node:http'
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import type { ZodTypeAny } from 'zod'
+import type { ZodType } from 'zod'
 import { buildErrorDetail } from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../../lib/logger'
@@ -23,7 +23,7 @@ const STOP_GRACE_MS = 500
 export interface ToolRegistration {
   name: string
   description: string
-  inputSchema: ZodTypeAny
+  inputSchema: ZodType
   /** Caps the serialized reply the agent receives, source refs included. */
   replyCap?: ReplyCap
   handler: (
@@ -253,6 +253,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
 
 async function readJson(req: http.IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- req chunks are Buffers here: no setEncoding is called on the request stream
   for await (const chunk of req) chunks.push(chunk as Buffer)
   if (chunks.length === 0) return undefined
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
@@ -280,6 +281,7 @@ function withToolArguments(body: unknown): unknown {
 
 function toStructuredContent(result: unknown): Record<string, unknown> {
   if (result && typeof result === 'object' && !Array.isArray(result)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     return result as Record<string, unknown>
   }
   return { result }

@@ -97,13 +97,13 @@ export function isProviderError(error: unknown): error is ProviderError {
 
 function statusOf(error: unknown): number | null {
   if (typeof error !== 'object' || error === null || !('status' in error)) return null
-  const status = (error as { status: unknown }).status
+  const status = error.status
   return typeof status === 'number' ? status : null
 }
 
 function codeOf(error: unknown): string | null {
   if (typeof error !== 'object' || error === null || !('code' in error)) return null
-  const code = (error as { code: unknown }).code
+  const code = error.code
   return typeof code === 'string' ? code : null
 }
 
@@ -128,7 +128,7 @@ export function classifyProviderError(providerId: string, error: unknown): Provi
     if (status === 429) {
       const retryAfter =
         typeof error === 'object' && error !== null && 'retryAfterMs' in error
-          ? Number((error as { retryAfterMs: unknown }).retryAfterMs)
+          ? Number(error.retryAfterMs)
           : NaN
       return new ProviderRateLimitError(
         providerId,

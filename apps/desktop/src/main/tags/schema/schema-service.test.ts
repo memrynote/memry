@@ -223,7 +223,7 @@ describe('tag lifecycle', () => {
     await run({ kind: 'set-extends', tag: 'employee', parent: 'person' })
     queue.clear()
 
-    expect(rewriteSchemaReferences(db(), 'person', 'contact').sort()).toEqual([
+    expect(rewriteSchemaReferences(db(), 'person', 'contact').toSorted()).toEqual([
       'employee',
       'meeting'
     ])

@@ -166,6 +166,7 @@ describe('portal service', () => {
       expect(result.success).toBe(true)
       const anchor = result.success ? result.anchor : ''
       expect(anchor).toMatch(/^[a-z0-9]{6}$/)
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.XmlFragment overrides toString() to serialize its XML children
       expect((docs.get('src') as Y.Doc).getXmlFragment(CRDT_FRAGMENT_NAME).toString()).toContain(
         `Mitochondria ^${anchor}`
       )
@@ -197,6 +198,7 @@ describe('portal service', () => {
       expect(await stampAnchor('src', 'nope')).toEqual({ success: false, reason: 'missing-block' })
       expect(await stampAnchor('vault', 'b1')).toEqual({ success: false, reason: 'locked' })
       expect(
+        // oxlint-disable-next-line typescript/no-base-to-string -- Y.XmlFragment overrides toString() to serialize its XML children
         (docs.get('vault') as Y.Doc).getXmlFragment(CRDT_FRAGMENT_NAME).toString()
       ).not.toContain('^')
       expect(writebackNow).not.toHaveBeenCalled()

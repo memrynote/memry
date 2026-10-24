@@ -55,7 +55,7 @@ function createChainableMockDb() {
     delete: vi.fn().mockReturnThis(),
 
     all: vi.fn(() => {
-      const sorted = [...rows].sort(
+      const sorted = [...rows].toSorted(
         (a, b) => new Date(b.visitedAt).getTime() - new Date(a.visitedAt).getTime()
       )
       return sorted.slice(0, 20)
@@ -83,7 +83,7 @@ function createChainableMockDb() {
       orderBy: vi.fn(() => selectChain),
       limit: vi.fn(() => selectChain),
       all: vi.fn(() => {
-        const sorted = [...rows].sort(
+        const sorted = [...rows].toSorted(
           (a, b) => new Date(b.visitedAt).getTime() - new Date(a.visitedAt).getTime()
         )
         return sorted.slice(0, 20)
@@ -385,7 +385,7 @@ describe('search-handlers: reasons', () => {
     })
 
     it('rebuilds indexes and returns failure shape when rebuilding throws', async () => {
-      vi.mocked(rebuildAllIndexes).mockResolvedValueOnce({ notes: 1, tasks: 2 } as never)
+      vi.mocked(rebuildAllIndexes).mockResolvedValueOnce({ notes: 1, tasks: 2 })
       await expect(invokeHandler(SearchChannels.invoke.REBUILD_INDEX)).resolves.toEqual({
         started: true,
         notes: 1,

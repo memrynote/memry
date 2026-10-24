@@ -87,9 +87,7 @@ describe('binary file metadata safety (#2073)', () => {
     vi.spyOn(database, 'getDatabase').mockReturnValue(
       dataDb.db as unknown as ReturnType<typeof database.getDatabase>
     )
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(
-      testDb.db as unknown as ReturnType<typeof database.getIndexDatabase>
-    )
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(testDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
 
     startProjectionRuntime([createNoteDerivedStateProjector(() => tempVault.path)])

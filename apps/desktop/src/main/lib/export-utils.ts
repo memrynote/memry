@@ -91,6 +91,7 @@ export function markdownToHtml(markdown: string): string {
   )
   const { body, notes } = renderFootnotes(replaceProseWikiLinks(uncommented))
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- marked returns string | Promise<string> only when async mode is on, which this module never enables
   return (marked.parse(body) as string) + notes
 }
 
@@ -133,7 +134,7 @@ function renderFootnotes(markdown: string): { body: string; notes: string } {
       }
     }),
     ...definitions.map(({ start, end }) => ({ start, end, text: '' }))
-  ].sort((a, b) => b.start - a.start)
+  ].toSorted((a, b) => b.start - a.start)
 
   let body = markdown
   for (const { start, end, text } of edits) body = body.slice(0, start) + text + body.slice(end)
@@ -142,9 +143,10 @@ function renderFootnotes(markdown: string): { body: string; notes: string } {
     .filter((definition): definition is typeof definition & { number: number } =>
       Boolean(definition.number)
     )
-    .sort((a, b) => a.number - b.number)
+    .toSorted((a, b) => a.number - b.number)
     .map(
       ({ number, text }) =>
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- marked returns string | Promise<string> only when async mode is on, which this module never enables
         `<li id="fn-${number}">${marked.parseInline(text) as string} <a href="#fnref-${number}" class="footnote-backref" aria-label="Back to reference ${number}">\u21a9</a></li>`
     )
   const notes =

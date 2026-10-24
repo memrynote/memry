@@ -10,6 +10,9 @@ import type { ProjectionEvent, ProjectionProjector } from '../types'
 
 const logger = createLogger('Projections:BlockLinkRefs')
 
+const key = (row: { targetKey: string; anchor: string }): string =>
+  `${row.targetKey}\u0000${row.anchor}`
+
 /**
  * Derives a note's `[[Note#^anchor]]` rows for block usage counts. The body is
  * the source of truth, so rows are replaced wholesale per source note. A
@@ -43,8 +46,6 @@ export function createBlockLinkRefsProjector(): ProjectionProjector {
         const before = getBlockLinkRefsForSource(db, noteId)
         setBlockLinkRefs(db, noteId, extractBlockLinks(event.note.parsedContent))
         const after = getBlockLinkRefsForSource(db, noteId)
-        const key = (row: { targetKey: string; anchor: string }): string =>
-          `${row.targetKey}\u0000${row.anchor}`
         const was = new Set(before.map(key))
         const now = new Set(after.map(key))
         if (was.size !== now.size || [...now].some((entry) => !was.has(entry))) broadcast()

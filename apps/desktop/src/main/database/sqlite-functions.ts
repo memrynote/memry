@@ -26,9 +26,11 @@ import { foldTag } from '@memry/shared/tag-fold'
  */
 export function registerSqliteFunctions(sqlite: Database.Database): void {
   sqlite.function('ulower', { deterministic: true }, (value: unknown) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     typeof value === 'string' ? value.toLowerCase() : (value as null)
   )
   sqlite.function('tag_fold', { deterministic: true }, (value: unknown) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     typeof value === 'string' ? foldTag(value) : (value as null)
   )
 }

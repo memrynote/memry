@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import {
   canvasAssetHolderId,
@@ -7,6 +7,9 @@ import {
   releaseCanvasAssetHolds,
   type ChunkHoldDeps
 } from './chunk-holds'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const HASH = 'c'.repeat(64)
 

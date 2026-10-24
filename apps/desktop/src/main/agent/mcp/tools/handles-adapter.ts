@@ -401,6 +401,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           startDate: input.start_date ?? null,
           priority: input.priority,
           description: input.description ?? input.notes ?? null,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- repeat_config is the loose MCP input shape; the vault service validates it as RepeatConfig on write
           repeatConfig: input.repeat_config as RepeatConfig | null | undefined,
           repeatFrom: input.repeat_from ?? null,
           tags: input.tags,
@@ -445,6 +446,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           startDate: patch.start_date,
           priority: patch.priority,
           description,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- repeat_config is the loose MCP input shape; the vault service validates it as RepeatConfig on write
           repeatConfig: patch.repeat_config as RepeatConfig | null | undefined,
           repeatFrom: patch.repeat_from,
           tags: patch.tags,

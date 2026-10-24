@@ -42,6 +42,7 @@ export async function loadOneNoteImportState(): Promise<OneNoteImportState> {
   const raw = await safeRead(stateFilePath())
   if (!raw) return emptyState()
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
     const parsed = JSON.parse(raw) as Partial<OneNoteImportState>
     if (parsed && typeof parsed.importedPageIds === 'object' && parsed.importedPageIds !== null) {
       return { version: STATE_VERSION, importedPageIds: { ...parsed.importedPageIds } }

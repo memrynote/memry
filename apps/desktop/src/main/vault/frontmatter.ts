@@ -17,6 +17,7 @@ import {
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { editFrontmatterBlock } from './frontmatter-edit'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
+import type { PropertyType } from '@memry/contracts/property-types'
 import { stripInlineStyleSpanTags } from '@memry/shared/inline-colors'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
@@ -129,7 +130,7 @@ export function parseNote(
     try {
       // The `{}` options bypass gray-matter's content-keyed cache, which would
       // otherwise leak `data` mutations into later parses of identical content.
-      data = matter(block, {}).data as Record<string, unknown>
+      data = matter(block, {}).data
     } catch (error) {
       frontmatterError = error instanceof Error ? error.message : String(error)
     }
@@ -148,7 +149,7 @@ export function parseNote(
   }
 
   return {
-    frontmatter: data as NoteFrontmatter,
+    frontmatter: data,
     content: body,
     hadFrontmatter,
     rawFrontmatterBlock: block,
@@ -310,16 +311,17 @@ export function extractAliases(frontmatter: NoteFrontmatter, title: string): str
   return normalizeAliases(title, spellings)
 }
 
+const tagKey = (tag: string): string => foldTag(tag.trim())
+
 export function applyHeaderTagEdit(current: readonly string[], edit: HeaderTagEdit): string[] {
-  const key = (tag: string): string => foldTag(tag.trim())
-  const removed = new Set((edit.remove ?? []).map(key))
-  const renamed = new Map((edit.rename ?? []).map(({ from, to }) => [key(from), to.trim()]))
+  const removed = new Set((edit.remove ?? []).map(tagKey))
+  const renamed = new Map((edit.rename ?? []).map(({ from, to }) => [tagKey(from), to.trim()]))
   const next: string[] = []
   const append = (tag: string): void => {
-    if (tag && !next.some((held) => key(held) === key(tag))) next.push(tag)
+    if (tag && !next.some((held) => tagKey(held) === tagKey(tag))) next.push(tag)
   }
   for (const tag of current) {
-    if (!removed.has(key(tag))) append(renamed.get(key(tag)) ?? tag)
+    if (!removed.has(tagKey(tag))) append(renamed.get(tagKey(tag)) ?? tag)
   }
   for (const tag of edit.add ?? []) append(tag.trim())
   return next
@@ -394,8 +396,6 @@ export function generateContentHash(content: string): string {
 // ============================================================================
 // Properties Extraction (T007, T008)
 // ============================================================================
-
-import type { PropertyType } from '@memry/contracts/property-types'
 
 /**
  * Reserved frontmatter keys that are not user properties. `properties` is kept

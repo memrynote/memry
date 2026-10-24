@@ -16,6 +16,7 @@ import { loadResolvedTags } from './read'
 const names = (tag: ResolvedTag | undefined): string[] =>
   tag?.effectiveFields.map((f) => f.name) ?? []
 
+// oxlint-disable-next-line typescript/consistent-return -- switch over the closed ImpactQuery union is exhaustive; adding a default arm would change what an unknown kind resolves to
 export async function previewTagImpact(
   db: DataDb,
   indexDb: IndexDb,

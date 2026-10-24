@@ -32,6 +32,78 @@ export interface InboxBatchHandlers {
   handleFileAllStale: () => Promise<BulkResponse>
 }
 
+async function handleBulkSnooze(input: unknown): Promise<{
+  success: boolean
+  processedCount: number
+  errors: Array<{ itemId: string; error: string }>
+}> {
+  if (!input || typeof input !== 'object') {
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: 'Invalid input' }]
+    }
+  }
+
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC input is unknown; typeof object was checked above and each field is validated right after
+  const { itemIds, snoozeUntil, reason } = input as {
+    itemIds: string[]
+    snoozeUntil: string
+    reason?: string
+  }
+
+  if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: 'itemIds array is required' }]
+    }
+  }
+
+  if (!snoozeUntil) {
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: 'snoozeUntil is required' }]
+    }
+  }
+
+  return bulkSnoozeItems(itemIds, snoozeUntil, reason)
+}
+
+async function handleBulkFile(input: unknown): Promise<BulkResponse> {
+  const parsed = BulkFileSchema.parse(input)
+  const { itemIds, destination, tags, plainChecklists } = parsed
+
+  if (destination.type !== 'folder') {
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: '', error: 'Bulk filing only supports folder destination' }]
+    }
+  }
+
+  return bulkFileToFolder(itemIds, destination.path || '', tags, { plainChecklists })
+}
+
+async function handleFileAllStale(): Promise<BulkResponse> {
+  try {
+    const staleIds = getStaleItemIds()
+
+    if (staleIds.length === 0) {
+      return { success: true, processedCount: 0, errors: [] }
+    }
+
+    return await bulkFileToFolder(staleIds, 'Unsorted', [])
+  } catch (error) {
+    return {
+      success: false,
+      processedCount: 0,
+      errors: [{ itemId: 'batch', error: error instanceof Error ? error.message : 'Unknown error' }]
+    }
+  }
+}
+
 export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatchHandlers {
   async function handleBulkArchive(input: unknown): Promise<BulkResponse> {
     const parsed = BulkArchiveSchema.parse(input)
@@ -52,59 +124,6 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
       processedCount,
       errors
     }
-  }
-
-  async function handleBulkSnooze(input: unknown): Promise<{
-    success: boolean
-    processedCount: number
-    errors: Array<{ itemId: string; error: string }>
-  }> {
-    if (!input || typeof input !== 'object') {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'Invalid input' }]
-      }
-    }
-
-    const { itemIds, snoozeUntil, reason } = input as {
-      itemIds: string[]
-      snoozeUntil: string
-      reason?: string
-    }
-
-    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'itemIds array is required' }]
-      }
-    }
-
-    if (!snoozeUntil) {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'snoozeUntil is required' }]
-      }
-    }
-
-    return bulkSnoozeItems(itemIds, snoozeUntil, reason)
-  }
-
-  async function handleBulkFile(input: unknown): Promise<BulkResponse> {
-    const parsed = BulkFileSchema.parse(input)
-    const { itemIds, destination, tags, plainChecklists } = parsed
-
-    if (destination.type !== 'folder') {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [{ itemId: '', error: 'Bulk filing only supports folder destination' }]
-      }
-    }
-
-    return bulkFileToFolder(itemIds, destination.path || '', tags, { plainChecklists })
   }
 
   async function handleBulkTag(input: unknown): Promise<BulkResponse> {
@@ -160,26 +179,6 @@ export function createInboxBatchHandlers(deps: InboxBatchHandlerDeps): InboxBatc
       success: errors.length === 0,
       processedCount,
       errors
-    }
-  }
-
-  async function handleFileAllStale(): Promise<BulkResponse> {
-    try {
-      const staleIds = getStaleItemIds()
-
-      if (staleIds.length === 0) {
-        return { success: true, processedCount: 0, errors: [] }
-      }
-
-      return await bulkFileToFolder(staleIds, 'Unsorted', [])
-    } catch (error) {
-      return {
-        success: false,
-        processedCount: 0,
-        errors: [
-          { itemId: 'batch', error: error instanceof Error ? error.message : 'Unknown error' }
-        ]
-      }
     }
   }
 

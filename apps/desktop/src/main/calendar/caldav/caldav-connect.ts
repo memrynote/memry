@@ -145,7 +145,7 @@ export async function connectCaldavAccount(
     syncStatus: 'ok',
     lastSyncedAt: now,
     lastError: null,
-    metadata: metadata as unknown as Record<string, unknown>,
+    metadata: { ...metadata },
     archivedAt: null,
     createdAt: now,
     modifiedAt: now

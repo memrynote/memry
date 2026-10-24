@@ -37,7 +37,7 @@ vi.mock('../lib/paths', async (importOriginal) => {
   const actual = await importOriginal<typeof PathsModule>()
   return {
     ...actual,
-    toMemryFileUrl: vi.fn((path: string) => `memry-file://${encodeURIComponent(path)}`)
+    toMemryFileUrl: vi.fn((filePath: string) => `memry-file://${encodeURIComponent(filePath)}`)
   }
 })
 

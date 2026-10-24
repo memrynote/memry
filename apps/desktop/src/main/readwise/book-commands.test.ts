@@ -113,7 +113,7 @@ describe('Readwise book commands (D16)', () => {
       journalDateFormat: 'yyyy-MM-dd'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -171,7 +171,7 @@ describe('Readwise book commands (D16)', () => {
         noteId,
         (c) => `Mine above.\n\n${c.replace('Highlight 1', 'Highlight 1 my thought')}\n\nMine below.`
       )
-      await notes.updateNote({ id: noteId, propertyPatch: { author: 'Me' } } as never)
+      await notes.updateNote({ id: noteId, propertyPatch: { author: 'Me' } })
 
       readwise.books = [book(1, { highlights: [highlight(1), highlight(4)] }) as never]
       await commands.reimportBook(noteId, { fetch: imageFetch })

@@ -83,7 +83,7 @@ describe('the file text runner against files swapped for outside links (#3095)',
 
   beforeEach(() => {
     index = createTestIndexDb()
-    db = index.db as unknown as IndexDb
+    db = index.db
     vaultDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-swap-vault-')))
     outside = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-swap-outside-'))
     runner = null

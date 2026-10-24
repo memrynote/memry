@@ -52,10 +52,12 @@ export type UpdateInstallOutcome =
 const markerPath = (): string => path.join(app.getPath('userData'), UPDATE_INSTALL_MARKER_FILENAME)
 
 const parseInstaller = (value: unknown): UpdateInstaller | undefined =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- membership in UPDATE_INSTALLERS was just checked
   typeof value === 'string' && UPDATE_INSTALLERS.has(value) ? (value as UpdateInstaller) : undefined
 
 const parseAttempt = (raw: string): UpdateInstallAttempt | null => {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the update-install marker file; each field is type-checked after parsing
     const parsed = JSON.parse(raw) as Partial<UpdateInstallAttempt>
     if (!parsed || typeof parsed.fromVersion !== 'string' || !parsed.fromVersion) return null
     const installer = parseInstaller(parsed.installer)

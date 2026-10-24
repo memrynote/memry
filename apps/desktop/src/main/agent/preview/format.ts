@@ -9,7 +9,8 @@ import type { ChangePreviewField } from '@memry/contracts/ipc-agent'
  */
 export function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
+      (value as Record<string, unknown>)
     : {}
 }
 

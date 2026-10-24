@@ -26,6 +26,7 @@ export function summarizeToolArgs(args: unknown): Record<string, unknown> {
   if (!args || typeof args !== 'object' || Array.isArray(args)) return {}
 
   const summary: Record<string, unknown> = {}
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   for (const [key, value] of Object.entries(args as Record<string, unknown>)) {
     if (Object.keys(summary).length >= MAX_ARG_KEYS) break
     if (typeof value === 'string') {

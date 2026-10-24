@@ -16,6 +16,7 @@ type DefinitionRow = typeof tagDefinitions.$inferSelect
 function schemaVersion(row: DefinitionRow): number {
   if (row.schema === null) return -1
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     const t = (JSON.parse(row.schema) as { t?: unknown })?.t
     return typeof t === 'number' && Number.isInteger(t) && t >= 0 ? t : 0
   } catch {
@@ -29,7 +30,7 @@ function schemaVersion(row: DefinitionRow): number {
  * oldest `createdAt`, then the smallest name by UTF-16 code unit.
  */
 export function pickSurvivor(rows: readonly DefinitionRow[]): DefinitionRow {
-  return [...rows].sort(
+  return [...rows].toSorted(
     (a, b) =>
       schemaVersion(b) - schemaVersion(a) ||
       (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0) ||
@@ -75,7 +76,9 @@ export function mergeDefinitions(dataDb: DataDb, effects: MergeEffects, onlyKey?
   for (const rows of groups.values()) {
     if (rows.length < 2) continue
     const survivor = pickSurvivor(rows)
-    const losers = rows.filter((row) => row !== survivor).sort((a, b) => (a.name < b.name ? -1 : 1))
+    const losers = rows
+      .filter((row) => row !== survivor)
+      .toSorted((a, b) => (a.name < b.name ? -1 : 1))
     const fill = fillsFrom(survivor, losers)
     dataDb.transaction((tx) => {
       if (Object.keys(fill).length > 0) {

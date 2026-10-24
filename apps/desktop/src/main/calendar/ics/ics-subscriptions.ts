@@ -211,6 +211,7 @@ function recordFetchOutcome(
     .where(eq(calendarSources.id, sourceId))
     .run()
   emitCalendarChanged({ entityType: 'calendar_source', id: sourceId })
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the source was just updated by id above, so the lookup cannot miss
   return getCalendarSourceById(db, sourceId) as CalendarSource
 }
 

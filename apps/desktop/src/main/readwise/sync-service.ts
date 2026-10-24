@@ -58,7 +58,8 @@ const EMPTY_LIBRARY_CURSOR_MARGIN_MS = 5 * 60 * 1000
 function categoryOf(book: ReadwiseBook): PreviewCategory {
   const category = (book.category ?? '').trim().toLowerCase()
   return (READWISE_CATEGORIES as readonly string[]).includes(category)
-    ? (category as ReadwiseCategory)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- includes() against READWISE_CATEGORIES just proved category is one of them
+      (category as ReadwiseCategory)
     : 'other'
 }
 
@@ -78,6 +79,12 @@ export async function countLibrary(token: string, signal: AbortSignal): Promise<
   return (await scanLibrary(token, signal)).counts
 }
 
+const empty = (): CategoryCount => ({ books: 0, highlights: 0, sampleTitles: [] })
+
+const mustFix = (error: unknown): boolean =>
+  error instanceof ReadwiseError &&
+  (error.code === 'invalid-token' || error.code === 'subscription-expired')
+
 /**
  * What a first import would bring: the counts, and the ids of the Reader
  * documents the v2 books already cover (`external_id`, D11).
@@ -87,7 +94,6 @@ export async function scanLibrary(
   signal: AbortSignal
 ): Promise<{ counts: LibraryCounts; bookExternalIds: Set<string> }> {
   const bookExternalIds = new Set<string>()
-  const empty = (): CategoryCount => ({ books: 0, highlights: 0, sampleTitles: [] })
   const counts: LibraryCounts = {
     books: empty(),
     articles: empty(),
@@ -346,9 +352,6 @@ export class ReadwiseSyncService {
           })
         }
       }
-      const mustFix = (error: unknown): boolean =>
-        error instanceof ReadwiseError &&
-        (error.code === 'invalid-token' || error.code === 'subscription-expired')
 
       setRunProgress({ stage: 'reading', planned: null, done: 0 })
       observer.reading?.()

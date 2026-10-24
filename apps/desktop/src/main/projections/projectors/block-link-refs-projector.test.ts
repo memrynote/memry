@@ -54,7 +54,7 @@ describe('block-link-refs projector', () => {
     )
     const rows = getBlockLinkRefsForSource(indexDb.db, 'host')
       .map((row) => `${row.targetKey}#${row.anchor}`)
-      .sort()
+      .toSorted()
     expect(rows).toEqual(['memry://note/n1#blk1', 'memry://note/n1#blk2'])
   })
 

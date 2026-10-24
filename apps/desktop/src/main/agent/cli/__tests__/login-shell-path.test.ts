@@ -197,7 +197,7 @@ describe('startLoginShellPathAugmentation', () => {
     const env = { PATH: '/usr/bin' }
     let release: (path: string) => void = () => {}
 
-    module.startLoginShellPathAugmentation({
+    void module.startLoginShellPathAugmentation({
       packaged: true,
       platform: 'darwin',
       env,
@@ -210,6 +210,7 @@ describe('startLoginShellPathAugmentation', () => {
     let settled = false
     const waiter = module.whenLoginShellPathApplied().then(() => {
       settled = true
+      return undefined
     })
 
     await flush()

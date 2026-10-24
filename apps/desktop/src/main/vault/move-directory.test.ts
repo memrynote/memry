@@ -72,7 +72,7 @@ function tree(): string[] {
     }
   }
   walk(root)
-  return out.sort()
+  return out.toSorted()
 }
 
 describe('moveDirectory', () => {

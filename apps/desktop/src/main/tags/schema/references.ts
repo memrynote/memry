@@ -24,6 +24,7 @@ export function rewriteSchemaReferences(db: DataDb, from: string, to: string | n
       continue
     }
     if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) continue
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const next = rewriteSchemaReference(stored as Record<string, unknown>, from, to)
     if (!next) continue
     writeTagSchemaColumn(db, row.name, JSON.stringify(next))

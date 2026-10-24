@@ -13,7 +13,7 @@ import type { Message } from '../storage/types'
  * `summarizedThroughId` is missing, unknown or before its window covers nothing and stays in place.
  */
 export function compactionView(history: Message[]): Message[] {
-  const sorted = [...history].sort((a, b) => a.createdAt - b.createdAt)
+  const sorted = [...history].toSorted((a, b) => a.createdAt - b.createdAt)
   const covers: { marker: Message; from: number; through: number }[] = []
   const unresolved = new Set<Message>()
   let previousMarker = -1

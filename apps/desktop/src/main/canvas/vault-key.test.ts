@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   secureCleanup: vi.fn(),
   requireDatabase: vi.fn(() => ({}) as never),
   getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
-  getCanvasVaultPath: vi.fn(() => '/vaults/Memry' as string | null)
+  getCanvasVaultPath: vi.fn((): string | null => '/vaults/Memry')
 }))
 
 vi.mock('../crypto', () => ({

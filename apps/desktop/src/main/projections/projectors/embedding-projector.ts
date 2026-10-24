@@ -46,6 +46,7 @@ function isAIEnabled(): boolean {
 
 /** Drop the rows a note owns in vec_note_chunks, as recorded by its state row. */
 function deleteNoteChunks(rawDb: Database.Database, noteId: string): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const state = rawDb
     .prepare('SELECT chunk_count FROM note_embedding_state WHERE note_id = ?')
     .get(noteId) as { chunk_count: number } | undefined
@@ -183,6 +184,46 @@ async function updateEmbedding(noteId: string, text: NoteText): Promise<boolean>
   return true
 }
 
+// Embed a list of notes: markdown from disk, filed PDFs and images from their
+// extracted text. Shared by the full rebuild and the reconcile backfill;
+// assumes the model is already loaded and vaultPath is set.
+const embedNotes = async (
+  vaultPath: string,
+  notes: EmbeddableNote[],
+  signal?: AbortSignal
+): Promise<{ computed: number; skipped: number }> => {
+  let computed = 0
+  let skipped = 0
+
+  for (let i = 0; i < notes.length; i++) {
+    // Checked per note, not per pass: this loop is the long pole (file read +
+    // CPU inference each), so a close or vault switch has to be able to cut it
+    // short between notes instead of after the whole work list.
+    if (signal?.aborted) {
+      break
+    }
+
+    const note = notes[i]
+    try {
+      const content = await readEmbeddableContent(vaultPath, note)
+      if (!(await updateEmbedding(note.id, { title: note.title, content }))) {
+        skipped++
+      } else {
+        computed++
+      }
+    } catch (error) {
+      skipped++
+      logger.warn('Failed to rebuild note embedding', { noteId: note.id, error })
+    }
+
+    if ((i + 1) % 5 === 0 || i === notes.length - 1) {
+      emitProgress(i + 1, notes.length, 'embedding')
+    }
+  }
+
+  return { computed, skipped }
+}
+
 export function createEmbeddingProjector(
   getVaultPath: () => string | null,
   isIndexing: () => boolean = () => false
@@ -191,46 +232,6 @@ export function createEmbeddingProjector(
   // index pass (see project()). Instance-scoped so it starts empty per open; the
   // backgrounded reconcile drains it after the vault is open (#803).
   const pendingEmbedding = new Set<string>()
-
-  // Embed a list of notes: markdown from disk, filed PDFs and images from their
-  // extracted text. Shared by the full rebuild and the reconcile backfill;
-  // assumes the model is already loaded and vaultPath is set.
-  const embedNotes = async (
-    vaultPath: string,
-    notes: EmbeddableNote[],
-    signal?: AbortSignal
-  ): Promise<{ computed: number; skipped: number }> => {
-    let computed = 0
-    let skipped = 0
-
-    for (let i = 0; i < notes.length; i++) {
-      // Checked per note, not per pass: this loop is the long pole (file read +
-      // CPU inference each), so a close or vault switch has to be able to cut it
-      // short between notes instead of after the whole work list.
-      if (signal?.aborted) {
-        break
-      }
-
-      const note = notes[i]
-      try {
-        const content = await readEmbeddableContent(vaultPath, note)
-        if (!(await updateEmbedding(note.id, { title: note.title, content }))) {
-          skipped++
-        } else {
-          computed++
-        }
-      } catch (error) {
-        skipped++
-        logger.warn('Failed to rebuild note embedding', { noteId: note.id, error })
-      }
-
-      if ((i + 1) % 5 === 0 || i === notes.length - 1) {
-        emitProgress(i + 1, notes.length, 'embedding')
-      }
-    }
-
-    return { computed, skipped }
-  }
 
   const runRebuild = async (
     signal?: AbortSignal
@@ -433,6 +434,7 @@ export function createEmbeddingProjector(
         )
         .run()
       // Chunk rows go first: their ids are read from the state rows deleted next.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
       const orphaned = rawDb
         .prepare(
           `SELECT note_id FROM note_embedding_state
@@ -462,6 +464,7 @@ export function createEmbeddingProjector(
       // a slow or failed model load never blocks vault-open (#803). Loading the
       // model is bounded to when there is actually work to do.
       const embeddedIds = new Set(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
         (rawDb.prepare('SELECT note_id FROM vec_notes').all() as Array<{ note_id: string }>).map(
           (row) => row.note_id
         )
@@ -470,13 +473,11 @@ export function createEmbeddingProjector(
       // state table existed) keeps answering searches and similarity until its
       // note comes up here; nothing is deleted up front, so an input change
       // never leaves the table empty and a quit mid-pass resumes where it left.
-      const currentIds = new Set(
-        (
-          rawDb
-            .prepare('SELECT note_id FROM note_embedding_state WHERE input_version = ?')
-            .all(EMBEDDING_INPUT_VERSION) as Array<{ note_id: string }>
-        ).map((row) => row.note_id)
-      )
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
+      const currentRows = rawDb
+        .prepare('SELECT note_id FROM note_embedding_state WHERE input_version = ?')
+        .all(EMBEDDING_INPUT_VERSION) as Array<{ note_id: string }>
+      const currentIds = new Set(currentRows.map((row) => row.note_id))
       const owed = embeddableNotes.filter(
         (note) =>
           !embeddedIds.has(note.id) || !currentIds.has(note.id) || pendingEmbedding.has(note.id)

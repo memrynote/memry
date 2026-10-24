@@ -130,6 +130,7 @@ export function listRecentlyOpened(
 
   const items: RecentlyOpenedItem[] = []
   for (const row of rows) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     const itemType = row.itemType as RecentlyOpenedItemType
     if (itemType === 'canvas') {
       const canvas = canvasesById.get(row.itemId)

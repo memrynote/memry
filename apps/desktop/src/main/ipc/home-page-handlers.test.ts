@@ -135,8 +135,8 @@ describe('home-page handlers', () => {
 
     await h.reorder({ ids: [b.id, a.id, c.id] })
 
-    expect(syncEffects.update.mock.calls.flat().map(String).sort(byId)).toEqual(
-      [a.id, b.id].sort(byId)
+    expect(syncEffects.update.mock.calls.flat().map(String).toSorted(byId)).toEqual(
+      [a.id, b.id].toSorted(byId)
     )
     expect(broadcast).toHaveBeenCalledTimes(2)
 

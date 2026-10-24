@@ -232,7 +232,7 @@ function mapRemoteEvent(
     conferenceData,
     recurringEventId: raw.recurringEventId ?? null,
     originalStartTime: resolveOriginalStartTime(raw),
-    raw: raw as unknown as Record<string, unknown>
+    raw: raw
   }
 }
 
@@ -351,7 +351,7 @@ async function refreshAccessTokenInner(accountId: string): Promise<string> {
     let errorCode: string | undefined
     let description: string | undefined
     try {
-      const parsed = JSON.parse(raw) as { error?: string; error_description?: string }
+      const parsed: { error?: string; error_description?: string } = JSON.parse(raw)
       errorCode = parsed.error
       description = parsed.error_description
     } catch {
@@ -400,7 +400,7 @@ async function throwCalendarApiFailure(response: Response, operation: string): P
   let apiStatus: string | undefined
   let apiMessage: string | undefined
   try {
-    const parsed = JSON.parse(raw) as { error?: { status?: string; message?: string } }
+    const parsed: { error?: { status?: string; message?: string } } = JSON.parse(raw)
     apiStatus = parsed.error?.status
     apiMessage = parsed.error?.message
   } catch {
@@ -427,7 +427,7 @@ async function withAuthorizedResponse(
   accountId: string,
   input: {
     path: string
-    init?: RequestInit
+    init?: Omit<RequestInit, 'headers'> & { headers?: Record<string, string> }
     query?: Record<string, string | undefined | null>
   },
   retry = true
@@ -465,10 +465,10 @@ export interface CreateGoogleCalendarClientInput {
 }
 
 export function createGoogleCalendarClient(
-  input: CreateGoogleCalendarClientInput
+  clientInput: CreateGoogleCalendarClientInput
 ): GoogleCalendarClient {
-  const { accountId } = input
-  if (!accountId || !accountId.trim()) {
+  const { accountId } = clientInput
+  if (!accountId?.trim()) {
     throw new Error('createGoogleCalendarClient requires a non-empty accountId')
   }
   return {

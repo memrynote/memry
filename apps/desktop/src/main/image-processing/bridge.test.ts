@@ -176,7 +176,7 @@ describe('image-processing bridge', () => {
     await vi.waitFor(() => {
       expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
     })
-    const requestMessage = requestMessages()[0]!
+    const requestMessage = requestMessages()[0]
     expect(requestMessage).toEqual(
       expect.objectContaining({
         type: 'prepare-view-image',
@@ -237,12 +237,8 @@ describe('image-processing bridge', () => {
     const settled: string[] = []
     const promises = Array.from({ length: 10 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/burst-${index}.jpg`, 'image/jpeg').then(
-        () => {
-          settled.push(`resolved-${index}`)
-        },
-        () => {
-          settled.push(`rejected-${index}`)
-        }
+        () => void settled.push(`resolved-${index}`),
+        () => void settled.push(`rejected-${index}`)
       )
     )
 
@@ -277,11 +273,9 @@ describe('image-processing bridge', () => {
       generateThumbnailInImageProcess(`/tmp/timeout-${index}.jpg`, 'image/jpeg')
         .then(
           () => 'resolved',
-          (error) => error.message
+          (error: unknown) => (error instanceof Error ? error.message : String(error))
         )
-        .then((outcome) => {
-          outcomes.push(outcome)
-        })
+        .then((outcome) => void outcomes.push(outcome))
     )
 
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
@@ -313,7 +307,7 @@ describe('image-processing bridge', () => {
     const promises = Array.from({ length: 261 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/flood-${index}.jpg`, 'image/jpeg').then(
         () => 'resolved',
-        (error) => error.message
+        (error: unknown) => (error instanceof Error ? error.message : String(error))
       )
     )
 
@@ -334,7 +328,7 @@ describe('image-processing bridge', () => {
     const promises = Array.from({ length: 10 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/stop-${index}.jpg`, 'image/jpeg').then(
         () => 'resolved',
-        (error) => error.message
+        (error: unknown) => (error instanceof Error ? error.message : String(error))
       )
     )
 
@@ -354,7 +348,7 @@ describe('image-processing bridge', () => {
     const afterStop = Array.from({ length: 4 }, (_, index) =>
       generateThumbnailInImageProcess(`/tmp/after-stop-${index}.jpg`, 'image/jpeg').then(
         () => 'resolved',
-        (error) => error.message
+        (error: unknown) => (error instanceof Error ? error.message : String(error))
       )
     )
     mockUtilityProcessInstance.simulateMessage({ type: 'ready' })

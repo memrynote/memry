@@ -7,6 +7,6 @@ export type VelopackModule = typeof VelopackModule2
  * only from here. Tests mock this module instead of the package.
  */
 export function loadVelopack(): VelopackModule {
-  // oxlint-disable-next-line typescript/no-require-imports -- lazy: the native binary only exists on the target platform
+  // oxlint-disable-next-line typescript/no-require-imports, typescript/no-unsafe-type-assertion -- lazy: the native binary only exists on the target platform; require() is untyped and VelopackModule mirrors its public surface
   return require('velopack') as VelopackModule
 }

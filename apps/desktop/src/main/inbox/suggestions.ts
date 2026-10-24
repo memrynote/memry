@@ -172,6 +172,7 @@ export function deleteNoteEmbedding(noteId: string): void {
 export function hasEmbedding(noteId: string): boolean {
   try {
     const rawDb = requireRawIndexDatabase()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
     const result = rawDb
       .prepare('SELECT 1 FROM vec_notes WHERE note_id = ? LIMIT 1')
       .get(noteId) as { '1': number } | undefined
@@ -187,6 +188,7 @@ export function hasEmbedding(noteId: string): boolean {
 export function getEmbeddingCount(): number {
   try {
     const rawDb = requireRawIndexDatabase()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
     const result = rawDb.prepare('SELECT COUNT(*) as count FROM vec_notes').get() as {
       count: number
     }
@@ -283,7 +285,7 @@ export async function reindexAllEmbeddings(): Promise<{
 
       // Get full note content
       const note = await getNoteById(noteItem.id)
-      if (!note || !note.content || note.content.length < MIN_CONTENT_LENGTH) {
+      if (!note?.content || note.content.length < MIN_CONTENT_LENGTH) {
         skipped++
         continue
       }
@@ -338,6 +340,7 @@ async function findSimilarNotes(content: string, limit: number = 5): Promise<Sim
 
     // Use sqlite-vec KNN search with cosine distance
     // Lower distance = more similar (cosine distance ranges from 0 to 2)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
     const results = rawDb
       .prepare(
         `
@@ -448,6 +451,7 @@ function getFilingPatterns(itemType: string): FilingPattern[] {
       destination: getFolderFromPath(p.destination),
       action: p.action,
       count: p.count,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- note property bag is untyped; tags is a string[] when present and || [] covers absence
       tags: (p.tags as string[]) || []
     }))
   } catch {
@@ -784,7 +788,8 @@ export async function getSuggestions(itemId: string): Promise<FilingSuggestion[]
         destination: {
           type:
             fallback.source === 'history'
-              ? (fallback.action as 'folder' | 'note' | 'new-note')
+              ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fallback.action is a string from the suggestion record; the three actions are the only ones ever stored
+                (fallback.action as 'folder' | 'note' | 'new-note')
               : 'folder',
           path: fallback.path
         },

@@ -100,6 +100,7 @@ function readZipEntries(buffer: Buffer): Promise<RawEntry[]> {
                   return
                 }
                 const chunks: Buffer[] = []
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stream 'data' chunks are Buffers because no encoding is set on the stream
                 stream.on('data', (c) => chunks.push(c as Buffer))
                 stream.on('end', () => res(Buffer.concat(chunks)))
                 stream.on('error', rej)

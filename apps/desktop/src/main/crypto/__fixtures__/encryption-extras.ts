@@ -23,7 +23,7 @@ const fromHex = (hex: string): Uint8Array => {
 }
 
 export const IETF_XCHACHA20_POLY1305_VECTOR = {
-  key: fromHex('808182838485868788898a8b8c8d8e8f' + '909192939495969798999a9b9c9d9e9f'),
+  key: fromHex('808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f'),
   nonce: fromHex('404142434445464748494a4b4c4d4e4f5051525354555657'),
   aad: fromHex('50515253c0c1c2c3c4c5c6c7'),
   plaintext: fromHex(

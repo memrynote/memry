@@ -117,6 +117,7 @@ function toAvailableProperties(
   const properties: AvailableProperty[] = Array.from(propCounts.entries()).map(
     ([name, { count, type }]) => ({
       name,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       type: type as AvailableProperty['type'],
       usageCount: count
     })

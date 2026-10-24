@@ -29,7 +29,9 @@ async function recordedBody(input: {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+      bodies.push(
+        JSON.parse(typeof init?.body === 'string' ? init.body : '') as Record<string, unknown>
+      )
       const chunk = {
         id: 'c',
         object: 'chat.completion.chunk',

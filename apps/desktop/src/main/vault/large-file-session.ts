@@ -302,7 +302,7 @@ export async function withSession<T>(
   run: (read: ByteReader, index: LineIndex) => Promise<T>
 ): Promise<T | null> {
   const session = sessions.get(sessionId)
-  if (!session || !session.index) return null
+  if (!session?.index) return null
   return run(session.read, session.index)
 }
 

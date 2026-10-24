@@ -77,7 +77,7 @@ describe('listTagItems', () => {
 
     const items = listTagItems(indexDb, dataDb, 'meetings')
 
-    expect(items.map((i) => i.kind).sort()).toEqual(['inbox', 'note', 'task'])
+    expect(items.map((i) => i.kind).toSorted()).toEqual(['inbox', 'note', 'task'])
   })
 
   it('reports the real file type of a tagged binary', () => {
@@ -105,7 +105,7 @@ describe('listTagItems', () => {
     expect(
       listTagItems(indexDb, dataDb, 'work')
         .map((i) => i.id)
-        .sort()
+        .toSorted()
     ).toEqual(['n1', 'n2'])
   })
 
@@ -128,7 +128,7 @@ describe('listTagItems', () => {
 
     const items = listTagItems(indexDb, dataDb, 'work').filter((i) => i.kind === 'task')
 
-    expect(items.map((i) => i.id).sort()).toEqual(['t1', 't2'])
+    expect(items.map((i) => i.id).toSorted()).toEqual(['t1', 't2'])
   })
 
   it('includes descendant tags and excludes prefix collisions for inbox items', () => {
@@ -141,7 +141,7 @@ describe('listTagItems', () => {
 
     const items = listTagItems(indexDb, dataDb, 'work').filter((i) => i.kind === 'inbox')
 
-    expect(items.map((i) => i.id).sort()).toEqual(['i1', 'i2'])
+    expect(items.map((i) => i.id).toSorted()).toEqual(['i1', 'i2'])
   })
 
   it('matches case-insensitively', () => {
@@ -174,7 +174,7 @@ describe('listTagItems', () => {
       expect(
         listTagItems(indexDb, dataDb, 'work', [])
           .map((i) => i.id)
-          .sort()
+          .toSorted()
       ).toEqual(['n1', 'n2', 'n3'])
     })
 
@@ -184,7 +184,7 @@ describe('listTagItems', () => {
       expect(
         listTagItems(indexDb, dataDb, 'work', ['urgent'])
           .map((i) => i.id)
-          .sort()
+          .toSorted()
       ).toEqual(['n1', 'n3'])
     })
 
@@ -221,7 +221,7 @@ describe('listTagItems', () => {
       expect(
         listTagItems(indexDb, dataDb, 'work', ['WORK'])
           .map((i) => i.id)
-          .sort()
+          .toSorted()
       ).toEqual(['n1', 'n2', 'n3'])
     })
 
@@ -239,7 +239,7 @@ describe('listTagItems', () => {
       expect(
         listTagItems(indexDb, dataDb, 'work', ['urgent'])
           .map((i) => i.id)
-          .sort()
+          .toSorted()
       ).toEqual(['i1', 't1'])
     })
   })

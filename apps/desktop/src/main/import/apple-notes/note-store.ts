@@ -63,6 +63,7 @@ export function defaultContainerDir(): string {
 }
 
 export function errorCode(error: unknown): string | undefined {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught value is unknown; only .code is read and undefined is handled
   return (error as { code?: string } | null | undefined)?.code
 }
 
@@ -136,7 +137,8 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
     if (errorCode(error) === 'ENOENT') {
       throw new Error(
         `Apple Notes database not found at ${dbPath}. Open the Notes app once to ` +
-          'create it, or select the “group.com.apple.notes” folder.'
+          'create it, or select the “group.com.apple.notes” folder.',
+        { cause: error }
       )
     }
     throw error
@@ -152,6 +154,7 @@ export async function openNoteStore(selected: string): Promise<NoteStore> {
  * import. Callers use this to select a column only when the schema has it.
  */
 export function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
   const wanted = column.toLowerCase()
   return rows.some((row) => row.name.toLowerCase() === wanted)
@@ -162,6 +165,7 @@ export function loadPrimaryKeys(db: Database.Database): PrimaryKeys {
   // DB declares Z_ENT/Z_NAME uppercase, so an unaliased `z_name` read returns
   // undefined and every entity id falls back to -1 (→ zero rows). Alias to a
   // stable lowercase key. (Every other query already aliases its columns.)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
   const rows = db.prepare('SELECT z_ent AS ent, z_name AS name FROM z_primarykey').all() as {
     ent: number
     name: string
@@ -176,6 +180,7 @@ export function loadPrimaryKeys(db: Database.Database): PrimaryKeys {
 }
 
 export function loadAccounts(db: Database.Database, keys: PrimaryKeys): AccountRow[] {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
   return db
     .prepare(
       'SELECT z_pk AS pk, zname AS name, zidentifier AS identifier ' +
@@ -185,6 +190,7 @@ export function loadAccounts(db: Database.Database, keys: PrimaryKeys): AccountR
 }
 
 export function loadFolders(db: Database.Database, keys: PrimaryKeys): FolderRow[] {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
   return db
     .prepare(
       'SELECT z_pk AS pk, ztitle2 AS title, zparent AS parent, zidentifier AS identifier, ' +
@@ -196,8 +202,8 @@ export function loadFolders(db: Database.Database, keys: PrimaryKeys): FolderRow
 
 /** Default ("Notes") and account-root folders map to the importer root. */
 export function folderDisplayName(folder: FolderRow | undefined): string | null {
-  if (!folder || !folder.title) return null
-  if (folder.identifier && folder.identifier.startsWith('DefaultFolder')) return null
+  if (!folder?.title) return null
+  if (folder.identifier?.startsWith('DefaultFolder')) return null
   return folder.title
 }
 
@@ -243,6 +249,7 @@ export const LOCKED_NOTES_FROM_WHERE =
   'WHERE zcso.z_ent = ? AND zcso.ztitle1 IS NOT NULL AND zcso.zispasswordprotected = 1'
 
 function countLockedNotes(db: Database.Database, keys: PrimaryKeys): number {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
   const row = db
     .prepare(`SELECT COUNT(*) AS count ${LOCKED_NOTES_FROM_WHERE}`)
     .get(keys.ICNote) as {
@@ -256,6 +263,7 @@ function loadNoteCounts(db: Database.Database, keys: PrimaryKeys): Map<number | 
   // Counts only — the note body (ZDATA) is never read, so the scan costs one
   // snapshot copy plus this query, with none of the gunzip/protobuf decoding
   // the import itself pays per note.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
   const rows = db
     .prepare(
       'SELECT zcso.zfolder AS folder, COUNT(*) AS count ' +

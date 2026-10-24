@@ -36,6 +36,7 @@ export function getFeaturesSettings(): FeaturesSettings {
   if (!raw) return { ...FEATURES_SETTINGS_DEFAULTS }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored features JSON, spread over defaults so missing keys fall back
     return { ...FEATURES_SETTINGS_DEFAULTS, ...(JSON.parse(raw) as Partial<FeaturesSettings>) }
   } catch {
     return { ...FEATURES_SETTINGS_DEFAULTS }

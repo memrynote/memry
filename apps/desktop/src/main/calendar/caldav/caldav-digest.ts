@@ -48,6 +48,8 @@ function hash(algorithm: DigestChallenge['algorithm'], value: string): string {
 }
 
 /** The `Authorization` header answering one challenge for one request. */
+const quoted = (value: string): string => `"${value.replace(/[\\"]/g, '\\$&')}"`
+
 export function digestAuthorization(input: {
   challenge: DigestChallenge
   username: string
@@ -67,7 +69,6 @@ export function digestAuthorization(input: {
     : hash(challenge.algorithm, `${ha1}:${challenge.nonce}:${ha2}`)
 
   // RFC 7616 quoted-string: backslash and double quote are escaped.
-  const quoted = (value: string): string => `"${value.replace(/[\\"]/g, '\\$&')}"`
   const parts = [
     `username=${quoted(username)}`,
     `realm=${quoted(challenge.realm)}`,

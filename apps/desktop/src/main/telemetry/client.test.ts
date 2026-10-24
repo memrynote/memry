@@ -10,6 +10,9 @@ import { createTelemetryClient, TELEMETRY_QUEUE_LIMIT, type TelemetryClientDeps 
 const VALID_INSTALL_ID = '550e8400-e29b-41d4-a716-446655440000'
 const VALID_SESSION_ID = '550e8400-e29b-41d4-a716-446655440001'
 
+const writtenLength = (data: string | NodeJS.ArrayBufferView): number =>
+  typeof data === 'string' ? data.length : data.byteLength
+
 const buildEvent = (id: string, name: TelemetryEvent['name'] = 'app_started'): TelemetryEvent => ({
   id,
   name,
@@ -119,7 +122,7 @@ describe('createTelemetryClient', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toBe(deps.endpoint)
     expect(calls[0].init?.method).toBe('POST')
-    expect((calls[0].init?.headers as Record<string, string>)['Content-Type']).toBe(
+    expect((calls[0].init?.headers as Record<string, string> | undefined)?.['Content-Type']).toBe(
       'application/json'
     )
   })
@@ -376,7 +379,9 @@ describe('createTelemetryClient — crash durability', () => {
 
     // #then the crash event ships instead of being lost with the process
     await revived.flush('manual')
-    const batch = JSON.parse(String(calls[0].init?.body)) as { events: TelemetryEvent[] }
+    const batch = JSON.parse(typeof calls[0].init?.body === 'string' ? calls[0].init.body : '') as {
+      events: TelemetryEvent[]
+    }
     expect(batch.events.map((e) => e.name)).toEqual(['app_crashed'])
 
     // #and it is not sent again on the launch after that
@@ -402,7 +407,7 @@ describe('createTelemetryClient — crash durability', () => {
 
     // #then the whole burst wrote less than a single copy of the queue, where
     // mirroring per event wrote 100 copies of it
-    const written = write.mock.calls.reduce((sum, call) => sum + String(call[1]).length, 0)
+    const written = write.mock.calls.reduce((sum, call) => sum + writtenLength(call[1]), 0)
     expect(written).toBeLessThan(mirrorSize)
     write.mockRestore()
 
@@ -461,7 +466,7 @@ describe('createTelemetryClient — crash durability', () => {
 
     // #then no fragment of the page survives in the queue file or on the wire
     const mirrored = fs.readFileSync(persistPath, 'utf-8')
-    const shipped = String(calls[0].init?.body)
+    const shipped = typeof calls[0].init?.body === 'string' ? calls[0].init.body : ''
     for (const value of Object.values(scraped)) {
       expect(mirrored).not.toContain(value)
       expect(shipped).not.toContain(value)
@@ -488,7 +493,9 @@ describe('createTelemetryClient — crash durability', () => {
     })
     await client.flush('manual')
 
-    const batch = JSON.parse(String(calls[0].init?.body)) as { events: TelemetryEvent[] }
+    const batch = JSON.parse(typeof calls[0].init?.body === 'string' ? calls[0].init.body : '') as {
+      events: TelemetryEvent[]
+    }
     expect(batch.events[0].dimensions).toEqual({ capture_type: 'clipper' })
   })
 

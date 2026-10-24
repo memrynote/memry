@@ -55,7 +55,7 @@ const names = (d: Device): string[] =>
     .from(tagDefinitions)
     .all()
     .map((row) => row.name)
-    .sort()
+    .toSorted()
 
 function payload(d: Device, name: string): TagDefinitionSyncPayload {
   const json = tagDefinitionHandler.buildPushPayload(
@@ -110,7 +110,7 @@ describe('Unicode tag identity', () => {
     expect(
       findNotesWithTagInfo(a.index.db, 'ÜNAL')
         .map((n) => n.id)
-        .sort()
+        .toSorted()
     ).toEqual(['n1', 'n2'])
     expect(findNotesWithTagInfo(a.index.db, 'i\u0307ş').map((n) => n.id)).toEqual(['n1'])
 

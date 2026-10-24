@@ -43,7 +43,7 @@ vi.mock('electron', () => {
         return stub
       })
       mocks.trays.push(stub)
-      return stub as unknown as Tray
+      return stub
     }
   }
 

@@ -56,7 +56,7 @@ export function eventKitAttendees(event: EventKitEvent): CalendarAttendee[] | nu
 
 /** Alerts before the start, soonest last, as popup reminders. */
 export function eventKitReminders(event: EventKitEvent): CalendarReminders | null {
-  const minutes = [...new Set(event.alarmMinutes.filter((value) => value >= 0))].sort(
+  const minutes = [...new Set(event.alarmMinutes.filter((value) => value >= 0))].toSorted(
     (left, right) => right - left
   )
   if (minutes.length === 0) return null

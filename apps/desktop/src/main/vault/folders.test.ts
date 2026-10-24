@@ -394,7 +394,7 @@ template: projects-template
 
       const config = await readFolderConfig('projects')
       // Config should be null (file deleted) or template undefined
-      expect(config === null || config.template === undefined).toBe(true)
+      expect(config?.template === undefined).toBe(true)
     })
 
     it('T400: preserves other config values', async () => {

@@ -51,7 +51,6 @@ vi.mock('../inbox/suggestions', () => ({
 
 import { registerFolderViewHandlers, unregisterFolderViewHandlers } from './folder-view-handlers'
 import { tagDefinitionHandler } from '../sync/item-handlers/tag-definition-handler'
-import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getIndexDatabase, getDatabase } from '../database'
 import * as folderFiles from '../vault/folders'
 import * as suggestions from '../inbox/suggestions'
@@ -358,7 +357,7 @@ describe('folder-view-handlers', () => {
         offset: 0
       })
 
-      expect(result.notes.map((r) => r.kind).sort()).toEqual(['inbox', 'note', 'task'])
+      expect(result.notes.map((r) => r.kind).toSorted()).toEqual(['inbox', 'note', 'task'])
     })
 
     it('fills real properties on note rows', async () => {
@@ -648,12 +647,7 @@ describe('folder-view-handlers', () => {
         viewName: 'Open tasks'
       })
 
-      const pushed = tagDefinitionHandler.buildPushPayload(
-        dataDb.db as unknown as DrizzleDb,
-        'araba',
-        'device-a',
-        'update'
-      )
+      const pushed = tagDefinitionHandler.buildPushPayload(dataDb.db, 'araba', 'device-a', 'update')
       expect(JSON.parse(pushed!)).toMatchObject({ views: [] })
     })
 

@@ -15,6 +15,7 @@ export function upsertCalendarEvent(db: DataDb, event: NewCalendarEvent): Calend
     db.insert(calendarEvents).values(event).run()
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- get() on the row this function just wrote cannot be undefined
   return db
     .select()
     .from(calendarEvents)
@@ -102,6 +103,6 @@ export function searchCalendarEventsByTitle(
   }
 
   return [...upcoming, ...past]
-    .sort((a, b) => distance(a.startAt) - distance(b.startAt))
+    .toSorted((a, b) => distance(a.startAt) - distance(b.startAt))
     .slice(0, options.limit)
 }

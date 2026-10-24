@@ -238,6 +238,7 @@ describe('renameTagEverywhere', () => {
     await rename('person', 'people')
 
     expect(chip.getAttribute('tag')).toBe('people')
+    // oxlint-disable-next-line typescript/no-base-to-string -- Y.XmlFragment overrides toString() to serialize its XML children
     expect(fragment.toString()).toContain('#people/vip and #personal')
     const file = read(note.path)
     expect(file.frontmatter.tags).toEqual(['people/vip'])
@@ -280,7 +281,7 @@ describe('renameTagEverywhere', () => {
     expect(
       getNoteTags(index.db, both.id)
         .map((t) => t.toLowerCase())
-        .sort()
+        .toSorted()
     ).toEqual(['people', 'people/vip'])
   })
 
@@ -301,7 +302,7 @@ describe('renameTagEverywhere', () => {
     expect(
       getNoteTags(index.db, note.id)
         .map((t) => t.toLowerCase())
-        .sort()
+        .toSorted()
     ).toEqual(['kişi/proje', 'work', 'work/alt'])
     expect(definition('work')).toMatchObject({ color: 'rose' })
     expect(definition('work/alt')).toMatchObject({ color: 'amber' })

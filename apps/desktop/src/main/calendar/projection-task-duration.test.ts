@@ -7,7 +7,7 @@ import {
   type TestDb
 } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
-import type { DataDb, IndexDb } from '../../main/database'
+import type { DataDb } from '../../main/database'
 import { getCalendarRangeProjection } from './projection'
 
 describe('task projection with a duration', () => {
@@ -31,7 +31,7 @@ describe('task projection with a duration', () => {
   function project(id: string) {
     const result = getCalendarRangeProjection(
       db as unknown as DataDb,
-      indexDbResult.db as unknown as IndexDb,
+      indexDbResult.db,
       {
         startAt: new Date(2026, 3, 14).toISOString(),
         endAt: new Date(2026, 3, 15).toISOString(),

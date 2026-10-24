@@ -65,7 +65,7 @@ const BUILT_IN_LIST_ITEMS: readonly TemplateListItem[] = BUILT_IN_TEMPLATES.map(
   description: t.description,
   icon: t.icon,
   isBuiltIn: true as const
-})).sort((a, b) => a.name.localeCompare(b.name))
+})).toSorted((a, b) => a.name.localeCompare(b.name))
 
 // ============================================================================
 // Helpers
@@ -97,6 +97,7 @@ function rowToTemplate(row: TemplateRow): Template {
     // write whatever a peer pushed. applyTemplate iterates properties, so a
     // non-array here would throw "not iterable" at note-creation time.
     tags: Array.isArray(row.tags) ? row.tags : [],
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; element type is the one stored by writers of this field
     properties: Array.isArray(row.properties) ? (row.properties as TemplateProperty[]) : [],
     // Older versions and other devices stored task ids in the body. Reading
     // them out here covers every row already written, local or synced.
@@ -204,7 +205,7 @@ export async function createTemplate(input: TemplateCreateInput): Promise<Templa
     icon: input.icon ?? null,
     isBuiltIn: false,
     tags: input.tags ?? [],
-    properties: (input.properties ?? []) as TemplateProperty[],
+    properties: input.properties ?? [],
     content: stripTaskBlockSuffixes(input.content ?? ''),
     createdAt: now,
     modifiedAt: now
@@ -256,10 +257,7 @@ export async function updateTemplate(input: TemplateUpdateInput): Promise<Templa
     tags: input.tags ?? existing.tags,
     // SAFETY: `input` is a TemplateUpdateInput already parsed by the templates
     // IPC contract schema, so `properties` is a validated TemplateProperty list.
-    properties:
-      input.properties === undefined
-        ? existing.properties
-        : (input.properties as TemplateProperty[]),
+    properties: input.properties === undefined ? existing.properties : input.properties,
     content: stripTaskBlockSuffixes(input.content ?? existing.content),
     modifiedAt: now
   }

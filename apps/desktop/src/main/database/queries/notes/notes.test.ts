@@ -120,7 +120,7 @@ describe('notes cache queries', () => {
     expect(paged).toHaveLength(1)
 
     const folderFiltered = listNotesFromCache(db, { folder: 'projects' })
-    expect(folderFiltered.map((n) => n.id).sort()).toEqual(['note-3', 'note-4'])
+    expect(folderFiltered.map((n) => n.id).toSorted()).toEqual(['note-3', 'note-4'])
 
     const tagFiltered = listNotesFromCache(db, { tags: ['alpha', 'beta'] })
     expect(tagFiltered.map((n) => n.id)).toEqual(['note-3'])
@@ -212,8 +212,8 @@ describe('notes cache queries', () => {
 
     const ids = (rows: { id: string }[]) => rows.map((r) => r.id)
 
-    expect(ids(listNotesFromCache(db, { shape: 'tree', folder: 'projects' })).sort()).toEqual(
-      ids(listNotesFromCache(db, { folder: 'projects' })).sort()
+    expect(ids(listNotesFromCache(db, { shape: 'tree', folder: 'projects' })).toSorted()).toEqual(
+      ids(listNotesFromCache(db, { folder: 'projects' })).toSorted()
     )
     expect(ids(listNotesFromCache(db, { shape: 'tree', tags: ['alpha', 'beta'] }))).toEqual([
       'tree-a'
@@ -263,7 +263,7 @@ describe('notes cache queries', () => {
 
     const ids = listNoteCacheUnderFolder(db, 'my_notes/')
       .map((row) => row.id)
-      .sort()
+      .toSorted()
     expect(ids).toEqual(['under-1', 'under-2'])
   })
 
@@ -271,7 +271,7 @@ describe('notes cache queries', () => {
     createNote('note-11')
     setNoteTags(db, 'note-11', { header: ['Work', 'Personal'], inline: [] })
 
-    expect(getNoteTags(db, 'note-11').sort()).toEqual(['Personal', 'Work'])
+    expect(getNoteTags(db, 'note-11').toSorted()).toEqual(['Personal', 'Work'])
     const tags = getAllTags(db)
     expect(tags).toEqual(
       expect.arrayContaining([

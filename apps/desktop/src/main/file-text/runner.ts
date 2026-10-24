@@ -227,6 +227,7 @@ export class FileTextRunner {
     noteFileType: string
   }): TextFile {
     if (job.source === OWN_FILE) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       return { ...job, path: job.notePath, fileType: job.noteFileType as TextFileKind }
     }
     return {

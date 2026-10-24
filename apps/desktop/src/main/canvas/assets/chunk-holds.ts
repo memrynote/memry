@@ -11,9 +11,12 @@
  * Electron-free: deps are injected, as in `attachment-dereference.ts`.
  */
 
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { createLogger } from '../../lib/logger'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const log = createLogger('CanvasAssetHolds')
 
@@ -109,7 +112,12 @@ async function holdEach(
         res.status === 0 || res.status === 408 || res.status === 429 || res.status >= 500
       return { status: 'failed', retryable, httpStatus: res.status }
     }
-    for (const holderId of (res.json as { missing?: string[] }).missing ?? []) {
+    const body = res.json
+    const missingHolders: string[] =
+      typeof body === 'object' && body !== null && 'missing' in body && Array.isArray(body.missing)
+        ? body.missing
+        : []
+    for (const holderId of missingHolders) {
       const hold = byHolder.get(holderId)
       if (hold) missing.add(hold.key)
     }

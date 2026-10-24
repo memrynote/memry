@@ -505,7 +505,7 @@ describe('embedding projector', () => {
     await createEmbeddingProjector(() => '/vault').reconcile(controller.signal)
 
     // Old vectors keep serving search and similarity meanwhile.
-    expect([...vectors].sort()).toEqual(['note-1', 'note-2', 'note-3'])
+    expect([...vectors].toSorted()).toEqual(['note-1', 'note-2', 'note-3'])
     expect([...state.keys()]).toEqual(['note-1'])
 
     // The next launch re-embeds only the notes the first pass never reached.
@@ -514,7 +514,7 @@ describe('embedding projector', () => {
 
     expect(generateEmbedding).toHaveBeenCalledTimes(6)
     expect(readFile.mock.calls.filter(([path]) => path === '/vault/notes/one.md')).toHaveLength(1)
-    expect([...vectors].sort()).toEqual(['note-1', 'note-2', 'note-3'])
+    expect([...vectors].toSorted()).toEqual(['note-1', 'note-2', 'note-3'])
     expect([...state.values()]).toEqual([
       EMBEDDING_INPUT_VERSION,
       EMBEDDING_INPUT_VERSION,

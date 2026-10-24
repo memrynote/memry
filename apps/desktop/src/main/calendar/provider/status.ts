@@ -96,6 +96,6 @@ export async function buildProviderStatus(
       selected: calendars.filter((source) => source.isSelected).length,
       memryManaged: calendars.filter((source) => source.isMemryManaged).length
     },
-    lastSyncedAt: syncedCandidates.sort().at(-1) ?? null
+    lastSyncedAt: syncedCandidates.toSorted().at(-1) ?? null
   }
 }

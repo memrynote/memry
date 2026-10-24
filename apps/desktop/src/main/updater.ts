@@ -57,7 +57,8 @@ const truncate = (value: string, limit: number): string =>
   value.length > limit ? `${value.slice(0, limit)}…` : value
 
 /** electron-updater / node errno codes are strings; HTTP-ish libs sometimes use numbers. */
-const codeOf = (error: object): string | undefined => {
+const codeOf = (error: unknown): string | undefined => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught value is unknown; only .code is read and undefined is handled
   const { code } = error as { code?: unknown }
   if (typeof code === 'string' && code) return code
   if (typeof code === 'number' && Number.isFinite(code)) return String(code)
@@ -357,17 +358,19 @@ const host: UpdaterHost = {
  * One decision, once. Windows packaged builds prefer Velopack; every other platform
  * stays on electron-updater unchanged.
  */
-function selectUpdaterBackend(host: UpdaterHost): UpdaterBackend {
+function selectUpdaterBackend(updaterHost: UpdaterHost): UpdaterBackend {
   if (process.platform === 'win32') {
-    const velopack = createVelopackBackend(host)
+    const velopack = createVelopackBackend(updaterHost)
     if (velopack) {
       return velopack
     }
     // An NSIS install. electron-updater keeps checking and downloading; the install
     // step migrates to Velopack when the release carries its installer.
-    return createElectronUpdaterBackend(host, { handoff: createInstallerHandoff(host) })
+    return createElectronUpdaterBackend(updaterHost, {
+      handoff: createInstallerHandoff(updaterHost)
+    })
   }
-  return createElectronUpdaterBackend(host)
+  return createElectronUpdaterBackend(updaterHost)
 }
 
 /**

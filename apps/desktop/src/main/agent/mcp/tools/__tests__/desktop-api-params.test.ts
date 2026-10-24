@@ -199,7 +199,7 @@ describe('desktop API parameter lists', () => {
       }
     }
     expect(mismatches).toEqual([])
-    expect(acceptsNull.sort()).toEqual([
+    expect(acceptsNull.toSorted()).toEqual([
       'bookmarks.list:options',
       'calendar.getRange:end',
       'calendar.listEvents:options',

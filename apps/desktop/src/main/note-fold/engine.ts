@@ -182,7 +182,7 @@ export function parseSections(markdown: string): RawSection[] {
     flush()
     const afterParagraph = current.paragraphs.length - 1
     const last = current.skipped.at(-1)
-    if (last && last.afterParagraph === afterParagraph && last.kind === kind) last.count++
+    if (last?.afterParagraph === afterParagraph && last.kind === kind) last.count++
     else current.skipped.push({ afterParagraph, kind, count: 1 })
   }
   /** Table and HTML lines come in runs that count as one block. */
@@ -338,7 +338,7 @@ export function chunkAiSchema(chunk: ParsedChunk): z.ZodType<ChunkAi> {
         ctx.addIssue({ code: 'custom', message: `paragraph ${i}: sentence index out of range` })
       }
     })
-  }) as z.ZodType<ChunkAi>
+  })
 }
 
 export function buildChunkPrompt(chunk: ParsedChunk, language: string): string {
@@ -395,7 +395,7 @@ export function localBriefIdx(sentences: string[], language: string): number[] {
 export function truncateUnits(text: string, language: string, units: number): string {
   const t = text.trim()
   if (isCjk(language)) {
-    const chars = [...t]
+    const chars = Array.from(t)
     return chars.length <= units * 2 ? t : `${chars.slice(0, units * 2).join('')}…`
   }
   const words = t.split(/\s+/)
@@ -499,6 +499,7 @@ export function assemble(input: AssembleInput): Assembled {
   const aiLevels: FoldLevel[] =
     missing.length === 0 && sections.length > 0 ? ['key', 'takeaway', 'topic'] : []
   const levels: FoldLevel[] = ['full', 'brief', 'key', 'takeaway', 'topic']
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   const wordsByLevel = Object.fromEntries(
     levels.map((l) => [l, l === 'full' ? totalWords : levelWords(sections, l, language)])
   ) as FoldLayers['wordsByLevel']

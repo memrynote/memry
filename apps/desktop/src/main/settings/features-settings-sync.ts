@@ -10,6 +10,7 @@ import { createLogger } from '../lib/logger'
 const log = createLogger('FeaturesSettingsSync')
 
 /** Every flag in the `features` group follows the user across devices. */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys widens to string[]; the keys come from FEATURES_SETTINGS_DEFAULTS, typed as FeaturesSettings
 export const FEATURES_SYNCABLE_FIELDS = Object.keys(
   FEATURES_SETTINGS_DEFAULTS
 ) as (keyof FeaturesSettings)[]
@@ -32,6 +33,7 @@ export function seedFeaturesSyncedSettings(
 
   let stored: Record<string, unknown>
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored features JSON; keys are checked against the syncable fields below
     stored = JSON.parse(raw) as Record<string, unknown>
   } catch {
     log.warn('Features settings unreadable; skipping seed')

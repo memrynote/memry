@@ -160,6 +160,7 @@ export async function refreshBookInfo(noteId: string, deps: BookCommandDeps = {}
     if (plan.frontmatter[field] !== undefined) propertyPatch[field] = plan.frontmatter[field]
   }
   const have = new Set(note.headerTags.map(foldTag))
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; element type is the one stored by writers of this field
   const wanted = Array.isArray(plan.frontmatter.tags) ? (plan.frontmatter.tags as string[]) : []
   const add = wanted.filter((tag) => !have.has(foldTag(tag)))
   const cover = plan.frontmatter.cover
@@ -194,9 +195,11 @@ export async function listDeletedBooks(): Promise<ReadwiseDeletedBook[]> {
       ? new Map<number, ReadwiseBook>()
       : await fetchBooks(
           token,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
           bookRows.map((row) => row.readwiseBookId as number)
         )
   for (const row of bookRows) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
     const book = books.get(row.readwiseBookId as number)
     if (!book || book.is_deleted) continue
     deleted.push({
@@ -212,6 +215,7 @@ export async function listDeletedBooks(): Promise<ReadwiseDeletedBook[]> {
     try {
       document = await getDocument({
         token,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
         id: row.readerDocumentId as string,
         withHtmlContent: false
       })
@@ -229,7 +233,7 @@ export async function listDeletedBooks(): Promise<ReadwiseDeletedBook[]> {
       highlightCount: 0
     })
   }
-  return deleted.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+  return deleted.toSorted((a, b) => b.deletedAt.localeCompare(a.deletedAt))
 }
 
 /** Restore (D16): the note is created the way a new book gets one, and the link is `linked` again. */

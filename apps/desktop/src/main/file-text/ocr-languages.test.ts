@@ -85,7 +85,7 @@ function stalled(): {
 }
 
 const codes = () => ocr.ocrLanguageSet().codes
-const dataFiles = () => fs.readdirSync(path.join(env.userData, 'ocr-languages')).sort()
+const dataFiles = () => fs.readdirSync(path.join(env.userData, 'ocr-languages')).toSorted()
 
 describe('OCR languages', () => {
   beforeEach(async () => {

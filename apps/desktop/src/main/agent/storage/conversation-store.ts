@@ -66,6 +66,7 @@ export function agentConversationRowToModel(
     id: row.id,
     vaultId: row.vaultId,
     title: decryptConversationTitle(row.titleCiphertext, vaultKey),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column typed string in the schema; only this store writes these enum values
     backend: row.backend as AgentBackendId,
     backendModel: row.backendModel ?? null,
     trustList: parseJsonColumn(row.trustList, []),
@@ -82,6 +83,7 @@ export function agentConversationRowToModel(
 function parseJsonColumn<T>(value: T | string | null, fallback: T): T {
   if (value === null) return fallback
   if (typeof value !== 'string') return value
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is a JSON column this store wrote; T is the column type the caller names
   return JSON.parse(value) as T
 }
 

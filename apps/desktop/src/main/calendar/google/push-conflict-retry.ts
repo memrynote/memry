@@ -35,14 +35,10 @@ function getNow(): string {
 
 function isPreconditionFailedError(error: unknown): boolean {
   if (error instanceof ProviderConflictError) return true
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    (error as { status: unknown }).status === 412
-  )
+  return typeof error === 'object' && error !== null && 'status' in error && error.status === 412
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- switch is exhaustive over sourceType; a source type persisted by a newer build still falls through to undefined as before
 export function loadSourceAsGoogleEvent(
   db: DataDb,
   target: CalendarSyncTarget
@@ -175,8 +171,9 @@ function mergeRemoteEventIntoLocal(
   }
 
   const remoteForMerge: Record<string, unknown> = {}
+  const remoteRecord: Record<string, unknown> = { ...remoteData }
   for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
-    const remoteVal = (remoteData as unknown as Record<string, unknown>)[field]
+    const remoteVal = remoteRecord[field]
     const remoteUnchanged =
       base !== null &&
       field in base &&
@@ -187,12 +184,7 @@ function mergeRemoteEventIntoLocal(
         : remoteVal
   }
 
-  const result = mergeCalendarEventFields(
-    existing as Record<string, unknown>,
-    remoteForMerge,
-    localFC,
-    remoteFC
-  )
+  const result = mergeCalendarEventFields(existing, remoteForMerge, localFC, remoteFC)
 
   db.update(calendarEvents)
     .set({

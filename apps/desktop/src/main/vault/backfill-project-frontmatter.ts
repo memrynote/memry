@@ -96,6 +96,8 @@ type BaseProperties =
  * revert values they changed — and then sync the revert to every device.
  * Reading from disk makes the write a pure addition.
  */
+const normalizeTag = (tag: string): string => foldTag(tag.trim())
+
 async function readBaseProperties(noteId: string): Promise<BaseProperties> {
   const cached = getNoteCacheById(getIndexDatabase(), noteId)
   if (!cached) return { kind: 'missing' }
@@ -120,7 +122,6 @@ async function readBaseProperties(noteId: string): Promise<BaseProperties> {
   // cache never holds a blank or an untrimmed tag, so comparing raw entries
   // would read `tags: ['']` or `- " work "` as staleness and defer the note
   // permanently instead of transiently.
-  const normalizeTag = (tag: string): string => foldTag(tag.trim())
   const cachedTags = new Set(
     getNoteTags(getIndexDatabase(), noteId).map(normalizeTag).filter(Boolean)
   )
@@ -182,6 +183,7 @@ export async function applyProjectFrontmatterBackfill(db: DataDb): Promise<void>
 
   let pending: PendingBackfill
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     pending = JSON.parse(raw) as PendingBackfill
   } catch {
     // Nothing can be recovered from an unreadable snapshot, and retrying it

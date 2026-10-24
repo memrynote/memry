@@ -57,6 +57,7 @@ const DESKTOP_BODY_WRITES: Partial<
 type WithOption = (args: unknown[], option: PlainChecklistsOption) => unknown[]
 
 const intoInput: WithOption = ([input, ...rest], option) => [
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   { ...(input as Record<string, unknown>), ...option },
   ...rest
 ]
@@ -96,6 +97,7 @@ export async function withAgentChecklists<R extends AgentMcpDesktopApiRequest>(
   const previousBody = DESKTOP_BODY_WRITES[request.operation]
   const [input, ...rest] = request.args
   if (!previousBody || !input || typeof input !== 'object') return request
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   const fields = input as Record<string, unknown>
   if (typeof fields.content !== 'string' || agentChecklistsBecomeTasks()) return request
 

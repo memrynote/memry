@@ -30,6 +30,7 @@ export function getTaskSettings(): TaskSettings {
   if (!raw) return { ...TASK_SETTINGS_DEFAULTS }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored task settings JSON, spread over defaults so missing keys fall back
     return { ...TASK_SETTINGS_DEFAULTS, ...(JSON.parse(raw) as Partial<TaskSettings>) }
   } catch {
     return { ...TASK_SETTINGS_DEFAULTS }

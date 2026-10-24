@@ -20,7 +20,7 @@ describe('graph layout queries', () => {
 
   beforeEach(() => {
     index = createTestIndexDb()
-    db = index.db as unknown as IndexDb
+    db = index.db
   })
 
   afterEach(() => {

@@ -117,6 +117,7 @@ describe('AgentRuntime.killAll reaping', () => {
     let settled = false
     const shutdown = agentRuntime.killAll().then(() => {
       settled = true
+      return undefined
     })
 
     await vi.advanceTimersByTimeAsync(1199)

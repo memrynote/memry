@@ -96,6 +96,7 @@ function isRetentionDays(value: unknown): value is VaultActivityRetentionDays {
 
 function readRetentionDays(settingsPath: string): VaultActivityRetentionDays {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as { retentionDays?: unknown }
     if (isRetentionDays(parsed.retentionDays)) return parsed.retentionDays
   } catch {
@@ -191,12 +192,14 @@ async function ensureMemryDir(s: ActivityState): Promise<void> {
   try {
     await fsp.mkdir(path.dirname(s.logPath))
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
   }
 }
 
 function writePending(s: ActivityState): Promise<void> {
   s.writeChain = s.writeChain
+    // oxlint-disable-next-line promise/always-return -- async step resolves void by design; writeChain is Promise<void> and the early returns must stay valueless
     .then(async () => {
       if (!s.needsRewrite && s.pending.length === 0) return
       await ensureMemryDir(s)
@@ -329,6 +332,7 @@ export function recordActivity(input: VaultActivityInput): boolean {
       entry.items = entry.items.slice(0, VAULT_ACTIVITY_MAX_ITEMS)
     }
     // Strip explicit undefineds so the line stays as small as the entry.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys yields string[]; keys come from this typed object
     for (const key of Object.keys(entry) as (keyof VaultActivityEntry)[]) {
       if (entry[key] === undefined) delete entry[key]
     }

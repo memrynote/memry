@@ -70,6 +70,11 @@ import {
   storeGoogleCalendarTokens
 } from './keychain'
 
+const requestUrl = (input: RequestInfo | URL): string =>
+  input instanceof Request ? input.url : String(input)
+// oxlint-disable-next-line typescript/no-base-to-string -- these fakes only ever receive string bodies; String() keeps the old "undefined" text for a missing body
+const bodyText = (init?: RequestInit): string => String(init?.body)
+
 describe('google calendar oauth', () => {
   const keytarStore = new Map<string, string>()
   const fetchMock = vi.fn<typeof fetch>()
@@ -102,12 +107,12 @@ describe('google calendar oauth', () => {
 
   it('uses a provider-specific loopback OAuth flow with Calendar scopes and stores tokens in a separate device-local keychain', async () => {
     fetchMock.mockImplementation(async (input, init) => {
-      const url = String(input)
+      const url = requestUrl(input)
 
       if (url === 'https://oauth2.googleapis.com/token') {
         /* oxlint-disable vitest/no-conditional-expect -- assertions run inside a fake endpoint that serves several URLs; the branch selects the request being checked */
         expect(init?.method).toBe('POST')
-        const body = String(init?.body)
+        const body = bodyText(init)
         expect(body).toContain('code=google-auth-code')
         expect(body).toContain('grant_type=authorization_code')
         expect(body).toContain('code_verifier=')
@@ -298,7 +303,7 @@ describe('google calendar oauth', () => {
   it('shows a user-friendly message and logs technical details when token exchange returns 400', async () => {
     // #given
     fetchMock.mockImplementation(async (input) => {
-      const url = String(input)
+      const url = requestUrl(input)
       if (url === 'https://oauth2.googleapis.com/token') {
         return new Response(
           JSON.stringify({
@@ -357,7 +362,7 @@ describe('google calendar oauth', () => {
     })
 
     fetchMock.mockImplementation(async (input) => {
-      const url = String(input)
+      const url = requestUrl(input)
 
       if (url === 'https://oauth2.googleapis.com/token') {
         return new Response(
@@ -589,7 +594,7 @@ describe('google calendar oauth', () => {
   it('connecting a second Google account stores tokens under a distinct accountId without overwriting the first', async () => {
     let userInfoCalls = 0
     fetchMock.mockImplementation(async (input) => {
-      const url = String(input)
+      const url = requestUrl(input)
 
       if (url === 'https://oauth2.googleapis.com/token') {
         return new Response(
@@ -671,10 +676,10 @@ describe('google calendar oauth', () => {
     process.env.GOOGLE_CALENDAR_CLIENT_SECRET = ' desktop-secret '
 
     fetchMock.mockImplementation(async (input, init) => {
-      const url = String(input)
+      const url = requestUrl(input)
       if (url === 'https://oauth2.googleapis.com/token') {
         // oxlint-disable-next-line vitest/no-conditional-expect -- assertions run inside a fake endpoint that serves several URLs; the branch selects the request being checked
-        expect(String(init?.body)).toContain('client_secret=desktop-secret')
+        expect(bodyText(init)).toContain('client_secret=desktop-secret')
         return new Response(
           JSON.stringify({
             access_token: 'secret-access',
@@ -717,10 +722,10 @@ describe('google calendar oauth', () => {
 
   it('logs plain text token errors without leaking provider codes to the user message', async () => {
     fetchMock.mockImplementation(async (input) => {
-      if (String(input) === 'https://oauth2.googleapis.com/token') {
+      if (requestUrl(input) === 'https://oauth2.googleapis.com/token') {
         return new Response('temporarily unavailable', { status: 503 })
       }
-      throw new Error(`Unexpected fetch call: ${String(input)}`)
+      throw new Error(`Unexpected fetch call: ${requestUrl(input)}`)
     })
 
     mockOpenExternal.mockImplementation(async (authUrl: string) => {

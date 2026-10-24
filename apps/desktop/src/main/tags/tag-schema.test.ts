@@ -62,7 +62,7 @@ describe('resolveTagSchemas', () => {
     expect(engineer.template).toEqual({ id: 'tpl_e', autofill: true, inheritedFrom: 'employee' })
     expect(engineer.preset).toBe('person')
     expect(engineer.ownPreset).toBeNull()
-    expect(descendantsOf('person', resolved).sort()).toEqual(['employee', 'engineer'])
+    expect(descendantsOf('person', resolved).toSorted()).toEqual(['employee', 'engineer'])
   })
 
   it('cuts an extends cycle so A and B each see the other once', () => {

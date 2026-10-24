@@ -70,7 +70,7 @@ describe('createInboxCrudHandlers', () => {
 
     testDb = createTestDataDb()
     deps = {
-      requireDatabase: () => testDb.db as unknown as DataDb,
+      requireDatabase: () => testDb.db,
       getItemTags: readTags,
       toInboxItem,
       emitInboxEvent: vi.fn(),

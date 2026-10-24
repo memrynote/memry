@@ -64,6 +64,7 @@ export async function readObsidianVaults(configPath: string): Promise<Onboarding
     return []
   }
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is an all-optional shape and path is checked with typeof before use
     const parsed = JSON.parse(raw) as { vaults?: Record<string, { path?: unknown }> }
     return Object.values(parsed.vaults ?? {})
       .map((vault) => vault.path)

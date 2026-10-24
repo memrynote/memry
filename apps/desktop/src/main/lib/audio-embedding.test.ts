@@ -37,7 +37,7 @@ function wav(options: {
   )
   const out = new DataView(new ArrayBuffer(44 + data.byteLength))
   const tag = (at: number, text: string): void => {
-    ;[...text].forEach((c, i) => out.setUint8(at + i, c.charCodeAt(0)))
+    text.split('').forEach((c, i) => out.setUint8(at + i, c.charCodeAt(0)))
   }
   tag(0, 'RIFF')
   out.setUint32(4, 36 + data.byteLength, true)

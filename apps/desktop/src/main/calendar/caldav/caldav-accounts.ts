@@ -124,6 +124,7 @@ function readAuthFailures(db: DataDb): Record<string, true> {
   if (!raw) return {}
   try {
     const parsed = JSON.parse(raw) as unknown
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     return parsed && typeof parsed === 'object' ? (parsed as Record<string, true>) : {}
   } catch {
     return {}

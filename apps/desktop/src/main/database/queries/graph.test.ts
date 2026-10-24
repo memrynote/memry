@@ -59,9 +59,9 @@ function referenceLocalGraph(
 function normalizeGraph(graph: GraphDataResponse): GraphDataResponse {
   return {
     nodes: graph.nodes
-      .map((node) => ({ ...node, tags: [...node.tags].sort() }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-    edges: [...graph.edges].sort((a, b) => a.id.localeCompare(b.id))
+      .map((node) => ({ ...node, tags: [...node.tags].toSorted() }))
+      .toSorted((a, b) => a.id.localeCompare(b.id)),
+    edges: [...graph.edges].toSorted((a, b) => a.id.localeCompare(b.id))
   }
 }
 
@@ -81,7 +81,7 @@ function trackRowsRead(sqlite: TestDatabaseResult['sqlite']): () => number {
     }
     return statement
   }
-  sqlite.prepare = patched as unknown as typeof sqlite.prepare
+  sqlite.prepare = patched
   return () => rows
 }
 
@@ -319,7 +319,7 @@ describe('graph queries', () => {
       emoji: 'A',
       isOrphan: false
     })
-    expect(alpha?.tags.sort()).toEqual(['focus', 'work'])
+    expect(alpha?.tags.toSorted()).toEqual(['focus', 'work'])
     expect(graph.nodes.find((node) => node.id === 'journal-1')).toMatchObject({
       type: 'journal',
       label: 'Daily'
@@ -382,7 +382,7 @@ describe('graph queries', () => {
 
     const canvasEdges = getGraphData(indexDb, dataDb).edges.filter((e) => e.type === 'canvas')
 
-    expect(canvasEdges.map((e) => e.id).sort()).toEqual(['n5-n7-canvas', 't2-n7-canvas'])
+    expect(canvasEdges.map((e) => e.id).toSorted()).toEqual(['n5-n7-canvas', 't2-n7-canvas'])
   })
 
   it('filters local graph by depth from the selected note', () => {
@@ -396,12 +396,12 @@ describe('graph queries', () => {
     expect(
       getLocalGraph(indexDb, dataDb, 'a', 1)
         .nodes.map((node) => node.id)
-        .sort()
+        .toSorted()
     ).toEqual(['a', 'b'])
     expect(
       getLocalGraph(indexDb, dataDb, 'a', 2)
         .nodes.map((node) => node.id)
-        .sort()
+        .toSorted()
     ).toEqual(['a', 'b', 'c'])
     expect(getLocalGraph(indexDb, dataDb, 'missing', 2)).toEqual({ nodes: [], edges: [] })
   })
@@ -432,7 +432,7 @@ describe('graph queries', () => {
       expect(graph.nodes.some((node) => node.id === 'n5')).toBe(false)
       // Both rows that collapse onto the same n1→n4 edge id survive as separate edges.
       expect(graph.edges.filter((edge) => edge.id === 'n1-n4-wikilink')).toHaveLength(2)
-      expect(byId.get('n1')?.tags.sort()).toEqual(['focus', 'work'])
+      expect(byId.get('n1')?.tags.toSorted()).toEqual(['focus', 'work'])
     })
 
     it('reads a neighbourhood-sized number of rows no matter how big the vault is', () => {

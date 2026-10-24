@@ -110,7 +110,7 @@ describe('property definitions reach .memry/properties.md', () => {
       name: string
       options: string | null
     }>
-    expect(listed.map(({ name, options }) => ({ name, options }))).toEqual([
+    expect(listed.map(({ name, options: stored }) => ({ name, options: stored }))).toEqual([
       { name: 'Stage', options: JSON.stringify(options) }
     ])
     expect(fileProperties()).toEqual({ Stage: { type: 'select', options, defaultValue: 'Draft' } })
@@ -264,7 +264,7 @@ describe('property definitions reach .memry/properties.md', () => {
     })
     const content = '---\nStage: Draft\n---\nbody\n'
     syncNoteToCache(
-      state.indexDb!.db as never,
+      state.indexDb!.db,
       {
         id: 'note-1',
         path: 'note-1.md',
@@ -282,7 +282,7 @@ describe('property definitions reach .memry/properties.md', () => {
       name: string
       options: string | null
     }>
-    expect(listed.map(({ name, options }) => ({ name, options }))).toEqual([
+    expect(listed.map(({ name, options: stored }) => ({ name, options: stored }))).toEqual([
       { name: 'Stage', options: JSON.stringify(options) }
     ])
   })

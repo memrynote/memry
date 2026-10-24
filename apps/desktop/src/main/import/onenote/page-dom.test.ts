@@ -36,7 +36,7 @@ describe('convertOneNoteTags', () => {
 
     expect(markdown).toContain('- [ ] Buy milk')
     expect(markdown).toContain('- [x] Done thing')
-    expect(tags.sort()).toEqual(['important', 'project-a'])
+    expect(tags.toSorted()).toEqual(['important', 'project-a'])
     expect(markdown).not.toContain('data-tag')
   })
 

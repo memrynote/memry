@@ -123,7 +123,7 @@ describe('canvas folder handlers registration', () => {
     expect(() => registerCanvasFolderHandlers()).not.toThrow()
 
     const registered = handleMock.mock.calls.map(([channel]) => channel)
-    expect(registered.sort()).toEqual([...INVOKE_CHANNELS].sort())
+    expect(registered.toSorted()).toEqual([...INVOKE_CHANNELS].toSorted())
   })
 
   it('unregisters every canvas folder invoke channel', async () => {
@@ -134,7 +134,7 @@ describe('canvas folder handlers registration', () => {
     unregisterCanvasFolderHandlers()
 
     const removed = removeMock.mock.calls.map(([channel]) => channel)
-    expect(removed.sort()).toEqual([...INVOKE_CHANNELS].sort())
+    expect(removed.toSorted()).toEqual([...INVOKE_CHANNELS].toSorted())
   })
 })
 
@@ -496,7 +496,7 @@ describe('typed canvas folder failures', () => {
   it('has an input for every mutating channel — a new handler must be covered below', () => {
     // The guard on the guard: without it, a sixth mutating handler would simply
     // be absent from the sweep instead of failing it.
-    expect(Object.keys(MUTATION_INPUTS).sort()).toEqual([...MUTATING_CHANNELS].sort())
+    expect(Object.keys(MUTATION_INPUTS).toSorted()).toEqual([...MUTATING_CHANNELS].toSorted())
   })
 
   it.each(MUTATING_CHANNELS)(

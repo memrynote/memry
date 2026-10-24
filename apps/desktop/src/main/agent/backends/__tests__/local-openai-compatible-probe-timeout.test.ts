@@ -13,7 +13,7 @@ const hangingToolProvider = vi.fn(async (url: string | URL, init?: RequestInit) 
   if (String(url).endsWith('/models')) {
     return new Response(JSON.stringify({ data: [{ id: MODEL }] }))
   }
-  const body = JSON.parse(String(init?.body)) as { stream?: boolean }
+  const body = JSON.parse(typeof init?.body === 'string' ? init.body : '') as { stream?: boolean }
   if (body.stream) {
     return new Response('data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n')
   }
@@ -53,7 +53,7 @@ describe('LocalOpenAICompatibleBackend tool probe on a hung server', () => {
     expect(result).toMatchObject({ connected: true, streamingSupported: true, toolsEnabled: true })
     expect(result.detail).toMatch(/timeout|timed out/i)
     expect(warn).toHaveBeenCalledTimes(1)
-    const line = warn.mock.calls[0]!.map(String).join(' ')
+    const line = warn.mock.calls[0].map(String).join(' ')
     expect(line).toContain(MODEL)
     expect(line).toMatch(/timeout|timed out/i)
   })

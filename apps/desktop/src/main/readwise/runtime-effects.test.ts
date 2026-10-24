@@ -7,7 +7,7 @@
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { markSyncIneligible, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { ReadwiseStub } from '@tests/utils/readwise-stub'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { DataDb } from '../database/types'
@@ -42,6 +42,9 @@ import {
   ReadwiseUnavailableError
 } from './runtime-effects'
 import { connectReadwise, syncReadwiseNow } from './connection'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const MINUTE = MINUTE_TICK_INTERVAL_MS
 const HOUR = 60 * MINUTE
