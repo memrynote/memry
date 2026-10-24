@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Срок убран у # подзадачи} few {Срок убран у # подзадач} many {Срок убран у # подзадач} other {Срок убран у # подзадачи}}",
       "prioritySet": "{count, plural, one {Приоритет задан для # подзадачи} few {Приоритет задан для # подзадач} many {Приоритет задан для # подзадач} other {Приоритет задан для # подзадачи}}",
       "deleted": "{count, plural, one {# подзадача удалена} few {# подзадачи удалены} many {# подзадач удалено} other {# подзадачи удалено}}"
-    }
+    },
+    "completedBranch": "Выполнено: {title} и {count, plural, one {# открытая подзадача} few {# открытые подзадачи} many {# открытых подзадач} other {# открытой подзадачи}}",
+    "deletedKeepSubtasks": "Удалено: {title}; подзадачи сохранены",
+    "deletedBranch": "Удалено: {title} и {count, plural, one {# подзадача} few {# подзадачи} many {# подзадач} other {# подзадачи}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "статус",
       "projectIs": "Проект",
       "project": "проект",
+      "locationIs": "Расположение —",
+      "location": "расположение",
+      "unknownNote": "Неизвестная заметка",
       "due": "Срок",
       "dueDate": "срок",
       "search": "поиск",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Срок"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Расположение",
+      "search": "Поиск папок и заметок...",
+      "empty": "Нет папок или заметок с задачами"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Приоритет",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Разделы проекта",
       "overview": "Обзор",
+      "all": "Все",
       "tasks": "Задачи",
       "notes": "Заметки",
       "files": "Файлы",
@@ -951,6 +963,25 @@
       "fileError": "Не удалось связать файл «{name}» с проектом",
       "fileErrorGeneric": "Не удалось импортировать файлы",
       "label": "Добавить в «{name}»"
+    },
+    "all": {
+      "showDone": "Показать выполненные",
+      "empty": "В этом проекте нет открытых задач.",
+      "expand": "Показать задачи в «{title}»",
+      "collapse": "Скрыть задачи в «{title}»",
+      "taskSummary": "Открыто: {open} из {total}",
+      "daysLeft": "{count} дн.",
+      "overdue": "Просрочено на {count} дн.",
+      "columns": {
+        "title": "Название",
+        "daysLeft": "Осталось дней"
+      },
+      "status": {
+        "active": "Активно",
+        "done": "Готово",
+        "upcoming": "Предстоит",
+        "past": "Прошло"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Индиго",
     "purple": "Фиолетовый",
     "pink": "Розовый"
+  },
+  "subtaskTree": {
+    "addSubtask": "Добавить подзадачу",
+    "dropInto": "В «{title}»",
+    "dropOut": "На уровень выше",
+    "draftPlaceholder": "Название подзадачи",
+    "draftLabel": "Новая подзадача в «{title}»",
+    "draftIn": "в «{title}»",
+    "toggleComplete": "Выполнить: {title}",
+    "moveUnder": {
+      "title": "Переместить под",
+      "placeholder": "Переместить под…",
+      "empty": "Подходящих задач нет",
+      "topLevel": "Верхний уровень проекта «{project}»",
+      "thisTask": "Эта задача",
+      "currentParent": "Текущая родительская",
+      "movesOne": "Переместит «{title}»",
+      "movesBranch": "Переместит «{title}» и {count, plural, one {# подзадачу} few {# подзадачи} many {# подзадач} other {# подзадачи}}",
+      "keys": "↵ Переместить сюда · ⌘↵ Верхний уровень · esc Закрыть"
+    },
+    "zoom": {
+      "path": "Путь задачи",
+      "up": "На уровень выше",
+      "upShortcut": "На уровень выше (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Удалить «{title}»?",
+      "summary": "{direct, plural, one {Подзадача: #} few {Подзадачи: #} many {Подзадач: #} other {Подзадач: #}}{deeper, plural, =0 {} one { и ещё # глубже} other { и ещё # глубже}}{open, plural, =0 {, все выполнены.} other {, не выполнено: #.}}",
+      "cancel": "Отмена",
+      "deleteAll": "Удалить всё",
+      "keepSubtasks": "Оставить подзадачи"
+    },
+    "menu": {
+      "open": "Открыть",
+      "complete": "Выполнить",
+      "reopen": "Открыть снова",
+      "zoom": "Перейти к подзадачам",
+      "moveUnder": "Переместить под…",
+      "indent": "Переместить под «{title}»",
+      "outdent": "Вынести на уровень выше",
+      "topLevel": "Сделать задачей верхнего уровня",
+      "delete": "Удалить"
+    },
+    "openPath": "Открыть {path}"
   }
 }

@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Usuń wpis w dzienniku",
     "description": "Czy na pewno chcesz usunąć „{title}”? Tej operacji nie można cofnąć."
+  },
+  "dayTimeline": {
+    "label": "Plan dnia",
+    "allDay": "Elementy całodniowe",
+    "unscheduled": "Bez terminu",
+    "unscheduledEmpty": "Brak zadań bez terminu. Przeciągnij tutaj blok, aby usunąć jego godzinę.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Ukończ {title}"
   }
 }

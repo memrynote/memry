@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Kan het portaal niet kopiëren",
+    "hiddenCount": "{count} verborgen",
+    "windowFailed": "Dit portaal kan niet worden geopend. Open in plaats daarvan de bronnotitie.",
+    "noTarget": "Dit portaal heeft nog geen doel. Voeg een notitie toe aan de definitie of verwijder het blok.",
+    "invalidJson": "De definitie van dit portaal is geen geldige JSON. Herstel die hieronder of verwijder het blok.",
+    "invalidShape": "De definitie van dit portaal bevat geen notitie of zoekopdracht. Herstel die hieronder of verwijder het blok.",
+    "search": {
+      "editQuery": "Zoekopdracht bewerken",
+      "count": "{count, plural, one {# blok} other {# blokken}}",
+      "loading": "Zoeken…",
+      "empty": "Geen blokken komen overeen met deze zoekopdracht.",
+      "failed": "De zoekopdracht kon niet worden uitgevoerd.",
+      "retry": "Opnieuw proberen",
+      "truncated": "De eerste {count} resultaten worden getoond."
+    },
+    "copiedContents": "Inhoud gekopieerd",
+    "copiedLink": "Link gekopieerd",
+    "actionFailed": "Kan dit portaal niet wijzigen",
+    "keepsOneBlock": "Een portaal behoudt minstens één blok. Verwijder in plaats daarvan het portaal.",
+    "expandChildren": "Onderliggende items tonen",
+    "collapseChildren": "Onderliggende items verbergen",
+    "toolbar": {
+      "label": "Portaal",
+      "include": "“{block}” opnemen",
+      "locked": "{note} is vergrendeld · alleen lezen",
+      "more": "Meer",
+      "openBeside": "{note} ernaast openen",
+      "click": "Klik",
+      "copyContents": "Inhoud kopiëren",
+      "copyLink": "Link kopiëren",
+      "remove": "Portaal verwijderen",
+      "removeHint": "{note} behoudt alle blokken"
+    },
+    "states": {
+      "missingNote": {
+        "text": "De bronnotitie is verwijderd. De verwijzing blijft bewaard.",
+        "action": "Verwijderen"
+      },
+      "missingBlock": {
+        "text": "Het blok is verwijderd in {source}.",
+        "action": "Ander kiezen"
+      },
+      "notSynced": {
+        "text": "Wachten tot de bronnotitie is gesynchroniseerd.",
+        "action": "Opnieuw proberen"
+      },
+      "cycle": {
+        "text": "Dit portaal verwijst naar zichzelf terug.",
+        "action": "Bron openen"
+      },
+      "tooDeep": {
+        "text": "Portalen worden maximaal {max} niveaus diep genest. Dit portaal opent als link.",
+        "action": "Bron openen"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Invoerveld voor vastleggen activeren",
@@ -43,6 +100,50 @@
     "showInFileManager": "Tonen in bestandsbeheer",
     "openInDefaultApp": "Openen in standaardapp",
     "revealFailed": "Kan niet in map tonen"
+  },
+  "commands": {
+    "runFailed": "Dat commando kon niet worden uitgevoerd. Probeer het opnieuw."
+  },
+  "commandsPalette": {
+    "title": "Commando’s",
+    "placeholder": "Typ een commando…",
+    "groups": {
+      "navigation": "Navigatie",
+      "create": "Maken",
+      "tabs": "Tabbladen",
+      "editor": "Editor",
+      "view": "Weergave",
+      "app": "App",
+      "note": "Notitie",
+      "settings": "Instellingen",
+      "sync": "Synchronisatie",
+      "help": "Help",
+      "project": "Project",
+      "tasks": "Taken",
+      "canvas": "Canvas",
+      "folder": "Map",
+      "file": "Bestand"
+    },
+    "contexts": {
+      "note": "Deze notitie",
+      "journal": "Dit dagboek",
+      "project": "Dit project",
+      "tasks": "Deze taken",
+      "canvas": "Dit canvas",
+      "folder": "Deze map",
+      "tag": "Deze tag",
+      "file": "Dit bestand"
+    },
+    "recent": "Recent",
+    "empty": "Geen commando’s komen overeen met “{query}”",
+    "searchHint": "Notities zoeken: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# commando} other {# commando’s}}"
+    },
+    "actions": {
+      "run": "Uitvoeren",
+      "searchNotes": "Notities zoeken"
+    }
   },
   "tabs": {
     "pin": "Tabblad vastzetten",
@@ -131,6 +232,20 @@
     "openInTab": "Gesprek openen in tabblad",
     "stop": "Stoppen",
     "thinking": "Agent denkt na",
+    "toolsUnavailable": "Kluistools staan uit voor dit model. Het heeft de toolcontrole niet doorstaan, dus het kan alleen chatten.",
+    "toolsUnavailableWithDetail": "Kluistools staan uit voor dit model. Het heeft de toolcontrole niet doorstaan, dus het kan alleen chatten. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Kluistools staan uit voor dit model. De provider weigerde een testverzoek met tools, dus het model kan alleen chatten.",
+      "noToolCall": "Kluistools staan uit voor dit model. Het beantwoordde een testverzoek zonder de tool aan te roepen, dus het kan alleen chatten.",
+      "toolResultRejected": "Kluistools staan uit voor dit model. Het riep een testtool aan maar faalde nadat het het resultaat terugkreeg, dus het kan alleen chatten.",
+      "streamingUnsupported": "Kluistools staan uit voor dit model. De provider streamde geen testantwoord, dus het model kan alleen chatten.",
+      "providerSaid": "De provider zei: {detail}",
+      "wroteToolCall": "Het model schreef een toolaanroep als tekst en er is niets uitgevoerd."
+    },
+    "stepLimit": {
+      "notice": "Gestopt bij de staplimiet.",
+      "continue": "Doorgaan"
+    },
     "enable": {
       "title": "memrynote Agent inschakelen",
       "description": "memrynote Agent gebruikt de lokale agent-CLI die je hebt gekozen om over je kluis te chatten. Claude stuurt beurten naar Anthropic; Codex stuurt beurten naar OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Context toevoegen",
       "addContextWithPermissions": "Context toevoegen ({permissions})",
       "mentionContext": "Een notitie, taak of afspraak vermelden",
+      "files": {
+        "attach": "Tekstbestand bijvoegen",
+        "refused": {
+          "unsupportedType": "{name} is geen ondersteund tekstbestand. Voeg een .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- of .yml-bestand bij.",
+          "notText": "{name} is geen UTF-8-tekstbestand. Voeg in plaats daarvan een tekstbestand bij.",
+          "tooLarge": "Met {name} komt dit bericht boven de limiet van 100 KB. Verwijder een bestand of voeg een kleiner bestand bij.",
+          "readFailed": "{name} kon niet worden gelezen. Controleer of het bestand nog bestaat en je het kunt openen, en voeg het dan opnieuw bij."
+        }
+      },
       "voice": {
         "start": "Dicteren starten",
         "stop": "Dicteren stoppen",
@@ -340,6 +464,14 @@
           "extraHigh": "Extra hoog"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Standaard",
+          "default": "Standaarddiepte",
+          "high": "Hoog",
+          "max": "Max"
+        }
+      },
       "permissionsLabel": "Agentmachtigingen: {access}, zoeken op het web {webSearch}",
       "permissions": {
         "label": "Machtigingen",
@@ -347,6 +479,17 @@
         "tools": "Tools"
       },
       "modelSettingsLabel": "Modelinstellingen van de agent: {model}, {settings}",
+      "queue": {
+        "label": "Berichten in de wachtrij",
+        "queueMessage": "Bericht in wachtrij zetten",
+        "edit": "Bericht in wachtrij bewerken",
+        "editLabel": "Tekst van bericht in wachtrij",
+        "remove": "Bericht uit wachtrij verwijderen",
+        "save": "Opslaan",
+        "cancel": "Annuleren",
+        "sending": "Verzenden…",
+        "notSent": "Niet verzonden. Bewerk om opnieuw te verzenden, of verwijder het."
+      },
       "unavailable": {
         "vaultToolsOnly": "Met dit model alleen kluistools"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Kan je toestemming niet opslaan",
       "resolveWindow": "Kan het bronvenster van de agent niet bepalen",
       "detectCli": "Kan agent-backends niet detecteren",
-      "loadDisclosure": "Kan je toestemming niet laden"
+      "loadDisclosure": "Kan je toestemming niet laden",
+      "turnFailed": "Het antwoord stopte met een fout. Je bericht blijft bewaard, dus je kunt het opnieuw verzenden."
     },
     "actions": {
       "copy": "Kopiëren",
@@ -576,6 +720,7 @@
       "newFolder2": "Nieuwe map",
       "newProject": "Nieuw project",
       "bookmarks": "Bladwijzers",
+      "chart": "Grafiek",
       "tags": "Tags",
       "reorderSection": "Volgorde van {section} wijzigen",
       "dropFilesToImport": "Zet bestanden neer om te importeren",
@@ -863,6 +1008,11 @@
       "cancel": "Annuleren",
       "remove2": "Verwijderen",
       "inYourAccount": "In je account",
+      "trySandbox": "Probeer de sandbox-kluis",
+      "sandboxVault": "Sandbox-kluis",
+      "sandboxPreparing": "Sandbox voorbereiden…",
+      "sandboxFailed": "Kan de sandbox-kluis niet voorbereiden",
+      "resetSandbox": "Sandbox-kluis resetten",
       "itemsCount": "{count} items",
       "untitledVault": "Kluis",
       "downloadVaultTitle": "“{name}” downloaden",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Notities die je opent, verschijnen hier",
       "bookmarks": "Bladwijzers",
       "tasks": "Taken",
+      "chart": "Grafiek",
       "calendar": "Agenda",
       "calendarToday": "Vandaag",
       "openCalendar": "Agenda openen",
@@ -978,6 +1129,9 @@
     "edit": "Bewerken",
     "done": "Klaar",
     "addWidget": "Widget toevoegen",
+    "cover": {
+      "add": "Omslag toevoegen"
+    },
     "empty": {
       "title": "Je bord is leeg",
       "body": "Widgets brengen je notities, taken en bladwijzers samen op één rustige plek.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Pictogram wijzigen…",
     "resetIcon": "Pictogram herstellen",
     "iconButton": "Pictogram van {name} wijzigen",
+    "leaveSandbox": "Terug naar {name}",
     "iconFailed": "Kan het kluispictogram niet wijzigen"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Type",
     "filterModified": "Gewijzigd",
     "matches": "Treffers",
+    "matchesMore": "{count, plural, one {# andere treffer} other {# andere treffers}}",
+    "matchesHide": "Treffers verbergen",
+    "matchOf": "Treffer {index} van {total}",
     "showMore": "Nog {count} tonen",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Volgende sectie",
       "open": "Openen",
       "openNote": "Notitie openen",
+      "openAtMatch": "Openen bij treffer",
       "openFile": "Bestand openen",
       "openJournal": "Dagboek openen",
       "openTask": "Taak openen",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Tag kiezen",
       "addTag": "Tag toevoegen",
       "showAll": "Alles tonen",
+      "hideMatches": "Treffers verbergen",
       "searchEverywhere": "Overal zoeken",
       "clearFilters": "Filters wissen"
     },

@@ -29,6 +29,23 @@
       "buttonRestartNow": "Uruchom ponownie teraz",
       "releaseNotesLabel": "Informacje o wydaniu:"
     },
+    "dataDbRecovery": {
+      "title": "Napraw bazę danych sejfu",
+      "message": "Baza danych Memry dla tego sejfu jest uszkodzona.",
+      "detail": "Twoje pliki notatek i dziennika nie ucierpiały. Naprawa zachowuje uszkodzoną bazę jako kopię zapasową w {path}, tworzy nową, odbudowuje z plików sejfu, co się da, a zsynchronizowane elementy przywraca przy następnej synchronizacji. Zmiany, które nie zostały jeszcze zsynchronizowane, są odzyskiwane, o ile to możliwe.",
+      "buttonRecover": "Napraw",
+      "buttonLater": "Nie teraz"
+    },
+    "obsidianVault": {
+      "title": "Otwórz sejf Obsidian",
+      "message": "Otworzyć kopię tego sejfu Obsidian?",
+      "detail": "Otwarcie sejfu Obsidian w memrynote może spowodować utratę danych, na których opierają się Twoje wtyczki Obsidian. Gdy memrynote zamienia wiersz zadania z wtyczki w zadanie, przepisuje ten wiersz. Pola, takie jak terminy z wtyczki Tasks, znikają z pliku i Obsidian ich już nie widzi.\n\nmemrynote może skopiować „{name}” do „{copyName}” obok i otworzyć kopię. „{name}” pozostaje dokładnie taki, jaki jest.",
+      "detailExistingCopy": "Otwarcie sejfu Obsidian w memrynote może spowodować utratę danych, na których opierają się Twoje wtyczki Obsidian. Gdy memrynote zamienia wiersz zadania z wtyczki w zadanie, przepisuje ten wiersz. Pola, takie jak terminy z wtyczki Tasks, znikają z pliku i Obsidian ich już nie widzi.\n\nKopia memrynote, „{copyName}”, już się tam znajduje. memrynote może otworzyć tę kopię. „{name}” pozostaje dokładnie taki, jaki jest.",
+      "buttonCopy": "Utwórz kopię",
+      "buttonOpenCopy": "Otwórz kopię",
+      "buttonOpenOriginal": "Otwórz oryginał",
+      "buttonCancel": "Anuluj"
+    },
     "pair": {
       "title": "Sparuj rozszerzenie przeglądarki",
       "message": "Zezwolić rozszerzeniu przeglądarki Memry na wysyłanie zapisów do tej aplikacji?",

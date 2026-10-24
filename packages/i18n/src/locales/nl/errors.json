@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Je abonnement synchroniseert minder kluizen dan dit account heeft, dus deze kluis blijft op dit apparaat. Verwijder een kluis uit je account via Instellingen → Account, of upgrade je abonnement.",
     "certificatePinFailed": "Beveiligde verbinding mislukt. Controleer je netwerkverbinding.",
     "deviceKeyMismatch": "De beveiligingssleutel van dit apparaat komt niet meer overeen met de sleutel die voor je account is geregistreerd, dus de server weigert de wijzigingen. Log opnieuw in op dit apparaat om het opnieuw te registreren.",
+    "deviceKeysMissing": "Wijzigingen op dit apparaat worden niet geüpload omdat de apparaatsleutels ontbreken. Kies Herstellen om ze te herstellen. Als dit apparaat zijn sleutels niet meer heeft, meld je je opnieuw aan en heb je mogelijk je herstelzin nodig. Niet-gesynchroniseerde notities, taken en projecten blijven bewaard.",
     "keychainUnavailable": "De synchronisatie is gepauzeerd omdat Memry de synchronisatiesleutels nu niet uit de sleutelhanger van je systeem kan lezen. Ontgrendel je sleutelhanger, dan wordt de synchronisatie vanzelf hervat; gebeurt dat niet, start Memry dan opnieuw. Er is niets verwijderd.",
     "unknown": "Er is een onverwachte synchronisatiefout opgetreden. We proberen het automatisch opnieuw.",
     "statusFetchFailed": "Kan de synchronisatiestatus niet ophalen",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synchronisatie mislukt",
     "pauseFailed": "Kan de synchronisatie niet pauzeren",
     "resumeFailed": "Kan de synchronisatie niet hervatten",
+    "syncNowSignedOut": "Voor synchronisatie moet je je opnieuw aanmelden op dit apparaat.",
+    "syncNowBusy": "Synchronisatie is al bezig. Probeer het zo meteen opnieuw.",
+    "syncNowPaused": "Synchronisatie is gepauzeerd terwijl ze liep. Hervat ze via het synchronisatiemenu.",
+    "openAccountSettings": "Instellingen openen",
     "settingsNotInitialized": "Synchronisatie van instellingen is niet geïnitialiseerd",
     "securityQuarantinePermanent": "Een synchronisatie-item kan niet worden geverifieerd en is om veiligheidsredenen in quarantaine geplaatst.",
     "securityQuarantineRetry": "Een synchronisatie-item heeft de handtekeningverificatie niet doorstaan en zal opnieuw worden geprobeerd.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "Inline AI-bewerking is uitgeschakeld",
-    "listOllamaModelsFailed": "Kan de Ollama-modellen niet ophalen"
+    "listOllamaModelsFailed": "Kan de Ollama-modellen niet ophalen",
+    "writingAssistInvalid": "Dat verzoek kon niet naar het AI-model worden verzonden.",
+    "apiKeyMissing": "Voeg je {provider}-API-sleutel toe in Instellingen → AI om schrijftools te gebruiken.",
+    "apiKeyInvalid": "Je {provider}-API-sleutel is geweigerd. Controleer hem in Instellingen → AI.",
+    "ollamaUnreachable": "Ollama draait niet. Start het met \"ollama serve\" of kies een andere provider in Instellingen → AI.",
+    "providerUnreachable": "Kan {provider} niet bereiken. Controleer je internetverbinding en probeer het opnieuw."
   },
   "auth": {
     "notAuthenticated": "Niet ingelogd",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "Kan de externe afspraak niet overnemen",
     "onlyCalendarSourcesRetryable": "Alleen agendabronnen kunnen opnieuw worden geprobeerd",
     "invalidProviderSettings": "Ongeldige instellingen voor de agendadienst",
-    "getExternalEventFailed": "Kan deze afspraak niet laden. Die staat nog in je agenda; probeer hem opnieuw te openen."
+    "getExternalEventFailed": "Kan deze afspraak niet laden. Die staat nog in je agenda; probeer hem opnieuw te openen.",
+    "listLinkedNotesFailed": "Kan de aan deze afspraak gekoppelde notities niet laden."
   },
   "canvasFolder": {
     "exists": "Er bestaat hier al een canvasmap met die naam.",
@@ -209,10 +220,35 @@
     "previewFailed": "Voorbeeld mislukt",
     "listFailed": "Kan de importbronnen niet ophalen",
     "appleNotesFoldersFailed": "Kan je Apple Notes-mappen niet lezen",
+    "appleNotesPasswordFailed": "Kan het wachtwoord van Notities niet controleren.",
     "onenoteStatusFailed": "Kan de verbindingsstatus van OneNote niet lezen",
     "onenoteConnectFailed": "Inloggen bij Microsoft mislukt",
     "onenoteDisconnectFailed": "Kan het Microsoft-account niet ontkoppelen",
-    "onenoteNotebooksFailed": "Kan OneNote-notitieblokken niet laden"
+    "onenoteNotebooksFailed": "Kan OneNote-notitieblokken niet laden",
+    "readwiseStatusFailed": "Kan de Readwise-verbindingsstatus niet lezen",
+    "readwiseConnectFailed": "Kan geen verbinding maken met Readwise",
+    "readwiseInvalidToken": "Readwise heeft dit token niet geaccepteerd. Kopieer het opnieuw van readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise beperkt op dit moment het aantal verzoeken. Probeer het over een minuut opnieuw.",
+    "readwiseUnreachable": "Kan Readwise niet bereiken. Controleer je verbinding en probeer het opnieuw.",
+    "readwiseDisconnectFailed": "Kan Readwise niet loskoppelen",
+    "readwiseSyncFailed": "Kan de Readwise-synchronisatie niet starten",
+    "readwiseRunUnavailable": "Readwise synchroniseert niet op dit apparaat.",
+    "readwiseRunInProgress": "Er loopt al een Readwise-import. Probeer het opnieuw als die klaar is.",
+    "readwiseOptionsFailed": "Kan de Readwise-instellingen niet opslaan",
+    "readwiseNotConnected": "Readwise is niet verbonden. Plak eerst je toegangstoken.",
+    "readwiseSyncsElsewhere": "Readwise synchroniseert op een ander apparaat. Voer dit commando daar uit.",
+    "readwiseBookCommandFailed": "Kan het Readwise-commando niet voltooien",
+    "readwiseBookGone": "Dit boek staat niet meer in je Readwise-bibliotheek.",
+    "readwiseNotLinked": "Deze notitie is niet gekoppeld aan een Readwise-boek.",
+    "readwiseNotDeleted": "Dit boek staat niet in de lijst met verwijderde boeken.",
+    "readwiseBookBusy": "De notitie is gewijzigd terwijl het commando liep. Probeer het opnieuw.",
+    "readwiseSyncsOnDevice": "Readwise synchroniseert op {device}. Gebruik “Hier synchroniseren” om het hierheen te verplaatsen.",
+    "readwiseAnotherDevice": "een ander apparaat",
+    "readwiseNotReady": "Memry is nog niet klaar met synchroniseren met je andere apparaten. Probeer het zo meteen opnieuw.",
+    "readwiseNeedsSync": "Schakel synchronisatie in om Readwise tussen apparaten te verplaatsen.",
+    "readwiseClaimNotDelivered": "Kan je andere apparaten nog niet informeren. Controleer je verbinding en probeer het opnieuw.",
+    "readwiseTakeOverFailed": "Kan Readwise niet naar dit apparaat verplaatsen",
+    "readwiseCancelFailed": "Kan de Readwise-synchronisatie niet annuleren"
   },
   "project": {
     "createFailed": "Kan het project niet maken",
@@ -236,7 +272,8 @@
     "renameFailed": "Kan de naam van de eigenschap niet wijzigen",
     "createDefinitionFailed": "Kan de eigenschapsdefinitie niet maken",
     "updateDefinitionFailed": "Kan de eigenschapsdefinitie niet bijwerken",
-    "setCalendarVisibilityFailed": "Kan de zichtbaarheid van de agenda-eigenschap niet instellen"
+    "setCalendarVisibilityFailed": "Kan de zichtbaarheid van de agenda-eigenschap niet instellen",
+    "definitionsFileUnreadable": "Kan eigenschapswijzigingen niet opslaan omdat .memry/properties.md niet kan worden gelezen. Herstel of verwijder dat bestand en probeer het opnieuw."
   },
   "reminder": {
     "notFound": "Herinnering niet gevonden",
@@ -262,6 +299,7 @@
     "shortcutInUse": "Sneltoets {shortcut} is al in gebruik"
   },
   "tag": {
+    "renameInProgress": "Het hernoemen van #{from} naar #{to} loopt nog. Probeer het opnieuw als het klaar is.",
     "mergeSameTag": "De bron- en doeltag zijn hetzelfde",
     "categoryNameRequired": "Categorienaam is vereist",
     "pinNoteFailed": "Kan de notitie niet vastzetten",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "Kan de taken niet verwijderen",
     "moveManyFailed": "Kan de taken niet verplaatsen",
     "archiveManyFailed": "Kan de taken niet archiveren",
-    "projectMissing": "Dat project bestaat niet meer"
+    "projectMissing": "Dat project bestaat niet meer",
+    "invalidParent": "Een taak kan daar niet naartoe"
   },
   "taskStatus": {
     "createFailed": "Kan de status niet maken",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "De eigenaar heeft deze notitie alleen-lezen gemaakt.",
     "folderReadOnly": "De eigenaar heeft deze map alleen-lezen gemaakt."
+  },
+  "ocrLanguages": {
+    "unreachable": "De server van Memry kon niet worden bereikt. De talen die er al zijn blijven werken en Memry probeert het bij de volgende start opnieuw.",
+    "unavailable": "De server van Memry biedt deze taal nog niet aan. De talen die er al zijn blijven werken.",
+    "corrupt": "De gedownloade gegevens kwamen niet overeen met wat Memry verwacht en zijn daarom niet gebruikt. Probeer opnieuw te downloaden.",
+    "saveFailed": "De taalgegevens konden niet op deze computer worden opgeslagen. Controleer de vrije schijfruimte en probeer het opnieuw."
+  },
+  "tagFields": {
+    "reservedName": "“{name}” is gereserveerd en kan niet als veldnaam worden gebruikt",
+    "duplicateField": "#{definedBy} heeft al een veld met de naam “{name}”",
+    "unknownField": "Deze tag heeft geen veld met de naam “{name}”",
+    "inheritedField": "“{name}” komt van #{definedBy}. Bewerk het daar",
+    "cycle": "#{parent} neemt zijn velden al over van deze tag",
+    "unreadableSchema": "Een nieuwere versie van Memry heeft deze tag gewijzigd. Werk Memry bij om hem te bewerken",
+    "relationTargetRequired": "Kies naar welke tag deze relatie verwijst",
+    "editFailed": "Kan de velden van de tag niet wijzigen",
+    "previewFailed": "Kan niet tellen wat deze wijziging raakt",
+    "snapshotFailed": "Kan tagvelden niet laden",
+    "renameRunning": "Een andere veldhernoeming wordt nog afgerond ({from} naar {to}). Probeer het opnieuw als ze klaar is."
   }
 }

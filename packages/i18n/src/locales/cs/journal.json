@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Smazat zápis v deníku",
     "description": "Opravdu chcete smazat „{title}“? Tuto akci nelze vrátit zpět."
+  },
+  "dayTimeline": {
+    "label": "Denní rozvrh",
+    "allDay": "Celodenní položky",
+    "unscheduled": "Nenaplánováno",
+    "unscheduledEmpty": "Žádné nenaplánované úkoly. Přetažením bloku sem zrušíte jeho čas.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Dokončit {title}"
   }
 }

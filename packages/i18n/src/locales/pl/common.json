@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Nie udało się skopiować portalu",
+    "hiddenCount": "Ukryte: {count}",
+    "windowFailed": "Nie udało się otworzyć tego portalu. Otwórz zamiast tego notatkę źródłową.",
+    "noTarget": "Ten portal nie ma jeszcze celu. Dodaj notatkę do definicji albo usuń blok.",
+    "invalidJson": "Definicja tego portalu nie jest prawidłowym JSON-em. Popraw ją poniżej albo usuń blok.",
+    "invalidShape": "Definicja tego portalu nie zawiera notatki ani wyszukiwania. Popraw ją poniżej albo usuń blok.",
+    "search": {
+      "editQuery": "Edytuj zapytanie",
+      "count": "{count, plural, one {# blok} few {# bloki} many {# bloków} other {# bloku}}",
+      "loading": "Wyszukiwanie…",
+      "empty": "Żaden blok nie pasuje do tego zapytania.",
+      "failed": "Nie udało się uruchomić wyszukiwania.",
+      "retry": "Spróbuj ponownie",
+      "truncated": "Pokazano pierwsze wyniki: {count}."
+    },
+    "copiedContents": "Skopiowano zawartość",
+    "copiedLink": "Skopiowano link",
+    "actionFailed": "Nie udało się zmienić tego portalu",
+    "keepsOneBlock": "Portal zachowuje co najmniej jeden blok. Usuń zamiast tego cały portal.",
+    "expandChildren": "Pokaż elementy podrzędne",
+    "collapseChildren": "Ukryj elementy podrzędne",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Dołącz „{block}”",
+      "locked": "{note} jest zablokowana · tylko do odczytu",
+      "more": "Więcej",
+      "openBeside": "Otwórz {note} obok",
+      "click": "Kliknij",
+      "copyContents": "Kopiuj zawartość",
+      "copyLink": "Kopiuj link",
+      "remove": "Usuń portal",
+      "removeHint": "{note} zachowuje wszystkie bloki"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Notatka źródłowa została usunięta. Odwołanie zostaje zachowane.",
+        "action": "Usuń"
+      },
+      "missingBlock": {
+        "text": "Blok został usunięty w: {source}.",
+        "action": "Wybierz inny"
+      },
+      "notSynced": {
+        "text": "Czekam na synchronizację notatki źródłowej.",
+        "action": "Spróbuj ponownie"
+      },
+      "cycle": {
+        "text": "Ten portal prowadzi z powrotem do siebie.",
+        "action": "Otwórz źródło"
+      },
+      "tooDeep": {
+        "text": "Portale zagnieżdżają się do poziomu {max}. Ten otworzy się jako link.",
+        "action": "Otwórz źródło"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Przejdź do pola szybkiego zapisu",
@@ -43,6 +100,50 @@
     "showInFileManager": "Pokaż w menedżerze plików",
     "openInDefaultApp": "Otwórz w domyślnej aplikacji",
     "revealFailed": "Nie udało się pokazać w folderze"
+  },
+  "commands": {
+    "runFailed": "Nie udało się wykonać tego polecenia. Spróbuj ponownie."
+  },
+  "commandsPalette": {
+    "title": "Polecenia",
+    "placeholder": "Wpisz polecenie…",
+    "groups": {
+      "navigation": "Nawigacja",
+      "create": "Utwórz",
+      "tabs": "Karty",
+      "editor": "Edytor",
+      "view": "Widok",
+      "app": "Aplikacja",
+      "note": "Notatka",
+      "settings": "Ustawienia",
+      "sync": "Synchronizacja",
+      "help": "Pomoc",
+      "project": "Projekt",
+      "tasks": "Zadania",
+      "canvas": "Kanwa",
+      "folder": "Folder",
+      "file": "Plik"
+    },
+    "contexts": {
+      "note": "Ta notatka",
+      "journal": "Ten dziennik",
+      "project": "Ten projekt",
+      "tasks": "Te zadania",
+      "canvas": "Ta kanwa",
+      "folder": "Ten folder",
+      "tag": "Ten tag",
+      "file": "Ten plik"
+    },
+    "recent": "Ostatnie",
+    "empty": "Brak poleceń pasujących do „{query}”",
+    "searchHint": "Szukaj notatek: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# polecenie} few {# polecenia} many {# poleceń} other {# polecenia}}"
+    },
+    "actions": {
+      "run": "Uruchom",
+      "searchNotes": "Szukaj notatek"
+    }
   },
   "tabs": {
     "pin": "Przypnij kartę",
@@ -131,6 +232,20 @@
     "openInTab": "Otwórz rozmowę w karcie",
     "stop": "Zatrzymaj",
     "thinking": "Agent myśli",
+    "toolsUnavailable": "Narzędzia sejfu są wyłączone dla tego modelu. Nie przeszedł sprawdzenia narzędzi, więc może tylko rozmawiać.",
+    "toolsUnavailableWithDetail": "Narzędzia sejfu są wyłączone dla tego modelu. Nie przeszedł sprawdzenia narzędzi, więc może tylko rozmawiać. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Narzędzia sejfu są wyłączone dla tego modelu. Dostawca odrzucił testowe żądanie zawierające narzędzia, więc model może tylko rozmawiać.",
+      "noToolCall": "Narzędzia sejfu są wyłączone dla tego modelu. Odpowiedział na testowe żądanie bez wywołania narzędzia, więc może tylko rozmawiać.",
+      "toolResultRejected": "Narzędzia sejfu są wyłączone dla tego modelu. Wywołał testowe narzędzie, ale zawiódł po otrzymaniu wyniku, więc może tylko rozmawiać.",
+      "streamingUnsupported": "Narzędzia sejfu są wyłączone dla tego modelu. Dostawca nie przesłał strumieniowo testowej odpowiedzi, więc model może tylko rozmawiać.",
+      "providerSaid": "Komunikat dostawcy: {detail}",
+      "wroteToolCall": "Model zapisał wywołanie narzędzia jako tekst i nic się nie uruchomiło."
+    },
+    "stepLimit": {
+      "notice": "Zatrzymano na limicie kroków.",
+      "continue": "Kontynuuj"
+    },
     "enable": {
       "title": "Włącz agenta memrynote",
       "description": "Agent memrynote korzysta z wybranego lokalnego agenta CLI, aby rozmawiać o zawartości sejfu. Claude wysyła wiadomości do firmy Anthropic, a Codex – do firmy OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Dodaj kontekst",
       "addContextWithPermissions": "Dodaj kontekst ({permissions})",
       "mentionContext": "Wspomnij o notatce, zadaniu lub wydarzeniu",
+      "files": {
+        "attach": "Załącz plik tekstowy",
+        "refused": {
+          "unsupportedType": "{name} nie jest obsługiwanym plikiem tekstowym. Załącz plik .txt, .md, .log, .csv, .tsv, .json, .yaml lub .yml.",
+          "notText": "{name} nie jest plikiem tekstowym UTF-8. Załącz zamiast tego plik tekstowy.",
+          "tooLarge": "Z plikiem {name} ta wiadomość przekroczyłaby limit 100 KB. Usuń jakiś plik albo załącz mniejszy.",
+          "readFailed": "Nie udało się odczytać pliku {name}. Sprawdź, czy nadal istnieje i czy możesz go otworzyć, a potem załącz go ponownie."
+        }
+      },
       "voice": {
         "start": "Rozpocznij dyktowanie",
         "stop": "Zatrzymaj dyktowanie",
@@ -340,6 +464,14 @@
           "extraHigh": "Bardzo wysoki"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Domyślna",
+          "default": "Domyślna głębokość",
+          "high": "Wysoka",
+          "max": "Maksymalna"
+        }
+      },
       "permissionsLabel": "Uprawnienia agenta: {access}, wyszukiwanie w sieci: {webSearch}",
       "permissions": {
         "label": "Uprawnienia",
@@ -347,6 +479,17 @@
         "tools": "Narzędzia"
       },
       "modelSettingsLabel": "Ustawienia modelu agenta: {model}, {settings}",
+      "queue": {
+        "label": "Wiadomości w kolejce",
+        "queueMessage": "Dodaj wiadomość do kolejki",
+        "edit": "Edytuj wiadomość w kolejce",
+        "editLabel": "Tekst wiadomości w kolejce",
+        "remove": "Usuń wiadomość z kolejki",
+        "save": "Zapisz",
+        "cancel": "Anuluj",
+        "sending": "Wysyłanie…",
+        "notSent": "Nie wysłano. Edytuj, aby wysłać ponownie, albo usuń."
+      },
       "unavailable": {
         "vaultToolsOnly": "Z tym modelem tylko narzędzia sejfu"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Nie udało się zapisać potwierdzenia włączenia agenta",
       "resolveWindow": "Nie udało się ustalić okna źródłowego agenta",
       "detectCli": "Nie udało się wykryć backendów agenta",
-      "loadDisclosure": "Nie udało się załadować potwierdzenia włączenia agenta"
+      "loadDisclosure": "Nie udało się załadować potwierdzenia włączenia agenta",
+      "turnFailed": "Odpowiedź zatrzymała się z błędem. Twoja wiadomość została zachowana, więc możesz wysłać ją ponownie."
     },
     "actions": {
       "copy": "Kopiuj",
@@ -576,6 +720,7 @@
       "newFolder2": "Nowy folder",
       "newProject": "Nowy projekt",
       "bookmarks": "Zakładki",
+      "chart": "Wykres",
       "tags": "Tagi",
       "reorderSection": "Zmień kolejność: {section}",
       "dropFilesToImport": "Upuść pliki do zaimportowania",
@@ -863,6 +1008,11 @@
       "cancel": "Anuluj",
       "remove2": "Usuń",
       "inYourAccount": "Na koncie",
+      "trySandbox": "Wypróbuj sejf piaskownicy",
+      "sandboxVault": "Sejf piaskownicy",
+      "sandboxPreparing": "Przygotowywanie piaskownicy…",
+      "sandboxFailed": "Nie udało się przygotować sejfu piaskownicy",
+      "resetSandbox": "Zresetuj sejf piaskownicy",
       "itemsCount": "Elementy: {count}",
       "untitledVault": "Sejf",
       "downloadVaultTitle": "Pobierz „{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Tutaj pojawią się otwierane notatki",
       "bookmarks": "Zakładki",
       "tasks": "Zadania",
+      "chart": "Wykres",
       "calendar": "Kalendarz",
       "calendarToday": "Dzisiaj",
       "openCalendar": "Otwórz kalendarz",
@@ -978,6 +1129,9 @@
     "edit": "Edytuj",
     "done": "Gotowe",
     "addWidget": "Dodaj widżet",
+    "cover": {
+      "add": "Dodaj okładkę"
+    },
     "empty": {
       "title": "Twoja tablica jest pusta",
       "body": "Widżety zbierają notatki, zadania i zakładki w jednym spokojnym miejscu.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Zmień ikonę…",
     "resetIcon": "Resetuj ikonę",
     "iconButton": "Zmień ikonę sejfu: {name}",
+    "leaveSandbox": "Wróć do: {name}",
     "iconFailed": "Nie udało się zmienić ikony sejfu"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Typ",
     "filterModified": "Zmodyfikowano",
     "matches": "Dopasowania",
+    "matchesMore": "{count, plural, one {Jeszcze # dopasowanie} few {Jeszcze # dopasowania} many {Jeszcze # dopasowań} other {Jeszcze # dopasowania}}",
+    "matchesHide": "Ukryj dopasowania",
+    "matchOf": "Dopasowanie {index} z {total}",
     "showMore": "Pokaż jeszcze {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Następna sekcja",
       "open": "Otwórz",
       "openNote": "Otwórz notatkę",
+      "openAtMatch": "Otwórz przy dopasowaniu",
       "openFile": "Otwórz plik",
       "openJournal": "Otwórz dziennik",
       "openTask": "Otwórz zadanie",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Wybierz tag",
       "addTag": "Dodaj tag",
       "showAll": "Pokaż wszystko",
+      "hideMatches": "Ukryj dopasowania",
       "searchEverywhere": "Szukaj wszędzie",
       "clearFilters": "Wyczyść filtry"
     },

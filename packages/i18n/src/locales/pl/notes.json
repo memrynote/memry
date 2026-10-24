@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Nie znaleziono – kliknij, aby utworzyć „{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "Akcje linku",
+    "open": "Otwórz",
+    "openInNewTab": "Otwórz w nowej karcie",
+    "openToTheSide": "Otwórz obok",
+    "edit": "Edytuj link",
+    "copy": "Kopiuj link",
+    "unlink": "Usuń link",
+    "displayRow": "Wyświetlanie…",
+    "sizeNone": "Brak",
+    "sizeSmall": "Mały",
+    "sizeMedium": "Średni",
+    "showCover": "Pokaż okładkę",
+    "showPreview": "Pokaż podgląd",
+    "copyFailed": "Nie udało się skopiować linku"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Zaimportuj ponownie z Readwise",
+    "refreshAction": "Odśwież informacje o książce",
+    "syncsOn": "Readwise synchronizuje się na urządzeniu {device}.",
+    "syncsOnAnotherDevice": "Readwise synchronizuje się na innym urządzeniu.",
+    "takeOverHint": "Synchronizuj na tamtym urządzeniu albo przejmij synchronizację w Ustawieniach → Import.",
+    "reimport": {
+      "title": "Zaimportować ponownie „{title}” z Readwise?",
+      "body": "Sekcja Readwise zostanie napisana od nowa. Wszystko, co w niej wpisano, zostanie utracone.",
+      "note": "Tekst poza sekcją i właściwości notatki pozostają bez zmian.",
+      "cancel": "Anuluj",
+      "confirm": "Zaimportuj ponownie"
+    },
+    "commands": {
+      "reimported": "Zaimportowano ponownie z Readwise",
+      "refreshed": "Odświeżono informacje o książce",
+      "failed": "Nie udało się wykonać polecenia Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Nie wybrano notatki",
@@ -25,6 +61,7 @@
       "willSync": "Notatka zostanie zsynchronizowana z chmurą",
       "renameFailed": "Nie udało się zmienić nazwy notatki",
       "titleRequired": "Notatka musi mieć tytuł",
+      "duplicateTitle": "W folderze {folder} jest też inna notatka o tytule „{title}”. Linki do tych notatek będą zawierać nazwę folderu.",
       "toggleLocalOnlyFailed": "Nie udało się zmienić trybu tylko lokalnego",
       "toggleFullWidthFailed": "Nie udało się zmienić trybu pełnej szerokości",
       "pathCopied": "Skopiowano ścieżkę",
@@ -85,6 +122,10 @@
       "body": "Utwórz notatkę, aby zacząć",
       "newNote": "Nowa notatka"
     },
+    "readwiseSync": {
+      "tooltip": "Synchronizacja Readwise",
+      "failed": "Synchronizacja Readwise nie powiodła się"
+    },
     "syncing": {
       "body": "Synchronizowanie notatek – pojawią się tutaj, gdy dotrą"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Otwórz obok",
       "newNote": "Nowa notatka",
       "newFolder": "Nowy folder",
+      "showTasks": "Pokaż zadania",
       "expandSubfolders": "Rozwiń wszystkie podfoldery",
       "collapseSubfolders": "Zwiń wszystkie podfoldery",
       "rename": "Zmień nazwę",
@@ -138,7 +180,15 @@
       "folderSuffix": "folder",
       "moreItems": "…i jeszcze {count}",
       "deleting": "Usuwanie…",
-      "deleteCount": "Usuń {count}"
+      "deleteCount": "Usuń {count}",
+      "journalFolderWarning": "Obejmuje to folder dziennika. Każdy wpis w nim zostanie usunięty na wszystkich Twoich urządzeniach."
+    },
+    "journalChange": {
+      "leaveTitle": "Zamienić wpisy dziennika w notatki?",
+      "leaveBody": "Wpisy dziennika przeniesione poza folder dziennika lub z nazwą w innym formacie daty stają się zwykłymi notatkami i znikają z Dziennika. Na Twoich pozostałych urządzeniach te dni zostaną usunięte z Dziennika, a zamiast nich pojawią się notatki.",
+      "joinTitle": "Zamienić notatki we wpisy dziennika?",
+      "joinBody": "Pliki w folderze dziennika, których nazwy mają format daty dziennika, stają się wpisami dziennika. Na Twoich pozostałych urządzeniach te notatki zostaną zastąpione wpisami dziennika.",
+      "confirm": "Kontynuuj"
     },
     "toast": {
       "selectionBookmarked": "Dodano elementy do zakładek: {count}",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Nagłówek",
       "listPlaceholder": "Element listy",
       "todoPlaceholder": "Zadanie do zrobienia",
-      "htmlComment": "Ukryty komentarz HTML"
+      "htmlComment": "Ukryty komentarz HTML",
+      "percentComment": "Ukryty komentarz",
+      "readwise": {
+        "noteStart": "Readwise · synchronizuje się automatycznie",
+        "noteEnd": "Koniec sekcji Readwise",
+        "dayStart": "Readwise · dzisiejsze zakreślenia",
+        "dayEnd": "Koniec Readwise",
+        "hint": "Jeśli coś zmienisz w tej sekcji, Readwise przestanie ją aktualizować."
+      }
     },
     "table": {
       "keyboardMenuAria": "Akcje tabeli dla wiersza {row}, kolumny {column}",
-      "keyboardMenuTitle": "Wiersz {row} · Kolumna {column}"
+      "keyboardMenuTitle": "Wiersz {row} · Kolumna {column}",
+      "sizePicker": {
+        "aria": "Rozmiar tabeli. Strzałkami wybierz wiersze i kolumny, a potem naciśnij Enter.",
+        "size": "{rows, plural, one {# wiersz} few {# wiersze} many {# wierszy} other {# wiersza}} × {columns, plural, one {# kolumna} few {# kolumny} many {# kolumn} other {# kolumny}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Usuń wiersz} few {Usuń # wiersze} many {Usuń # wierszy} other {Usuń # wiersza}}",
+        "addRowsAbove": "{count, plural, one {Dodaj wiersz powyżej} few {Dodaj # wiersze powyżej} many {Dodaj # wierszy powyżej} other {Dodaj # wiersza powyżej}}",
+        "addRowsBelow": "{count, plural, one {Dodaj wiersz poniżej} few {Dodaj # wiersze poniżej} many {Dodaj # wierszy poniżej} other {Dodaj # wiersza poniżej}}",
+        "deleteColumns": "{count, plural, one {Usuń kolumnę} few {Usuń # kolumny} many {Usuń # kolumn} other {Usuń # kolumny}}",
+        "addColumnsLeft": "{count, plural, one {Dodaj kolumnę po lewej} few {Dodaj # kolumny po lewej} many {Dodaj # kolumn po lewej} other {Dodaj # kolumny po lewej}}",
+        "addColumnsRight": "{count, plural, one {Dodaj kolumnę po prawej} few {Dodaj # kolumny po prawej} many {Dodaj # kolumn po prawej} other {Dodaj # kolumny po prawej}}"
+      }
     },
     "list": {
       "bulleted": "Lista punktowana",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Ukryj graf lokalny",
       "showLocalGraph": "Pokaż graf lokalny",
       "moreActions": "Więcej akcji",
+      "searchActions": "Szukaj akcji...",
+      "noMatchingActions": "Brak pasujących akcji",
       "find": "Znajdź…",
       "versionHistory": "Historia wersji",
       "export": "Eksportuj",
@@ -215,6 +287,8 @@
       "notSynced": "Jeszcze nie zsynchronizowano z tym urządzeniem",
       "revealFailed": "Nie udało się pokazać pliku w folderze",
       "openFailed": "Nie udało się otworzyć pliku",
+      "showAsLink": "Pokaż jako link",
+      "showAsEmbed": "Pokaż osadzony",
       "missingTitle": "Brak pliku załącznika",
       "missingExpected": "Oczekiwany plik: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Zmień nazwę",
       "renamed": "Zmieniono nazwę na {name}",
       "failed": "Nie udało się zmienić nazwy załącznika"
+    },
+    "imageLightbox": {
+      "menuItem": "Powiększ",
+      "title": "Przeglądarka obrazów",
+      "zoomIn": "Powiększ",
+      "zoomOut": "Pomniejsz",
+      "reset": "Resetuj powiększenie"
+    },
+    "imageCrop": {
+      "menuItem": "Przytnij…",
+      "title": "Przytnij obraz",
+      "description": "Przeciągnij po obrazie, aby wybrać, co pokaże notatka. Oryginalny plik pozostaje bez zmian.",
+      "reset": "Pokaż cały obraz",
+      "cancel": "Anuluj",
+      "apply": "Przytnij",
+      "unavailable": "Obraz jeszcze się nie załadował, więc nie można go przyciąć"
     },
     "attachmentsDialog": {
       "title": "Załączniki",
@@ -248,12 +338,24 @@
       "title": "Objaśnienie",
       "group": "Podstawowe bloki",
       "subtext": "Wyróżnij ważne informacje",
+      "customSubtext": "Twój własny typ wywołania",
       "changeType": "Zmień typ objaśnienia",
+      "expand": "Rozwiń wywołanie",
+      "collapse": "Zwiń wywołanie",
       "menuLabel": "Typ objaśnienia",
       "info": "Informacje",
       "warning": "Ostrzeżenie",
       "error": "Błąd",
-      "success": "Sukces"
+      "success": "Sukces",
+      "note": "Notatka",
+      "abstract": "Streszczenie",
+      "todo": "Do zrobienia",
+      "tip": "Wskazówka",
+      "important": "Ważne",
+      "question": "Pytanie",
+      "example": "Przykład",
+      "quote": "Cytat",
+      "bug": "Błąd"
     },
     "columns": {
       "group": "Podstawowe bloki",
@@ -332,6 +434,83 @@
       "invalidShape": "Definicja tego widoku nie ma źródła. Wybierz je powyżej lub popraw definicję poniżej.",
       "definition": "Definicja"
     },
+    "chart": {
+      "title": "Wykres",
+      "subtext": "Pokaż właściwość w czasie: linia, słupki lub kalendarzowa mapa cieplna",
+      "layout": "Wykres",
+      "settings": "Ustawienia wykresu",
+      "chooseProperty": "Wybierz, co pokazać",
+      "source": "Źródło",
+      "headerMeta": "{range} · {type}",
+      "property": "Właściwość",
+      "noProperties": "Na razie nie ma czego pokazać. Najpierw dodaj właściwość do wpisu dziennika lub notatki.",
+      "chartType": "Wykres",
+      "suggested": "Proponowane",
+      "types": {
+        "line": "Liniowy",
+        "bar": "Słupkowy",
+        "heatmap": "Mapa cieplna"
+      },
+      "range": "Zakres",
+      "lastDays": "{count, plural, one {Ostatni dzień} few {Ostatnie # dni} many {Ostatnie # dni} other {Ostatnie # dnia}}",
+      "sameDay": "Wpisy z tego samego dnia",
+      "aggregates": {
+        "average": "Średnia",
+        "sum": "Suma",
+        "min": "Najniższa",
+        "max": "Najwyższa",
+        "count": "Liczba"
+      },
+      "missingDays": "Brakujące dni",
+      "missing": {
+        "gap": "Zostaw lukę",
+        "zero": "Licz jako zero"
+      },
+      "dateFrom": {
+        "label": "Data z",
+        "created": "Utworzenia",
+        "modified": "Modyfikacji"
+      },
+      "propertyTypes": {
+        "text": "Tekst",
+        "number": "Liczba",
+        "checkbox": "Pole wyboru",
+        "date": "Data",
+        "url": "URL",
+        "status": "Status",
+        "select": "Lista wyboru",
+        "multiselect": "Wielokrotny wybór",
+        "relation": "Relacja",
+        "project": "Projekt",
+        "rating": "Ocena"
+      },
+      "noEntry": "Brak wpisu",
+      "done": "Zrobione",
+      "notDone": "Niezrobione",
+      "logged": "Zapisane",
+      "valueCount": "{count, plural, one {# wartość} few {# wartości} many {# wartości} other {# wartości}}",
+      "average": "Średnia",
+      "vsPrevious": "względem poprzedniego okresu",
+      "lowest": "Najniższa",
+      "currentStreak": "Obecna seria",
+      "longestStreak": "Najdłuższa seria",
+      "dayCount": "{count, plural, one {# dzień} few {# dni} many {# dni} other {# dnia}}",
+      "doneDays": "Zrobione",
+      "loggedDays": "Zapisane",
+      "mostCommon": "Najczęstsza",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} w ciągu ostatnich dni: {days}",
+      "noData": "W tym zakresie nic jeszcze nie zapisano.",
+      "loadFailed": "Nie udało się załadować tego wykresu. Same wpisy pozostają nietknięte.",
+      "sourceJournal": "Dziennik",
+      "history": {
+        "show": "Pokaż historię",
+        "title": "Historia: {property}",
+        "range": "Ostatnie 13 tygodni",
+        "insert": "Kopiuj jako blok wykresu",
+        "copied": "Skopiowano blok wykresu. Wklej go do dowolnej notatki."
+      }
+    },
     "slashMenu": {
       "aria": "Bloki i akcje",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Wstaw",
         "open": "Otwórz"
       },
+      "close": "Zamknij menu",
       "matchesAlias": "pasuje do",
       "noMatch": "Żaden blok nie pasuje do „{query}”",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Pokaż jako",
+        "embed": "Osadzony",
+        "link": "Link"
+      },
       "title": {
         "image": "Dodaj obraz",
         "media": "Dodaj multimedia",
@@ -525,6 +710,11 @@
       "empty": "Wpisz, aby utworzyć nowy tag",
       "create": "Utwórz #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Pokaż PDF jako",
+      "embed": "Osadzona przeglądarka",
+      "link": "Nazwa pliku"
+    },
     "pasteLink": {
       "title": "Wklej jako",
       "url": "Adres URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} min czytania",
     "words": "{count, plural, one {# słowo} few {# słowa} many {# słów} other {# słowa}}",
     "created": "Utworzono",
-    "modified": "Zmodyfikowano"
+    "modified": "Zmodyfikowano",
+    "sync": {
+      "label": "Synchronizacja",
+      "confirmed": "Na serwerze: {time}",
+      "pending": "Oczekuje od {time}",
+      "sent": "Wysyłanie",
+      "rejected": "Serwer odrzucił ostatnią zmianę",
+      "notRecorded": "Nic nie czeka na wysłanie",
+      "localOnly": "Tylko lokalnie",
+      "notSyncing": "Nie synchronizuje się",
+      "waiting": "Czeka na wysłanie"
+    }
   },
   "backlinks": {
     "sortRecent": "Najnowsze",
@@ -587,7 +788,18 @@
     "expandSection": "Rozwiń sekcję linków zwrotnych",
     "showMore": "Pokaż więcej linków zwrotnych: {count}",
     "more": "Jeszcze {count}",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Pokazane w portalu"
+  },
+  "unlinkedMentions": {
+    "title": "Niepołączone wzmianki",
+    "summary": "{count, plural, one {# niepołączona wzmianka} few {# niepołączone wzmianki} many {# niepołączonych wzmianek} other {# niepołączonej wzmianki}}",
+    "sectionAria": "Niepołączone wzmianki",
+    "fromAria": "Niepołączone wzmianki w: {title}",
+    "link": "Połącz",
+    "linkAria": "Połącz: {text}",
+    "gone": "Ta wzmianka zmieniła się od odczytania listy",
+    "linkFailed": "Nie udało się połączyć wzmianki"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# link wychodzący} few {# linki wychodzące} many {# linków wychodzących} other {# linku wychodzącego}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "Nie udało się dodać notatki do kanwy"
   },
   "suggestedTags": {
-    "label": "Sugerowane tagi:",
-    "hint": "Tagi wspólne dla notatek najbardziej podobnych do tej. Nic nie zostanie dodane, dopóki nie wybierzesz tagu.",
-    "acceptAria": "Dodaj tag {tag}",
-    "support": "{count, plural, one {Użyty w # podobnej notatce} few {Użyty w # podobnych notatkach} many {Użyty w # podobnych notatkach} other {Użyty w # podobnej notatki}}",
-    "dismiss": "Ukryj sugerowane tagi"
+    "support": "{count, plural, one {Użyty w # podobnej notatce} few {Użyty w # podobnych notatkach} many {Użyty w # podobnych notatkach} other {Użyty w # podobnej notatki}}"
   },
   "comments": {
     "railAria": "Komentarze",
@@ -663,6 +871,7 @@
     "removeAria": "Usuń tag: {tag}",
     "inputPlaceholder": "Wpisz nazwę tagu…",
     "recent": "Ostatnie",
+    "suggested": "Proponowane",
     "matching": "Pasujące",
     "all": "Wszystkie tagi",
     "none": "Nie znaleziono tagów",
@@ -755,6 +964,9 @@
     "repositionHint": "Przeciągnij, aby zmienić położenie",
     "repositionSave": "zapisz",
     "repositionCancel": "anuluj",
+    "zoomIn": "Powiększ",
+    "zoomOut": "Pomniejsz",
+    "resize": "Przeciągnij, aby zmienić rozmiar okładki",
     "credit": "Zdjęcie autorstwa {name} w serwisie Unsplash",
     "focusFailed": "Nie udało się zapisać położenia okładki",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}}"
+    },
+    "noteTasks": {
+      "expand": "Pokaż zadania: {title}",
+      "collapse": "Ukryj zadania: {title}",
+      "list": "Zadania w: {title}",
+      "progressOpen": "Otwarte: {open}/{total}",
+      "progressDone": "Zrobione: {total}/{total}",
+      "nextDue": "Najbliższy termin",
+      "reminder": "Ustawiono przypomnienie"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "Zapisz",
     "addToFilterHint": "Kliknij tag z wciśniętym Ctrl/Cmd, aby dodać go do filtra"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternatywy",
+      "overflow": "Schowek",
+      "menu": "Narzędzia pisania",
+      "close": "Zamknij narzędzia pisania"
+    },
+    "menu": {
+      "aria": "Akcje edytora",
+      "cut": "Wytnij",
+      "copy": "Kopiuj",
+      "paste": "Wklej",
+      "selectAll": "Zaznacz wszystko",
+      "undo": "Cofnij",
+      "redo": "Ponów",
+      "comment": "Komentarz",
+      "addAlternative": "Dodaj alternatywę",
+      "suggestAlternatives": "Zaproponuj alternatywy",
+      "ghost": "Przyciemnij",
+      "revive": "Przywróć",
+      "stash": "Odłóż do schowka",
+      "noSpellingSuggestions": "Brak sugestii",
+      "addToDictionary": "Dodaj do słownika",
+      "clipboardFailed": "Nie udało się użyć schowka systemowego"
+    },
+    "alternatives": {
+      "railAria": "Alternatywy",
+      "hint": "{position} z {total} ↑ ↓",
+      "original": "Oryginał",
+      "byYou": "Napisane przez Ciebie",
+      "byAI": "Zaproponowane przez AI",
+      "showing": "Wyświetlana",
+      "addPlaceholder": "Dodaj alternatywę…",
+      "removeSuggestions": "Usuń propozycje",
+      "removeVariant": "Usuń alternatywę",
+      "empty": "Zaznacz tekst i wybierz Dodaj alternatywę, aby zachować inne sposoby wyrażenia tej myśli.",
+      "suggesting": "Proponowanie alternatyw…",
+      "suggestFailed": "Nie udało się zaproponować alternatyw",
+      "noSuggestions": "Nie zaproponowano nowych alternatyw"
+    },
+    "overflow": {
+      "railAria": "Schowek",
+      "addPlaceholder": "Napisz coś, co chcesz zachować…",
+      "empty": "Linie, które tu odłożysz lub napiszesz, zostają przy tej notatce, poza jej tekstem.",
+      "dragHint": "Przeciągnij do notatki",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "delete": "Usuń"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Zablokuj notatkę",
+    "unlockNote": "Odblokuj notatkę",
+    "lockFolder": "Zablokuj folder",
+    "unlockFolder": "Odblokuj folder",
+    "toggleFailed": "Nie udało się zmienić blokady",
+    "readOnlyIndicator": "Zablokowane. Tylko do odczytu dla Ciebie i agentów.",
+    "externalEditRestored": "Notatka „{title}” jest zablokowana, więc zewnętrzna edycja została cofnięta",
+    "externalEditRestoredHint": "Edytowany tekst zapisano w historii wersji notatki."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Osoba",
+        "plural": "Osoby",
+        "fields": {
+          "company": "Firma",
+          "role": "Stanowisko",
+          "email": "E-mail",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Osoby"
+        },
+        "template": {
+          "name": "Osoba",
+          "context": "Kontekst",
+          "contextHint": "Jak się poznaliśmy, co jest dla tej osoby ważne",
+          "notes": "Notatki"
+        }
+      },
+      "company": {
+        "name": "Firma",
+        "plural": "Firmy",
+        "fields": {
+          "website": "Strona internetowa",
+          "industry": "Branża",
+          "location": "Lokalizacja"
+        },
+        "template": {
+          "name": "Firma",
+          "overview": "Przegląd",
+          "overviewHint": "Czym się zajmują, kogo tam znamy",
+          "notes": "Notatki"
+        }
+      },
+      "meeting": {
+        "name": "Spotkanie",
+        "plural": "Spotkania",
+        "fields": {
+          "date": "Data",
+          "attendees": "Uczestnicy",
+          "company": "Firma"
+        },
+        "inverse": {
+          "attendees": "Spotkania",
+          "company": "Spotkania"
+        },
+        "template": {
+          "name": "Spotkanie",
+          "agenda": "Agenda",
+          "notes": "Notatki",
+          "actionItems": "Zadania do wykonania"
+        }
+      },
+      "book": {
+        "name": "Książka",
+        "plural": "Książki",
+        "fields": {
+          "author": "Autor",
+          "shelf": "Półka",
+          "rating": "Ocena",
+          "finished": "Ukończona"
+        },
+        "shelf": {
+          "toRead": "Do przeczytania",
+          "reading": "W trakcie",
+          "read": "Przeczytane"
+        },
+        "template": {
+          "name": "Książka",
+          "highlights": "Zakreślenia",
+          "thoughts": "Przemyślenia"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} to teraz: {tag}. Dodano szablon.",
+      "templateChanged": "Notatka zmieniła się po dodaniu szablonu, więc pozostaje bez zmian.",
+      "undoFailed": "Nie udało się cofnąć",
+      "addFailed": "Nie udało się dodać tagu",
+      "removeFailed": "Nie udało się usunąć tagu",
+      "removedKept": "Usunięto #{tag}. Zachowane wartości: {count}.",
+      "removedKeptOne": "Usunięto #{tag}. Zachowano 1 wartość."
+    },
+    "picker": {
+      "create": "Utwórz #{tag}",
+      "fillsTemplate": "Wypełnia tę pustą notatkę szablonem {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Gotowe tagi",
+        "subtitle": "Tagi z polami. Notatki pozostają bez zmian, dopóki ich nie otagujesz.",
+        "notNow": "Nie teraz",
+        "add": "Dodaj",
+        "addFields": "Dodaj pola",
+        "added": "Dodano",
+        "alreadyOn": "Już użyty w notatkach: {count}",
+        "alreadyOnOne": "Już użyty w 1 notatce"
+      },
+      "dialog": {
+        "title": "Dodać pola {preset} do #{tag}?",
+        "body": "#{tag} jest już użyty w notatkach: {count}. Zachowają wszystko, co mają, i dostaną te pola, puste, dopóki ktoś ich nie wypełni.",
+        "bodyOne": "#{tag} jest już użyty w 1 notatce. Zachowa wszystko, co ma, i dostanie te pola, puste, dopóki ktoś ich nie wypełni.",
+        "template": "Szablon ({sections}) wypełnia tylko puste notatki.",
+        "alsoAddsPrefix": "Dodaje też",
+        "alsoAddsSuffix": "dla pola {field}.",
+        "useAnotherName": "Użyj innej nazwy",
+        "nameLabel": "Nazwa nowego tagu",
+        "namePlaceholder": "kontakt",
+        "cancel": "Anuluj",
+        "addFields": "Dodaj pola"
+      },
+      "toast": {
+        "added": "Dodano #{tag}",
+        "addedFields": "Dodano pola {preset} do #{tag}"
+      },
+      "hasFields": "Ma pola"
+    },
+    "tasks": {
+      "thisTask": "To zadanie",
+      "viaTag": "{name} przez #{via}",
+      "clearValue": "Wyczyść: {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "przez #{tag}",
+      "groupMenu": "Opcje: {tag}",
+      "openTag": "Otwórz #{tag}",
+      "thisNote": "Ta notatka"
+    },
+    "offer": {
+      "text": "Dodaj szablon {tag} pod swoim tekstem",
+      "add": "Dodaj",
+      "dismiss": "Odrzuć",
+      "addFailed": "Nie udało się dodać szablonu"
+    },
+    "settings": {
+      "title": "Ustawienia #{tag}",
+      "close": "Zamknij",
+      "cancel": "Anuluj",
+      "save": "Zapisz",
+      "onCounts": "W {notes, plural, one {# notatce} few {# notatkach} many {# notatkach} other {# notatkach}} i {tasks, plural, one {# zadaniu} few {# zadaniach} many {# zadaniach} other {# zadaniach}}",
+      "onNotes": "W {count, plural, one {# notatce} few {# notatkach} many {# notatkach} other {# notatkach}}",
+      "headerFields": "{count, plural, one {# pole} few {# pola} many {# pól} other {# pola}}",
+      "editTag": "Edytuj tag",
+      "syncNote": "Zmiany synchronizują się z Twoimi pozostałymi urządzeniami",
+      "newerVersion": "Nowsza wersja Memry zmieniła ten tag. Zaktualizuj Memry, aby edytować go tutaj.",
+      "sections": {
+        "appearance": "Wygląd",
+        "extends": "Rozszerza",
+        "fields": "Pola · {count}",
+        "template": "Szablon"
+      },
+      "appearance": {
+        "icon": "Ikona",
+        "color": "Kolor",
+        "customColor": "Własny",
+        "category": "Kategoria",
+        "noCategory": "Bez kategorii"
+      },
+      "extends": {
+        "nothing": "Nic",
+        "hint": "Przejmij pola innego tagu i pojawiaj się w jego tabeli.",
+        "hintSet": "Notatki z tagiem {tag} dostają pola z {parent} i pojawiają się w tabeli {parent}."
+      },
+      "types": {
+        "text": "Tekst",
+        "number": "Liczba",
+        "date": "Data",
+        "url": "URL",
+        "status": "Status",
+        "select": "Wybór",
+        "multiselect": "Wielokrotny wybór",
+        "checkbox": "Pole wyboru",
+        "relation": "Relacja"
+      },
+      "fields": {
+        "empty": "Brak pól. Dodaj pole, aby każda notatka z tym tagiem miała te same właściwości.",
+        "fromParent": "Z #{tag} · edytuj tam",
+        "inverseSub": "Widoczne w {target} jako {inverse}",
+        "anyNoteSub": "Łączy z dowolną notatką",
+        "actions": "Akcje dla {field}",
+        "rename": "Zmień nazwę…",
+        "relationSettings": "Ustawienia relacji",
+        "remove": "Usuń…"
+      },
+      "addField": {
+        "button": "Dodaj pole",
+        "namePlaceholder": "Nazwa pola",
+        "existing": "Istniejące właściwości",
+        "existingSub": "{type} · w {count, plural, one {# notatce} few {# notatkach} many {# notatkach} other {# notatkach}} · użyj ponownie",
+        "newType": "Typ nowego pola",
+        "relationSub": "Łącz z notatkami z tagiem",
+        "submit": "Dodaj pole",
+        "reserved": "{name} jest zarezerwowane i nie może być polem.",
+        "taken": "#{tag} ma już {name}."
+      },
+      "relation": {
+        "target": "Wskazuje notatki z tagiem",
+        "pickTag": "Wybierz tag",
+        "howMany": "Ile",
+        "one": "Jedna",
+        "many": "Wiele",
+        "inverseLabel": "Na stronie {target} pokaż je jako",
+        "inverseLabelAny": "Na połączonej stronie pokaż je jako",
+        "inverseHint": "Lista tylko do odczytu przy każdym: {target}. Do notatek {target} nic nie jest zapisywane.",
+        "inverseHintAny": "Lista tylko do odczytu przy każdej połączonej notatce. Do tych notatek nic nie jest zapisywane."
+      },
+      "shared": {
+        "title": "Nowe pole w #{tag}",
+        "existsWith": "{name} już istnieje w tym sejfie z opcjami: {options}.",
+        "existsAs": "{name} już istnieje w tym sejfie jako właściwość typu {type}.",
+        "shareWith": "#{tag} będzie je współdzielić z Twoimi notatkami: {others}.",
+        "shareAny": "#{tag} będzie je współdzielić z Twoimi innymi notatkami.",
+        "useInstead": "Użyj zamiast tego {name}",
+        "share": "Współdziel {name}"
+      },
+      "template": {
+        "edit": "Edytuj szablon",
+        "none": "Brak szablonu. Szablon wypełnia puste notatki, gdy dostaną ten tag.",
+        "create": "Utwórz szablon",
+        "defaultHeading": "Notatki",
+        "inherited": "Z #{tag}",
+        "autofill": "Wypełniaj puste notatki po dodaniu #{tag}"
+      },
+      "remove": {
+        "title": "Usunąć {field} z #{tag}?",
+        "body": "{field} ma wartość w {filled, plural, one {# notatce} few {# notatkach} many {# notatkach} other {# notatkach}}. Te wartości zostają w notatkach jako zwykła właściwość, a {empty, plural, one {# puste miejsce znika} few {# puste miejsca znikają} many {# pustych miejsc znika} other {# pustego miejsca znika}}.",
+        "confirm": "Usuń pole"
+      },
+      "rename": {
+        "title": "Zmień nazwę {from} na {to}",
+        "titleEmpty": "Zmień nazwę {from}",
+        "label": "Nowa nazwa",
+        "body": "{count, plural, one {# notatka ma} few {# notatki mają} many {# notatek ma} other {# notatki ma}} wartość {field}. Memry zmienia klucz w każdym pliku i w ich właściwościach; Obsidian też zobaczy nową nazwę.",
+        "progress": "Zmiana nazwy w notatkach",
+        "confirm": "Zmień nazwę",
+        "taken": "Ten tag ma już {name}.",
+        "done": "Zmieniono nazwę {from} na {to} w {count, plural, one {# elemencie} few {# elementach} many {# elementach} other {# elementach}}.",
+        "skipped": "Zmieniono nazwę {from} na {to} w {count, plural, one {# elemencie} few {# elementach} many {# elementach} other {# elementach}}. {locked, plural, =0 {} one {# zablokowana notatka zostanie dokończona po odblokowaniu.} few {# zablokowane notatki zostaną dokończone po odblokowaniu.} many {# zablokowanych notatek zostanie dokończonych po odblokowaniu.} other {# zablokowanej notatki zostanie dokończone po odblokowaniu.}} {existing, plural, =0 {} one {# notatka już miała {to} i zachowuje oba pola.} few {# notatki już miały {to} i zachowują oba pola.} many {# notatek już miało {to} i zachowuje oba pola.} other {# notatki już miało {to} i zachowuje oba pola.}}"
+      },
+      "delete": {
+        "button": "Usuń tag",
+        "title": "Usunąć #{tag}?",
+        "body": "#{tag} zostanie usunięty z {notes, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}, a tag zniknie razem z {fields, plural, one {# polem} few {# polami} many {# polami} other {# polem}} i szablonem.",
+        "bodyNoTemplate": "#{tag} zostanie usunięty z {notes, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}, a tag zniknie razem z {fields, plural, one {# polem} few {# polami} many {# polami} other {# polem}}.",
+        "bodyPlain": "#{tag} zostanie usunięty z każdej notatki, która ma go w tagach.",
+        "statNotes": "notatki zachowują tekst",
+        "statValues": "wartości zostają jako właściwości",
+        "plainText": "Notatki wspominające #{tag} w tekście zachowają go jako zwykły tekst.",
+        "confirm": "Usuń tag",
+        "done": "Usunięto #{tag}."
+      },
+      "errors": {
+        "addField": "Nie udało się dodać pola.",
+        "removeField": "Nie udało się usunąć pola.",
+        "renameField": "Nie udało się zmienić nazwy pola.",
+        "moveField": "Nie udało się przenieść pola.",
+        "relation": "Nie udało się zapisać relacji.",
+        "extends": "Nie udało się zmienić, co rozszerza ten tag.",
+        "template": "Nie udało się zaktualizować szablonu.",
+        "deleteTag": "Nie udało się usunąć tagu.",
+        "icon": "Nie udało się zmienić ikony.",
+        "color": "Nie udało się zmienić koloru.",
+        "category": "Nie udało się zmienić kategorii."
+      }
+    },
+    "fill": {
+      "action": "Uzupełnij z notatki",
+      "reading": "Czytanie notatki…",
+      "disclosure": "Twój model agenta ({model}) czyta tę notatkę, aby zaproponować wartości. Wysyłana jest tylko ta notatka. Nic nie zostanie zapisane, dopóki nie zaakceptujesz.",
+      "disclosureLocal": "Twój model lokalny ({model}) czyta tę notatkę na tym urządzeniu, aby zaproponować wartości. Nic nie opuszcza urządzenia i nic nie zostanie zapisane, dopóki nie zaakceptujesz.",
+      "disclosureMany": "Twój model agenta ({model}) czyta te notatki jedna po drugiej, aby zaproponować wartości. Wysyłane są tylko te notatki. Nic nie zostanie zapisane, dopóki nie zaakceptujesz.",
+      "disclosureLocalMany": "Twój model lokalny ({model}) czyta te notatki na tym urządzeniu, aby zaproponować wartości. Nic nie opuszcza urządzenia i nic nie zostanie zapisane, dopóki nie zaakceptujesz.",
+      "suggest": "Zaproponuj wartości",
+      "notNow": "Nie teraz",
+      "countOne": "· Sugestie: {count}",
+      "count": "· Sugestie: {count}",
+      "dismiss": "Odrzuć",
+      "acceptAll": "Zaakceptuj wszystkie",
+      "accept": "Zaakceptuj {field}",
+      "reject": "Odrzuć {field}",
+      "notInNote": "Brak w notatce",
+      "createHint": "Po zaakceptowaniu utworzy nowy obiekt #{tag}",
+      "nothingFound": "Nic w tej notatce nie uzupełnia pustych pól",
+      "failed": "Nie udało się zaproponować wartości. {message}",
+      "saveFailed": "Nie udało się zapisać zaakceptowanych wartości",
+      "bulkAction": "Uzupełnij puste pola",
+      "bulkTitle": "Uzupełnij puste pola",
+      "bulkReading": "{done} z {total} notatek · czytanie notatek…",
+      "bulkRead": "Przeczytano {done} z {total} notatek",
+      "stop": "Zatrzymaj",
+      "name": "Nazwa",
+      "nothingInRow": "Nic nie znaleziono",
+      "found": "Znaleziono: {count}",
+      "reviewOneByOne": "Przejrzyj po kolei",
+      "acceptRow": "Zaakceptuj wartości dla {title}",
+      "rejectRow": "Pomiń {title}",
+      "bulkSavedOne": "Uzupełniono {count} pole w notatkach: {notes}",
+      "bulkSaved": "Uzupełniono pola ({count}) w notatkach: {notes}"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Utwórz {title} jako",
+      "asPrefix": "Utwórz",
+      "asSuffix": "jako",
+      "failed": "Nie udało się utworzyć notatki",
+      "lastUsed": "Ostatnio używane",
+      "noteWord": "notatkę",
+      "plainNote": "Zwykła notatka",
+      "readyMade": "Gotowy tag",
+      "row": "Utwórz „{title}”",
+      "rowHint": "Jako {types}"
+    },
+    "hover": {
+      "at": "w",
+      "lastMet": "Ostatnie spotkanie · {title}",
+      "lastMetOn": "Ostatnie spotkanie {date} · {title}",
+      "mentionedIn": "{count, plural, one {Wspomniano w # notatce} few {Wspomniano w # notatkach} many {Wspomniano w # notatkach} other {Wspomniano w # notatkach}}",
+      "open": "Otwórz",
+      "tasks": "{count, plural, one {# zadanie · {field}} few {# zadania · {field}} many {# zadań · {field}} other {# zadania · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} w tekście",
+      "explain": "W tekście tag jest etykietą. Ta notatka jest wymieniona w sekcji Wspomniane w przy #{tag}.",
+      "made": "Dodano #{tag} do tagów tej notatki",
+      "make": "Zrób z tej notatki: {tag}",
+      "makeFailed": "Nie udało się dodać tagu",
+      "makeHint": "Dodaje #{tag} do nagłówka i pokazuje jego pola",
+      "meta": "{count, plural, one {# obiekt} few {# obiekty} many {# obiektów} other {# obiektu}} · {fields, plural, one {# pole} few {# pola} many {# pól} other {# pola}}",
+      "metaNamed": "{count, plural, one {# {one}} few {# {other}} many {# {other}} other {# {other}}} · {fields, plural, one {# pole} few {# pola} many {# pól} other {# pola}}",
+      "open": "Otwórz #{tag}",
+      "remove": "Usuń tag z tekstu"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "jako {field}",
+      "due": "Termin {date}",
+      "inTheText": "w tekście",
+      "mentionedIn": "Wspomniane w",
+      "tasks": "Zadania",
+      "title": "Połączone tutaj"
+    },
+    "mention": {
+      "notes": "Notatki"
+    },
+    "picker": {
+      "create": "Nowy {tag}",
+      "createNamed": "Nowy {tag} „{title}”",
+      "empty": "Brak wyników",
+      "search": "Szukaj: {tag}",
+      "untitled": "Nowy {tag}"
+    },
+    "quickFields": {
+      "add": "Dodaj {field}",
+      "aria": "Pierwsze pola: {title}",
+      "done": "Gotowe",
+      "later": "Później",
+      "newObject": "Nowy {tag}",
+      "saveFailed": "Nie udało się zapisać pól"
+    },
+    "table": {
+      "untitled": "Nowy {tag}",
+      "newInGroup": "Nowy {tag} w {group}",
+      "newInGroupHint": "⌘↵ otwiera w nowej karcie",
+      "new": "Nowy {tag}",
+      "includes": "{field} zawiera",
+      "removeFilter": "Usuń filtr",
+      "shown": "{shown} z {total}",
+      "saveView": "Zapisz widok",
+      "mentionedMeta": "{count, plural, one {# notatka z '#'{tag} w tekście} few {# notatki z '#'{tag} w tekście} many {# notatek z '#'{tag} w tekście} other {# notatki z '#'{tag} w tekście}}",
+      "saveFailed": "Nie udało się zapisać pola",
+      "created": "Utworzono {title}"
+    },
+    "relationDrop": {
+      "title": "Dodać #{tag} do „{title}”?",
+      "body": "To pole łączy tylko notatki z tagiem #{tag}. Memry doda #{tag} do nagłówka „{title}”, a następnie połączy ją tutaj.",
+      "confirm": "Dodaj #{tag} i połącz",
+      "cancel": "Anuluj",
+      "added": "„{title}” ma teraz tag #{tag} i jest połączona",
+      "notANote": "Jako #{tag} można tu połączyć tylko notatki",
+      "failed": "Nie udało się połączyć tej notatki"
+    }
+  },
   "names": {
     "also": "także",
     "add": "Dodaj inną nazwę",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Szukaj notatek",
     "pickerEmpty": "Brak pasujących notatek",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Dodaj szczegóły"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Pokaż na żywo notatkę lub blok z innego miejsca"
+      },
+      "searchPortal": {
+        "title": "Portal wyszukiwania",
+        "subtext": "Lista bloków pasujących do zapytania, na żywo"
+      }
+    },
+    "picker": {
+      "aria": "Wybierz notatkę lub blok do portalu",
+      "notes": "Notatki",
+      "blocks": "Bloki",
+      "loading": "Wyszukiwanie…",
+      "empty": "Brak pasujących notatek lub bloków",
+      "hintInsert": "Wstaw portal",
+      "hintClose": "Zamknij",
+      "keyEsc": "Esc",
+      "create": "Utwórz notatkę „{query}”",
+      "createFailed": "Nie udało się utworzyć tej notatki",
+      "stampFailed": "Nie udało się przygotować tego bloku do portalu",
+      "retargetFailed": "Nie udało się skierować portalu na ten blok"
+    },
+    "insert": {
+      "cycle": "Portal nie może pokazywać notatki wewnątrz niej samej."
+    },
+    "copy": {
+      "done": "Skopiowano portal. Wklej go do dowolnej notatki.",
+      "failed": "Nie udało się skopiować portalu tego bloku"
+    },
+    "menu": {
+      "copyAsPortal": "Kopiuj jako portal",
+      "hideInPortal": "Ukryj w tym portalu"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Używane w # innym miejscu} few {Używane w # innych miejscach} many {Używane w # innych miejscach} other {Używane w # innych miejscach}}"
+    },
+    "whereUsed": {
+      "aria": "Gdzie ten blok jest używany",
+      "portals": "Portale",
+      "links": "Linki",
+      "openBeside": "Otwórz obok",
+      "loadFailed": "Nie udało się załadować miejsc, w których pokazany jest ten blok"
+    },
+    "hiddenBlocks": {
+      "title": "Ukryte bloki",
+      "showAll": "Pokaż wszystkie",
+      "search": "Szukaj ukrytych bloków",
+      "showFailed": "Nie udało się pokazać tego bloku"
+    },
+    "searchQuery": {
+      "titleNew": "Portal wyszukiwania",
+      "titleEdit": "Edytuj zapytanie",
+      "text": "Zawiera słowa",
+      "textPlaceholder": "Słowa w bloku",
+      "tag": "Tag",
+      "tagPlaceholder": "egzamin",
+      "limit": "Limit",
+      "footer": "Limit wyników: {limit}.",
+      "create": "Utwórz",
+      "apply": "Zastosuj"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Usunąć ten blok wszędzie?",
+        "note": "Usunąć tę notatkę wszędzie?"
+      },
+      "description": {
+        "block": "Blok „{title}” pojawia się także w {count, plural, one {# innej notatce} few {# innych notatkach} many {# innych notatkach} other {# innych notatkach}}.",
+        "note": "Notatka „{title}” jest pokazana lub połączona w {count, plural, one {# innej notatce} few {# innych notatkach} many {# innych notatkach} other {# innych notatkach}}."
+      },
+      "manyNotes": "{count, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}}",
+      "source": "{title} (źródło)",
+      "removeHere": "Zamiast tego ukryj tutaj",
+      "cancel": "Anuluj",
+      "everywhere": "Usuń wszędzie",
+      "undoToast": "Usunięty blok był pokazywany w {count, plural, one {# innej notatce} few {# innych notatkach} many {# innych notatkach} other {# innych notatkach}}.",
+      "undo": "Cofnij"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Pełna",
+      "brief": "Skrót",
+      "key": "Kluczowe",
+      "takeaway": "Wniosek",
+      "topic": "Temat"
+    },
+    "chrome": {
+      "fold": "Zwiń notatkę",
+      "unfold": "Zwinięto do poziomu: {level}. Pokaż pełny tekst",
+      "words": "{count, plural, one {# słowo} few {# słowa} many {# słów} other {# słowa}}",
+      "writing": "Pisanie…",
+      "writtenBy": "Napisane przez {agent}",
+      "retry": "Ostatnie uruchomienie nie powiodło się · Ponów",
+      "retryAction": "Ponów",
+      "captionOff": "Włącz „Podsumowuj długie notatki” w Ustawienia → AI",
+      "captionNoAgent": "Brak połączonego agenta · Ustawienia → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Długa notatka? Przejrzyj ją pobieżnie.",
+      "body": "Zwiń ją do kluczowych zdań, a potem otwórz tylko ten akapit, którego potrzebujesz.",
+      "dismiss": "Rozumiem"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# otwarty akapit} few {# otwarte akapity} many {# otwartych akapitów} other {# otwartego akapitu}}",
+      "escape": "esc",
+      "copy": "Kopiuj jako tekst",
+      "copied": "Skopiowano",
+      "aria": "Widok zwinięty",
+      "hintMac": "Zbliż palce, przewiń z ⌘ lub przewiń na tym pasku, aby zmienić poziom · kliknij akapit, aby go otworzyć",
+      "hint": "Zbliż palce, przewiń z Ctrl lub przewiń na tym pasku, aby zmienić poziom · kliknij akapit, aby go otworzyć"
+    },
+    "view": {
+      "aria": "Widok zwinięty: {level}",
+      "paragraphOpen": "Otwarto w pełnej wersji · kliknij ponownie, aby zwinąć",
+      "paragraphFold": "Zwiń ten akapit",
+      "paragraphOpenAction": "Otwórz ten akapit w pełnej wersji",
+      "unfoldSection": "Rozwiń sekcję {heading}",
+      "jumpToParagraph": "Pokaż ten akapit w pełnej wersji: {topic}",
+      "untitledSection": "Bez tytułu",
+      "skipped": {
+        "code": "… {count, plural, one {# blok kodu} few {# bloki kodu} many {# bloków kodu} other {# bloku kodu}}",
+        "table": "… {count, plural, one {# tabela} few {# tabele} many {# tabel} other {# tabeli}}",
+        "image": "… {count, plural, one {# obraz} few {# obrazy} many {# obrazów} other {# obrazu}}",
+        "callout": "… {count, plural, one {# ramka} few {# ramki} many {# ramek} other {# ramki}}",
+        "embed": "… {count, plural, one {# osadzenie} few {# osadzenia} many {# osadzeń} other {# osadzenia}}",
+        "other": "… {count, plural, one {# kolejny blok} few {# kolejne bloki} many {# kolejnych bloków} other {# kolejnego bloku}}"
+      }
+    }
   }
 }
