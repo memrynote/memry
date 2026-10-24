@@ -172,7 +172,7 @@ describe('requestPair', () => {
     const fetchFn = vi.fn(
       async () => new Response(JSON.stringify({ status: 'pending' }), { status: 202 })
     )
-    await requestPair(7849, fetchFn as unknown as typeof fetch)
+    await requestPair(7849, fetchFn)
     expect(fetchFn).toHaveBeenCalledWith(
       pairRequestUrl(7849),
       expect.objectContaining({ method: 'POST' })

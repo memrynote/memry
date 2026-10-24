@@ -30,6 +30,7 @@ export default defineContentScript({
   // ponytail: declared on all web pages (standard clipper pattern); inert until messaged.
   matches: ['*://*/*'],
   main() {
+    // oxlint-disable-next-line typescript/no-misused-promises -- listener returns a Promise as the async sendResponse
     browser.runtime.onMessage.addListener((message: ContentMessage) => {
       switch (message.type) {
         case 'EXTRACT':

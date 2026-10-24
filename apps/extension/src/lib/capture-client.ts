@@ -35,11 +35,13 @@ export interface PingResponse {
 
 export function parsePing(data: unknown): PingResponse | null {
   if (!data || typeof data !== 'object') return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `object` narrowed by typeof; every field is re-checked below
   const d = data as Record<string, unknown>
   if (d.app !== 'memry' || typeof d.paired !== 'boolean') return null
   const capabilities = Array.isArray(d.capabilities)
     ? d.capabilities.filter((c): c is string => typeof c === 'string')
     : []
+  // oxlint-disable-next-line typescript/no-base-to-string -- wire value of unknown shape; String() coercion is the tolerant existing behavior
   return { app: 'memry', version: String(d.version ?? ''), paired: d.paired, capabilities }
 }
 
@@ -59,7 +61,7 @@ export async function getFolders(
   try {
     const res = await fetchFn(foldersUrl(port), { method: 'POST', headers: captureHeaders(token) })
     if (!res.ok) return null
-    const d = (await res.json()) as Record<string, unknown>
+    const d: Record<string, unknown> = await res.json()
     if (typeof d.vaultId !== 'string' || !d.vaultId) return null
     if (typeof d.vaultName !== 'string' || !Array.isArray(d.folders)) return null
     const folders = d.folders.filter((f): f is string => typeof f === 'string' && f.length > 0)
@@ -101,7 +103,7 @@ export async function claimToken(
       method: 'POST',
       headers: { [CAPTURE_HEADER]: '1' }
     })
-    const data = (await res.json().catch(() => ({}))) as { token?: unknown; error?: unknown }
+    const data: { token?: unknown; error?: unknown } = await res.json().catch(() => ({}))
     if (!res.ok) return data.error === 'pair-denied' ? { ok: false, error: 'pair-denied' } : null
     return typeof data.token === 'string' ? { ok: true, token: data.token } : null
   } catch {
@@ -164,7 +166,7 @@ export async function getTags(
       headers: captureHeaders(token)
     })
     if (!res.ok) return []
-    const data = (await res.json()) as { tags?: unknown }
+    const data: { tags?: unknown } = await res.json()
     return Array.isArray(data.tags)
       ? data.tags.filter((t): t is string => typeof t === 'string')
       : []
@@ -186,11 +188,12 @@ export async function postCapture(
       body: JSON.stringify(capture)
     })
     if (res.ok) {
-      const data = (await res.json()) as { itemId?: unknown; filedTo?: unknown }
+      const data: { itemId?: unknown; filedTo?: unknown } = await res.json()
       const filedTo = typeof data.filedTo === 'string' && data.filedTo ? data.filedTo : null
+      // oxlint-disable-next-line typescript/no-base-to-string -- wire value of unknown shape; String() coercion is the tolerant existing behavior
       return { ok: true, itemId: String(data.itemId ?? ''), filedTo }
     }
-    const data = (await res.json().catch(() => ({}))) as { error?: unknown }
+    const data: { error?: unknown } = await res.json().catch(() => ({}))
     return { ok: false, error: typeof data.error === 'string' ? data.error : `http-${res.status}` }
   } catch {
     return { ok: false, error: 'network' }

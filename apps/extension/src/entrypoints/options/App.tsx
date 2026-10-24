@@ -47,7 +47,7 @@ export default function App() {
 
   useEffect(() => {
     void refresh()
-    browser.storage.local.get(PORT_KEY).then((r) => {
+    void browser.storage.local.get(PORT_KEY).then((r) => {
       const v = r[PORT_KEY]
       if (typeof v === 'number') setPort(String(v))
     })
@@ -123,13 +123,13 @@ export default function App() {
             automatically — these controls are here if you need to re-approve or revoke access.
           </p>
           <div className="flex flex-wrap gap-2">
-            <GhostButton onClick={onPair} disabled={busy}>
+            <GhostButton onClick={() => void onPair()} disabled={busy}>
               Re-pair
             </GhostButton>
-            <GhostButton onClick={onRotate} disabled={busy}>
+            <GhostButton onClick={() => void onRotate()} disabled={busy}>
               Rotate token
             </GhostButton>
-            <GhostButton onClick={onUnpair} disabled={busy}>
+            <GhostButton onClick={() => void onUnpair()} disabled={busy}>
               Unpair
             </GhostButton>
           </div>
@@ -150,7 +150,7 @@ export default function App() {
               placeholder="auto"
               className="w-28 rounded-md border border-border bg-background px-3 py-1.5 text-[13px] text-foreground outline-none transition-shadow placeholder:text-text-tertiary focus-visible:ring-2 focus-visible:ring-foreground/20"
             />
-            <GhostButton onClick={onSavePort}>Save</GhostButton>
+            <GhostButton onClick={() => void onSavePort()}>Save</GhostButton>
           </div>
         </section>
       </div>
