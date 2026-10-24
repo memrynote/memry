@@ -1725,6 +1725,8 @@ What the port covers today:
 
 - **Frontmatter** (`markdown::frontmatter`): the byte-exact split of a note into its frontmatter block and body, reading and writing notes, and the YAML bytes of an edited block. The edited path matches gray-matter 4.0.3 over js-yaml 3.15.1 for every value a vault produces: plain, single-quoted, double-quoted and folded scalars at 80 columns, dates written as ISO timestamps, keys in JavaScript object order (integer-like keys first), and shared nodes written as `&ref_0` and `*ref_0`. An unedited block is always re-emitted verbatim, so only an edit can respell it.
 - **Large-file class** (`markdown::shared::markdown_class`): a file above 1 MB, or with a blank-line-free run above 128 KB, is not an editable note.
+- **ProseMirror model** (`markdown::pm`): `Node`, `Fragment` and `Mark` with the checked constructors of `prosemirror-model`, the 36 node types and 8 mark types of the memry schema as a static table (`pm/specs.rs`, held equal to the TypeScript schema by the `pm-schema` vectors), and content expressions compiled to the same automaton, so `fillBefore` and `findWrapping` pick the same nodes.
+- **Fragment conversion** (`markdown::yxml`): a Yjs fragment read into a ProseMirror document and written back with y-prosemirror 1.3.7 behavior. An element the schema cannot build is dropped with everything under it, and a parent left with invalid content is dropped in turn, exactly as y-prosemirror would delete them. The read only reports the removals and never changes the document, so callers keep reading from a detached copy.
 
 The markdown-to-blocks and blocks-to-markdown halves land in later steps of the same port. Until they do, the Electron converter is the only one that produces or reads note bodies.
 

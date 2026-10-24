@@ -27,6 +27,13 @@ import {
 } from '@memry/app-core/markdown'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 
+import {
+  contentMatchSweep,
+  findWrappingSweep,
+  schemaDump,
+  yxmlRead,
+  yxmlRoundtrip
+} from './pm-oracle'
 import { decodeYaml, encodeYaml, type YamlJson } from './yaml-json'
 
 interface Job {
@@ -87,6 +94,16 @@ function run(job: Job): unknown {
         maxFileBytes: typeof input.maxFileBytes === 'number' ? input.maxFileBytes : undefined,
         maxBlockBytes: typeof input.maxBlockBytes === 'number' ? input.maxBlockBytes : undefined
       })
+    case 'schema':
+      return schemaDump()
+    case 'match-sweep':
+      return contentMatchSweep(text(input, 'node'))
+    case 'find-wrapping':
+      return findWrappingSweep(text(input, 'node'))
+    case 'yxml-read':
+      return yxmlRead(text(input, 'updateHex'), text(input, 'fragment'))
+    case 'yxml-roundtrip':
+      return yxmlRoundtrip(text(input, 'updateHex'), text(input, 'fragment'))
     default:
       throw new Error(`unknown oracle op: ${job.op}`)
   }

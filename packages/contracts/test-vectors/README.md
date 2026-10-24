@@ -75,7 +75,9 @@ one-class change reviewable.
 | `markdown-roundtrip/fuzz-families.json` |                          6 families | same                                        | same                                                                                 |
 | `markdown-convert/frontmatter.json`     |                                 457 | `apps/desktop/scripts/markdown-oracle/`     | `../src/__tests__/markdown-convert.test.ts` + Rust `markdown_frontmatter_vectors.rs` |
 | `markdown-convert/markdown-class.json`  |                                  23 | same                                        | same + Rust `markdown_class_vectors.rs`                                              |
-| **Total**                               | **1085 cases plus 6 fuzz families** |                                             |                                                                                      |
+| `markdown-convert/pm-schema.json`       |                                  27 | same                                        | same + Rust `markdown_pm_vectors.rs`                                                 |
+| `markdown-convert/yxml.json`            |                                 122 | same                                        | same + Rust `markdown_yxml_vectors.rs`                                               |
+| **Total**                               | **1234 cases plus 6 fuzz families** |                                             |                                                                                      |
 
 ### `markdown-convert/`
 
