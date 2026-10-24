@@ -195,6 +195,7 @@
     "complete-task": "Fuldfør {title}",
     "task-completed": "Opgave fuldført",
     "could-not-complete": "Kunne ikke fuldføre opgaven",
+    "could-not-update-status": "Kunne ikke ændre opgavens status",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} t",
     "duration-hours-minutes": "{hours} t {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Kunne ikke åbne noten"
     }
   },
+  "eventNotes": {
+    "heading": "Noter",
+    "create": "Ny note",
+    "link": "Link note",
+    "untitled": "Mødenote",
+    "searchPlaceholder": "Søg i noter",
+    "noResults": "Ingen noter fundet",
+    "createFailed": "Kunne ikke oprette en note til denne begivenhed.",
+    "linkFailed": "Kunne ikke linke noten til denne begivenhed.",
+    "loadFailed": "Kunne ikke indlæse noterne, der er linket til denne begivenhed.",
+    "propertyTaken": "Denne note har allerede en egenskab »{name}«, som ikke er et link."
+  },
   "notePopover": {
     "kind": "Note",
     "kindDateReminder": "Datopåmindelse",
@@ -254,6 +267,10 @@
     "overdue": "forfalden",
     "untitled": "Uden titel",
     "days": "{count, plural, one {# dag} other {# dage}}",
+    "subtasks": {
+      "expand": "Vis {count, plural, one {# underopgave} other {# underopgaver}} for {title}",
+      "collapse": "Skjul {count, plural, one {# underopgave} other {# underopgaver}} for {title}"
+    },
     "events": "Begivenheder",
     "schedule-hint": "Klik for at angive en dato, træk for at angive et interval",
     "empty-title": "Intet på tidslinjen her",

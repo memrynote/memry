@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Forfallsdato fjernet for # deloppgave} other {Forfallsdato fjernet for # deloppgaver}}",
       "prioritySet": "{count, plural, one {Prioritet satt for # deloppgave} other {Prioritet satt for # deloppgaver}}",
       "deleted": "{count, plural, one {# deloppgave slettet} other {# deloppgaver slettet}}"
-    }
+    },
+    "completedBranch": "Fullførte {title} og {count, plural, one {# åpen deloppgave} other {# åpne deloppgaver}}",
+    "deletedKeepSubtasks": "Slettet {title} og beholdt deloppgavene",
+    "deletedBranch": "Slettet {title} og {count, plural, one {# deloppgave} other {# deloppgaver}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Prosjekt er",
       "project": "prosjekt",
+      "locationIs": "Plasseringen er",
+      "location": "plassering",
+      "unknownNote": "Ukjent notat",
       "due": "Forfaller",
       "dueDate": "forfallsdato",
       "search": "søk",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Forfallsdato"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Plassering",
+      "search": "Søk i mapper og notater …",
+      "empty": "Ingen mapper eller notater med oppgaver"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritet",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Prosjektvisninger",
       "overview": "Oversikt",
+      "all": "Alle",
       "tasks": "Oppgaver",
       "notes": "Notater",
       "files": "Filer",
@@ -951,6 +963,25 @@
       "fileError": "Kunne ikke lenke {name} til prosjektet",
       "fileErrorGeneric": "Kunne ikke importere filene",
       "label": "Legg til i {name}"
+    },
+    "all": {
+      "showDone": "Vis fullførte",
+      "empty": "Ingenting er åpent i dette prosjektet.",
+      "expand": "Vis oppgaver i {title}",
+      "collapse": "Skjul oppgaver i {title}",
+      "taskSummary": "{open}/{total} åpne",
+      "daysLeft": "{count} d",
+      "overdue": "{count} d forfalt",
+      "columns": {
+        "title": "Tittel",
+        "daysLeft": "Dager igjen"
+      },
+      "status": {
+        "active": "Aktiv",
+        "done": "Ferdig",
+        "upcoming": "Kommende",
+        "past": "Tidligere"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Lilla",
     "pink": "Rosa"
+  },
+  "subtaskTree": {
+    "addSubtask": "Legg til deloppgave",
+    "dropInto": "Inn i {title}",
+    "dropOut": "Ett nivå ut",
+    "draftPlaceholder": "Tittel på deloppgave",
+    "draftLabel": "Ny deloppgave i {title}",
+    "draftIn": "i {title}",
+    "toggleComplete": "Fullfør {title}",
+    "moveUnder": {
+      "title": "Flytt under",
+      "placeholder": "Flytt under …",
+      "empty": "Ingen samsvarende oppgave",
+      "topLevel": "Øverste nivå i {project}",
+      "thisTask": "Denne oppgaven",
+      "currentParent": "Nåværende overordnet",
+      "movesOne": "Flytter {title}",
+      "movesBranch": "Flytter {title} og {count, plural, one {# deloppgave} other {# deloppgaver}}",
+      "keys": "↵ Flytt hit · ⌘↵ Øverste nivå · esc Lukk"
+    },
+    "zoom": {
+      "path": "Oppgavesti",
+      "up": "Ett nivå opp",
+      "upShortcut": "Ett nivå opp (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Slette {title}?",
+      "summary": "{direct, plural, one {Den har # deloppgave} other {Den har # deloppgaver}}{deeper, plural, =0 {} one { og # til under den} other { og # til under dem}}{open, plural, =0 {, alle fullført.} other {, # fortsatt åpne.}}",
+      "cancel": "Avbryt",
+      "deleteAll": "Slett alle",
+      "keepSubtasks": "Behold deloppgaver"
+    },
+    "menu": {
+      "open": "Åpne",
+      "complete": "Fullfør",
+      "reopen": "Gjenåpne",
+      "zoom": "Zoom inn på deloppgaver",
+      "moveUnder": "Flytt under …",
+      "indent": "Flytt under {title}",
+      "outdent": "Flytt ett nivå ut",
+      "topLevel": "Gjør til oppgave på øverste nivå",
+      "delete": "Slett"
+    },
+    "openPath": "Åpne {path}"
   }
 }

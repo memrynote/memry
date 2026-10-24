@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {# alt görev için son tarih temizlendi} other {# alt görev için son tarih temizlendi}}",
       "prioritySet": "{count, plural, one {# alt görev için öncelik ayarlandı} other {# alt görev için öncelik ayarlandı}}",
       "deleted": "{count, plural, one {# alt görev silindi} other {# alt görev silindi}}"
-    }
+    },
+    "completedBranch": "{title} ve {count, plural, one {# açık alt görev} other {# açık alt görev}} tamamlandı",
+    "deletedKeepSubtasks": "{title} silindi, alt görevleri korundu",
+    "deletedBranch": "{title} ve {count, plural, one {# alt görev} other {# alt görev}} silindi"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "durum",
       "projectIs": "Proje:",
       "project": "proje",
+      "locationIs": "Konum şudur:",
+      "location": "konum",
+      "unknownNote": "Bilinmeyen not",
       "due": "Son tarih:",
       "dueDate": "son tarih",
       "search": "arama",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Son tarih"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Konum",
+      "search": "Klasör ve not ara…",
+      "empty": "Görevi olan klasör veya not yok"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Öncelik",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Proje görünümleri",
       "overview": "Genel bakış",
+      "all": "Tümü",
       "tasks": "Görevler",
       "notes": "Notlar",
       "files": "Dosyalar",
@@ -951,6 +963,25 @@
       "fileError": "{name} bağlanamadı",
       "fileErrorGeneric": "Dosyalar içe aktarılamadı",
       "label": "{name} projesine ekle"
+    },
+    "all": {
+      "showDone": "Tamamlananları göster",
+      "empty": "Bu projede açık bir şey yok.",
+      "expand": "{title} içindeki görevleri göster",
+      "collapse": "{title} içindeki görevleri gizle",
+      "taskSummary": "{open}/{total} açık",
+      "daysLeft": "{count} g",
+      "overdue": "{count} g gecikmiş",
+      "columns": {
+        "title": "Başlık",
+        "daysLeft": "Kalan gün"
+      },
+      "status": {
+        "active": "Etkin",
+        "done": "Tamamlandı",
+        "upcoming": "Yaklaşan",
+        "past": "Geçmiş"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Çivit mavisi",
     "purple": "Mor",
     "pink": "Pembe"
+  },
+  "subtaskTree": {
+    "addSubtask": "Alt görev ekle",
+    "dropInto": "{title} içine",
+    "dropOut": "Bir seviye dışarı",
+    "draftPlaceholder": "Alt görev başlığı",
+    "draftLabel": "{title} içinde yeni alt görev",
+    "draftIn": "{title} içinde",
+    "toggleComplete": "{title} görevini tamamla",
+    "moveUnder": {
+      "title": "Altına taşı",
+      "placeholder": "Altına taşı…",
+      "empty": "Eşleşen görev yok",
+      "topLevel": "{project} projesinin üst düzeyi",
+      "thisTask": "Bu görev",
+      "currentParent": "Geçerli üst görev",
+      "movesOne": "{title} taşınır",
+      "movesBranch": "{title} ve {count, plural, one {# alt görev} other {# alt görev}} taşınır",
+      "keys": "↵ Buraya taşı · ⌘↵ Üst düzey · esc Kapat"
+    },
+    "zoom": {
+      "path": "Görev yolu",
+      "up": "Bir seviye yukarı",
+      "upShortcut": "Bir seviye yukarı (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "{title} silinsin mi?",
+      "summary": "{direct, plural, one {# alt görevi var} other {# alt görevi var}}{deeper, plural, =0 {} one { ve altında # tane daha} other { ve altında # tane daha}}{open, plural, =0 {, hepsi tamamlandı.} other {, # tanesi hâlâ açık.}}",
+      "cancel": "İptal",
+      "deleteAll": "Tümünü sil",
+      "keepSubtasks": "Alt görevleri koru"
+    },
+    "menu": {
+      "open": "Aç",
+      "complete": "Tamamla",
+      "reopen": "Yeniden aç",
+      "zoom": "Alt görevlere odaklan",
+      "moveUnder": "Altına taşı…",
+      "indent": "{title} altına taşı",
+      "outdent": "Bir seviye dışarı taşı",
+      "topLevel": "Üst düzey görev yap",
+      "delete": "Sil"
+    },
+    "openPath": "{path} yolunu aç"
   }
 }

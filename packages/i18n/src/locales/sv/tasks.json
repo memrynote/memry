@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Förfallodatum rensat för # deluppgift} other {Förfallodatum rensat för # deluppgifter}}",
       "prioritySet": "{count, plural, one {Prioritet satt för # deluppgift} other {Prioritet satt för # deluppgifter}}",
       "deleted": "{count, plural, one {# deluppgift raderad} other {# deluppgifter raderade}}"
-    }
+    },
+    "completedBranch": "Slutförde {title} och {count, plural, one {# öppen deluppgift} other {# öppna deluppgifter}}",
+    "deletedKeepSubtasks": "Raderade {title} och behöll deluppgifterna",
+    "deletedBranch": "Raderade {title} och {count, plural, one {# deluppgift} other {# deluppgifter}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Projekt är",
       "project": "projekt",
+      "locationIs": "Plats är",
+      "location": "plats",
+      "unknownNote": "Okänd anteckning",
       "due": "Förfallodatum",
       "dueDate": "förfallodatum",
       "search": "sökning",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Förfallodatum"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Plats",
+      "search": "Sök mappar och anteckningar...",
+      "empty": "Inga mappar eller anteckningar med uppgifter"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritet",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Projektvyer",
       "overview": "Översikt",
+      "all": "Alla",
       "tasks": "Uppgifter",
       "notes": "Anteckningar",
       "files": "Filer",
@@ -951,6 +963,25 @@
       "fileError": "Det gick inte att länka {name}",
       "fileErrorGeneric": "Det gick inte att importera filerna",
       "label": "Lägg till i {name}"
+    },
+    "all": {
+      "showDone": "Visa klara",
+      "empty": "Inget är öppet i det här projektet.",
+      "expand": "Visa uppgifter i {title}",
+      "collapse": "Dölj uppgifter i {title}",
+      "taskSummary": "{open}/{total} öppna",
+      "daysLeft": "{count} d",
+      "overdue": "{count} d försenad",
+      "columns": {
+        "title": "Titel",
+        "daysLeft": "Dagar kvar"
+      },
+      "status": {
+        "active": "Aktiv",
+        "done": "Klar",
+        "upcoming": "Kommande",
+        "past": "Passerad"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Lila",
     "pink": "Rosa"
+  },
+  "subtaskTree": {
+    "addSubtask": "Lägg till deluppgift",
+    "dropInto": "In i {title}",
+    "dropOut": "Ut en nivå",
+    "draftPlaceholder": "Deluppgiftens titel",
+    "draftLabel": "Ny deluppgift i {title}",
+    "draftIn": "i {title}",
+    "toggleComplete": "Slutför {title}",
+    "moveUnder": {
+      "title": "Flytta under",
+      "placeholder": "Flytta under…",
+      "empty": "Ingen matchande uppgift",
+      "topLevel": "Översta nivån i {project}",
+      "thisTask": "Den här uppgiften",
+      "currentParent": "Nuvarande överordnad",
+      "movesOne": "Flyttar {title}",
+      "movesBranch": "Flyttar {title} och {count, plural, one {# deluppgift} other {# deluppgifter}}",
+      "keys": "↵ Flytta hit · ⌘↵ Översta nivån · esc Stäng"
+    },
+    "zoom": {
+      "path": "Uppgiftens sökväg",
+      "up": "Upp en nivå",
+      "upShortcut": "Upp en nivå (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Radera {title}?",
+      "summary": "{direct, plural, one {Den har # deluppgift} other {Den har # deluppgifter}}{deeper, plural, =0 {} one { och # till under den} other { och # till under dem}}{open, plural, =0 {, alla klara.} other {, # fortfarande öppna.}}",
+      "cancel": "Avbryt",
+      "deleteAll": "Radera alla",
+      "keepSubtasks": "Behåll deluppgifter"
+    },
+    "menu": {
+      "open": "Öppna",
+      "complete": "Slutför",
+      "reopen": "Öppna igen",
+      "zoom": "Zooma in på deluppgifter",
+      "moveUnder": "Flytta under…",
+      "indent": "Flytta under {title}",
+      "outdent": "Flytta ut en nivå",
+      "topLevel": "Gör till uppgift på översta nivån",
+      "delete": "Radera"
+    },
+    "openPath": "Öppna {path}"
   }
 }

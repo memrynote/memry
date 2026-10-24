@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Slet dagbogsindlæg",
     "description": "Er du sikker på, at du vil slette »{title}«? Denne handling kan ikke fortrydes."
+  },
+  "dayTimeline": {
+    "label": "Dagens plan",
+    "allDay": "Heldagselementer",
+    "unscheduled": "Uden tidspunkt",
+    "unscheduledEmpty": "Ingen opgaver uden tidspunkt. Træk en blok hertil for at fjerne dens tidspunkt.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Fuldfør {title}"
   }
 }

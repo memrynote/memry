@@ -195,6 +195,7 @@
     "complete-task": "Tamamla: {title}",
     "task-completed": "Görev tamamlandı",
     "could-not-complete": "Görev tamamlanamadı",
+    "could-not-update-status": "Görev durumu değiştirilemedi",
     "duration-minutes": "{minutes} dk",
     "duration-hours": "{hours} sa",
     "duration-hours-minutes": "{hours} sa {minutes} dk"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Not açılamadı"
     }
   },
+  "eventNotes": {
+    "heading": "Notlar",
+    "create": "Yeni not",
+    "link": "Not bağla",
+    "untitled": "Toplantı notu",
+    "searchPlaceholder": "Not ara",
+    "noResults": "Not bulunamadı",
+    "createFailed": "Bu etkinlik için not oluşturulamadı.",
+    "linkFailed": "Not bu etkinliğe bağlanamadı.",
+    "loadFailed": "Bu etkinliğe bağlı notlar yüklenemedi.",
+    "propertyTaken": "Bu notta bağlantı olmayan bir “{name}” özelliği zaten var."
+  },
   "notePopover": {
     "kind": "Not",
     "kindDateReminder": "Tarih hatırlatıcısı",
@@ -254,6 +267,10 @@
     "overdue": "gecikmiş",
     "untitled": "Başlıksız",
     "days": "{count, plural, one {# gün} other {# gün}}",
+    "subtasks": {
+      "expand": "{title} görevinin {count, plural, one {# alt görevini} other {# alt görevini}} göster",
+      "collapse": "{title} görevinin {count, plural, one {# alt görevini} other {# alt görevini}} gizle"
+    },
     "events": "Etkinlikler",
     "schedule-hint": "Tarih ayarlamak için tıklayın, aralık için sürükleyin",
     "empty-title": "Zaman çizelgesinde burada bir şey yok",

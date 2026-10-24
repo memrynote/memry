@@ -195,6 +195,7 @@
     "complete-task": "Fullfør {title}",
     "task-completed": "Oppgaven er fullført",
     "could-not-complete": "Kunne ikke fullføre oppgaven",
+    "could-not-update-status": "Kunne ikke endre oppgavestatus",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} t",
     "duration-hours-minutes": "{hours} t {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Kunne ikke åpne notatet"
     }
   },
+  "eventNotes": {
+    "heading": "Notater",
+    "create": "Nytt notat",
+    "link": "Lenk notat",
+    "untitled": "Møtenotat",
+    "searchPlaceholder": "Søk i notater",
+    "noResults": "Fant ingen notater",
+    "createFailed": "Kunne ikke opprette et notat for denne hendelsen.",
+    "linkFailed": "Kunne ikke lenke notatet til denne hendelsen.",
+    "loadFailed": "Kunne ikke laste inn notatene som er lenket til denne hendelsen.",
+    "propertyTaken": "Dette notatet har allerede en egenskap kalt «{name}» som ikke er en lenke."
+  },
   "notePopover": {
     "kind": "Notat",
     "kindDateReminder": "Datopåminnelse",
@@ -254,6 +267,10 @@
     "overdue": "forfalt",
     "untitled": "Uten tittel",
     "days": "{count, plural, one {# dag} other {# dager}}",
+    "subtasks": {
+      "expand": "Vis {count, plural, one {# deloppgave} other {# deloppgaver}} for {title}",
+      "collapse": "Skjul {count, plural, one {# deloppgave} other {# deloppgaver}} for {title}"
+    },
     "events": "Hendelser",
     "schedule-hint": "Klikk for å angi en dato, dra for å angi en periode",
     "empty-title": "Ingenting på tidslinjen her",

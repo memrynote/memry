@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Radera dagboksinlägg",
     "description": "Är du säker på att du vill radera ”{title}”? Det går inte att ångra."
+  },
+  "dayTimeline": {
+    "label": "Dagens schema",
+    "allDay": "Heldagsobjekt",
+    "unscheduled": "Ej schemalagda",
+    "unscheduledEmpty": "Inga oschemalagda uppgifter. Dra ett block hit för att ta bort dess tid.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Slutför {title}"
   }
 }

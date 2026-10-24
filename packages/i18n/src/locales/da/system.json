@@ -29,6 +29,23 @@
       "buttonRestartNow": "Genstart nu",
       "releaseNotesLabel": "Udgivelsesbemærkninger:"
     },
+    "dataDbRecovery": {
+      "title": "Reparér boksens database",
+      "message": "Memrys database for denne boks er beskadiget.",
+      "detail": "Dine noter og dagbogsfiler er upåvirkede. Reparation beholder den beskadigede database som sikkerhedskopi på {path}, opretter en ny, genopbygger det, den kan, fra dine boksfiler og gendanner synkroniserede elementer ved næste synkronisering. Ændringer, der endnu ikke var synkroniseret, gendannes, hvor det er muligt.",
+      "buttonRecover": "Reparér",
+      "buttonLater": "Ikke nu"
+    },
+    "obsidianVault": {
+      "title": "Åbn Obsidian-boks",
+      "message": "Vil du åbne en kopi af denne Obsidian-boks?",
+      "detail": "Hvis du åbner en Obsidian-boks i memrynote, kan du miste data, som dine Obsidian-plugins bruger. Når memrynote gør et plugins opgavelinje til en opgave, omskriver den linjen. Felter som forfaldsdatoer fra Tasks-pluginet forsvinder fra filen, og Obsidian kan ikke længere se dem.\n\nmemrynote kan kopiere »{name}« til »{copyName}« ved siden af og åbne kopien. »{name}« forbliver præcis, som den er.",
+      "detailExistingCopy": "Hvis du åbner en Obsidian-boks i memrynote, kan du miste data, som dine Obsidian-plugins bruger. Når memrynote gør et plugins opgavelinje til en opgave, omskriver den linjen. Felter som forfaldsdatoer fra Tasks-pluginet forsvinder fra filen, og Obsidian kan ikke længere se dem.\n\nEn memrynote-kopi, »{copyName}«, ligger allerede ved siden af. memrynote kan åbne den kopi. »{name}« forbliver præcis, som den er.",
+      "buttonCopy": "Opret kopi",
+      "buttonOpenCopy": "Åbn kopi",
+      "buttonOpenOriginal": "Åbn original",
+      "buttonCancel": "Annullér"
+    },
     "pair": {
       "title": "Forbind browserudvidelse",
       "message": "Vil du tillade, at Memry-browserudvidelsen sender indfangede elementer til denne app?",

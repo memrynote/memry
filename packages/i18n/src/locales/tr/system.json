@@ -29,6 +29,23 @@
       "buttonRestartNow": "Şimdi yeniden başlat",
       "releaseNotesLabel": "Sürüm notları:"
     },
+    "dataDbRecovery": {
+      "title": "Kasa veritabanını onar",
+      "message": "Memry'nin bu kasaya ait veritabanı hasar görmüş.",
+      "detail": "Notlarınız ve günlük dosyalarınız etkilenmez. Onarım, hasarlı veritabanını {path} konumunda yedek olarak saklar, yeni bir veritabanı başlatır, kasa dosyalarınızdan geri kurabildiklerini yeniden oluşturur ve eşitlenmiş öğeleri bir sonraki eşitlemede geri yükler. Henüz eşitlenmemiş değişiklikler mümkün olduğunca kurtarılır.",
+      "buttonRecover": "Onar",
+      "buttonLater": "Şimdi değil"
+    },
+    "obsidianVault": {
+      "title": "Obsidian kasasını aç",
+      "message": "Bu Obsidian kasasının bir kopyası açılsın mı?",
+      "detail": "Bir Obsidian kasasını memrynote'ta açmak, Obsidian eklentilerinizin kullandığı verilerin kaybolmasına yol açabilir. memrynote bir eklentinin görev satırını göreve dönüştürdüğünde satırı yeniden yazar. Tasks eklentisinin son tarihleri gibi alanlar dosyadan çıkar ve Obsidian artık onları görmez.\n\nmemrynote, “{name}” kasasını yanına “{copyName}” olarak kopyalayıp kopyayı açabilir. “{name}” olduğu gibi kalır.",
+      "detailExistingCopy": "Bir Obsidian kasasını memrynote'ta açmak, Obsidian eklentilerinizin kullandığı verilerin kaybolmasına yol açabilir. memrynote bir eklentinin görev satırını göreve dönüştürdüğünde satırı yeniden yazar. Tasks eklentisinin son tarihleri gibi alanlar dosyadan çıkar ve Obsidian artık onları görmez.\n\nYanında bir memrynote kopyası, “{copyName}”, zaten var. memrynote bu kopyayı açabilir. “{name}” olduğu gibi kalır.",
+      "buttonCopy": "Kopya oluştur",
+      "buttonOpenCopy": "Kopyayı aç",
+      "buttonOpenOriginal": "Aslını aç",
+      "buttonCancel": "İptal"
+    },
     "pair": {
       "title": "Tarayıcı uzantısını eşle",
       "message": "Memry tarayıcı uzantısının bu uygulamaya kayıt göndermesine izin verilsin mi?",

@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Forfaldsdato ryddet for # delopgave} other {Forfaldsdato ryddet for # delopgaver}}",
       "prioritySet": "{count, plural, one {Prioritet angivet for # delopgave} other {Prioritet angivet for # delopgaver}}",
       "deleted": "{count, plural, one {# delopgave slettet} other {# delopgaver slettet}}"
-    }
+    },
+    "completedBranch": "Fuldførte {title} og {count, plural, one {# åben underopgave} other {# åbne underopgaver}}",
+    "deletedKeepSubtasks": "Slettede {title} og beholdt underopgaverne",
+    "deletedBranch": "Slettede {title} og {count, plural, one {# underopgave} other {# underopgaver}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Projekt er",
       "project": "projekt",
+      "locationIs": "Placeringen er",
+      "location": "placering",
+      "unknownNote": "Ukendt note",
       "due": "Forfalder",
       "dueDate": "forfaldsdato",
       "search": "søgning",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Forfaldsdato"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Placering",
+      "search": "Søg i mapper og noter...",
+      "empty": "Ingen mapper eller noter med opgaver"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritet",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Projektvisninger",
       "overview": "Oversigt",
+      "all": "Alle",
       "tasks": "Opgaver",
       "notes": "Noter",
       "files": "Filer",
@@ -951,6 +963,25 @@
       "fileError": "Kunne ikke linke {name}",
       "fileErrorGeneric": "Kunne ikke importere filerne",
       "label": "Føj til {name}"
+    },
+    "all": {
+      "showDone": "Vis færdige",
+      "empty": "Intet åbent i dette projekt.",
+      "expand": "Vis opgaver i {title}",
+      "collapse": "Skjul opgaver i {title}",
+      "taskSummary": "{open}/{total} åbne",
+      "daysLeft": "{count} d.",
+      "overdue": "{count} d. forsinket",
+      "columns": {
+        "title": "Titel",
+        "daysLeft": "Dage tilbage"
+      },
+      "status": {
+        "active": "Aktiv",
+        "done": "Færdig",
+        "upcoming": "Kommende",
+        "past": "Overstået"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Lilla",
     "pink": "Pink"
+  },
+  "subtaskTree": {
+    "addSubtask": "Tilføj underopgave",
+    "dropInto": "Ind i {title}",
+    "dropOut": "Ét niveau ud",
+    "draftPlaceholder": "Underopgavens titel",
+    "draftLabel": "Ny underopgave i {title}",
+    "draftIn": "i {title}",
+    "toggleComplete": "Fuldfør {title}",
+    "moveUnder": {
+      "title": "Flyt under",
+      "placeholder": "Flyt under…",
+      "empty": "Ingen matchende opgave",
+      "topLevel": "Øverste niveau i {project}",
+      "thisTask": "Denne opgave",
+      "currentParent": "Nuværende overordnede",
+      "movesOne": "Flytter {title}",
+      "movesBranch": "Flytter {title} og {count, plural, one {# underopgave} other {# underopgaver}}",
+      "keys": "↵ Flyt hertil · ⌘↵ Øverste niveau · esc Luk"
+    },
+    "zoom": {
+      "path": "Opgavesti",
+      "up": "Ét niveau op",
+      "upShortcut": "Ét niveau op (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Slet {title}?",
+      "summary": "{direct, plural, one {Den har # underopgave} other {Den har # underopgaver}}{deeper, plural, =0 {} one { og # mere under den} other { og # mere under dem}}{open, plural, =0 {, alle færdige.} other {, # stadig åbne.}}",
+      "cancel": "Annullér",
+      "deleteAll": "Slet alle",
+      "keepSubtasks": "Behold underopgaver"
+    },
+    "menu": {
+      "open": "Åbn",
+      "complete": "Fuldfør",
+      "reopen": "Genåbn",
+      "zoom": "Zoom ind på underopgaver",
+      "moveUnder": "Flyt under…",
+      "indent": "Flyt under {title}",
+      "outdent": "Flyt ét niveau ud",
+      "topLevel": "Gør til opgave på øverste niveau",
+      "delete": "Slet"
+    },
+    "openPath": "Åbn {path}"
   }
 }

@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Din plan synkroniserar färre valv än det här kontot har, så det här valvet stannar på den här enheten. Ta bort ett valv från kontot i Inställningar → Konto, eller uppgradera din plan.",
     "certificatePinFailed": "Det gick inte att upprätta en säker anslutning. Kontrollera din nätverksanslutning.",
     "deviceKeyMismatch": "Den här enhetens säkerhetsnyckel stämmer inte längre med den som är registrerad för ditt konto, så servern avvisar dess ändringar. Logga in igen på den här enheten för att registrera den på nytt.",
+    "deviceKeysMissing": "Ändringar på den här enheten laddas inte upp eftersom enhetens nycklar saknas. Välj Reparera för att återställa dem. Om enheten inte längre har sina nycklar loggar du in igen och kan behöva din återställningsfras. Osynkade anteckningar, uppgifter och projekt behålls.",
     "keychainUnavailable": "Synkroniseringen är pausad eftersom Memry inte kan läsa sina synknycklar från systemets nyckelring just nu. Lås upp nyckelringen så återupptas synkroniseringen av sig själv. Om den inte gör det startar du om Memry. Inget har raderats.",
     "unknown": "Ett oväntat synkroniseringsfel uppstod. Försöker igen automatiskt.",
     "statusFetchFailed": "Det gick inte att hämta synkstatus",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synkronisering misslyckades",
     "pauseFailed": "Det gick inte att pausa synkroniseringen",
     "resumeFailed": "Det gick inte att återuppta synkroniseringen",
+    "syncNowSignedOut": "Synkroniseringen kräver att du loggar in igen på den här enheten.",
+    "syncNowBusy": "Synkroniseringen pågår redan. Försök igen om en stund.",
+    "syncNowPaused": "Synkroniseringen pausades medan den kördes. Återuppta den från synkmenyn.",
+    "openAccountSettings": "Öppna inställningar",
     "settingsNotInitialized": "Inställningssynkronisering är inte initierad",
     "securityQuarantinePermanent": "Ett synkroniseringsobjekt kunde inte verifieras och har satts i karantän av säkerhetsskäl.",
     "securityQuarantineRetry": "Signaturen för ett synkobjekt kunde inte verifieras. Ett nytt försök görs.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "AI-redigering direkt i texten är avstängd",
-    "listOllamaModelsFailed": "Det gick inte att lista Ollama-modeller"
+    "listOllamaModelsFailed": "Det gick inte att lista Ollama-modeller",
+    "writingAssistInvalid": "Den begäran kunde inte skickas till AI-modellen.",
+    "apiKeyMissing": "Lägg till din {provider}-API-nyckel i Inställningar → AI för att använda skrivverktygen.",
+    "apiKeyInvalid": "Din {provider}-API-nyckel avvisades. Kontrollera den i Inställningar → AI.",
+    "ollamaUnreachable": "Ollama körs inte. Starta det med ”ollama serve” eller välj en annan leverantör i Inställningar → AI.",
+    "providerUnreachable": "Det gick inte att nå {provider}. Kontrollera internetanslutningen och försök igen."
   },
   "auth": {
     "notAuthenticated": "Inte inloggad",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "Det gick inte att konvertera den externa kalenderhändelsen",
     "onlyCalendarSourcesRetryable": "Nya försök kan bara göras för kalenderkällor",
     "invalidProviderSettings": "Ogiltiga inställningar för kalendertjänsten",
-    "getExternalEventFailed": "Det gick inte att läsa in händelsen. Den finns kvar i din kalender – försök öppna den igen."
+    "getExternalEventFailed": "Det gick inte att läsa in händelsen. Den finns kvar i din kalender – försök öppna den igen.",
+    "listLinkedNotesFailed": "Det gick inte att läsa in anteckningarna som är länkade till den här händelsen."
   },
   "canvasFolder": {
     "exists": "Det finns redan en canvasmapp med det namnet här.",
@@ -209,10 +220,35 @@
     "previewFailed": "Förhandsvisningen misslyckades",
     "listFailed": "Det gick inte att lista importverktyg",
     "appleNotesFoldersFailed": "Det gick inte att läsa dina mappar i Apple Notes",
+    "appleNotesPasswordFailed": "Det gick inte att kontrollera lösenordet för Notes.",
     "onenoteStatusFailed": "Det gick inte att läsa anslutningsstatus för OneNote",
     "onenoteConnectFailed": "Inloggningen till Microsoft misslyckades",
     "onenoteDisconnectFailed": "Det gick inte att koppla från Microsoft-kontot",
-    "onenoteNotebooksFailed": "Det gick inte att läsa in OneNote-anteckningsböcker"
+    "onenoteNotebooksFailed": "Det gick inte att läsa in OneNote-anteckningsböcker",
+    "readwiseStatusFailed": "Det gick inte att läsa Readwise-anslutningens status",
+    "readwiseConnectFailed": "Det gick inte att ansluta till Readwise",
+    "readwiseInvalidToken": "Readwise godtog inte den här token. Kopiera den igen från readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise begränsar förfrågningar just nu. Försök igen om en minut.",
+    "readwiseUnreachable": "Det gick inte att nå Readwise. Kontrollera anslutningen och försök igen.",
+    "readwiseDisconnectFailed": "Det gick inte att koppla från Readwise",
+    "readwiseSyncFailed": "Det gick inte att starta Readwise-synkroniseringen",
+    "readwiseRunUnavailable": "Readwise synkroniseras inte på den här enheten.",
+    "readwiseRunInProgress": "En Readwise-import pågår redan. Försök igen när den är klar.",
+    "readwiseOptionsFailed": "Det gick inte att spara Readwise-inställningarna",
+    "readwiseNotConnected": "Readwise är inte anslutet. Klistra in din åtkomsttoken först.",
+    "readwiseSyncsElsewhere": "Readwise synkroniseras på en annan enhet. Kör kommandot där.",
+    "readwiseBookCommandFailed": "Det gick inte att slutföra Readwise-kommandot",
+    "readwiseBookGone": "Den här boken finns inte längre i ditt Readwise-bibliotek.",
+    "readwiseNotLinked": "Den här anteckningen är inte länkad till en Readwise-bok.",
+    "readwiseNotDeleted": "Den här boken finns inte i listan över raderade.",
+    "readwiseBookBusy": "Anteckningen ändrades medan kommandot kördes. Försök igen.",
+    "readwiseSyncsOnDevice": "Readwise synkroniseras på {device}. Använd ”Synkronisera här i stället” för att flytta det hit.",
+    "readwiseAnotherDevice": "en annan enhet",
+    "readwiseNotReady": "Memry har inte synkroniserat klart med dina andra enheter ännu. Försök igen om en stund.",
+    "readwiseNeedsSync": "Slå på synkronisering för att flytta Readwise mellan enheter.",
+    "readwiseClaimNotDelivered": "Det gick inte att meddela dina andra enheter ännu. Kontrollera anslutningen och försök igen.",
+    "readwiseTakeOverFailed": "Det gick inte att flytta Readwise till den här enheten",
+    "readwiseCancelFailed": "Det gick inte att avbryta Readwise-synkroniseringen"
   },
   "project": {
     "createFailed": "Det gick inte att skapa projektet",
@@ -236,7 +272,8 @@
     "renameFailed": "Det gick inte att byta namn på egenskapen",
     "createDefinitionFailed": "Det gick inte att skapa egenskapsdefinitionen",
     "updateDefinitionFailed": "Det gick inte att uppdatera egenskapsdefinitionen",
-    "setCalendarVisibilityFailed": "Det gick inte att ställa in egenskapens synlighet i kalendern"
+    "setCalendarVisibilityFailed": "Det gick inte att ställa in egenskapens synlighet i kalendern",
+    "definitionsFileUnreadable": "Det går inte att spara egenskapsändringar eftersom .memry/properties.md inte kan läsas. Åtgärda eller ta bort filen och försök igen."
   },
   "reminder": {
     "notFound": "Påminnelsen hittades inte",
@@ -262,6 +299,7 @@
     "shortcutInUse": "Kortkommandot {shortcut} används redan"
   },
   "tag": {
+    "renameInProgress": "Ett namnbyte från #{from} till #{to} pågår fortfarande. Försök igen när det är klart.",
     "mergeSameTag": "Käll- och måltaggen är samma",
     "categoryNameRequired": "Kategorinamn krävs",
     "pinNoteFailed": "Det gick inte att fästa anteckningen",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "Det gick inte att radera uppgifterna",
     "moveManyFailed": "Det gick inte att flytta uppgifterna",
     "archiveManyFailed": "Det gick inte att arkivera uppgifterna",
-    "projectMissing": "Det projektet finns inte längre"
+    "projectMissing": "Det projektet finns inte längre",
+    "invalidParent": "En uppgift kan inte placeras där"
   },
   "taskStatus": {
     "createFailed": "Det gick inte att skapa statusen",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "Ägaren har gjort den här anteckningen skrivskyddad.",
     "folderReadOnly": "Ägaren har gjort den här mappen skrivskyddad."
+  },
+  "ocrLanguages": {
+    "unreachable": "Det gick inte att nå Memrys server. Språken som redan finns här fortsätter fungera, och Memry försöker igen vid nästa start.",
+    "unavailable": "Memrys server erbjuder inte det här språket ännu. Språken som redan finns här fortsätter fungera.",
+    "corrupt": "Den nedladdade datan stämde inte med vad Memry förväntar sig, så den användes inte. Försök igen för att ladda ned den på nytt.",
+    "saveFailed": "Språkdatan kunde inte sparas på den här datorn. Kontrollera det lediga diskutrymmet och försök igen."
+  },
+  "tagFields": {
+    "reservedName": "”{name}” är reserverat och kan inte vara ett fältnamn",
+    "duplicateField": "#{definedBy} har redan ett fält som heter ”{name}”",
+    "unknownField": "Den här taggen har inget fält som heter ”{name}”",
+    "inheritedField": "”{name}” kommer från #{definedBy}. Redigera det där",
+    "cycle": "#{parent} ärver redan sina fält från den här taggen",
+    "unreadableSchema": "En nyare version av Memry har ändrat den här taggen. Uppdatera Memry för att redigera den",
+    "relationTargetRequired": "Välj vilken tagg den här relationen pekar på",
+    "editFailed": "Det gick inte att ändra taggens fält",
+    "previewFailed": "Det gick inte att räkna vad den här ändringen påverkar",
+    "snapshotFailed": "Det gick inte att läsa in taggfälten",
+    "renameRunning": "Ett annat namnbyte av fält pågår fortfarande ({from} till {to}). Försök igen när det är klart."
   }
 }

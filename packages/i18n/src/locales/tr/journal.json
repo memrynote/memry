@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Günlük girdisini sil",
     "description": "“{title}” girdisini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+  },
+  "dayTimeline": {
+    "label": "Gün programı",
+    "allDay": "Tüm gün öğeleri",
+    "unscheduled": "Zamanlanmamış",
+    "unscheduledEmpty": "Zamanlanmamış görev yok. Saatini kaldırmak için bir bloğu buraya sürükleyin.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} görevini tamamla"
   }
 }

@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Poista päiväkirjamerkintä",
     "description": "Haluatko varmasti poistaa merkinnän ”{title}”? Tätä ei voi kumota."
+  },
+  "dayTimeline": {
+    "label": "Päivän aikataulu",
+    "allDay": "Koko päivän kohteet",
+    "unscheduled": "Aikatauluttamattomat",
+    "unscheduledEmpty": "Ei aikatauluttamattomia tehtäviä. Vedä lohko tähän poistaaksesi sen ajan.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Merkitse valmiiksi: {title}"
   }
 }
