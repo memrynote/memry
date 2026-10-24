@@ -262,11 +262,14 @@ function markdownToPlainText(markdown: string): string {
 }
 
 function pdfEscape(text: string): string {
-  return text
-    .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, '?')
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)')
+  return (
+    text
+      // oxlint-disable-next-line no-control-regex -- PDF text must keep only printable ASCII plus tab/LF/CR, so the control range is the point
+      .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, '?')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+  )
 }
 
 function wrapLine(line: string, maxChars: number): string[] {

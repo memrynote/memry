@@ -232,7 +232,7 @@ export function createAttachmentToolsService({
           })
         }
       }
-      return entries.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
+      return entries.toSorted((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
     },
 
     // Embeds an attachment another note already stores. Nothing is copied or
@@ -279,7 +279,12 @@ export function createAttachmentToolsService({
       try {
         response = await fetch(parsed)
       } catch (error) {
-        throw new Error(`Could not fetch ${url}: ${error instanceof Error ? error.message : error}`)
+        throw new Error(
+          `Could not fetch ${url}: ${error instanceof Error ? error.message : error}`,
+          {
+            cause: error
+          }
+        )
       }
       if (!response.ok) throw new Error(`Could not fetch ${url}: HTTP ${response.status}`)
       // A page that shows a photo answers with HTML; refusing on the declared

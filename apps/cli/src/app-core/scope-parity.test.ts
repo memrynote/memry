@@ -177,8 +177,8 @@ test('.memry/properties.md names every persistable definition, so desktop opens 
     const persistable = (await app.properties.definitions())
       .filter((definition) => definition.type !== 'relation')
       .map((definition) => definition.name)
-      .sort()
-    assert.deepEqual(Object.keys(parsed.properties).sort(), persistable)
+      .toSorted()
+    assert.deepEqual(Object.keys(parsed.properties).toSorted(), persistable)
   } finally {
     app.close()
   }
@@ -294,8 +294,8 @@ test('notes attach embeds the file desktop-style and queues the upload for sync'
       // Both sides sorted: the paths embed random attachment ids, so the
       // insertion order is not a stable expectation.
       assert.deepEqual(
-        queued.map((row) => row.diskPath).sort(),
-        [image.absolutePath, pdf.absolutePath].sort()
+        queued.map((row) => row.diskPath).toSorted(),
+        [image.absolutePath, pdf.absolutePath].toSorted()
       )
       // Attachment ids are minted by the upload path — the CLI must never
       // invent one, or peers request a blob the server does not have.

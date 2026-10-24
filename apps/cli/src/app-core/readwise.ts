@@ -213,7 +213,7 @@ export function createReadwiseService(dataDb: DataDb): ReadwiseService {
           noteId: row.noteId,
           deletedAt: row.updatedAt
         }))
-        .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+        .toSorted((a, b) => b.deletedAt.localeCompare(a.deletedAt))
     },
 
     async setOptions(rawUpdates) {

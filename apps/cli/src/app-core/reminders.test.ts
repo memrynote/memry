@@ -10,7 +10,7 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import type { DataDb } from './database.ts'
 
 test('reminder target types: canonical set is exactly the five supported targets', () => {
-  assert.deepEqual(Object.values(reminderTargetType).sort(), [
+  assert.deepEqual(Object.values(reminderTargetType).toSorted(), [
     'highlight',
     'journal',
     'note',

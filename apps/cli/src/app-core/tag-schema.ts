@@ -430,7 +430,7 @@ export function createTagSchemaService({
           const rank = matchRank(note.title, query)
           return rank === null ? [] : [{ note, rank }]
         })
-        .sort((a, b) => a.rank - b.rank || b.note.modifiedAt.localeCompare(a.note.modifiedAt))
+        .toSorted((a, b) => a.rank - b.rank || b.note.modifiedAt.localeCompare(a.note.modifiedAt))
         .slice(0, input.limit)
 
       const matches: ObjectMatch[] = ranked.map(({ note }) => {
@@ -494,7 +494,7 @@ export function createTagSchemaService({
           field: group.field,
           label: group.label,
           total: group.notes.length,
-          items: group.notes.sort(byNewest).slice(0, input.limitPerGroup).map(toItem),
+          items: group.notes.toSorted(byNewest).slice(0, input.limitPerGroup).map(toItem),
           filter: filter(group.field)
         })
       }
@@ -550,7 +550,7 @@ export function createTagSchemaService({
         }
       }
       for (const group of taskGroups.values()) {
-        const items = group.items.sort(
+        const items = group.items.toSorted(
           (a, b) =>
             Number(a.completed) - Number(b.completed) ||
             (a.dueDate ?? '\uffff').localeCompare(b.dueDate ?? '\uffff')
@@ -570,7 +570,7 @@ export function createTagSchemaService({
       )
       const mentions = allNotes
         .filter((note) => note.id !== input.noteId && backlinkIds.has(note.id))
-        .sort(byNewest)
+        .toSorted(byNewest)
       if (mentions.length > 0) {
         groups.push({
           kind: 'mentions',

@@ -160,7 +160,7 @@ export function createPropertyToolsService({
     for (const [name, entry] of Object.entries(await readFileEntries(vaultPath))) {
       if (entry?.type === 'date' && entry.showOnCalendar === true) names.add(name)
     }
-    return [...names].sort()
+    return [...names].toSorted()
   }
 
   return {

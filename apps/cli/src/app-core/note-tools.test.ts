@@ -175,7 +175,7 @@ test('carried tasks are the task lines a note holds, minus tasks still homed els
       noteIds: [carrier.id, keep.id],
       folderPaths: []
     })
-    assert.deepEqual([...both.taskIds].sort(), [own.id, shared.id].sort())
+    assert.deepEqual([...both.taskIds].toSorted(), [own.id, shared.id].toSorted())
   })
 })
 

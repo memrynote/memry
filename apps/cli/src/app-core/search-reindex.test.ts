@@ -20,32 +20,31 @@ async function makeVault() {
 }
 
 // Desktop's indexer owns note_cache and note_tags; stand in for it so the FTS rebuild has rows.
-function indexLikeDesktop(vaultPath: string, notes: MemryApp['notes'], ids: string[]) {
-  return Promise.all(ids.map((id) => notes.get(id))).then((records) => {
-    const databases = openDatabases(vaultPath)
-    try {
-      for (const note of records) {
-        if (!note) throw new Error('note missing')
-        databases.indexDb
-          .insert(noteCache)
-          .values({
-            id: note.id,
-            path: note.path,
-            title: note.title,
-            fileType: 'markdown',
-            date: note.journalDate,
-            createdAt: note.createdAt,
-            modifiedAt: note.modifiedAt
-          })
-          .run()
-        for (const tag of note.tags) {
-          databases.indexDb.insert(noteTags).values({ noteId: note.id, tag }).run()
-        }
+async function indexLikeDesktop(vaultPath: string, notes: MemryApp['notes'], ids: string[]) {
+  const records = await Promise.all(ids.map((id) => notes.get(id)))
+  const databases = openDatabases(vaultPath)
+  try {
+    for (const note of records) {
+      if (!note) throw new Error('note missing')
+      databases.indexDb
+        .insert(noteCache)
+        .values({
+          id: note.id,
+          path: note.path,
+          title: note.title,
+          fileType: 'markdown',
+          date: note.journalDate,
+          createdAt: note.createdAt,
+          modifiedAt: note.modifiedAt
+        })
+        .run()
+      for (const tag of note.tags) {
+        databases.indexDb.insert(noteTags).values({ noteId: note.id, tag }).run()
       }
-    } finally {
-      databases.close()
     }
-  })
+  } finally {
+    databases.close()
+  }
 }
 
 async function seed() {
@@ -111,7 +110,7 @@ test('search finds stemmed matches the substring scan cannot, and ranks the exac
 
     const phrase = await app.search('zebra crossing', { types: ['note'] })
     assert.deepEqual(phrase.map((hit) => hit.id).slice(0, 2), [adjacent.id, apart.id])
-    assert.deepEqual(Object.keys(phrase[0]).sort(), ['id', 'kind', 'path', 'snippet', 'title'])
+    assert.deepEqual(Object.keys(phrase[0]).toSorted(), ['id', 'kind', 'path', 'snippet', 'title'])
   } finally {
     app.close()
   }
@@ -135,8 +134,8 @@ test('search filters narrow by type, tag, folder, project, date and page', async
     assert.deepEqual(
       (await app.search('zebra', { folderPath: 'Zoo/', types: ['note'] }))
         .map((hit) => hit.id)
-        .sort(),
-      [adjacent.id, apart.id].sort()
+        .toSorted(),
+      [adjacent.id, apart.id].toSorted()
     )
     const tasks = await app.search('zebra', { projectId: project.id })
     assert.deepEqual(
@@ -340,9 +339,9 @@ test('settings groups cover desktop features, inbox, sticky, graphViews, tagSear
   const vaultPath = await makeVault()
   const app = await createMemryApp({ vaultPath })
   try {
-    const names = (await app.settings.groups()).map((group) => group.name)
+    const names = new Set((await app.settings.groups()).map((group) => group.name))
     for (const name of ['features', 'inbox', 'sticky', 'graphViews', 'tagSearches', 'sidebar']) {
-      assert.ok(names.includes(name as never), name)
+      assert.ok(names.has(name as never), name)
     }
     assert.equal((await app.settings.getGroup('features')).spatialCanvas, true)
 

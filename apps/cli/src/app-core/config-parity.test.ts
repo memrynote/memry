@@ -18,7 +18,7 @@ async function vaultWithConfig(config: unknown, folders: string[]): Promise<stri
 async function listedFolders(config: unknown, folders: string[]): Promise<string[]> {
   const vaultPath = await vaultWithConfig(config, folders)
   const listed = await listTreeFolders(vaultPath, await ensureVaultLayout(vaultPath))
-  return listed.filter((folder) => folders.includes(folder)).sort()
+  return listed.filter((folder) => folders.includes(folder)).toSorted()
 }
 
 // Expected lists are what desktop's getConfig + createTreeFolderFilter produce

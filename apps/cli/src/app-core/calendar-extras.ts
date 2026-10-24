@@ -286,10 +286,10 @@ export function createCalendarExtrasService({
         return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : Math.abs(parsed - nowMs)
       }
       const nearest = <T extends { startAt: string }>(rows: T[]): T[] => {
-        const upcoming = rows.filter((row) => row.startAt >= now).sort(byStart('asc'))
-        const past = rows.filter((row) => row.startAt < now).sort(byStart('desc'))
+        const upcoming = rows.filter((row) => row.startAt >= now).toSorted(byStart('asc'))
+        const past = rows.filter((row) => row.startAt < now).toSorted(byStart('desc'))
         return [...upcoming.slice(0, cap), ...past.slice(0, cap)]
-          .sort((left, right) => distance(left.startAt) - distance(right.startAt))
+          .toSorted((left, right) => distance(left.startAt) - distance(right.startAt))
           .slice(0, cap)
       }
       function byStart(order: 'asc' | 'desc') {
@@ -332,7 +332,7 @@ export function createCalendarExtrasService({
       }))
       return {
         events: [...native, ...external]
-          .sort((left, right) => distance(left.startAt) - distance(right.startAt))
+          .toSorted((left, right) => distance(left.startAt) - distance(right.startAt))
           .slice(0, cap)
       }
     },

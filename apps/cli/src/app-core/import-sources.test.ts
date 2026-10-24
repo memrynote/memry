@@ -73,7 +73,7 @@ test('import sources lists the desktop catalog and marks what runs from the CLI'
     sources
       .filter((source) => source.cli)
       .map((source) => source.id)
-      .sort(),
+      .toSorted(),
     ['csv', 'markdown', 'roam']
   )
   // Every desktop built-in is named, so a user can tell "not here" from "does not exist".
@@ -93,7 +93,7 @@ test('import sources lists the desktop catalog and marks what runs from the CLI'
   }
   assert.deepEqual(
     sources.map((source) => source.name),
-    sources.map((source) => source.name).sort((a, b) => a.localeCompare(b))
+    sources.map((source) => source.name).toSorted((a, b) => a.localeCompare(b))
   )
 })
 
@@ -105,7 +105,7 @@ test('import preview plans markdown notes without writing anything', async () =>
   const preview = await runOk<Preview>(vaultPath, ['import', 'preview', 'markdown', source])
   assert.equal(preview.groups.length, 1)
   assert.equal(preview.groups[0].counts[0].value, 2)
-  assert.deepEqual([...(preview.groups[0].sampleTitles ?? [])].sort(), [
+  assert.deepEqual([...(preview.groups[0].sampleTitles ?? [])].toSorted(), [
     'Frontmatter Title',
     'Nested'
   ])
@@ -134,7 +134,7 @@ test('import start markdown creates notes with frontmatter title, tags, properti
     'get',
     summary.notes.find((note) => note.title === 'Frontmatter Title')!.id
   ])
-  assert.deepEqual([...top.tags].sort(), ['alpha', 'beta'])
+  assert.deepEqual([...top.tags].toSorted(), ['alpha', 'beta'])
   assert.equal(top.properties.status, 'draft')
   assert.match(top.path, /^Markdown\/Frontmatter Title\.md$/)
   const nested = summary.notes.find((note) => note.title === 'Nested')!
@@ -154,7 +154,7 @@ test('import start --folder replaces the importer root and keeps the subfolders'
     '--folder',
     'Archive/Old'
   ])
-  assert.deepEqual(summary.notes.map((note) => note.path).sort(), [
+  assert.deepEqual(summary.notes.map((note) => note.path).toSorted(), [
     'Archive/Old/Frontmatter Title.md',
     'Archive/Old/sub/Nested.md'
   ])
@@ -234,7 +234,7 @@ test('the CLI catalog names every importer the desktop app registers', async () 
   const vaultPath = await makeVault()
   const catalog = await runOk<Array<{ id: string; name: string }>>(vaultPath, ['import', 'sources'])
   assert.deepEqual(
-    catalog.map(({ id, name }) => ({ id, name })).sort((a, b) => a.id.localeCompare(b.id)),
-    desktop.sort((a, b) => a.id.localeCompare(b.id))
+    catalog.map(({ id, name }) => ({ id, name })).toSorted((a, b) => a.id.localeCompare(b.id)),
+    desktop.toSorted((a, b) => a.id.localeCompare(b.id))
   )
 })

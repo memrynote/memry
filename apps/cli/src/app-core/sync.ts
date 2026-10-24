@@ -131,17 +131,17 @@ function countWhere(dataDb: DataDb, where: ReturnType<typeof sql>): number {
   )
 }
 
-function setNestedValue(target: Record<string, unknown>, path: string[], value: unknown): void {
+function setNestedValue(target: Record<string, unknown>, keys: string[], value: unknown): void {
   let current = target
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const part = path[index]
+  for (let index = 0; index < keys.length - 1; index += 1) {
+    const part = keys[index]
     if (!part) continue
     if (!current[part] || typeof current[part] !== 'object' || Array.isArray(current[part])) {
       current[part] = {}
     }
     current = current[part] as Record<string, unknown>
   }
-  const last = path.at(-1)
+  const last = keys.at(-1)
   if (last) current[last] = value
 }
 

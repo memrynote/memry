@@ -184,7 +184,7 @@ function canonicalize(parsed: CanvasFileShape, meta: unknown): Record<string, un
   out.elements = elements ?? []
   out.appState = appState ?? {}
   out.files = files ?? {}
-  for (const key of Object.keys(rest).sort()) {
+  for (const key of Object.keys(rest).toSorted()) {
     out[key] = (rest as Record<string, unknown>)[key]
   }
   return out

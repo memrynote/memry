@@ -323,7 +323,7 @@ export function createNoteToolsService({
           )
         })
       }
-      return out.sort((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
+      return out.toSorted((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
     },
 
     async linkMention({ sourceId, targetId, ordinal }) {

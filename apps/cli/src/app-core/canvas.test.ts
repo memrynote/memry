@@ -130,7 +130,7 @@ test('canvas create writes a .excalidraw document with the memry sidecar and ind
       .from(canvasEntityRefs)
       .where(eq(canvasEntityRefs.canvasId, created.id))
       .all()
-    assert.deepEqual(refs.map((ref) => `${ref.entityType}:${ref.entityId}`).sort(), [
+    assert.deepEqual(refs.map((ref) => `${ref.entityType}:${ref.entityId}`).toSorted(), [
       'note:n1',
       'task:t1'
     ])

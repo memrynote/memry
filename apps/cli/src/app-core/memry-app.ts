@@ -449,7 +449,7 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
           }
         }
         return [...counts.entries()]
-          .sort((left, right) => left[0].localeCompare(right[0]))
+          .toSorted((left, right) => left[0].localeCompare(right[0]))
           .map(([tag, count]) => ({ tag, count }))
       },
       async streak() {
@@ -469,7 +469,7 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
         let longest = 0
         let run = 0
         let previous: Date | null = null
-        for (const date of [...dates].sort()) {
+        for (const date of [...dates].toSorted()) {
           const parsed = new Date(`${date}T00:00:00.000Z`)
           const expected = previous ? dateKey(previousDay(parsed)) : null
           run = previous && expected === dateKey(previous) ? run + 1 : 1

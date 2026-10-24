@@ -522,14 +522,14 @@ export function createInboxFilingService({
       }
       const total = history.length
       const suggestions = [...byFolder.entries()]
-        .sort((left, right) => right[1].count - left[1].count)
+        .toSorted((left, right) => right[1].count - left[1].count)
         .slice(0, 3)
         .map(([folder, entry]): InboxFilingSuggestion => ({
           destination: { type: 'folder', path: folder },
           confidence: Math.round((entry.count / total) * 100) / 100,
           reason: `${entry.count} of ${total} similar ${item.type} items were filed here`,
           suggestedTags: [...entry.tags.entries()]
-            .sort((left, right) => right[1] - left[1])
+            .toSorted((left, right) => right[1] - left[1])
             .slice(0, 3)
             .map(([tag]) => tag)
         }))

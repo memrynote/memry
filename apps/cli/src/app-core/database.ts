@@ -100,6 +100,7 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
     try {
       fs.unlinkSync(lockPath)
     } catch (error) {
+      // oxlint-disable-next-line no-unsafe-finally -- surfacing a failed lock cleanup is intended; it replaces the result so a stale lock is never ignored
       if (!isFileMissing(error)) throw error
     }
   }

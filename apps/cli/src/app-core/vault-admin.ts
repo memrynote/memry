@@ -37,7 +37,7 @@ function isValidVaultIcon(value: string): boolean {
     : !value.startsWith('custom:') && value.length <= 32 && !/[\s\p{Cc}]/u.test(value)
 }
 
-const activityFilters: readonly VaultActivityFilter[] = ['all', 'problems']
+const activityFilters: ReadonlySet<VaultActivityFilter> = new Set(['all', 'problems'])
 
 function isActivityEntry(value: unknown): value is VaultActivityEntry {
   if (!value || typeof value !== 'object') return false
@@ -102,7 +102,9 @@ export function createVaultAdminService({
       } catch (error) {
         // Rewriting an unreadable config would lose the user's settings.
         const reason = error instanceof Error ? error.message : String(error)
-        throw new Error(`Cannot read ${configPath} (${reason}); vault icon not changed`)
+        throw new Error(`Cannot read ${configPath} (${reason}); vault icon not changed`, {
+          cause: error
+        })
       }
       const previous = existing.vaultIcon as { updatedAt?: unknown } | undefined
       const previousAt = typeof previous?.updatedAt === 'number' ? previous.updatedAt : 0
@@ -116,7 +118,7 @@ export function createVaultAdminService({
 
     // Newest first; a line this build cannot parse is dropped, as desktop's reader does.
     async listActivity({ limit = DEFAULT_ACTIVITY_LIMIT, filter = 'all' } = {}) {
-      if (!activityFilters.includes(filter)) throw new Error(`Invalid activity filter: ${filter}`)
+      if (!activityFilters.has(filter)) throw new Error(`Invalid activity filter: ${filter}`)
       let content: string
       try {
         content = await fs.readFile(activityPath, 'utf-8')

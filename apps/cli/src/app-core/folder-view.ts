@@ -172,10 +172,10 @@ async function writeConfig(
 function relativeFolder(note: NoteRecord, folderPath: string): string {
   const folder = normalizePath(folderPath)
   const withoutRoot = note.path.replace(/^notes\/?/, '')
-  const noteFolder = path.posix.dirname(withoutRoot)
-  if (!folder) return noteFolder ? `/${noteFolder}` : '/'
-  if (noteFolder === folder) return '/'
-  return noteFolder.startsWith(`${folder}/`) ? `/${noteFolder.slice(folder.length + 1)}` : '/'
+  const dir = path.posix.dirname(withoutRoot)
+  if (!folder) return dir ? `/${dir}` : '/'
+  if (dir === folder) return '/'
+  return dir.startsWith(`${folder}/`) ? `/${dir.slice(folder.length + 1)}` : '/'
 }
 
 // The vault-relative folder a note currently sits in ('' = vault root).
@@ -289,7 +289,7 @@ export function createFolderViewService({
         builtIn: BUILT_IN,
         properties: [...counts.entries()]
           .map(([name, value]) => ({ name, ...value }))
-          .sort((a, b) => b.usageCount - a.usageCount),
+          .toSorted((a, b) => b.usageCount - a.usageCount),
         formulas: Object.entries(existing?.formulas ?? {}).map(([id, expression]) => ({
           id,
           expression
@@ -319,7 +319,7 @@ export function createFolderViewService({
 
       return {
         suggestions: suggestions
-          .sort((left, right) => {
+          .toSorted((left, right) => {
             if (right.confidence !== left.confidence) return right.confidence - left.confidence
             return left.path.localeCompare(right.path)
           })

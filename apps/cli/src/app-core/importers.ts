@@ -270,6 +270,7 @@ const IMPLEMENTED: CliImporter[] = [markdownImporter, csvImporter, roamImporter]
 
 // Same ids and names as desktop's built-in registry (register-builtins.ts).
 const CATALOG: ImporterInfo[] = [
+  // oxlint-disable-next-line typescript/unbound-method -- rest-destructuring only drops `plan`; it is never called detached
   ...IMPLEMENTED.map(({ plan: _plan, ...info }) => info),
   desktopOnly(
     'apple-journal',
@@ -346,7 +347,7 @@ const CATALOG: ImporterInfo[] = [
     ['csv'],
     `${DESKTOP_ONLY}: it creates tasks and projects through the tasks domain.`
   )
-].sort((a, b) => a.name.localeCompare(b.name))
+].toSorted((a, b) => a.name.localeCompare(b.name))
 
 /** A usable `--folder`: relative, no traversal. Checked once, before anything is written. */
 function cleanFolderOverride(override: string | undefined): string | undefined {
@@ -380,23 +381,23 @@ function hasChecklist(content: string): boolean {
   return /^\s*[-*+]\s+\[[ xX]\]/m.test(content)
 }
 
+async function planFor(
+  importerId: ImporterId,
+  sourcePaths: string[],
+  options: ImportOptions
+): Promise<{ plan: ImportPlan; folderFor: (note: PlannedNote) => string }> {
+  const importer = requireImporter(importerId)
+  const folderOverride = cleanFolderOverride(options.folder)
+  if (sourcePaths.length === 0) throw new Error('Missing source path')
+  const plan = await importer.plan(sourcePaths)
+  return { plan, folderFor: (note) => reroot(note.folder, plan.root, folderOverride) }
+}
+
 export function createImportService({
   notes
 }: {
   notes: Pick<NotesService, 'create'>
 }): ImportService {
-  async function planFor(
-    importerId: ImporterId,
-    sourcePaths: string[],
-    options: ImportOptions
-  ): Promise<{ plan: ImportPlan; folderFor(note: PlannedNote): string }> {
-    const importer = requireImporter(importerId)
-    const folderOverride = cleanFolderOverride(options.folder)
-    if (sourcePaths.length === 0) throw new Error('Missing source path')
-    const plan = await importer.plan(sourcePaths)
-    return { plan, folderFor: (note) => reroot(note.folder, plan.root, folderOverride) }
-  }
-
   return {
     sources() {
       return CATALOG

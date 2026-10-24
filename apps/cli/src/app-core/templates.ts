@@ -3,13 +3,6 @@ import type {
   TemplateRecord,
   TemplatesService
 } from '@memry/app-core/service-types'
-export type {
-  TemplateProperty,
-  TemplateRecord,
-  CreateTemplateInput,
-  UpdateTemplateInput,
-  TemplatesService
-} from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -19,6 +12,13 @@ import { createId } from '@memry/app-core/ids'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
 import type { DataDb } from './database.ts'
 import { getMemryDir, safeFilename } from './paths.ts'
+export type {
+  TemplateProperty,
+  TemplateRecord,
+  CreateTemplateInput,
+  UpdateTemplateInput,
+  TemplatesService
+} from '@memry/app-core/service-types'
 
 // Custom templates live in the `templates` table of data.db and sync as
 // whole-row LWW; `.memry/templates/<id>.md` is the retired pre-sync location,

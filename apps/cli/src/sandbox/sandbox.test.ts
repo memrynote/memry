@@ -193,7 +193,7 @@ async function assertNotes101(vault: string): Promise<void> {
     /^\d\d .*\.md$/.test(n)
   )
   assert.equal(lessons.length, 15)
-  for (const [index, name] of lessons.sort().entries()) {
+  for (const [index, name] of lessons.toSorted().entries()) {
     assert.ok(name.startsWith(String(index).padStart(2, '0') + ' '), `${name} is numbered in order`)
     const { data } = matter(await fs.readFile(path.join(vault, 'Notes 101', name), 'utf8'))
     assert.ok(data.summary && data.level, `${name} has summary and level for the folder view`)
@@ -256,7 +256,7 @@ async function assertTagsWithFields(
     schemas.set(row.name, TagSchemaWire.parse(JSON.parse(row.schema)))
     for (const view of JSON.parse(row.views ?? '[]')) ViewConfigSchema.parse(view)
   }
-  assert.deepEqual([...schemas.keys()].sort(), [
+  assert.deepEqual([...schemas.keys()].toSorted(), [
     'book',
     'client',
     'company',
