@@ -1,5 +1,6 @@
 @import './base.css';
 @import './emoji-font.css';
+@import './editor-rtl.css';
 
 :root {
   /* Window-control buttons in the h-9 title row, after the native traffic lights:
@@ -37,6 +38,15 @@
 [dir='rtl'] {
   --caption-reserve-start: var(--caption-reserve-right);
   --caption-reserve-end: var(--caption-reserve-left);
+}
+
+/* macOS draws its traffic lights at the window's physical left whatever the
+   direction. In RTL that is the end corner, so it takes the reserve that Windows
+   caption buttons use there, and the controls on the start side (physical right)
+   no longer have lights to clear. Native lights: 12px inset + ~54px wide. */
+:root[data-platform='darwin'][dir='rtl'] {
+  --window-controls-start: 0px;
+  --caption-reserve-end: 68px;
 }
 
 /* One surface below the h-9 title row: the sidebar panel (rounded top-start,
