@@ -197,6 +197,7 @@ export function registerSearchHandlers(): void {
         return rows.map((row): SearchReason => ({
           id: row.id,
           itemId: row.itemId,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
           itemType: row.itemType as SearchReason['itemType'],
           itemTitle: row.itemTitle,
           itemIcon: row.itemIcon ?? null,
@@ -265,6 +266,7 @@ export function registerSearchHandlers(): void {
           )
           .get()
 
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
         return inserted as SearchReason
       } catch (error) {
         logger.error('search:add-reason failed:', error)
@@ -309,7 +311,7 @@ export function registerSearchHandlers(): void {
         for (const row of taskTagRows) allTags.add(row.tag)
         for (const row of inboxTagRows) allTags.add(row.tag)
 
-        return [...allTags].sort()
+        return [...allTags].toSorted()
       } catch (error) {
         logger.error('search:get-all-tags failed:', error)
         return []

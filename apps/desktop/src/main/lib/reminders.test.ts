@@ -536,7 +536,7 @@ describe('reminders service', () => {
     // The window dies between the banner being shown and the user clicking it.
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
       destroyed as unknown as ElectronBrowserWindow,
-      window as unknown as ElectronBrowserWindow
+      window
     ])
 
     expect(() => notification?.emit('click')).not.toThrow()
@@ -818,7 +818,7 @@ describe('reminders service', () => {
       })
       remindersService.startReminderScheduler()
       remindersService.stopReminderScheduler()
-      return notificationInstances[notificationInstances.length - 1]!
+      return notificationInstances[notificationInstances.length - 1]
     }
 
     it('detaches the listeners holding the reminder once the banner is clicked', () => {
@@ -915,7 +915,7 @@ describe('reminders service', () => {
       remindersService.startReminderScheduler()
       remindersService.stopReminderScheduler()
 
-      const second = notificationInstances[notificationInstances.length - 1]!
+      const second = notificationInstances[notificationInstances.length - 1]
       expect(second).not.toBe(first)
       expect(first.close).toHaveBeenCalledTimes(1)
       expect(Object.keys(first.handlers)).toEqual([])
@@ -951,8 +951,8 @@ describe('reminders service', () => {
       remindersService.stopReminderScheduler()
 
       expect(notificationInstances).toHaveLength(51)
-      const evicted = notificationInstances[0]!
-      const retained = notificationInstances[50]!
+      const evicted = notificationInstances[0]
+      const retained = notificationInstances[50]
       expect(Object.keys(evicted.handlers)).toEqual([])
       expect(Object.keys(retained.handlers)).toContain('click')
       // Eviction only drops the handle — the banner itself is left on screen.

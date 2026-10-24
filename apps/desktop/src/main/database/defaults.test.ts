@@ -36,7 +36,7 @@ describe('database defaults', () => {
     expect(inboxStatuses).toHaveLength(3)
 
     const orderedNames = [...inboxStatuses]
-      .sort((a, b) => a.position - b.position)
+      .toSorted((a, b) => a.position - b.position)
       .map((s) => s.name)
     expect(orderedNames).toEqual(['To Do', 'In Progress', 'Done'])
   })

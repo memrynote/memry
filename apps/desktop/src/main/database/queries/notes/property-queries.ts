@@ -85,7 +85,9 @@ export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] 
 
   return results.map((row) => ({
     name: row.name,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     value: deserializeValue(row.value, row.type as PropertyType),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     type: row.type as PropertyType
   }))
 }
@@ -127,6 +129,7 @@ export function getPropertiesForNotes(
   for (const row of results) {
     const props = propsMap.get(row.noteId)
     if (props) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       props[row.name] = deserializeValue(row.value, row.type as PropertyType)
     }
   }
@@ -222,5 +225,6 @@ export function getPropertyType(
   // the shared ladder, which owns every precedence rule (reserved `project`
   // name, structural `relation` value, stored definition, inference).
   const definition = getPropertyDefinition(db, name)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
   return resolvePropertyType(name, value, definition?.type as PropertyType | undefined, inferFn)
 }

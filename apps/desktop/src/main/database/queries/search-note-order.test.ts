@@ -13,7 +13,7 @@ describe('note search order', () => {
   beforeEach(() => {
     indexDb = createTestIndexDb()
     dataDb = createTestDataDb()
-    initializeFts(indexDb.db as never)
+    initializeFts(indexDb.db)
     initializeFtsTasks(dataDb.db as never)
     initializeFtsInbox(dataDb.db as never)
   })
@@ -28,7 +28,7 @@ describe('note search order', () => {
       INSERT INTO note_cache (id, path, title, file_type, created_at, modified_at)
       VALUES (${id}, ${`vault/${id}`}, ${title}, ${fileType}, '2026-01-01', '2026-01-01')
     `)
-    insertFtsNote(indexDb.db as never, id, title, content, [])
+    insertFtsNote(indexDb.db, id, title, content, [])
   }
 
   it('lists a long markdown note before short OCR-read images that out-rank it', () => {
@@ -39,7 +39,7 @@ describe('note search order', () => {
       seed(`image-${i}`, 'image', `Pasted image ${i}`, 'AES caso de estudo')
     }
 
-    const notes = searchAll(indexDb.db as never, dataDb.db as never, {
+    const notes = searchAll(indexDb.db, dataDb.db as never, {
       text: 'aes',
       types: ['note'],
       tags: [],
@@ -94,7 +94,7 @@ describe('note search order', () => {
           INSERT INTO note_cache (id, path, title, date, created_at, modified_at)
           VALUES (${id}, ${`journal/${id}`}, ${id}, '2026-01-01', '2026-01-01', '2026-01-01')
         `)
-        insertFtsNote(indexDb.db as never, id, id, content, [])
+        insertFtsNote(indexDb.db, id, id, content, [])
       }
 
       expect(search('this is roughly', ['journal'])).toEqual(['j-phrase', 'j-scattered'])

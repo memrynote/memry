@@ -36,7 +36,7 @@ export function notesWithProperty(
   name: string,
   noteIds: readonly string[] | null = null
 ): string[] {
-  if (noteIds !== null && noteIds.length === 0) return []
+  if (noteIds?.length === 0) return []
   return db
     .select({ noteId: noteProperties.noteId })
     .from(noteProperties)

@@ -76,6 +76,7 @@ async function handlePrepareViewImage(
 }
 
 parentPort.on('message', (event) => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- worker message payload is untyped; sender in this module posts only this union
   const message = event.data as ImageProcessingMainToWorkerMessage
 
   switch (message.type) {

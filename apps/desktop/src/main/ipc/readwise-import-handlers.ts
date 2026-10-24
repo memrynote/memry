@@ -123,6 +123,7 @@ export function registerReadwiseImportHandlers(): void {
     ReadwiseRestoreBookSchema,
     async (input) => {
       if (input.readwiseBookId !== undefined) await restoreBook(input.readwiseBookId)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       else await restoreReaderDocument(input.readerDocumentId as string)
       return { success: true as const }
     },

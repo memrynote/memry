@@ -110,6 +110,7 @@ export function listBookmarks(db: DataDb, options: ListBookmarksOptions = {}): B
   let query = db.select().from(bookmarks)
 
   if (itemType) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle where() narrows the builder type; assertion restores the dynamic-query type
     query = query.where(eq(bookmarks.itemType, itemType)) as typeof query
   }
 
@@ -123,6 +124,7 @@ export function countBookmarks(db: DataDb, itemType?: string): number {
   let query = db.select({ count: count() }).from(bookmarks)
 
   if (itemType) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle where() narrows the builder type; assertion restores the dynamic-query type
     query = query.where(eq(bookmarks.itemType, itemType)) as typeof query
   }
 

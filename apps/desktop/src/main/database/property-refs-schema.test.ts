@@ -23,8 +23,8 @@ describe('property_refs migration', () => {
   it('creates the table with the expected columns', () => {
     const db = migratedDb()
     const cols = db.prepare('PRAGMA table_info(property_refs)').all() as { name: string }[]
-    expect(cols.map((c) => c.name).sort()).toEqual(
-      ['property_name', 'source_note_id', 'target_id', 'target_type'].sort()
+    expect(cols.map((c) => c.name).toSorted()).toEqual(
+      ['property_name', 'source_note_id', 'target_id', 'target_type'].toSorted()
     )
   })
 

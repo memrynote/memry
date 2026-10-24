@@ -75,7 +75,7 @@ describe('portal-refs projector', () => {
 
     await projector.project(upsert('host', fence('{"note":"b"}')))
     const [, payload] = broadcastToAllWindows.mock.calls[0]
-    expect([...(payload as { noteIds: string[] }).noteIds].sort()).toEqual(['a', 'b'])
+    expect([...(payload as { noteIds: string[] }).noteIds].toSorted()).toEqual(['a', 'b'])
     expect(getPortalRefsForHost(indexDb.db, 'host').map((row) => row.sourceNoteId)).toEqual(['b'])
   })
 

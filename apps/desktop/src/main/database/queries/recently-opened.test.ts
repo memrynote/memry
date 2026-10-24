@@ -52,7 +52,7 @@ describe('recently-opened queries', () => {
   beforeEach(() => {
     dbs = createTestDatabases()
     data = dbs.data.db as unknown as DataDb
-    index = dbs.index.db as unknown as IndexDb
+    index = dbs.index.db
   })
 
   afterEach(() => {

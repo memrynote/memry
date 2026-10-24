@@ -20,10 +20,7 @@ import {
   type TagNoteItem,
   type GetNotesByTagResponse,
   type GetAllWithCountsResponse,
-  type MergeTagResponse,
-  type TagOperationResponse,
-  type RenameTagResponse,
-  type DeleteTagResponse
+  type MergeTagResponse
 } from '@memry/contracts/tags-api'
 import {
   createValidatedHandler,
@@ -203,7 +200,7 @@ export function registerTagsHandlers(): void {
           action: 'pinned'
         })
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.pinNoteFailed')
     )
   )
@@ -223,7 +220,7 @@ export function registerTagsHandlers(): void {
           action: 'unpinned'
         })
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.unpinNoteFailed')
     )
   )
@@ -251,7 +248,7 @@ export function registerTagsHandlers(): void {
           return {
             success: false,
             error: getMainI18n().t('errors:tag.renameInProgress', { from, to })
-          } as RenameTagResponse
+          }
         }
         const affectedNotes = result.notesWritten
 
@@ -275,7 +272,7 @@ export function registerTagsHandlers(): void {
           affectedNotes,
           failedNoteIds: result.failedNoteIds,
           bodySkipped: result.bodySkipped
-        } as RenameTagResponse
+        }
       }, 'errors:tag.renameFailed')
     )
   )
@@ -298,7 +295,7 @@ export function registerTagsHandlers(): void {
 
         emitTagEvent('notes:tags-changed', {})
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.updateColorFailed')
     )
   )
@@ -316,7 +313,7 @@ export function registerTagsHandlers(): void {
 
         emitTagEvent('notes:tags-changed', {})
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.updateIconFailed')
     )
   )
@@ -359,7 +356,7 @@ export function registerTagsHandlers(): void {
           metrics: { itemCount: affectedNotes }
         })
 
-        return { success: true, affectedNotes } as DeleteTagResponse
+        return { success: true, affectedNotes }
       }, 'errors:tag.deleteFailed')
     )
   )
@@ -388,7 +385,7 @@ export function registerTagsHandlers(): void {
         })
         emitTagEvent('notes:tags-changed', {})
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.removeFromNoteFailed')
     )
   )

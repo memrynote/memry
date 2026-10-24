@@ -59,7 +59,7 @@ describe('fts integration', () => {
     const basic = db.all<{ id: string }>(sql`
       SELECT id FROM fts_notes WHERE fts_notes MATCH 'hello'
     `)
-    expect(basic.map((r) => r.id).sort()).toEqual(['note-1', 'note-2'])
+    expect(basic.map((r) => r.id).toSorted()).toEqual(['note-1', 'note-2'])
 
     const boolean = db.all<{ id: string }>(sql`
       SELECT id FROM fts_notes WHERE fts_notes MATCH 'hello AND world'

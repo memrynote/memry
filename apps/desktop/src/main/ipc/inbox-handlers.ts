@@ -83,6 +83,25 @@ const handleTrackSuggestionIpc = (
     actualTags
   )
 
+const trackInboxFiled = (filedAction: string, success: boolean): void => {
+  trackMainEvent('inbox_filed', {
+    surface: 'inbox',
+    action: 'filed',
+    result: success ? 'success' : 'failed',
+    dimensions: { filed_action: filedAction }
+  })
+}
+
+const trackInboxCaptured = (captureType: string, success: boolean): void => {
+  trackMainEvent('inbox_captured', {
+    surface: 'inbox',
+    action: 'captured',
+    objectType: `inbox_${captureType}`,
+    result: success ? 'success' : 'failed',
+    dimensions: { capture_type: captureType }
+  })
+}
+
 export function registerInboxHandlers(): void {
   resumeInboxJobs()
 
@@ -90,16 +109,6 @@ export function registerInboxHandlers(): void {
   const crudHandlers = createDesktopInboxCrudHandlers()
   const queryHandlers = createDesktopInboxQueryHandlers()
   const batchHandlers = createDesktopInboxBatchHandlers(crudHandlers.handleArchive)
-
-  const trackInboxCaptured = (captureType: string, success: boolean): void => {
-    trackMainEvent('inbox_captured', {
-      surface: 'inbox',
-      action: 'captured',
-      objectType: `inbox_${captureType}`,
-      result: success ? 'success' : 'failed',
-      dimensions: { capture_type: captureType }
-    })
-  }
 
   ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, async (_, input) => {
     const result = await inboxDomain.captureText(CaptureTextSchema.parse(input))
@@ -127,15 +136,6 @@ export function registerInboxHandlers(): void {
   registerInboxCrudHandlers(crudHandlers)
   registerInboxQueryHandlers(queryHandlers)
   registerInboxBatchHandlers(batchHandlers)
-
-  const trackInboxFiled = (filedAction: string, success: boolean): void => {
-    trackMainEvent('inbox_filed', {
-      surface: 'inbox',
-      action: 'filed',
-      result: success ? 'success' : 'failed',
-      dimensions: { filed_action: filedAction }
-    })
-  }
 
   ipcMain.handle(InboxChannels.invoke.FILE, async (_, input) => {
     const result = await inboxDomain.fileItem(FileItemSchema.parse(input))

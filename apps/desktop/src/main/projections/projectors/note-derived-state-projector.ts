@@ -41,7 +41,7 @@ const logger = createLogger('Projections:NoteState')
 async function refreshMarkdownNoteLinks(vaultPath: string | null, noteId: string): Promise<void> {
   const db = getIndexDatabase()
   const note = getNoteCacheById(db, noteId)
-  if (!vaultPath || !note || note.fileType !== 'markdown') return
+  if (!vaultPath || note?.fileType !== 'markdown') return
   let raw: string
   // One handle for the size check and the read, so both see the same file.
   let file: FileHandle | null = null

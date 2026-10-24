@@ -131,6 +131,7 @@ export function initIndexDatabase(dbPath: string): IndexDb {
  * embedding projector's reconcile, which embeds every note without a vector.
  */
 export function ensureVecNotesTable(db: Database.Database): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const existing = db
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'vec_notes'")
     .get() as { sql: string | null } | undefined
@@ -178,6 +179,7 @@ export function ensureVecNotesTable(db: Database.Database): void {
  * dropped with its state rows, so the same reconcile refills it.
  */
 export function ensureVecImagesTable(db: Database.Database): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const existing = db
     .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'vec_images'")
     .get() as { sql: string | null } | undefined
@@ -240,6 +242,7 @@ export function requireDatabase(): DataDb {
 export function isDataDatabaseCorrupt(): boolean {
   if (!sqliteDataDb) return false
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
     const rows = sqliteDataDb.pragma('quick_check(1)') as Array<{ quick_check?: string }>
     const verdict = rows[0]?.quick_check
     return typeof verdict === 'string' && verdict !== 'ok'
@@ -367,6 +370,7 @@ export function checkIndexHealth(indexDbPath: string): IndexHealth {
 
     try {
       // Check if core tables exist
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
       const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
         name: string
       }[]

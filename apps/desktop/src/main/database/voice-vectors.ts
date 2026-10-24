@@ -44,6 +44,7 @@ export function ensureVoiceVectorTables(db: RawIndexDb): void {
 
 export function readVoiceVectorStates(db: RawIndexDb): Map<string, VoiceVectorState> {
   ensureVoiceVectorTables(db)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const rows = db
     .prepare('SELECT item_id, source, input_version, chunks FROM voice_embedding_state')
     .all() as Array<{
@@ -62,6 +63,7 @@ export function readVoiceVectorStates(db: RawIndexDb): Map<string, VoiceVectorSt
 
 export function deleteVoiceVectors(db: RawIndexDb, itemId: string): void {
   ensureVoiceVectorTables(db)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const state = db
     .prepare('SELECT chunks FROM voice_embedding_state WHERE item_id = ?')
     .get(itemId) as { chunks: number } | undefined
@@ -102,6 +104,7 @@ export function nearestVoiceItems(
   neighbours: number
 ): Array<{ id: string; cosine: number; source: VoiceVectorSource }> {
   ensureVoiceVectorTables(db)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const rows = db
     .prepare(
       `SELECT chunk_id, distance FROM vec_voice
@@ -116,6 +119,7 @@ export function nearestVoiceItems(
   }
   const sources = db.prepare('SELECT item_id, source FROM voice_embedding_state')
   const sourceOf = new Map(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
     (sources.all() as Array<{ item_id: string; source: VoiceVectorSource }>).map((row) => [
       row.item_id,
       row.source

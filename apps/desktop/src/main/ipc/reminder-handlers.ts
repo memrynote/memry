@@ -29,16 +29,16 @@ import { getMainI18n } from '../lib/main-i18n'
 
 const logger = createLogger('IPC:Reminder')
 
+// Ensure database is available for handlers that need it
+const ensureDb = () => {
+  requireDatabase()
+}
+
 /**
  * Register all reminder-related IPC handlers.
  * Call this once during app initialization.
  */
 export function registerReminderHandlers(): void {
-  // Ensure database is available for handlers that need it
-  const ensureDb = () => {
-    requireDatabase()
-  }
-
   // ============================================================================
   // CRUD Operations
   // ============================================================================

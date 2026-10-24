@@ -428,7 +428,7 @@ describe('mergeTagInNotes', () => {
     const result = mergeTagInNotes(indexDb, 'alpha', 'beta')
 
     // #then
-    expect(result.noteIds.sort()).toEqual(['note-a', 'note-b', 'note-c'])
+    expect(result.noteIds.toSorted()).toEqual(['note-a', 'note-b', 'note-c'])
   })
 })
 
@@ -545,7 +545,7 @@ describe('mergeTagInTasks', () => {
     const result = mergeTagInTasks(dataDb, 'alpha', 'beta')
 
     // #then
-    expect(result.taskIds.sort()).toEqual(['task-x', 'task-y'])
+    expect(result.taskIds.toSorted()).toEqual(['task-x', 'task-y'])
   })
 
   it('does not affect tasks that do not have the source tag', () => {

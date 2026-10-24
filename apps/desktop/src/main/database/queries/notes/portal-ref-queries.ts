@@ -77,6 +77,7 @@ export function listPortalEdges(
   const conditions = [sql`${portalRefs.sourceNoteId} IS NOT NULL`]
   if (hostNoteIds) conditions.push(inArray(portalRefs.hostNoteId, [...hostNoteIds]))
   if (sourceNoteIds) conditions.push(inArray(portalRefs.sourceNoteId, [...sourceNoteIds]))
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   return db
     .selectDistinct({ hostNoteId: portalRefs.hostNoteId, sourceNoteId: portalRefs.sourceNoteId })
     .from(portalRefs)

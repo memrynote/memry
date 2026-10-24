@@ -59,11 +59,11 @@ describe('portal references', () => {
     const edge = { id: 'host-src-portal', source: 'host', target: 'src', type: 'portal', weight: 1 }
     const dataDb = createTestDataDb()
     try {
-      const all = getGraphData(dbResult.db as never, dataDb.db as never)
+      const all = getGraphData(dbResult.db, dataDb.db as never)
       expect(all.edges.filter((e) => e.type === 'portal')).toEqual([edge])
-      const local = getLocalGraph(dbResult.db as never, dataDb.db as never, 'src', 1)
+      const local = getLocalGraph(dbResult.db, dataDb.db as never, 'src', 1)
       expect(local.edges).toEqual([edge])
-      expect(local.nodes.map((n) => n.id).sort()).toEqual(['host', 'src'])
+      expect(local.nodes.map((n) => n.id).toSorted()).toEqual(['host', 'src'])
     } finally {
       dataDb.close()
     }

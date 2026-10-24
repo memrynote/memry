@@ -86,7 +86,7 @@ describe('property refs', () => {
     setPropertyRefs(db, 'nte_b', { father: ['memry://note/nte_dad'] })
 
     const incoming = getIncomingPropertyRefs(db, 'note', 'nte_dad')
-    expect(incoming.map((r) => r.sourceNoteId).sort()).toEqual(['nte_a', 'nte_b'])
+    expect(incoming.map((r) => r.sourceNoteId).toSorted()).toEqual(['nte_a', 'nte_b'])
   })
 
   // Production wiring: note-derived-state-projector.ts passes

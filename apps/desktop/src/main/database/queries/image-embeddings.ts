@@ -205,6 +205,7 @@ export function nearestImageVectors(
   query: Float32Array,
   k: number
 ): Array<{ noteId: string; cosine: number }> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   const rows = raw
     .prepare(
       `SELECT image_key, distance FROM vec_images

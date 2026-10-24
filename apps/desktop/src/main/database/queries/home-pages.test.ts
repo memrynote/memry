@@ -52,7 +52,7 @@ describe('home-pages queries', () => {
     // b3 stays put — a one-slot move must not push every board on the account.
     const changed = reorderHomePages(db, ['b2', 'b1', 'b3'])
 
-    expect(changed.sort()).toEqual(['b1', 'b2'])
+    expect(changed.toSorted()).toEqual(['b1', 'b2'])
     const after = new Map(listHomePages(db).map((r) => [r.id, r.updatedAt]))
     expect(after.get('b3')).toBe(before.get('b3'))
     expect(reorderHomePages(db, ['b2', 'b1', 'b3'])).toEqual([])

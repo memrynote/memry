@@ -335,11 +335,11 @@ export function registerTasksHandlers(): void {
         const result = await importFilesToProject(
           {
             importFiles: async (sourcePaths) => {
-              const result = await importFiles({
+              const imported = await importFiles({
                 sourcePaths,
                 options: { plainChecklists: input.plainChecklists }
               })
-              return { importedFiles: result.importedFiles, errors: result.errors }
+              return { importedFiles: imported.importedFiles, errors: imported.errors }
             },
             getIdByPath: async (destPath) => getIndexedIdByImportedPath(destPath),
             linkToProject: async (projectId, fileId) => {

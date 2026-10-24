@@ -434,7 +434,7 @@ class EmbeddingModelBridge {
     breaker.cancelled = false
     try {
       await this.start()
-      if (this.worker && this.worker[modality] === 'off') this.worker[modality] = 'loading'
+      if (this.worker?.[modality] === 'off') this.worker[modality] = 'loading'
       const response = await this.sendRequest(message(this.nextRequestId()))
 
       if (response.type === 'error') {

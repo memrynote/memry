@@ -53,6 +53,7 @@ export function salvageRows(backupPath: string, table: SalvagedTable): SalvagedR
   try {
     db = new Database(backupPath, { readonly: true, fileMustExist: true })
     for (const row of db.prepare(`SELECT * FROM "${table}"`).iterate()) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       rows.push(row as SalvagedRow)
     }
   } catch (error) {
@@ -79,6 +80,7 @@ export function replayRows(
 ): number {
   if (rows.length === 0) return 0
   const columns = new Set(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
     (db.pragma(`table_info("${table}")`) as Array<{ name: string }>).map((c) => c.name)
   )
   let replayed = 0

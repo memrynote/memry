@@ -66,7 +66,7 @@ export const setIpcHandlerChannel = (listener: unknown, channel: unknown): void 
 // Channel first, then the inner handler's own name (named handlers already
 // report usefully), then the generic label the wrapper had before.
 const handlerAction = (
-  listener: object,
+  listener: (...args: never[]) => unknown,
   handler: { readonly name: string },
   fallback: string
 ): string => channelByListener.get(listener) ?? (handler.name || fallback)
@@ -117,7 +117,7 @@ const trackIpcError = (action: string, error: unknown): void => {
  * )
  * ```
  */
-export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
+export function createValidatedHandler<TSchema extends z.ZodType, TResult>(
   schema: TSchema,
   handler: (input: z.infer<TSchema>, event: IpcMainInvokeEvent) => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>) => Promise<TResult> {
@@ -130,7 +130,9 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
       return await handler(validated, event)
     } catch (error) {
       if (error instanceof ZodError) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
         const issues = error.issues ?? (error as { errors?: unknown[] }).errors ?? []
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
         const messages = (issues as Array<{ path: (string | number)[]; message: string }>)
           .map((e) => `${e.path.join('.')}: ${e.message}`)
           .join(', ')

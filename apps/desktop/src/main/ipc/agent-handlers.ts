@@ -116,6 +116,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   })
 
   ipcMain.handle(AgentChannels.invoke.LOAD_CONVERSATION, async (_event, payload: unknown) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const { id } = payload as { id: string }
     const conversation = deps.conversations.getById(id)
     const messages = deps.messages.listByConversation(id)
@@ -247,6 +248,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   )
 
   ipcMain.handle(AgentChannels.invoke.CANCEL_TURN, async (_event, payload: unknown) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const { conversationId } = payload as { conversationId: string }
     deps.runtime.cancelTurn(conversationId)
     return { ok: true }

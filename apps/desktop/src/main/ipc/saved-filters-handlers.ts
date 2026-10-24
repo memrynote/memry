@@ -43,6 +43,7 @@ function toApiFilter(
   return {
     id: dbFilter.id,
     name: dbFilter.name,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     config: dbFilter.config as SavedFilter['config'],
     position: dbFilter.position,
     createdAt: dbFilter.createdAt

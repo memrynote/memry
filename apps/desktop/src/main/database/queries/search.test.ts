@@ -40,8 +40,8 @@ function createDbMock() {
 }
 
 /** Flattens a drizzle SQL object into its literal text and bound params. */
-function sqlParts(query: unknown): { text: string; params: unknown[] } {
-  const chunks = (query as { queryChunks?: unknown[] }).queryChunks ?? []
+function sqlParts(statement: unknown): { text: string; params: unknown[] } {
+  const chunks = (statement as { queryChunks?: unknown[] }).queryChunks ?? []
   let text = ''
   const params: unknown[] = []
   const walk = (chunk: unknown): void => {

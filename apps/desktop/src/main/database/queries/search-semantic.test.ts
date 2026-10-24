@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
+import type { SearchQuery } from '@memry/contracts/search-api'
 import { createTestIndexDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { initializeFts, insertFtsNote } from '../fts'
 import { initializeFtsTasks } from '../fts-tasks'
@@ -13,7 +14,7 @@ describe('hybrid search', () => {
   beforeEach(() => {
     indexDb = createTestIndexDb()
     dataDb = createTestDataDb()
-    initializeFts(indexDb.db as never)
+    initializeFts(indexDb.db)
     initializeFtsTasks(dataDb.db as never)
     initializeFtsInbox(dataDb.db as never)
   })
@@ -28,12 +29,12 @@ describe('hybrid search', () => {
       INSERT INTO note_cache (id, path, title, date, created_at, modified_at)
       VALUES (${id}, ${`vault/${id}.md`}, ${title}, ${date}, '2026-01-01', '2026-01-01')
     `)
-    insertFtsNote(indexDb.db as never, id, title, content, [])
+    insertFtsNote(indexDb.db, id, title, content, [])
   }
 
-  function search(text: string, hits: SemanticHit[], extra: object = {}) {
+  function search(text: string, hits: SemanticHit[], extra: Partial<SearchQuery> = {}) {
     return searchAll(
-      indexDb.db as never,
+      indexDb.db,
       dataDb.db as never,
       {
         text,

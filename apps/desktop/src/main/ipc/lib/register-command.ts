@@ -41,7 +41,7 @@ import { createValidatedHandler, withErrorHandler } from '../validate'
  * )
  * ```
  */
-export function registerCommand<TSchema extends z.ZodSchema, TResult>(
+export function registerCommand<TSchema extends z.ZodType, TResult>(
   channel: string,
   schema: TSchema,
   command: (input: z.infer<TSchema>) => TResult | Promise<TResult>,
