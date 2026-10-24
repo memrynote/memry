@@ -34,6 +34,7 @@ function nodeTypeDiv(name: string, className: string, HTMLAttributes: Record<str
   dom.className = className
   dom.setAttribute('data-node-type', name)
   for (const [attribute, value] of Object.entries(HTMLAttributes)) {
+    // oxlint-disable-next-line typescript/no-base-to-string -- HTMLAttributes values are strings and numbers from the schema; String() is the existing coercion
     if (value !== undefined && value !== null) dom.setAttribute(attribute, String(value))
   }
   return dom

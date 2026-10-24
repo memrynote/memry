@@ -45,6 +45,7 @@ import {
  * attributes to decorate anyway.
  */
 type InlineSpecImplementation = {
+  // oxlint-disable-next-line anti-slop/no-object-parameters -- open config handed to TipTap's Node.extend, whose parameter type this package cannot name
   node: { extend: (config: object) => unknown }
   toExternalHTML?: (inlineContent: never, editor: never) => { dom: HTMLElement } | undefined
 }
@@ -52,6 +53,7 @@ type InlineSpecImplementation = {
 export function serializeThroughExternalHTML<T extends CustomInlineContentConfig>(
   spec: InlineContentSpec<T>
 ): InlineContentSpec<T> {
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote's InlineContentSpec generics are erased here; InlineSpecImplementation is the slice this reads
   const implementation = spec.implementation as unknown as InlineSpecImplementation
   const toExternalHTML = implementation.toExternalHTML
   // A spec with no `toExternalHTML` already serializes through `render`
@@ -59,20 +61,23 @@ export function serializeThroughExternalHTML<T extends CustomInlineContentConfig
   if (!toExternalHTML) return spec
 
   const node = implementation.node.extend({
-    renderHTML(this: { options: { editor: never } }, { node }: { node: { attrs: never } }) {
+    renderHTML(this: { options: { editor: never } }, { node: pmNode }: { node: { attrs: never } }) {
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- the TipTap extension context exposes the editor untyped; only its schema is read
       const editor = this.options.editor as unknown as {
         schema: { inlineContentSchema: never; styleSchema: never }
       }
       const inlineContent = nodeToCustomInlineContent(
-        node as never,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- nodeToCustomInlineContent wants BlockNote's own node type, which the spec generics cannot name here
+        pmNode as never,
         editor.schema.inlineContentSchema,
         editor.schema.styleSchema
       )
 
       return addInlineContentAttributes(
-        toExternalHTML(inlineContent as never, this.options.editor) as { dom: HTMLElement },
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- toExternalHTML is typed as returning dom | undefined; specs with a toExternalHTML return a dom object
+        toExternalHTML(inlineContent, this.options.editor) as { dom: HTMLElement },
         spec.config.type,
-        node.attrs,
+        pmNode.attrs,
         spec.config.propSchema
       )
     }
@@ -81,5 +86,5 @@ export function serializeThroughExternalHTML<T extends CustomInlineContentConfig
   return {
     ...spec,
     implementation: { ...spec.implementation, node }
-  } as InlineContentSpec<T>
+  }
 }

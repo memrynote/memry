@@ -99,9 +99,9 @@ interface TableContent {
  * into the vault as literal text.
  */
 function cellRuns(cell: unknown): InlineRun[] | null {
-  if (Array.isArray(cell)) return cell as InlineRun[]
-  const content = (cell as { content?: unknown } | null)?.content
-  return Array.isArray(content) ? (content as InlineRun[]) : null
+  if (Array.isArray(cell)) return cell
+  if (typeof cell !== 'object' || cell === null || !('content' in cell)) return null
+  return Array.isArray(cell.content) ? cell.content : null
 }
 
 interface Masks {
@@ -129,9 +129,9 @@ function unmaskRun(text: string, code: boolean, breaks: string[]): string {
  * `[a](u)\n[b](u)` parses as link `a\n`, then ` `, and each write-back added
  * one more space before the second link (BBF-104).
  */
-function endsLine(run: InlineRun | undefined): boolean {
-  const content = (run as StyledRun | undefined)?.content
-  if (run?.type === 'link' && Array.isArray(content)) return endsLine(content.at(-1) as InlineRun)
+function endsLine(run: StyledRun | undefined): boolean {
+  const content = run?.content
+  if (run?.type === 'link' && Array.isArray(content)) return endsLine(content.at(-1))
   return run?.text?.endsWith('\n') === true
 }
 
@@ -143,7 +143,7 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     const link = run as StyledRun | undefined
     if (link?.href) link.href = restoreLinkDestinations(link.href, masks.destinations)
     // A leading space in link text is the author's: CommonMark keeps it.
-    if (Array.isArray(linkContent)) repairRuns(linkContent as InlineRun[], code, masks, false)
+    if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
     // CommonMark keeps a code span's one-sided leading space: it is the author's.
     const codeSpan = (run as StyledRun).styles?.code === true
@@ -198,7 +198,8 @@ function withHtmlCommentNodes(runs: InlineRun[], code: boolean): InlineRun[] {
   const out: InlineRun[] = []
   for (const run of runs as StyledRun[]) {
     if (run?.type === 'link' && Array.isArray(run.content)) {
-      for (const inner of run.content as StyledRun[]) {
+      const innerRuns: StyledRun[] = run.content
+      for (const inner of innerRuns) {
         if (typeof inner.text === 'string') inner.text = decodeHtmlCommentTokens(inner.text)
       }
       out.push(run)
@@ -259,10 +260,11 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
       }
     }
     if (Array.isArray(block.content)) {
-      repairRuns(block.content as InlineRun[], code, masks)
-      block.content = withHtmlCommentNodes(block.content as InlineRun[], code)
+      repairRuns(block.content, code, masks)
+      block.content = withHtmlCommentNodes(block.content, code)
     } else if (block.content && typeof block.content === 'object') {
       // A table: its runs live two levels down, in the cells.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block.content is `unknown`; a table's content is the TableContent shape and `?? []` already tolerates a missing rows
       for (const row of (block.content as TableContent).rows ?? []) {
         const cells = row?.cells ?? []
         for (const [index, cell] of cells.entries()) {
@@ -271,11 +273,12 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
           repairRuns(runs, false, masks)
           const expanded = withHtmlCommentNodes(runs, false)
           if (Array.isArray(cell)) cells[index] = expanded
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- cellRuns returned runs for a non-array cell, so it is an object with a `content` array
           else (cell as { content: unknown }).content = expanded
         }
       }
     }
-    if (Array.isArray(block.children)) repairBlocks(block.children as BlockLike[], masks)
+    if (Array.isArray(block.children)) repairBlocks(block.children, masks)
   }
 }
 
@@ -324,9 +327,11 @@ export async function parseMarkdownToBlocksRepaired<T>(
       ? (liftImagesOutOfTextBlocks(html) ?? html)
       : html
   const repaired = lifted === null ? null : linkCodeAsText(lifted)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parsing editor returns unknown[]; BlockNote's blocks are what BlockLike describes, and repairBlocks only reads the fields it declares
   const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
   repairBlocks(parsed, { breaks, tokens, spaces, destinations })
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T is the caller's block type, which this package cannot name without its schema
   return parsed as T[]
 }

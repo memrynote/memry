@@ -42,6 +42,7 @@ type SpecMap = Record<string, unknown>
  * every spec Memry ships is checked by name in the contract suite as well.
  */
 function nodeTypeOf(spec: unknown): string | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- spec is unknown by design (a dependency may grow a new spec shape); the config read is guarded below
   const config = (spec as { config?: unknown } | null | undefined)?.config
   if (typeof config === 'string') return config
   if (typeof config === 'object' && config !== null) {

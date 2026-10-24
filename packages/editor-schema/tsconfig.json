@@ -1,7 +1,7 @@
 {
   "extends": "@memry/typescript-config/node.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2023", "DOM"],
     "allowImportingTsExtensions": true
   },
   "include": ["src/**/*"],

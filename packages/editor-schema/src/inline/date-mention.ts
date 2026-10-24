@@ -56,8 +56,11 @@ export const dateMentionSerialization = {
       anchorId,
       dateISO,
       hasTime: element.getAttribute('data-has-time') === 'true',
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attribute or prop strings written by this node's own renderer; a stale value must keep flowing through unchanged
       dateFormat: (element.getAttribute('data-date-format') || 'relative') as DateMentionDateFormat,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attribute or prop strings written by this node's own renderer; a stale value must keep flowing through unchanged
       remind: (element.getAttribute('data-remind') || 'none') as RemindOffset,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attribute or prop strings written by this node's own renderer; a stale value must keep flowing through unchanged
       timeFormat: (element.getAttribute('data-time-format') || 'system') as DateMentionTimeFormat
     }
   },
@@ -68,8 +71,11 @@ export const dateMentionSerialization = {
       anchorId,
       dateISO,
       hasTime,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attribute or prop strings written by this node's own renderer; a stale value must keep flowing through unchanged
       dateFormat: dateFormat as DateMentionDateFormat,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attribute or prop strings written by this node's own renderer; a stale value must keep flowing through unchanged
       remind: remind as RemindOffset,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- attribute or prop strings written by this node's own renderer; a stale value must keep flowing through unchanged
       timeFormat: timeFormat as DateMentionTimeFormat
     })
     return { dom }

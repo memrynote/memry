@@ -166,7 +166,7 @@ export async function resolveQuoteRun(
   return claimed
 }
 
-const LIST_BLOCKS = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
+const LIST_BLOCKS = new Set<unknown>(['bulletListItem', 'numberedListItem', 'checkListItem'])
 
 /**
  * A list item that owns a block other than a list item. The writer spells that
@@ -174,9 +174,10 @@ const LIST_BLOCKS = new Set(['bulletListItem', 'numberedListItem', 'checkListIte
  * `> - x\n>   y` would grow on every save.
  */
 export function itemHoldsNonList(block: ParsedBlockShape): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ParsedBlockShape.children is unknown[] (shared with the parse path); a block's children are blocks
   const children = (block.children ?? []) as ParsedBlockShape[]
-  if (!LIST_BLOCKS.has(block.type as string)) return false
-  return children.some((child) => !LIST_BLOCKS.has(child.type as string) || itemHoldsNonList(child))
+  if (!LIST_BLOCKS.has(block.type)) return false
+  return children.some((child) => !LIST_BLOCKS.has(child.type) || itemHoldsNonList(child))
 }
 
 /**
@@ -198,7 +199,7 @@ function splitQuoteBlocks(
 ): { content: unknown; children: ParsedBlockShape[] } | null {
   const [first, ...rest] = parsed
   if (!first) return null
-  if (LIST_BLOCKS.has(first.type as string)) return { content: [], children: parsed }
+  if (LIST_BLOCKS.has(first.type)) return { content: [], children: parsed }
   if (first.children?.length) return null
   if (first.type === 'quote') return { content: [], children: parsed }
   if (first.type !== 'paragraph' || rest.length === 0) return null

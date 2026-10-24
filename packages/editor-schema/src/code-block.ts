@@ -22,7 +22,7 @@ type SupportedLanguages = NonNullable<CodeBlockOptions['supportedLanguages']>
  */
 function sortByDisplayName(languages: SupportedLanguages): SupportedLanguages {
   return Object.fromEntries(
-    Object.entries(languages).sort(([keyA, a], [keyB, b]) => {
+    Object.entries(languages).toSorted(([keyA, a], [keyB, b]) => {
       if (keyA === 'text') return -1
       if (keyB === 'text') return 1
       return a.name.localeCompare(b.name)

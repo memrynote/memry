@@ -264,7 +264,7 @@ function renderEditor(): unknown {
   return cachedRenderEditor
 }
 
-const sorted = (values: readonly string[]): string[] => [...values].sort()
+const sorted = (values: readonly string[]): string[] => values.toSorted()
 
 // ---------------------------------------------------------------------------
 // Gate 1 — every custom spec is registered, on both halves of the package
@@ -484,7 +484,7 @@ describe('every spec is registered under its own node type', () => {
     // #when / #then the schema build fails, naming the slot and the node name
     expect(() =>
       createMemrySchema({ blocks: misKeyed, inline: createServerInlineSpecs() })
-    ).toThrowError(/blockSpecs.*\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
+    ).toThrow(/blockSpecs.*\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
   })
 
   it('refuses an inline spec registered under another name', () => {
@@ -499,7 +499,7 @@ describe('every spec is registered under its own node type', () => {
     } as unknown as MemryInlineSpecs['wikiLink']
 
     // #when / #then it throws at the factory, before any schema exists
-    expect(() => createMemryInlineContentSpecs({ ...inline, wikiLink: renamed })).toThrowError(
+    expect(() => createMemryInlineContentSpecs({ ...inline, wikiLink: renamed })).toThrow(
       /inlineContentSpecs.*\["wikiLink"\].*config\.type is "wikiLinkRenamed"/s
     )
   })

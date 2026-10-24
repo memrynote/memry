@@ -489,6 +489,7 @@ export async function buildColumnListBlock<B>(
   // SAFETY: `columnList` as column-specs.ts declares it — two string props
   // and `column` children, each holding the blocks of one column. `B` is the
   // caller's block type, which this package cannot name without its schema.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- B is the caller's block type; this package cannot name the schema's columnList block
   return {
     type: 'columnList',
     ...(newId ? { id: newId() } : {}),
@@ -518,6 +519,7 @@ export async function serializeColumnListBlock<B>(
   // A region of one column does not parse back as a region (see
   // `splitMarkdownByColumnRegions`), so its blocks are written as page content.
   if (columns.length < 2) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column children are the caller's blocks of type B
     return serializeColumn(columns.flatMap((column) => (column.children ?? []) as B[]))
   }
   const widths = columns.map((column) => {
@@ -526,6 +528,7 @@ export async function serializeColumnListBlock<B>(
   })
   const bodies: string[] = []
   for (const column of columns) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column children are the caller's blocks of type B
     bodies.push(await serializeColumn((column.children ?? []) as B[]))
   }
   const settings = typeof props.settings === 'string' ? props.settings : ''

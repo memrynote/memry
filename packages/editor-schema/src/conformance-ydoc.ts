@@ -48,6 +48,7 @@ function serverEditor(): ServerBlockNoteEditor {
       blocks: createServerBlockSpecs(),
       inline: createServerInlineSpecs()
     })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ServerBlockNoteEditor.create returns the schema-specific generic; the cached editor is typed with defaults
     editor = ServerBlockNoteEditor.create({ schema }) as ServerBlockNoteEditor
   }
   return editor
@@ -70,6 +71,7 @@ function serverEditor(): ServerBlockNoteEditor {
 function withIds(blocks: unknown[], prefix: string): unknown[] {
   return blocks.map((block, index) => {
     if (block === null || typeof block !== 'object') return block
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block is an object here; id and children are read defensively
     const entry = block as Record<string, unknown> & { children?: unknown[]; id?: unknown }
     // An explicit id wins. The write-direction class needs a base document and
     // its expected result to name the same blocks, and a positional id shifts
@@ -105,6 +107,7 @@ export function noteBlockDoc(entry: NoteBlockCase): Y.Doc {
   if (entry.blocks.length > 0) {
     // The production path, not a hand-built tree: this is what desktop's
     // main process calls, so the bytes are the bytes a real note carries.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- conformance cases are plain block JSON; blocksToYXmlFragment's generic block type cannot name them
     serverEditor().blocksToYXmlFragment(withIds(entry.blocks, slug(entry.name)) as never, fragment)
   }
   return doc
@@ -127,6 +130,7 @@ export function blocksToDoc(blocks: unknown[], prefix: string): Y.Doc {
   doc.clientID = CONFORMANCE_CLIENT_ID
   const fragment = doc.getXmlFragment(CONFORMANCE_FRAGMENT)
   if (blocks.length > 0) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- conformance cases are plain block JSON; blocksToYXmlFragment's generic block type cannot name them
     serverEditor().blocksToYXmlFragment(withIds(blocks, prefix) as never, fragment)
   }
   return doc
