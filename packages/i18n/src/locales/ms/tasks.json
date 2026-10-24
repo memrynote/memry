@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {Tarikh akhir dikosongkan untuk # subtugas}}",
       "prioritySet": "{count, plural, other {Keutamaan ditetapkan untuk # subtugas}}",
       "deleted": "{count, plural, other {# subtugas dipadam}}"
-    }
+    },
+    "completedBranch": "{title} dan {count, plural, other {# subtugas terbuka}} diselesaikan",
+    "deletedKeepSubtasks": "{title} dipadamkan dan subtugasnya dikekalkan",
+    "deletedBranch": "{title} dan {count, plural, other {# subtugas}} dipadamkan"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Projek ialah",
       "project": "projek",
+      "locationIs": "Lokasi ialah",
+      "location": "lokasi",
+      "unknownNote": "Nota tidak diketahui",
       "due": "Tarikh akhir",
       "dueDate": "tarikh akhir",
       "search": "carian",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Tarikh akhir"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Lokasi",
+      "search": "Cari folder dan nota...",
+      "empty": "Tiada folder atau nota yang mempunyai tugas"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Keutamaan",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Paparan projek",
       "overview": "Gambaran keseluruhan",
+      "all": "Semua",
       "tasks": "Tugas",
       "notes": "Nota",
       "files": "Fail",
@@ -951,6 +963,25 @@
       "fileError": "Tidak dapat memautkan {name}",
       "fileErrorGeneric": "Tidak dapat mengimport fail",
       "label": "Tambah ke {name}"
+    },
+    "all": {
+      "showDone": "Tunjukkan yang selesai",
+      "empty": "Tiada apa yang terbuka dalam projek ini.",
+      "expand": "Tunjukkan tugas dalam {title}",
+      "collapse": "Sembunyikan tugas dalam {title}",
+      "taskSummary": "{open}/{total} terbuka",
+      "daysLeft": "{count}h",
+      "overdue": "lewat {count}h",
+      "columns": {
+        "title": "Tajuk",
+        "daysLeft": "Hari berbaki"
+      },
+      "status": {
+        "active": "Aktif",
+        "done": "Selesai",
+        "upcoming": "Akan datang",
+        "past": "Lepas"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Nila",
     "purple": "Ungu",
     "pink": "Merah jambu"
+  },
+  "subtaskTree": {
+    "addSubtask": "Tambah subtugas",
+    "dropInto": "Ke dalam {title}",
+    "dropOut": "Keluar satu peringkat",
+    "draftPlaceholder": "Tajuk subtugas",
+    "draftLabel": "Subtugas baharu dalam {title}",
+    "draftIn": "dalam {title}",
+    "toggleComplete": "Selesaikan {title}",
+    "moveUnder": {
+      "title": "Alihkan ke bawah",
+      "placeholder": "Alihkan ke bawah…",
+      "empty": "Tiada tugas sepadan",
+      "topLevel": "Peringkat teratas {project}",
+      "thisTask": "Tugas ini",
+      "currentParent": "Induk semasa",
+      "movesOne": "Mengalihkan {title}",
+      "movesBranch": "Mengalihkan {title} dan {count, plural, other {# subtugas}}",
+      "keys": "↵ Alih ke sini · ⌘↵ Peringkat teratas · esc Tutup"
+    },
+    "zoom": {
+      "path": "Laluan tugas",
+      "up": "Naik satu peringkat",
+      "upShortcut": "Naik satu peringkat (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Padam {title}?",
+      "summary": "{direct, plural, other {Ia mempunyai # subtugas}}{deeper, plural, =0 {} other { dan # lagi di bawahnya}}{open, plural, =0 {, semuanya selesai.} other {, # masih terbuka.}}",
+      "cancel": "Batal",
+      "deleteAll": "Padam semua",
+      "keepSubtasks": "Kekalkan subtugas"
+    },
+    "menu": {
+      "open": "Buka",
+      "complete": "Selesaikan",
+      "reopen": "Buka semula",
+      "zoom": "Zum ke subtugas",
+      "moveUnder": "Alihkan ke bawah…",
+      "indent": "Alihkan ke bawah {title}",
+      "outdent": "Alihkan keluar satu peringkat",
+      "topLevel": "Jadikan tugas peringkat teratas",
+      "delete": "Padam"
+    },
+    "openPath": "Buka {path}"
   }
 }

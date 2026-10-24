@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Tidak dapat menyalin portal",
+    "hiddenCount": "{count} disembunyikan",
+    "windowFailed": "Portal ini tidak dapat dibuka. Buka nota sumber sebaliknya.",
+    "noTarget": "Portal ini belum mempunyai sasaran. Tambah nota pada definisi, atau buang blok.",
+    "invalidJson": "Definisi portal ini bukan JSON yang sah. Betulkan di bawah, atau buang blok.",
+    "invalidShape": "Definisi portal ini tiada nota atau carian. Betulkan di bawah, atau buang blok.",
+    "search": {
+      "editQuery": "Edit pertanyaan",
+      "count": "{count, plural, other {# blok}}",
+      "loading": "Mencari…",
+      "empty": "Tiada blok sepadan dengan pertanyaan ini.",
+      "failed": "Carian tidak dapat dijalankan.",
+      "retry": "Cuba lagi",
+      "truncated": "Menunjukkan {count} padanan pertama."
+    },
+    "copiedContents": "Kandungan disalin",
+    "copiedLink": "Pautan disalin",
+    "actionFailed": "Tidak dapat menukar portal ini",
+    "keepsOneBlock": "Portal mesti mengekalkan sekurang-kurangnya satu blok. Buang portal sebaliknya.",
+    "expandChildren": "Tunjukkan anak",
+    "collapseChildren": "Sembunyikan anak",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Sertakan “{block}”",
+      "locked": "{note} dikunci · baca sahaja",
+      "more": "Lagi",
+      "openBeside": "Buka {note} di sebelah",
+      "click": "Klik",
+      "copyContents": "Salin kandungan",
+      "copyLink": "Salin pautan",
+      "remove": "Buang portal",
+      "removeHint": "{note} mengekalkan setiap blok"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Nota sumber telah dipadamkan. Rujukan dikekalkan.",
+        "action": "Buang"
+      },
+      "missingBlock": {
+        "text": "Blok telah dipadamkan dalam {source}.",
+        "action": "Pilih yang lain"
+      },
+      "notSynced": {
+        "text": "Menunggu nota sumber disegerakkan.",
+        "action": "Cuba lagi"
+      },
+      "cycle": {
+        "text": "Portal ini kembali kepada dirinya sendiri.",
+        "action": "Buka sumber"
+      },
+      "tooDeep": {
+        "text": "Portal bersarang sedalam {max} peringkat. Yang ini dibuka sebagai pautan.",
+        "action": "Buka sumber"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Fokus pada medan catatan",
@@ -43,6 +100,50 @@
     "showInFileManager": "Tunjukkan dalam pengurus fail",
     "openInDefaultApp": "Buka dalam apl lalai",
     "revealFailed": "Gagal menunjukkan dalam folder"
+  },
+  "commands": {
+    "runFailed": "Arahan itu tidak dapat dijalankan. Cuba lagi."
+  },
+  "commandsPalette": {
+    "title": "Arahan",
+    "placeholder": "Taip arahan…",
+    "groups": {
+      "navigation": "Navigasi",
+      "create": "Buat",
+      "tabs": "Tab",
+      "editor": "Editor",
+      "view": "Paparan",
+      "app": "Apl",
+      "note": "Nota",
+      "settings": "Tetapan",
+      "sync": "Segerak",
+      "help": "Bantuan",
+      "project": "Projek",
+      "tasks": "Tugas",
+      "canvas": "Kanvas",
+      "folder": "Folder",
+      "file": "Fail"
+    },
+    "contexts": {
+      "note": "Nota ini",
+      "journal": "Jurnal ini",
+      "project": "Projek ini",
+      "tasks": "Tugas ini",
+      "canvas": "Kanvas ini",
+      "folder": "Folder ini",
+      "tag": "Teg ini",
+      "file": "Fail ini"
+    },
+    "recent": "Terkini",
+    "empty": "Tiada arahan sepadan dengan “{query}”",
+    "searchHint": "Cari nota: {shortcut}",
+    "status": {
+      "count": "{count, plural, other {# arahan}}"
+    },
+    "actions": {
+      "run": "Jalankan",
+      "searchNotes": "Cari nota"
+    }
   },
   "tabs": {
     "pin": "Semat tab",
@@ -131,6 +232,20 @@
     "openInTab": "Buka perbualan dalam tab",
     "stop": "Hentikan",
     "thinking": "Ejen sedang berfikir",
+    "toolsUnavailable": "Alat peti besi dimatikan untuk model ini. Ia gagal ujian alat, jadi hanya boleh berbual.",
+    "toolsUnavailableWithDetail": "Alat peti besi dimatikan untuk model ini. Ia gagal ujian alat, jadi hanya boleh berbual. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Alat peti besi dimatikan untuk model ini. Penyedia menolak permintaan ujian yang menyertakan alat, jadi model hanya boleh berbual.",
+      "noToolCall": "Alat peti besi dimatikan untuk model ini. Ia menjawab permintaan ujian tanpa memanggil alat, jadi hanya boleh berbual.",
+      "toolResultRejected": "Alat peti besi dimatikan untuk model ini. Ia memanggil alat ujian tetapi gagal selepas menerima hasilnya, jadi hanya boleh berbual.",
+      "streamingUnsupported": "Alat peti besi dimatikan untuk model ini. Penyedia tidak menstrim balasan ujian, jadi model hanya boleh berbual.",
+      "providerSaid": "Penyedia berkata: {detail}",
+      "wroteToolCall": "Model menulis panggilan alat sebagai teks, dan tiada apa yang dijalankan."
+    },
+    "stepLimit": {
+      "notice": "Dihentikan pada had langkah.",
+      "continue": "Teruskan"
+    },
     "enable": {
       "title": "Dayakan ejen memrynote",
       "description": "Ejen memrynote menggunakan CLI ejen setempat pilihan anda untuk bersembang tentang bilik kebal anda. Claude menghantar giliran perbualan kepada Anthropic; Codex menghantarnya kepada OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Tambah konteks",
       "addContextWithPermissions": "Tambah konteks ({permissions})",
       "mentionContext": "Sebut nota, tugas atau acara",
+      "files": {
+        "attach": "Lampirkan fail teks",
+        "refused": {
+          "unsupportedType": "{name} bukan fail teks yang disokong. Lampirkan fail .txt, .md, .log, .csv, .tsv, .json, .yaml atau .yml.",
+          "notText": "{name} bukan fail teks UTF-8. Lampirkan fail teks sebaliknya.",
+          "tooLarge": "{name} akan menjadikan mesej ini melebihi had 100 KB. Buang satu fail atau lampirkan yang lebih kecil.",
+          "readFailed": "{name} tidak dapat dibaca. Semak fail itu masih wujud dan anda boleh membukanya, kemudian lampirkan semula."
+        }
+      },
       "voice": {
         "start": "Mulakan imlak suara",
         "stop": "Hentikan imlak suara",
@@ -340,6 +464,14 @@
           "extraHigh": "Sangat tinggi"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Lalai",
+          "default": "Kedalaman lalai",
+          "high": "Tinggi",
+          "max": "Maksimum"
+        }
+      },
       "permissionsLabel": "Kebenaran ejen: {access}, carian web {webSearch}",
       "permissions": {
         "label": "Kebenaran",
@@ -347,6 +479,17 @@
         "tools": "Alat"
       },
       "modelSettingsLabel": "Tetapan model ejen: {model}, {settings}",
+      "queue": {
+        "label": "Mesej beratur",
+        "queueMessage": "Beraturkan mesej",
+        "edit": "Edit mesej beratur",
+        "editLabel": "Teks mesej beratur",
+        "remove": "Buang mesej beratur",
+        "save": "Simpan",
+        "cancel": "Batal",
+        "sending": "Menghantar…",
+        "notSent": "Tidak dihantar. Edit untuk hantar semula, atau buang."
+      },
       "unavailable": {
         "vaultToolsOnly": "Alat bilik kebal sahaja dengan model ini"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Tidak dapat menyimpan keadaan pendedahan",
       "resolveWindow": "Tidak dapat mengenal pasti tetingkap sumber ejen",
       "detectCli": "Tidak dapat mengesan hujung belakang ejen",
-      "loadDisclosure": "Tidak dapat memuatkan keadaan pendedahan"
+      "loadDisclosure": "Tidak dapat memuatkan keadaan pendedahan",
+      "turnFailed": "Balasan terhenti dengan ralat. Mesej anda dikekalkan, jadi anda boleh menghantarnya semula."
     },
     "actions": {
       "copy": "Salin",
@@ -576,6 +720,7 @@
       "newFolder2": "Folder baharu",
       "newProject": "Projek baharu",
       "bookmarks": "Penanda halaman",
+      "chart": "Carta",
       "tags": "Teg",
       "reorderSection": "Susun semula {section}",
       "dropFilesToImport": "Lepaskan fail untuk diimport",
@@ -863,6 +1008,11 @@
       "cancel": "Batal",
       "remove2": "Alih keluar",
       "inYourAccount": "Dalam akaun anda",
+      "trySandbox": "Cuba peti besi kotak pasir",
+      "sandboxVault": "Peti besi kotak pasir",
+      "sandboxPreparing": "Menyediakan kotak pasir…",
+      "sandboxFailed": "Tidak dapat menyediakan peti besi kotak pasir",
+      "resetSandbox": "Tetap semula peti besi kotak pasir",
       "itemsCount": "{count} item",
       "untitledVault": "Bilik kebal",
       "downloadVaultTitle": "Muat turun “{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Nota yang anda buka akan dipaparkan di sini",
       "bookmarks": "Penanda halaman",
       "tasks": "Tugas",
+      "chart": "Carta",
       "calendar": "Kalendar",
       "calendarToday": "Hari ini",
       "openCalendar": "Buka kalendar",
@@ -978,6 +1129,9 @@
     "edit": "Edit",
     "done": "Selesai",
     "addWidget": "Tambah widget",
+    "cover": {
+      "add": "Tambah kulit"
+    },
     "empty": {
       "title": "Papan anda kosong",
       "body": "Widget menyatukan nota, tugas dan penanda halaman anda di satu tempat yang tenang.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Tukar ikon…",
     "resetIcon": "Tetapkan semula ikon",
     "iconButton": "Tukar ikon {name}",
+    "leaveSandbox": "Kembali ke {name}",
     "iconFailed": "Tidak dapat menukar ikon bilik kebal"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Jenis",
     "filterModified": "Diubah suai",
     "matches": "Padanan",
+    "matchesMore": "{count, plural, other {# padanan lagi}}",
+    "matchesHide": "Sembunyikan padanan",
+    "matchOf": "Padanan {index} daripada {total}",
     "showMore": "Tunjuk {count} lagi",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Bahagian seterusnya",
       "open": "Buka",
       "openNote": "Buka nota",
+      "openAtMatch": "Buka pada padanan",
       "openFile": "Buka fail",
       "openJournal": "Buka jurnal",
       "openTask": "Buka tugas",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Pilih teg",
       "addTag": "Tambah teg",
       "showAll": "Tunjuk semua",
+      "hideMatches": "Sembunyikan padanan",
       "searchEverywhere": "Cari di mana-mana",
       "clearFilters": "Kosongkan penapis"
     },

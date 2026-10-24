@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {Đã xóa ngày đến hạn của # công việc con}}",
       "prioritySet": "{count, plural, other {Đã đặt mức ưu tiên cho # công việc con}}",
       "deleted": "{count, plural, other {Đã xóa # công việc con}}"
-    }
+    },
+    "completedBranch": "Đã hoàn thành {title} và {count, plural, other {# công việc con đang mở}}",
+    "deletedKeepSubtasks": "Đã xóa {title} và giữ lại các công việc con của nó",
+    "deletedBranch": "Đã xóa {title} và {count, plural, other {# công việc con}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "trạng thái",
       "projectIs": "Dự án là",
       "project": "dự án",
+      "locationIs": "Vị trí là",
+      "location": "vị trí",
+      "unknownNote": "Ghi chú không xác định",
       "due": "Đến hạn",
       "dueDate": "ngày đến hạn",
       "search": "tìm kiếm",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Ngày đến hạn"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Vị trí",
+      "search": "Tìm thư mục và ghi chú...",
+      "empty": "Không có thư mục hoặc ghi chú nào có công việc"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Mức ưu tiên",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Chế độ xem dự án",
       "overview": "Tổng quan",
+      "all": "Tất cả",
       "tasks": "Công việc",
       "notes": "Ghi chú",
       "files": "Tệp",
@@ -951,6 +963,25 @@
       "fileError": "Không thể liên kết {name}",
       "fileErrorGeneric": "Không thể nhập các tệp",
       "label": "Thêm vào {name}"
+    },
+    "all": {
+      "showDone": "Hiện việc đã xong",
+      "empty": "Không có gì đang mở trong dự án này.",
+      "expand": "Hiện công việc trong {title}",
+      "collapse": "Ẩn công việc trong {title}",
+      "taskSummary": "{open}/{total} đang mở",
+      "daysLeft": "{count} ngày",
+      "overdue": "quá hạn {count} ngày",
+      "columns": {
+        "title": "Tiêu đề",
+        "daysLeft": "Ngày còn lại"
+      },
+      "status": {
+        "active": "Đang hoạt động",
+        "done": "Xong",
+        "upcoming": "Sắp tới",
+        "past": "Đã qua"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Chàm",
     "purple": "Tím",
     "pink": "Hồng"
+  },
+  "subtaskTree": {
+    "addSubtask": "Thêm công việc con",
+    "dropInto": "Vào {title}",
+    "dropOut": "Ra một cấp",
+    "draftPlaceholder": "Tiêu đề công việc con",
+    "draftLabel": "Công việc con mới trong {title}",
+    "draftIn": "trong {title}",
+    "toggleComplete": "Hoàn thành {title}",
+    "moveUnder": {
+      "title": "Chuyển vào dưới",
+      "placeholder": "Chuyển vào dưới…",
+      "empty": "Không có công việc phù hợp",
+      "topLevel": "Cấp cao nhất của {project}",
+      "thisTask": "Công việc này",
+      "currentParent": "Công việc cha hiện tại",
+      "movesOne": "Chuyển {title}",
+      "movesBranch": "Chuyển {title} và {count, plural, other {# công việc con}}",
+      "keys": "↵ Chuyển vào đây · ⌘↵ Cấp cao nhất · esc Đóng"
+    },
+    "zoom": {
+      "path": "Đường dẫn công việc",
+      "up": "Lên một cấp",
+      "upShortcut": "Lên một cấp (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Xóa {title}?",
+      "summary": "{direct, plural, other {Có # công việc con}}{deeper, plural, =0 {} other { và # công việc nữa bên dưới}}{open, plural, =0 {, tất cả đã xong.} other {, # công việc vẫn đang mở.}}",
+      "cancel": "Hủy",
+      "deleteAll": "Xóa tất cả",
+      "keepSubtasks": "Giữ công việc con"
+    },
+    "menu": {
+      "open": "Mở",
+      "complete": "Hoàn thành",
+      "reopen": "Mở lại",
+      "zoom": "Phóng vào công việc con",
+      "moveUnder": "Chuyển vào dưới…",
+      "indent": "Chuyển vào dưới {title}",
+      "outdent": "Chuyển ra một cấp",
+      "topLevel": "Đặt thành công việc cấp cao nhất",
+      "delete": "Xóa"
+    },
+    "openPath": "Mở {path}"
   }
 }

@@ -110,7 +110,8 @@
       "fileCreation": "Tạo tệp",
       "privacy": "Quyền riêng tư",
       "startupWindows": "Khởi động và cửa sổ",
-      "newNotes": "Ghi chú mới"
+      "newNotes": "Ghi chú mới",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "Phần lớn ứng dụng cập nhật ngay lập tức. Một số văn bản cấp hệ thống — thông báo đã hiển thị, nhãn trên Dock, thanh tiêu đề cửa sổ — sẽ được làm mới sau lần khởi động tiếp theo.",
       "changed": "Đã đổi ngôn ngữ sang {nativeName}",
       "failed": "Không thể đổi ngôn ngữ. Vui lòng thử lại."
+    },
+    "ocrLanguages": {
+      "label": "Nhận dạng văn bản",
+      "helper": "Các ngôn ngữ được đọc trong PDF quét và hình ảnh, để tìm kiếm thấy các từ trong đó. Tiếng Anh có sẵn. Các ngôn ngữ khác được tải từ máy chủ của Memry.",
+      "more": "{names} +{count}",
+      "downloading": "Đang tải {language}: {percent}%",
+      "failed": "Tải xuống thất bại. Các ngôn ngữ đã có vẫn hoạt động.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Thử lại",
+      "saveFailed": "Không thể thay đổi các ngôn ngữ nhận dạng văn bản."
     },
     "clockFormat": {
       "label": "Định dạng thời gian",
@@ -264,6 +275,22 @@
           "description": "Gửi một lần báo cáo gồm nhật ký kỹ thuật đã lược bỏ thông tin nhận dạng, để giúp chúng tôi tìm ra nguyên nhân sự cố bạn gặp phải.",
           "button": "Gửi báo cáo…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Phím tắt Sticky (Phím tắt → Toàn hệ thống) mở sticky khi Memry đang chạy. Văn bản chưa gửi được giữ làm bản nháp ở mép màn hình.",
+      "error": "Không thể lưu cài đặt sticky.",
+      "defaultKind": {
+        "label": "Sticky mới được gửi dưới dạng",
+        "last": "Dùng gần nhất",
+        "note": "Ghi chú",
+        "task": "Công việc",
+        "journal": "Nhật ký"
+      },
+      "tuckEdge": {
+        "label": "Cất vào",
+        "left": "Mép trái",
+        "right": "Mép phải"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "Bố cục",
       "toolbar": "Thanh công cụ",
       "spelling": "Chính tả",
-      "checklists": "Danh sách kiểm tra"
+      "checklists": "Danh sách kiểm tra",
+      "attachments": "Tệp đính kèm",
+      "calloutTypes": "Loại callout"
+    },
+    "calloutTypes": {
+      "description": "Các callout của riêng bạn, được viết là > [!name] trong ghi chú. Ứng dụng khác sẽ hiển thị chúng như một trích dẫn thông thường.",
+      "empty": "Chưa có loại callout tùy chỉnh nào",
+      "add": "Thêm loại",
+      "edit": "Sửa {name}",
+      "delete": "Xóa {name}",
+      "name": "Tên trong markdown",
+      "namePlaceholder": "mytype",
+      "label": "Tên hiển thị",
+      "color": "Màu",
+      "icon": "Biểu tượng",
+      "nameInvalid": "Dùng chữ thường, chữ số, - hoặc _, bắt đầu bằng một chữ cái",
+      "nameBuiltIn": "Tên đó đã là một callout có sẵn",
+      "nameTaken": "Bạn đã có một loại với tên đó",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "error": "Không thể cập nhật các loại callout"
     },
     "width": {
       "label": "Chiều rộng trình soạn thảo",
@@ -449,7 +496,16 @@
       "toolbarMode": "Thanh công cụ định dạng cố định",
       "spellCheck": "Kiểm tra chính tả",
       "convertChecklists": "Chuyển mục danh sách kiểm tra thành công việc",
-      "convertAgentChecklists": "Chuyển mục danh sách kiểm tra do tác nhân viết thành công việc"
+      "convertAgentChecklists": "Chuyển mục danh sách kiểm tra do tác nhân viết thành công việc",
+      "pdfDisplayMode": "Hiển thị PDF mới dưới dạng"
+    },
+    "pdfDisplayMode": {
+      "description": "Cách một PDF bạn thêm vào ghi chú xuất hiện. Mỗi PDF có thể được chuyển đổi từ menu của nó.",
+      "options": {
+        "embed": "Nhúng",
+        "link": "Tên tệp"
+      },
+      "error": "Không thể cập nhật cách hiển thị PDF"
     },
     "convertChecklists": {
       "description": "Mỗi mục danh sách kiểm tra mới sẽ thành một công việc. Khi tắt, danh sách giữ nguyên là ô đánh dấu thường; nhấp chuột phải vào một mục để biến nó thành công việc.",
@@ -561,7 +617,8 @@
       "renameNote": "Đổi định dạng sẽ đổi tên các tệp nhật ký hiện có. Tệp nào có tên mới trùng với tệp đã có sẽ được giữ nguyên.",
       "tokensHelp": "Trợ giúp định dạng ngày",
       "tokensNote": "Các ký tự khác được giữ nguyên. Tên các ngày trong tuần luôn bằng tiếng Anh.",
-      "tokensTitle": "Mã định dạng"
+      "tokensTitle": "Mã định dạng",
+      "foldersNote": "Dùng / để xếp các mục vào thư mục con: YYYY/MMMM/YYYY-MM-DD đặt mỗi ngày vào thư mục năm và tháng của nó."
     },
     "preview": {
       "label": "Xem trước",
@@ -586,6 +643,10 @@
         "defaultTemplate": "Mẫu mặc định",
         "location": "Vị trí và định dạng"
       }
+    },
+    "showInSidebar": {
+      "label": "Hiện trong thanh bên",
+      "description": "Hiện thư mục nhật ký và các mục của nó trong cây ghi chú"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "Mặc định",
+      "subtasks": "Công việc con",
       "inbox": "Hộp thư đến"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "Công việc cũ hơn mức này sẽ được làm nổi bật là tồn đọng",
       "unit": "ngày",
       "error": "Không thể cập nhật ngưỡng mục tồn đọng"
+    },
+    "nestedSubtasks": {
+      "label": "Công việc con trong công việc con",
+      "description": "Lồng công việc con ở bất kỳ độ sâu nào. Các thiết bị dùng phiên bản cũ hơn chỉ hiện cấp đầu tiên cho đến khi cập nhật.",
+      "error": "Không thể cập nhật công việc con lồng nhau"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "Đang đồng bộ…",
         "paused": "Tạm dừng",
         "syncError": "Lỗi đồng bộ",
+        "deviceKeysMissing": "Đồng bộ đã tạm dừng: thiếu khóa thiết bị",
         "offline": "Ngoại tuyến",
         "connecting": "Đang kết nối…",
         "localOnly": "Chỉ cục bộ",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "Đang hoàn tất kích hoạt",
         "description": "Gói của bạn đã được kích hoạt. Đồng bộ sẽ bắt đầu ngay khi chúng tôi xác nhận — thường chỉ cần làm mới là xong."
+      },
+      "unsent": {
+        "title": "Ghi chú có thay đổi chưa gửi",
+        "count": "{count, plural, other {# ghi chú}}",
+        "description": "Thiết bị này có các thay đổi cho những ghi chú này mà máy chủ chưa lưu.",
+        "waitingSince": "Đang chờ từ {time}",
+        "more": "{count, plural, other {Và # ghi chú nữa}}",
+        "reasons": {
+          "body": "Văn bản",
+          "record": "Chi tiết",
+          "file_not_taken": "Tệp chưa được gộp",
+          "rejected": "Bị máy chủ từ chối"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "Không thể làm mới trạng thái thanh toán",
         "billingActive": "Thanh toán đang hoạt động",
         "activationPending": "Đang chờ kích hoạt",
-        "portalFailed": "Không thể mở cổng thanh toán"
+        "portalFailed": "Không thể mở cổng thanh toán",
+        "portalNoCustomer": "Chưa tìm thấy tài khoản thanh toán. Nếu bạn vừa thanh toán, hãy chọn Làm mới trạng thái và thử lại."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "Đã tắt tính năng AI",
       "error": "Không thể cập nhật cài đặt"
     },
+    "summarizeLongNotes": {
+      "label": "Tóm tắt ghi chú dài",
+      "description": "Viết các phiên bản ngắn hơn của ghi chú dài bằng tác nhân bạn đã kết nối, để bạn có thể thu gọn ghi chú về các ý chính. Chạy trên thiết bị này.",
+      "error": "Không thể cập nhật tóm tắt ghi chú dài",
+      "failed": "Lần chạy gần nhất thất bại ·",
+      "retry": "Thử lại",
+      "retryError": "Không thể thử tóm tắt lại",
+      "agentLabel": "Tác nhân viết bản tóm tắt",
+      "agentAuto": "Tự động",
+      "agentError": "Không thể đổi tác nhân tóm tắt",
+      "noAgent": "Không tìm thấy tác nhân ·",
+      "openAgents": "Mở Tác nhân"
+    },
+    "imageSearch": {
+      "label": "Tìm hình ảnh theo nội dung",
+      "description": "Tìm ảnh theo những gì chúng hiển thị. Tải xuống mô hình hình ảnh 109 MB ở lần đầu một hình ảnh được lập chỉ mục.",
+      "enabled": "Đã bật tìm kiếm hình ảnh",
+      "disabled": "Đã tắt tìm kiếm hình ảnh"
+    },
     "unknownError": "Lỗi không xác định",
     "groups": {
       "voice": "Chuyển giọng nói thành văn bản",
@@ -1324,6 +1425,9 @@
         "none": "Không đổi tên"
       },
       "namingError": "Không thể cập nhật cách đặt tên bản ghi âm",
+      "audioSearch": "Tìm ghi âm theo âm thanh",
+      "audioSearchDescription": "Tìm các ghi âm không có bản ghi chép, như nhạc hoặc âm thanh, theo âm thanh của chúng. Tải xuống mô hình âm thanh 189 MB ở lần đầu một ghi âm cần được lập chỉ mục.",
+      "audioSearchError": "Không thể cập nhật tìm kiếm ghi âm",
       "language": "Ngôn ngữ nói",
       "languageDescription": "Ngôn ngữ bạn nói trong ghi chú giọng nói",
       "languageDefault": "Mặc định",
@@ -1459,7 +1563,8 @@
       "csv": "Nhập tệp .csv — mỗi hàng một ghi chú, các cột trở thành thuộc tính",
       "raindrop": "Nhập bản xuất dấu trang Raindrop.io (.csv) — dấu trang được đưa vào hộp thư đến",
       "apple-notes": "Nhập từ cơ sở dữ liệu Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Nhập sổ tay OneNote (cần tài khoản Microsoft)"
+      "onenote": "Nhập sổ tay OneNote (cần tài khoản Microsoft)",
+      "readwise": "Nhập các đoạn nổi bật của bạn từ Readwise (cần access token)"
     },
     "action": "Nhập",
     "select": "Chọn ứng dụng nguồn để nhập…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Cảnh báo",
-      "confirm": "Nhập"
+      "confirm": "Nhập",
+      "readwise": {
+        "books": "{count, plural, other {# sách}}",
+        "highlights": "{count, plural, other {# đoạn nổi bật}}",
+        "documents": "{count, plural, other {# tài liệu}}"
+      }
     },
     "dialog": {
       "title": "Nhập từ {name}",
@@ -1505,7 +1615,18 @@
         "deselectAll": "Bỏ chọn tất cả",
         "foldersSelected": "{count, plural, other {Đã chọn # thư mục}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, other {# ghi chú bị khóa}}",
+          "hint": "Nhập mật khẩu Notes của bạn để nhập chúng. Mật khẩu chỉ dùng cho lần nhập này và không bao giờ được lưu. Tệp đính kèm trong ghi chú bị khóa không được nhập.",
+          "label": "Mật khẩu Notes",
+          "placeholder": "Mật khẩu Notes",
+          "check": "Kiểm tra",
+          "wrong": "Mật khẩu đó không mở khóa được ghi chú bị khóa nào.",
+          "unlockedAll": "{count, plural, other {Mở khóa tất cả # ghi chú bị khóa.}}",
+          "unlockedSome": "Mở khóa {unlocked} trong {total} ghi chú bị khóa. Phần còn lại dùng mật khẩu khác và sẽ bị bỏ qua.",
+          "checkError": "Không thể kiểm tra mật khẩu."
+        }
       },
       "chooseFolder": "Chọn thư mục Apple Notes…",
       "chooseDirectory": "Chọn thư mục…",
@@ -1529,12 +1650,206 @@
         "failed": "{count} lỗi"
       },
       "error": "Không thể nhập",
-      "previewError": "Không thể xem trước"
+      "previewError": "Không thể xem trước",
+      "readwise": {
+        "intro": "Dán access token Readwise của bạn. Memry kiểm tra nó với Readwise trước, rồi lưu trong chuỗi khóa hệ thống trên thiết bị này. Token không bao giờ được đồng bộ.",
+        "tokenLabel": "Access token",
+        "tokenPlaceholder": "Dán token của bạn",
+        "getToken": "Lấy token của bạn",
+        "connect": "Kết nối",
+        "connecting": "Đang kết nối…",
+        "connectFailed": "Không thể kết nối với Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise đồng bộ trên {device}.",
+          "syncsOnAnother": "Readwise đồng bộ trên thiết bị khác.",
+          "explain": "Chỉ một thiết bị lấy dữ liệu từ Readwise, nên một đoạn nổi bật không bao giờ bị ghi hai lần. Để lấy từ thiết bị này, hãy dán lại token của bạn: token không bao giờ truyền giữa các thiết bị. Thiết bị kia dừng ở cuốn sách tiếp theo, và mọi ghi chú đều được giữ.",
+          "button": "Đồng bộ tại đây thay thế",
+          "working": "Đang chuyển Readwise sang đây…",
+          "failed": "Không thể chuyển Readwise sang thiết bị này"
+        },
+        "groups": {
+          "location": "Nơi đặt ghi chú",
+          "categories": "Những gì cần đưa vào",
+          "reader": "Readwise Reader",
+          "journal": "Nhật ký",
+          "sync": "Đồng bộ"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Liệt kê các đoạn nổi bật mỗi ngày trong nhật ký",
+            "description": "Thêm một mục Readwise vào ngày bạn đánh dấu, liên kết đến từng ghi chú sách. Chỉ các đoạn nổi bật mới, không bổ sung ngược.",
+            "firstImport": "Lần nhập đầu tiên không ghi gì vào nhật ký."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Nhập cả các tài liệu Reader đã lưu",
+            "description": "Mặc định tắt. Có thể thêm hàng nghìn ghi chú."
+          },
+          "fullText": {
+            "label": "Bao gồm toàn văn bài viết",
+            "description": "Chỉ ghi một lần, khi ghi chú được tạo"
+          }
+        },
+        "rootFolder": {
+          "label": "Thư mục",
+          "description": "Sách mới được đặt ở đây. Ghi chú hiện có giữ nguyên vị trí."
+        },
+        "layout": {
+          "label": "Bố cục thư mục",
+          "description": "Chỉ áp dụng cho sách mới.",
+          "options": {
+            "by-category": "Theo danh mục",
+            "flat": "Một thư mục"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Sách",
+            "description": "Các đoạn nổi bật từ Kindle, Apple Books và nguồn khác"
+          },
+          "articles": {
+            "label": "Bài viết",
+            "description": "Bài viết web và bản tin"
+          },
+          "tweets": {
+            "label": "Tweet",
+            "description": "Tweet và chuỗi tweet đã lưu"
+          },
+          "podcasts": {
+            "label": "Podcast",
+            "description": "Tập podcast và đoạn trích"
+          },
+          "supplementals": {
+            "label": "Tài liệu bổ sung",
+            "description": "Sách do Readwise tự thêm, không có đoạn nổi bật của bạn"
+          },
+          "other": {
+            "label": "Khác",
+            "description": "Các danh mục Readwise thêm sau phiên bản này"
+          }
+        },
+        "cadence": {
+          "label": "Tần suất",
+          "description": "Tần suất nhận các đoạn nổi bật mới.",
+          "options": {
+            "manual": "Thủ công",
+            "hourly": "Hằng giờ",
+            "daily": "Hằng ngày"
+          }
+        },
+        "syncNow": {
+          "label": "Đồng bộ ngay",
+          "description": "Kiểm tra Readwise để tìm các đoạn nổi bật mới.",
+          "button": "Đồng bộ ngay"
+        },
+        "disconnect": "Ngắt kết nối",
+        "disconnectHint": "Ngắt kết nối sẽ xóa token khỏi thiết bị này. Ghi chú của bạn được giữ nguyên.",
+        "deleted": {
+          "heading": "Sách đã xóa",
+          "description": "Các ghi chú bạn đã xóa trong memry. Chúng vẫn ở trạng thái đã xóa cho đến khi bạn khôi phục.",
+          "meta": "Đã xóa {date} · {count, plural, other {# đoạn nổi bật}}",
+          "metaDocument": "Đã xóa {date} · bài viết đã lưu",
+          "restore": "Khôi phục",
+          "footer": "Khôi phục sẽ tạo lại ghi chú cùng mọi đoạn nổi bật của nó.",
+          "empty": "Không có sách đã xóa",
+          "syncsOn": "Readwise đồng bộ trên {device}.",
+          "syncsOnAnotherDevice": "Readwise đồng bộ trên thiết bị khác.",
+          "loadFailed": "Không thể tải các sách đã xóa",
+          "restoreFailed": "Không thể khôi phục ghi chú"
+        },
+        "importNow": "Nhập ngay",
+        "importBooks": "{count, plural, other {Nhập # sách}}",
+        "importNotes": "{count, plural, other {Nhập # ghi chú}}",
+        "importNone": "Nhập",
+        "preview": {
+          "intro": "{highlights, plural, other {# đoạn nổi bật}} trong {books, plural, other {# sách}} đã sẵn sàng. Sẽ không có gì được ghi cho đến khi bạn xác nhận.",
+          "introOff": "{highlights, plural, other {# đoạn nổi bật}} trong {books, plural, other {# sách}} đã sẵn sàng. Đã tắt: {off}. {willImport, plural, other {# sách}} sẽ được nhập. Sẽ không có gì được ghi cho đến khi bạn xác nhận.",
+          "introReaderOnly": "Thư viện Readwise của bạn chưa có đoạn nổi bật nào. {documents, plural, other {# tài liệu Reader đã lưu}} sẽ được nhập dưới dạng ghi chú. Sẽ không có gì được ghi cho đến khi bạn xác nhận.",
+          "readerLabel": "Tài liệu Reader đã lưu",
+          "empty": "Thư viện Readwise của bạn chưa có đoạn nổi bật nào. Sẽ không có gì được ghi. Hãy nhập để hoàn tất thiết lập.",
+          "willImport": "sẽ được nhập",
+          "off": "tắt",
+          "retry": "Thử lại"
+        },
+        "status": {
+          "connected": "Đã kết nối",
+          "synced": "Đã đồng bộ {time}",
+          "syncing": "Đang đồng bộ với Readwise",
+          "reading": "Đang đọc thư viện của bạn…",
+          "writing": "Đang ghi sách, {done}/{total}",
+          "finishing": "Đang hoàn tất…",
+          "waitingTitle": "Đang chờ đồng bộ memry",
+          "waitingDetail": "Memry chờ cho đến khi ghi chú từ các thiết bị khác của bạn đã về, để không cuốn sách nào bị ghi hai lần. Readwise bắt đầu ngay sau đó.",
+          "otherTitle": "Đồng bộ trên {device}",
+          "otherTitleUnknown": "Đồng bộ trên thiết bị khác",
+          "otherDetail": "Chỉ một thiết bị lấy dữ liệu từ Readwise, nên một đoạn nổi bật không bao giờ bị ghi hai lần.",
+          "lastRun": "Lần chạy gần nhất: {counts}",
+          "lastRunNothing": "Lần chạy gần nhất: không có gì mới",
+          "nextRun": "Lần đồng bộ tiếp theo {time}",
+          "retryAt": "Memry sẽ thử lại {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise cần token mới",
+              "detail": "Readwise không chấp nhận token đã lưu. Hãy dán token mới từ readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Gói đăng ký Readwise của bạn đã hết hạn",
+              "detail": "Hãy gia hạn gói đăng ký trên readwise.io, rồi thử lại."
+            },
+            "rate-limited": {
+              "title": "Readwise đang giới hạn yêu cầu",
+              "detail": "Quá nhiều yêu cầu trong thời gian ngắn."
+            },
+            "network": {
+              "title": "Không thể kết nối đến Readwise",
+              "detail": "Hãy kiểm tra kết nối của bạn."
+            },
+            "server": {
+              "title": "Readwise gặp sự cố",
+              "detail": "Readwise trả về một lỗi."
+            },
+            "unexpected": {
+              "title": "Quá trình đồng bộ đã dừng",
+              "detail": "Đã xảy ra lỗi trong lần chạy."
+            }
+          },
+          "counts": {
+            "added": "{count} đã thêm",
+            "updated": "{count} đã cập nhật",
+            "appended": "{count} đã mở rộng",
+            "deferred": "{count} đang chờ ghi chú đang mở",
+            "failed": "{count} thất bại",
+            "highlights": "{count, plural, other {# đoạn nổi bật}}"
+          },
+          "actions": {
+            "cancel": "Hủy",
+            "retry": "Thử lại ngay",
+            "newToken": "Dán token mới",
+            "reconnect": "Kết nối lại",
+            "syncHere": "Đồng bộ tại đây thay thế"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise cần token mới",
+            "description": "Đồng bộ bị tạm dừng cho đến khi bạn dán token mới."
+          },
+          "subscription-expired": {
+            "title": "Gói đăng ký Readwise của bạn đã hết hạn",
+            "description": "Đồng bộ bị tạm dừng cho đến khi gói đăng ký hoạt động trở lại."
+          },
+          "open": "Mở Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Không thể đọc tệp",
       "appleNotes": {
-        "lockedNote": "{count, plural, other {# ghi chú bị khóa}} không được nhập; Memry không thể đọc chúng nếu không có mật khẩu Apple Notes của bạn."
+        "lockedNote": "{count, plural, other {# ghi chú bị khóa}} không được nhập; Memry không thể đọc chúng nếu không có mật khẩu Apple Notes của bạn.",
+        "lockedWrongPassword": "{count, plural, other {# ghi chú bị khóa}} không được nhập; {count, plural, other {chúng dùng}} mật khẩu khác với mật khẩu bạn đã nhập.",
+        "lockedUnreadable": "{count, plural, other {# ghi chú bị khóa}} không thể giải mã và không được nhập.",
+        "lockedAttachment": "{count, plural, other {# tệp đính kèm trong ghi chú bị khóa}} không được nhập; phần văn bản của ghi chú thì có."
       },
       "csv": {
         "noHeaders": "Tệp CSV không có dòng tiêu đề",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "Mức ưu tiên không xác định {priority} → không có",
         "unparsedDate": "Không thể phân tích ngày “{date}”",
         "subtaskNoParent": "Công việc con “{title}” không có công việc cha ở mức thụt lề {indent}; đã nhập ở cấp cao nhất"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise chưa được kết nối.",
+        "tokenInvalid": "Readwise không chấp nhận token đã lưu. Hãy ngắt kết nối rồi kết nối lại bằng token mới.",
+        "unreachable": "Không thể kết nối đến Readwise. Hãy kiểm tra kết nối và thử lại.",
+        "categoryOff": "{count, plural, other {# sách}} thuộc danh mục bạn đã tắt và không được nhập.",
+        "unchanged": "{count, plural, other {# sách}} đã được cập nhật sẵn.",
+        "sourceDeleted": "{count, plural, other {# sách}} đã bị xóa trong Readwise. Các ghi chú được giữ lại.",
+        "noteDeleted": "{count, plural, other {# ghi chú}} đã bị xóa trong Memry và vẫn ở trạng thái đã xóa.",
+        "busy": "{count, plural, other {# ghi chú}} đang mở trong trình soạn thảo và sẽ được ghi ở lần chạy tiếp theo."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Đang nhập công việc Todoist…"
+      },
+      "readwise": {
+        "fetching": "Đang đọc thư viện Readwise của bạn…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, other {Hiển thị thêm #}}",
       "showLess": "Hiển thị ít hơn",
       "groups": {
+        "reading": "Đọc",
         "noteApps": "Ứng dụng ghi chú",
         "tasks": "Công việc, nhật ký và dấu trang",
         "files": "Tệp"
+      },
+      "readwise": {
+        "notConnected": "Chưa kết nối",
+        "connected": "Đã kết nối",
+        "synced": "Đã đồng bộ {time}",
+        "syncing": "Đang đồng bộ…",
+        "waiting": "Đang chờ đồng bộ",
+        "otherDevice": "Đồng bộ trên {device}",
+        "otherDeviceUnknown": "Đồng bộ ở nơi khác",
+        "invalidToken": "Cần token mới",
+        "subscriptionExpired": "Gói đăng ký đã hết hạn",
+        "rateLimited": "Bị giới hạn tốc độ",
+        "network": "Không thể kết nối đến Readwise",
+        "server": "Lỗi Readwise",
+        "unexpected": "Đồng bộ thất bại"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "Đã đổi tên “{oldName}” thành “{newName}”",
       "renameFailed": "Không thể đổi tên thẻ",
+      "renaming": "Đang đổi tên #{oldName}: {done} / {total} ghi chú",
+      "renamedBodySkipped": "\"{newName}\" không thể gõ làm thẻ nội tuyến, nên #{oldName} trong nội dung ghi chú được giữ nguyên như đã viết",
+      "renamedSomeFailed": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy mở và thêm lại thẻ",
       "deleteFailed": "Không thể xóa thẻ",
       "deleted": "Đã xóa “{name}” khỏi {count, plural, other {# mục}}",
       "mergeFailed": "Không thể gộp các thẻ",
@@ -1901,12 +2248,29 @@
       "unsupported": "Không thể dùng {shortcut} làm phím tắt toàn cục. Chọn tổ hợp phím khác.",
       "fallbackInUse": "Phím tắt mặc định {shortcut} đang được ứng dụng khác sử dụng. Đặt tổ hợp phím khác để dùng Ghi nhanh toàn cục."
     },
+    "folderNotes": {
+      "title": "Ghi chú mới trong thư mục",
+      "description": "Tạo ghi chú ngay trong một thư mục bạn chọn",
+      "add": "Thêm thư mục",
+      "empty": "Chưa có phím tắt thư mục nào. Hãy thêm một thư mục để gán phím tắt.",
+      "rowDescription": "Tạo ghi chú trong thư mục này",
+      "missing": "Thư mục này không còn tồn tại. Hãy chọn thư mục khác hoặc xóa phím tắt.",
+      "changeFolder": "Đổi thư mục",
+      "searchFolders": "Tìm thư mục...",
+      "noFolders": "Không tìm thấy thư mục nào",
+      "remove": "Xóa phím tắt",
+      "conflictLabel": "Ghi chú mới trong {folder}",
+      "missingToast": "Thư mục \"{folder}\" không còn tồn tại",
+      "missingToastAction": "Sửa phím tắt",
+      "foldersLoadFailed": "Không thể kiểm tra thư mục cho phím tắt này"
+    },
     "toasts": {
       "saveGlobalFailed": "Không thể lưu phím tắt ghi nhanh toàn cục",
       "saveFailed": "Không thể lưu phím tắt",
       "resetFailed": "Không thể đặt lại phím tắt",
       "resetAllSuccess": "Đã đặt lại tất cả phím tắt về mặc định",
-      "resetAllFailed": "Không thể đặt lại phím tắt"
+      "resetAllFailed": "Không thể đặt lại phím tắt",
+      "saveStickyFailed": "Không thể lưu phím tắt sticky"
     },
     "categories": {
       "navigation": "Điều hướng",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "Tìm kiếm",
           "description": "Mở tìm kiếm toàn cục"
+        },
+        "commands": {
+          "label": "Bảng lệnh",
+          "description": "Tìm và chạy bất kỳ lệnh nào"
         },
         "settings": {
           "label": "Mở cài đặt",
@@ -2042,6 +2410,10 @@
           "label": "Hiện/ẩn thanh bên",
           "description": "Hiển thị hoặc ẩn thanh bên"
         },
+        "toggleDayPanel": {
+          "label": "Bật/tắt bảng ngày",
+          "description": "Hiện hoặc ẩn bảng ngày ở bên phải"
+        },
         "shortcuts": {
           "label": "Trợ giúp phím tắt",
           "description": "Hiển thị bảng tham chiếu phím tắt"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "Kích thước thực",
           "description": "Đặt lại thu phóng về 100%"
+        },
+        "foldFull": {
+          "label": "Thu gọn: Đầy đủ",
+          "description": "Hiện mọi từ của ghi chú"
+        },
+        "foldBrief": {
+          "label": "Thu gọn: Ngắn gọn",
+          "description": "Chỉ hiện các câu chính, như đã viết"
+        },
+        "foldKey": {
+          "label": "Thu gọn: Ý chính",
+          "description": "Hiện từng ý và lý do của nó"
+        },
+        "foldTakeaway": {
+          "label": "Thu gọn: Điểm rút ra",
+          "description": "Hiện một dòng cho mỗi đoạn văn"
+        },
+        "foldTopic": {
+          "label": "Thu gọn: Chủ đề",
+          "description": "Hiện ghi chú dưới dạng bản đồ các phần của nó"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "Ghi nhanh toàn cục",
       "recordingHint": "Nhấn phím… esc để hủy",
       "reset": "Đặt lại",
-      "resetAll": "Đặt lại tất cả về mặc định"
+      "resetAll": "Đặt lại tất cả về mặc định",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Mở sticky từ bất kỳ ứng dụng nào khi memrynote đang chạy"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "Phát hiện lệch giờ",
       "items": "mục",
       "willSyncWhenBackOnline": "Sẽ đồng bộ khi trực tuyến lại",
-      "openSyncSettings": "Mở cài đặt đồng bộ"
+      "stalled": "Các thay đổi đã lâu chưa được đồng bộ. Hãy thử Đồng bộ ngay.",
+      "openSyncSettings": "Mở cài đặt đồng bộ",
+      "repairDeviceKeys": "Sửa chữa",
+      "signInToRepair": "Hãy đăng nhập lại để thiết lập khóa cho thiết bị này. Ghi chú, công việc và dự án chưa đồng bộ vẫn được giữ. Bạn có thể cần cụm từ khôi phục.",
+      "repairFailed": "Không thể sửa chữa khóa của thiết bị này. Hãy thử lại.",
+      "syncNotStarted": {
+        "vault-binding": "Khóa của thiết bị này đã được khôi phục, nhưng kho này chưa được đặt để đồng bộ với tài khoản của bạn. Hãy chọn cách đồng bộ từ menu đồng bộ.",
+        "vault-foreign": "Khóa của thiết bị này đã được khôi phục, nhưng kho này thuộc về tài khoản khác. Kho vẫn chỉ nằm trên thiết bị này.",
+        "entitlement": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ cần một gói Sync đang hoạt động.",
+        "unavailable": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ không thể bắt đầu. Nó sẽ thử lại; hãy khởi động lại Memry nếu không được."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "Mô hình",
         "description": "Chọn một mô hình được trả về hoặc nhập thủ công."
       },
+      "thinking": {
+        "label": "Suy nghĩ",
+        "description": "Tắt sẽ yêu cầu các mô hình kiểu DeepSeek bỏ qua bước suy nghĩ để trả lời nhanh và rẻ hơn.",
+        "default": "Mặc định",
+        "off": "Tắt"
+      },
       "apiKey": {
         "label": "Khóa API",
         "description": "Thông tin xác thực tùy chọn, được lưu trong chuỗi khóa của hệ điều hành.",
@@ -2286,6 +2698,17 @@
       "revoke": "Thu hồi",
       "revokeLabel": "Thu hồi phê duyệt lâu dài cho {tool}",
       "ignoredInPageReview": "Không áp dụng: chỉnh sửa ghi chú và nhật ký luôn cần hỏi trước."
+    },
+    "memory": {
+      "group": "Bộ nhớ",
+      "description": "Tác nhân chạy trong một thư mục dành riêng cho kho này, nằm ngoài kho, nên những gì chúng lưu ở đó được mang sang cuộc trò chuyện tiếp theo.",
+      "clear": "Xóa bộ nhớ tác nhân",
+      "clearDescription": "Xóa những gì tác nhân đã lưu về kho này. Ghi chú và lịch sử trò chuyện được giữ nguyên.",
+      "clearAction": "Xóa",
+      "cleared": "Đã xóa bộ nhớ tác nhân.",
+      "failed": "Không thể xóa bộ nhớ tác nhân.",
+      "confirmTitle": "Xóa bộ nhớ tác nhân?",
+      "confirmDescription": "Tác nhân sẽ mất những gì chúng đã lưu về kho này, gồm cả bộ nhớ dự án của Claude Code cho kho. Không thể hoàn tác. Ghi chú và lịch sử trò chuyện được giữ nguyên."
     },
     "v2": {
       "permissions": {

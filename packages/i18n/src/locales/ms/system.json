@@ -29,6 +29,23 @@
       "buttonRestartNow": "Mulakan semula sekarang",
       "releaseNotesLabel": "Nota keluaran:"
     },
+    "dataDbRecovery": {
+      "title": "Baiki pangkalan data peti besi",
+      "message": "Pangkalan data Memry untuk peti besi ini rosak.",
+      "detail": "Fail nota dan jurnal anda tidak terjejas. Pembaikan menyimpan pangkalan data yang rosak sebagai sandaran di {path}, memulakan yang baharu, membina semula apa yang boleh daripada fail peti besi anda, dan memulihkan item tersegerak pada penyegerakan seterusnya. Perubahan yang belum disegerakkan dipulihkan jika boleh.",
+      "buttonRecover": "Baiki",
+      "buttonLater": "Bukan sekarang"
+    },
+    "obsidianVault": {
+      "title": "Buka peti besi Obsidian",
+      "message": "Buka salinan peti besi Obsidian ini?",
+      "detail": "Membuka peti besi Obsidian dalam memrynote boleh menyebabkan data yang diperlukan pemalam Obsidian anda hilang. Apabila memrynote menukar baris tugas pemalam menjadi tugas, ia menulis semula baris itu. Medan seperti tarikh akhir pemalam Tasks keluar daripada fail, dan Obsidian tidak lagi melihatnya.\n\nmemrynote boleh menyalin “{name}” ke “{copyName}” di sebelahnya dan membuka salinan itu. “{name}” kekal seperti asal.",
+      "detailExistingCopy": "Membuka peti besi Obsidian dalam memrynote boleh menyebabkan data yang diperlukan pemalam Obsidian anda hilang. Apabila memrynote menukar baris tugas pemalam menjadi tugas, ia menulis semula baris itu. Medan seperti tarikh akhir pemalam Tasks keluar daripada fail, dan Obsidian tidak lagi melihatnya.\n\nSalinan memrynote, “{copyName}”, sudah ada di sebelahnya. memrynote boleh membuka salinan itu. “{name}” kekal seperti asal.",
+      "buttonCopy": "Buat salinan",
+      "buttonOpenCopy": "Buka salinan",
+      "buttonOpenOriginal": "Buka asal",
+      "buttonCancel": "Batal"
+    },
     "pair": {
       "title": "Gandingkan sambungan penyemak imbas",
       "message": "Benarkan sambungan penyemak imbas Memry menghantar catatan ke apl ini?",

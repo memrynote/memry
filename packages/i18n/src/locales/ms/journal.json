@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Padam entri jurnal",
     "description": "Adakah anda pasti mahu memadamkan “{title}”? Tindakan ini tidak boleh dibuat asal."
+  },
+  "dayTimeline": {
+    "label": "Jadual harian",
+    "allDay": "Item sepanjang hari",
+    "unscheduled": "Tidak berjadual",
+    "unscheduledEmpty": "Tiada tugas tanpa jadual. Seret blok ke sini untuk mengosongkan masanya.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Selesaikan {title}"
   }
 }

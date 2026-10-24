@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Không thể sao chép portal",
+    "hiddenCount": "{count} đã ẩn",
+    "windowFailed": "Không thể mở portal này. Hãy mở ghi chú nguồn thay thế.",
+    "noTarget": "Portal này chưa có đích. Hãy thêm một ghi chú vào định nghĩa, hoặc xóa khối này.",
+    "invalidJson": "Định nghĩa của portal này không phải JSON hợp lệ. Hãy sửa bên dưới, hoặc xóa khối này.",
+    "invalidShape": "Định nghĩa của portal này không có ghi chú hoặc tìm kiếm. Hãy sửa bên dưới, hoặc xóa khối này.",
+    "search": {
+      "editQuery": "Sửa truy vấn",
+      "count": "{count, plural, other {# khối}}",
+      "loading": "Đang tìm kiếm…",
+      "empty": "Không có khối nào khớp với truy vấn này.",
+      "failed": "Không thể chạy tìm kiếm.",
+      "retry": "Thử lại",
+      "truncated": "Đang hiển thị {count} kết quả đầu tiên."
+    },
+    "copiedContents": "Đã sao chép nội dung",
+    "copiedLink": "Đã sao chép liên kết",
+    "actionFailed": "Không thể thay đổi portal này",
+    "keepsOneBlock": "Portal phải giữ ít nhất một khối. Hãy xóa portal thay thế.",
+    "expandChildren": "Hiện mục con",
+    "collapseChildren": "Ẩn mục con",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Bao gồm “{block}”",
+      "locked": "{note} đã khóa · chỉ đọc",
+      "more": "Thêm",
+      "openBeside": "Mở {note} bên cạnh",
+      "click": "Nhấp",
+      "copyContents": "Sao chép nội dung",
+      "copyLink": "Sao chép liên kết",
+      "remove": "Xóa portal",
+      "removeHint": "{note} giữ nguyên mọi khối"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Ghi chú nguồn đã bị xóa. Tham chiếu vẫn được giữ lại.",
+        "action": "Xóa"
+      },
+      "missingBlock": {
+        "text": "Khối đã bị xóa trong {source}.",
+        "action": "Chọn khối khác"
+      },
+      "notSynced": {
+        "text": "Đang chờ ghi chú nguồn đồng bộ.",
+        "action": "Thử lại"
+      },
+      "cycle": {
+        "text": "Portal này dẫn ngược về chính nó.",
+        "action": "Mở nguồn"
+      },
+      "tooDeep": {
+        "text": "Portal chỉ lồng nhau tối đa {max} cấp. Portal này sẽ mở dưới dạng liên kết.",
+        "action": "Mở nguồn"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Đưa con trỏ vào ô ghi nhanh",
@@ -43,6 +100,50 @@
     "showInFileManager": "Hiển thị trong trình quản lý tệp",
     "openInDefaultApp": "Mở bằng ứng dụng mặc định",
     "revealFailed": "Không thể hiển thị trong thư mục"
+  },
+  "commands": {
+    "runFailed": "Không thể chạy lệnh đó. Hãy thử lại."
+  },
+  "commandsPalette": {
+    "title": "Lệnh",
+    "placeholder": "Nhập một lệnh…",
+    "groups": {
+      "navigation": "Điều hướng",
+      "create": "Tạo",
+      "tabs": "Tab",
+      "editor": "Trình soạn thảo",
+      "view": "Xem",
+      "app": "Ứng dụng",
+      "note": "Ghi chú",
+      "settings": "Cài đặt",
+      "sync": "Đồng bộ",
+      "help": "Trợ giúp",
+      "project": "Dự án",
+      "tasks": "Công việc",
+      "canvas": "Bảng trắng",
+      "folder": "Thư mục",
+      "file": "Tệp"
+    },
+    "contexts": {
+      "note": "Ghi chú này",
+      "journal": "Nhật ký này",
+      "project": "Dự án này",
+      "tasks": "Các công việc này",
+      "canvas": "Bảng trắng này",
+      "folder": "Thư mục này",
+      "tag": "Thẻ này",
+      "file": "Tệp này"
+    },
+    "recent": "Gần đây",
+    "empty": "Không có lệnh nào khớp với “{query}”",
+    "searchHint": "Tìm ghi chú: {shortcut}",
+    "status": {
+      "count": "{count, plural, other {# lệnh}}"
+    },
+    "actions": {
+      "run": "Chạy",
+      "searchNotes": "Tìm ghi chú"
+    }
   },
   "tabs": {
     "pin": "Ghim tab",
@@ -131,6 +232,20 @@
     "openInTab": "Mở cuộc trò chuyện trong tab",
     "stop": "Dừng lại",
     "thinking": "Tác nhân đang suy nghĩ",
+    "toolsUnavailable": "Công cụ kho đã tắt với mô hình này. Mô hình không vượt qua bước kiểm tra công cụ nên chỉ có thể trò chuyện.",
+    "toolsUnavailableWithDetail": "Công cụ kho đã tắt với mô hình này. Mô hình không vượt qua bước kiểm tra công cụ nên chỉ có thể trò chuyện. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Công cụ kho đã tắt với mô hình này. Nhà cung cấp đã từ chối yêu cầu thử có kèm công cụ, nên mô hình chỉ có thể trò chuyện.",
+      "noToolCall": "Công cụ kho đã tắt với mô hình này. Mô hình đã trả lời yêu cầu thử mà không gọi công cụ, nên chỉ có thể trò chuyện.",
+      "toolResultRejected": "Công cụ kho đã tắt với mô hình này. Mô hình đã gọi một công cụ thử nhưng lỗi sau khi nhận lại kết quả, nên chỉ có thể trò chuyện.",
+      "streamingUnsupported": "Công cụ kho đã tắt với mô hình này. Nhà cung cấp không truyền trực tiếp phản hồi thử, nên mô hình chỉ có thể trò chuyện.",
+      "providerSaid": "Nhà cung cấp cho biết: {detail}",
+      "wroteToolCall": "Mô hình đã viết một lệnh gọi công cụ dưới dạng văn bản và không có gì được chạy."
+    },
+    "stepLimit": {
+      "notice": "Đã dừng ở giới hạn số bước.",
+      "continue": "Tiếp tục"
+    },
     "enable": {
       "title": "Bật tác nhân memrynote",
       "description": "Tác nhân memrynote dùng CLI tác nhân cục bộ mà bạn đã chọn để trò chuyện về kho của bạn. Claude gửi các lượt trò chuyện tới Anthropic; Codex gửi tới OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Thêm ngữ cảnh",
       "addContextWithPermissions": "Thêm ngữ cảnh ({permissions})",
       "mentionContext": "Đề cập ghi chú, công việc hoặc sự kiện",
+      "files": {
+        "attach": "Đính kèm tệp văn bản",
+        "refused": {
+          "unsupportedType": "{name} không phải tệp văn bản được hỗ trợ. Hãy đính kèm tệp .txt, .md, .log, .csv, .tsv, .json, .yaml hoặc .yml.",
+          "notText": "{name} không phải tệp văn bản UTF-8. Hãy đính kèm một tệp văn bản khác.",
+          "tooLarge": "{name} sẽ làm tin nhắn này vượt quá giới hạn 100 KB. Hãy xóa bớt một tệp hoặc đính kèm tệp nhỏ hơn.",
+          "readFailed": "Không thể đọc {name}. Hãy kiểm tra tệp còn tồn tại và bạn có thể mở được, rồi đính kèm lại."
+        }
+      },
       "voice": {
         "start": "Bắt đầu nhập bằng giọng nói",
         "stop": "Dừng nhập bằng giọng nói",
@@ -340,6 +464,14 @@
           "extraHigh": "Cực cao"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Mặc định",
+          "default": "Độ sâu mặc định",
+          "high": "Cao",
+          "max": "Tối đa"
+        }
+      },
       "permissionsLabel": "Quyền của tác nhân: {access}, tìm kiếm web {webSearch}",
       "permissions": {
         "label": "Quyền",
@@ -347,6 +479,17 @@
         "tools": "Công cụ"
       },
       "modelSettingsLabel": "Cài đặt mô hình tác nhân: {model}, {settings}",
+      "queue": {
+        "label": "Tin nhắn đang chờ",
+        "queueMessage": "Đưa tin nhắn vào hàng chờ",
+        "edit": "Sửa tin nhắn đang chờ",
+        "editLabel": "Nội dung tin nhắn đang chờ",
+        "remove": "Xóa tin nhắn đang chờ",
+        "save": "Lưu",
+        "cancel": "Hủy",
+        "sending": "Đang gửi…",
+        "notSent": "Chưa gửi. Hãy sửa để gửi lại, hoặc xóa nó."
+      },
       "unavailable": {
         "vaultToolsOnly": "Chỉ công cụ kho với mô hình này"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Không thể lưu trạng thái xác nhận thông báo",
       "resolveWindow": "Không thể xác định cửa sổ nguồn của tác nhân",
       "detectCli": "Không thể phát hiện phần phụ trợ của tác nhân",
-      "loadDisclosure": "Không thể tải trạng thái xác nhận thông báo"
+      "loadDisclosure": "Không thể tải trạng thái xác nhận thông báo",
+      "turnFailed": "Phản hồi dừng lại do lỗi. Tin nhắn của bạn vẫn được giữ, bạn có thể gửi lại."
     },
     "actions": {
       "copy": "Sao chép",
@@ -576,6 +720,7 @@
       "newFolder2": "Thư mục mới",
       "newProject": "Dự án mới",
       "bookmarks": "Dấu trang",
+      "chart": "Biểu đồ",
       "tags": "Thẻ",
       "reorderSection": "Sắp xếp lại {section}",
       "dropFilesToImport": "Thả tệp để nhập",
@@ -863,6 +1008,11 @@
       "cancel": "Hủy",
       "remove2": "Gỡ bỏ",
       "inYourAccount": "Trong tài khoản của bạn",
+      "trySandbox": "Thử kho thử nghiệm",
+      "sandboxVault": "Kho thử nghiệm",
+      "sandboxPreparing": "Đang chuẩn bị kho thử nghiệm…",
+      "sandboxFailed": "Không thể chuẩn bị kho thử nghiệm",
+      "resetSandbox": "Đặt lại kho thử nghiệm",
       "itemsCount": "{count} mục",
       "untitledVault": "Kho",
       "downloadVaultTitle": "Tải xuống “{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Ghi chú bạn mở sẽ xuất hiện ở đây",
       "bookmarks": "Dấu trang",
       "tasks": "Công việc",
+      "chart": "Biểu đồ",
       "calendar": "Lịch",
       "calendarToday": "Hôm nay",
       "openCalendar": "Mở lịch",
@@ -978,6 +1129,9 @@
     "edit": "Chỉnh sửa",
     "done": "Xong",
     "addWidget": "Thêm tiện ích",
+    "cover": {
+      "add": "Thêm ảnh bìa"
+    },
     "empty": {
       "title": "Bảng của bạn đang trống",
       "body": "Tiện ích tập hợp ghi chú, công việc và dấu trang của bạn vào một nơi yên tĩnh.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Đổi biểu tượng…",
     "resetIcon": "Đặt lại biểu tượng",
     "iconButton": "Đổi biểu tượng của {name}",
+    "leaveSandbox": "Quay lại {name}",
     "iconFailed": "Không thể đổi biểu tượng kho"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Loại",
     "filterModified": "Đã sửa đổi",
     "matches": "Khớp",
+    "matchesMore": "{count, plural, other {# kết quả khớp nữa}}",
+    "matchesHide": "Ẩn kết quả khớp",
+    "matchOf": "Kết quả khớp {index}/{total}",
     "showMore": "Hiện thêm {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Mục tiếp theo",
       "open": "Mở",
       "openNote": "Mở ghi chú",
+      "openAtMatch": "Mở tại kết quả khớp",
       "openFile": "Mở tệp",
       "openJournal": "Mở nhật ký",
       "openTask": "Mở công việc",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Chọn thẻ",
       "addTag": "Thêm thẻ",
       "showAll": "Hiện tất cả",
+      "hideMatches": "Ẩn kết quả khớp",
       "searchEverywhere": "Tìm ở mọi nơi",
       "clearFilters": "Xóa bộ lọc"
     },
