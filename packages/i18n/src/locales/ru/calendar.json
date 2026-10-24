@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Выполнить «{title}»",
     "task-completed": "Задача выполнена",
-    "could-not-complete": "Не удалось отметить задачу как выполненную",
     "could-not-update-status": "Не удалось изменить статус задачи",
     "duration-minutes": "{minutes} мин",
     "duration-hours": "{hours} ч",
@@ -215,12 +213,9 @@
     "next-week": "Следующая неделя",
     "open-task": "Открыть задачу",
     "source-note": "Исходная заметка",
-    "reschedule": "Перенести",
     "mark-done": "Отметить как выполненную",
     "mark-not-done": "Отметить как невыполненную",
-    "later-today": "Позже сегодня",
     "tomorrow": "Завтра",
-    "next-week-mon": "На следующей неделе · Пн",
     "pick-date-time": "Выбрать дату и время…",
     "remove-due-date": "Убрать срок",
     "subtasks-prefix": "Подзадачи",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Календари по подписке"
     },
     "caldav": {
       "name": "CalDAV"

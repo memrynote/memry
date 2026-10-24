@@ -122,10 +122,6 @@
       "body": "כדי להתחיל, אפשר ליצור פתק",
       "newNote": "פתק חדש"
     },
-    "readwiseSync": {
-      "tooltip": "סנכרון Readwise",
-      "failed": "סנכרון Readwise נכשל"
-    },
     "syncing": {
       "body": "מסנכרן את הפתקים שלך — הם יופיעו כאן כשיגיעו"
     },
@@ -157,12 +153,6 @@
       "bookmark": "הוספה לסימניות",
       "removeFromBookmarks": "הסרה מהסימניות",
       "journalSettings": "הגדרות יומן…"
-    },
-    "nav": {
-      "label": "ניווט",
-      "ariaExpanded": "אזור הניווט, מורחב",
-      "ariaCollapsed": "אזור הניווט, מכווץ",
-      "saveFailed": "שמירת מצב אזור הניווט נכשלה"
     },
     "viewOptions": {
       "label": "אפשרויות תצוגה",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "כמתקפלת",
         "asLinkedTask": "כמשימה מקושרת",
         "asReminder": "כתזכורת"
-      },
-      "actions": {
-        "insert": "הוספה",
-        "open": "פתיחה"
       },
       "close": "סגירת התפריט",
       "matchesAlias": "תואם",
@@ -607,7 +592,6 @@
         "title": "העברת בלוק לפתק",
         "searchPlaceholder": "חיפוש בפתקים…",
         "noResults": "אין פתקים תואמים",
-        "moved": "הבלוק הועבר אל \"{title}\"",
         "failed": "העברת הבלוק נכשלה"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "מתאר",
     "aria": "מתאר המסמך",
-    "emptyYet": "עדיין אין כותרות",
     "readTime": "{count} דקות קריאה",
     "words": "{count} מילים",
     "created": "נוצר",
@@ -839,11 +822,9 @@
     "toolbarComment": "הוספת הערה",
     "commentPlaceholder": "הוספת הערה…",
     "createdTooltip": "נוצרה ב-{date} בשעה {time}",
-    "cancel": "ביטול",
     "resolve": "סימון כטופל",
     "edit": "עריכת הערה",
     "delete": "מחיקת הערה",
-    "replyPlaceholder": "תשובה…",
     "attachAria": "צירוף קובץ",
     "mentionAria": "אזכור של אדם, דף או תאריך",
     "sendAria": "שליחת הערה",
@@ -856,13 +837,7 @@
       "code": "קוד"
     },
     "openImageAria": "פתיחת התמונה {name}",
-    "openAttachmentAria": "פתיחת הקובץ המצורף {name}",
-    "kind": {
-      "comment": "הערה",
-      "addition": "הוספה",
-      "deletion": "מחיקה",
-      "substitution": "החלפה"
-    }
+    "openAttachmentAria": "פתיחת הקובץ המצורף {name}"
   },
   "tagsRow": {
     "aria": "תגיות",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "מאפיינים",
     "noteAria": "מאפייני הפתק",
-    "workspaceAria": "מאפייני סביבת עבודה",
     "listAria": "רשימת מאפיינים",
     "add": "הוספת מאפיין",
     "addDescription": "הוספת מאפיין חדש לפתק הזה",
@@ -932,7 +906,6 @@
       "inProgress": "בתהליך",
       "done": "הושלם"
     },
-    "projectAlreadySet": "לפתק הזה כבר יש מאפיין פרויקט",
     "projectPlaceholder": "ללא פרויקט",
     "projectSearch": "חיפוש פרויקטים",
     "projectEmpty": "אין פרויקטים",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "מסנן",
-      "filters": "מסננים",
-      "clearAll": "ניקוי הכול",
-      "noFiltersApplied": "לא הוחלו מסננים",
-      "addFiltersToNarrowDownYourNotes": "אפשר להוסיף מסננים כדי לצמצם את רשימת הפתקים",
       "match": "התאמה",
-      "allAnd": "הכול (AND)",
-      "anyOr": "אחד לפחות (OR)",
-      "ofTheFollowing": "מהתנאים הבאים:",
       "match2": "התאמה",
       "all": "הכול",
       "any": "אחד לפחות",
-      "of": "מתוך:",
       "addCondition": "הוספת תנאי",
       "addFilter": "הוספת מסנן",
       "addGroup": "הוספת קבוצה",
@@ -1207,7 +1172,6 @@
       "available": "פונקציות זמינות: ",
       "preview": "תצוגה מקדימה",
       "fixExpressionErrorsToSeePreview": "כדי לראות תצוגה מקדימה, יש לתקן את השגיאות בביטוי",
-      "usingNote": "שימוש בפתק: \"",
       "cancel": "ביטול",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "טוען תיקיות…",
       "suggested": "מוצעות",
       "bestMatch": "ההתאמה הטובה ביותר",
-      "current": "נוכחית)",
       "allFolders": "כל התיקיות",
-      "noFoldersMatch": "אין תיקיות תואמות עבור \"",
-      "create": "יצירת \"",
       "cancel": "ביטול",
       "currentFolderBadge": "(נוכחית)",
       "noFoldersMatchQuery": "אין תיקיות תואמות עבור \"{query}\"",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "ברירת מחדל",
       "viewActions": "פעולות תצוגה",
-      "rename": "שינוי שם",
       "duplicate": "שכפול",
       "setAsDefault": "הגדרה כברירת מחדל",
       "delete": "מחיקה",
-      "createNewView": "יצירת תצוגה חדשה",
-      "createNewView2": "יצירת תצוגה חדשה",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "יצירת תצוגה חדשה עם עמודות, מסננים ומיון מותאמים אישית.",
-      "viewName": "שם התצוגה",
       "myCustomView": "התצוגה המותאמת אישית שלי",
-      "baseConfiguration": "תצורת בסיס",
-      "copyFromCurrentView": "העתקה מהתצוגה הנוכחית",
-      "startFreshDefaultColumns": "התחלה מאפס (עמודות ברירת מחדל)",
       "cancel": "ביטול",
-      "renameView": "שינוי שם התצוגה",
-      "enterANewNameForThisView": "יש להזין שם חדש לתצוגה הזו.",
-      "viewName2": "שם התצוגה",
-      "viewName3": "שם התצוגה",
-      "cancel2": "ביטול",
       "deleteView": "מחיקת תצוגה",
       "areYouSureYouWantToDelete": "למחוק את \"",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
@@ -1289,22 +1237,17 @@
       "layout": "פריסה",
       "table": "טבלה",
       "list": "רשימה",
-      "gallery": "גלריה",
-      "createView": "יצירת תצוגה",
-      "save": "שמירה"
+      "gallery": "גלריה"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "טעינת PDF נכשלה: ",
-      "download": "הורדה",
       "download2": "הורדה",
       "noFileAttached": "לא מצורף קובץ",
       "resizePdf": "שינוי גודל ה-PDF",
       "resizeHtml": "שינוי גודל ה-HTML המוטמע",
       "alignLeft": "יישור לשמאל",
       "alignCenter": "יישור למרכז",
-      "alignRight": "יישור לימין",
-      "previousPage": "העמוד הקודם",
-      "nextPage": "העמוד הבא"
+      "alignRight": "יישור לימין"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "פתיחה בחלונית המשימות",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8.5 x 11 אינץ׳)",
       "legal85X14In": "Legal (8.5 x 14 אינץ׳)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "מסונכרן"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "מילים",
       "characters": "תווים",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "עדיין אין סימניות",
       "moreOptions": "אפשרויות נוספות",
       "remove": "הסרה"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "פתיחה",
-      "openToTheSide": "פתיחה בצד",
-      "pinToTabs": "הצמדה לכרטיסיות",
-      "edit": "עריכה",
-      "delete": "מחיקה",
-      "copyLink": "העתקת קישור"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "טוען תגיות…",
@@ -1380,26 +1309,9 @@
       "cancel": "ביטול"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "חזרה",
-      "notes": "פתקים",
-      "loadingNotes": "טוען פתקים…",
-      "noNotesWithThisTag": "אין פתקים עם התגית הזו",
-      "addThisTagToANoteToSeeItHere": "כדי לראות כאן פתק, אפשר להוסיף לו את התגית הזו",
-      "pinned": "מוצמדים",
-      "allNotes": "כל הפתקים",
-      "allNotesArePinned": "כל הפתקים מוצמדים",
-      "tasks": "משימות",
-      "unpinFromTag": "ביטול ההצמדה לתגית",
-      "unpin": "ביטול הצמדה",
-      "pinToTag": "הצמדה לתגית",
-      "pin": "הצמדה",
       "tagActions": "פעולות תגית",
-      "editTagName": "עריכת שם התגית",
       "changeColor": "שינוי צבע",
-      "deleteTag": "מחיקת תגית",
-      "recent": "אחרונים",
-      "created": "תאריך יצירה",
-      "alphabetical": "אלפביתי"
+      "deleteTag": "מחיקת תגית"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "שינוי שם תגית",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "יצירת פתק חדש",
-      "viewSettings": "הגדרות תצוגה",
-      "displayDensity": "צפיפות תצוגה",
-      "comfortable": "מרווח",
-      "compact": "קומפקטי",
-      "showSummaries": "הצגת סיכומים",
       "cancel": "ביטול"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "פתיחת מרכז התגיות"
   },
   "tagView": {
-    "moreActions": "פעולות נוספות",
     "pin": {
       "action": "{count, plural, one {הצמדת פתק אחד לתגית} other {הצמדת # פתקים לתגית}}",
       "success": "{count, plural, one {פתק אחד הוצמד לתגית} other {# פתקים הוצמדו לתגית}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "מתן שם לחיפוש",
     "saveDialogPlaceholder": "לדוגמה: פגישות עבודה",
     "cancel": "ביטול",
-    "save": "שמירה",
-    "addToFilterHint": "כדי להוסיף תגית למסנן, אפשר ללחוץ עליה עם Ctrl/Cmd"
+    "save": "שמירה"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "כותב…",
       "writtenBy": "נכתב על ידי {agent}",
       "retry": "ההרצה האחרונה נכשלה · ניסיון חוזר",
-      "retryAction": "ניסיון חוזר",
       "captionOff": "יש להפעיל את סיכום פתקים ארוכים בהגדרות ← AI",
       "captionNoAgent": "לא מחובר סוכן · הגדרות ← AI",
       "unknownAgent": "AI"

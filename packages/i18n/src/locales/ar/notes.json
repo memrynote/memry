@@ -122,10 +122,6 @@
       "body": "أنشئ ملاحظة للبدء",
       "newNote": "ملاحظة جديدة"
     },
-    "readwiseSync": {
-      "tooltip": "مزامنة Readwise",
-      "failed": "فشلت مزامنة Readwise"
-    },
     "syncing": {
       "body": "جارٍ مزامنة ملاحظاتك — ستظهر هنا فور وصولها"
     },
@@ -157,12 +153,6 @@
       "bookmark": "إضافة إشارة مرجعية",
       "removeFromBookmarks": "إزالة من الإشارات المرجعية",
       "journalSettings": "إعدادات اليوميات…"
-    },
-    "nav": {
-      "label": "التنقل",
-      "ariaExpanded": "قسم التنقل، موسَّع",
-      "ariaCollapsed": "قسم التنقل، مطوي",
-      "saveFailed": "تعذّر حفظ حالة قسم التنقل"
     },
     "viewOptions": {
       "label": "خيارات العرض",
@@ -523,13 +513,8 @@
         "ai": "الذكاء الاصطناعي"
       },
       "secondary": {
-        "asToggleHeading": "قابل للطي",
         "asLinkedTask": "كمهمة مرتبطة",
         "asReminder": "كتذكير"
-      },
-      "actions": {
-        "insert": "إدراج",
-        "open": "فتح"
       },
       "close": "إغلاق القائمة",
       "matchesAlias": "يطابق",
@@ -607,7 +592,6 @@
         "title": "نقل الكتلة إلى ملاحظة",
         "searchPlaceholder": "البحث في الملاحظات…",
         "noResults": "لا توجد ملاحظات مطابقة",
-        "moved": "تم نقل الكتلة إلى «{title}»",
         "failed": "تعذّر نقل الكتلة"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "المخطط",
     "aria": "مخطط المستند",
-    "emptyYet": "لا توجد عناوين بعد",
     "readTime": "مدة القراءة: {count} د",
     "words": "الكلمات: {count}",
     "created": "تاريخ الإنشاء",
@@ -839,11 +822,9 @@
     "toolbarComment": "تعليق",
     "commentPlaceholder": "إضافة تعليق…",
     "createdTooltip": "أُنشئ في {date} الساعة {time}",
-    "cancel": "إلغاء",
     "resolve": "حل",
     "edit": "تحرير التعليق",
     "delete": "حذف التعليق",
-    "replyPlaceholder": "رد…",
     "attachAria": "إرفاق ملف",
     "mentionAria": "الإشارة إلى شخص أو صفحة أو تاريخ",
     "sendAria": "إرسال التعليق",
@@ -856,13 +837,7 @@
       "code": "شيفرة"
     },
     "openImageAria": "فتح الصورة {name}",
-    "openAttachmentAria": "فتح المرفق {name}",
-    "kind": {
-      "comment": "تعليق",
-      "addition": "إضافة",
-      "deletion": "حذف",
-      "substitution": "استبدال"
-    }
+    "openAttachmentAria": "فتح المرفق {name}"
   },
   "tagsRow": {
     "aria": "الوسوم",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "الخصائص",
     "noteAria": "خصائص الملاحظة",
-    "workspaceAria": "خصائص مساحة العمل",
     "listAria": "قائمة الخصائص",
     "add": "إضافة خاصية",
     "addDescription": "أضف خاصية جديدة إلى هذه الملاحظة",
@@ -932,7 +906,6 @@
       "inProgress": "قيد التنفيذ",
       "done": "مكتملة"
     },
-    "projectAlreadySet": "لهذه الملاحظة خاصية مشروع بالفعل",
     "projectPlaceholder": "بلا مشروع",
     "projectSearch": "البحث في المشاريع",
     "projectEmpty": "لا توجد مشاريع",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "تصفية",
-      "filters": "عوامل التصفية",
-      "clearAll": "مسح الكل",
-      "noFiltersApplied": "لم يتم تطبيق أي عوامل تصفية",
-      "addFiltersToNarrowDownYourNotes": "أضف عوامل تصفية لتضييق نطاق ملاحظاتك",
       "match": "مطابقة",
-      "allAnd": "الكل (و)",
-      "anyOr": "أي (أو)",
-      "ofTheFollowing": "مما يلي:",
       "match2": "مطابقة",
       "all": "الكل",
       "any": "أي",
-      "of": "من:",
       "addCondition": "إضافة شرط",
       "addFilter": "إضافة عامل تصفية",
       "addGroup": "إضافة مجموعة",
@@ -1207,7 +1172,6 @@
       "available": "متاح: ",
       "preview": "معاينة",
       "fixExpressionErrorsToSeePreview": "أصلح أخطاء التعبير لرؤية المعاينة",
-      "usingNote": "باستخدام الملاحظة: \"",
       "cancel": "إلغاء",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "جارٍ تحميل المجلدات…",
       "suggested": "المقترحة",
       "bestMatch": "أفضل تطابق",
-      "current": "الحالي)",
       "allFolders": "كل المجلدات",
-      "noFoldersMatch": "لا توجد مجلدات تطابق \"",
-      "create": "إنشاء \"",
       "cancel": "إلغاء",
       "currentFolderBadge": "(الحالي)",
       "noFoldersMatchQuery": "لا توجد مجلدات تطابق «{query}»",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "افتراضي",
       "viewActions": "إجراءات العرض",
-      "rename": "إعادة تسمية",
       "duplicate": "إنشاء نسخة",
       "setAsDefault": "تعيين كافتراضي",
       "delete": "حذف",
-      "createNewView": "إنشاء عرض جديد",
-      "createNewView2": "إنشاء عرض جديد",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "أنشئ عرضًا جديدًا بأعمدة وعوامل تصفية وترتيب مخصصة.",
-      "viewName": "اسم العرض",
       "myCustomView": "عرضي المخصص",
-      "baseConfiguration": "التكوين الأساسي",
-      "copyFromCurrentView": "نسخ من العرض الحالي",
-      "startFreshDefaultColumns": "البدء من جديد (الأعمدة الافتراضية)",
       "cancel": "إلغاء",
-      "renameView": "إعادة تسمية العرض",
-      "enterANewNameForThisView": "أدخل اسمًا جديدًا لطريقة العرض هذه.",
-      "viewName2": "اسم العرض",
-      "viewName3": "اسم العرض",
-      "cancel2": "إلغاء",
       "deleteView": "حذف العرض",
       "areYouSureYouWantToDelete": "هل تريد بالتأكيد حذف \"",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
@@ -1289,22 +1237,17 @@
       "layout": "التخطيط",
       "table": "جدول",
       "list": "قائمة",
-      "gallery": "معرض",
-      "createView": "إنشاء عرض",
-      "save": "حفظ"
+      "gallery": "معرض"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "تعذّر تحميل ملف PDF: ",
-      "download": "تنزيل",
       "download2": "تنزيل",
       "noFileAttached": "لا يوجد ملف مرفق",
       "resizePdf": "تغيير حجم PDF",
       "resizeHtml": "تغيير حجم ملف HTML المضمَّن",
       "alignLeft": "محاذاة لليسار",
       "alignCenter": "محاذاة للوسط",
-      "alignRight": "محاذاة لليمين",
-      "previousPage": "الصفحة السابقة",
-      "nextPage": "الصفحة التالية"
+      "alignRight": "محاذاة لليمين"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "فتح في لوحة المهام",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8.5 × 11 بوصة)",
       "legal85X14In": "Legal (8.5 × 14 بوصة)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "تمّت المزامنة"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "الكلمات",
       "characters": "الأحرف",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "لا توجد إشارات مرجعية بعد",
       "moreOptions": "المزيد من الخيارات",
       "remove": "إزالة"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "فتح",
-      "openToTheSide": "فتح في جزء جانبي",
-      "pinToTabs": "تثبيت على علامات التبويب",
-      "edit": "تحرير",
-      "delete": "حذف",
-      "copyLink": "نسخ الرابط"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "جارٍ تحميل الوسوم…",
@@ -1380,26 +1309,9 @@
       "cancel": "إلغاء"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "رجوع",
-      "notes": "ملاحظات",
-      "loadingNotes": "جارٍ تحميل الملاحظات…",
-      "noNotesWithThisTag": "لا توجد ملاحظات بهذا الوسم",
-      "addThisTagToANoteToSeeItHere": "أضف هذا الوسم إلى ملاحظة لرؤيتها هنا",
-      "pinned": "المثبّتة",
-      "allNotes": "جميع الملاحظات",
-      "allNotesArePinned": "تم تثبيت جميع الملاحظات",
-      "tasks": "المهام",
-      "unpinFromTag": "إلغاء التثبيت من الوسم",
-      "unpin": "إلغاء التثبيت",
-      "pinToTag": "تثبيت في الوسم",
-      "pin": "تثبيت",
       "tagActions": "إجراءات الوسم",
-      "editTagName": "تحرير اسم الوسم",
       "changeColor": "تغيير اللون",
-      "deleteTag": "حذف الوسم",
-      "recent": "الأحدث",
-      "created": "تاريخ الإنشاء",
-      "alphabetical": "أبجديًا"
+      "deleteTag": "حذف الوسم"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "إعادة تسمية الوسم",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "إنشاء ملاحظة جديدة",
-      "viewSettings": "إعدادات العرض",
-      "displayDensity": "كثافة العرض",
-      "comfortable": "مريح",
-      "compact": "مضغوط",
-      "showSummaries": "إظهار الملخصات",
       "cancel": "إلغاء"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "فتح مركز الوسوم"
   },
   "tagView": {
-    "moreActions": "المزيد من الإجراءات",
     "pin": {
       "action": "تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} في الوسم",
       "success": "تم تثبيت {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} في الوسم",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "تسمية هذا البحث",
     "saveDialogPlaceholder": "مثلًا: اجتماعات العمل",
     "cancel": "إلغاء",
-    "save": "حفظ",
-    "addToFilterHint": "انقر على وسم مع الضغط على Ctrl/Cmd لإضافته إلى عامل التصفية"
+    "save": "حفظ"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "جارٍ الكتابة…",
       "writtenBy": "كتبه {agent}",
       "retry": "فشل آخر تشغيل · إعادة المحاولة",
-      "retryAction": "إعادة المحاولة",
       "captionOff": "فعّل «تلخيص الملاحظات الطويلة» في الإعدادات ← الذكاء الاصطناعي",
       "captionNoAgent": "لا يوجد وكيل متصل · الإعدادات ← الذكاء الاصطناعي",
       "unknownAgent": "الذكاء الاصطناعي"

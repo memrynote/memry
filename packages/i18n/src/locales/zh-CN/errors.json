@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "尚未登录",
-    "sessionExpired": "会话已过期，请重新登录。",
     "setupSessionExpired": "登录在此操作完成前已超时。请重新登录，然后输入恢复短语。",
     "setupSessionExpiredLinking": "登录在此设备完成关联前已超时。请重新登录，然后再次扫描二维码。",
     "invalidRecoveryPhraseFormat": "恢复短语格式无效",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "加载模型失败",
     "voiceModelDownloadFailed": "下载语音模型失败",
     "terminalCommandInstallFailed": "安装终端命令失败",
-    "terminalCommandUninstallFailed": "卸载终端命令失败",
-    "shortcutInUse": "快捷键 {shortcut} 已被占用"
+    "terminalCommandUninstallFailed": "卸载终端命令失败"
   },
   "tag": {
     "renameInProgress": "将 #{from} 重命名为 #{to} 的操作仍在进行。请在完成后重试。",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} 已从此标签继承字段",
     "unreadableSchema": "较新版本的 Memry 更改了此标签。请更新 Memry 后再编辑",
     "relationTargetRequired": "请选择此关系指向哪个标签",
-    "editFailed": "无法更改标签的字段",
-    "previewFailed": "无法统计此更改的影响范围",
-    "snapshotFailed": "无法加载标签字段",
     "renameRunning": "另一个字段重命名仍在完成中（{from} 到 {to}）。请在完成后重试。"
   }
 }

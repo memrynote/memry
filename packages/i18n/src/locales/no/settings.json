@@ -7,11 +7,6 @@
     "backToApp": "Tilbake til appen",
     "nav": {
       "groups": {
-        "account": "Konto",
-        "application": "Applikasjon",
-        "editing": "Redigering",
-        "modules": "Moduler",
-        "services": "Tjenester",
         "data": "Data",
         "workspace": "Arbeidsområde",
         "features": "Funksjoner"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Konfigurer {module}"
-    },
-    "vaultImport": {
-      "label": "Importer fra en annen app",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist og flere",
-      "action": "Importer …"
     },
     "search": {
       "placeholder": "Søk i innstillinger",
@@ -102,12 +92,8 @@
       "loading": "Laster inn innstillinger …"
     },
     "groups": {
-      "startup": "Oppstart",
       "updates": "Oppdateringer",
       "languageRegion": "Språk og region",
-      "tabBehavior": "Faneatferd",
-      "window": "Vindusatferd",
-      "fileCreation": "Oppretting av filer",
       "privacy": "Personvern",
       "startupWindows": "Oppstart og vinduer",
       "newNotes": "Nye notater",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Start ved pålogging",
-        "description": "Start memrynote når du logger på",
         "error": "Kunne ikke oppdatere innstillingen for start ved pålogging"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Se etter oppdateringer automatisk",
-        "description": "Se etter nye versjoner ved oppstart og med jevne mellomrom mens appen er åpen.",
         "error": "Kunne ikke oppdatere innstillingen for automatisk sjekk"
       },
       "autoDownload": {
         "label": "Last ned oppdateringer automatisk",
-        "description": "Last ned og installer nye versjoner i bakgrunnen uten å spørre.",
         "error": "Kunne ikke oppdatere innstillingen for automatisk nedlasting"
       },
-      "appUpdates": "Appoppdateringer",
-      "installedVersion": "Installert versjon {version}",
-      "availableVersion": "Tilgjengelig versjon {version}",
-      "unsupported": "Pakkede bygg kan sjekke, laste ned og installere oppdateringer fra GitHub-utgivelser",
       "available": "memrynote {version} er tilgjengelig for nedlasting",
       "downloadingLatest": "Laster ned den siste utgivelsen",
-      "downloadingLatestPercent": "Laster ned den siste utgivelsen ({percent} %)",
       "downloaded": "memrynote {version} er klar til installasjon",
-      "upToDate": "Denne installasjonen har den nyeste publiserte utgivelsen",
-      "checking": "Ser etter en nyere versjon i GitHub-utgivelser",
-      "idle": "Se etter nye utgivelser og installer dem uten å forlate appen",
       "unsupportedToast": "Automatiske oppdateringer er bare tilgjengelige i pakkede utgivelser",
       "upToDateToast": "memrynote {version} er oppdatert",
       "actionFailed": "Oppdateringshandlingen mislyktes",
@@ -164,17 +139,10 @@
         "downloading": "Laster ned …",
         "downloadingPercent": "Laster ned {percent} %",
         "downloaded": "Versjon {version} er klar til installasjon"
-      },
-      "mode": {
-        "label": "Oppdateringsmodus",
-        "off": "Ikke sjekk",
-        "notify": "Bare varsle",
-        "auto": "Last ned automatisk"
       }
     },
     "language": {
       "label": "Språk",
-      "helper": "Det meste av appen oppdateres umiddelbart. Noe tekst på systemnivå – varsler som allerede er vist, Dock-etiketten og tittellinjen i vinduet – oppdateres etter neste oppstart.",
       "changed": "Språket er endret til {nativeName}",
       "failed": "Kunne ikke endre språket. Prøv igjen."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Tidsformat",
-      "description": "12-timers eller 24-timers klokke",
       "options": {
         "12h": "12-timers",
         "24h": "24-timers"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Datoformat",
-      "description": "Hvordan kalenderdatoer vises",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Åpne sider i ny fane",
-        "description": "Når du klikker på eller oppretter en side – notater, mapper, prosjekter, lerreter, tagger, bokmerker – åpnes den i en ny fane. Når dette er av, gjenbrukes den gjeldende fanen, også når du følger lenker i et notat. Festede faner blir aldri erstattet. «Åpne i ny fane», «Åpne ved siden av» og midtklikk åpner alltid en ny fane."
+        "label": "Åpne sider i ny fane"
       },
       "restoreSession": {
         "label": "Gjenopprett faner ved oppstart",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Lukkeknapp på faner",
-        "description": "Når lukkeknappen skal vises",
         "options": {
           "always": "Alltid synlig",
           "hover": "Når pekeren er over",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Fortsett å kjøre i menylinjen når vinduet lukkes",
-        "description": "Når du lukker vinduet, skjules memrynote i systemstatusfeltet i stedet for å avsluttes. Klikk på ikonet i systemstatusfeltet for å hente det frem igjen. På macOS blir appen også værende i Dock; på Linux-skrivebord uten systemstatusfelt lukkes vinduet som vanlig.",
         "error": "Kunne ikke oppdatere innstillingen for minimering til systemstatusfeltet"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Opprett i valgt mappe",
-        "description": "Nye notater og mapper opprettes i den valgte mappen. Når dette er av, opprettes elementer alltid i hvelvroten."
+        "label": "Opprett i valgt mappe"
       },
       "defaultNoteFolder": {
         "label": "Standardplassering",
         "description": "Brukes når ingen mappe er valgt i sidefeltet.",
-        "placeholder": "notater",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Kunne ikke sende diagnoserapporten",
         "sendReport": {
           "label": "Diagnoserapport",
-          "description": "Send en engangsrapport med sladdede tekniske logger, så vi kan finne feilen du støtte på.",
           "button": "Send rapport …"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Laster inn innstillinger …"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Aksentfarge",
-      "typography": "Typografi",
-      "zoom": "Zoom"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Fargemodus",
-        "description": "Velg ønsket tema",
         "aria": "Fargemodus"
       },
       "options": {
         "light": "Lys",
-        "white": "Hvit",
         "dark": "Mørk",
         "system": "System"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Utklippstavlen inneholder ikke et memrynote-tema"
     },
     "accent": {
-      "pick": "Velg en aksentfarge",
       "custom": {
-        "label": "Egendefinert farge",
-        "description": "Angi en hex-verdi",
-        "placeholder": "#000000"
+        "label": "Egendefinert farge"
       },
       "presets": {
         "indigo": "Indigo",
@@ -348,7 +299,6 @@
         "pink": "Rosa",
         "orange": "Oransje"
       },
-      "error": "Kunne ikke oppdatere aksentfargen",
       "aria": "Forhåndsinnstilt aksentfarge",
       "options": {
         "theme": "Tema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Zoomnivå",
-      "description": "Skaler hele grensesnittet",
       "decrease": "Zoom ut",
       "increase": "Zoom inn",
       "reset": "Tilbakestill zoom til standard",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Skriftstørrelse",
-        "description": "Grunnstørrelse for teksten i grensesnittet, i piksler",
         "decrease": "Reduser skriftstørrelsen",
         "increase": "Øk skriftstørrelsen",
         "reset": "Tilbakestill skriftstørrelsen til standard"
       },
       "fontFamily": {
         "label": "Skriftfamilie",
-        "description": "Primær skrifttype for grensesnittet",
         "options": {
           "system": "Systemstandard",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Kunne ikke oppdatere skriftfamilien"
     },
     "v2": {
-      "groups": {
-        "text": "Tekst og zoom"
-      },
       "colorMode": "Fargemodus",
       "colorTheme": "Tema",
       "accent": "Aksentfarge",
-      "customColor": "Egendefinert farge",
       "fontFamily": "Skriftfamilie",
       "fontSize": "Skriftstørrelse",
       "zoom": "Zoom"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Oppsett",
-      "toolbar": "Verktøylinje",
       "spelling": "Staving",
       "checklists": "Sjekklister",
       "attachments": "Vedlegg",
@@ -473,7 +413,6 @@
       "error": "Kunne ikke oppdatere callout-typene"
     },
     "width": {
-      "label": "Redigeringsbredde",
       "description": "Gjelder alle notater og dagboksider",
       "options": {
         "normal": "Normal",
@@ -482,12 +421,10 @@
       "error": "Kunne ikke oppdatere redigeringsbredden"
     },
     "toolbarMode": {
-      "label": "Fast formateringsverktøylinje",
       "description": "Vis alltid verktøylinjen over redigeringsområdet",
       "error": "Kunne ikke oppdatere verktøylinjemodus"
     },
     "spellCheck": {
-      "label": "Stavekontroll",
       "description": "Understrek feilstavede ord i notater og dagbøker",
       "error": "Kunne ikke oppdatere stavekontrollen"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Administrer notatmaler for rask oppretting"
     },
     "actions": {
-      "new": "Ny mal",
       "edit": "Rediger",
       "duplicate": "Dupliser",
       "delete": "Slett"
     },
     "groups": {
-      "builtIn": "Innebygd",
-      "myTemplates": "Mine maler"
+      "builtIn": "Innebygd"
     },
     "loading": "Laster inn maler …",
     "newTemplateTitle": "Ny mal",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Ingen egendefinerte maler ennå",
       "description": "Opprett en mal for å komme i gang"
-    },
-    "preview": {
-      "notFound": "Kunne ikke laste inn denne malen."
     },
     "toasts": {
       "deleted": "Malen er slettet",
@@ -572,11 +504,7 @@
       "loading": "Laster inn innstillinger …"
     },
     "groups": {
-      "defaultTemplate": "Standardmal",
-      "location": "Plassering og format",
-      "sidebarVisibility": "Synlighet i sidefeltet",
-      "footer": "Bunntekst",
-      "weekdayTemplates": "Maler per ukedag"
+      "footer": "Bunntekst"
     },
     "template": {
       "label": "Mal",
@@ -588,18 +516,6 @@
       "updated": "Standardmalen er oppdatert",
       "cleared": "Standardmalen er fjernet",
       "error": "Kunne ikke oppdatere standardmalen"
-    },
-    "showSchedule": {
-      "label": "Vis tidsplan",
-      "description": "Vis dagens hendelser og kalender"
-    },
-    "showTasks": {
-      "label": "Vis oppgaver",
-      "description": "Vis oppgaver som forfaller den valgte dagen"
-    },
-    "showAIConnections": {
-      "label": "Vis KI-koblinger",
-      "description": "Vis KI-baserte koblinger til relaterte innlegg"
     },
     "showStatsFooter": {
       "label": "Vis statistikk i bunnteksten",
@@ -632,7 +548,6 @@
       "inheritWith": "Standard · {name}",
       "inheritNone": "Standard · ingen",
       "missing": "Slettet mal",
-      "clear": "Fjern",
       "updated": "Malen for {day} er oppdatert",
       "cleared": "Malen for {day} er fjernet",
       "error": "Kunne ikke oppdatere malen for {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Konfigurer hva som skjer når du klikker på en dag i dagpanelet",
       "loading": "Laster inn innstillinger …"
     },
-    "groups": {
-      "weekStart": "Uke",
-      "dayCellClick": "Klikk på en dag",
-      "notes": "Notater"
-    },
     "weekStart": {
       "label": "Uken starter på",
       "description": "Første ukedag på tvers av alle kalendere",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Koble til Google på nytt",
       "addAccount": "Legg til konto",
-      "importedCalendars": "Importerte kalendere",
-      "selected": "{count} er valgt",
       "syncNow": "Synkroniser nå",
       "disconnect": "Koble fra",
       "reconnect": "Koble til Google på nytt",
@@ -1025,10 +933,8 @@
       "loading": "Laster inn …"
     },
     "groups": {
-      "identity": "Identitet",
       "sync": "Synkronisering",
       "billing": "Fakturering",
-      "storage": "Lagring",
       "devices": "Enheter"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Logg ut",
         "description": "Koble denne enheten fra synkronisering",
         "action": "Logg ut"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Bildesøk er slått av"
     },
     "unknownError": "Ukjent feil",
-    "groups": {
-      "voice": "Taletranskripsjon",
-      "embeddingModel": "Lokal embedding-modell",
-      "embeddingIndex": "Embedding-indeks",
-      "inline": "KI-redigering i teksten"
-    },
     "voice": {
-      "provider": "Leverandør",
       "providerDescription": "Tale-til-tekst-leverandør for talememoer",
-      "providers": {
-        "local": "Lokal (standard)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Navn på talememoer",
       "memoNameModeDescription": "Hvordan talememoer navngis etter transkripsjonen",
       "naming": {
         "transcript": "Transkripsjonstittel",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Språket du snakker i talememoer",
       "languageDefault": "Standard",
       "languageError": "Kunne ikke oppdatere transkripsjonsspråk",
-      "localModel": "Lokal modell",
-      "localModelDescription": "Whisper Small lastes ned ved behov og bufres lokalt",
       "status": {
         "ready": "Klar",
         "downloading": "Laster ned",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Lastet inn",
       "loading": "Laster inn",
-      "cacheHint": "~210 MB · Bufret lokalt · Alt på enheten",
-      "dimensions": "Dimensjoner",
-      "embeddings": "Embeddinger",
       "downloadLoad": "Last ned og last inn modell",
       "downloadingModel": "Laster ned modell …",
       "loadingModel": "Laster inn modell …",
       "loadSuccess": "Modellen er lastet inn",
       "loadFailed": "Kunne ikke laste inn modellen",
       "rebuildIndex": "Gjenoppbygg indeks",
-      "rebuildDescription": "Generer embeddinger på nytt for alle notater",
-      "rebuild": "Gjenoppbygg",
       "scanning": "Skanner notater …",
       "generating": "Genererer embeddinger …",
       "complete": "Fullført!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Laster inn …",
-      "title": "KI-redigering i teksten",
-      "enable": "Slå på KI i teksten",
       "enableDescription": "Vis KI-menyen når du redigerer notater",
       "enabled": "KI-redigering i teksten er slått på",
       "disabled": "KI-redigering i teksten er slått av",
       "provider": "Leverandør",
-      "providerDescription": "KI-tjeneste for tekstoperasjoner",
       "providers": {
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Aktiv på port {port}",
       "notConnected": "Ikke tilkoblet",
       "test": "Test",
-      "stopFailed": "Kunne ikke stoppe den eksisterende serveren",
       "connected": "Tilkoblet! Serveren kjører på port {port}",
       "connectFailed": "Kunne ikke koble til",
       "testFailed": "Tilkoblingstest mislyktes",
@@ -1566,8 +1448,6 @@
       "onenote": "Importer OneNote-notatbøker (krever en Microsoft-konto)",
       "readwise": "Importer høydepunktene dine fra Readwise (krever et tilgangstoken)"
     },
-    "action": "Importer",
-    "select": "Velg en app å importere fra …",
     "stats": {
       "notes": "{count, plural, one {# notat} other {# notater}}",
       "projects": "{count, plural, one {# prosjekt} other {# prosjekter}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Velg Apple Notes-mappe …",
       "chooseDirectory": "Velg mappe …",
       "folderKeepsAssets": "Velg mappen når bildene ligger utenfor notatenes egen mappe – eksporter samler ofte mediefiler i en felles mappe.",
-      "chooseHint": "Velg {label}",
       "folderHint": "Klikk nedenfor og velg mappen «group.com.apple.notes» når velgeren åpnes (den starter der). Dette lar Memry lese notatene og vedleggene dine – Full disktilgang er ikke nødvendig.",
       "noteplanFolderHint": "Velg NotePlan-mappen din – enten appens datamappe eller en av kopiene i Backups. Memry leser mappene Calendar, Notes og @Archive i den.",
       "selected": "{count, plural, one {# fil valgt} other {# filer valgt}}",
       "start": "Start import",
       "cancel": "Avbryt",
-      "close": "Lukk",
       "done": "Ferdig",
       "running": "Importerer …",
       "progress": "{completed} av {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Kobler til …",
         "connectFailed": "Kunne ikke koble til Readwise",
         "takeOver": {
-          "syncsOn": "Readwise synkroniseres på {device}.",
-          "syncsOnAnother": "Readwise synkroniseres på en annen enhet.",
           "explain": "Bare én enhet henter fra Readwise, så samme høydepunkt aldri skrives to ganger. Hvis du vil hente fra denne enheten i stedet, limer du inn tokenet på nytt: det flyttes aldri mellom enheter. Den andre enheten stopper ved neste bok, og alle notater beholdes.",
           "button": "Synkroniser her i stedet",
           "working": "Flytter Readwise hit …",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Finn en app eller filtype …",
       "noMatch": "Ingen kilder samsvarer med «{query}»",
       "formatAccount": "Konto",
-      "showMore": "{count, plural, one {Vis # til} other {Vis # til}}",
-      "showLess": "Vis mindre",
       "groups": {
         "reading": "Lesing",
         "noteApps": "Notatapper",
@@ -1968,8 +1842,6 @@
       "subtitle": "Konfigurasjon og lagring av hvelv"
     },
     "groups": {
-      "storageUsage": "Lagringsbruk",
-      "location": "Plassering",
       "accountVaults": "Hvelv i kontoen din",
       "largeNotes": "Notater nær synkroniseringsgrensen",
       "activity": "Aktivitet"
@@ -2229,8 +2101,6 @@
       "loading": "Laster inn innstillinger …"
     },
     "searchPlaceholder": "Søk i hurtigtaster …",
-    "resetAll": "Tilbakestill alle",
-    "custom": "Egendefinert",
     "pressShortcut": "Trykk hurtigtast …",
     "cancelTitle": "Avbryt",
     "rebindTitle": "Klikk for å endre",
@@ -2241,7 +2111,6 @@
     "noMatch": "Ingen hurtigtaster samsvarer med søket ditt",
     "conflict": "Er i konflikt med: {labels}",
     "globalCapture": {
-      "title": "Global oppfanging",
       "description": "Fang opp et notat fra hvor som helst",
       "active": "Aktiv",
       "inUse": "{shortcut} brukes av en annen app. Velg en annen kombinasjon.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Hele systemet",
       "globalCapture": "Global oppfanging",
       "recordingHint": "Trykk taster … esc for å avbryte",
-      "reset": "Tilbakestill",
       "resetAll": "Tilbakestill alle til standard",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Kunne ikke sende koden på nytt",
       "failedToSetUpDevice": "Kunne ikke konfigurere enheten",
       "failedToConfirmRecoveryPhrase": "Kunne ikke bekrefte gjenopprettingsfrasen",
-      "failedToAnalyzeContent": "Kunne ikke analysere innholdet",
       "failedToLoadUpdaterState": "Kunne ikke laste inn oppdateringsstatusen",
       "failedToCheckForUpdates": "Kunne ikke se etter oppdateringer",
       "failedToDownloadUpdate": "Kunne ikke laste ned oppdateringen",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Kunne ikke laste inn innstillinger for notatredigering",
       "failedToUpdateSettings": "Kunne ikke oppdatere innstillingene",
       "failedToLoadTabSettings": "Kunne ikke laste inn faneinnstillinger",
-      "failedToLoadNotes": "Kunne ikke laste inn notater",
       "failedToLoadTags": "Kunne ikke laste inn tagger",
-      "failedToLoadTasks": "Kunne ikke laste inn oppgavene",
       "failedToLoadVaultStatus": "Kunne ikke laste inn hvelvstatus",
       "failedToSelectVault": "Kunne ikke velge hvelv",
       "failedToCloseVault": "Kunne ikke lukke hvelvet",
@@ -2565,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Lokal servertilgang for eksterne MCP-klienter."
     },
-    "groups": {
-      "connection": "Tilkobling",
-      "access": "Tilgang"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Bruk dette localhost-endepunktet fra Cursor, Claude Desktop eller Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer-token",
-        "description": "Legitimasjon i minnet som gjelder for denne appstarten."
+        "label": "Bearer-token"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Agenttillatelser",
       "subtitle": "Velg standardtilgang, bekreftelser og lokale leverandører for Agentchat."
     },
-    "groups": {
-      "cliAgents": "CLI-agenter",
-      "local": "Lokal OpenAI-kompatibel leverandør",
-      "actions": "Tilkoblingssjekker"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Agenttillatelser",
       "access": {
-        "label": "Standardtilgang",
         "description": "Angir hvilken tilgangsmodus nye agentforespørsler starter med.",
         "vaultOnly": "Bare hvelvet",
         "computerAccess": "Datamaskintilgang",
         "builtInNote": "Den innebygde modelltilkoblingen bruker alltid bare hvelvverktøy."
       },
       "confirm": {
-        "label": "Bekreft handlinger",
         "description": "Velg om verktøykall kjøres automatisk eller venter på godkjenning i chatten. Låste notater og mapper forblir skrivebeskyttet i begge moduser.",
         "alwaysAllow": "Tillat alltid",
         "askBeforeChanges": "Spør før endringer"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Lagre",
-      "models": "Modeller",
-      "test": "Test tilkoblingen",
-      "probe": "Undersøk verktøy"
+      "test": "Test tilkoblingen"
     },
     "status": {
       "label": "Tilkobling",
       "checking": "Sjekker …",
       "connected": "Tilkoblet",
-      "disconnected": "Frakoblet",
-      "toolsDisabled": "Verktøy er slått av",
-      "fullTools": "Alle verktøy er slått på"
+      "disconnected": "Frakoblet"
     },
     "alwaysAllowed": {
-      "group": "Alltid tillatt",
       "description": "Verktøy du har gitt varig godkjenning i dette hvelvet. Sletting kan aldri få varig godkjenning.",
       "empty": "Ingenting er alltid tillatt. Du blir fortsatt spurt ved hver endring.",
       "revoke": "Trekk tilbake",

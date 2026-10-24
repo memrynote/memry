@@ -15,19 +15,13 @@
       "showWithCount": "顯示已延後的項目（{count}）",
       "hide": "隱藏已延後的項目"
     },
-    "density": {
-      "toComfortable": "寬鬆檢視",
-      "toCompact": "精簡檢視"
-    },
     "filter": {
-      "button": "篩選",
       "byType": "依類型篩選",
       "active": "{count, plural, other {依 # 種類型篩選}}",
       "clearAll": "清除全部"
     },
     "jobs": {
-      "running": "{count, plural, other {# 項背景工作執行中}}",
-      "failed": "{count} 項失敗"
+      "running": "{count, plural, other {# 項背景工作執行中}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "建立「{name}」",
     "addTags": "新增標籤…",
     "linkToNote": "連結到筆記",
-    "linkANote": "連結一則筆記",
-    "suggestedCount": "{count} 個建議",
-    "linkNotesPlaceholder": "連結筆記…",
     "linkOrCreateNotePlaceholder": "尋找或建立筆記…",
     "createNote": "建立「{title}」",
     "pendingNote": "新筆記",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "提醒資料無法取得。",
     "triggered": "提醒已觸發",
-    "noteLabel": "提醒備註",
     "source": "來源",
     "journalTitle": "日誌——{date}",
     "noteFallback": "筆記",
@@ -514,9 +504,7 @@
       "settings": "設定",
       "processing": "處理中…",
       "cancelRecording": "取消錄製",
-      "cancel": "取消",
       "stopRecording": "停止錄製",
-      "stop": "停止",
       "recordingError": "錄音時發生錯誤",
       "microphoneAccessDenied": "麥克風存取被拒",
       "noMicrophoneFound": "找不到麥克風",

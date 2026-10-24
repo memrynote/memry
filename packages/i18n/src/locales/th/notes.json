@@ -122,10 +122,6 @@
       "body": "สร้างโน้ตเพื่อเริ่มต้น",
       "newNote": "โน้ตใหม่"
     },
-    "readwiseSync": {
-      "tooltip": "การซิงค์ Readwise",
-      "failed": "ซิงค์ Readwise ไม่สำเร็จ"
-    },
     "syncing": {
       "body": "กำลังซิงค์โน้ต โน้ตจะทยอยปรากฏที่นี่"
     },
@@ -157,12 +153,6 @@
       "bookmark": "บุ๊กมาร์ก",
       "removeFromBookmarks": "นำออกจากบุ๊กมาร์ก",
       "journalSettings": "การตั้งค่าบันทึกประจำวัน…"
-    },
-    "nav": {
-      "label": "การนำทาง",
-      "ariaExpanded": "ส่วนการนำทาง ขยายอยู่",
-      "ariaCollapsed": "ส่วนการนำทาง ยุบอยู่",
-      "saveFailed": "บันทึกสถานะของส่วนการนำทางไม่สำเร็จ"
     },
     "viewOptions": {
       "label": "ตัวเลือกมุมมอง",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "แบบย่อ/ขยายได้",
         "asLinkedTask": "เป็นงานที่เชื่อมโยง",
         "asReminder": "เป็นการเตือน"
-      },
-      "actions": {
-        "insert": "แทรก",
-        "open": "เปิด"
       },
       "close": "ปิดเมนู",
       "matchesAlias": "ตรงกับ",
@@ -607,7 +592,6 @@
         "title": "ย้ายบล็อกไปที่โน้ต",
         "searchPlaceholder": "ค้นหาโน้ต…",
         "noResults": "ไม่มีโน้ตที่ตรงกัน",
-        "moved": "ย้ายบล็อกไปที่ “{title}” แล้ว",
         "failed": "ย้ายบล็อกไม่สำเร็จ"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "โครงร่าง",
     "aria": "โครงร่างเอกสาร",
-    "emptyYet": "ยังไม่มีหัวเรื่อง",
     "readTime": "อ่าน {count} นาที",
     "words": "{count} คำ",
     "created": "สร้างเมื่อ",
@@ -839,11 +822,9 @@
     "toolbarComment": "แสดงความคิดเห็น",
     "commentPlaceholder": "เพิ่มความคิดเห็น…",
     "createdTooltip": "สร้างเมื่อ {date} เวลา {time}",
-    "cancel": "ยกเลิก",
     "resolve": "ทำเครื่องหมายว่าแก้ไขแล้ว",
     "edit": "แก้ไขความคิดเห็น",
     "delete": "ลบความคิดเห็น",
-    "replyPlaceholder": "ตอบกลับ…",
     "attachAria": "แนบไฟล์",
     "mentionAria": "กล่าวถึงบุคคล หน้า หรือวันที่",
     "sendAria": "ส่งความคิดเห็น",
@@ -856,13 +837,7 @@
       "code": "โค้ด"
     },
     "openImageAria": "เปิดรูปภาพ {name}",
-    "openAttachmentAria": "เปิดไฟล์แนบ {name}",
-    "kind": {
-      "comment": "ความคิดเห็น",
-      "addition": "การเพิ่ม",
-      "deletion": "การลบ",
-      "substitution": "การแทนที่"
-    }
+    "openAttachmentAria": "เปิดไฟล์แนบ {name}"
   },
   "tagsRow": {
     "aria": "แท็ก",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "คุณสมบัติ",
     "noteAria": "คุณสมบัติของโน้ต",
-    "workspaceAria": "คุณสมบัติของพื้นที่ทำงาน",
     "listAria": "รายการคุณสมบัติ",
     "add": "เพิ่มคุณสมบัติ",
     "addDescription": "เพิ่มคุณสมบัติใหม่ให้กับโน้ตนี้",
@@ -932,7 +906,6 @@
       "inProgress": "กำลังทำ",
       "done": "เสร็จแล้ว"
     },
-    "projectAlreadySet": "โน้ตนี้มีคุณสมบัติโปรเจกต์อยู่แล้ว",
     "projectPlaceholder": "ไม่มีโปรเจกต์",
     "projectSearch": "ค้นหาโปรเจกต์",
     "projectEmpty": "ไม่มีโปรเจกต์",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "ตัวกรอง",
-      "filters": "ตัวกรอง",
-      "clearAll": "ล้างทั้งหมด",
-      "noFiltersApplied": "ยังไม่ได้ใช้ตัวกรอง",
-      "addFiltersToNarrowDownYourNotes": "เพิ่มตัวกรองเพื่อจำกัดโน้ตที่แสดง",
       "match": "ตรงตามเงื่อนไข",
-      "allAnd": "ทั้งหมด (และ)",
-      "anyOr": "อย่างใดอย่างหนึ่ง (หรือ)",
-      "ofTheFollowing": "ต่อไปนี้:",
       "match2": "ตรงตามเงื่อนไข",
       "all": "ทั้งหมด",
       "any": "ข้อใดข้อหนึ่ง",
-      "of": "ต่อไปนี้:",
       "addCondition": "เพิ่มเงื่อนไข",
       "addFilter": "เพิ่มตัวกรอง",
       "addGroup": "เพิ่มกลุ่ม",
@@ -1207,7 +1172,6 @@
       "available": "ใช้ได้: ",
       "preview": "ตัวอย่าง",
       "fixExpressionErrorsToSeePreview": "แก้ไขข้อผิดพลาดในนิพจน์เพื่อดูตัวอย่าง",
-      "usingNote": "ใช้โน้ต: “",
       "cancel": "ยกเลิก",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "กำลังโหลดโฟลเดอร์…",
       "suggested": "แนะนำ",
       "bestMatch": "ตรงที่สุด",
-      "current": "ปัจจุบัน)",
       "allFolders": "โฟลเดอร์ทั้งหมด",
-      "noFoldersMatch": "ไม่มีโฟลเดอร์ที่ตรงกับ “",
-      "create": "สร้าง “",
       "cancel": "ยกเลิก",
       "currentFolderBadge": "(ปัจจุบัน)",
       "noFoldersMatchQuery": "ไม่มีโฟลเดอร์ที่ตรงกับ “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "ค่าเริ่มต้น",
       "viewActions": "การดำเนินการมุมมอง",
-      "rename": "เปลี่ยนชื่อ",
       "duplicate": "ทำสำเนา",
       "setAsDefault": "ตั้งเป็นค่าเริ่มต้น",
       "delete": "ลบ",
-      "createNewView": "สร้างมุมมองใหม่",
-      "createNewView2": "สร้างมุมมองใหม่",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "สร้างมุมมองใหม่พร้อมคอลัมน์ ตัวกรอง และการเรียงลำดับที่กำหนดเอง",
-      "viewName": "ชื่อมุมมอง",
       "myCustomView": "มุมมองแบบกำหนดเองของฉัน",
-      "baseConfiguration": "การตั้งค่าพื้นฐาน",
-      "copyFromCurrentView": "คัดลอกจากมุมมองปัจจุบัน",
-      "startFreshDefaultColumns": "เริ่มใหม่ (คอลัมน์เริ่มต้น)",
       "cancel": "ยกเลิก",
-      "renameView": "เปลี่ยนชื่อมุมมอง",
-      "enterANewNameForThisView": "ป้อนชื่อใหม่สำหรับมุมมองนี้",
-      "viewName2": "ชื่อมุมมอง",
-      "viewName3": "ชื่อมุมมอง",
-      "cancel2": "ยกเลิก",
       "deleteView": "ลบมุมมอง",
       "areYouSureYouWantToDelete": "ต้องการลบ \"",
       "thisActionCannotBeUndone": "การกระทำนี้เลิกทำไม่ได้",
@@ -1289,22 +1237,17 @@
       "layout": "เค้าโครง",
       "table": "ตาราง",
       "list": "รายการ",
-      "gallery": "แกลเลอรี",
-      "createView": "สร้างมุมมอง",
-      "save": "บันทึก"
+      "gallery": "แกลเลอรี"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "โหลด PDF ไม่สำเร็จ: ",
-      "download": "ดาวน์โหลด",
       "download2": "ดาวน์โหลด",
       "noFileAttached": "ไม่มีไฟล์แนบ",
       "resizePdf": "ปรับขนาด PDF",
       "resizeHtml": "ปรับขนาด HTML ที่ฝัง",
       "alignLeft": "จัดชิดซ้าย",
       "alignCenter": "จัดกึ่งกลาง",
-      "alignRight": "จัดชิดขวา",
-      "previousPage": "หน้าก่อนหน้า",
-      "nextPage": "หน้าถัดไป"
+      "alignRight": "จัดชิดขวา"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "เปิดในแผงงาน",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8.5 x 11 นิ้ว)",
       "legal85X14In": "Legal (8.5 x 14 นิ้ว)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "ซิงค์แล้ว"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "คำ",
       "characters": "ตัวอักษร",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "ยังไม่มีบุ๊กมาร์ก",
       "moreOptions": "ตัวเลือกเพิ่มเติม",
       "remove": "ลบออก"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "เปิด",
-      "openToTheSide": "เปิดด้านข้าง",
-      "pinToTabs": "ปักหมุดเป็นแท็บ",
-      "edit": "แก้ไข",
-      "delete": "ลบ",
-      "copyLink": "คัดลอกลิงก์"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "กำลังโหลดแท็ก…",
@@ -1380,26 +1309,9 @@
       "cancel": "ยกเลิก"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "กลับ",
-      "notes": "โน้ต",
-      "loadingNotes": "กำลังโหลดโน้ต…",
-      "noNotesWithThisTag": "ไม่มีโน้ตที่มีแท็กนี้",
-      "addThisTagToANoteToSeeItHere": "เพิ่มแท็กนี้ให้โน้ตเพื่อให้แสดงที่นี่",
-      "pinned": "ปักหมุดไว้",
-      "allNotes": "โน้ตทั้งหมด",
-      "allNotesArePinned": "ปักหมุดโน้ตทั้งหมดไว้แล้ว",
-      "tasks": "งาน",
-      "unpinFromTag": "เลิกปักหมุดจากแท็ก",
-      "unpin": "เลิกปักหมุด",
-      "pinToTag": "ปักหมุดไว้ในแท็ก",
-      "pin": "ปักหมุด",
       "tagActions": "การดำเนินการเกี่ยวกับแท็ก",
-      "editTagName": "แก้ไขชื่อแท็ก",
       "changeColor": "เปลี่ยนสี",
-      "deleteTag": "ลบแท็ก",
-      "recent": "ล่าสุด",
-      "created": "สร้างเมื่อ",
-      "alphabetical": "ตามลำดับตัวอักษร"
+      "deleteTag": "ลบแท็ก"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "เปลี่ยนชื่อแท็ก",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "สร้างโน้ตใหม่",
-      "viewSettings": "การตั้งค่ามุมมอง",
-      "displayDensity": "ความหนาแน่นในการแสดงผล",
-      "comfortable": "สบายตา",
-      "compact": "กะทัดรัด",
-      "showSummaries": "แสดงสรุป",
       "cancel": "ยกเลิก"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "เปิดศูนย์รวมแท็ก"
   },
   "tagView": {
-    "moreActions": "การดำเนินการเพิ่มเติม",
     "pin": {
       "action": "ปักหมุดโน้ต {count, plural, other {# รายการ}} ไว้ในแท็ก",
       "success": "ปักหมุดโน้ต {count, plural, other {# รายการ}} ไว้ในแท็กแล้ว",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "ตั้งชื่อการค้นหานี้",
     "saveDialogPlaceholder": "เช่น ประชุมงาน",
     "cancel": "ยกเลิก",
-    "save": "บันทึก",
-    "addToFilterHint": "กด Ctrl/Cmd ค้างแล้วคลิกแท็กเพื่อเพิ่มลงในตัวกรอง"
+    "save": "บันทึก"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "กำลังเขียน…",
       "writtenBy": "เขียนโดย {agent}",
       "retry": "การทำงานครั้งล่าสุดล้มเหลว · ลองอีกครั้ง",
-      "retryAction": "ลองอีกครั้ง",
       "captionOff": "เปิด สรุปโน้ตยาว ในการตั้งค่า → AI",
       "captionNoAgent": "ไม่ได้เชื่อมต่อเอเจนต์ · การตั้งค่า → AI",
       "unknownAgent": "AI"

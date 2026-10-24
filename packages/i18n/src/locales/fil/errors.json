@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Hindi naka-authenticate",
-    "sessionExpired": "Nag-expire na ang session. Mag-sign in muli.",
     "setupSessionExpired": "Nag-time out ang pag-sign in mo bago ito natapos. Mag-sign in ulit, pagkatapos ay ilagay ang recovery phrase mo.",
     "setupSessionExpiredLinking": "Nag-time out ang pag-sign in mo bago natapos ang pag-link ng device na ito. Mag-sign in ulit, pagkatapos ay i-scan ulit ang code.",
     "invalidRecoveryPhraseFormat": "Hindi wastong format ng recovery phrase",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Hindi ma-load ang modelo",
     "voiceModelDownloadFailed": "Hindi ma-download ang modelo ng boses",
     "terminalCommandInstallFailed": "Hindi ma-install ang terminal command",
-    "terminalCommandUninstallFailed": "Hindi ma-uninstall ang terminal command",
-    "shortcutInUse": "Ginagamit na ang shortcut na {shortcut}"
+    "terminalCommandUninstallFailed": "Hindi ma-uninstall ang terminal command"
   },
   "tag": {
     "renameInProgress": "Tumatakbo pa ang pagpapalit ng pangalan ng #{from} sa #{to}. Subukan ulit kapag natapos ito.",
@@ -373,9 +371,6 @@
     "cycle": "Kinukuha na ng #{parent} ang mga field nito mula sa tag na ito",
     "unreadableSchema": "Binago ng mas bagong bersyon ng Memry ang tag na ito. I-update ang Memry para ma-edit ito",
     "relationTargetRequired": "Piliin kung aling tag ang tinuturo ng relation na ito",
-    "editFailed": "Hindi mabago ang mga field ng tag",
-    "previewFailed": "Hindi mabilang kung ano ang naaapektuhan ng pagbabagong ito",
-    "snapshotFailed": "Hindi ma-load ang mga field ng tag",
     "renameRunning": "Tinatapos pa ang isa pang pagpapalit ng pangalan ng field ({from} sa {to}). Subukan ulit kapag tapos na ito."
   }
 }

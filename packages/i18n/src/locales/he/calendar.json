@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "השלמת {title}",
     "task-completed": "המשימה הושלמה",
-    "could-not-complete": "לא ניתן היה להשלים את המשימה",
     "could-not-update-status": "לא ניתן לשנות את סטטוס המשימה",
     "duration-minutes": "{minutes} דק׳",
     "duration-hours": "{hours} שע׳",
@@ -215,12 +213,9 @@
     "next-week": "בשבוע הבא",
     "open-task": "פתיחת המשימה",
     "source-note": "פתק מקור",
-    "reschedule": "תזמון מחדש",
     "mark-done": "סימון כהושלמה",
     "mark-not-done": "סימון כלא הושלמה",
-    "later-today": "מאוחר יותר היום",
     "tomorrow": "מחר",
-    "next-week-mon": "בשבוע הבא · שני",
     "pick-date-time": "בחירת תאריך ושעה…",
     "remove-due-date": "הסרת תאריך היעד",
     "subtasks-prefix": "תת-משימות",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "לוחות שנה במינוי"
     },
     "caldav": {
       "name": "CalDAV"

@@ -15,19 +15,13 @@
       "showWithCount": "Vis slumrede elementer ({count})",
       "hide": "Skjul slumrede elementer"
     },
-    "density": {
-      "toComfortable": "Romslig visning",
-      "toCompact": "Kompakt visning"
-    },
     "filter": {
-      "button": "Filtrer",
       "byType": "Filtrer etter type",
       "active": "{count, plural, one {Filtrerer etter # type} other {Filtrerer etter # typer}}",
       "clearAll": "Fjern alle"
     },
     "jobs": {
-      "running": "{count, plural, one {# bakgrunnsjobb kjører} other {# bakgrunnsjobber kjører}}",
-      "failed": "{count} mislyktes"
+      "running": "{count, plural, one {# bakgrunnsjobb kjører} other {# bakgrunnsjobber kjører}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Opprett «{name}»",
     "addTags": "Legg til tagger …",
     "linkToNote": "Lenk til notat",
-    "linkANote": "Lenk til et notat",
-    "suggestedCount": "{count} foreslått",
-    "linkNotesPlaceholder": "Lenk til notater …",
     "linkOrCreateNotePlaceholder": "Finn eller opprett et notat …",
     "createNote": "Opprett «{title}»",
     "pendingNote": "Nytt notat",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Påminnelsesdata er utilgjengelige.",
     "triggered": "Påminnelse utløst",
-    "noteLabel": "Påminnelsesnotat",
     "source": "Kilde",
     "journalTitle": "Dagbok – {date}",
     "noteFallback": "Notat",
@@ -514,9 +504,7 @@
       "settings": "Innstillinger",
       "processing": "Behandler …",
       "cancelRecording": "Avbryt opptaket",
-      "cancel": "Avbryt",
       "stopRecording": "Stopp opptaket",
-      "stop": "Stopp",
       "recordingError": "Det oppsto en feil under opptaket",
       "microphoneAccessDenied": "Ingen tilgang til mikrofonen",
       "noMicrophoneFound": "Fant ingen mikrofon",

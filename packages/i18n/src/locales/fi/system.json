@@ -17,18 +17,6 @@
       "filterAll": "Kaikki tiedostot"
     },
     "exportCancelled": "Vienti peruttu",
-    "update": {
-      "availableTitle": "Päivitys saatavilla",
-      "availableMessage": "memrynote {version} on saatavilla.",
-      "availableDetailFallback": "Ladataanko päivitys nyt?",
-      "buttonDownload": "Lataa",
-      "buttonLater": "Myöhemmin",
-      "readyTitle": "Päivitys valmis",
-      "readyMessage": "memrynote {version} on ladattu.",
-      "readyDetailFallback": "Viimeistele päivityksen asennus käynnistämällä memrynote uudelleen.",
-      "buttonRestartNow": "Käynnistä nyt uudelleen",
-      "releaseNotesLabel": "Julkaisutiedot:"
-    },
     "dataDbRecovery": {
       "title": "Korjaa holvin tietokanta",
       "message": "Memryn tämän holvin tietokanta on vioittunut.",

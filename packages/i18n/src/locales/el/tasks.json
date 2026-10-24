@@ -53,8 +53,7 @@
       "high": "Υψηλή",
       "urgent": "Επείγουσα"
     },
-    "unarchive": "Κατάργηση αρχειοθέτησης εργασίας",
-    "archivedOn": "Αρχειοθετήθηκε {date}"
+    "unarchive": "Κατάργηση αρχειοθέτησης εργασίας"
   },
   "reminders": {
     "summary": "Υπενθύμιση: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Προσθήκη υποεργασίας",
     "subIssuePlaceholder": "Προσθήκη υποεργασίας…",
     "noSubIssues": "Δεν υπάρχουν ακόμη υποεργασίες",
-    "linkedNotes": "Σχετικά",
-    "linkNote": "Προσθήκη σχετικού στοιχείου",
     "loading": "Φόρτωση…",
-    "searchNotes": "Αναζήτηση σχετικών…",
-    "noMatchingNotes": "Δεν υπάρχουν αντίστοιχα στοιχεία",
-    "noNotesAvailable": "Δεν υπάρχουν διαθέσιμα στοιχεία",
-    "noLinkedNotes": "Δεν υπάρχουν ακόμη σχετικά στοιχεία",
-    "removeLinkTo": "Αφαίρεση σχετικού στοιχείου «{title}»",
-    "removeLinkFallback": "στοιχείο",
     "related": "Σχετικά",
     "addRelatedItem": "Προσθήκη σχετικού στοιχείου",
     "searchRelated": "Αναζήτηση σχετικών…",
     "noMatchingRelated": "Δεν υπάρχουν αντίστοιχα στοιχεία",
     "noRelatedAvailable": "Δεν υπάρχουν διαθέσιμα στοιχεία",
-    "noRelatedItems": "Δεν υπάρχουν ακόμη σχετικά στοιχεία",
     "removeRelatedItem": "Αφαίρεση σχετικού στοιχείου «{title}»",
     "relatedItemFallback": "στοιχείο",
     "relatedItemMissing": "Αυτό το σχετικό στοιχείο δεν υπάρχει πλέον σε αυτό το θησαυροφυλάκιο.",
@@ -251,7 +241,6 @@
     "deleted": "Η εργασία διαγράφηκε",
     "deletedSeries": "Η σειρά ολοκληρώθηκε!",
     "completed": "Η εργασία ολοκληρώθηκε!",
-    "archived": "Η εργασία αρχειοθετήθηκε",
     "undoNotAvailableForDelete": "Η αναίρεση δεν είναι διαθέσιμη για διαγραφή",
     "alreadyAllComplete": "Όλες οι επιλεγμένες εργασίες έχουν ήδη ολοκληρωθεί",
     "noCompletedSelected": "Δεν επιλέχθηκαν ολοκληρωμένες εργασίες",
@@ -331,7 +320,6 @@
       "archive": "Αρχειοθέτηση",
       "delete": "Διαγραφή",
       "cancelSelection": "Ακύρωση επιλογής",
-      "cancel": "Ακύρωση",
       "unarchive": "Κατάργηση αρχειοθέτησης"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Διαγραφή \"",
       "thisProjectHas": "Αυτό το έργο έχει ",
       "task": "εργασία",
-      "whatWouldYouLikeToDoWithThem": "Τι θέλετε να κάνετε με αυτές;",
-      "moveTasksToPersonalProject": "Μετακίνηση εργασιών στο Προσωπικό έργο",
-      "deleteAllTasksPermanently": "Οριστική διαγραφή όλων των εργασιών",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Αυτό το έργο δεν έχει εργασίες και θα διαγραφεί οριστικά.",
       "notesEventsAndFilesStayNotice": "Οι εργασίες αυτού του έργου διαγράφονται. Οι σημειώσεις, τα συμβάντα και τα αρχεία παραμένουν στο θησαυροφυλάκιο.",
       "thisActionCannotBeUndone": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ορισμός ημερομηνίας λήξης για όλες τις υποεργασίες",
-      "setDueDateFor": "Ορισμός ημερομηνίας λήξης για ",
-      "alsoApplyToCompletedSubtasks": "Εφαρμογή και στις ολοκληρωμένες υποεργασίες (",
       "clearDate": "Εκκαθάριση ημερομηνίας",
       "cancel": "Ακύρωση",
       "apply": "Εφαρμογή",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ορισμός προτεραιότητας για όλες τις υποεργασίες",
-      "setPriorityFor": "Ορισμός προτεραιότητας για ",
-      "alsoApplyToCompletedSubtasks": "Εφαρμογή και στις ολοκληρωμένες υποεργασίες (",
       "cancel": "Ακύρωση",
       "apply": "Εφαρμογή",
       "setPriorityForSubtasksIn": "Ορισμός προτεραιότητας για {count, plural, one {# υποεργασία} other {# υποεργασίες}} στο «{title}»",
@@ -464,36 +445,13 @@
       "deleteAll": "Διαγραφή όλων",
       "deleteSubtasksConfirmation": "{count, plural, one {Θα διαγραφεί # υποεργασία από το «{title}».} other {Θα διαγραφούν # υποεργασίες από το «{title}».}}"
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Διαγραφή εργασίας με υποεργασίες;",
-      "has": "έχει ",
-      "subtask": "υποεργασία",
-      "whatWouldYouLikeToDo": "Τι θέλετε να κάνετε;",
-      "deleteTaskAndAllSubtasks": "Διαγραφή εργασίας και όλων των υποεργασιών",
-      "permanentlyRemovesEverything": "Αφαιρεί οριστικά τα πάντα",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Διαγραφή εργασίας, διατήρηση των υποεργασιών ως αυτόνομων εργασιών",
-      "subtasksBecomeTopLevelTasks": "Οι υποεργασίες γίνονται εργασίες ανώτατου επιπέδου",
-      "cancel": "Ακύρωση",
-      "delete": "Διαγραφή"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Δημιουργία αντιγράφου εργασίας",
-      "createACopyOf": "Δημιουργία αντιγράφου του «",
-      "alsoDuplicateSubtasks": "Αντιγραφή και των υποεργασιών (",
       "cancel": "Ακύρωση",
-      "duplicate": "Δημιουργία αντιγράφου ",
       "createACopyOfTitle": "Δημιουργία αντιγράφου του «{title}»",
       "alsoDuplicateSubtasksCount": "Αντιγραφή και των υποεργασιών ({count})",
       "duplicateWithItems": "Δημιουργία αντιγράφου ({count, plural, one {# στοιχείο} other {# στοιχεία}})",
       "duplicateTaskOnly": "Δημιουργία αντιγράφου εργασίας"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Μετατροπή σε υποεργασία…",
-      "selectATaskToMake": "Επιλέξτε μια εργασία για να γίνει το \"",
-      "aSubtaskOf": "υποεργασία της.",
-      "searchTasks": "Αναζήτηση εργασιών…",
-      "sameProject": "Ίδιο έργο",
-      "otherProjects": "Άλλα έργα"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Απόθεση για επαναπρογραμματισμό: "
@@ -575,12 +533,6 @@
       "search": "αναζήτηση",
       "clearAll": "Εκκαθάριση όλων"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Φιλτράρισμα κατά ημερομηνία λήξης",
-      "customRange": "Προσαρμοσμένο εύρος",
-      "clear": "Εκκαθάριση",
-      "apply": "Εφαρμογή"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Φιλτράρισμα κατά…"
     },
@@ -619,23 +571,9 @@
       "search": "Αναζήτηση…",
       "selected": "επιλεγμένες"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Περισσότερα φίλτρα",
-      "more": "Περισσότερα",
-      "status": "Κατάσταση",
-      "hasTimeSet": "Με ορισμένη ώρα",
-      "recurringOnly": "Μόνο επαναλαμβανόμενες",
-      "status2": "Κατάσταση"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Φιλτράρισμα κατά προτεραιότητα",
       "priority": "Προτεραιότητα"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Φιλτράρισμα κατά έργο",
-      "project": "Έργο",
-      "allProjects": "Όλα τα έργα",
-      "clear": "Εκκαθάριση"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Γρήγορα φίλτρα:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Ώρα: Με ώρα",
       "summaryTimeWithout": "Ώρα: Χωρίς ώρα",
       "nameRequired": "Εισαγάγετε ένα όνομα για αυτό το φίλτρο"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Αποθηκευμένα φίλτρα",
-      "saved": "Αποθηκευμένα",
-      "noSavedFiltersYet": "Δεν υπάρχουν ακόμη αποθηκευμένα φίλτρα",
-      "saveCurrentFilters": "Αποθήκευση τρεχόντων φίλτρων",
-      "saveCurrentFilters2": "Αποθήκευση τρεχόντων φίλτρων"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Όνομα φίλτρου",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "Οι Εργασίες ανοίγουν σε αυτό το έργο"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Επιλογή έργου",
-      "selectProject2": "Επιλογή έργου"
+      "selectProject": "Επιλογή έργου"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Επεξεργασία έργου",
@@ -725,11 +655,6 @@
       "selectProject": "Επιλογή έργου",
       "noProjectsYet": "Δεν υπάρχουν ακόμη έργα",
       "createProject": "Δημιουργία έργου"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Δεν επιλέχθηκε έργο",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Επιλέξτε ένα έργο από το αναπτυσσόμενο μενού ή δημιουργήστε ένα νέο",
-      "createYourFirstProject": "Δημιουργήστε το πρώτο σας έργο"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Βοήθεια για τις συντομεύσεις γρήγορης προσθήκης",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Επιλογή ώρας",
-      "selectTime2": "Επιλογή ώρας",
       "clearTime": "Εκκαθάριση ώρας"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Δεν επιλέχθηκε έργο",
     "emptyBody": "Επιλέξτε ένα έργο από την πλαϊνή στήλη για να ανοίξετε την αρχική του.",
-    "loadError": "Δεν ήταν δυνατή η φόρτωση των στοιχείων του έργου",
     "overview": {
       "sectionTitle": "Επισκόπηση",
       "create": "Δημιουργία σημείωσης επισκόπησης",
@@ -969,18 +892,11 @@
       "empty": "Τίποτα ανοιχτό σε αυτό το έργο.",
       "expand": "Εμφάνιση εργασιών στο «{title}»",
       "collapse": "Απόκρυψη εργασιών στο «{title}»",
-      "taskSummary": "{open}/{total} ανοιχτές",
       "daysLeft": "{count}ημ.",
       "overdue": "{count}ημ. καθυστέρηση",
       "columns": {
         "title": "Τίτλος",
         "daysLeft": "Ημέρες που απομένουν"
-      },
-      "status": {
-        "active": "Ενεργό",
-        "done": "Ολοκληρωμένο",
-        "upcoming": "Επερχόμενο",
-        "past": "Παρελθόν"
       }
     }
   },

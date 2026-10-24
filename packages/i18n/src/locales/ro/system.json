@@ -17,18 +17,6 @@
       "filterAll": "Toate fișierele"
     },
     "exportCancelled": "Export anulat",
-    "update": {
-      "availableTitle": "Actualizare disponibilă",
-      "availableMessage": "memrynote {version} este disponibil.",
-      "availableDetailFallback": "Descărcați actualizarea acum?",
-      "buttonDownload": "Descarcă",
-      "buttonLater": "Mai târziu",
-      "readyTitle": "Actualizare pregătită",
-      "readyMessage": "memrynote {version} a fost descărcat.",
-      "readyDetailFallback": "Reporniți memrynote pentru a finaliza instalarea actualizării.",
-      "buttonRestartNow": "Repornește acum",
-      "releaseNotesLabel": "Note de lansare:"
-    },
     "dataDbRecovery": {
       "title": "Repară baza de date a seifului",
       "message": "Baza de date Memry a acestui seif este deteriorată.",

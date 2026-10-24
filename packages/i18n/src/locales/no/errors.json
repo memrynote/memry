@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Ikke pålogget",
-    "sessionExpired": "Økten er utløpt. Logg på igjen.",
     "setupSessionExpired": "Påloggingen din ble tidsavbrutt før dette ble fullført. Logg på igjen, og skriv deretter inn gjenopprettingsfrasen.",
     "setupSessionExpiredLinking": "Påloggingen din ble tidsavbrutt før denne enheten var ferdig tilkoblet. Logg på igjen, og skann koden en gang til.",
     "invalidRecoveryPhraseFormat": "Ugyldig format på gjenopprettingsfrasen",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Kunne ikke laste inn modellen",
     "voiceModelDownloadFailed": "Kunne ikke laste ned talemodellen",
     "terminalCommandInstallFailed": "Kunne ikke installere terminalkommandoen",
-    "terminalCommandUninstallFailed": "Kunne ikke avinstallere terminalkommandoen",
-    "shortcutInUse": "Hurtigtasten {shortcut} er allerede i bruk"
+    "terminalCommandUninstallFailed": "Kunne ikke avinstallere terminalkommandoen"
   },
   "tag": {
     "renameInProgress": "Et navnebytte fra #{from} til #{to} pågår fortsatt. Prøv igjen når det er ferdig.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} henter allerede feltene sine fra denne taggen",
     "unreadableSchema": "En nyere versjon av Memry har endret denne taggen. Oppdater Memry for å redigere den",
     "relationTargetRequired": "Velg hvilken tagg denne relasjonen peker til",
-    "editFailed": "Kunne ikke endre feltene til taggen",
-    "previewFailed": "Kunne ikke telle hva denne endringen påvirker",
-    "snapshotFailed": "Kunne ikke laste inn taggfelt",
     "renameRunning": "Et annet feltnavnbytte avsluttes fortsatt ({from} til {to}). Prøv igjen når det er ferdig."
   }
 }

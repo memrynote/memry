@@ -122,10 +122,6 @@
       "body": "Crea una nota per iniziare",
       "newNote": "Nuova nota"
     },
-    "readwiseSync": {
-      "tooltip": "Sincronizzazione Readwise",
-      "failed": "Sincronizzazione Readwise non riuscita"
-    },
     "syncing": {
       "body": "Sincronizzazione delle note in corso: compariranno qui man mano che arrivano"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Aggiungi ai segnalibri",
       "removeFromBookmarks": "Rimuovi dai segnalibri",
       "journalSettings": "Impostazioni del diario…"
-    },
-    "nav": {
-      "label": "Navigazione",
-      "ariaExpanded": "Sezione di navigazione, espansa",
-      "ariaCollapsed": "Sezione di navigazione, compressa",
-      "saveFailed": "Impossibile salvare lo stato della sezione di navigazione"
     },
     "viewOptions": {
       "label": "Opzioni di visualizzazione",
@@ -523,13 +513,8 @@
         "ai": "IA"
       },
       "secondary": {
-        "asToggleHeading": "Comprimibile",
         "asLinkedTask": "Come attività collegata",
         "asReminder": "Come promemoria"
-      },
-      "actions": {
-        "insert": "Inserisci",
-        "open": "Apri"
       },
       "close": "Chiudi menu",
       "matchesAlias": "corrisponde a",
@@ -607,7 +592,6 @@
         "title": "Sposta il blocco in una nota",
         "searchPlaceholder": "Cerca note…",
         "noResults": "Nessuna nota corrispondente",
-        "moved": "Blocco spostato in “{title}”",
         "failed": "Impossibile spostare il blocco"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Struttura",
     "aria": "Struttura del documento",
-    "emptyYet": "Ancora nessuna intestazione",
     "readTime": "{count} min di lettura",
     "words": "{count} parole",
     "created": "Creato",
@@ -839,11 +822,9 @@
     "toolbarComment": "Commenta",
     "commentPlaceholder": "Aggiungi un commento…",
     "createdTooltip": "Creato il {date} alle {time}",
-    "cancel": "Annulla",
     "resolve": "Risolvi",
     "edit": "Modifica commento",
     "delete": "Elimina commento",
-    "replyPlaceholder": "Rispondi…",
     "attachAria": "Allega file",
     "mentionAria": "Menziona una persona, pagina o data",
     "sendAria": "Invia commento",
@@ -856,13 +837,7 @@
       "code": "Codice"
     },
     "openImageAria": "Apri l'immagine {name}",
-    "openAttachmentAria": "Apri l'allegato {name}",
-    "kind": {
-      "comment": "Commento",
-      "addition": "Aggiunta",
-      "deletion": "Eliminazione",
-      "substitution": "Sostituzione"
-    }
+    "openAttachmentAria": "Apri l'allegato {name}"
   },
   "tagsRow": {
     "aria": "Tag",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Proprietà",
     "noteAria": "Proprietà della nota",
-    "workspaceAria": "Proprietà dello spazio di lavoro",
     "listAria": "Elenco delle proprietà",
     "add": "Aggiungi proprietà",
     "addDescription": "Aggiungi una nuova proprietà a questa nota",
@@ -932,7 +906,6 @@
       "inProgress": "In corso",
       "done": "Completato"
     },
-    "projectAlreadySet": "Questa nota ha già una proprietà progetto",
     "projectPlaceholder": "Nessun progetto",
     "projectSearch": "Cerca progetti",
     "projectEmpty": "Nessun progetto",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtra",
-      "filters": "Filtri",
-      "clearAll": "Azzera tutto",
-      "noFiltersApplied": "Nessun filtro applicato",
-      "addFiltersToNarrowDownYourNotes": "Aggiungi filtri per restringere il campo delle note",
       "match": "Soddisfa",
-      "allAnd": "Tutte (AND)",
-      "anyOr": "Almeno una (OR)",
-      "ofTheFollowing": "le condizioni seguenti:",
       "match2": "Soddisfa",
       "all": "Tutte",
       "any": "Almeno una",
-      "of": "le condizioni:",
       "addCondition": "Aggiungi condizione",
       "addFilter": "Aggiungi filtro",
       "addGroup": "Aggiungi gruppo",
@@ -1207,7 +1172,6 @@
       "available": "Disponibili: ",
       "preview": "Anteprima",
       "fixExpressionErrorsToSeePreview": "Correggi gli errori di espressione per vedere l'anteprima",
-      "usingNote": "Nota utilizzata: “",
       "cancel": "Annulla",
       "namePlaceholder": "giorni_fino_alla_scadenza",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Caricamento delle cartelle…",
       "suggested": "SUGGERITE",
       "bestMatch": "Miglior corrispondenza",
-      "current": "corrente)",
       "allFolders": "TUTTE LE CARTELLE",
-      "noFoldersMatch": "Nessuna cartella corrisponde a “",
-      "create": "Crea “",
       "cancel": "Annulla",
       "currentFolderBadge": "(corrente)",
       "noFoldersMatchQuery": "Nessuna cartella corrisponde a “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "predefinita",
       "viewActions": "Azioni della vista",
-      "rename": "Rinomina",
       "duplicate": "Duplica",
       "setAsDefault": "Imposta come predefinita",
       "delete": "Elimina",
-      "createNewView": "Crea nuova vista",
-      "createNewView2": "Crea nuova vista",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Crea una nuova vista con colonne, filtri e ordinamento personalizzati.",
-      "viewName": "Nome della vista",
       "myCustomView": "La mia vista personalizzata",
-      "baseConfiguration": "Configurazione di base",
-      "copyFromCurrentView": "Copia dalla vista corrente",
-      "startFreshDefaultColumns": "Inizia da capo (colonne predefinite)",
       "cancel": "Annulla",
-      "renameView": "Rinomina vista",
-      "enterANewNameForThisView": "Inserisci un nuovo nome per questa vista.",
-      "viewName2": "Nome della vista",
-      "viewName3": "Nome della vista",
-      "cancel2": "Annulla",
       "deleteView": "Elimina vista",
       "areYouSureYouWantToDelete": "Vuoi eliminare \"",
       "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
@@ -1289,22 +1237,17 @@
       "layout": "Layout",
       "table": "Tabella",
       "list": "Elenco",
-      "gallery": "Galleria",
-      "createView": "Crea vista",
-      "save": "Salva"
+      "gallery": "Galleria"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Impossibile caricare il PDF: ",
-      "download": "Scarica",
       "download2": "Scarica",
       "noFileAttached": "Nessun file allegato",
       "resizePdf": "Ridimensiona PDF",
       "resizeHtml": "Ridimensiona il contenuto HTML incorporato",
       "alignLeft": "Allinea a sinistra",
       "alignCenter": "Allinea al centro",
-      "alignRight": "Allinea a destra",
-      "previousPage": "Pagina precedente",
-      "nextPage": "Pagina successiva"
+      "alignRight": "Allinea a destra"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Apri nel pannello delle attività",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 pollici)",
       "legal85X14In": "Legal (8,5 x 14 pollici)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "gg.mm.aaaa"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Sincronizzato"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Parole",
       "characters": "Caratteri",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Ancora nessun segnalibro",
       "moreOptions": "Altre opzioni",
       "remove": "Rimuovi"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Apri",
-      "openToTheSide": "Apri a lato",
-      "pinToTabs": "Fissa nelle schede",
-      "edit": "Modifica",
-      "delete": "Elimina",
-      "copyLink": "Copia link"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Caricamento dei tag…",
@@ -1380,26 +1309,9 @@
       "cancel": "Annulla"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Torna indietro",
-      "notes": "note",
-      "loadingNotes": "Caricamento delle note…",
-      "noNotesWithThisTag": "Nessuna nota con questo tag",
-      "addThisTagToANoteToSeeItHere": "Aggiungi questo tag a una nota per vederlo qui",
-      "pinned": "FISSATE",
-      "allNotes": "TUTTE LE NOTE",
-      "allNotesArePinned": "Tutte le note sono fissate",
-      "tasks": "ATTIVITÀ",
-      "unpinFromTag": "Non fissare più al tag",
-      "unpin": "Non fissare più",
-      "pinToTag": "Fissa al tag",
-      "pin": "Fissa",
       "tagActions": "Azioni del tag",
-      "editTagName": "Modifica il nome del tag",
       "changeColor": "Cambia colore",
-      "deleteTag": "Elimina tag",
-      "recent": "Più recenti",
-      "created": "Creato",
-      "alphabetical": "Alfabetico"
+      "deleteTag": "Elimina tag"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Rinomina tag",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Crea nuova nota",
-      "viewSettings": "Impostazioni della vista",
-      "displayDensity": "Densità di visualizzazione",
-      "comfortable": "Comoda",
-      "compact": "Compatta",
-      "showSummaries": "Mostra riepiloghi",
       "cancel": "Annulla"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Apri la pagina dei tag"
   },
   "tagView": {
-    "moreActions": "Altre azioni",
     "pin": {
       "action": "Fissa {count, plural, one {# nota} many {# note} other {# note}} al tag",
       "success": "{count, plural, one {# nota fissata} many {# note fissate} other {# note fissate}} al tag",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Dai un nome a questa ricerca",
     "saveDialogPlaceholder": "ad es. Riunioni di lavoro",
     "cancel": "Annulla",
-    "save": "Salva",
-    "addToFilterHint": "Fai Ctrl/Cmd-clic su un tag per aggiungerlo al filtro"
+    "save": "Salva"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Scrittura…",
       "writtenBy": "Scritto da {agent}",
       "retry": "Ultima esecuzione non riuscita · Riprova",
-      "retryAction": "Riprova",
       "captionOff": "Attiva Riassumi note lunghe in Impostazioni → AI",
       "captionNoAgent": "Nessun agente collegato · Impostazioni → AI",
       "unknownAgent": "AI"

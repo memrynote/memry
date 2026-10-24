@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "İşlem başarısız oldu",
-    "nothingToUndo": "Geri alınacak bir şey yok",
     "undone": "Geri alındı: {description}",
     "undoFailed": "İşlem geri alınamadı",
     "filesImported": "{count, plural, one {# dosya içe aktarıldı} other {# dosya içe aktarıldı}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Ajan, {title} oluşturmak istiyor. Uygulamadan önce değişikliği inceleyin.",
       "descriptionDelete": "Ajan, {title} öğesini silmek istiyor. Uygulamadan önce değişikliği inceleyin.",
       "fallbackTitle": "bu öğe",
-      "current": "Mevcut",
       "candidate": "Önerilen",
       "loading": "Yükleniyor…",
       "apply": "Uygula",
@@ -383,12 +381,8 @@
       "removeAttachment": "Kaldır: {label}",
       "placeholder": "memrynote ile her şeyi yap… Not, görev ve etkinliklerden bahsetmek için @",
       "send": "Gönder",
-      "providerLabel": "Ajan sağlayıcısı: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Bağlı araçlar",
       "connectTool": "Bağla: {tool}",
-      "addContext": "Bağlam ekle",
-      "addContextWithPermissions": "Bağlam ekle ({permissions})",
       "mentionContext": "Bir not, görev veya etkinlikten bahset",
       "files": {
         "attach": "Metin dosyası ekle",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Sesli giriş yazıya dökülemedi"
         }
       },
-      "modelLabel": "Ajan modeli: {provider} {model}",
-      "reasoningLabel": "Ajan akıl yürütmesi: {reasoning}",
       "providers": {
-        "label": "Sağlayıcı",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Bilgisayar erişimi"
       },
       "webSearch": {
-        "on": "Açık",
-        "off": "Kapalı",
         "label": "Web araması"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Ajan kullanılamıyor — Ayarları aç…"
       },
       "settings": {
-        "reasoning": "Akıl yürütme",
         "effort": "Çaba"
       },
       "includeCurrentNote": "Geçerli notu dahil et",
@@ -472,11 +460,8 @@
           "max": "En yüksek"
         }
       },
-      "permissionsLabel": "Ajan izinleri: {access}, web araması: {webSearch}",
       "permissions": {
-        "label": "İzinler",
-        "access": "Erişim",
-        "tools": "Araçlar"
+        "access": "Erişim"
       },
       "modelSettingsLabel": "Ajan model ayarları: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Yeni klasör",
       "newProject": "Yeni proje",
       "bookmarks": "Yer imleri",
-      "chart": "Çizelge",
       "tags": "Etiketler",
       "reorderSection": "Yeniden sırala: {section}",
       "dropFilesToImport": "İçe aktarılacak dosyaları bırakın",
       "dropFilesIntoVaultRoot": "Kasa kökü",
       "newNoteN": "Yeni not (⌘N)",
-      "new": "Yeni",
       "newItemMenu": "Yeni oluştur…",
       "feedbackButton": "Geri bildirim gönder",
       "feedbackTitle": "Geri bildirim gönder",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Bul, değiştir, sor…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "İlk kurulumu atla",
-      "welcomeToMemry": "memrynote'a hoş geldiniz",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Kişisel bilgi tabanınız. Başlamanız için 2 dakika ayıralım.",
-      "getStarted": "Başla ",
-      "createYourFirstNote": "İlk notunuzu oluşturun",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown tabanlıdır, yerel olarak düz dosyalarda saklanır.",
-      "eGMeetingNotesIdeasAnything": "ör. toplantı notları, fikirler, her şey…",
-      "skip": "Atla",
-      "createNote": "Not oluştur ",
-      "addYourFirstTask": "İlk görevinizi ekleyin",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Görevler notlarınıza bağlanır; öncelik ve son tarih eklenebilir.",
-      "eGReviewProjectProposal": "ör. Proje teklifini incele…",
-      "skip2": "Atla",
-      "createTask": "Görev oluştur ",
-      "syncAcrossDevices": "Cihazlar arasında eşitleme",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Notlarınızı ve görevlerinizi tüm cihazlarınızda eşitlenmiş tutun. Bunu daha sonra istediğiniz zaman ayarlayabilirsiniz.",
-      "skipForNow": "Şimdilik atla",
-      "doneLetSGo": "Tamam — başlayalım! "
+      "skip": "Atla"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Klasör simgesini ayarla",
@@ -852,8 +818,7 @@
       "unknownTabType": "Bilinmeyen sekme türü: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "kaydedilmemiş değişiklikler",
-      "preview": "önizleme"
+      "unsavedChanges": "kaydedilmemiş değişiklikler"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Yeni sekme",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "memrynote'a hoş geldiniz",
-      "yourPersonalKnowledgeManagementSystem": "Kişisel bilgi yönetim sisteminiz.",
-      "selectAFolderToStoreYourNotesAndTasks": "Notlarınızı ve görevlerinizi saklamak için bir klasör seçin.",
       "opening": "Açılıyor…",
-      "selectVaultFolder": "Kasa klasörü seç",
-      "plainMarkdown": "Düz Markdown",
-      "yourNotesStayPortable": "Notlarınız taşınabilir kalır",
-      "syncAnywhere": "Her yerde eşitleme",
-      "useDropboxIcloudGit": "Dropbox, iCloud veya Git kullanın",
       "recentVaults": "Son kasalar",
-      "notesLastOpened": "not · Son açılış",
-      "preRelease": "Beta",
       "createNewVault": "Yeni kasa oluştur",
-      "createNewVaultDesc": "Seçtiğiniz bir klasörde yeni bir kasa başlatın.",
-      "openExistingVault": "Mevcut kasayı aç",
-      "openExistingVaultDesc": "Zaten tuttuğunuz Markdown dosyalarının bulunduğu bir klasör seçin.",
-      "signInToSync": "Eşitleme için oturum aç",
-      "signInToSyncDesc": "Cihazlarınız arasında uçtan uca şifreli kasalar.",
-      "create": "Oluştur",
       "open": "Aç",
-      "signIn": "Oturum aç",
       "helpAndDocs": "Yardım ve belgeler",
-      "signInRequiresVault": "Eşitlemeyi ayarlamak için önce bir kasa açın veya oluşturun.",
       "addVault": "Kasa ekle",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Henüz kasa yok",
       "openVault": "Kasayı aç",
       "settings": "Ayarlar",
-      "logOut": "Oturumu kapat",
-      "signInToSync": "Eşitleme için oturum aç",
       "remove": "Kaldır “",
       "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bu kasa uygulamadan kaldırılacak ancak dosyalarınız diskte kalacak. Daha sonra istediğiniz zaman yeniden ekleyebilirsiniz.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Değiştir…",
       "download": "İndir",
       "downloadFailed": "Kasa indirilemedi",
-      "deleteFromAccount": "Hesaptan sil",
       "deleteVaultTitle": "“{name}” hesabınızdan silinsin mi?",
       "deleteVaultBody": "Bu işlem, bu kasaya ait eşitlenmiş tüm verileri Memry sunucularından kalıcı olarak siler ve geri alınamaz. Diskteki dosyalarınız silinmez.",
       "deleteVaultConfirm": "Hesaptan sil",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Widget'ı kaldır",
       "dragAria": "Widget'ı sürükle",
-      "configAria": "Widget'ı yapılandır",
-      "resizeAria": "{size} boyutuna getir",
       "menuAria": "Widget seçenekleri",
-      "resize": "Boyut",
       "remove": "Kaldır",
       "filter": {
         "all": "Tümü",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Bir klasör seçin",
       "folderEmpty": "Henüz klasör yok",
       "folderNoSelection": "Klasör seçilmedi",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galeri",
       "folderViewSelect": "Görünüm",
       "project": "Proje",
       "projectNoSelection": "Proje seçilmedi",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Ana sayfa düzeni",
       "deleteAria": "Düzeni sil",
-      "newAria": "Yeni pano",
       "newName": "Yeni pano",
       "defaultName": "Ana sayfa",
       "manage": "Panoları yönet",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# görevin son tarihi bugün} other {# görevin son tarihi bugün}}",
       "events": "{count, plural, one {# etkinlik} other {# etkinlik}}"
     },
-    "edit": "Düzenle",
-    "done": "Tamam",
     "addWidget": "Widget ekle",
     "cover": {
       "add": "Kapak ekle"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Tanıtım tamamlandı",
-      "body": "Lütfen GitHub'da bize yıldız verin — başkalarının MemryNote'u bulmasına yardımcı olur.",
-      "action": "GitHub'da yıldız ver"
+      "body": "Lütfen GitHub'da bize yıldız verin — başkalarının MemryNote'u bulmasına yardımcı olur."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Güncelleme hazır",
     "failed": "Güncellenemedi",
     "downloadAction": "İndir",
-    "restartAction": "Yeniden başlat",
     "detailsAction": "Ayrıntılar",
     "popover": {
       "readyTitle": "MemryNote {version} hazır",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Kasalar",
     "position": "{name}, {index}. kasa, toplam {count}",
-    "openList": "{position}. Kasa listesini aç",
     "switchTo": "{name} kasasına geç",
     "switchingTo": "{name} kasasına geçiliyor",
     "changeIcon": "Simgeyi değiştir…",
@@ -1501,7 +1433,6 @@
       "onDevice": "{device} üzerinde",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# kasa bulundu} other {# kasa bulundu}}",
-      "notion": "Notion",
       "otherApps": "Diğer uygulamalar ve dosyalar",
       "otherAppsHint": "ve {count} tane daha",
       "detectedFootnote": "Hangi uygulamaların yüklü olduğu kontrol edilerek bulundu. {device} dışına hiçbir şey çıkmaz.",

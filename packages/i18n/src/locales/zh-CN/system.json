@@ -17,18 +17,6 @@
       "filterAll": "所有文件"
     },
     "exportCancelled": "导出已取消",
-    "update": {
-      "availableTitle": "有可用更新",
-      "availableMessage": "memrynote {version} 已发布。",
-      "availableDetailFallback": "要立即下载更新吗？",
-      "buttonDownload": "下载",
-      "buttonLater": "稍后",
-      "readyTitle": "更新已就绪",
-      "readyMessage": "memrynote {version} 已下载。",
-      "readyDetailFallback": "重新启动 memrynote 以完成更新安装。",
-      "buttonRestartNow": "立即重启",
-      "releaseNotesLabel": "更新说明："
-    },
     "dataDbRecovery": {
       "title": "修复保险库数据库",
       "message": "Memry 中此保险库的数据库已损坏。",

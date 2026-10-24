@@ -122,10 +122,6 @@
       "body": "Создайте заметку, чтобы начать",
       "newNote": "Новая заметка"
     },
-    "readwiseSync": {
-      "tooltip": "Синхронизация Readwise",
-      "failed": "Сбой синхронизации Readwise"
-    },
     "syncing": {
       "body": "Синхронизация заметок — они будут появляться здесь по мере получения"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Добавить в закладки",
       "removeFromBookmarks": "Убрать из закладок",
       "journalSettings": "Настройки журнала…"
-    },
-    "nav": {
-      "label": "Навигация",
-      "ariaExpanded": "Раздел навигации развёрнут",
-      "ariaCollapsed": "Раздел навигации свёрнут",
-      "saveFailed": "Не удалось сохранить состояние раздела навигации"
     },
     "viewOptions": {
       "label": "Параметры отображения",
@@ -523,13 +513,8 @@
         "ai": "ИИ"
       },
       "secondary": {
-        "asToggleHeading": "Сворачиваемый",
         "asLinkedTask": "Как связанная задача",
         "asReminder": "Как напоминание"
-      },
-      "actions": {
-        "insert": "Вставить",
-        "open": "Открыть"
       },
       "close": "Закрыть меню",
       "matchesAlias": "совпадает с",
@@ -607,7 +592,6 @@
         "title": "Переместить блок в заметку",
         "searchPlaceholder": "Поиск заметок…",
         "noResults": "Нет подходящих заметок",
-        "moved": "Блок перемещён в «{title}»",
         "failed": "Не удалось переместить блок"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Структура",
     "aria": "Структура документа",
-    "emptyYet": "Заголовков пока нет",
     "readTime": "{count} мин чтения",
     "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",
     "created": "Создано",
@@ -839,11 +822,9 @@
     "toolbarComment": "Добавить комментарий",
     "commentPlaceholder": "Добавить комментарий…",
     "createdTooltip": "Создано {date} в {time}",
-    "cancel": "Отмена",
     "resolve": "Отметить как решённый",
     "edit": "Изменить комментарий",
     "delete": "Удалить комментарий",
-    "replyPlaceholder": "Ответить…",
     "attachAria": "Прикрепить файл",
     "mentionAria": "Упомянуть человека, страницу или дату",
     "sendAria": "Отправить комментарий",
@@ -856,13 +837,7 @@
       "code": "Код"
     },
     "openImageAria": "Открыть изображение {name}",
-    "openAttachmentAria": "Открыть вложение {name}",
-    "kind": {
-      "comment": "Комментарий",
-      "addition": "Добавление",
-      "deletion": "Удаление",
-      "substitution": "Замена"
-    }
+    "openAttachmentAria": "Открыть вложение {name}"
   },
   "tagsRow": {
     "aria": "Теги",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Свойства",
     "noteAria": "Свойства заметки",
-    "workspaceAria": "Свойства рабочего пространства",
     "listAria": "Список свойств",
     "add": "Добавить свойство",
     "addDescription": "Добавить новое свойство в эту заметку",
@@ -932,7 +906,6 @@
       "inProgress": "В работе",
       "done": "Выполнено"
     },
-    "projectAlreadySet": "У этой заметки уже есть свойство «Проект»",
     "projectPlaceholder": "Без проекта",
     "projectSearch": "Поиск проектов",
     "projectEmpty": "Нет проектов",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фильтр",
-      "filters": "Фильтры",
-      "clearAll": "Очистить все",
-      "noFiltersApplied": "Фильтры не применены",
-      "addFiltersToNarrowDownYourNotes": "Добавьте фильтры, чтобы сузить список заметок",
       "match": "Совпадение",
-      "allAnd": "Все (И)",
-      "anyOr": "Любое (ИЛИ)",
-      "ofTheFollowing": "из следующих:",
       "match2": "Совпадение",
       "all": "Все условия",
       "any": "Любое условие",
-      "of": "из:",
       "addCondition": "Добавить условие",
       "addFilter": "Добавить фильтр",
       "addGroup": "Добавить группу",
@@ -1207,7 +1172,6 @@
       "available": "Доступно: ",
       "preview": "Предпросмотр",
       "fixExpressionErrorsToSeePreview": "Исправьте ошибки в выражении, чтобы увидеть предпросмотр",
-      "usingNote": "Используется заметка: «",
       "cancel": "Отмена",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Загрузка папок…",
       "suggested": "РЕКОМЕНДУЕМЫЕ",
       "bestMatch": "Лучшее совпадение",
-      "current": "текущая)",
       "allFolders": "ВСЕ ПАПКИ",
-      "noFoldersMatch": "Ни одна папка не соответствует \"",
-      "create": "Создать \"",
       "cancel": "Отмена",
       "currentFolderBadge": "(текущая)",
       "noFoldersMatchQuery": "Нет папок, соответствующих запросу «{query}»",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "по умолчанию",
       "viewActions": "Действия с представлением",
-      "rename": "Переименовать",
       "duplicate": "Дублировать",
       "setAsDefault": "Установить по умолчанию",
       "delete": "Удалить",
-      "createNewView": "Создать представление",
-      "createNewView2": "Создать представление",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Создайте новое представление с настраиваемыми столбцами, фильтрами и сортировкой.",
-      "viewName": "Название представления",
       "myCustomView": "Моё представление",
-      "baseConfiguration": "Базовая конфигурация",
-      "copyFromCurrentView": "Копировать из текущего представления",
-      "startFreshDefaultColumns": "Начать заново (столбцы по умолчанию)",
       "cancel": "Отмена",
-      "renameView": "Переименовать представление",
-      "enterANewNameForThisView": "Введите новое имя для этого представления.",
-      "viewName2": "Название представления",
-      "viewName3": "Название представления",
-      "cancel2": "Отмена",
       "deleteView": "Удалить представление",
       "areYouSureYouWantToDelete": "Удалить представление \"",
       "thisActionCannotBeUndone": "Это действие нельзя отменить.",
@@ -1289,22 +1237,17 @@
       "layout": "Макет",
       "table": "Таблица",
       "list": "Список",
-      "gallery": "Галерея",
-      "createView": "Создать представление",
-      "save": "Сохранить"
+      "gallery": "Галерея"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Не удалось загрузить PDF: ",
-      "download": "Скачать",
       "download2": "Скачать",
       "noFileAttached": "Файл не прикреплён",
       "resizePdf": "Изменить размер PDF",
       "resizeHtml": "Изменить размер встроенного HTML",
       "alignLeft": "Выровнять по левому краю",
       "alignCenter": "Выровнять по центру",
-      "alignRight": "Выровнять по правому краю",
-      "previousPage": "Предыдущая страница",
-      "nextPage": "Следующая страница"
+      "alignRight": "Выровнять по правому краю"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Открыть в панели задачи",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 × 11 дюймов)",
       "legal85X14In": "Legal (8,5 × 14 дюймов)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "дд.мм.гггг"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Синхронизировано"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Слова",
       "characters": "Символы",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Закладок пока нет",
       "moreOptions": "Другие действия",
       "remove": "Убрать"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Открыть",
-      "openToTheSide": "Открыть сбоку",
-      "pinToTabs": "Закрепить как вкладку",
-      "edit": "Изменить",
-      "delete": "Удалить",
-      "copyLink": "Скопировать ссылку"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Загрузка тегов…",
@@ -1380,26 +1309,9 @@
       "cancel": "Отмена"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Назад",
-      "notes": "заметки",
-      "loadingNotes": "Загрузка заметок…",
-      "noNotesWithThisTag": "Нет заметок с этим тегом",
-      "addThisTagToANoteToSeeItHere": "Добавьте этот тег к заметке, чтобы она появилась здесь",
-      "pinned": "ЗАКРЕПЛЕНО",
-      "allNotes": "ВСЕ ЗАМЕТКИ",
-      "allNotesArePinned": "Все заметки закреплены",
-      "tasks": "ЗАДАЧИ",
-      "unpinFromTag": "Открепить от тега",
-      "unpin": "Открепить",
-      "pinToTag": "Закрепить в теге",
-      "pin": "Закрепить",
       "tagActions": "Действия с тегами",
-      "editTagName": "Изменить имя тега",
       "changeColor": "Изменить цвет",
-      "deleteTag": "Удалить тег",
-      "recent": "Недавние",
-      "created": "Создано",
-      "alphabetical": "По алфавиту"
+      "deleteTag": "Удалить тег"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Переименовать тег",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Создать новую заметку",
-      "viewSettings": "Настройки отображения",
-      "displayDensity": "Плотность отображения",
-      "comfortable": "Обычный",
-      "compact": "Компактный",
-      "showSummaries": "Показывать сводки",
       "cancel": "Отмена"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Открыть страницу тегов"
   },
   "tagView": {
-    "moreActions": "Другие действия",
     "pin": {
       "action": "{count, plural, one {Закрепить # заметку в теге} few {Закрепить # заметки в теге} many {Закрепить # заметок в теге} other {Закрепить # заметки в теге}}",
       "success": "{count, plural, one {# заметка закреплена в теге} few {# заметки закреплены в теге} many {# заметок закреплено в теге} other {# заметки закреплено в теге}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Название поиска",
     "saveDialogPlaceholder": "Например, рабочие встречи",
     "cancel": "Отмена",
-    "save": "Сохранить",
-    "addToFilterHint": "Щёлкните тег, удерживая Ctrl/Cmd, чтобы добавить его в фильтр"
+    "save": "Сохранить"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Пишется…",
       "writtenBy": "Написал {agent}",
       "retry": "Последний запуск не удался · Повторить",
-      "retryAction": "Повторить",
       "captionOff": "Включите «Сводки длинных заметок» в «Настройки → ИИ»",
       "captionNoAgent": "Агент не подключён · Настройки → ИИ",
       "unknownAgent": "ИИ"

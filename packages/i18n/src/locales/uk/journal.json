@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "ШІ-зв’язки",
     "todaysNotes": "Нотатки за сьогодні",
-    "todaysSchedule": "Сьогоднішній розклад",
-    "todaysTasks": "Сьогоднішні завдання",
     "tasks": "Завдання",
     "technicalDetails": "Технічні деталі"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Доброго дня",
       "evening": "Доброго вечора",
       "night": "Доброї ночі"
-    },
-    "allDay": "Цілий день"
+    }
   },
   "nav": {
     "previousDay": "Попередній день",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Інші параметри",
     "documentStatistics": "Статистика документа",
-    "dayContext": "Контекст дня: завдання та розклад",
-    "scheduleEvents": "Події розкладу",
-    "tasks": "Завдання",
     "notesCreatedToday": "Нотаток створено сьогодні: {count}"
   },
   "empty": {
     "noEntry": "Запису немає",
     "noDaysInMonth": "У цьому місяці немає днів",
-    "noEventsScheduled": "Немає запланованих подій",
-    "noEventsScheduledToday": "Сьогодні немає запланованих подій",
-    "noEventsWereScheduled": "Подій не було заплановано",
-    "noTasksDue": "Немає завдань із терміном",
-    "noTasksDueToday": "Немає завдань із терміном на сьогодні",
-    "noTasksWereDue": "Не було завдань із терміном",
     "noNotesToday": "Сьогодні нотатки не створювались",
     "startDocumenting": "Почніть записувати свої думки та ідеї"
   },
@@ -155,9 +143,7 @@
     "day": "день",
     "days": "дн.",
     "event": "подія",
-    "events": "події",
     "task": "завдання",
-    "todo": "до виконання",
     "moreConnections": "+ ще {count} зв’язок",
     "moreConnections_plural": "+ ще {count, plural, one {# зв’язок} few {# зв’язки} many {# зв’язків} other {# зв’язку}}",
     "moreNotes": "+ ще {count} нотатка",
@@ -166,7 +152,6 @@
     "charactersWritten": "написано символів",
     "words": "слів: {count}",
     "characters": "символів: {count}",
-    "completed": "виконано: {count}",
     "overdue": "Прострочено: {count}"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Змінено {date}"
   },
   "task": {
-    "completed": "Виконано",
-    "notCompleted": "Не виконано",
-    "priority": "Пріоритет: {priority}",
-    "overdue": "прострочено",
-    "markComplete": "Позначити «{title}» як виконане",
-    "markNotComplete": "Позначити «{title}» як невиконане"
+    "priority": "Пріоритет: {priority}"
   },
   "template": {
     "using": "Використовується шаблон «{templateName}»"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Вміст досі зберігається в пам’яті. Натисніть, щоб спробувати зберегти ще раз.",
-    "noteNotFound": "Нотатку «{target}» не знайдено",
     "createLinkedFailed": "Не вдалося створити пов’язану нотатку",
     "fileNotFound": "Файл не знайдено: {target}",
     "openLinkedItemFailed": "Не вдалося відкрити пов’язаний елемент",

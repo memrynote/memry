@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Actie mislukt",
-    "nothingToUndo": "Niets om ongedaan te maken",
     "undone": "Ongedaan gemaakt: {description}",
     "undoFailed": "Kan actie niet ongedaan maken",
     "filesImported": "{count, plural, one {# bestand geïmporteerd} other {# bestanden geïmporteerd}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "De agent wil {title} maken. Bekijk de wijziging voordat je die toepast.",
       "descriptionDelete": "De agent wil {title} verwijderen. Bekijk de wijziging voordat je die toepast.",
       "fallbackTitle": "dit item",
-      "current": "Huidig",
       "candidate": "Voorstel",
       "loading": "Laden…",
       "apply": "Toepassen",
@@ -383,12 +381,8 @@
       "removeAttachment": "{label} verwijderen",
       "placeholder": "Vraag memrynote alles… @ om notities, taken en afspraken te vermelden",
       "send": "Verzenden",
-      "providerLabel": "Agentaanbieder: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Verbonden tools",
       "connectTool": "{tool} verbinden",
-      "addContext": "Context toevoegen",
-      "addContextWithPermissions": "Context toevoegen ({permissions})",
       "mentionContext": "Een notitie, taak of afspraak vermelden",
       "files": {
         "attach": "Tekstbestand bijvoegen",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Kan spraakinvoer niet transcriberen"
         }
       },
-      "modelLabel": "Agentmodel: {provider} {model}",
-      "reasoningLabel": "Redenering van de agent: {reasoning}",
       "providers": {
-        "label": "Aanbieder",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Computertoegang"
       },
       "webSearch": {
-        "on": "Aan",
-        "off": "Uit",
         "label": "Zoeken op het web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent niet beschikbaar – Instellingen openen…"
       },
       "settings": {
-        "reasoning": "Redenering",
         "effort": "Inspanning"
       },
       "includeCurrentNote": "Huidige notitie meenemen",
@@ -472,11 +460,8 @@
           "max": "Max"
         }
       },
-      "permissionsLabel": "Agentmachtigingen: {access}, zoeken op het web {webSearch}",
       "permissions": {
-        "label": "Machtigingen",
-        "access": "Toegang",
-        "tools": "Tools"
+        "access": "Toegang"
       },
       "modelSettingsLabel": "Modelinstellingen van de agent: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nieuwe map",
       "newProject": "Nieuw project",
       "bookmarks": "Bladwijzers",
-      "chart": "Grafiek",
       "tags": "Tags",
       "reorderSection": "Volgorde van {section} wijzigen",
       "dropFilesToImport": "Zet bestanden neer om te importeren",
       "dropFilesIntoVaultRoot": "Hoofdmap van de kluis",
       "newNoteN": "Nieuwe notitie (⌘N)",
-      "new": "Nieuw",
       "newItemMenu": "Nieuw maken…",
       "feedbackButton": "Feedback sturen",
       "feedbackTitle": "Feedback sturen",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Zoeken, vervangen, vragen…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Introductie overslaan",
-      "welcomeToMemry": "Welkom bij memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Je persoonlijke kennisbank. We helpen je in twee minuten op weg.",
-      "getStarted": "Aan de slag ",
-      "createYourFirstNote": "Maak je eerste notitie",
-      "markdownBasedStoredLocallyAsPlainFiles": "Op basis van Markdown, lokaal opgeslagen als gewone bestanden.",
-      "eGMeetingNotesIdeasAnything": "bijv. notulen, ideeën, wat dan ook…",
-      "skip": "Overslaan",
-      "createNote": "Notitie maken ",
-      "addYourFirstTask": "Voeg je eerste taak toe",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Taken zijn gekoppeld aan je notities, met prioriteiten en vervaldatums.",
-      "eGReviewProjectProposal": "bijv. projectvoorstel beoordelen…",
-      "skip2": "Overslaan",
-      "createTask": "Taak maken ",
-      "syncAcrossDevices": "Synchroniseer tussen apparaten",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Houd je notities en taken gesynchroniseerd op al je apparaten. Je kunt dit altijd later instellen.",
-      "skipForNow": "Nu overslaan",
-      "doneLetSGo": "Klaar – aan de slag! "
+      "skip": "Overslaan"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Mappictogram instellen",
@@ -852,8 +818,7 @@
       "unknownTabType": "Onbekend tabbladtype: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "niet-opgeslagen wijzigingen",
-      "preview": "voorbeeld"
+      "unsavedChanges": "niet-opgeslagen wijzigingen"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nieuw tabblad",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Welkom bij memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Je persoonlijke kennisbeheersysteem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Kies een map om je notities en taken in op te slaan.",
       "opening": "Openen…",
-      "selectVaultFolder": "Kluismap kiezen",
-      "plainMarkdown": "Gewoon Markdown",
-      "yourNotesStayPortable": "Je notities blijven overdraagbaar",
-      "syncAnywhere": "Overal synchroniseren",
-      "useDropboxIcloudGit": "Gebruik Dropbox, iCloud, Git",
       "recentVaults": "Recente kluizen",
-      "notesLastOpened": "notities · Laatst geopend",
-      "preRelease": "Bèta",
       "createNewVault": "Nieuwe kluis maken",
-      "createNewVaultDesc": "Start een nieuwe kluis in een map naar keuze.",
-      "openExistingVault": "Bestaande kluis openen",
-      "openExistingVaultDesc": "Kies een map met Markdown-bestanden die je al bewaart.",
-      "signInToSync": "Inloggen om te synchroniseren",
-      "signInToSyncDesc": "End-to-end versleutelde kluizen op al je apparaten.",
-      "create": "Maken",
       "open": "Openen",
-      "signIn": "Inloggen",
       "helpAndDocs": "Help en documentatie",
-      "signInRequiresVault": "Open of maak eerst een kluis om synchronisatie in te stellen.",
       "addVault": "Kluis toevoegen",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Nog geen kluizen",
       "openVault": "Kluis openen",
       "settings": "Instellingen",
-      "logOut": "Uitloggen",
-      "signInToSync": "Inloggen om te synchroniseren",
       "remove": "Verwijder “",
       "removeVaultTitle": "“{name}” uit de lijst verwijderen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar je bestanden blijven op schijf staan. Je kunt de kluis later altijd opnieuw toevoegen.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Wijzigen…",
       "download": "Downloaden",
       "downloadFailed": "Kan de kluis niet downloaden",
-      "deleteFromAccount": "Uit account verwijderen",
       "deleteVaultTitle": "“{name}” uit je account verwijderen?",
       "deleteVaultBody": "Hiermee worden alle gesynchroniseerde gegevens van deze kluis definitief van de servers van Memry verwijderd; dit kan niet ongedaan worden gemaakt. Je bestanden op schijf worden niet verwijderd.",
       "deleteVaultConfirm": "Uit account verwijderen",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Widget verwijderen",
       "dragAria": "Widget slepen",
-      "configAria": "Widget configureren",
-      "resizeAria": "Formaat wijzigen naar {size}",
       "menuAria": "Widgetopties",
-      "resize": "Grootte",
       "remove": "Verwijderen",
       "filter": {
         "all": "Alle",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Kies een map",
       "folderEmpty": "Nog geen mappen",
       "folderNoSelection": "Geen map geselecteerd",
-      "folderView_list": "Lijst",
-      "folderView_gallery": "Galerij",
       "folderViewSelect": "Weergave",
       "project": "Project",
       "projectNoSelection": "Geen project geselecteerd",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Startindeling",
       "deleteAria": "Indeling verwijderen",
-      "newAria": "Nieuw bord",
       "newName": "Nieuw bord",
       "defaultName": "Start",
       "manage": "Borden beheren",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# taak vervalt vandaag} other {# taken vervallen vandaag}}",
       "events": "{count, plural, one {# afspraak} other {# afspraken}}"
     },
-    "edit": "Bewerken",
-    "done": "Klaar",
     "addWidget": "Widget toevoegen",
     "cover": {
       "add": "Omslag toevoegen"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introductie voltooid",
-      "body": "Geef ons een ster op GitHub – zo vinden anderen MemryNote makkelijker.",
-      "action": "Ster geven op GitHub"
+      "body": "Geef ons een ster op GitHub – zo vinden anderen MemryNote makkelijker."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Update gereed",
     "failed": "Update mislukt",
     "downloadAction": "Downloaden",
-    "restartAction": "Opnieuw starten",
     "detailsAction": "Details",
     "popover": {
       "readyTitle": "MemryNote {version} staat klaar",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Kluizen",
     "position": "{name}, kluis {index} van {count}",
-    "openList": "{position}. Lijst met kluizen openen",
     "switchTo": "Overschakelen naar {name}",
     "switchingTo": "Bezig met overschakelen naar {name}",
     "changeIcon": "Pictogram wijzigen…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Op {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# kluis gevonden} other {# kluizen gevonden}}",
-      "notion": "Notion",
       "otherApps": "Andere apps en bestanden",
       "otherAppsHint": "en nog {count}",
       "detectedFootnote": "Gevonden door te controleren welke apps zijn geïnstalleerd. Niets verlaat {device}.",

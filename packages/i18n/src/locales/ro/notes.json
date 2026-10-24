@@ -122,10 +122,6 @@
       "body": "Creați o notiță pentru a începe",
       "newNote": "Notiță nouă"
     },
-    "readwiseSync": {
-      "tooltip": "Sincronizare Readwise",
-      "failed": "Sincronizarea Readwise a eșuat"
-    },
     "syncing": {
       "body": "Se sincronizează notițele – vor apărea aici pe măsură ce sosesc"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Adaugă la marcaje",
       "removeFromBookmarks": "Elimină din marcaje",
       "journalSettings": "Setările jurnalului…"
-    },
-    "nav": {
-      "label": "Navigare",
-      "ariaExpanded": "Secțiunea de navigare, extinsă",
-      "ariaCollapsed": "Secțiunea de navigare, restrânsă",
-      "saveFailed": "Nu s-a putut salva starea secțiunii de navigare"
     },
     "viewOptions": {
       "label": "Opțiuni de vizualizare",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Ca bloc pliabil",
         "asLinkedTask": "Ca sarcină legată",
         "asReminder": "Ca memento"
-      },
-      "actions": {
-        "insert": "Inserează",
-        "open": "Deschide"
       },
       "close": "Închide meniul",
       "matchesAlias": "corespunde cu",
@@ -607,7 +592,6 @@
         "title": "Mutați blocul într-o notiță",
         "searchPlaceholder": "Caută notițe…",
         "noResults": "Nicio notiță potrivită",
-        "moved": "Bloc mutat în „{title}”",
         "failed": "Nu s-a putut muta blocul"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Structură",
     "aria": "Structura documentului",
-    "emptyYet": "Încă nu există titluri",
     "readTime": "Citire: {count} min",
     "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
     "created": "Creat",
@@ -839,11 +822,9 @@
     "toolbarComment": "Comentează",
     "commentPlaceholder": "Adaugă un comentariu…",
     "createdTooltip": "Creat pe {date}, la {time}",
-    "cancel": "Anulează",
     "resolve": "Rezolvă",
     "edit": "Editează comentariul",
     "delete": "Șterge comentariul",
-    "replyPlaceholder": "Răspunde…",
     "attachAria": "Atașează fișier",
     "mentionAria": "Menționează o persoană, pagină sau dată",
     "sendAria": "Trimite comentariul",
@@ -856,13 +837,7 @@
       "code": "Cod"
     },
     "openImageAria": "Deschide imaginea {name}",
-    "openAttachmentAria": "Deschide atașamentul {name}",
-    "kind": {
-      "comment": "Comentariu",
-      "addition": "Adăugare",
-      "deletion": "Ștergere",
-      "substitution": "Înlocuire"
-    }
+    "openAttachmentAria": "Deschide atașamentul {name}"
   },
   "tagsRow": {
     "aria": "Etichete",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Proprietăți",
     "noteAria": "Proprietățile notiței",
-    "workspaceAria": "Proprietățile spațiului de lucru",
     "listAria": "Lista de proprietăți",
     "add": "Adaugă o proprietate",
     "addDescription": "Adăugați o proprietate nouă la această notiță",
@@ -932,7 +906,6 @@
       "inProgress": "În curs",
       "done": "Finalizat"
     },
-    "projectAlreadySet": "Această notiță are deja o proprietate de proiect",
     "projectPlaceholder": "Niciun proiect",
     "projectSearch": "Caută proiecte",
     "projectEmpty": "Niciun proiect",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtru",
-      "filters": "Filtre",
-      "clearAll": "Șterge tot",
-      "noFiltersApplied": "Nu s-au aplicat filtre",
-      "addFiltersToNarrowDownYourNotes": "Adăugați filtre pentru a restrânge lista de notițe",
       "match": "Potrivire",
-      "allAnd": "Toate (ȘI)",
-      "anyOr": "Orice (SAU)",
-      "ofTheFollowing": "dintre următoarele:",
       "match2": "Potrivire",
       "all": "Toate",
       "any": "Oricare",
-      "of": "din:",
       "addCondition": "Adaugă o condiție",
       "addFilter": "Adaugă un filtru",
       "addGroup": "Adaugă un grup",
@@ -1207,7 +1172,6 @@
       "available": "Disponibile: ",
       "preview": "Previzualizare",
       "fixExpressionErrorsToSeePreview": "Remediați erorile de expresie pentru a vedea previzualizarea",
-      "usingNote": "Se folosește notița: „",
       "cancel": "Anulează",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Se încarcă dosarele…",
       "suggested": "SUGERATE",
       "bestMatch": "Cea mai bună potrivire",
-      "current": "curent)",
       "allFolders": "TOATE DOSARELE",
-      "noFoldersMatch": "Niciun dosar nu se potrivește cu „",
-      "create": "Creează „",
       "cancel": "Anulează",
       "currentFolderBadge": "(curent)",
       "noFoldersMatchQuery": "Niciun dosar nu se potrivește cu „{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "implicită",
       "viewActions": "Acțiunile vizualizării",
-      "rename": "Redenumește",
       "duplicate": "Duplică",
       "setAsDefault": "Setează ca implicită",
       "delete": "Șterge",
-      "createNewView": "Creează o vizualizare nouă",
-      "createNewView2": "Creați o nouă vizualizare",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Creați o nouă vizualizare cu coloane, filtre și sortare personalizate.",
-      "viewName": "Numele vizualizării",
       "myCustomView": "Vizualizarea mea personalizată",
-      "baseConfiguration": "Configurație de bază",
-      "copyFromCurrentView": "Copiază din vizualizarea curentă",
-      "startFreshDefaultColumns": "Pornește de la zero (coloane implicite)",
       "cancel": "Anulează",
-      "renameView": "Redenumiți vizualizarea",
-      "enterANewNameForThisView": "Introduceți un nume nou pentru această vizualizare.",
-      "viewName2": "Numele vizualizării",
-      "viewName3": "Numele vizualizării",
-      "cancel2": "Anulează",
       "deleteView": "Ștergeți vizualizarea",
       "areYouSureYouWantToDelete": "Sigur doriți să ștergeți \"",
       "thisActionCannotBeUndone": "Acțiunea nu poate fi anulată.",
@@ -1289,22 +1237,17 @@
       "layout": "Aspect",
       "table": "Tabel",
       "list": "Listă",
-      "gallery": "Galerie",
-      "createView": "Creează vizualizare",
-      "save": "Salvează"
+      "gallery": "Galerie"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nu s-a putut încărca PDF-ul: ",
-      "download": "Descarcă",
       "download2": "Descarcă",
       "noFileAttached": "Niciun fișier atașat",
       "resizePdf": "Redimensionează PDF-ul",
       "resizeHtml": "Redimensionează conținutul HTML încorporat",
       "alignLeft": "Aliniază la stânga",
       "alignCenter": "Aliniază la centru",
-      "alignRight": "Aliniază la dreapta",
-      "previousPage": "Pagina anterioară",
-      "nextPage": "Pagina următoare"
+      "alignRight": "Aliniază la dreapta"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Deschide în panoul sarcinii",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 inchi)",
       "legal85X14In": "Legal (8,5 x 14 inchi)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "zz.ll.aaaa"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Sincronizat"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Cuvinte",
       "characters": "Caractere",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Încă nu există marcaje",
       "moreOptions": "Mai multe opțiuni",
       "remove": "Elimină"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Deschide",
-      "openToTheSide": "Deschide în lateral",
-      "pinToTabs": "Fixează în file",
-      "edit": "Editează",
-      "delete": "Șterge",
-      "copyLink": "Copiază linkul"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Se încarcă etichetele…",
@@ -1380,26 +1309,9 @@
       "cancel": "Anulează"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Înapoi",
-      "notes": "notițe",
-      "loadingNotes": "Se încarcă notițele…",
-      "noNotesWithThisTag": "Nicio notiță cu această etichetă",
-      "addThisTagToANoteToSeeItHere": "Adăugați această etichetă la o notiță pentru a o vedea aici",
-      "pinned": "FIXATE",
-      "allNotes": "TOATE NOTIȚELE",
-      "allNotesArePinned": "Toate notițele sunt fixate",
-      "tasks": "SARCINI",
-      "unpinFromTag": "Anulează fixarea în etichetă",
-      "unpin": "Anulează fixarea",
-      "pinToTag": "Fixează în etichetă",
-      "pin": "Fixează",
       "tagActions": "Acțiuni pentru etichetă",
-      "editTagName": "Editează numele etichetei",
       "changeColor": "Schimbă culoarea",
-      "deleteTag": "Șterge eticheta",
-      "recent": "Recent",
-      "created": "Creat",
-      "alphabetical": "Alfabetic"
+      "deleteTag": "Șterge eticheta"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Redenumiți eticheta",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Creează o notiță nouă",
-      "viewSettings": "Setări de vizualizare",
-      "displayDensity": "Densitatea afișajului",
-      "comfortable": "Confortabil",
-      "compact": "Compact",
-      "showSummaries": "Afișează rezumatele",
       "cancel": "Anulează"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Deschide pagina etichetelor"
   },
   "tagView": {
-    "moreActions": "Mai multe acțiuni",
     "pin": {
       "action": "Fixează {count, plural, one {# notiță} few {# notițe} other {# de notițe}} în etichetă",
       "success": "{count, plural, one {# notiță fixată} few {# notițe fixate} other {# de notițe fixate}} în etichetă",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Denumiți această căutare",
     "saveDialogPlaceholder": "de ex. Întâlniri de lucru",
     "cancel": "Anulează",
-    "save": "Salvează",
-    "addToFilterHint": "Faceți Ctrl/Cmd-clic pe o etichetă pentru a o adăuga la filtru"
+    "save": "Salvează"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Se scrie…",
       "writtenBy": "Scris de {agent}",
       "retry": "Ultima rulare a eșuat · Reîncearcă",
-      "retryAction": "Reîncearcă",
       "captionOff": "Activează Rezumă notițele lungi în Setări → AI",
       "captionNoAgent": "Niciun agent conectat · Setări → AI",
       "unknownAgent": "AI"

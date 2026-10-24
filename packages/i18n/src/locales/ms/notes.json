@@ -122,10 +122,6 @@
       "body": "Buat nota untuk bermula",
       "newNote": "Nota baharu"
     },
-    "readwiseSync": {
-      "tooltip": "Penyegerakan Readwise",
-      "failed": "Penyegerakan Readwise gagal"
-    },
     "syncing": {
       "body": "Menyegerakkan nota anda — nota akan dipaparkan di sini sebaik sahaja tiba"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Tambah penanda halaman",
       "removeFromBookmarks": "Alih keluar daripada penanda halaman",
       "journalSettings": "Tetapan jurnal…"
-    },
-    "nav": {
-      "label": "Navigasi",
-      "ariaExpanded": "Bahagian navigasi, dikembangkan",
-      "ariaCollapsed": "Bahagian navigasi, diruntuhkan",
-      "saveFailed": "Tidak dapat menyimpan keadaan bahagian navigasi"
     },
     "viewOptions": {
       "label": "Pilihan paparan",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Sebagai togol",
         "asLinkedTask": "Sebagai tugas terpaut",
         "asReminder": "Sebagai peringatan"
-      },
-      "actions": {
-        "insert": "Sisip",
-        "open": "Buka"
       },
       "close": "Tutup menu",
       "matchesAlias": "sepadan dengan",
@@ -607,7 +592,6 @@
         "title": "Alihkan blok ke nota",
         "searchPlaceholder": "Cari nota…",
         "noResults": "Tiada nota yang sepadan",
-        "moved": "Blok dialihkan ke “{title}”",
         "failed": "Tidak dapat mengalihkan blok"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Kerangka",
     "aria": "Kerangka dokumen",
-    "emptyYet": "Tiada tajuk lagi",
     "readTime": "{count} min bacaan",
     "words": "{count} perkataan",
     "created": "Dibuat",
@@ -839,11 +822,9 @@
     "toolbarComment": "Komen",
     "commentPlaceholder": "Tambah komen…",
     "createdTooltip": "Dibuat {date} pada {time}",
-    "cancel": "Batal",
     "resolve": "Selesaikan",
     "edit": "Edit komen",
     "delete": "Padam komen",
-    "replyPlaceholder": "Balas…",
     "attachAria": "Lampirkan fail",
     "mentionAria": "Sebut orang, halaman atau tarikh",
     "sendAria": "Hantar komen",
@@ -856,13 +837,7 @@
       "code": "Kod"
     },
     "openImageAria": "Buka imej {name}",
-    "openAttachmentAria": "Buka lampiran {name}",
-    "kind": {
-      "comment": "Komen",
-      "addition": "Penambahan",
-      "deletion": "Pemadaman",
-      "substitution": "Penggantian"
-    }
+    "openAttachmentAria": "Buka lampiran {name}"
   },
   "tagsRow": {
     "aria": "Teg",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Sifat",
     "noteAria": "Sifat nota",
-    "workspaceAria": "Sifat ruang kerja",
     "listAria": "Senarai sifat",
     "add": "Tambah sifat",
     "addDescription": "Tambahkan sifat baharu pada nota ini",
@@ -932,7 +906,6 @@
       "inProgress": "Sedang dibuat",
       "done": "Selesai"
     },
-    "projectAlreadySet": "Nota ini sudah mempunyai sifat projek",
     "projectPlaceholder": "Tiada projek",
     "projectSearch": "Cari projek",
     "projectEmpty": "Tiada projek",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Penapis",
-      "filters": "Penapis",
-      "clearAll": "Kosongkan semua",
-      "noFiltersApplied": "Tiada penapis digunakan",
-      "addFiltersToNarrowDownYourNotes": "Tambah penapis untuk mengecilkan senarai nota anda",
       "match": "Padankan",
-      "allAnd": "Semua (DAN)",
-      "anyOr": "Mana-mana (ATAU)",
-      "ofTheFollowing": "daripada yang berikut:",
       "match2": "Padankan",
       "all": "Semua",
       "any": "Mana-mana",
-      "of": "daripada:",
       "addCondition": "Tambah syarat",
       "addFilter": "Tambah penapis",
       "addGroup": "Tambah kumpulan",
@@ -1207,7 +1172,6 @@
       "available": "Tersedia: ",
       "preview": "Pratonton",
       "fixExpressionErrorsToSeePreview": "Betulkan ralat ungkapan untuk melihat pratonton",
-      "usingNote": "Menggunakan nota: “",
       "cancel": "Batal",
       "namePlaceholder": "hari_hingga_tarikh_akhir",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Memuatkan folder…",
       "suggested": "CADANGAN",
       "bestMatch": "Padanan terbaik",
-      "current": "semasa)",
       "allFolders": "SEMUA FOLDER",
-      "noFoldersMatch": "Tiada folder yang sepadan \"",
-      "create": "Buat \"",
       "cancel": "Batal",
       "currentFolderBadge": "(semasa)",
       "noFoldersMatchQuery": "Tiada folder sepadan dengan “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "lalai",
       "viewActions": "Tindakan paparan",
-      "rename": "Namakan semula",
       "duplicate": "Pendua",
       "setAsDefault": "Tetapkan sebagai lalai",
       "delete": "Padam",
-      "createNewView": "Buat paparan baharu",
-      "createNewView2": "Buat paparan baharu",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Buat paparan baharu dengan lajur tersuai, penapis dan pengisihan.",
-      "viewName": "Nama paparan",
       "myCustomView": "Paparan tersuai saya",
-      "baseConfiguration": "Konfigurasi asas",
-      "copyFromCurrentView": "Salin daripada paparan semasa",
-      "startFreshDefaultColumns": "Mula dari awal (lajur lalai)",
       "cancel": "Batal",
-      "renameView": "Namakan semula paparan",
-      "enterANewNameForThisView": "Masukkan nama baharu untuk paparan ini.",
-      "viewName2": "Nama paparan",
-      "viewName3": "Nama paparan",
-      "cancel2": "Batal",
       "deleteView": "Padam paparan",
       "areYouSureYouWantToDelete": "Adakah anda pasti mahu memadamkan \"",
       "thisActionCannotBeUndone": "Tindakan ini tidak boleh dibuat asal.",
@@ -1289,22 +1237,17 @@
       "layout": "Susun atur",
       "table": "Jadual",
       "list": "Senarai",
-      "gallery": "Galeri",
-      "createView": "Buat paparan",
-      "save": "Simpan"
+      "gallery": "Galeri"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Gagal memuatkan PDF: ",
-      "download": "Muat turun",
       "download2": "Muat turun",
       "noFileAttached": "Tiada fail dilampirkan",
       "resizePdf": "Ubah saiz PDF",
       "resizeHtml": "Ubah saiz benaman HTML",
       "alignLeft": "Jajarkan ke kiri",
       "alignCenter": "Jajarkan ke tengah",
-      "alignRight": "Jajarkan ke kanan",
-      "previousPage": "Halaman sebelumnya",
-      "nextPage": "Halaman seterusnya"
+      "alignRight": "Jajarkan ke kanan"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Buka dalam panel tugas",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8.5 x 11 in)",
       "legal85X14In": "Legal (8.5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Disegerakkan"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Perkataan",
       "characters": "Aksara",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Tiada penanda halaman lagi",
       "moreOptions": "Lebih banyak pilihan",
       "remove": "Alih keluar"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Buka",
-      "openToTheSide": "Buka di sisi",
-      "pinToTabs": "Semat pada tab",
-      "edit": "Edit",
-      "delete": "Padam",
-      "copyLink": "Salin pautan"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Memuatkan teg…",
@@ -1380,26 +1309,9 @@
       "cancel": "Batal"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Kembali",
-      "notes": "nota",
-      "loadingNotes": "Memuatkan nota…",
-      "noNotesWithThisTag": "Tiada nota dengan teg ini",
-      "addThisTagToANoteToSeeItHere": "Tambahkan teg ini pada nota untuk melihatnya di sini",
-      "pinned": "DISEMAT",
-      "allNotes": "SEMUA NOTA",
-      "allNotesArePinned": "Semua nota disemat",
-      "tasks": "TUGAS",
-      "unpinFromTag": "Nyahsemat daripada teg",
-      "unpin": "Nyahsemat",
-      "pinToTag": "Semat pada teg",
-      "pin": "Semat",
       "tagActions": "Tindakan teg",
-      "editTagName": "Edit nama teg",
       "changeColor": "Tukar warna",
-      "deleteTag": "Padam teg",
-      "recent": "Terkini",
-      "created": "Dibuat",
-      "alphabetical": "Mengikut abjad"
+      "deleteTag": "Padam teg"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Namakan semula teg",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Buat nota baharu",
-      "viewSettings": "Tetapan paparan",
-      "displayDensity": "Ketumpatan paparan",
-      "comfortable": "Selesa",
-      "compact": "Padat",
-      "showSummaries": "Tunjukkan ringkasan",
       "cancel": "Batal"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Buka hab teg"
   },
   "tagView": {
-    "moreActions": "Tindakan lain",
     "pin": {
       "action": "Semat {count, plural, other {# nota}} pada teg",
       "success": "{count, plural, other {# nota}} disemat pada teg",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Namakan carian ini",
     "saveDialogPlaceholder": "cth. Mesyuarat kerja",
     "cancel": "Batal",
-    "save": "Simpan",
-    "addToFilterHint": "Ctrl/Cmd-klik teg untuk menambahnya pada penapis"
+    "save": "Simpan"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Menulis…",
       "writtenBy": "Ditulis oleh {agent}",
       "retry": "Larian terakhir gagal · Cuba lagi",
-      "retryAction": "Cuba lagi",
       "captionOff": "Hidupkan Ringkaskan nota panjang dalam Tetapan → AI",
       "captionNoAgent": "Tiada ejen disambungkan · Tetapan → AI",
       "unknownAgent": "AI"

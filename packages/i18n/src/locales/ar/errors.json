@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "لم تتم المصادقة",
-    "sessionExpired": "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.",
     "setupSessionExpired": "انتهت مهلة تسجيل الدخول قبل اكتمال هذه العملية. سجّل الدخول مرة أخرى، ثم أدخل عبارة الاسترداد.",
     "setupSessionExpiredLinking": "انتهت مهلة تسجيل الدخول قبل أن يكتمل ربط هذا الجهاز. سجّل الدخول مرة أخرى، ثم امسح الرمز مجددًا.",
     "invalidRecoveryPhraseFormat": "تنسيق عبارة الاسترداد غير صالح",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "تعذّر تحميل النموذج",
     "voiceModelDownloadFailed": "تعذّر تنزيل النموذج الصوتي",
     "terminalCommandInstallFailed": "تعذّر تثبيت أمر الطرفية",
-    "terminalCommandUninstallFailed": "تعذّر إلغاء تثبيت أمر الطرفية",
-    "shortcutInUse": "الاختصار {shortcut} مستخدم بالفعل"
+    "terminalCommandUninstallFailed": "تعذّر إلغاء تثبيت أمر الطرفية"
   },
   "tag": {
     "renameInProgress": "لا تزال إعادة تسمية #{from} إلى #{to} قيد التشغيل. حاول مرة أخرى عند انتهائها.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} يأخذ حقوله بالفعل من هذا الوسم",
     "unreadableSchema": "غيّر إصدار أحدث من Memry هذا الوسم. حدّث Memry لتحريره",
     "relationTargetRequired": "اختر الوسم الذي تشير إليه هذه العلاقة",
-    "editFailed": "تعذّر تغيير حقول الوسم",
-    "previewFailed": "تعذّر حساب ما يؤثر فيه هذا التغيير",
-    "snapshotFailed": "تعذّر تحميل حقول الوسم",
     "renameRunning": "لا تزال إعادة تسمية حقل أخرى قيد الإنهاء ({from} إلى {to}). حاول مرة أخرى بعد انتهائها."
   }
 }

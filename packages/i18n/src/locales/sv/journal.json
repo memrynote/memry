@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI-kopplingar",
     "todaysNotes": "Dagens anteckningar",
-    "todaysSchedule": "Dagens schema",
-    "todaysTasks": "Dagens uppgifter",
     "tasks": "Uppgifter",
     "technicalDetails": "Tekniska detaljer"
   },
@@ -102,8 +100,7 @@
       "afternoon": "God eftermiddag",
       "evening": "God kväll",
       "night": "God natt"
-    },
-    "allDay": "Heldag"
+    }
   },
   "nav": {
     "previousDay": "Föregående dag",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Fler alternativ",
     "documentStatistics": "Dokumentstatistik",
-    "dayContext": "Dagskontext: uppgifter och schema",
-    "scheduleEvents": "Händelser i schemat",
-    "tasks": "Uppgifter",
     "notesCreatedToday": "{count} anteckningar skapade idag"
   },
   "empty": {
     "noEntry": "Inget inlägg",
     "noDaysInMonth": "Inga dagar den här månaden",
-    "noEventsScheduled": "Inga schemalagda händelser",
-    "noEventsScheduledToday": "Inga schemalagda händelser idag",
-    "noEventsWereScheduled": "Inga händelser var schemalagda",
-    "noTasksDue": "Inga uppgifter förfaller",
-    "noTasksDueToday": "Inga uppgifter förfaller idag",
-    "noTasksWereDue": "Inga uppgifter hade förfallodatum",
     "noNotesToday": "Inga anteckningar skapades idag",
     "startDocumenting": "Börja dokumentera dina tankar och idéer"
   },
@@ -155,9 +143,7 @@
     "day": "dag",
     "days": "dagar",
     "event": "händelse",
-    "events": "händelser",
     "task": "uppgift",
-    "todo": "att göra",
     "moreConnections": "+ {count} koppling till",
     "moreConnections_plural": "+ {count} kopplingar till",
     "moreNotes": "+ {count} anteckning till",
@@ -166,7 +152,6 @@
     "charactersWritten": "skrivna tecken",
     "words": "{count} ord",
     "characters": "{count} tecken",
-    "completed": "{count} slutförda",
     "overdue": "{count} försenade"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Ändrad {date}"
   },
   "task": {
-    "completed": "Slutförd",
-    "notCompleted": "Inte slutförd",
-    "priority": "Prioritet: {priority}",
-    "overdue": "försenad",
-    "markComplete": "Markera ”{title}” som klar",
-    "markNotComplete": "Markera ”{title}” som inte klar"
+    "priority": "Prioritet: {priority}"
   },
   "template": {
     "using": "Använder ”{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Ditt innehåll finns fortfarande i minnet. Klicka för att försöka spara igen.",
-    "noteNotFound": "Anteckningen ”{target}” hittades inte",
     "createLinkedFailed": "Det gick inte att skapa den länkade anteckningen",
     "fileNotFound": "Filen hittades inte: {target}",
     "openLinkedItemFailed": "Det gick inte att öppna det länkade objektet",

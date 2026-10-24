@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Non authentifié",
-    "sessionExpired": "Votre session a expiré. Reconnectez-vous.",
     "setupSessionExpired": "Votre connexion a expiré avant la fin de l'opération. Reconnectez-vous, puis saisissez votre phrase de récupération.",
     "setupSessionExpiredLinking": "Votre connexion a expiré avant la fin de l'association de cet appareil. Reconnectez-vous, puis scannez à nouveau le code.",
     "invalidRecoveryPhraseFormat": "Format de phrase de récupération non valide",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Impossible de charger le modèle",
     "voiceModelDownloadFailed": "Impossible de télécharger le modèle vocal",
     "terminalCommandInstallFailed": "Impossible d'installer la commande de terminal",
-    "terminalCommandUninstallFailed": "Impossible de désinstaller la commande de terminal",
-    "shortcutInUse": "Le raccourci {shortcut} est déjà utilisé"
+    "terminalCommandUninstallFailed": "Impossible de désinstaller la commande de terminal"
   },
   "tag": {
     "renameInProgress": "Le renommage de #{from} en #{to} est encore en cours. Réessayez une fois terminé.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} reprend déjà ses champs de ce tag",
     "unreadableSchema": "Une version plus récente de Memry a modifié ce tag. Mettez Memry à jour pour le modifier",
     "relationTargetRequired": "Choisissez le tag vers lequel pointe cette relation",
-    "editFailed": "Impossible de modifier les champs du tag",
-    "previewFailed": "Impossible de compter ce que ce changement affecte",
-    "snapshotFailed": "Impossible de charger les champs du tag",
     "renameRunning": "Un autre renommage de champ est encore en cours ({from} en {to}). Réessayez une fois terminé."
   }
 }

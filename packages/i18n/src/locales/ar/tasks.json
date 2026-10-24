@@ -53,8 +53,7 @@
       "high": "عالية",
       "urgent": "عاجلة"
     },
-    "unarchive": "إلغاء أرشفة المهمة",
-    "archivedOn": "تاريخ الأرشفة: {date}"
+    "unarchive": "إلغاء أرشفة المهمة"
   },
   "reminders": {
     "summary": "تذكير: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "إضافة مهمة فرعية",
     "subIssuePlaceholder": "إضافة مهمة فرعية…",
     "noSubIssues": "لا توجد مهام فرعية بعد",
-    "linkedNotes": "ذات صلة",
-    "linkNote": "إضافة عنصر ذي صلة",
     "loading": "جارٍ التحميل…",
-    "searchNotes": "البحث عن عناصر ذات صلة…",
-    "noMatchingNotes": "لا توجد عناصر مطابقة",
-    "noNotesAvailable": "لا توجد عناصر متاحة",
-    "noLinkedNotes": "لا توجد عناصر ذات صلة بعد",
-    "removeLinkTo": "إزالة العنصر ذي الصلة {title}",
-    "removeLinkFallback": "عنصر",
     "related": "ذات صلة",
     "addRelatedItem": "إضافة عنصر ذي صلة",
     "searchRelated": "البحث عن عناصر ذات صلة…",
     "noMatchingRelated": "لا توجد عناصر مطابقة",
     "noRelatedAvailable": "لا توجد عناصر متاحة",
-    "noRelatedItems": "لا توجد عناصر ذات صلة بعد",
     "removeRelatedItem": "إزالة العنصر ذي الصلة {title}",
     "relatedItemFallback": "عنصر",
     "relatedItemMissing": "لم يعد هذا العنصر ذو الصلة موجودًا في هذه الخزنة.",
@@ -251,7 +241,6 @@
     "deleted": "تم حذف المهمة",
     "deletedSeries": "اكتملت السلسلة!",
     "completed": "اكتملت المهمة!",
-    "archived": "تمت أرشفة المهمة",
     "undoNotAvailableForDelete": "لا يمكن التراجع عن الحذف",
     "alreadyAllComplete": "جميع المهام المحددة مكتملة بالفعل",
     "noCompletedSelected": "لم يتم تحديد أي مهام مكتملة",
@@ -331,7 +320,6 @@
       "archive": "أرشفة",
       "delete": "حذف",
       "cancelSelection": "إلغاء التحديد",
-      "cancel": "إلغاء",
       "unarchive": "إلغاء الأرشفة"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "حذف \"",
       "thisProjectHas": "يحتوي هذا المشروع على ",
       "task": "مهمة",
-      "whatWouldYouLikeToDoWithThem": "ماذا تريد أن تفعل بها؟",
-      "moveTasksToPersonalProject": "نقل المهام إلى المشروع الشخصي",
-      "deleteAllTasksPermanently": "حذف كافة المهام بشكل دائم",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "لا يتضمن هذا المشروع أي مهام وسيتم حذفه نهائيًا.",
       "notesEventsAndFilesStayNotice": "تُحذف المهام الموجودة في هذا المشروع. أما ملاحظاتك وأحداثك وملفاتك فتبقى في خزنتك.",
       "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "تحديد تاريخ الاستحقاق لجميع المهام الفرعية",
-      "setDueDateFor": "تحديد تاريخ الاستحقاق لعدد ",
-      "alsoApplyToCompletedSubtasks": "التطبيق أيضًا على المهام الفرعية المكتملة (",
       "clearDate": "مسح التاريخ",
       "cancel": "إلغاء",
       "apply": "تطبيق",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "تحديد الأولوية لجميع المهام الفرعية",
-      "setPriorityFor": "تحديد الأولوية لعدد ",
-      "alsoApplyToCompletedSubtasks": "التطبيق أيضًا على المهام الفرعية المكتملة (",
       "cancel": "إلغاء",
       "apply": "تطبيق",
       "setPriorityForSubtasksIn": "تحديد الأولوية {count, plural, zero {لـ# مهمة فرعية} one {لمهمة فرعية واحدة} two {لمهمتين فرعيتين} few {لـ# مهام فرعية} many {لـ# مهمة فرعية} other {لـ# مهمة فرعية}} في «{title}»",
@@ -464,36 +445,13 @@
       "deleteAll": "حذف الكل",
       "deleteSubtasksConfirmation": "سيؤدي هذا إلى حذف {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}} من «{title}»."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "هل تريد حذف المهمة التي تحتوي على مهام فرعية؟",
-      "has": "تحتوي على ",
-      "subtask": "مهمة فرعية",
-      "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
-      "deleteTaskAndAllSubtasks": "حذف المهمة وجميع المهام الفرعية",
-      "permanentlyRemovesEverything": "يزيل كل شيء بشكل دائم",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "حذف المهمة، والاحتفاظ بالمهام الفرعية كمهام مستقلة",
-      "subtasksBecomeTopLevelTasks": "تصبح المهام الفرعية مهام مستقلة",
-      "cancel": "إلغاء",
-      "delete": "حذف"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "إنشاء نسخة من المهمة",
-      "createACopyOf": "إنشاء نسخة من «",
-      "alsoDuplicateSubtasks": "إنشاء نسخ من المهام الفرعية أيضًا (",
       "cancel": "إلغاء",
-      "duplicate": "إنشاء نسخة ",
       "createACopyOfTitle": "إنشاء نسخة من «{title}»",
       "alsoDuplicateSubtasksCount": "إنشاء نسخ من المهام الفرعية أيضًا ({count})",
       "duplicateWithItems": "إنشاء نسخة ({count, plural, zero {# عنصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}})",
       "duplicateTaskOnly": "إنشاء نسخة من المهمة"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "تحويل إلى مهمة فرعية…",
-      "selectATaskToMake": "اختر مهمة لجعل \"",
-      "aSubtaskOf": "مهمة فرعية منها.",
-      "searchTasks": "البحث في المهام…",
-      "sameProject": "نفس المشروع",
-      "otherProjects": "مشاريع أخرى"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "أفلِت لإعادة الجدولة إلى "
@@ -575,12 +533,6 @@
       "search": "بحث",
       "clearAll": "مسح الكل"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "التصفية حسب تاريخ الاستحقاق",
-      "customRange": "نطاق مخصص",
-      "clear": "مسح",
-      "apply": "تطبيق"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "تصفية حسب…"
     },
@@ -619,23 +571,9 @@
       "search": "البحث…",
       "selected": "محددة"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "المزيد من عوامل التصفية",
-      "more": "المزيد",
-      "status": "الحالة",
-      "hasTimeSet": "بوقت محدد",
-      "recurringOnly": "المتكررة فقط",
-      "status2": "الحالة"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "التصفية حسب الأولوية",
       "priority": "الأولوية"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "تصفية حسب المشروع",
-      "project": "المشروع",
-      "allProjects": "جميع المشاريع",
-      "clear": "مسح"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "عوامل تصفية سريعة:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "الوقت: بوقت محدد",
       "summaryTimeWithout": "الوقت: بدون وقت",
       "nameRequired": "يرجى إدخال اسم لعامل التصفية هذا"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "عوامل التصفية المحفوظة",
-      "saved": "المحفوظة",
-      "noSavedFiltersYet": "لا توجد عوامل تصفية محفوظة بعد",
-      "saveCurrentFilters": "حفظ عوامل التصفية الحالية",
-      "saveCurrentFilters2": "حفظ عوامل التصفية الحالية"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "اسم عامل التصفية",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "تُفتح المهام في هذا المشروع"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "اختيار مشروع",
-      "selectProject2": "اختيار مشروع"
+      "selectProject": "اختيار مشروع"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "تحرير المشروع",
@@ -725,11 +655,6 @@
       "selectProject": "اختيار مشروع",
       "noProjectsYet": "لا توجد مشاريع بعد",
       "createProject": "إنشاء مشروع"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "لم يتم تحديد أي مشروع",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "حدد مشروعًا من القائمة المنسدلة أو أنشئ مشروعًا جديدًا",
-      "createYourFirstProject": "أنشئ مشروعك الأول"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "مساعدة اختصارات الإضافة السريعة",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "اختيار الوقت",
-      "selectTime2": "اختيار الوقت",
       "clearTime": "مسح الوقت"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "لا يوجد مشروع محدد",
     "emptyBody": "اختر مشروعًا من الشريط الجانبي لفتح صفحته.",
-    "loadError": "تعذّر تحميل تفاصيل المشروع",
     "overview": {
       "sectionTitle": "نظرة عامة",
       "create": "إنشاء ملاحظة نظرة عامة",
@@ -969,18 +892,11 @@
       "empty": "لا شيء مفتوح في هذا المشروع.",
       "expand": "عرض المهام في {title}",
       "collapse": "إخفاء المهام في {title}",
-      "taskSummary": "{open}/{total} مفتوحة",
       "daysLeft": "{count} ي",
       "overdue": "متأخرة {count} ي",
       "columns": {
         "title": "العنوان",
         "daysLeft": "الأيام المتبقية"
-      },
-      "status": {
-        "active": "نشط",
-        "done": "منجز",
-        "upcoming": "قادم",
-        "past": "سابق"
       }
     }
   },

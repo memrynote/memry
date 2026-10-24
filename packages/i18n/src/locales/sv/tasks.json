@@ -53,8 +53,7 @@
       "high": "Hög",
       "urgent": "Brådskande"
     },
-    "unarchive": "Avarkivera uppgift",
-    "archivedOn": "Arkiverad {date}"
+    "unarchive": "Avarkivera uppgift"
   },
   "reminders": {
     "summary": "Påminnelse: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Lägg till deluppgift",
     "subIssuePlaceholder": "Lägg till deluppgift…",
     "noSubIssues": "Inga deluppgifter än",
-    "linkedNotes": "Relaterat",
-    "linkNote": "Lägg till relaterat objekt",
     "loading": "Läser in…",
-    "searchNotes": "Sök relaterat…",
-    "noMatchingNotes": "Inga matchande objekt",
-    "noNotesAvailable": "Inga objekt tillgängliga",
-    "noLinkedNotes": "Inga relaterade objekt än",
-    "removeLinkTo": "Ta bort relaterat objekt {title}",
-    "removeLinkFallback": "objekt",
     "related": "Relaterat",
     "addRelatedItem": "Lägg till relaterat objekt",
     "searchRelated": "Sök relaterat…",
     "noMatchingRelated": "Inga matchande objekt",
     "noRelatedAvailable": "Inga objekt tillgängliga",
-    "noRelatedItems": "Inga relaterade objekt än",
     "removeRelatedItem": "Ta bort relaterat objekt {title}",
     "relatedItemFallback": "objekt",
     "relatedItemMissing": "Det relaterade objektet finns inte längre i det här valvet.",
@@ -251,7 +241,6 @@
     "deleted": "Uppgift raderad",
     "deletedSeries": "Serien är slutförd!",
     "completed": "Uppgift slutförd!",
-    "archived": "Uppgift arkiverad",
     "undoNotAvailableForDelete": "Radering kan inte ångras",
     "alreadyAllComplete": "Alla markerade uppgifter är redan slutförda",
     "noCompletedSelected": "Inga slutförda uppgifter markerade",
@@ -331,7 +320,6 @@
       "archive": "Arkivera",
       "delete": "Radera",
       "cancelSelection": "Avbryt markering",
-      "cancel": "Avbryt",
       "unarchive": "Avarkivera"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Radera \"",
       "thisProjectHas": "Det här projektet har ",
       "task": "uppgift",
-      "whatWouldYouLikeToDoWithThem": "Vad vill du göra med dem?",
-      "moveTasksToPersonalProject": "Flytta uppgifter till Personligt projekt",
-      "deleteAllTasksPermanently": "Radera alla uppgifter permanent",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Det här projektet har inga uppgifter och raderas permanent.",
       "notesEventsAndFilesStayNotice": "Uppgifterna i det här projektet raderas. Dina anteckningar, händelser och filer stannar i ditt valv.",
       "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Ställ in förfallodatum för alla deluppgifter",
-      "setDueDateFor": "Ställ in förfallodatum för ",
-      "alsoApplyToCompletedSubtasks": "Använd även för slutförda deluppgifter (",
       "clearDate": "Rensa datum",
       "cancel": "Avbryt",
       "apply": "Använd",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Ange prioritet för alla deluppgifter",
-      "setPriorityFor": "Ange prioritet för ",
-      "alsoApplyToCompletedSubtasks": "Använd även för slutförda deluppgifter (",
       "cancel": "Avbryt",
       "apply": "Använd",
       "setPriorityForSubtasksIn": "Ange prioritet för {count, plural, one {# deluppgift} other {# deluppgifter}} i ”{title}”",
@@ -464,36 +445,13 @@
       "deleteAll": "Radera alla",
       "deleteSubtasksConfirmation": "Det här raderar {count, plural, one {# deluppgift} other {# deluppgifter}} från ”{title}”."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Radera uppgiften med deluppgifter?",
-      "has": "har ",
-      "subtask": "deluppgift",
-      "whatWouldYouLikeToDo": "Vad vill du göra?",
-      "deleteTaskAndAllSubtasks": "Radera uppgift och alla deluppgifter",
-      "permanentlyRemovesEverything": "Raderar allt permanent",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Radera uppgift, behåll deluppgifter som fristående uppgifter",
-      "subtasksBecomeTopLevelTasks": "Deluppgifterna blir uppgifter på toppnivå",
-      "cancel": "Avbryt",
-      "delete": "Radera"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicera uppgift",
-      "createACopyOf": "Skapa en kopia av ”",
-      "alsoDuplicateSubtasks": "Duplicera även deluppgifter (",
       "cancel": "Avbryt",
-      "duplicate": "Duplicera ",
       "createACopyOfTitle": "Skapa en kopia av ”{title}”",
       "alsoDuplicateSubtasksCount": "Duplicera även deluppgifter ({count})",
       "duplicateWithItems": "Duplicera ({count, plural, one {# objekt} other {# objekt}})",
       "duplicateTaskOnly": "Duplicera uppgift"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Välj överordnad uppgift…",
-      "selectATaskToMake": "Välj en uppgift som \"",
-      "aSubtaskOf": "ska bli deluppgift till.",
-      "searchTasks": "Sök uppgifter…",
-      "sameProject": "Samma projekt",
-      "otherProjects": "Andra projekt"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Släpp för att flytta till "
@@ -575,12 +533,6 @@
       "search": "sökning",
       "clearAll": "Rensa allt"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filtrera efter förfallodatum",
-      "customRange": "Anpassat intervall",
-      "clear": "Rensa",
-      "apply": "Använd"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filtrera efter…"
     },
@@ -619,23 +571,9 @@
       "search": "Sök…",
       "selected": "valda"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Fler filter",
-      "more": "Mer",
-      "status": "Status",
-      "hasTimeSet": "Med tid",
-      "recurringOnly": "Endast återkommande",
-      "status2": "Status"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Filtrera efter prioritet",
       "priority": "Prioritet"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filtrera efter projekt",
-      "project": "Projekt",
-      "allProjects": "Alla projekt",
-      "clear": "Rensa"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Snabbfilter:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Tid: Med tid",
       "summaryTimeWithout": "Tid: Utan tid",
       "nameRequired": "Ange ett namn för det här filtret"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Sparade filter",
-      "saved": "Sparad",
-      "noSavedFiltersYet": "Inga sparade filter än",
-      "saveCurrentFilters": "Spara aktuella filter",
-      "saveCurrentFilters2": "Spara aktuella filter"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Filternamn",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "Uppgifter öppnas i det här projektet"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Välj projekt",
-      "selectProject2": "Välj projekt"
+      "selectProject": "Välj projekt"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Redigera projekt",
@@ -725,11 +655,6 @@
       "selectProject": "Välj projekt",
       "noProjectsYet": "Inga projekt än",
       "createProject": "Skapa projekt"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Inget projekt valt",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Välj ett projekt från rullgardinsmenyn eller skapa ett nytt",
-      "createYourFirstProject": "Skapa ditt första projekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Hjälp om snabbsyntax",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Välj tid",
-      "selectTime2": "Välj tid",
       "clearTime": "Rensa tid"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Inget projekt valt",
     "emptyBody": "Välj ett projekt i sidofältet för att öppna dess startsida.",
-    "loadError": "Det gick inte att läsa in projektinformationen",
     "overview": {
       "sectionTitle": "Översikt",
       "create": "Skapa översiktsanteckning",
@@ -969,18 +892,11 @@
       "empty": "Inget är öppet i det här projektet.",
       "expand": "Visa uppgifter i {title}",
       "collapse": "Dölj uppgifter i {title}",
-      "taskSummary": "{open}/{total} öppna",
       "daysLeft": "{count} d",
       "overdue": "{count} d försenad",
       "columns": {
         "title": "Titel",
         "daysLeft": "Dagar kvar"
-      },
-      "status": {
-        "active": "Aktiv",
-        "done": "Klar",
-        "upcoming": "Kommande",
-        "past": "Passerad"
       }
     }
   },

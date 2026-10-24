@@ -7,11 +7,6 @@
     "backToApp": "Uygulamaya dön",
     "nav": {
       "groups": {
-        "account": "Hesap",
-        "application": "Uygulama",
-        "editing": "Düzenleme",
-        "modules": "Modüller",
-        "services": "Hizmetler",
         "data": "Veri",
         "workspace": "Çalışma alanı",
         "features": "Özellikler"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "{module} modülünü yapılandır"
-    },
-    "vaultImport": {
-      "label": "Başka bir uygulamadan içe aktar",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist ve diğerleri",
-      "action": "İçe aktar…"
     },
     "search": {
       "placeholder": "Ayarlarda ara",
@@ -102,12 +92,8 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "groups": {
-      "startup": "Başlangıç",
       "updates": "Güncellemeler",
       "languageRegion": "Dil ve bölge",
-      "tabBehavior": "Sekme davranışı",
-      "window": "Pencere davranışı",
-      "fileCreation": "Dosya oluşturma",
       "privacy": "Gizlilik",
       "startupWindows": "Başlangıç ve pencereler",
       "newNotes": "Yeni notlar",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Oturum açıldığında başlat",
-        "description": "Oturum açtığınızda memrynote'u başlatır",
         "error": "Otomatik başlatma ayarı güncellenemedi"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Güncellemeleri otomatik kontrol et",
-        "description": "Başlangıçta ve uygulama açıkken düzenli aralıklarla yeni sürümleri kontrol eder.",
         "error": "Otomatik kontrol ayarı güncellenemedi"
       },
       "autoDownload": {
         "label": "Güncellemeleri otomatik indir",
-        "description": "Yeni sürümleri sormadan arka planda indirir ve kurar.",
         "error": "Otomatik indirme ayarı güncellenemedi"
       },
-      "appUpdates": "Uygulama güncellemeleri",
-      "installedVersion": "Yüklü sürüm {version}",
-      "availableVersion": "Kullanılabilir sürüm {version}",
-      "unsupported": "Paketlenmiş derlemeler GitHub Sürümlerinden güncellemeleri kontrol edebilir, indirebilir ve yükleyebilir",
       "available": "memrynote {version} indirilebilir",
       "downloadingLatest": "En son sürüm indiriliyor",
-      "downloadingLatestPercent": "En son sürüm indiriliyor (%{percent})",
       "downloaded": "memrynote {version} kuruluma hazır",
-      "upToDate": "Bu kurulum en son yayınlanan sürümdedir",
-      "checking": "Daha yeni bir sürüm için GitHub Sürümleri kontrol ediliyor",
-      "idle": "Yeni sürümleri kontrol edin ve uygulamadan çıkmadan bunları yükleyin",
       "unsupportedToast": "Otomatik güncellemeler yalnızca paketlenmiş sürümlerde kullanılabilir",
       "upToDateToast": "memrynote {version} güncel",
       "actionFailed": "Güncelleme işlemi tamamlanamadı",
@@ -164,17 +139,10 @@
         "downloading": "İndiriliyor…",
         "downloadingPercent": "İndiriliyor %{percent}",
         "downloaded": "{version} sürümü kuruluma hazır"
-      },
-      "mode": {
-        "label": "Güncelleme modu",
-        "off": "Kontrol etme",
-        "notify": "Yalnızca bildir",
-        "auto": "Otomatik indir"
       }
     },
     "language": {
       "label": "Dil",
-      "helper": "Uygulamanın çoğu anında güncellenir. Sistem düzeyindeki bazı metinler (önceden gösterilen bildirimler, dock etiketi, pencere başlık çubuğu) bir sonraki başlatmadan sonra yenilenir.",
       "changed": "Dil {nativeName} olarak değiştirildi",
       "failed": "Dil değiştirilemedi. Lütfen tekrar deneyin."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Saat biçimi",
-      "description": "12 saatlik veya 24 saatlik biçim",
       "options": {
         "12h": "12 saatlik",
         "24h": "24 saatlik"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Tarih biçimi",
-      "description": "Takvim tarihlerinin nasıl gösterileceği",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (ABD)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Sayfaları yeni sekmede aç",
-        "description": "Bir sayfaya tıklamak veya sayfa oluşturmak — notlar, klasörler, projeler, tuvaller, etiketler, yer imleri — onu yeni bir sekmede açar. Kapalıyken, not içindeki bağlantıları izlerken de dahil olmak üzere mevcut sekme yeniden kullanılır; sabitlenmiş sekmeler asla değiştirilmez. “Yeni sekmede aç”, “Yanda aç” ve orta tıklama her zaman yeni sekme açar."
+        "label": "Sayfaları yeni sekmede aç"
       },
       "restoreSession": {
         "label": "Başlangıçta sekmeleri geri yükle",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Sekme kapatma düğmesi",
-        "description": "Kapatma düğmesi ne zaman gösterilecek?",
         "options": {
           "always": "Her zaman görünür",
           "hover": "Üzerine gelindiğinde",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Kapatıldığında menü çubuğunda çalışmaya devam et",
-        "description": "Pencereyi kapattığınızda memrynote kapanmaz, sistem tepsisine gizlenir. Geri getirmek için tepsi simgesine tıklayın. macOS'te uygulama Dock'ta da kalır; sistem tepsisi olmayan Linux masaüstlerinde pencere her zamanki gibi kapanır.",
         "error": "Tepsiye küçültme ayarı güncellenemedi"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Seçili klasörün içinde oluştur",
-        "description": "Seçili olan klasörün içinde yeni notlar ve klasörler oluşturulur. Kapalıyken öğeler her zaman kökte oluşturulur."
+        "label": "Seçili klasörün içinde oluştur"
       },
       "defaultNoteFolder": {
         "label": "Varsayılan konum",
         "description": "Kenar çubuğunda klasör seçili olmadığında kullanılır.",
-        "placeholder": "notlar",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Tanılama raporu gönderilemedi",
         "sendReport": {
           "label": "Tanılama raporu",
-          "description": "Karşılaştığınız sorunu çözmemize yardımcı olmak için maskelenmiş teknik günlüklerden oluşan tek seferlik bir rapor gönderin.",
           "button": "Rapor gönder…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Vurgu rengi",
-      "typography": "Tipografi",
-      "zoom": "Yakınlaştırma"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Renk modu",
-        "description": "Tercih ettiğiniz temayı seçin",
         "aria": "Renk modu"
       },
       "options": {
         "light": "Açık",
-        "white": "Beyaz",
         "dark": "Koyu",
         "system": "Sistem"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Panoda bir memrynote teması yok"
     },
     "accent": {
-      "pick": "Bir vurgu rengi seçin",
       "custom": {
-        "label": "Özel renk",
-        "description": "Onaltılık bir değer girin",
-        "placeholder": "#000000"
+        "label": "Özel renk"
       },
       "presets": {
         "indigo": "Çivit mavisi",
@@ -348,7 +299,6 @@
         "pink": "Pembe",
         "orange": "Turuncu"
       },
-      "error": "Vurgu rengi güncellenemedi",
       "aria": "Vurgu rengi ön ayarı",
       "options": {
         "theme": "Tema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Yakınlaştırma düzeyi",
-      "description": "Tüm arayüzü ölçeklendirin",
       "decrease": "Uzaklaştır",
       "increase": "Yakınlaştır",
       "reset": "Yakınlaştırmayı varsayılana sıfırla",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Yazı tipi boyutu",
-        "description": "Piksel cinsinden temel arayüz metni boyutu",
         "decrease": "Yazı tipi boyutunu küçült",
         "increase": "Yazı tipi boyutunu büyüt",
         "reset": "Yazı tipi boyutunu varsayılana sıfırla"
       },
       "fontFamily": {
         "label": "Yazı tipi ailesi",
-        "description": "Arayüz için birincil yazı tipi",
         "options": {
           "system": "Sistem varsayılanı",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Yazı tipi ailesi güncellenemedi"
     },
     "v2": {
-      "groups": {
-        "text": "Metin ve yakınlaştırma"
-      },
       "colorMode": "Renk modu",
       "colorTheme": "Tema",
       "accent": "Vurgu rengi",
-      "customColor": "Özel renk",
       "fontFamily": "Yazı tipi ailesi",
       "fontSize": "Yazı tipi boyutu",
       "zoom": "Yakınlaştırma"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Düzen",
-      "toolbar": "Araç çubuğu",
       "spelling": "Yazım",
       "checklists": "Kontrol listeleri",
       "attachments": "Ekler",
@@ -473,7 +413,6 @@
       "error": "Bilgi kutusu türleri güncellenemedi"
     },
     "width": {
-      "label": "Düzenleyici genişliği",
       "description": "Tüm not ve günlük sayfalarına uygulanır",
       "options": {
         "normal": "Normal",
@@ -482,12 +421,10 @@
       "error": "Düzenleyici genişliği güncellenemedi"
     },
     "toolbarMode": {
-      "label": "Sabit biçimlendirme araç çubuğu",
       "description": "Araç çubuğunu her zaman düzenleyicinin üstünde gösterir",
       "error": "Araç çubuğu modu güncellenemedi"
     },
     "spellCheck": {
-      "label": "Yazımı denetle",
       "description": "Notlarda ve günlüklerde yanlış yazılan kelimelerin altını çizer",
       "error": "Yazım denetimi güncellenemedi"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Hızlı oluşturma için not şablonlarını yönetin"
     },
     "actions": {
-      "new": "Yeni şablon",
       "edit": "Düzenle",
       "duplicate": "Çoğalt",
       "delete": "Sil"
     },
     "groups": {
-      "builtIn": "Yerleşik",
-      "myTemplates": "Şablonlarım"
+      "builtIn": "Yerleşik"
     },
     "loading": "Şablonlar yükleniyor…",
     "newTemplateTitle": "Yeni şablon",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Henüz özel şablon yok",
       "description": "Başlamak için bir şablon oluşturun"
-    },
-    "preview": {
-      "notFound": "Bu şablon yüklenemedi."
     },
     "toasts": {
       "deleted": "Şablon silindi",
@@ -572,11 +504,7 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "groups": {
-      "defaultTemplate": "Varsayılan şablon",
-      "location": "Konum ve biçim",
-      "sidebarVisibility": "Kenar çubuğu görünürlüğü",
-      "footer": "Alt bilgi",
-      "weekdayTemplates": "Güne özel şablonlar"
+      "footer": "Alt bilgi"
     },
     "template": {
       "label": "Şablon",
@@ -588,18 +516,6 @@
       "updated": "Varsayılan şablon güncellendi",
       "cleared": "Varsayılan şablon temizlendi",
       "error": "Varsayılan şablon güncellenemedi"
-    },
-    "showSchedule": {
-      "label": "Programı göster",
-      "description": "Bugünkü etkinlikleri ve takvimi gösterir"
-    },
-    "showTasks": {
-      "label": "Görevleri göster",
-      "description": "Son tarihi seçilen gün olan görevleri gösterir"
-    },
-    "showAIConnections": {
-      "label": "Yapay zeka bağlantılarını göster",
-      "description": "İlgili girdilere yapay zeka destekli bağlantıları gösterir"
     },
     "showStatsFooter": {
       "label": "İstatistik alt bilgisini göster",
@@ -632,7 +548,6 @@
       "inheritWith": "Varsayılan · {name}",
       "inheritNone": "Varsayılan · yok",
       "missing": "Silinmiş şablon",
-      "clear": "Temizle",
       "updated": "{day} için şablon güncellendi",
       "cleared": "{day} için şablon temizlendi",
       "error": "{day} için şablon güncellenemedi",
@@ -751,11 +666,6 @@
       "subtitle": "Gün panelindeki gün hücresi davranışını yapılandırın",
       "loading": "Ayarlar yükleniyor…"
     },
-    "groups": {
-      "weekStart": "Hafta",
-      "dayCellClick": "Gün hücresine tıklama",
-      "notes": "Notlar"
-    },
     "weekStart": {
       "label": "Haftanın başlangıcı",
       "description": "Tüm takvimlerde haftanın ilk günü",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Google'ı yeniden bağla",
       "addAccount": "Hesap ekle",
-      "importedCalendars": "İçe aktarılan takvimler",
-      "selected": "{count} seçilmiş",
       "syncNow": "Şimdi eşitle",
       "disconnect": "Bağlantıyı kes",
       "reconnect": "Google'ı yeniden bağla",
@@ -1025,10 +933,8 @@
       "loading": "Yükleniyor…"
     },
     "groups": {
-      "identity": "Kimlik",
       "sync": "Eşitleme",
       "billing": "Faturalandırma",
-      "storage": "Depolama",
       "devices": "Cihazlar"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Oturumu kapat",
         "description": "Bu cihazı eşitlemeden ayırır",
         "action": "Oturumu kapat"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Görsel arama kapatıldı"
     },
     "unknownError": "Bilinmeyen hata",
-    "groups": {
-      "voice": "Ses transkripsiyonu",
-      "embeddingModel": "Yerel gömme modeli",
-      "embeddingIndex": "Gömme dizini",
-      "inline": "Satır içi yapay zeka düzenlemesi"
-    },
     "voice": {
-      "provider": "Sağlayıcı",
       "providerDescription": "Sesli notlar için konuşmayı metne dönüştürme sağlayıcısı",
-      "providers": {
-        "local": "Yerel (varsayılan)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Sesli not adları",
       "memoNameModeDescription": "Sesli notların yazıya döküldükten sonra nasıl adlandırılacağı",
       "naming": {
         "transcript": "Dökümden başlık",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Sesli notlarda konuştuğunuz dil",
       "languageDefault": "Varsayılan",
       "languageError": "Transkripsiyon dili güncellenemedi",
-      "localModel": "Yerel model",
-      "localModelDescription": "Whisper Small gerektiğinde indirilir ve yerel olarak önbellekte tutulur",
       "status": {
         "ready": "Hazır",
         "downloading": "İndiriliyor",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Yüklendi",
       "loading": "Yükleniyor",
-      "cacheHint": "~210 MB · Yerel olarak önbelleğe alınır · Tamamen cihaz üzerinde",
-      "dimensions": "Boyutlar",
-      "embeddings": "Gömmeler",
       "downloadLoad": "Modeli indir ve yükle",
       "downloadingModel": "Model indiriliyor…",
       "loadingModel": "Model yükleniyor…",
       "loadSuccess": "Model başarıyla yüklendi",
       "loadFailed": "Model yüklenemedi",
       "rebuildIndex": "Dizini yeniden oluştur",
-      "rebuildDescription": "Tüm notlar için gömmeleri yeniden oluşturur",
-      "rebuild": "Yeniden oluştur",
       "scanning": "Notlar taranıyor…",
       "generating": "Gömmeler oluşturuluyor…",
       "complete": "Tamamlandı!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Yükleniyor…",
-      "title": "Satır içi yapay zeka düzenlemesi",
-      "enable": "Satır içi yapay zekayı etkinleştir",
       "enableDescription": "Notları düzenlerken yapay zeka menüsünü gösterir",
       "enabled": "Satır içi yapay zeka düzenlemesi etkin",
       "disabled": "Satır içi yapay zeka düzenlemesi devre dışı",
       "provider": "Sağlayıcı",
-      "providerDescription": "Metin işlemleri için yapay zeka hizmeti",
       "providers": {
         "ollama": "Ollama (Yerel)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "{port} bağlantı noktasında etkin",
       "notConnected": "Bağlı değil",
       "test": "Test et",
-      "stopFailed": "Mevcut sunucu durdurulamadı",
       "connected": "Bağlandı! Sunucu {port} bağlantı noktasında çalışıyor",
       "connectFailed": "Bağlanılamadı",
       "testFailed": "Bağlantı testi başarısız oldu",
@@ -1566,8 +1448,6 @@
       "onenote": "OneNote defterlerini içe aktarın (bir Microsoft hesabı gerektirir)",
       "readwise": "Vurgularınızı Readwise'dan içe aktarın (erişim belirteci gerekir)"
     },
-    "action": "İçe aktar",
-    "select": "İçe aktarılacak bir uygulama seçin…",
     "stats": {
       "notes": "{count, plural, one {# not} other {# not}}",
       "projects": "{count, plural, one {# proje} other {# proje}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Apple Notes klasörünü seç…",
       "chooseDirectory": "Klasör seç…",
       "folderKeepsAssets": "Görseller notların kendi klasörünün dışındaysa klasörü seçin — dışa aktarmalar medyayı genellikle ortak bir klasörde tutar.",
-      "chooseHint": "{label} seçin",
       "folderHint": "Aşağıya tıklayın ve açılan pencerede “group.com.apple.notes” klasörünü seçin (pencere doğrudan bu klasörde açılır). Bu, Memry'nin notlarınızı ve eklerinizi okumasını sağlar — Tam Disk Erişimi gerekmez.",
       "noteplanFolderHint": "NotePlan klasörünüzü seçin — uygulamanın veri klasörü ya da Backups kopyalarından biri. Memry içindeki Calendar, Notes ve @Archive klasörlerini okur.",
       "selected": "{count, plural, one {# dosya seçildi} other {# dosya seçildi}}",
       "start": "İçe aktarmayı başlat",
       "cancel": "İptal",
-      "close": "Kapat",
       "done": "Tamam",
       "running": "İçe aktarılıyor…",
       "progress": "{total} içinden {completed}",
@@ -1660,8 +1538,6 @@
         "connecting": "Bağlanılıyor…",
         "connectFailed": "Readwise'a bağlanılamadı",
         "takeOver": {
-          "syncsOn": "Readwise, {device} üzerinde eşitleniyor.",
-          "syncsOnAnother": "Readwise başka bir cihazda eşitleniyor.",
           "explain": "Readwise'dan yalnızca bir cihaz veri çeker; böylece aynı vurgu iki kez yazılmaz. Bunun yerine bu cihazdan veri çekmek için belirtecinizi yeniden yapıştırın: belirteç hiçbir zaman cihazlar arasında taşınmaz. Diğer cihaz bir sonraki kitapta durur ve tüm notlar kalır.",
           "button": "Bunun yerine burada eşitle",
           "working": "Readwise buraya taşınıyor…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Uygulama veya dosya türü ara…",
       "noMatch": "“{query}” ile eşleşen kaynak yok",
       "formatAccount": "Hesap",
-      "showMore": "{count, plural, one {# tane daha göster} other {# tane daha göster}}",
-      "showLess": "Daha az göster",
       "groups": {
         "reading": "Okuma",
         "noteApps": "Not uygulamaları",
@@ -1968,8 +1842,6 @@
       "subtitle": "Kasa yapılandırması ve depolama"
     },
     "groups": {
-      "storageUsage": "Depolama kullanımı",
-      "location": "Konum",
       "accountVaults": "Hesabınızdaki kasalar",
       "largeNotes": "Eşitleme sınırına yakın notlar",
       "activity": "Etkinlik"
@@ -2229,8 +2101,6 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "searchPlaceholder": "Kısayollarda ara…",
-    "resetAll": "Tümünü sıfırla",
-    "custom": "Özel",
     "pressShortcut": "Kısayola basın…",
     "cancelTitle": "İptal",
     "rebindTitle": "Yeniden atamak için tıklayın",
@@ -2241,7 +2111,6 @@
     "noMatch": "Aramanızla eşleşen kısayol yok",
     "conflict": "Şunlarla çakışıyor: {labels}",
     "globalCapture": {
-      "title": "Her yerden hızlı kayıt",
       "description": "Her yerden hızlıca not ekleyin",
       "active": "Etkin",
       "inUse": "{shortcut} başka bir uygulama tarafından kullanılıyor. Farklı bir tuş birleşimi seçin.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Sistem genelinde",
       "globalCapture": "Her yerden hızlı kayıt",
       "recordingHint": "Tuşlara basın… iptal için esc",
-      "reset": "Sıfırla",
       "resetAll": "Tümünü varsayılana sıfırla",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Kod yeniden gönderilemedi",
       "failedToSetUpDevice": "Cihaz kurulamadı",
       "failedToConfirmRecoveryPhrase": "Kurtarma ifadesi onaylanamadı",
-      "failedToAnalyzeContent": "İçerik analiz edilemedi",
       "failedToLoadUpdaterState": "Güncelleyici durumu yüklenemedi",
       "failedToCheckForUpdates": "Güncellemeler kontrol edilemedi",
       "failedToDownloadUpdate": "Güncelleme indirilemedi",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Not düzenleyici ayarları yüklenemedi",
       "failedToUpdateSettings": "Ayarlar güncellenemedi",
       "failedToLoadTabSettings": "Sekme ayarları yüklenemedi",
-      "failedToLoadNotes": "Notlar yüklenemedi",
       "failedToLoadTags": "Etiketler yüklenemedi",
-      "failedToLoadTasks": "Görevler yüklenemedi",
       "failedToLoadVaultStatus": "Kasa durumu yüklenemedi",
       "failedToSelectVault": "Kasa seçilemedi",
       "failedToCloseVault": "Kasa kapatılamadı",
@@ -2565,18 +2430,12 @@
       "title": "Ajan MCP",
       "subtitle": "Harici MCP istemcileri için yerel sunucu erişimi."
     },
-    "groups": {
-      "connection": "Bağlantı",
-      "access": "Erişim"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Bu localhost uç noktasını Cursor, Claude Desktop veya Zed üzerinden kullanın."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer belirteci",
-        "description": "Yalnızca bu uygulama oturumu boyunca bellekte tutulan kimlik bilgisi."
+        "label": "Bearer belirteci"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Ajan izinleri",
       "subtitle": "Ajan sohbeti için varsayılan erişimi, onayları ve yerel sağlayıcıları seçin."
     },
-    "groups": {
-      "cliAgents": "CLI ajanları",
-      "local": "Yerel OpenAI uyumlu sağlayıcı",
-      "actions": "Bağlantı kontrolleri"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Ajan izinleri",
       "access": {
-        "label": "Varsayılan erişim",
         "description": "Yeni ajan istekleri için başlangıç erişim modunu belirler.",
         "vaultOnly": "Yalnızca kasa",
         "computerAccess": "Bilgisayar erişimi",
         "builtInNote": "Yerleşik model bağlantısı her zaman yalnızca kasa araçlarıyla çalışır."
       },
       "confirm": {
-        "label": "İşlemleri onayla",
         "description": "Araç çağrılarının otomatik mi çalışacağını yoksa sohbette onay mı bekleyeceğini seçin. Kilitli notlar ve klasörler her iki modda da salt okunur kalır.",
         "alwaysAllow": "Her zaman izin ver",
         "askBeforeChanges": "Değişikliklerden önce sor"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Kaydet",
-      "models": "Modeller",
-      "test": "Bağlantıyı test et",
-      "probe": "Araçları yokla"
+      "test": "Bağlantıyı test et"
     },
     "status": {
       "label": "Bağlantı",
       "checking": "Kontrol ediliyor…",
       "connected": "Bağlı",
-      "disconnected": "Bağlı değil",
-      "toolsDisabled": "Araçlar devre dışı",
-      "fullTools": "Tüm araçlar etkin"
+      "disconnected": "Bağlı değil"
     },
     "alwaysAllowed": {
-      "group": "Her zaman izinli",
       "description": "Bu kasada kalıcı onay verdiğiniz araçlar. Silme işlemlerine hiçbir zaman kalıcı onay verilemez.",
       "empty": "Her zaman izinli araç yok. Her değişiklik yine sorulur.",
       "revoke": "Kaldır",

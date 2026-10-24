@@ -7,11 +7,6 @@
     "backToApp": "Back to app",
     "nav": {
       "groups": {
-        "account": "Account",
-        "application": "Application",
-        "editing": "Editing",
-        "modules": "Modules",
-        "services": "Services",
         "data": "Data",
         "workspace": "Workspace",
         "features": "Features"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Configure {module}"
-    },
-    "vaultImport": {
-      "label": "Import from another app",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist and more",
-      "action": "Import…"
     },
     "search": {
       "placeholder": "Search settings",
@@ -102,12 +92,8 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "startup": "Startup",
       "updates": "Updates",
       "languageRegion": "Language & region",
-      "tabBehavior": "Tab Behavior",
-      "window": "Window Behavior",
-      "fileCreation": "File Creation",
       "privacy": "Privacy",
       "startupWindows": "Startup & windows",
       "newNotes": "New notes",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Launch at login",
-        "description": "Start memrynote when you log in",
         "error": "Failed to update start on boot"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Automatically check for updates",
-        "description": "Check for new releases at launch and periodically while the app is open.",
         "error": "Failed to update the auto-check setting"
       },
       "autoDownload": {
         "label": "Automatically download updates",
-        "description": "Download and install new releases in the background without prompting.",
         "error": "Failed to update the auto-download setting"
       },
-      "appUpdates": "App Updates",
-      "installedVersion": "Installed version {version}",
-      "availableVersion": "Available version {version}",
-      "unsupported": "Packaged builds can check, download, and install updates from GitHub Releases",
       "available": "memrynote {version} is available to download",
       "downloadingLatest": "Downloading the latest release",
-      "downloadingLatestPercent": "Downloading the latest release ({percent}%)",
       "downloaded": "memrynote {version} is ready to install",
-      "upToDate": "This installation is on the latest published release",
-      "checking": "Checking GitHub Releases for a newer version",
-      "idle": "Check for new releases and install them without leaving the app",
       "unsupportedToast": "Auto-updates are available in packaged releases only",
       "upToDateToast": "memrynote {version} is up to date",
       "actionFailed": "Update action failed",
@@ -164,17 +139,10 @@
         "downloading": "Downloading…",
         "downloadingPercent": "Downloading {percent}%",
         "downloaded": "Version {version} ready to install"
-      },
-      "mode": {
-        "label": "Update mode",
-        "off": "Don't check",
-        "notify": "Notify only",
-        "auto": "Download automatically"
       }
     },
     "language": {
       "label": "Language",
-      "helper": "Most of the app updates immediately. Some system-level text — already-shown notifications, dock label, window title bar — refreshes after the next launch.",
       "changed": "Language changed to {nativeName}",
       "failed": "Failed to change language. Please try again."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Time format",
-      "description": "12-hour or 24-hour clock",
       "options": {
         "12h": "12h",
         "24h": "24h"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Date format",
-      "description": "How calendar dates are displayed",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Open pages in a new tab",
-        "description": "Clicking or creating a page — notes, folders, projects, canvases, tags, bookmarks — opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
+        "label": "Open pages in a new tab"
       },
       "restoreSession": {
         "label": "Restore tabs on start",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Tab close button",
-        "description": "When to show the close button",
         "options": {
           "always": "Always",
           "hover": "On hover",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Keep running in menu bar when closed",
-        "description": "Closing the window hides memrynote to the system tray instead of closing it. Click the tray icon to bring it back. On macOS the app also stays in the Dock; on Linux desktops without a system tray the window closes as usual.",
         "error": "Failed to update minimize to tray"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Create inside the selected folder",
-        "description": "New notes and folders are created inside the currently selected folder. When off, items are always created at root."
+        "label": "Create inside the selected folder"
       },
       "defaultNoteFolder": {
         "label": "Default location",
         "description": "Used when no folder is selected in the sidebar.",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Failed to send diagnostic report",
         "sendReport": {
           "label": "Diagnostic report",
-          "description": "Send a one-time report of redacted technical logs to help us debug an issue you hit.",
           "button": "Send report…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "theme": "Theme",
-      "accentColor": "Accent Color",
-      "typography": "Typography",
-      "zoom": "Zoom"
+      "theme": "Theme"
     },
     "theme": {
       "colorMode": {
-        "label": "Color Mode",
-        "description": "Choose your preferred theme",
         "aria": "Color mode"
       },
       "options": {
         "light": "Light",
-        "white": "White",
         "dark": "Dark",
         "system": "System"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "The clipboard does not hold a memrynote theme"
     },
     "accent": {
-      "pick": "Pick an accent color",
       "custom": {
-        "label": "Custom Color",
-        "description": "Enter a hex value",
-        "placeholder": "#000000"
+        "label": "Custom Color"
       },
       "presets": {
         "indigo": "Indigo",
@@ -348,7 +299,6 @@
         "pink": "Pink",
         "orange": "Orange"
       },
-      "error": "Failed to update accent color",
       "aria": "Accent preset",
       "options": {
         "theme": "Theme",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Zoom Level",
-      "description": "Scale the entire interface",
       "decrease": "Decrease zoom",
       "increase": "Increase zoom",
       "reset": "Reset zoom to default",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Font Size",
-        "description": "Base interface text size in pixels",
         "decrease": "Decrease font size",
         "increase": "Increase font size",
         "reset": "Reset font size to default"
       },
       "fontFamily": {
         "label": "Font Family",
-        "description": "Primary typeface for the interface",
         "options": {
           "system": "System Default",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Failed to update font family"
     },
     "v2": {
-      "groups": {
-        "text": "Text & zoom"
-      },
       "colorMode": "Color mode",
       "colorTheme": "Theme",
       "accent": "Accent color",
-      "customColor": "Custom color",
       "fontFamily": "Font family",
       "fontSize": "Font size",
       "zoom": "Zoom"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar",
       "spelling": "Spelling",
       "checklists": "Checklists",
       "attachments": "Attachments",
@@ -473,7 +413,6 @@
       "error": "Failed to update callout types"
     },
     "width": {
-      "label": "Editor Width",
       "description": "Applies to every note and journal page",
       "options": {
         "normal": "Normal",
@@ -482,12 +421,10 @@
       "error": "Failed to update editor width"
     },
     "toolbarMode": {
-      "label": "Sticky Formatting Toolbar",
       "description": "Always show toolbar above the editor",
       "error": "Failed to update toolbar mode"
     },
     "spellCheck": {
-      "label": "Check Spelling",
       "description": "Underline misspelled words in notes and journals",
       "error": "Failed to update spell check"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Manage note templates for quick creation"
     },
     "actions": {
-      "new": "New Template",
       "edit": "Edit",
       "duplicate": "Duplicate",
       "delete": "Delete"
     },
     "groups": {
-      "builtIn": "Built-in",
-      "myTemplates": "My Templates"
+      "builtIn": "Built-in"
     },
     "loading": "Loading templates...",
     "newTemplateTitle": "New Template",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "No custom templates yet",
       "description": "Create a template to get started"
-    },
-    "preview": {
-      "notFound": "Could not load this template."
     },
     "toasts": {
       "deleted": "Template deleted",
@@ -572,11 +504,7 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "defaultTemplate": "Default Template",
-      "location": "Location & Format",
-      "sidebarVisibility": "Sidebar Visibility",
-      "footer": "Footer",
-      "weekdayTemplates": "Per-Day Templates"
+      "footer": "Footer"
     },
     "template": {
       "label": "Template",
@@ -588,18 +516,6 @@
       "updated": "Default template updated",
       "cleared": "Default template cleared",
       "error": "Failed to update default template"
-    },
-    "showSchedule": {
-      "label": "Show Schedule",
-      "description": "Display today's events and calendar"
-    },
-    "showTasks": {
-      "label": "Show Tasks",
-      "description": "Display tasks due on the selected day"
-    },
-    "showAIConnections": {
-      "label": "Show AI Connections",
-      "description": "Display AI-powered connections to related entries"
     },
     "showStatsFooter": {
       "label": "Show Stats Footer",
@@ -632,7 +548,6 @@
       "inheritWith": "Default · {name}",
       "inheritNone": "Default · none",
       "missing": "Deleted template",
-      "clear": "Clear",
       "updated": "Template updated for {day}",
       "cleared": "Template cleared for {day}",
       "error": "Failed to update template for {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Configure day-cell behavior in the Day Panel",
       "loading": "Loading settings..."
     },
-    "groups": {
-      "weekStart": "Week",
-      "dayCellClick": "Day Cell Click",
-      "notes": "Notes"
-    },
     "weekStart": {
       "label": "Week Starts On",
       "description": "First day of the week across all calendars",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Reconnect Google",
       "addAccount": "Add account",
-      "importedCalendars": "Imported Calendars",
-      "selected": "{count} selected",
       "syncNow": "Sync Now",
       "disconnect": "Disconnect",
       "reconnect": "Reconnect Google",
@@ -1025,10 +933,8 @@
       "loading": "Loading..."
     },
     "groups": {
-      "identity": "Identity",
       "sync": "Sync",
       "billing": "Billing",
-      "storage": "Storage",
       "devices": "Devices"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Sign Out",
         "description": "Disconnect this device from sync",
         "action": "Sign Out"
       }
@@ -1388,13 +1293,13 @@
       "label": "Summarize long notes",
       "description": "Writes shorter versions of long notes with your connected agent, so you can fold a note down to its key points. Runs on this device.",
       "error": "Failed to update summarize long notes",
-      "failed": "Last run failed \u00b7",
+      "failed": "Last run failed ·",
       "retry": "Retry",
       "retryError": "Could not retry summarizing",
       "agentLabel": "Agent that writes summaries",
       "agentAuto": "Auto",
       "agentError": "Failed to change the summary agent",
-      "noAgent": "No agent found \u00b7",
+      "noAgent": "No agent found ·",
       "openAgents": "Open Agents"
     },
     "imageSearch": {
@@ -1404,20 +1309,8 @@
       "disabled": "Image search disabled"
     },
     "unknownError": "Unknown error",
-    "groups": {
-      "voice": "Voice Transcription",
-      "embeddingModel": "Local Embedding Model",
-      "embeddingIndex": "Embedding Index",
-      "inline": "Inline AI Editing"
-    },
     "voice": {
-      "provider": "Provider",
       "providerDescription": "Speech-to-text provider for voice memos",
-      "providers": {
-        "local": "Local (default)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Memo names",
       "memoNameModeDescription": "How voice memos are named after transcription",
       "naming": {
         "transcript": "Transcript title",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Language you speak in voice memos",
       "languageDefault": "Default",
       "languageError": "Failed to update transcription language",
-      "localModel": "Local Model",
-      "localModelDescription": "Whisper Small downloads on demand and stays cached locally",
       "status": {
         "ready": "Ready",
         "downloading": "Downloading",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Loaded",
       "loading": "Loading",
-      "cacheHint": "~210MB · Cached locally · All on-device",
-      "dimensions": "Dimensions",
-      "embeddings": "Embeddings",
       "downloadLoad": "Download & Load Model",
       "downloadingModel": "Downloading model...",
       "loadingModel": "Loading model...",
       "loadSuccess": "Model loaded successfully",
       "loadFailed": "Failed to load model",
       "rebuildIndex": "Rebuild Index",
-      "rebuildDescription": "Regenerate embeddings for all notes",
-      "rebuild": "Rebuild",
       "scanning": "Scanning notes...",
       "generating": "Generating embeddings...",
       "complete": "Complete!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Loading...",
-      "title": "Inline AI Editing",
-      "enable": "Enable Inline AI",
       "enableDescription": "Show AI menu when editing notes",
       "enabled": "Inline AI editing enabled",
       "disabled": "Inline AI editing disabled",
       "provider": "Provider",
-      "providerDescription": "AI service for text operations",
       "providers": {
         "ollama": "Ollama (Local)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Active on port {port}",
       "notConnected": "Not connected",
       "test": "Test",
-      "stopFailed": "Failed to stop existing server",
       "connected": "Connected! Server running on port {port}",
       "connectFailed": "Failed to connect",
       "testFailed": "Connection test failed",
@@ -1566,8 +1448,6 @@
       "onenote": "Import OneNote notebooks (requires a Microsoft account)",
       "readwise": "Import your highlights from Readwise (requires an access token)"
     },
-    "action": "Import",
-    "select": "Select an app to import from…",
     "stats": {
       "notes": "{count, plural, one {# note} other {# notes}}",
       "projects": "{count, plural, one {# project} other {# projects}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Select Apple Notes folder…",
       "chooseDirectory": "Choose folder…",
       "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
-      "chooseHint": "Select your {label}",
       "folderHint": "Click below and select the “group.com.apple.notes” folder when the picker opens (it starts there). This lets Memry read your notes and attachments — no Full Disk Access needed.",
       "noteplanFolderHint": "Choose your NotePlan folder — either the app’s data folder or one of its Backups copies. Memry reads the Calendar, Notes and @Archive folders inside it.",
       "selected": "{count, plural, one {# file selected} other {# files selected}}",
       "start": "Start import",
       "cancel": "Cancel",
-      "close": "Close",
       "done": "Done",
       "running": "Importing…",
       "progress": "{completed} of {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Connecting…",
         "connectFailed": "Could not connect to Readwise",
         "takeOver": {
-          "syncsOn": "Readwise syncs on {device}.",
-          "syncsOnAnother": "Readwise syncs on another device.",
           "explain": "Only one device pulls from Readwise, so the same highlight is never written twice. To pull from this device instead, paste your token again: it never travels between devices. The other device stops at its next book, and every note stays.",
           "button": "Sync here instead",
           "working": "Moving Readwise here…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Find an app or file type…",
       "noMatch": "No sources match “{query}”",
       "formatAccount": "Account",
-      "showMore": "{count, plural, one {Show # more} other {Show # more}}",
-      "showLess": "Show less",
       "groups": {
         "reading": "Reading",
         "noteApps": "Note apps",
@@ -1968,8 +1842,6 @@
       "subtitle": "Vault configuration and storage"
     },
     "groups": {
-      "storageUsage": "Storage Usage",
-      "location": "Location",
       "accountVaults": "Vaults in your account",
       "largeNotes": "Notes near the sync limit",
       "activity": "Activity"
@@ -2229,8 +2101,6 @@
       "loading": "Loading settings..."
     },
     "searchPlaceholder": "Search shortcuts...",
-    "resetAll": "Reset All",
-    "custom": "Custom",
     "pressShortcut": "Press shortcut…",
     "cancelTitle": "Cancel",
     "rebindTitle": "Click to rebind",
@@ -2241,7 +2111,6 @@
     "noMatch": "No shortcuts match your search",
     "conflict": "Conflicts with: {labels}",
     "globalCapture": {
-      "title": "Global Capture",
       "description": "Capture a note from anywhere",
       "active": "Active",
       "inUse": "{shortcut} is in use by another app. Pick a different combination.",
@@ -2458,7 +2327,6 @@
       "systemWide": "System-wide",
       "globalCapture": "Global capture",
       "recordingHint": "Press keys… esc to cancel",
-      "reset": "Reset",
       "resetAll": "Reset all to defaults",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Failed to resend code",
       "failedToSetUpDevice": "Failed to set up device",
       "failedToConfirmRecoveryPhrase": "Failed to confirm recovery phrase",
-      "failedToAnalyzeContent": "Failed to analyze content",
       "failedToLoadUpdaterState": "Failed to load updater state",
       "failedToCheckForUpdates": "Failed to check for updates",
       "failedToDownloadUpdate": "Failed to download update",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Failed to load note editor settings",
       "failedToUpdateSettings": "Failed to update settings",
       "failedToLoadTabSettings": "Failed to load tab settings",
-      "failedToLoadNotes": "Failed to load notes",
       "failedToLoadTags": "Failed to load tags",
-      "failedToLoadTasks": "Failed to load tasks",
       "failedToLoadVaultStatus": "Failed to load vault status",
       "failedToSelectVault": "Failed to select vault",
       "failedToCloseVault": "Failed to close vault",
@@ -2565,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Local server access for external MCP clients."
     },
-    "groups": {
-      "connection": "Connection",
-      "access": "Access"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "In-memory credential for this app launch."
+        "label": "Bearer token"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Agent Permissions",
       "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
     },
-    "groups": {
-      "cliAgents": "CLI agents",
-      "local": "Local OpenAI-compatible provider",
-      "actions": "Connection checks"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Agent permissions",
       "access": {
-        "label": "Default access",
         "description": "Sets the starting access mode for new Agent turns.",
         "vaultOnly": "Vault only",
         "computerAccess": "Computer access",
         "builtInNote": "The built-in model connection always runs with vault tools only."
       },
       "confirm": {
-        "label": "Confirm actions",
         "description": "Choose whether tool calls run automatically or wait for approval in chat. Locked notes and folders stay read-only in both modes.",
         "alwaysAllow": "Always allow",
         "askBeforeChanges": "Ask before changes"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Save",
-      "models": "Models",
-      "test": "Test connection",
-      "probe": "Probe tools"
+      "test": "Test connection"
     },
     "status": {
       "label": "Connection",
       "checking": "Checking…",
       "connected": "Connected",
-      "disconnected": "Disconnected",
-      "toolsDisabled": "Tools disabled",
-      "fullTools": "Full tools enabled"
+      "disconnected": "Disconnected"
     },
     "alwaysAllowed": {
-      "group": "Always allowed",
       "description": "Tools you granted a standing approval for in this vault. Deletes can never be granted one.",
       "empty": "Nothing is always allowed. Every change still asks.",
       "revoke": "Revoke",

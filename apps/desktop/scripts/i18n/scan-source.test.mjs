@@ -77,3 +77,20 @@ test('test and spec files are ignored by default', () => {
   assert.deepEqual(result.files, [])
   assert.deepEqual(result.untranslated, [])
 })
+
+test('keys built from dotted prefixes, string constants and ternaries count as used', () => {
+  const result = scanFixture('dynamic-keys.tsx')
+  const used = new Set(result.usedKeys)
+
+  assert.deepEqual(result.missingKeys, [])
+  for (const key of [
+    'tasks:drawer.activityFieldTitle',
+    'notes:tagFields.presets.person.fields.company',
+    'common:onboardingWizard.theme.dark',
+    'common:onboardingWizard.agent.setUp',
+    'common:onboardingWizard.agent.claude_cli'
+  ]) {
+    assert.equal(used.has(key), true, key)
+  }
+  assert.equal(used.has('tasks:drawer.title'), false)
+})

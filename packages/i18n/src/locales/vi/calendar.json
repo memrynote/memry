@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Hoàn thành {title}",
     "task-completed": "Đã hoàn thành công việc",
-    "could-not-complete": "Không thể hoàn thành công việc",
     "could-not-update-status": "Không thể đổi trạng thái công việc",
     "duration-minutes": "{minutes} phút",
     "duration-hours": "{hours} giờ",
@@ -215,12 +213,9 @@
     "next-week": "Tuần tới",
     "open-task": "Mở công việc",
     "source-note": "Ghi chú nguồn",
-    "reschedule": "Lên lịch lại",
     "mark-done": "Đánh dấu đã xong",
     "mark-not-done": "Đánh dấu chưa xong",
-    "later-today": "Cuối ngày hôm nay",
     "tomorrow": "Ngày mai",
-    "next-week-mon": "Tuần tới · Thứ Hai",
     "pick-date-time": "Chọn ngày & giờ…",
     "remove-due-date": "Gỡ ngày đến hạn",
     "subtasks-prefix": "Công việc con",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Lịch đã đăng ký"
     },
     "caldav": {
       "name": "CalDAV"

@@ -53,8 +53,7 @@
       "high": "Hoog",
       "urgent": "Urgent"
     },
-    "unarchive": "Taak uit archief halen",
-    "archivedOn": "Gearchiveerd op {date}"
+    "unarchive": "Taak uit archief halen"
   },
   "reminders": {
     "summary": "Herinnering: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Subtaak toevoegen",
     "subIssuePlaceholder": "Subtaak toevoegen…",
     "noSubIssues": "Nog geen subtaken",
-    "linkedNotes": "Gerelateerd",
-    "linkNote": "Gerelateerd item toevoegen",
     "loading": "Laden…",
-    "searchNotes": "Gerelateerde items zoeken…",
-    "noMatchingNotes": "Geen overeenkomende items",
-    "noNotesAvailable": "Geen items beschikbaar",
-    "noLinkedNotes": "Nog geen gerelateerde items",
-    "removeLinkTo": "Gerelateerd item {title} verwijderen",
-    "removeLinkFallback": "item",
     "related": "Gerelateerd",
     "addRelatedItem": "Gerelateerd item toevoegen",
     "searchRelated": "Gerelateerde items zoeken…",
     "noMatchingRelated": "Geen overeenkomende items",
     "noRelatedAvailable": "Geen items beschikbaar",
-    "noRelatedItems": "Nog geen gerelateerde items",
     "removeRelatedItem": "Gerelateerd item {title} verwijderen",
     "relatedItemFallback": "item",
     "relatedItemMissing": "Dat gerelateerde item staat niet meer in deze kluis.",
@@ -251,7 +241,6 @@
     "deleted": "Taak verwijderd",
     "deletedSeries": "Reeks voltooid!",
     "completed": "Taak voltooid!",
-    "archived": "Taak gearchiveerd",
     "undoNotAvailableForDelete": "Verwijderen kan niet ongedaan worden gemaakt",
     "alreadyAllComplete": "Alle geselecteerde taken zijn al voltooid",
     "noCompletedSelected": "Geen voltooide taken geselecteerd",
@@ -331,7 +320,6 @@
       "archive": "Archiveren",
       "delete": "Verwijderen",
       "cancelSelection": "Selectie annuleren",
-      "cancel": "Annuleren",
       "unarchive": "Uit archief halen"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Project verwijderen: \"",
       "thisProjectHas": "Dit project heeft ",
       "task": "item",
-      "whatWouldYouLikeToDoWithThem": "Wat zou je ermee willen doen?",
-      "moveTasksToPersonalProject": "Taken naar het project Persoonlijk verplaatsen",
-      "deleteAllTasksPermanently": "Alle taken definitief verwijderen",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dit project heeft geen taken en wordt definitief verwijderd.",
       "notesEventsAndFilesStayNotice": "Taken in dit project worden verwijderd. Je notities, afspraken en bestanden blijven in je kluis.",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Vervaldatum instellen voor alle subtaken",
-      "setDueDateFor": "Vervaldatum instellen voor ",
-      "alsoApplyToCompletedSubtasks": "Ook toepassen op voltooide subtaken (",
       "clearDate": "Datum wissen",
       "cancel": "Annuleren",
       "apply": "Toepassen",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Prioriteit instellen voor alle subtaken",
-      "setPriorityFor": "Prioriteit instellen voor ",
-      "alsoApplyToCompletedSubtasks": "Ook toepassen op voltooide subtaken (",
       "cancel": "Annuleren",
       "apply": "Toepassen",
       "setPriorityForSubtasksIn": "Prioriteit instellen voor {count, plural, one {# subtaak} other {# subtaken}} in “{title}”",
@@ -464,36 +445,13 @@
       "deleteAll": "Alles verwijderen",
       "deleteSubtasksConfirmation": "Hiermee {count, plural, one {wordt # subtaak} other {worden # subtaken}} uit “{title}” verwijderd."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Taak met subtaken verwijderen?",
-      "has": "heeft ",
-      "subtask": "item",
-      "whatWouldYouLikeToDo": "Wat wil je doen?",
-      "deleteTaskAndAllSubtasks": "Taak en alle subtaken verwijderen",
-      "permanentlyRemovesEverything": "Verwijdert alles definitief",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Taak verwijderen, subtaken als zelfstandige taken behouden",
-      "subtasksBecomeTopLevelTasks": "Subtaken worden taken op het hoogste niveau",
-      "cancel": "Annuleren",
-      "delete": "Verwijderen"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Taak dupliceren",
-      "createACopyOf": "Een kopie maken van “",
-      "alsoDuplicateSubtasks": "Subtaken ook dupliceren (",
       "cancel": "Annuleren",
-      "duplicate": "Dupliceren ",
       "createACopyOfTitle": "Een kopie maken van “{title}”",
       "alsoDuplicateSubtasksCount": "Subtaken ook dupliceren ({count})",
       "duplicateWithItems": "Dupliceren ({count, plural, one {# item} other {# items}})",
       "duplicateTaskOnly": "Taak dupliceren"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Subtaak maken van…",
-      "selectATaskToMake": "Kies een taak waarvan \"",
-      "aSubtaskOf": "een subtaak wordt.",
-      "searchTasks": "Taken zoeken…",
-      "sameProject": "Hetzelfde project",
-      "otherProjects": "Andere projecten"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Loslaten om te verplaatsen naar "
@@ -575,12 +533,6 @@
       "search": "zoeken",
       "clearAll": "Alles wissen"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filteren op vervaldatum",
-      "customRange": "Aangepast bereik",
-      "clear": "Wissen",
-      "apply": "Toepassen"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filteren op…"
     },
@@ -619,23 +571,9 @@
       "search": "Zoeken…",
       "selected": "geselecteerd"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Meer filters",
-      "more": "Meer",
-      "status": "Status",
-      "hasTimeSet": "Met tijdstip",
-      "recurringOnly": "Alleen herhalend",
-      "status2": "Status"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Filteren op prioriteit",
       "priority": "Prioriteit"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filteren op project",
-      "project": "Project",
-      "allProjects": "Alle projecten",
-      "clear": "Wissen"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Snelle filters:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Tijd: met tijdstip",
       "summaryTimeWithout": "Tijd: zonder tijdstip",
       "nameRequired": "Voer een naam in voor dit filter"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Opgeslagen filters",
-      "saved": "Opgeslagen",
-      "noSavedFiltersYet": "Nog geen opgeslagen filters",
-      "saveCurrentFilters": "Huidige filters opslaan",
-      "saveCurrentFilters2": "Huidige filters opslaan"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Filternaam",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "De takenpagina opent met dit project"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Project selecteren",
-      "selectProject2": "Project selecteren"
+      "selectProject": "Project selecteren"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Project bewerken",
@@ -725,11 +655,6 @@
       "selectProject": "Project selecteren",
       "noProjectsYet": "Nog geen projecten",
       "createProject": "Project aanmaken"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Geen project geselecteerd",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Selecteer een project uit de vervolgkeuzelijst of maak een nieuw project",
-      "createYourFirstProject": "Maak je eerste project"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Uitleg over verkorte notatie bij snel toevoegen",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Tijd selecteren",
-      "selectTime2": "Tijd selecteren",
       "clearTime": "Tijd wissen"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Geen project geselecteerd",
     "emptyBody": "Kies een project in de zijbalk om de projectpagina te openen.",
-    "loadError": "Kan projectdetails niet laden",
     "overview": {
       "sectionTitle": "Overzicht",
       "create": "Overzichtsnotitie maken",
@@ -969,18 +892,11 @@
       "empty": "Niets open in dit project.",
       "expand": "Taken in {title} tonen",
       "collapse": "Taken in {title} verbergen",
-      "taskSummary": "{open}/{total} open",
       "daysLeft": "{count}d",
       "overdue": "{count}d te laat",
       "columns": {
         "title": "Titel",
         "daysLeft": "Dagen over"
-      },
-      "status": {
-        "active": "Actief",
-        "done": "Klaar",
-        "upcoming": "Aankomend",
-        "past": "Verleden"
       }
     }
   },

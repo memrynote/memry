@@ -122,10 +122,6 @@
       "body": "A kezdéshez hozzon létre egy jegyzetet",
       "newNote": "Új jegyzet"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise-szinkronizálás",
-      "failed": "A Readwise-szinkronizálás sikertelen"
-    },
     "syncing": {
       "body": "Jegyzetei szinkronizálása folyamatban – ahogy megérkeznek, itt jelennek meg"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Könyvjelző hozzáadása",
       "removeFromBookmarks": "Eltávolítás a könyvjelzők közül",
       "journalSettings": "Napló beállításai…"
-    },
-    "nav": {
-      "label": "Navigáció",
-      "ariaExpanded": "Navigációs szakasz, kibontva",
-      "ariaCollapsed": "Navigációs szakasz, összecsukva",
-      "saveFailed": "Nem sikerült menteni a navigációs szakasz állapotát"
     },
     "viewOptions": {
       "label": "Nézetbeállítások",
@@ -523,13 +513,8 @@
         "ai": "MI"
       },
       "secondary": {
-        "asToggleHeading": "Összecsukhatóként",
         "asLinkedTask": "Kapcsolt feladatként",
         "asReminder": "Emlékeztetőként"
-      },
-      "actions": {
-        "insert": "Beszúrás",
-        "open": "Megnyitás"
       },
       "close": "Menü bezárása",
       "matchesAlias": "egyezés:",
@@ -607,7 +592,6 @@
         "title": "Blokk áthelyezése jegyzetbe",
         "searchPlaceholder": "Jegyzetek keresése…",
         "noResults": "Nincs egyező jegyzet",
-        "moved": "Blokk áthelyezve ide: „{title}”",
         "failed": "Nem sikerült áthelyezni a blokkot"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Vázlat",
     "aria": "Dokumentumvázlat",
-    "emptyYet": "Még nincsenek címsorok",
     "readTime": "{count} perc olvasás",
     "words": "{count} szó",
     "created": "Létrehozva",
@@ -839,11 +822,9 @@
     "toolbarComment": "Megjegyzés",
     "commentPlaceholder": "Megjegyzés hozzáadása…",
     "createdTooltip": "Létrehozva: {date} {time}",
-    "cancel": "Mégse",
     "resolve": "Megjelölés megoldottként",
     "edit": "Megjegyzés szerkesztése",
     "delete": "Megjegyzés törlése",
-    "replyPlaceholder": "Válasz…",
     "attachAria": "Fájl csatolása",
     "mentionAria": "Személy, oldal vagy dátum említése",
     "sendAria": "Megjegyzés küldése",
@@ -856,13 +837,7 @@
       "code": "Kód"
     },
     "openImageAria": "{name} kép megnyitása",
-    "openAttachmentAria": "{name} melléklet megnyitása",
-    "kind": {
-      "comment": "Megjegyzés",
-      "addition": "Hozzáadás",
-      "deletion": "Törlés",
-      "substitution": "Csere"
-    }
+    "openAttachmentAria": "{name} melléklet megnyitása"
   },
   "tagsRow": {
     "aria": "Címkék",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Tulajdonságok",
     "noteAria": "Jegyzet tulajdonságai",
-    "workspaceAria": "Munkaterület tulajdonságai",
     "listAria": "Tulajdonságok listája",
     "add": "Tulajdonság hozzáadása",
     "addDescription": "Új tulajdonság hozzáadása ehhez a jegyzethez",
@@ -932,7 +906,6 @@
       "inProgress": "Folyamatban",
       "done": "Kész"
     },
-    "projectAlreadySet": "Ennek a jegyzetnek már van projekt típusú tulajdonsága",
     "projectPlaceholder": "Nincs projekt",
     "projectSearch": "Projektek keresése",
     "projectEmpty": "Nincsenek projektek",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Szűrés",
-      "filters": "Szűrők",
-      "clearAll": "Összes törlése",
-      "noFiltersApplied": "Nincsenek szűrők",
-      "addFiltersToNarrowDownYourNotes": "Adjon hozzá szűrőket a jegyzetek szűkítéséhez",
       "match": "Egyezés",
-      "allAnd": "Mind (ÉS)",
-      "anyOr": "Bármelyik (VAGY)",
-      "ofTheFollowing": "az alábbiak közül:",
       "match2": "Egyezés",
       "all": "Mind",
       "any": "Bármelyik",
-      "of": "közül:",
       "addCondition": "Feltétel hozzáadása",
       "addFilter": "Szűrő hozzáadása",
       "addGroup": "Csoport hozzáadása",
@@ -1207,7 +1172,6 @@
       "available": "Elérhető: ",
       "preview": "Előnézet",
       "fixExpressionErrorsToSeePreview": "Az előnézet megtekintéséhez javítsa ki a kifejezés hibáit",
-      "usingNote": "Használt jegyzet: „",
       "cancel": "Mégse",
       "namePlaceholder": "napok_hataridoig",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Mappák betöltése…",
       "suggested": "JAVASOLT",
       "bestMatch": "Legjobb találat",
-      "current": "jelenlegi)",
       "allFolders": "MINDEN MAPPA",
-      "noFoldersMatch": "Egyetlen mappa sem egyezik ezzel: „",
-      "create": "Létrehozás: „",
       "cancel": "Mégse",
       "currentFolderBadge": "(jelenlegi)",
       "noFoldersMatchQuery": "Egyetlen mappa sem egyezik ezzel: „{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "alapértelmezett",
       "viewActions": "Nézetműveletek",
-      "rename": "Átnevezés",
       "duplicate": "Megkettőzés",
       "setAsDefault": "Beállítás alapértelmezettként",
       "delete": "Törlés",
-      "createNewView": "Új nézet létrehozása",
-      "createNewView2": "Új nézet létrehozása",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Hozzon létre egy új nézetet egyéni oszlopokkal, szűrőkkel és rendezéssel.",
-      "viewName": "Nézet neve",
       "myCustomView": "Saját nézet",
-      "baseConfiguration": "Alapkonfiguráció",
-      "copyFromCurrentView": "Másolás az aktuális nézetből",
-      "startFreshDefaultColumns": "Kezdés elölről (alapértelmezett oszlopok)",
       "cancel": "Mégse",
-      "renameView": "Nézet átnevezése",
-      "enterANewNameForThisView": "Adjon meg egy új nevet ennek a nézetnek.",
-      "viewName2": "Nézet neve",
-      "viewName3": "Nézet neve",
-      "cancel2": "Mégse",
       "deleteView": "Nézet törlése",
       "areYouSureYouWantToDelete": "Biztosan törli ezt a nézetet: \"",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
@@ -1289,22 +1237,17 @@
       "layout": "Elrendezés",
       "table": "Táblázat",
       "list": "Lista",
-      "gallery": "Galéria",
-      "createView": "Nézet létrehozása",
-      "save": "Mentés"
+      "gallery": "Galéria"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nem sikerült betölteni a PDF-et: ",
-      "download": "Letöltés",
       "download2": "Letöltés",
       "noFileAttached": "Nincs fájl csatolva",
       "resizePdf": "PDF átméretezése",
       "resizeHtml": "HTML-beágyazás átméretezése",
       "alignLeft": "Balra igazítás",
       "alignCenter": "Középre igazítás",
-      "alignRight": "Jobbra igazítás",
-      "previousPage": "Előző oldal",
-      "nextPage": "Következő oldal"
+      "alignRight": "Jobbra igazítás"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Megnyitás a feladatpanelen",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 hüvelyk)",
       "legal85X14In": "Legal (8,5 x 14 hüvelyk)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "nn.hh.éééé"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Szinkronizálva"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Szavak",
       "characters": "Karakterek",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Még nincsenek könyvjelzők",
       "moreOptions": "További lehetőségek",
       "remove": "Eltávolítás"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Megnyitás",
-      "openToTheSide": "Megnyitás oldalt",
-      "pinToTabs": "Kitűzés lapként",
-      "edit": "Szerkesztés",
-      "delete": "Törlés",
-      "copyLink": "Hivatkozás másolása"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Címkék betöltése…",
@@ -1380,26 +1309,9 @@
       "cancel": "Mégse"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Vissza",
-      "notes": "jegyzet",
-      "loadingNotes": "Jegyzetek betöltése…",
-      "noNotesWithThisTag": "Nincsenek jegyzetek ezzel a címkével",
-      "addThisTagToANoteToSeeItHere": "Adja hozzá ezt a címkét egy jegyzethez, hogy itt megtekinthesse",
-      "pinned": "KITŰZÖTT",
-      "allNotes": "ÖSSZES JEGYZET",
-      "allNotesArePinned": "Minden jegyzet ki van tűzve",
-      "tasks": "FELADATOK",
-      "unpinFromTag": "Kitűzés megszüntetése a címkénél",
-      "unpin": "Kitűzés megszüntetése",
-      "pinToTag": "Kitűzés a címkénél",
-      "pin": "Kitűzés",
       "tagActions": "Címkeműveletek",
-      "editTagName": "Címke nevének szerkesztése",
       "changeColor": "Szín módosítása",
-      "deleteTag": "Címke törlése",
-      "recent": "Legutóbbi",
-      "created": "Létrehozva",
-      "alphabetical": "Betűrendben"
+      "deleteTag": "Címke törlése"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Címke átnevezése",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Új jegyzet létrehozása",
-      "viewSettings": "Nézetbeállítások",
-      "displayDensity": "Megjelenítési sűrűség",
-      "comfortable": "Kényelmes",
-      "compact": "Kompakt",
-      "showSummaries": "Összesítések megjelenítése",
       "cancel": "Mégse"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Címkeközpont megnyitása"
   },
   "tagView": {
-    "moreActions": "További műveletek",
     "pin": {
       "action": "{count, plural, one {# jegyzet kitűzése a címkénél} other {# jegyzet kitűzése a címkénél}}",
       "success": "{count, plural, one {# jegyzet kitűzve a címkénél} other {# jegyzet kitűzve a címkénél}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Keresés elnevezése",
     "saveDialogPlaceholder": "pl. Munkahelyi megbeszélések",
     "cancel": "Mégse",
-    "save": "Mentés",
-    "addToFilterHint": "Ctrl/Cmd + kattintással adhat hozzá egy címkét a szűrőhöz"
+    "save": "Mentés"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Írás…",
       "writtenBy": "Írta: {agent}",
       "retry": "Az utolsó futás sikertelen · Újrapróbálkozás",
-      "retryAction": "Újrapróbálkozás",
       "captionOff": "Kapcsolja be a Hosszú jegyzetek összefoglalását a Beállítások → MI részben",
       "captionNoAgent": "Nincs csatlakoztatott ügynök · Beállítások → MI",
       "unknownAgent": "MI"

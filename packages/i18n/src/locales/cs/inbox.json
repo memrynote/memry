@@ -15,19 +15,13 @@
       "showWithCount": "Zobrazit odložené položky ({count})",
       "hide": "Skrýt odložené položky"
     },
-    "density": {
-      "toComfortable": "Pohodlné zobrazení",
-      "toCompact": "Kompaktní zobrazení"
-    },
     "filter": {
-      "button": "Filtr",
       "byType": "Filtrovat podle typu",
       "active": "{count, plural, one {Filtrováno podle # typu} few {Filtrováno podle # typů} other {Filtrováno podle # typů}}",
       "clearAll": "Vymazat vše"
     },
     "jobs": {
-      "running": "{count, plural, one {Na pozadí běží # úloha} few {Na pozadí běží # úlohy} other {Na pozadí běží # úloh}}",
-      "failed": "Nezdařilo se: {count}"
+      "running": "{count, plural, one {Na pozadí běží # úloha} few {Na pozadí běží # úlohy} other {Na pozadí běží # úloh}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Vytvořit složku „{name}“",
     "addTags": "Přidat štítky…",
     "linkToNote": "Propojit s poznámkou",
-    "linkANote": "Propojit poznámku",
-    "suggestedCount": "Navrženo: {count}",
-    "linkNotesPlaceholder": "Propojit poznámky…",
     "linkOrCreateNotePlaceholder": "Najít nebo vytvořit poznámku…",
     "createNote": "Vytvořit poznámku „{title}“",
     "pendingNote": "Nová poznámka",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Data připomenutí nejsou k dispozici.",
     "triggered": "Připomenutí spuštěno",
-    "noteLabel": "Poznámka k připomenutí",
     "source": "Zdroj",
     "journalTitle": "Deník – {date}",
     "noteFallback": "Poznámka",
@@ -514,9 +504,7 @@
       "settings": "Nastavení",
       "processing": "Zpracování…",
       "cancelRecording": "Zrušit nahrávání",
-      "cancel": "Zrušit",
       "stopRecording": "Zastavit nahrávání",
-      "stop": "Zastavit",
       "recordingError": "Při nahrávání došlo k chybě",
       "microphoneAccessDenied": "Přístup k mikrofonu byl odepřen",
       "noMicrophoneFound": "Nebyl nalezen žádný mikrofon",

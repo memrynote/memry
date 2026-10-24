@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "尚未驗證身分",
-    "sessionExpired": "工作階段已過期，請重新登入。",
     "setupSessionExpired": "登入在完成前已逾時。請重新登入，然後輸入復原片語。",
     "setupSessionExpiredLinking": "登入在這部裝置完成連結前已逾時。請重新登入，然後再掃描一次 QR 碼。",
     "invalidRecoveryPhraseFormat": "復原片語格式無效",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "無法載入模型",
     "voiceModelDownloadFailed": "無法下載語音模型",
     "terminalCommandInstallFailed": "無法安裝終端機指令",
-    "terminalCommandUninstallFailed": "無法解除安裝終端機指令",
-    "shortcutInUse": "快速鍵 {shortcut} 已在使用中"
+    "terminalCommandUninstallFailed": "無法解除安裝終端機指令"
   },
   "tag": {
     "renameInProgress": "將 #{from} 重新命名為 #{to} 的作業仍在執行。請在完成後再試。",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} 已從此標籤繼承欄位",
     "unreadableSchema": "較新版本的 Memry 變更了此標籤。請更新 Memry 後再編輯",
     "relationTargetRequired": "請選擇此關聯指向哪個標籤",
-    "editFailed": "無法變更標籤的欄位",
-    "previewFailed": "無法計算此變更的影響範圍",
-    "snapshotFailed": "無法載入標籤欄位",
     "renameRunning": "另一個欄位重新命名（{from} 改為 {to}）仍在完成中。完成後請再試一次。"
   }
 }

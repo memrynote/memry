@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Inte inloggad",
-    "sessionExpired": "Sessionen har gått ut. Logga in igen.",
     "setupSessionExpired": "Din inloggning gick ut innan det här blev klart. Logga in igen och ange sedan din återställningsfras.",
     "setupSessionExpiredLinking": "Din inloggning gick ut innan den här enheten hann kopplas. Logga in igen och skanna sedan koden en gång till.",
     "invalidRecoveryPhraseFormat": "Ogiltigt format på återställningsfrasen",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Det gick inte att läsa in modellen",
     "voiceModelDownloadFailed": "Det gick inte att ladda ner röstmodellen",
     "terminalCommandInstallFailed": "Det gick inte att installera terminalkommandot",
-    "terminalCommandUninstallFailed": "Det gick inte att avinstallera terminalkommandot",
-    "shortcutInUse": "Kortkommandot {shortcut} används redan"
+    "terminalCommandUninstallFailed": "Det gick inte att avinstallera terminalkommandot"
   },
   "tag": {
     "renameInProgress": "Ett namnbyte från #{from} till #{to} pågår fortfarande. Försök igen när det är klart.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} ärver redan sina fält från den här taggen",
     "unreadableSchema": "En nyare version av Memry har ändrat den här taggen. Uppdatera Memry för att redigera den",
     "relationTargetRequired": "Välj vilken tagg den här relationen pekar på",
-    "editFailed": "Det gick inte att ändra taggens fält",
-    "previewFailed": "Det gick inte att räkna vad den här ändringen påverkar",
-    "snapshotFailed": "Det gick inte att läsa in taggfälten",
     "renameRunning": "Ett annat namnbyte av fält pågår fortfarande ({from} till {to}). Försök igen när det är klart."
   }
 }

@@ -53,8 +53,7 @@
       "high": "Magas",
       "urgent": "Sürgős"
     },
-    "unarchive": "Archiválás visszavonása",
-    "archivedOn": "Archiválva: {date}"
+    "unarchive": "Archiválás visszavonása"
   },
   "reminders": {
     "summary": "Emlékeztető: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Részfeladat hozzáadása",
     "subIssuePlaceholder": "Részfeladat hozzáadása…",
     "noSubIssues": "Még nincsenek részfeladatok",
-    "linkedNotes": "Kapcsolódó",
-    "linkNote": "Kapcsolódó elem hozzáadása",
     "loading": "Betöltés…",
-    "searchNotes": "Kapcsolódó elemek keresése…",
-    "noMatchingNotes": "Nincs egyező elem",
-    "noNotesAvailable": "Nincs elérhető elem",
-    "noLinkedNotes": "Még nincsenek kapcsolódó elemek",
-    "removeLinkTo": "Kapcsolódó elem eltávolítása: {title}",
-    "removeLinkFallback": "elem",
     "related": "Kapcsolódó",
     "addRelatedItem": "Kapcsolódó elem hozzáadása",
     "searchRelated": "Kapcsolódó elemek keresése…",
     "noMatchingRelated": "Nincs egyező elem",
     "noRelatedAvailable": "Nincs elérhető elem",
-    "noRelatedItems": "Még nincsenek kapcsolódó elemek",
     "removeRelatedItem": "Kapcsolódó elem eltávolítása: {title}",
     "relatedItemFallback": "elem",
     "relatedItemMissing": "Ez a kapcsolódó elem már nincs ebben a széfben.",
@@ -251,7 +241,6 @@
     "deleted": "Feladat törölve",
     "deletedSeries": "Kész a sorozat!",
     "completed": "Feladat befejezve!",
-    "archived": "Feladat archiválva",
     "undoNotAvailableForDelete": "A törlés nem vonható vissza",
     "alreadyAllComplete": "Az összes kiválasztott feladat már be van fejezve",
     "noCompletedSelected": "Nincsenek befejezett feladatok kiválasztva",
@@ -331,7 +320,6 @@
       "archive": "Archiválás",
       "delete": "Törlés",
       "cancelSelection": "Kijelölés megszüntetése",
-      "cancel": "Mégse",
       "unarchive": "Archiválás visszavonása"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Törli a projektet: \"",
       "thisProjectHas": "A projekthez tartozik ",
       "task": "feladat",
-      "whatWouldYouLikeToDoWithThem": "Mi történjen velük?",
-      "moveTasksToPersonalProject": "A feladatok áthelyezése a személyes projektbe",
-      "deleteAllTasksPermanently": "Az összes feladat végleges törlése",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ennek a projektnek nincsenek feladatai, ezért véglegesen töröljük.",
       "notesEventsAndFilesStayNotice": "A projekt feladatai törlődnek. A jegyzetei, eseményei és fájljai a széfben maradnak.",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Határidő beállítása az összes részfeladathoz",
-      "setDueDateFor": "Határidő beállítása: ",
-      "alsoApplyToCompletedSubtasks": "Alkalmazás a befejezett részfeladatokra is (",
       "clearDate": "Dátum törlése",
       "cancel": "Mégse",
       "apply": "Alkalmazás",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Prioritás beállítása az összes részfeladathoz",
-      "setPriorityFor": "Prioritás beállítása: ",
-      "alsoApplyToCompletedSubtasks": "Alkalmazás a befejezett részfeladatokra is (",
       "cancel": "Mégse",
       "apply": "Alkalmazás",
       "setPriorityForSubtasksIn": "Prioritás beállítása a(z) „{title}” {count, plural, one {# részfeladatához} other {# részfeladatához}}",
@@ -464,36 +445,13 @@
       "deleteAll": "Összes törlése",
       "deleteSubtasksConfirmation": "Ezzel {count, plural, one {# részfeladat} other {# részfeladat}} törlődik a(z) „{title}” feladatból."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Törli a feladatot és a részfeladatait?",
-      "has": "feladathoz tartozik ",
-      "subtask": "részfeladat",
-      "whatWouldYouLikeToDo": "Mit szeretne tenni?",
-      "deleteTaskAndAllSubtasks": "Feladat és az összes részfeladat törlése",
-      "permanentlyRemovesEverything": "Véglegesen eltávolít mindent",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Feladat törlése, részfeladatok megtartása önálló feladatként",
-      "subtasksBecomeTopLevelTasks": "A részfeladatok legfelső szintű feladatokká válnak",
-      "cancel": "Mégse",
-      "delete": "Törlés"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Feladat megkettőzése",
-      "createACopyOf": "Másolat készítése erről: „",
-      "alsoDuplicateSubtasks": "A részfeladatok megkettőzése is (",
       "cancel": "Mégse",
-      "duplicate": "Megkettőzés ",
       "createACopyOfTitle": "Másolat készítése a(z) „{title}” feladatról",
       "alsoDuplicateSubtasksCount": "A részfeladatok megkettőzése is ({count})",
       "duplicateWithItems": "Megkettőzés ({count, plural, one {# elem} other {# elem}})",
       "duplicateTaskOnly": "Feladat megkettőzése"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Részfeladattá alakítás…",
-      "selectATaskToMake": "Válassza ki a feladatot, amelynek a(z) \"",
-      "aSubtaskOf": "részfeladata lesz.",
-      "searchTasks": "Feladatok keresése…",
-      "sameProject": "Ugyanaz a projekt",
-      "otherProjects": "Egyéb projektek"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Engedje el az átütemezéshez: "
@@ -575,12 +533,6 @@
       "search": "keresés",
       "clearAll": "Minden törlése"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Szűrés határidő szerint",
-      "customRange": "Egyéni tartomány",
-      "clear": "Törlés",
-      "apply": "Alkalmazás"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Szűrés…"
     },
@@ -619,23 +571,9 @@
       "search": "Keresés…",
       "selected": "kiválasztott"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "További szűrők",
-      "more": "Továbbiak",
-      "status": "Állapot",
-      "hasTimeSet": "Időpont megadva",
-      "recurringOnly": "Csak ismétlődő",
-      "status2": "Állapot"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Szűrés prioritás szerint",
       "priority": "Prioritás"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Szűrés projekt szerint",
-      "project": "Projekt",
-      "allProjects": "Minden projekt",
-      "clear": "Törlés"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Gyors szűrők:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Idő: időponttal",
       "summaryTimeWithout": "Idő: időpont nélkül",
       "nameRequired": "Adjon nevet a szűrőnek"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Mentett szűrők",
-      "saved": "Mentve",
-      "noSavedFiltersYet": "Még nincsenek mentett szűrők",
-      "saveCurrentFilters": "Az aktuális szűrők mentése",
-      "saveCurrentFilters2": "Az aktuális szűrők mentése"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Szűrő neve",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "A Feladatok ezen a projekten nyílik meg"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Projekt kiválasztása",
-      "selectProject2": "Projekt kiválasztása"
+      "selectProject": "Projekt kiválasztása"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Projekt szerkesztése",
@@ -725,11 +655,6 @@
       "selectProject": "Projekt kiválasztása",
       "noProjectsYet": "Még nincsenek projektek",
       "createProject": "Projekt létrehozása"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Nincs kiválasztva projekt",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Válasszon ki egy projektet a legördülő menüből, vagy hozzon létre egy újat",
-      "createYourFirstProject": "Első projekt létrehozása"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Súgó a gyors hozzáadáshoz",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Időpont kiválasztása",
-      "selectTime2": "Időpont kiválasztása",
       "clearTime": "Időpont törlése"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Nincs kiválasztott projekt",
     "emptyBody": "A projektoldal megnyitásához válasszon egy projektet az oldalsávon.",
-    "loadError": "Nem sikerült betölteni a projekt adatait",
     "overview": {
       "sectionTitle": "Áttekintés",
       "create": "Áttekintő jegyzet létrehozása",
@@ -969,18 +892,11 @@
       "empty": "Ebben a projektben nincs nyitott elem.",
       "expand": "{title} feladatainak megjelenítése",
       "collapse": "{title} feladatainak elrejtése",
-      "taskSummary": "{open}/{total} nyitott",
       "daysLeft": "{count} nap",
       "overdue": "{count} napja lejárt",
       "columns": {
         "title": "Cím",
         "daysLeft": "Hátralévő napok"
-      },
-      "status": {
-        "active": "Aktív",
-        "done": "Kész",
-        "upcoming": "Közelgő",
-        "past": "Múltbeli"
       }
     }
   },

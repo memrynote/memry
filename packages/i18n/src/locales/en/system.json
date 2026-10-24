@@ -17,18 +17,6 @@
       "filterAll": "All Files"
     },
     "exportCancelled": "Export cancelled",
-    "update": {
-      "availableTitle": "Update available",
-      "availableMessage": "memrynote {version} is available.",
-      "availableDetailFallback": "Download the update now?",
-      "buttonDownload": "Download",
-      "buttonLater": "Later",
-      "readyTitle": "Update ready",
-      "readyMessage": "memrynote {version} has been downloaded.",
-      "readyDetailFallback": "Restart memrynote to finish installing the update.",
-      "buttonRestartNow": "Restart now",
-      "releaseNotesLabel": "Release notes:"
-    },
     "dataDbRecovery": {
       "title": "Repair vault database",
       "message": "Memry's database for this vault is damaged.",

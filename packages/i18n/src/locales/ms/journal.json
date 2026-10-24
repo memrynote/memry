@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Sambungan AI",
     "todaysNotes": "Nota hari ini",
-    "todaysSchedule": "Jadual hari ini",
-    "todaysTasks": "Tugas hari ini",
     "tasks": "Tugas",
     "technicalDetails": "Butiran teknikal"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Selamat petang",
       "evening": "Selamat petang",
       "night": "Selamat malam"
-    },
-    "allDay": "Sepanjang hari"
+    }
   },
   "nav": {
     "previousDay": "Hari sebelumnya",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Lebih banyak pilihan",
     "documentStatistics": "Statistik dokumen",
-    "dayContext": "Konteks hari: tugas dan jadual",
-    "scheduleEvents": "Jadual acara",
-    "tasks": "Tugas",
     "notesCreatedToday": "{count} nota dibuat hari ini"
   },
   "empty": {
     "noEntry": "Tiada entri",
     "noDaysInMonth": "Tiada hari dalam bulan ini",
-    "noEventsScheduled": "Tiada acara yang dijadualkan",
-    "noEventsScheduledToday": "Tiada acara dijadualkan hari ini",
-    "noEventsWereScheduled": "Tiada acara dijadualkan",
-    "noTasksDue": "Tiada tugas perlu disiapkan",
-    "noTasksDueToday": "Tiada tugas perlu disiapkan hari ini",
-    "noTasksWereDue": "Tiada tugas yang perlu disiapkan",
     "noNotesToday": "Tiada nota dibuat hari ini",
     "startDocumenting": "Mula mendokumentasikan pemikiran dan idea anda"
   },
@@ -155,9 +143,7 @@
     "day": "hari",
     "days": "hari",
     "event": "acara",
-    "events": "acara",
     "task": "tugas",
-    "todo": "perlu dibuat",
     "moreConnections": "+ {count} lagi sambungan",
     "moreConnections_plural": "+ {count} lagi sambungan",
     "moreNotes": "+ {count} lagi nota",
@@ -166,7 +152,6 @@
     "charactersWritten": "aksara yang ditulis",
     "words": "{count} perkataan",
     "characters": "{count} aksara",
-    "completed": "{count} selesai",
     "overdue": "{count} lewat tempoh"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Diubah suai {date}"
   },
   "task": {
-    "completed": "Selesai",
-    "notCompleted": "Belum selesai",
-    "priority": "Keutamaan {priority}",
-    "overdue": "lewat tempoh",
-    "markComplete": "Tandakan “{title}” sebagai selesai",
-    "markNotComplete": "Tandakan “{title}” sebagai belum selesai"
+    "priority": "Keutamaan {priority}"
   },
   "template": {
     "using": "Menggunakan “{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Kandungan anda masih dalam ingatan. Klik untuk cuba menyimpan semula.",
-    "noteNotFound": "Nota “{target}” tidak ditemui",
     "createLinkedFailed": "Gagal membuat nota terpaut",
     "fileNotFound": "Fail tidak ditemui: {target}",
     "openLinkedItemFailed": "Gagal membuka item terpaut",

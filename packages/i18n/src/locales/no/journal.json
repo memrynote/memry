@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "KI-koblinger",
     "todaysNotes": "Dagens notater",
-    "todaysSchedule": "Dagens timeplan",
-    "todaysTasks": "Dagens oppgaver",
     "tasks": "Oppgaver",
     "technicalDetails": "Tekniske detaljer"
   },
@@ -102,8 +100,7 @@
       "afternoon": "God ettermiddag",
       "evening": "God kveld",
       "night": "God natt"
-    },
-    "allDay": "Hele dagen"
+    }
   },
   "nav": {
     "previousDay": "Forrige dag",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Flere alternativer",
     "documentStatistics": "Dokumentstatistikk",
-    "dayContext": "Dagskontekst: oppgaver og timeplan",
-    "scheduleEvents": "Hendelser i timeplanen",
-    "tasks": "Oppgaver",
     "notesCreatedToday": "{count} notater opprettet i dag"
   },
   "empty": {
     "noEntry": "Ingen innlegg",
     "noDaysInMonth": "Ingen dager i denne måneden",
-    "noEventsScheduled": "Ingen planlagte hendelser",
-    "noEventsScheduledToday": "Ingen hendelser planlagt i dag",
-    "noEventsWereScheduled": "Ingen hendelser var planlagt",
-    "noTasksDue": "Ingen oppgaver forfaller",
-    "noTasksDueToday": "Ingen oppgaver forfaller i dag",
-    "noTasksWereDue": "Ingen oppgaver forfalt",
     "noNotesToday": "Ingen notater opprettet i dag",
     "startDocumenting": "Begynn å skrive ned tankene og ideene dine"
   },
@@ -155,9 +143,7 @@
     "day": "dag",
     "days": "dager",
     "event": "hendelse",
-    "events": "hendelser",
     "task": "oppgave",
-    "todo": "å gjøre",
     "moreConnections": "+ {count} kobling til",
     "moreConnections_plural": "+ {count} koblinger til",
     "moreNotes": "+ {count} notat til",
@@ -166,7 +152,6 @@
     "charactersWritten": "tegn skrevet",
     "words": "{count} ord",
     "characters": "{count} tegn",
-    "completed": "{count} fullført",
     "overdue": "{count} forfalt"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Endret {date}"
   },
   "task": {
-    "completed": "Fullført",
-    "notCompleted": "Ikke fullført",
-    "priority": "Prioritet: {priority}",
-    "overdue": "forfalt",
-    "markComplete": "Merk «{title}» som fullført",
-    "markNotComplete": "Merk «{title}» som ikke fullført"
+    "priority": "Prioritet: {priority}"
   },
   "template": {
     "using": "Bruker «{templateName}»"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Innholdet ditt er fortsatt i minnet. Klikk for å prøve å lagre på nytt.",
-    "noteNotFound": "Fant ikke notatet «{target}»",
     "createLinkedFailed": "Kunne ikke opprette det lenkede notatet",
     "fileNotFound": "Filen ble ikke funnet: {target}",
     "openLinkedItemFailed": "Kunne ikke åpne det lenkede elementet",

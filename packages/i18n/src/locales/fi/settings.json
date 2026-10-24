@@ -7,11 +7,6 @@
     "backToApp": "Takaisin sovellukseen",
     "nav": {
       "groups": {
-        "account": "Tili",
-        "application": "Sovellus",
-        "editing": "Muokkaus",
-        "modules": "Moduulit",
-        "services": "Palvelut",
         "data": "Tiedot",
         "workspace": "Työtila",
         "features": "Toiminnot"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Moduulin asetukset: {module}"
-    },
-    "vaultImport": {
-      "label": "Tuo toisesta sovelluksesta",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist ja muut",
-      "action": "Tuo…"
     },
     "search": {
       "placeholder": "Hae asetuksista",
@@ -102,12 +92,8 @@
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
-      "startup": "Käynnistys",
       "updates": "Päivitykset",
       "languageRegion": "Kieli ja alue",
-      "tabBehavior": "Välilehtien toiminta",
-      "window": "Ikkunan toiminta",
-      "fileCreation": "Tiedoston luominen",
       "privacy": "Yksityisyys",
       "startupWindows": "Käynnistys ja ikkunat",
       "newNotes": "Uudet muistiinpanot",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Käynnistä kirjautuessa",
-        "description": "Käynnistä memrynote, kun kirjaudut sisään",
         "error": "Käynnistysasetuksen päivittäminen epäonnistui"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Tarkista päivitykset automaattisesti",
-        "description": "Uudet julkaisut tarkistetaan käynnistyksen yhteydessä ja säännöllisesti sovelluksen ollessa auki.",
         "error": "Automaattisen tarkistuksen asetuksen päivittäminen epäonnistui"
       },
       "autoDownload": {
         "label": "Lataa päivitykset automaattisesti",
-        "description": "Uudet julkaisut ladataan ja asennetaan taustalla ilman erillistä kysymistä.",
         "error": "Automaattisen latauksen asetuksen päivittäminen epäonnistui"
       },
-      "appUpdates": "Sovelluspäivitykset",
-      "installedVersion": "Asennettu versio {version}",
-      "availableVersion": "Saatavilla oleva versio {version}",
-      "unsupported": "Paketoidut koontiversiot voivat tarkistaa, ladata ja asentaa päivityksiä GitHub-julkaisuista",
       "available": "memrynote {version} on ladattavissa",
       "downloadingLatest": "Ladataan uusinta julkaisua",
-      "downloadingLatestPercent": "Ladataan uusinta julkaisua ({percent} %)",
       "downloaded": "memrynote {version} on valmis asennettavaksi",
-      "upToDate": "Käytössä on uusin julkaistu versio",
-      "checking": "Tarkistetaan GitHub-julkaisuista uudempaa versiota",
-      "idle": "Tarkista uudet julkaisut ja asenna ne poistumatta sovelluksesta",
       "unsupportedToast": "Automaattiset päivitykset ovat saatavilla vain paketoiduissa julkaisuissa",
       "upToDateToast": "memrynote {version} on ajan tasalla",
       "actionFailed": "Päivitys epäonnistui",
@@ -164,17 +139,10 @@
         "downloading": "Ladataan…",
         "downloadingPercent": "Ladataan {percent} %",
         "downloaded": "Versio {version} valmis asennettavaksi"
-      },
-      "mode": {
-        "label": "Päivitystapa",
-        "off": "Älä tarkista",
-        "notify": "Vain ilmoitus",
-        "auto": "Lataa automaattisesti"
       }
     },
     "language": {
       "label": "Kieli",
-      "helper": "Suurin osa sovelluksesta päivittyy heti. Osa järjestelmätason tekstistä – jo näytetyt ilmoitukset, Dockin nimike, ikkunan otsikkopalkki – päivittyy seuraavan käynnistyksen jälkeen.",
       "changed": "Kieli vaihdettu: {nativeName}",
       "failed": "Kielen vaihtaminen epäonnistui. Yritä uudelleen."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Kellonajan muoto",
-      "description": "12 tunnin tai 24 tunnin kello",
       "options": {
         "12h": "12 h",
         "24h": "24 h"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Päivämäärämuoto",
-      "description": "Miten kalenterin päivämäärät näytetään",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Avaa sivut uuteen välilehteen",
-        "description": "Sivun – muistiinpanon, kansion, projektin, taulun, tunnisteen tai kirjanmerkin – napsauttaminen tai luominen avaa sen uuteen välilehteen. Kun asetus on pois päältä, nykyistä välilehteä käytetään uudelleen myös muistiinpanon linkkejä seurattaessa; kiinnitettyjä välilehtiä ei koskaan korvata. ”Avaa uudessa välilehdessä”, ”Avaa sivuun” ja keskinapsautus avaavat aina uuden välilehden."
+        "label": "Avaa sivut uuteen välilehteen"
       },
       "restoreSession": {
         "label": "Palauta välilehdet käynnistettäessä",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Välilehden sulkemispainike",
-        "description": "Milloin sulkemispainike näytetään",
         "options": {
           "always": "Aina näkyvissä",
           "hover": "Osoitettaessa",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Pidä käynnissä valikkorivillä suljettaessa",
-        "description": "Ikkunan sulkeminen piilottaa memrynoten ilmaisinalueelle sen sijaan, että sovellus suljettaisiin. Tuo se takaisin napsauttamalla ilmaisinalueen kuvaketta. macOSissa sovellus pysyy myös Dockissa; Linux-työpöydillä, joilla ei ole ilmaisinaluetta, ikkuna sulkeutuu tavalliseen tapaan.",
         "error": "Ilmaisinalueasetuksen päivittäminen epäonnistui"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Luo valittuun kansioon",
-        "description": "Uudet muistiinpanot ja kansiot luodaan valittuna olevaan kansioon. Kun asetus on pois päältä, kohteet luodaan aina juureen."
+        "label": "Luo valittuun kansioon"
       },
       "defaultNoteFolder": {
         "label": "Oletussijainti",
         "description": "Käytetään, kun sivupalkissa ei ole valittuna kansiota.",
-        "placeholder": "muistiinpanot",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Diagnostiikkaraportin lähettäminen epäonnistui",
         "sendReport": {
           "label": "Diagnostiikkaraportti",
-          "description": "Lähetä kertaluonteinen raportti teknisistä lokeista, joista tunnistetiedot on poistettu, jotta voimme selvittää kohtaamasi ongelman.",
           "button": "Lähetä raportti…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
-      "theme": "Teema",
-      "accentColor": "Korostusväri",
-      "typography": "Typografia",
-      "zoom": "Zoomaus"
+      "theme": "Teema"
     },
     "theme": {
       "colorMode": {
-        "label": "Väritila",
-        "description": "Valitse haluamasi teema",
         "aria": "Väritila"
       },
       "options": {
         "light": "Vaalea",
-        "white": "Valkoinen",
         "dark": "Tumma",
         "system": "Järjestelmä"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Leikepöydällä ei ole memrynote-teemaa"
     },
     "accent": {
-      "pick": "Valitse korostusväri",
       "custom": {
-        "label": "Mukautettu väri",
-        "description": "Syötä heksadesimaaliarvo",
-        "placeholder": "#000000"
+        "label": "Mukautettu väri"
       },
       "presets": {
         "indigo": "Indigo",
@@ -348,7 +299,6 @@
         "pink": "Vaaleanpunainen",
         "orange": "Oranssi"
       },
-      "error": "Korostusvärin päivittäminen epäonnistui",
       "aria": "Korostusvärin esiasetus",
       "options": {
         "theme": "Teema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Zoomaustaso",
-      "description": "Skaalaa koko käyttöliittymää",
       "decrease": "Loitonna",
       "increase": "Lähennä",
       "reset": "Palauta zoomaus oletukseen",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Fonttikoko",
-        "description": "Käyttöliittymän tekstin peruskoko pikseleinä",
         "decrease": "Pienennä fonttikokoa",
         "increase": "Suurenna fonttikokoa",
         "reset": "Palauta fonttikoko oletukseen"
       },
       "fontFamily": {
         "label": "Fonttiperhe",
-        "description": "Käyttöliittymän ensisijainen fontti",
         "options": {
           "system": "Järjestelmän oletus",
           "sansSerif": "Päätteetön",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Fonttiperheen päivittäminen epäonnistui"
     },
     "v2": {
-      "groups": {
-        "text": "Teksti ja zoomaus"
-      },
       "colorMode": "Väritila",
       "colorTheme": "Teema",
       "accent": "Korostusväri",
-      "customColor": "Mukautettu väri",
       "fontFamily": "Fonttiperhe",
       "fontSize": "Fonttikoko",
       "zoom": "Zoomaus"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Asettelu",
-      "toolbar": "Työkalupalkki",
       "spelling": "Oikeinkirjoitus",
       "checklists": "Tarkistuslistat",
       "attachments": "Liitteet",
@@ -473,7 +413,6 @@
       "error": "Korostuslaatikoiden tyyppien päivitys epäonnistui"
     },
     "width": {
-      "label": "Editorin leveys",
       "description": "Koskee kaikkia muistiinpano- ja päiväkirjasivuja",
       "options": {
         "normal": "Normaali",
@@ -482,12 +421,10 @@
       "error": "Editorin leveyden päivittäminen epäonnistui"
     },
     "toolbarMode": {
-      "label": "Kiinnitetty muotoilupalkki",
       "description": "Näytä työkalupalkki aina editorin yläpuolella",
       "error": "Työkalupalkkitilan päivittäminen epäonnistui"
     },
     "spellCheck": {
-      "label": "Tarkista oikeinkirjoitus",
       "description": "Alleviivaa väärin kirjoitetut sanat muistiinpanoissa ja päiväkirjoissa",
       "error": "Oikeinkirjoituksen tarkistuksen päivittäminen epäonnistui"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Hallitse muistiinpanopohjia nopeaa luomista varten"
     },
     "actions": {
-      "new": "Uusi pohja",
       "edit": "Muokkaa",
       "duplicate": "Monista",
       "delete": "Poista"
     },
     "groups": {
-      "builtIn": "Sisäänrakennetut",
-      "myTemplates": "Omat pohjat"
+      "builtIn": "Sisäänrakennetut"
     },
     "loading": "Ladataan pohjia…",
     "newTemplateTitle": "Uusi pohja",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Ei vielä mukautettuja pohjia",
       "description": "Aloita luomalla pohja"
-    },
-    "preview": {
-      "notFound": "Tämän pohjan lataaminen epäonnistui."
     },
     "toasts": {
       "deleted": "Pohja poistettu",
@@ -572,11 +504,7 @@
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
-      "defaultTemplate": "Oletuspohja",
-      "location": "Sijainti ja muoto",
-      "sidebarVisibility": "Sivupalkin näkyvyys",
-      "footer": "Alatunniste",
-      "weekdayTemplates": "Päiväkohtaiset pohjat"
+      "footer": "Alatunniste"
     },
     "template": {
       "label": "Pohja",
@@ -588,18 +516,6 @@
       "updated": "Oletuspohja päivitetty",
       "cleared": "Oletuspohja tyhjennetty",
       "error": "Oletuspohjan päivittäminen epäonnistui"
-    },
-    "showSchedule": {
-      "label": "Näytä aikataulu",
-      "description": "Näytä päivän tapahtumat ja kalenteri"
-    },
-    "showTasks": {
-      "label": "Näytä tehtävät",
-      "description": "Näytä valittuna päivänä erääntyvät tehtävät"
-    },
-    "showAIConnections": {
-      "label": "Näytä tekoälyyhteydet",
-      "description": "Näytä tekoälyn löytämät yhteydet aiheeseen liittyviin merkintöihin"
     },
     "showStatsFooter": {
       "label": "Näytä tilastojen alatunniste",
@@ -632,7 +548,6 @@
       "inheritWith": "Oletus · {name}",
       "inheritNone": "Oletus · ei mitään",
       "missing": "Poistettu pohja",
-      "clear": "Tyhjennä",
       "updated": "Pohja päivitetty: {day}",
       "cleared": "Pohja tyhjennetty: {day}",
       "error": "Pohjan päivittäminen epäonnistui: {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Määritä päiväsolujen toiminta päiväpaneelissa",
       "loading": "Ladataan asetuksia…"
     },
-    "groups": {
-      "weekStart": "Viikko",
-      "dayCellClick": "Päiväsolun napsautus",
-      "notes": "Muistiinpanot"
-    },
     "weekStart": {
       "label": "Viikko alkaa",
       "description": "Viikon ensimmäinen päivä kaikissa kalentereissa",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Yhdistä Google uudelleen",
       "addAccount": "Lisää tili",
-      "importedCalendars": "Tuodut kalenterit",
-      "selected": "{count} valittu",
       "syncNow": "Synkronoi nyt",
       "disconnect": "Katkaise yhteys",
       "reconnect": "Yhdistä Google uudelleen",
@@ -1025,10 +933,8 @@
       "loading": "Ladataan…"
     },
     "groups": {
-      "identity": "Identiteetti",
       "sync": "Synkronointi",
       "billing": "Laskutus",
-      "storage": "Tallennustila",
       "devices": "Laitteet"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Kirjaudu ulos",
         "description": "Irrota tämä laite synkronoinnista",
         "action": "Kirjaudu ulos"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Kuvahaku pois käytöstä"
     },
     "unknownError": "Tuntematon virhe",
-    "groups": {
-      "voice": "Puheen litterointi",
-      "embeddingModel": "Paikallinen upotusmalli",
-      "embeddingIndex": "Upotusindeksi",
-      "inline": "Tekoälymuokkaus editorissa"
-    },
     "voice": {
-      "provider": "Palveluntarjoaja",
       "providerDescription": "Äänimuistioiden puheentunnistuspalvelu",
-      "providers": {
-        "local": "Paikallinen (oletus)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Muistioiden nimet",
       "memoNameModeDescription": "Miten äänimuistiot nimetään litteroinnin jälkeen",
       "naming": {
         "transcript": "Litteroinnin otsikko",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Kieli, jota puhut ääniviesteissä",
       "languageDefault": "Oletus",
       "languageError": "Litterointikielen päivitys epäonnistui",
-      "localModel": "Paikallinen malli",
-      "localModelDescription": "Whisper Small ladataan tarvittaessa ja säilytetään paikallisessa välimuistissa",
       "status": {
         "ready": "Valmis",
         "downloading": "Ladataan",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Ladattu",
       "loading": "Ladataan",
-      "cacheHint": "~210 Mt · Välimuistissa paikallisesti · Täysin laitteella",
-      "dimensions": "Ulottuvuudet",
-      "embeddings": "Upotukset",
       "downloadLoad": "Lataa ja ota malli käyttöön",
       "downloadingModel": "Ladataan mallia…",
       "loadingModel": "Otetaan mallia käyttöön…",
       "loadSuccess": "Malli otettu käyttöön",
       "loadFailed": "Mallin ottaminen käyttöön epäonnistui",
       "rebuildIndex": "Rakenna indeksi uudelleen",
-      "rebuildDescription": "Luo kaikkien muistiinpanojen upotukset uudelleen",
-      "rebuild": "Rakenna uudelleen",
       "scanning": "Skannataan muistiinpanoja…",
       "generating": "Luodaan upotuksia…",
       "complete": "Valmista!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Ladataan…",
-      "title": "Tekoälymuokkaus editorissa",
-      "enable": "Ota tekoälymuokkaus käyttöön",
       "enableDescription": "Näytä tekoälyvalikko, kun muokkaat muistiinpanoja",
       "enabled": "Tekoälymuokkaus käytössä",
       "disabled": "Tekoälymuokkaus pois käytöstä",
       "provider": "Palveluntarjoaja",
-      "providerDescription": "Tekoälypalvelu tekstitoimintoihin",
       "providers": {
         "ollama": "Ollama (paikallinen)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Aktiivinen portissa {port}",
       "notConnected": "Ei yhdistetty",
       "test": "Testaa",
-      "stopFailed": "Olemassa olevan palvelimen pysäyttäminen epäonnistui",
       "connected": "Yhdistetty! Palvelin toimii portissa {port}",
       "connectFailed": "Yhteyden muodostaminen epäonnistui",
       "testFailed": "Yhteystesti epäonnistui",
@@ -1566,8 +1448,6 @@
       "onenote": "Tuo OneNote-muistikirjoja (vaatii Microsoft-tilin)",
       "readwise": "Tuo korostuksesi Readwisesta (vaatii käyttöoikeustunnuksen)"
     },
-    "action": "Tuo",
-    "select": "Valitse sovellus, josta tuodaan…",
     "stats": {
       "notes": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
       "projects": "{count, plural, one {# projekti} other {# projektia}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Valitse Apple Notes -kansio…",
       "chooseDirectory": "Valitse kansio…",
       "folderKeepsAssets": "Valitse kansio, kun kuvat ovat muistiinpanojen oman kansion ulkopuolella – vienneissä mediatiedostot ovat usein yhteisessä kansiossa.",
-      "chooseHint": "Valitse {label}",
       "folderHint": "Napsauta alla olevaa painiketta ja valitse ”group.com.apple.notes” -kansio, kun valitsin avautuu (se avautuu valmiiksi siihen). Näin Memry voi lukea muistiinpanosi ja liitteesi – täyttä levyn käyttöoikeutta ei tarvita.",
       "noteplanFolderHint": "Valitse NotePlan-kansiosi – joko sovelluksen datakansio tai jokin sen Backups-kopioista. Memry lukee sen sisältä kansiot Calendar, Notes ja @Archive.",
       "selected": "{count, plural, one {# tiedosto valittu} other {# tiedostoa valittu}}",
       "start": "Aloita tuonti",
       "cancel": "Peruuta",
-      "close": "Sulje",
       "done": "Valmis",
       "running": "Tuodaan…",
       "progress": "{completed}/{total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Yhdistetään…",
         "connectFailed": "Readwiseen ei voitu yhdistää",
         "takeOver": {
-          "syncsOn": "Readwise synkronoidaan laitteella {device}.",
-          "syncsOnAnother": "Readwise synkronoidaan toisella laitteella.",
           "explain": "Vain yksi laite hakee tietoja Readwisesta, jotta sama korostus ei kirjoitu kahdesti. Hakeaksesi tältä laitteelta liitä tunnuksesi uudelleen: se ei koskaan siirry laitteiden välillä. Toinen laite pysähtyy seuraavan kirjan kohdalla, ja kaikki muistiinpanot säilyvät.",
           "button": "Synkronoi tässä sen sijaan",
           "working": "Siirretään Readwisea tänne…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Hae sovellusta tai tiedostotyyppiä…",
       "noMatch": "Ei lähteitä haulla ”{query}”",
       "formatAccount": "Tili",
-      "showMore": "{count, plural, one {Näytä # lisää} other {Näytä # lisää}}",
-      "showLess": "Näytä vähemmän",
       "groups": {
         "reading": "Lukeminen",
         "noteApps": "Muistiinpanosovellukset",
@@ -1968,8 +1842,6 @@
       "subtitle": "Holvin asetukset ja tallennustila"
     },
     "groups": {
-      "storageUsage": "Tallennustilan käyttö",
-      "location": "Sijainti",
       "accountVaults": "Tilisi holvit",
       "largeNotes": "Synkronointirajaa lähestyvät muistiinpanot",
       "activity": "Toimintaloki"
@@ -2229,8 +2101,6 @@
       "loading": "Ladataan asetuksia…"
     },
     "searchPlaceholder": "Hae pikanäppäimiä…",
-    "resetAll": "Nollaa kaikki",
-    "custom": "Mukautettu",
     "pressShortcut": "Paina pikanäppäintä…",
     "cancelTitle": "Peruuta",
     "rebindTitle": "Muuta napsauttamalla",
@@ -2241,7 +2111,6 @@
     "noMatch": "Mikään pikanäppäin ei vastaa hakuasi",
     "conflict": "Ristiriidassa: {labels}",
     "globalCapture": {
-      "title": "Yleinen pikakirjaus",
       "description": "Kirjaa muistiinpano mistä tahansa",
       "active": "Aktiivinen",
       "inUse": "Pikanäppäin {shortcut} on toisen sovelluksen käytössä. Valitse toinen yhdistelmä.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Koko järjestelmässä",
       "globalCapture": "Yleinen pikakirjaus",
       "recordingHint": "Paina näppäimiä… esc peruuttaa",
-      "reset": "Nollaa",
       "resetAll": "Palauta kaikki oletuksiin",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Koodin uudelleenlähettäminen epäonnistui",
       "failedToSetUpDevice": "Laitteen määrittäminen epäonnistui",
       "failedToConfirmRecoveryPhrase": "Palautuslauseen vahvistaminen epäonnistui",
-      "failedToAnalyzeContent": "Sisällön analysoiminen epäonnistui",
       "failedToLoadUpdaterState": "Päivitystilan lataaminen epäonnistui",
       "failedToCheckForUpdates": "Päivitysten tarkistaminen epäonnistui",
       "failedToDownloadUpdate": "Päivityksen lataaminen epäonnistui",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Muistiinpanoeditorin asetusten lataaminen epäonnistui",
       "failedToUpdateSettings": "Asetusten päivittäminen epäonnistui",
       "failedToLoadTabSettings": "Välilehtien asetusten lataaminen epäonnistui",
-      "failedToLoadNotes": "Muistiinpanojen lataaminen epäonnistui",
       "failedToLoadTags": "Tunnisteiden lataaminen epäonnistui",
-      "failedToLoadTasks": "Tehtävien lataaminen epäonnistui",
       "failedToLoadVaultStatus": "Holvin tilan lataaminen epäonnistui",
       "failedToSelectVault": "Holvin valitseminen epäonnistui",
       "failedToCloseVault": "Holvin sulkeminen epäonnistui",
@@ -2565,18 +2430,12 @@
       "title": "Agentin MCP",
       "subtitle": "Paikallinen palvelinyhteys ulkoisille MCP-asiakkaille."
     },
-    "groups": {
-      "connection": "Yhteys",
-      "access": "Käyttöoikeus"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Käytä tätä localhost-päätepistettä Cursorissa, Claude Desktopissa tai Zedissä."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer-tunnus",
-        "description": "Vain muistissa säilyvä tunnistetieto tälle sovelluksen käynnistyskerralle."
+        "label": "Bearer-tunnus"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Agentin käyttöoikeudet",
       "subtitle": "Valitse agenttikeskustelun oletuskäyttöoikeudet, vahvistukset ja paikalliset palveluntarjoajat."
     },
-    "groups": {
-      "cliAgents": "CLI-agentit",
-      "local": "Paikallinen OpenAI-yhteensopiva palveluntarjoaja",
-      "actions": "Yhteystarkistukset"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Agentin käyttöoikeudet",
       "access": {
-        "label": "Oletuskäyttöoikeus",
         "description": "Määrittää agentin uusien vuorojen oletuskäyttötilan.",
         "vaultOnly": "Vain holvi",
         "computerAccess": "Tietokoneen käyttö",
         "builtInNote": "Sisäänrakennettu malliyhteys käyttää aina vain holvin työkaluja."
       },
       "confirm": {
-        "label": "Vahvista toiminnot",
         "description": "Valitse, suoritetaanko työkalukutsut automaattisesti vai odottavatko ne hyväksyntää keskustelussa. Lukitut muistiinpanot ja kansiot pysyvät vain luku -tilassa molemmissa tiloissa.",
         "alwaysAllow": "Salli aina",
         "askBeforeChanges": "Kysy ennen muutoksia"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Tallenna",
-      "models": "Mallit",
-      "test": "Testaa yhteys",
-      "probe": "Tarkista työkalut"
+      "test": "Testaa yhteys"
     },
     "status": {
       "label": "Yhteys",
       "checking": "Tarkistetaan…",
       "connected": "Yhdistetty",
-      "disconnected": "Ei yhteyttä",
-      "toolsDisabled": "Työkalut pois käytöstä",
-      "fullTools": "Kaikki työkalut käytössä"
+      "disconnected": "Ei yhteyttä"
     },
     "alwaysAllowed": {
-      "group": "Aina sallitut",
       "description": "Työkalut, joille olet antanut pysyvän hyväksynnän tässä holvissa. Poistoille sitä ei voi koskaan antaa.",
       "empty": "Mitään ei ole sallittu pysyvästi. Jokaisesta muutoksesta kysytään edelleen.",
       "revoke": "Peru",

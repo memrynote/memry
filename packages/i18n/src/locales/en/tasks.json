@@ -53,8 +53,7 @@
       "high": "High",
       "urgent": "Urgent"
     },
-    "unarchive": "Unarchive task",
-    "archivedOn": "Archived {date}"
+    "unarchive": "Unarchive task"
   },
   "reminders": {
     "summary": "Reminder: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Add sub-issue",
     "subIssuePlaceholder": "Add sub-issue…",
     "noSubIssues": "No sub-issues yet",
-    "linkedNotes": "Related",
-    "linkNote": "Add related item",
     "loading": "Loading…",
-    "searchNotes": "Search related…",
-    "noMatchingNotes": "No matching items",
-    "noNotesAvailable": "No items available",
-    "noLinkedNotes": "No related items yet",
-    "removeLinkTo": "Remove related item {title}",
-    "removeLinkFallback": "item",
     "related": "Related",
     "addRelatedItem": "Add related item",
     "searchRelated": "Search related…",
     "noMatchingRelated": "No matching items",
     "noRelatedAvailable": "No items available",
-    "noRelatedItems": "No related items yet",
     "removeRelatedItem": "Remove related item {title}",
     "relatedItemFallback": "item",
     "relatedItemMissing": "That related item is no longer in this vault.",
@@ -251,7 +241,6 @@
     "deleted": "Task deleted",
     "deletedSeries": "Series complete!",
     "completed": "Task completed!",
-    "archived": "Task archived",
     "undoNotAvailableForDelete": "Undo not available for delete",
     "alreadyAllComplete": "All selected tasks are already complete",
     "noCompletedSelected": "No completed tasks selected",
@@ -331,7 +320,6 @@
       "archive": "Archive",
       "delete": "Delete",
       "cancelSelection": "Cancel selection",
-      "cancel": "Cancel",
       "unarchive": "Unarchive"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Delete \"",
       "thisProjectHas": "This project has ",
       "task": "task",
-      "whatWouldYouLikeToDoWithThem": "What would you like to do with them?",
-      "moveTasksToPersonalProject": "Move tasks to Personal project",
-      "deleteAllTasksPermanently": "Delete all tasks permanently",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "This project has no tasks and will be permanently deleted.",
       "notesEventsAndFilesStayNotice": "Tasks in this project are deleted. Your notes, events, and files stay in your vault.",
       "thisActionCannotBeUndone": "This action cannot be undone.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Set due date for all subtasks",
-      "setDueDateFor": "Set due date for ",
-      "alsoApplyToCompletedSubtasks": "Also apply to completed subtasks (",
       "clearDate": "Clear date",
       "cancel": "Cancel",
       "apply": "Apply",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Set priority for all subtasks",
-      "setPriorityFor": "Set priority for ",
-      "alsoApplyToCompletedSubtasks": "Also apply to completed subtasks (",
       "cancel": "Cancel",
       "apply": "Apply",
       "setPriorityForSubtasksIn": "Set priority for {count, plural, one {# subtask} other {# subtasks}} in “{title}”",
@@ -464,36 +445,13 @@
       "deleteAll": "Delete All",
       "deleteSubtasksConfirmation": "This will delete {count, plural, one {# subtask} other {# subtasks}} from “{title}”."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Delete task with subtasks?",
-      "has": "has ",
-      "subtask": "subtask",
-      "whatWouldYouLikeToDo": "What would you like to do?",
-      "deleteTaskAndAllSubtasks": "Delete task and all subtasks",
-      "permanentlyRemovesEverything": "Permanently removes everything",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Delete task, keep subtasks as standalone tasks",
-      "subtasksBecomeTopLevelTasks": "Subtasks become top-level tasks",
-      "cancel": "Cancel",
-      "delete": "Delete"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicate task",
-      "createACopyOf": "Create a copy of “",
-      "alsoDuplicateSubtasks": "Also duplicate subtasks (",
       "cancel": "Cancel",
-      "duplicate": "Duplicate ",
       "createACopyOfTitle": "Create a copy of “{title}”",
       "alsoDuplicateSubtasksCount": "Also duplicate subtasks ({count})",
       "duplicateWithItems": "Duplicate ({count, plural, one {# item} other {# items}})",
       "duplicateTaskOnly": "Duplicate task"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Make subtask of...",
-      "selectATaskToMake": "Select a task to make \"",
-      "aSubtaskOf": "a subtask of.",
-      "searchTasks": "Search tasks...",
-      "sameProject": "Same Project",
-      "otherProjects": "Other Projects"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Drop to reschedule to "
@@ -575,12 +533,6 @@
       "search": "search",
       "clearAll": "Clear all"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filter by due date",
-      "customRange": "Custom Range",
-      "clear": "Clear",
-      "apply": "Apply"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filter by..."
     },
@@ -619,23 +571,9 @@
       "search": "Search...",
       "selected": "selected"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "More filters",
-      "more": "More",
-      "status": "Status",
-      "hasTimeSet": "Has time set",
-      "recurringOnly": "Recurring only",
-      "status2": "Status"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Filter by priority",
       "priority": "Priority"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filter by project",
-      "project": "Project",
-      "allProjects": "All Projects",
-      "clear": "Clear"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Quick filters:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Time: With time",
       "summaryTimeWithout": "Time: Without time",
       "nameRequired": "Please enter a name for this filter"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Saved filters",
-      "saved": "Saved",
-      "noSavedFiltersYet": "No saved filters yet",
-      "saveCurrentFilters": "Save current filters",
-      "saveCurrentFilters2": "Save current filters"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Filter name",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "Tasks opens on this project"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Select project",
-      "selectProject2": "Select project"
+      "selectProject": "Select project"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Edit project",
@@ -725,11 +655,6 @@
       "selectProject": "Select project",
       "noProjectsYet": "No projects yet",
       "createProject": "Create project"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "No project selected",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Select a project from the dropdown or create a new one",
-      "createYourFirstProject": "Create your first project"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Quick add shortcuts help",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Select time",
-      "selectTime2": "Select time",
       "clearTime": "Clear time"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "No project selected",
     "emptyBody": "Pick a project from the sidebar to open its home.",
-    "loadError": "Could not load project details",
     "overview": {
       "sectionTitle": "Overview",
       "create": "Create overview note",
@@ -969,18 +892,11 @@
       "empty": "Nothing open in this project.",
       "expand": "Show tasks in {title}",
       "collapse": "Hide tasks in {title}",
-      "taskSummary": "{open}/{total} open",
       "daysLeft": "{count}d",
       "overdue": "{count}d overdue",
       "columns": {
         "title": "Title",
         "daysLeft": "Days left"
-      },
-      "status": {
-        "active": "Active",
-        "done": "Done",
-        "upcoming": "Upcoming",
-        "past": "Past"
       }
     }
   },

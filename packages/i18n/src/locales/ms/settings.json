@@ -7,11 +7,6 @@
     "backToApp": "Kembali ke apl",
     "nav": {
       "groups": {
-        "account": "Akaun",
-        "application": "Apl",
-        "editing": "Pengeditan",
-        "modules": "Modul",
-        "services": "Perkhidmatan",
         "data": "Data",
         "workspace": "Ruang kerja",
         "features": "Ciri"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Konfigurasikan {module}"
-    },
-    "vaultImport": {
-      "label": "Import daripada apl lain",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist dan banyak lagi",
-      "action": "Import…"
     },
     "search": {
       "placeholder": "Cari tetapan",
@@ -102,12 +92,8 @@
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
-      "startup": "Permulaan",
       "updates": "Kemas kini",
       "languageRegion": "Bahasa & rantau",
-      "tabBehavior": "Gelagat tab",
-      "window": "Gelagat tetingkap",
-      "fileCreation": "Pembuatan fail",
       "privacy": "Privasi",
       "startupWindows": "Permulaan & tetingkap",
       "newNotes": "Nota baharu",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Lancarkan semasa log masuk",
-        "description": "Mulakan memrynote apabila anda log masuk",
         "error": "Gagal mengemas kini tetapan lancar semasa log masuk"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Semak kemas kini secara automatik",
-        "description": "Semak keluaran baharu apabila apl dimulakan dan secara berkala ketika apl dibuka.",
         "error": "Gagal mengemas kini tetapan semakan automatik"
       },
       "autoDownload": {
         "label": "Muat turun kemas kini secara automatik",
-        "description": "Muat turun dan pasang keluaran baharu di latar belakang tanpa bertanya.",
         "error": "Gagal mengemas kini tetapan muat turun automatik"
       },
-      "appUpdates": "Kemas kini apl",
-      "installedVersion": "Versi dipasang {version}",
-      "availableVersion": "Versi tersedia {version}",
-      "unsupported": "Binaan berpakej boleh menyemak, memuat turun dan memasang kemas kini daripada Keluaran GitHub",
       "available": "memrynote {version} tersedia untuk dimuat turun",
       "downloadingLatest": "Memuat turun keluaran terkini",
-      "downloadingLatestPercent": "Memuat turun keluaran terkini ({percent}%)",
       "downloaded": "memrynote {version} sedia untuk dipasang",
-      "upToDate": "Pemasangan ini sudah menggunakan keluaran terkini yang diterbitkan",
-      "checking": "Menyemak Keluaran GitHub untuk versi yang lebih baharu",
-      "idle": "Semak keluaran baharu dan pasangkannya tanpa meninggalkan apl",
       "unsupportedToast": "Kemas kini automatik tersedia dalam keluaran berpakej sahaja",
       "upToDateToast": "memrynote {version} sudah terkini",
       "actionFailed": "Tindakan kemas kini gagal",
@@ -164,17 +139,10 @@
         "downloading": "Memuat turun…",
         "downloadingPercent": "Memuat turun {percent}%",
         "downloaded": "Versi {version} sedia untuk dipasang"
-      },
-      "mode": {
-        "label": "Mod kemas kini",
-        "off": "Jangan semak",
-        "notify": "Maklumkan sahaja",
-        "auto": "Muat turun secara automatik"
       }
     },
     "language": {
       "label": "Bahasa",
-      "helper": "Kebanyakan bahagian apl dikemas kini serta-merta. Sesetengah teks peringkat sistem — pemberitahuan yang sudah ditunjukkan, label Dock, bar tajuk tetingkap — dimuat semula selepas pelancaran seterusnya.",
       "changed": "Bahasa ditukar kepada {nativeName}",
       "failed": "Gagal menukar bahasa. Sila cuba lagi."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Format masa",
-      "description": "Sistem 12 jam atau 24 jam",
       "options": {
         "12h": "12 jam",
         "24h": "24 jam"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Format tarikh",
-      "description": "Cara tarikh kalendar dipaparkan",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (AS)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Buka halaman dalam tab baharu",
-        "description": "Mengklik atau membuat halaman — nota, folder, projek, kanvas, teg, penanda halaman — akan membukanya dalam tab baharu. Apabila dimatikan, tab semasa digunakan semula, termasuk semasa mengikuti pautan dalam nota; tab yang disemat tidak pernah digantikan. “Buka dalam tab baharu”, “Buka di sisi” dan klik tengah sentiasa membuka tab baharu."
+        "label": "Buka halaman dalam tab baharu"
       },
       "restoreSession": {
         "label": "Pulihkan tab semasa bermula",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Butang tutup tab",
-        "description": "Bila hendak menunjukkan butang tutup",
         "options": {
           "always": "Sentiasa",
           "hover": "Semasa dituding",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Terus berjalan dalam bar menu apabila ditutup",
-        "description": "Menutup tetingkap akan menyembunyikan memrynote ke dulang sistem dan bukannya menutupnya. Klik ikon dulang untuk memaparkannya semula. Pada macOS, apl juga kekal dalam Dock; pada desktop Linux tanpa dulang sistem, tetingkap ditutup seperti biasa.",
         "error": "Gagal mengemas kini tetapan minimumkan ke dulang"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Buat dalam folder yang dipilih",
-        "description": "Nota dan folder baharu dibuat di dalam folder yang sedang dipilih. Apabila dimatikan, item sentiasa dibuat pada akar."
+        "label": "Buat dalam folder yang dipilih"
       },
       "defaultNoteFolder": {
         "label": "Lokasi lalai",
         "description": "Digunakan apabila tiada folder dipilih dalam bar sisi.",
-        "placeholder": "nota",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Gagal menghantar laporan diagnostik",
         "sendReport": {
           "label": "Laporan diagnostik",
-          "description": "Hantar laporan sekali sahaja yang mengandungi log teknikal yang ditapis untuk membantu kami menyahpepijat masalah yang anda hadapi.",
           "button": "Hantar laporan…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Warna aksen",
-      "typography": "Tipografi",
-      "zoom": "Zum"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Mod warna",
-        "description": "Pilih tema pilihan anda",
         "aria": "Mod warna"
       },
       "options": {
         "light": "Cerah",
-        "white": "Putih",
         "dark": "Gelap",
         "system": "Sistem"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Papan keratan tidak mengandungi tema memrynote"
     },
     "accent": {
-      "pick": "Pilih warna aksen",
       "custom": {
-        "label": "Warna tersuai",
-        "description": "Masukkan nilai heks",
-        "placeholder": "#000000"
+        "label": "Warna tersuai"
       },
       "presets": {
         "indigo": "Nila",
@@ -348,7 +299,6 @@
         "pink": "Merah jambu",
         "orange": "Jingga"
       },
-      "error": "Gagal mengemas kini warna aksen",
       "aria": "Pratetap aksen",
       "options": {
         "theme": "Tema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Aras zum",
-      "description": "Skalakan keseluruhan antara muka",
       "decrease": "Kurangkan zum",
       "increase": "Tambah zum",
       "reset": "Tetapkan semula zum kepada lalai",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Saiz fon",
-        "description": "Saiz asas teks antara muka dalam piksel",
         "decrease": "Kecilkan saiz fon",
         "increase": "Besarkan saiz fon",
         "reset": "Tetapkan semula saiz fon kepada lalai"
       },
       "fontFamily": {
         "label": "Keluarga fon",
-        "description": "Muka taip utama untuk antara muka",
         "options": {
           "system": "Lalai sistem",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Gagal mengemas kini keluarga fon"
     },
     "v2": {
-      "groups": {
-        "text": "Teks & zum"
-      },
       "colorMode": "Mod warna",
       "colorTheme": "Tema",
       "accent": "Warna aksen",
-      "customColor": "Warna tersuai",
       "fontFamily": "Keluarga fon",
       "fontSize": "Saiz fon",
       "zoom": "Zum"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Susun atur",
-      "toolbar": "Bar alat",
       "spelling": "Ejaan",
       "checklists": "Senarai semak",
       "attachments": "Lampiran",
@@ -473,7 +413,6 @@
       "error": "Gagal mengemas kini jenis callout"
     },
     "width": {
-      "label": "Lebar editor",
       "description": "Digunakan pada setiap halaman nota dan jurnal",
       "options": {
         "normal": "Biasa",
@@ -482,12 +421,10 @@
       "error": "Gagal mengemas kini lebar editor"
     },
     "toolbarMode": {
-      "label": "Bar alat pemformatan tetap",
       "description": "Sentiasa tunjukkan bar alat di atas editor",
       "error": "Gagal mengemas kini mod bar alat"
     },
     "spellCheck": {
-      "label": "Semak ejaan",
       "description": "Garis bawah perkataan yang salah eja dalam nota dan jurnal",
       "error": "Gagal mengemas kini semakan ejaan"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Urus templat nota untuk membuat nota dengan pantas"
     },
     "actions": {
-      "new": "Templat baharu",
       "edit": "Edit",
       "duplicate": "Pendua",
       "delete": "Padam"
     },
     "groups": {
-      "builtIn": "Terbina dalam",
-      "myTemplates": "Templat saya"
+      "builtIn": "Terbina dalam"
     },
     "loading": "Memuatkan templat…",
     "newTemplateTitle": "Templat baharu",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Tiada templat tersuai lagi",
       "description": "Buat templat untuk bermula"
-    },
-    "preview": {
-      "notFound": "Tidak dapat memuatkan templat ini."
     },
     "toasts": {
       "deleted": "Templat dipadam",
@@ -572,11 +504,7 @@
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
-      "defaultTemplate": "Templat lalai",
-      "location": "Lokasi & format",
-      "sidebarVisibility": "Keterlihatan bar sisi",
-      "footer": "Pengaki",
-      "weekdayTemplates": "Templat mengikut hari"
+      "footer": "Pengaki"
     },
     "template": {
       "label": "Templat",
@@ -588,18 +516,6 @@
       "updated": "Templat lalai dikemas kini",
       "cleared": "Templat lalai dikosongkan",
       "error": "Gagal mengemas kini templat lalai"
-    },
-    "showSchedule": {
-      "label": "Tunjukkan jadual",
-      "description": "Paparkan acara dan kalendar hari ini"
-    },
-    "showTasks": {
-      "label": "Tunjukkan tugas",
-      "description": "Paparkan tugas yang perlu disiapkan pada hari yang dipilih"
-    },
-    "showAIConnections": {
-      "label": "Tunjukkan sambungan AI",
-      "description": "Paparkan sambungan berkuasa AI kepada entri berkaitan"
     },
     "showStatsFooter": {
       "label": "Tunjukkan pengaki statistik",
@@ -632,7 +548,6 @@
       "inheritWith": "Lalai · {name}",
       "inheritNone": "Lalai · tiada",
       "missing": "Templat yang dipadam",
-      "clear": "Kosongkan",
       "updated": "Templat dikemas kini untuk {day}",
       "cleared": "Templat dikosongkan untuk {day}",
       "error": "Gagal mengemas kini templat untuk {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Konfigurasikan gelagat sel hari dalam panel hari",
       "loading": "Memuatkan tetapan…"
     },
-    "groups": {
-      "weekStart": "Minggu",
-      "dayCellClick": "Klik sel hari",
-      "notes": "Nota"
-    },
     "weekStart": {
       "label": "Minggu bermula pada",
       "description": "Hari pertama minggu merentas semua kalendar",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Sambung semula Google",
       "addAccount": "Tambah akaun",
-      "importedCalendars": "Kalendar yang diimport",
-      "selected": "{count} dipilih",
       "syncNow": "Segerakkan sekarang",
       "disconnect": "Putuskan sambungan",
       "reconnect": "Sambung semula Google",
@@ -1025,10 +933,8 @@
       "loading": "Memuatkan…"
     },
     "groups": {
-      "identity": "Identiti",
       "sync": "Penyegerakan",
       "billing": "Pengebilan",
-      "storage": "Storan",
       "devices": "Peranti"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Log keluar",
         "description": "Putuskan sambungan peranti ini daripada penyegerakan",
         "action": "Log keluar"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Carian imej dimatikan"
     },
     "unknownError": "Ralat tidak diketahui",
-    "groups": {
-      "voice": "Transkripsi suara",
-      "embeddingModel": "Model embedding setempat",
-      "embeddingIndex": "Indeks embedding",
-      "inline": "Pengeditan AI sebaris"
-    },
     "voice": {
-      "provider": "Penyedia",
       "providerDescription": "Penyedia ucapan-ke-teks untuk memo suara",
-      "providers": {
-        "local": "Setempat (lalai)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Nama memo",
       "memoNameModeDescription": "Cara memo suara dinamakan selepas transkripsi",
       "naming": {
         "transcript": "Tajuk transkrip",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Bahasa yang anda tuturkan dalam memo suara",
       "languageDefault": "Lalai",
       "languageError": "Gagal mengemas kini bahasa transkripsi",
-      "localModel": "Model setempat",
-      "localModelDescription": "Whisper Small dimuat turun apabila diperlukan dan kekal dicache secara setempat",
       "status": {
         "ready": "Sedia",
         "downloading": "Memuat turun",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Dimuatkan",
       "loading": "Memuatkan",
-      "cacheHint": "~210MB · Dicache secara setempat · Semua pada peranti",
-      "dimensions": "Dimensi",
-      "embeddings": "Embedding",
       "downloadLoad": "Muat turun & muatkan model",
       "downloadingModel": "Memuat turun model…",
       "loadingModel": "Memuatkan model…",
       "loadSuccess": "Model berjaya dimuatkan",
       "loadFailed": "Gagal memuatkan model",
       "rebuildIndex": "Bina semula indeks",
-      "rebuildDescription": "Jana semula embedding untuk semua nota",
-      "rebuild": "Bina semula",
       "scanning": "Mengimbas nota…",
       "generating": "Menjana embedding…",
       "complete": "Selesai!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Memuatkan…",
-      "title": "Pengeditan AI sebaris",
-      "enable": "Dayakan AI sebaris",
       "enableDescription": "Tunjukkan menu AI semasa mengedit nota",
       "enabled": "Pengeditan AI sebaris didayakan",
       "disabled": "Pengeditan AI sebaris dilumpuhkan",
       "provider": "Penyedia",
-      "providerDescription": "Perkhidmatan AI untuk operasi teks",
       "providers": {
         "ollama": "Ollama (setempat)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Aktif pada port {port}",
       "notConnected": "Tidak disambungkan",
       "test": "Uji",
-      "stopFailed": "Gagal menghentikan pelayan sedia ada",
       "connected": "Disambungkan! Pelayan berjalan pada port {port}",
       "connectFailed": "Gagal menyambung",
       "testFailed": "Ujian sambungan gagal",
@@ -1566,8 +1448,6 @@
       "onenote": "Import buku nota OneNote (memerlukan akaun Microsoft)",
       "readwise": "Import sorotan anda daripada Readwise (memerlukan token akses)"
     },
-    "action": "Import",
-    "select": "Pilih apl sumber import…",
     "stats": {
       "notes": "{count, plural, other {# nota}}",
       "projects": "{count, plural, other {# projek}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Pilih folder Apple Notes…",
       "chooseDirectory": "Pilih folder…",
       "folderKeepsAssets": "Pilih folder apabila imej berada di luar folder nota itu sendiri — eksport selalunya menyimpan media dalam satu folder yang dikongsi.",
-      "chooseHint": "Pilih {label} anda",
       "folderHint": "Klik di bawah dan pilih folder “group.com.apple.notes” apabila pemilih dibuka (ia bermula di situ). Ini membolehkan Memry membaca nota dan lampiran anda — Akses Cakera Penuh tidak diperlukan.",
       "noteplanFolderHint": "Pilih folder NotePlan anda — sama ada folder data apl atau salah satu salinan Backups. Memry membaca folder Calendar, Notes dan @Archive di dalamnya.",
       "selected": "{count, plural, other {# fail dipilih}}",
       "start": "Mulakan import",
       "cancel": "Batal",
-      "close": "Tutup",
       "done": "Selesai",
       "running": "Mengimport…",
       "progress": "{completed} daripada {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Menyambung…",
         "connectFailed": "Tidak dapat menyambung ke Readwise",
         "takeOver": {
-          "syncsOn": "Readwise disegerakkan pada {device}.",
-          "syncsOnAnother": "Readwise disegerakkan pada peranti lain.",
           "explain": "Hanya satu peranti menarik daripada Readwise, supaya sorotan yang sama tidak pernah ditulis dua kali. Untuk menarik daripada peranti ini, tampal token anda semula: ia tidak pernah berpindah antara peranti. Peranti lain berhenti pada buku seterusnya, dan setiap nota kekal.",
           "button": "Segerak di sini sebaliknya",
           "working": "Mengalihkan Readwise ke sini…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Cari apl atau jenis fail…",
       "noMatch": "Tiada sumber yang sepadan dengan “{query}”",
       "formatAccount": "Akaun",
-      "showMore": "{count, plural, other {Tunjukkan # lagi}}",
-      "showLess": "Tunjukkan lebih sedikit",
       "groups": {
         "reading": "Bacaan",
         "noteApps": "Apl nota",
@@ -1968,8 +1842,6 @@
       "subtitle": "Konfigurasi dan storan bilik kebal"
     },
     "groups": {
-      "storageUsage": "Penggunaan storan",
-      "location": "Lokasi",
       "accountVaults": "Bilik kebal dalam akaun anda",
       "largeNotes": "Nota yang hampir mencapai had penyegerakan",
       "activity": "Aktiviti"
@@ -2229,8 +2101,6 @@
       "loading": "Memuatkan tetapan…"
     },
     "searchPlaceholder": "Cari pintasan…",
-    "resetAll": "Tetapkan semula semua",
-    "custom": "Tersuai",
     "pressShortcut": "Tekan pintasan…",
     "cancelTitle": "Batal",
     "rebindTitle": "Klik untuk menukar",
@@ -2241,7 +2111,6 @@
     "noMatch": "Tiada pintasan yang sepadan dengan carian anda",
     "conflict": "Bercanggah dengan: {labels}",
     "globalCapture": {
-      "title": "Catat pantas global",
       "description": "Catat nota dari mana-mana sahaja",
       "active": "Aktif",
       "inUse": "{shortcut} sedang digunakan oleh apl lain. Pilih kombinasi lain.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Seluruh sistem",
       "globalCapture": "Catat pantas global",
       "recordingHint": "Tekan kekunci… esc untuk membatalkan",
-      "reset": "Tetapkan semula",
       "resetAll": "Tetapkan semula semua kepada lalai",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Gagal menghantar semula kod",
       "failedToSetUpDevice": "Gagal menyediakan peranti",
       "failedToConfirmRecoveryPhrase": "Gagal mengesahkan frasa pemulihan",
-      "failedToAnalyzeContent": "Gagal menganalisis kandungan",
       "failedToLoadUpdaterState": "Gagal memuatkan keadaan pengemas kini",
       "failedToCheckForUpdates": "Gagal menyemak kemas kini",
       "failedToDownloadUpdate": "Gagal memuat turun kemas kini",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Gagal memuatkan tetapan editor nota",
       "failedToUpdateSettings": "Gagal mengemas kini tetapan",
       "failedToLoadTabSettings": "Gagal memuatkan tetapan tab",
-      "failedToLoadNotes": "Gagal memuatkan nota",
       "failedToLoadTags": "Gagal memuatkan teg",
-      "failedToLoadTasks": "Gagal memuatkan tugas",
       "failedToLoadVaultStatus": "Gagal memuatkan status bilik kebal",
       "failedToSelectVault": "Gagal memilih bilik kebal",
       "failedToCloseVault": "Gagal menutup bilik kebal",
@@ -2565,18 +2430,12 @@
       "title": "MCP ejen",
       "subtitle": "Akses pelayan setempat untuk klien MCP luaran."
     },
-    "groups": {
-      "connection": "Sambungan",
-      "access": "Akses"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Gunakan titik akhir localhost ini daripada Cursor, Claude Desktop atau Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Token bearer",
-        "description": "Bukti kelayakan dalam memori untuk pelancaran apl ini."
+        "label": "Token bearer"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Kebenaran ejen",
       "subtitle": "Pilih akses lalai, pengesahan dan penyedia setempat untuk Sembang ejen."
     },
-    "groups": {
-      "cliAgents": "Ejen CLI",
-      "local": "Penyedia setempat serasi OpenAI",
-      "actions": "Semakan sambungan"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Kebenaran ejen",
       "access": {
-        "label": "Akses lalai",
         "description": "Menetapkan mod akses permulaan untuk giliran ejen baharu.",
         "vaultOnly": "Bilik kebal sahaja",
         "computerAccess": "Akses komputer",
         "builtInNote": "Sambungan model terbina dalam sentiasa menggunakan alat bilik kebal sahaja."
       },
       "confirm": {
-        "label": "Sahkan tindakan",
         "description": "Pilih sama ada panggilan alat berjalan secara automatik atau menunggu kelulusan dalam sembang. Nota dan folder yang dikunci kekal baca sahaja dalam kedua-dua mod.",
         "alwaysAllow": "Sentiasa benarkan",
         "askBeforeChanges": "Tanya sebelum membuat perubahan"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Simpan",
-      "models": "Senarai model",
-      "test": "Uji sambungan",
-      "probe": "Semak alat"
+      "test": "Uji sambungan"
     },
     "status": {
       "label": "Sambungan",
       "checking": "Menyemak…",
       "connected": "Disambungkan",
-      "disconnected": "Terputus",
-      "toolsDisabled": "Alat dilumpuhkan",
-      "fullTools": "Alat penuh didayakan"
+      "disconnected": "Terputus"
     },
     "alwaysAllowed": {
-      "group": "Sentiasa dibenarkan",
       "description": "Alat yang telah anda berikan kelulusan tetap dalam bilik kebal ini. Pemadaman tidak boleh diberikan kelulusan tetap.",
       "empty": "Tiada apa-apa yang sentiasa dibenarkan. Setiap perubahan masih meminta kelulusan.",
       "revoke": "Batalkan",

@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Nejste přihlášeni",
-    "sessionExpired": "Vaše relace vypršela. Přihlaste se prosím znovu.",
     "setupSessionExpired": "Přihlášení vypršelo dříve, než se tento krok dokončil. Přihlaste se znovu a pak zadejte frázi pro obnovení.",
     "setupSessionExpiredLinking": "Přihlášení vypršelo dříve, než se toto zařízení stihlo propojit. Přihlaste se znovu a pak kód naskenujte ještě jednou.",
     "invalidRecoveryPhraseFormat": "Neplatný formát fráze pro obnovení",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Nepodařilo se načíst model",
     "voiceModelDownloadFailed": "Nepodařilo se stáhnout hlasový model",
     "terminalCommandInstallFailed": "Nepodařilo se nainstalovat příkaz terminálu",
-    "terminalCommandUninstallFailed": "Nepodařilo se odinstalovat příkaz terminálu",
-    "shortcutInUse": "Zkratka {shortcut} se už používá"
+    "terminalCommandUninstallFailed": "Nepodařilo se odinstalovat příkaz terminálu"
   },
   "tag": {
     "renameInProgress": "Přejmenování #{from} na #{to} stále probíhá. Zkuste to znovu po jeho dokončení.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} už přebírá svá pole z tohoto štítku",
     "unreadableSchema": "Novější verze aplikace Memry tento štítek změnila. Chcete-li jej upravit, aktualizujte Memry",
     "relationTargetRequired": "Vyberte, na který štítek tento vztah odkazuje",
-    "editFailed": "Pole štítku se nepodařilo změnit",
-    "previewFailed": "Dopad této změny se nepodařilo spočítat",
-    "snapshotFailed": "Pole štítku se nepodařilo načíst",
     "renameRunning": "Jiné přejmenování pole se stále dokončuje ({from} na {to}). Zkuste to znovu po jeho dokončení."
   }
 }

@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Neautentificat",
-    "sessionExpired": "Sesiunea a expirat. Vă rugăm să vă conectați din nou.",
     "setupSessionExpired": "Sesiunea de conectare a expirat înainte de finalizare. Conectați-vă din nou, apoi introduceți fraza de recuperare.",
     "setupSessionExpiredLinking": "Sesiunea de conectare a expirat înainte ca acest dispozitiv să finalizeze asocierea. Conectați-vă din nou, apoi scanați codul încă o dată.",
     "invalidRecoveryPhraseFormat": "Format nevalid al frazei de recuperare",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Nu s-a putut încărca modelul",
     "voiceModelDownloadFailed": "Nu s-a putut descărca modelul vocal",
     "terminalCommandInstallFailed": "Nu s-a putut instala comanda de terminal",
-    "terminalCommandUninstallFailed": "Nu s-a putut dezinstala comanda de terminal",
-    "shortcutInUse": "Comanda rapidă {shortcut} este deja utilizată"
+    "terminalCommandUninstallFailed": "Nu s-a putut dezinstala comanda de terminal"
   },
   "tag": {
     "renameInProgress": "Redenumirea #{from} în #{to} încă rulează. Încearcă din nou când se termină.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} își preia deja câmpurile de la această etichetă",
     "unreadableSchema": "O versiune mai nouă a Memry a modificat această etichetă. Actualizează Memry pentru a o edita",
     "relationTargetRequired": "Alege spre ce etichetă trimite această relație",
-    "editFailed": "Nu s-au putut modifica câmpurile etichetei",
-    "previewFailed": "Nu s-a putut număra ce afectează această modificare",
-    "snapshotFailed": "Nu s-au putut încărca câmpurile etichetei",
     "renameRunning": "O altă redenumire de câmp încă se finalizează ({from} în {to}). Încearcă din nou când se termină."
   }
 }

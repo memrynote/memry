@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Niste prijavljeni",
-    "sessionExpired": "Sesija je istekla. Prijavite se ponovno.",
     "setupSessionExpired": "Prijava je istekla prije nego što je ovo dovršeno. Ponovno se prijavite, a zatim unesite frazu za oporavak.",
     "setupSessionExpiredLinking": "Prijava je istekla prije nego što je povezivanje ovog uređaja dovršeno. Ponovno se prijavite, a zatim još jednom skenirajte kod.",
     "invalidRecoveryPhraseFormat": "Neispravan format fraze za oporavak",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Učitavanje modela nije uspjelo",
     "voiceModelDownloadFailed": "Preuzimanje glasovnog modela nije uspjelo",
     "terminalCommandInstallFailed": "Instalacija naredbe terminala nije uspjela",
-    "terminalCommandUninstallFailed": "Deinstalacija naredbe terminala nije uspjela",
-    "shortcutInUse": "Prečac {shortcut} već je u upotrebi"
+    "terminalCommandUninstallFailed": "Deinstalacija naredbe terminala nije uspjela"
   },
   "tag": {
     "renameInProgress": "Preimenovanje oznake #{from} u #{to} još je u tijeku. Pokušajte ponovno kad završi.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} već preuzima svoja polja iz ove oznake",
     "unreadableSchema": "Novija verzija Memryja promijenila je ovu oznaku. Ažurirajte Memry da biste je uređivali",
     "relationTargetRequired": "Odaberite na koju oznaku ova relacija upućuje",
-    "editFailed": "Nije moguće promijeniti polja oznake",
-    "previewFailed": "Nije moguće izbrojiti na što ova promjena utječe",
-    "snapshotFailed": "Nije moguće učitati polja oznake",
     "renameRunning": "Još jedno preimenovanje polja se privodi kraju ({from} u {to}). Pokušajte ponovno kad završi."
   }
 }

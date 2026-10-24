@@ -7,11 +7,6 @@
     "backToApp": "Natrag u aplikaciju",
     "nav": {
       "groups": {
-        "account": "Račun",
-        "application": "Aplikacija",
-        "editing": "Uređivanje",
-        "modules": "Moduli",
-        "services": "Usluge",
         "data": "Podaci",
         "workspace": "Radni prostor",
         "features": "Značajke"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Konfiguriraj modul „{module}”"
-    },
-    "vaultImport": {
-      "label": "Uvezi iz druge aplikacije",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist i drugi",
-      "action": "Uvezi…"
     },
     "search": {
       "placeholder": "Pretraži postavke",
@@ -102,12 +92,8 @@
       "loading": "Učitavanje postavki…"
     },
     "groups": {
-      "startup": "Pokretanje",
       "updates": "Ažuriranja",
       "languageRegion": "Jezik i regija",
-      "tabBehavior": "Ponašanje kartica",
-      "window": "Ponašanje prozora",
-      "fileCreation": "Stvaranje datoteka",
       "privacy": "Privatnost",
       "startupWindows": "Pokretanje i prozori",
       "newNotes": "Nove bilješke",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Pokreni prilikom prijave",
-        "description": "Pokrenite memrynote kada se prijavite",
         "error": "Ažuriranje postavke pokretanja pri prijavi nije uspjelo"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Automatski provjeravaj ima li ažuriranja",
-        "description": "Provjerava nova izdanja pri pokretanju i povremeno dok je aplikacija otvorena.",
         "error": "Ažuriranje postavke automatske provjere nije uspjelo"
       },
       "autoDownload": {
         "label": "Automatski preuzimaj ažuriranja",
-        "description": "Preuzima i instalira nova izdanja u pozadini, bez upita.",
         "error": "Ažuriranje postavke automatskog preuzimanja nije uspjelo"
       },
-      "appUpdates": "Ažuriranja aplikacije",
-      "installedVersion": "Instalirana verzija {version}",
-      "availableVersion": "Dostupna verzija {version}",
-      "unsupported": "Zapakirana izdanja mogu provjeravati, preuzimati i instalirati ažuriranja s usluge GitHub Releases",
       "available": "memrynote {version} je dostupan za preuzimanje",
       "downloadingLatest": "Preuzimanje najnovijeg izdanja",
-      "downloadingLatestPercent": "Preuzimanje najnovijeg izdanja ({percent} %)",
       "downloaded": "memrynote {version} je spreman za instalaciju",
-      "upToDate": "Instalirano je najnovije objavljeno izdanje",
-      "checking": "Traženje novije verzije na usluzi GitHub Releases",
-      "idle": "Provjerite nova izdanja i instalirajte ih bez napuštanja aplikacije",
       "unsupportedToast": "Automatska ažuriranja dostupna su samo u zapakiranim izdanjima",
       "upToDateToast": "memrynote {version} je ažuran",
       "actionFailed": "Radnja ažuriranja nije uspjela",
@@ -164,17 +139,10 @@
         "downloading": "Preuzimanje…",
         "downloadingPercent": "Preuzimanje {percent} %",
         "downloaded": "Verzija {version} spremna je za instalaciju"
-      },
-      "mode": {
-        "label": "Način ažuriranja",
-        "off": "Ne provjeravaj",
-        "notify": "Samo obavijesti",
-        "auto": "Preuzimaj automatski"
       }
     },
     "language": {
       "label": "Jezik",
-      "helper": "Većina aplikacije ažurira se odmah. Dio teksta na razini sustava – već prikazane obavijesti, oznaka u Docku, naslovna traka prozora – osvježava se nakon sljedećeg pokretanja.",
       "changed": "Jezik promijenjen: {nativeName}",
       "failed": "Promjena jezika nije uspjela. Pokušajte ponovno."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Format vremena",
-      "description": "12-satni ili 24-satni sat",
       "options": {
         "12h": "12-satni",
         "24h": "24-satni"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Format datuma",
-      "description": "Način prikaza datuma",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (SAD)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Otvaraj stranice u novoj kartici",
-        "description": "Klik na stranicu ili njezino stvaranje – bilješke, mape, projekti, platna, oznake, favoriti – otvara je u novoj kartici. Kada je isključeno, ponovno se koristi trenutačna kartica, i pri otvaranju poveznica unutar bilješke; prikvačene kartice nikad se ne zamjenjuju. „Otvori u novoj kartici”, „Otvori sa strane” i klik srednjom tipkom uvijek otvaraju novu karticu."
+        "label": "Otvaraj stranice u novoj kartici"
       },
       "restoreSession": {
         "label": "Vrati kartice pri pokretanju",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Gumb za zatvaranje kartice",
-        "description": "Kada prikazati gumb za zatvaranje",
         "options": {
           "always": "Uvijek vidljiv",
           "hover": "Pri prelasku mišem",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Nastavi rad u traci izbornika nakon zatvaranja",
-        "description": "Zatvaranje prozora skriva aplikaciju memrynote u područje obavijesti umjesto da je zatvori. Kliknite ikonu u području obavijesti da biste je vratili. Na macOS-u aplikacija ostaje i u Docku; na Linux radnim površinama bez područja obavijesti prozor se zatvara kao i obično.",
         "error": "Ažuriranje postavke smanjivanja u područje obavijesti nije uspjelo"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Stvori u odabranoj mapi",
-        "description": "Nove bilješke i mape stvaraju se unutar trenutno odabrane mape. Kada je isključeno, stavke se uvijek stvaraju u korijenu."
+        "label": "Stvori u odabranoj mapi"
       },
       "defaultNoteFolder": {
         "label": "Zadana lokacija za nove bilješke",
         "description": "Koristi se kada na bočnoj traci nije odabrana nijedna mapa.",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Slanje dijagnostičkog izvješća nije uspjelo",
         "sendReport": {
           "label": "Dijagnostičko izvješće",
-          "description": "Pošaljite jednokratno izvješće s tehničkim zapisnicima bez osjetljivih podataka kako bismo lakše otklonili problem na koji ste naišli.",
           "button": "Pošalji izvješće…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Učitavanje postavki…"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Boja naglaska",
-      "typography": "Tipografija",
-      "zoom": "Zumiranje"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Način boje",
-        "description": "Odaberite željenu temu",
         "aria": "Način boje"
       },
       "options": {
         "light": "Svijetla",
-        "white": "Bijela",
         "dark": "Tamna",
         "system": "Sustav"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Međuspremnik ne sadrži temu aplikacije memrynote"
     },
     "accent": {
-      "pick": "Odaberite boju naglaska",
       "custom": {
-        "label": "Prilagođena boja",
-        "description": "Unesite hex vrijednost",
-        "placeholder": "#000000"
+        "label": "Prilagođena boja"
       },
       "presets": {
         "indigo": "Indigo",
@@ -348,7 +299,6 @@
         "pink": "Ružičasta",
         "orange": "Narančasta"
       },
-      "error": "Ažuriranje boje naglaska nije uspjelo",
       "aria": "Unaprijed zadana boja naglaska",
       "options": {
         "theme": "Tema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Razina zumiranja",
-      "description": "Promijenite mjerilo cijelog sučelja",
       "decrease": "Smanji zum",
       "increase": "Povećaj zum",
       "reset": "Vrati zum na zadano",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Veličina fonta",
-        "description": "Osnovna veličina teksta sučelja u pikselima",
         "decrease": "Smanji veličinu fonta",
         "increase": "Povećaj veličinu fonta",
         "reset": "Vrati veličinu fonta na zadano"
       },
       "fontFamily": {
         "label": "Obitelj fontova",
-        "description": "Primarni tip slova za sučelje",
         "options": {
           "system": "Zadani font sustava",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Ažuriranje obitelji fontova nije uspjelo"
     },
     "v2": {
-      "groups": {
-        "text": "Tekst i zumiranje"
-      },
       "colorMode": "Način boje",
       "colorTheme": "Tema",
       "accent": "Boja naglaska",
-      "customColor": "Prilagođena boja",
       "fontFamily": "Obitelj fontova",
       "fontSize": "Veličina fonta",
       "zoom": "Zumiranje"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Raspored",
-      "toolbar": "Alatna traka",
       "spelling": "Pravopis",
       "checklists": "Kontrolni popisi",
       "attachments": "Privici",
@@ -473,7 +413,6 @@
       "error": "Nije uspjelo ažuriranje vrsta isticanja"
     },
     "width": {
-      "label": "Širina uređivača",
       "description": "Primjenjuje se na sve bilješke i stranice dnevnika",
       "options": {
         "normal": "Normalna",
@@ -482,12 +421,10 @@
       "error": "Ažuriranje širine uređivača nije uspjelo"
     },
     "toolbarMode": {
-      "label": "Fiksna alatna traka za oblikovanje",
       "description": "Uvijek prikazuje alatnu traku iznad uređivača",
       "error": "Ažuriranje načina alatne trake nije uspjelo"
     },
     "spellCheck": {
-      "label": "Provjera pravopisa",
       "description": "Podcrtava pogrešno napisane riječi u bilješkama i dnevniku",
       "error": "Ažuriranje provjere pravopisa nije uspjelo"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Upravljajte predlošcima bilješki za brzo stvaranje"
     },
     "actions": {
-      "new": "Novi predložak",
       "edit": "Uredi",
       "duplicate": "Dupliciraj",
       "delete": "Izbriši"
     },
     "groups": {
-      "builtIn": "Ugrađeni",
-      "myTemplates": "Moji predlošci"
+      "builtIn": "Ugrađeni"
     },
     "loading": "Učitavanje predložaka…",
     "newTemplateTitle": "Novi predložak",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Još nema prilagođenih predložaka",
       "description": "Stvorite predložak za početak"
-    },
-    "preview": {
-      "notFound": "Nije moguće učitati ovaj predložak."
     },
     "toasts": {
       "deleted": "Predložak izbrisan",
@@ -572,11 +504,7 @@
       "loading": "Učitavanje postavki…"
     },
     "groups": {
-      "defaultTemplate": "Zadani predložak",
-      "location": "Lokacija i format",
-      "sidebarVisibility": "Vidljivost bočne trake",
-      "footer": "Podnožje",
-      "weekdayTemplates": "Predlošci po danima"
+      "footer": "Podnožje"
     },
     "template": {
       "label": "Predložak",
@@ -588,18 +516,6 @@
       "updated": "Zadani predložak ažuriran",
       "cleared": "Zadani predložak uklonjen",
       "error": "Ažuriranje zadanog predloška nije uspjelo"
-    },
-    "showSchedule": {
-      "label": "Prikaži raspored",
-      "description": "Prikažite današnje događaje i kalendar"
-    },
-    "showTasks": {
-      "label": "Prikaži zadatke",
-      "description": "Prikaz zadataka s rokom na odabrani dan"
-    },
-    "showAIConnections": {
-      "label": "Prikaži AI veze",
-      "description": "Prikažite AI veze sa srodnim zapisima"
     },
     "showStatsFooter": {
       "label": "Prikaži podnožje sa statistikom",
@@ -632,7 +548,6 @@
       "inheritWith": "Zadano · {name}",
       "inheritNone": "Zadano · nijedan",
       "missing": "Izbrisani predložak",
-      "clear": "Očisti",
       "updated": "Predložak ažuriran: {day}",
       "cleared": "Predložak uklonjen: {day}",
       "error": "Ažuriranje predloška nije uspjelo: {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Konfigurirajte što se događa klikom na dan u Panelu dana",
       "loading": "Učitavanje postavki…"
     },
-    "groups": {
-      "weekStart": "Tjedan",
-      "dayCellClick": "Klik na ćeliju dana",
-      "notes": "Bilješke"
-    },
     "weekStart": {
       "label": "Tjedan počinje",
       "description": "Prvi dan tjedna u svim kalendarima",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Ponovno poveži Google",
       "addAccount": "Dodaj račun",
-      "importedCalendars": "Uvezeni kalendari",
-      "selected": "Odabrano: {count}",
       "syncNow": "Sinkroniziraj sada",
       "disconnect": "Prekini vezu",
       "reconnect": "Ponovno poveži Google",
@@ -1025,10 +933,8 @@
       "loading": "Učitavanje…"
     },
     "groups": {
-      "identity": "Identitet",
       "sync": "Sinkronizacija",
       "billing": "Naplata",
-      "storage": "Pohrana",
       "devices": "Uređaji"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Odjavi se",
         "description": "Isključite ovaj uređaj iz sinkronizacije",
         "action": "Odjavi se"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Pretraživanje slika je isključeno"
     },
     "unknownError": "Nepoznata pogreška",
-    "groups": {
-      "voice": "Transkripcija glasa",
-      "embeddingModel": "Lokalni model za vektorske prikaze",
-      "embeddingIndex": "Indeks vektorskih prikaza",
-      "inline": "AI uređivanje u retku"
-    },
     "voice": {
-      "provider": "Pružatelj usluge",
       "providerDescription": "Usluga pretvaranja govora u tekst za glasovne zapise",
-      "providers": {
-        "local": "Lokalno (zadano)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Nazivi glasovnih zapisa",
       "memoNameModeDescription": "Kako se glasovni zapisi imenuju nakon transkripcije",
       "naming": {
         "transcript": "Naslov transkripta",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Jezik kojim govorite u glasovnim bilješkama",
       "languageDefault": "Zadano",
       "languageError": "Ažuriranje jezika transkripcije nije uspjelo",
-      "localModel": "Lokalni model",
-      "localModelDescription": "Whisper Small preuzima se na zahtjev i ostaje u lokalnoj predmemoriji",
       "status": {
         "ready": "Spremno",
         "downloading": "Preuzimanje",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Učitano",
       "loading": "Učitavanje",
-      "cacheHint": "~210 MB · Lokalno u predmemoriji · Sve na uređaju",
-      "dimensions": "Dimenzije",
-      "embeddings": "Vektorski prikazi",
       "downloadLoad": "Preuzmi i učitaj model",
       "downloadingModel": "Preuzimanje modela…",
       "loadingModel": "Učitavanje modela…",
       "loadSuccess": "Model je uspješno učitan",
       "loadFailed": "Učitavanje modela nije uspjelo",
       "rebuildIndex": "Ponovno izgradi indeks",
-      "rebuildDescription": "Ponovno generira vektorske prikaze za sve bilješke",
-      "rebuild": "Ponovno izgradi",
       "scanning": "Skeniranje bilješki…",
       "generating": "Generiranje vektorskih prikaza…",
       "complete": "Završeno!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Učitavanje…",
-      "title": "AI uređivanje u retku",
-      "enable": "Uključi AI uređivanje u retku",
       "enableDescription": "Prikazuje AI izbornik pri uređivanju bilješki",
       "enabled": "AI uređivanje u retku uključeno",
       "disabled": "AI uređivanje u retku isključeno",
       "provider": "Pružatelj usluge",
-      "providerDescription": "AI usluga za tekstualne operacije",
       "providers": {
         "ollama": "Ollama (lokalno)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Aktivno na priključku {port}",
       "notConnected": "Nije povezano",
       "test": "Testiraj",
-      "stopFailed": "Zaustavljanje postojećeg poslužitelja nije uspjelo",
       "connected": "Povezano! Poslužitelj radi na priključku {port}",
       "connectFailed": "Povezivanje nije uspjelo",
       "testFailed": "Test veze nije uspio",
@@ -1566,8 +1448,6 @@
       "onenote": "Uvezite OneNote bilježnice (potreban Microsoft račun)",
       "readwise": "Uvezite svoja istaknuta mjesta iz Readwisea (potreban je pristupni token)"
     },
-    "action": "Uvezi",
-    "select": "Odaberite aplikaciju iz koje uvozite…",
     "stats": {
       "notes": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
       "projects": "{count, plural, one {# projekt} few {# projekta} other {# projekata}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Odaberi mapu aplikacije Apple Notes…",
       "chooseDirectory": "Odaberi mapu…",
       "folderKeepsAssets": "Odaberite mapu kada se slike nalaze izvan mape sa samim bilješkama – izvozi medijski sadržaj često spremaju u zajedničku mapu.",
-      "chooseHint": "Odaberite: {label}",
       "folderHint": "Kliknite gumb u nastavku i odaberite mapu „group.com.apple.notes” kada se otvori birač (otvara se upravo u njoj). Tako aplikacija Memry može čitati vaše bilješke i privitke – bez potrebe za potpunim pristupom disku.",
       "noteplanFolderHint": "Odaberite mapu NotePlan – mapu s podacima aplikacije ili jednu od njezinih kopija u mapi Backups. Memry čita mape Calendar, Notes i @Archive unutar nje.",
       "selected": "{count, plural, one {# datoteka odabrana} few {# datoteke odabrane} other {# datoteka odabrano}}",
       "start": "Započni uvoz",
       "cancel": "Odustani",
-      "close": "Zatvori",
       "done": "Gotovo",
       "running": "Uvoz…",
       "progress": "{completed} od {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Povezivanje…",
         "connectFailed": "Nije moguće povezati se s Readwiseom",
         "takeOver": {
-          "syncsOn": "Readwise se sinkronizira na uređaju {device}.",
-          "syncsOnAnother": "Readwise se sinkronizira na drugom uređaju.",
           "explain": "Samo jedan uređaj povlači podatke iz Readwisea pa se isto istaknuto mjesto nikad ne zapiše dvaput. Da biste umjesto toga povlačili s ovog uređaja, ponovno zalijepite svoj token: on nikad ne putuje između uređaja. Drugi uređaj staje kod sljedeće knjige, a sve bilješke ostaju.",
           "button": "Sinkroniziraj ovdje umjesto toga",
           "working": "Premještanje Readwisea ovamo…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Pronađi aplikaciju ili vrstu datoteke…",
       "noMatch": "Nijedan izvor ne odgovara upitu „{query}”",
       "formatAccount": "Račun",
-      "showMore": "{count, plural, one {Prikaži još #} few {Prikaži još #} other {Prikaži još #}}",
-      "showLess": "Prikaži manje",
       "groups": {
         "reading": "Čitanje",
         "noteApps": "Aplikacije za bilješke",
@@ -1968,8 +1842,6 @@
       "subtitle": "Konfiguracija i pohrana trezora"
     },
     "groups": {
-      "storageUsage": "Korištenje pohrane",
-      "location": "Lokacija",
       "accountVaults": "Trezori na vašem računu",
       "largeNotes": "Bilješke blizu ograničenja sinkronizacije",
       "activity": "Aktivnost"
@@ -2229,8 +2101,6 @@
       "loading": "Učitavanje postavki…"
     },
     "searchPlaceholder": "Pretraži prečace…",
-    "resetAll": "Vrati sve na zadano",
-    "custom": "Prilagođeno",
     "pressShortcut": "Pritisnite prečac…",
     "cancelTitle": "Odustani",
     "rebindTitle": "Kliknite za promjenu",
@@ -2241,7 +2111,6 @@
     "noMatch": "Nijedan prečac ne odgovara vašem pretraživanju",
     "conflict": "U sukobu s: {labels}",
     "globalCapture": {
-      "title": "Brzi zapis s bilo kojeg mjesta",
       "description": "Zabilježite bilješku s bilo kojeg mjesta",
       "active": "Aktivno",
       "inUse": "{shortcut} koristi druga aplikacija. Odaberite drugu kombinaciju.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Na razini sustava",
       "globalCapture": "Brzi zapis s bilo kojeg mjesta",
       "recordingHint": "Pritisnite tipke… esc za odustajanje",
-      "reset": "Vrati na zadano",
       "resetAll": "Vrati sve na zadano",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Ponovno slanje koda nije uspjelo",
       "failedToSetUpDevice": "Postavljanje uređaja nije uspjelo",
       "failedToConfirmRecoveryPhrase": "Potvrda fraze za oporavak nije uspjela",
-      "failedToAnalyzeContent": "Analiza sadržaja nije uspjela",
       "failedToLoadUpdaterState": "Učitavanje stanja programa za ažuriranje nije uspjelo",
       "failedToCheckForUpdates": "Provjera ažuriranja nije uspjela",
       "failedToDownloadUpdate": "Preuzimanje ažuriranja nije uspjelo",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Učitavanje postavki uređivača bilješki nije uspjelo",
       "failedToUpdateSettings": "Ažuriranje postavki nije uspjelo",
       "failedToLoadTabSettings": "Učitavanje postavki kartica nije uspjelo",
-      "failedToLoadNotes": "Učitavanje bilješki nije uspjelo",
       "failedToLoadTags": "Učitavanje oznaka nije uspjelo",
-      "failedToLoadTasks": "Učitavanje zadataka nije uspjelo",
       "failedToLoadVaultStatus": "Učitavanje statusa trezora nije uspjelo",
       "failedToSelectVault": "Odabir trezora nije uspio",
       "failedToCloseVault": "Zatvaranje trezora nije uspjelo",
@@ -2565,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Pristup lokalnom poslužitelju za vanjske MCP klijente."
     },
-    "groups": {
-      "connection": "Veza",
-      "access": "Pristup"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Koristite ovu localhost krajnju točku iz Cursora, Claude Desktopa ili Zeda."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "Vjerodajnica u memoriji, vrijedi za ovo pokretanje aplikacije."
+        "label": "Bearer token"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Dopuštenja agenta",
       "subtitle": "Odaberite zadani pristup, potvrde i lokalne pružatelje za razgovor s agentom."
     },
-    "groups": {
-      "cliAgents": "CLI agenti",
-      "local": "Lokalni pružatelj kompatibilan s OpenAI-jem",
-      "actions": "Provjere veze"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Dopuštenja agenta",
       "access": {
-        "label": "Zadani pristup",
         "description": "Postavlja početni način pristupa za nove poruke agentu.",
         "vaultOnly": "Samo trezor",
         "computerAccess": "Pristup računalu",
         "builtInNote": "Ugrađena veza s modelom uvijek koristi samo alate trezora."
       },
       "confirm": {
-        "label": "Potvrda radnji",
         "description": "Odaberite pokreću li se pozivi alata automatski ili čekaju odobrenje u razgovoru. Zaključane bilješke i mape ostaju samo za čitanje u oba načina.",
         "alwaysAllow": "Uvijek dopusti",
         "askBeforeChanges": "Pitaj prije izmjena"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Spremi",
-      "models": "Modeli",
-      "test": "Testiraj vezu",
-      "probe": "Ispitaj alate"
+      "test": "Testiraj vezu"
     },
     "status": {
       "label": "Veza",
       "checking": "Provjera…",
       "connected": "Povezano",
-      "disconnected": "Nije povezano",
-      "toolsDisabled": "Alati isključeni",
-      "fullTools": "Svi alati uključeni"
+      "disconnected": "Nije povezano"
     },
     "alwaysAllowed": {
-      "group": "Uvijek dopušteno",
       "description": "Alati kojima ste u ovom trezoru dali trajno odobrenje. Brisanje nikad ne može dobiti trajno odobrenje.",
       "empty": "Ništa nije uvijek dopušteno. Svaka promjena i dalje traži potvrdu.",
       "revoke": "Opozovi",

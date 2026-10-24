@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Azione non riuscita",
-    "nothingToUndo": "Niente da annullare",
     "undone": "Annullato: {description}",
     "undoFailed": "Impossibile annullare l'azione",
     "filesImported": "{count, plural, one {# file importato} other {# file importati}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "L'agente vuole creare {title}. Rivedi la modifica prima di applicarla.",
       "descriptionDelete": "L'agente vuole eliminare {title}. Rivedi la modifica prima di applicarla.",
       "fallbackTitle": "questo elemento",
-      "current": "Attuale",
       "candidate": "Proposta",
       "loading": "Caricamento…",
       "apply": "Applica",
@@ -383,12 +381,8 @@
       "removeAttachment": "Rimuovi {label}",
       "placeholder": "Fai qualsiasi cosa con memrynote… @ per menzionare note, attività ed eventi",
       "send": "Invia",
-      "providerLabel": "Provider dell'agente: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Strumenti collegati",
       "connectTool": "Collega {tool}",
-      "addContext": "Aggiungi contesto",
-      "addContextWithPermissions": "Aggiungi contesto ({permissions})",
       "mentionContext": "Menziona una nota, un'attività o un evento",
       "files": {
         "attach": "Allega un file di testo",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Impossibile trascrivere l'input vocale"
         }
       },
-      "modelLabel": "Modello dell'agente: {provider} {model}",
-      "reasoningLabel": "Ragionamento dell'agente: {reasoning}",
       "providers": {
-        "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Accesso al computer"
       },
       "webSearch": {
-        "on": "Attivata",
-        "off": "Disattivata",
         "label": "Ricerca web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agente non disponibile: apri le Impostazioni…"
       },
       "settings": {
-        "reasoning": "Ragionamento",
         "effort": "Impegno"
       },
       "includeCurrentNote": "Includi la nota corrente",
@@ -472,11 +460,8 @@
           "max": "Massima"
         }
       },
-      "permissionsLabel": "Autorizzazioni dell'agente: {access}, ricerca web {webSearch}",
       "permissions": {
-        "label": "Autorizzazioni",
-        "access": "Accesso",
-        "tools": "Strumenti"
+        "access": "Accesso"
       },
       "modelSettingsLabel": "Impostazioni del modello dell'agente: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nuova cartella",
       "newProject": "Nuovo progetto",
       "bookmarks": "Segnalibri",
-      "chart": "Grafico",
       "tags": "Tag",
       "reorderSection": "Riordina {section}",
       "dropFilesToImport": "Rilascia i file da importare",
       "dropFilesIntoVaultRoot": "Cartella principale del vault",
       "newNoteN": "Nuova nota (⌘N)",
-      "new": "Nuovo",
       "newItemMenu": "Crea nuovo…",
       "feedbackButton": "Invia feedback",
       "feedbackTitle": "Invia feedback",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Trova, sostituisci, chiedi…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Salta l'introduzione",
-      "welcomeToMemry": "Ti diamo il benvenuto in memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "La tua base di conoscenza personale. Prendiamoci 2 minuti per iniziare.",
-      "getStarted": "Inizia ",
-      "createYourFirstNote": "Crea la tua prima nota",
-      "markdownBasedStoredLocallyAsPlainFiles": "In formato Markdown, salvate in locale come semplici file.",
-      "eGMeetingNotesIdeasAnything": "ad es. appunti di riunione, idee, qualsiasi cosa…",
-      "skip": "Salta",
-      "createNote": "Crea nota ",
-      "addYourFirstTask": "Aggiungi la tua prima attività",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Le attività si collegano alle tue note, con priorità e date di scadenza.",
-      "eGReviewProjectProposal": "ad es. Rivedi la proposta di progetto…",
-      "skip2": "Salta",
-      "createTask": "Crea attività ",
-      "syncAcrossDevices": "Sincronizza tra dispositivi",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Mantieni le tue note e le tue attività sincronizzate su tutti i tuoi dispositivi. Puoi sempre configurarlo in seguito.",
-      "skipForNow": "Salta per ora",
-      "doneLetSGo": "Tutto pronto, iniziamo! "
+      "skip": "Salta"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Imposta l'icona della cartella",
@@ -852,8 +818,7 @@
       "unknownTabType": "Tipo di scheda sconosciuto: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "modifiche non salvate",
-      "preview": "anteprima"
+      "unsavedChanges": "modifiche non salvate"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nuova scheda",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Trascina per ridimensionare · Fai doppio clic per reimpostare"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Ti diamo il benvenuto in memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Il tuo sistema personale di gestione della conoscenza.",
-      "selectAFolderToStoreYourNotesAndTasks": "Seleziona una cartella in cui salvare le tue note e attività.",
       "opening": "Apertura…",
-      "selectVaultFolder": "Seleziona la cartella del vault",
-      "plainMarkdown": "Markdown semplice",
-      "yourNotesStayPortable": "Le tue note restano portabili",
-      "syncAnywhere": "Sincronizza ovunque",
-      "useDropboxIcloudGit": "Usa Dropbox, iCloud, Git",
       "recentVaults": "Vault recenti",
-      "notesLastOpened": "note · Ultima apertura",
-      "preRelease": "Beta",
       "createNewVault": "Crea un nuovo vault",
-      "createNewVaultDesc": "Crea un nuovo vault in una cartella a tua scelta.",
-      "openExistingVault": "Apri un vault esistente",
-      "openExistingVaultDesc": "Scegli una cartella con i file Markdown che hai già.",
-      "signInToSync": "Accedi per sincronizzare",
-      "signInToSyncDesc": "Vault crittografati end-to-end su tutti i tuoi dispositivi.",
-      "create": "Crea",
       "open": "Apri",
-      "signIn": "Accedi",
       "helpAndDocs": "Aiuto e documentazione",
-      "signInRequiresVault": "Apri o crea prima un vault per configurare la sincronizzazione.",
       "addVault": "Aggiungi vault",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Ancora nessun vault",
       "openVault": "Apri vault",
       "settings": "Impostazioni",
-      "logOut": "Esci",
-      "signInToSync": "Accedi per sincronizzare",
       "remove": "Rimuovi “",
       "removeVaultTitle": "Rimuovere “{name}” dalla lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Questo vault verrà rimosso dall'app, ma i tuoi file rimarranno sul disco. Puoi sempre aggiungerlo di nuovo in seguito.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Cambia…",
       "download": "Scarica",
       "downloadFailed": "Impossibile scaricare il vault",
-      "deleteFromAccount": "Elimina dall'account",
       "deleteVaultTitle": "Eliminare “{name}” dal tuo account?",
       "deleteVaultBody": "Questa operazione rimuove definitivamente dai server di Memry tutti i dati sincronizzati di questo vault e non può essere annullata. I file sul tuo disco non vengono eliminati.",
       "deleteVaultConfirm": "Elimina dall'account",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Rimuovi widget",
       "dragAria": "Trascina widget",
-      "configAria": "Configura widget",
-      "resizeAria": "Ridimensiona a {size}",
       "menuAria": "Opzioni widget",
-      "resize": "Dimensione",
       "remove": "Rimuovi",
       "filter": {
         "all": "Tutte",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Scegli una cartella",
       "folderEmpty": "Ancora nessuna cartella",
       "folderNoSelection": "Nessuna cartella selezionata",
-      "folderView_list": "Elenco",
-      "folderView_gallery": "Galleria",
       "folderViewSelect": "Vista",
       "project": "Progetto",
       "projectNoSelection": "Nessun progetto selezionato",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Layout della Home",
       "deleteAria": "Elimina layout",
-      "newAria": "Nuova bacheca",
       "newName": "Nuova bacheca",
       "defaultName": "Home",
       "manage": "Gestisci bacheche",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# attività in scadenza oggi} other {# attività in scadenza oggi}}",
       "events": "{count, plural, one {# evento} other {# eventi}}"
     },
-    "edit": "Modifica",
-    "done": "Fine",
     "addWidget": "Aggiungi widget",
     "cover": {
       "add": "Aggiungi copertina"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introduzione completata",
-      "body": "Mettici una stella su GitHub: aiuta altre persone a scoprire MemryNote.",
-      "action": "Metti una stella su GitHub"
+      "body": "Mettici una stella su GitHub: aiuta altre persone a scoprire MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Aggiornamento pronto",
     "failed": "Aggiornamento non riuscito",
     "downloadAction": "Scarica",
-    "restartAction": "Riavvia",
     "detailsAction": "Dettagli",
     "popover": {
       "readyTitle": "MemryNote {version} è pronto",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Vault",
     "position": "{name}, vault {index} di {count}",
-    "openList": "{position}. Apri l'elenco dei vault",
     "switchTo": "Passa a {name}",
     "switchingTo": "Passaggio a {name}",
     "changeIcon": "Cambia icona…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Su {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# vault trovato} many {# vault trovati} other {# vault trovati}}",
-      "notion": "Notion",
       "otherApps": "Altre app e file",
       "otherAppsHint": "e altri {count}",
       "detectedFootnote": "Rilevato controllando quali app sono installate. Nulla esce da {device}.",

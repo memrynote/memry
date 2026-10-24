@@ -15,19 +15,13 @@
       "showWithCount": "Visa uppskjutna objekt ({count})",
       "hide": "Dölj uppskjutna objekt"
     },
-    "density": {
-      "toComfortable": "Bekväm vy",
-      "toCompact": "Kompakt vy"
-    },
     "filter": {
-      "button": "Filtrera",
       "byType": "Filtrera efter typ",
       "active": "{count, plural, one {Filtrerar efter # typ} other {Filtrerar efter # typer}}",
       "clearAll": "Rensa allt"
     },
     "jobs": {
-      "running": "{count, plural, one {# bakgrundsjobb körs} other {# bakgrundsjobb körs}}",
-      "failed": "{count} misslyckades"
+      "running": "{count, plural, one {# bakgrundsjobb körs} other {# bakgrundsjobb körs}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Skapa ”{name}”",
     "addTags": "Lägg till taggar…",
     "linkToNote": "Länka till anteckning",
-    "linkANote": "Länka en anteckning",
-    "suggestedCount": "{count} föreslagna",
-    "linkNotesPlaceholder": "Länka anteckningar…",
     "linkOrCreateNotePlaceholder": "Hitta eller skapa en anteckning…",
     "createNote": "Skapa ”{title}”",
     "pendingNote": "Ny anteckning",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Påminnelsedata är inte tillgängliga.",
     "triggered": "Påminnelsen har utlösts",
-    "noteLabel": "Påminnelseanteckning",
     "source": "Källa",
     "journalTitle": "Dagbok – {date}",
     "noteFallback": "Anteckning",
@@ -514,9 +504,7 @@
       "settings": "Inställningar",
       "processing": "Bearbetar…",
       "cancelRecording": "Avbryt inspelning",
-      "cancel": "Avbryt",
       "stopRecording": "Stoppa inspelning",
-      "stop": "Stoppa",
       "recordingError": "Ett inspelningsfel uppstod",
       "microphoneAccessDenied": "Mikrofonåtkomst nekad",
       "noMicrophoneFound": "Ingen mikrofon hittades",

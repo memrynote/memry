@@ -122,10 +122,6 @@
       "body": "Gumawa ng tala para makapagsimula",
       "newNote": "Bagong tala"
     },
-    "readwiseSync": {
-      "tooltip": "Sync ng Readwise",
-      "failed": "Nabigo ang sync ng Readwise"
-    },
     "syncing": {
       "body": "Sini-sync ang mga tala mo — lalabas ang mga ito rito pagdating nila"
     },
@@ -157,12 +153,6 @@
       "bookmark": "I-bookmark",
       "removeFromBookmarks": "Alisin sa mga bookmark",
       "journalSettings": "Mga setting ng talaarawan…"
-    },
-    "nav": {
-      "label": "Nabigasyon",
-      "ariaExpanded": "Seksyon ng nabigasyon, naka-expand",
-      "ariaCollapsed": "Seksyon ng nabigasyon, naka-collapse",
-      "saveFailed": "Hindi ma-save ang estado ng seksyon ng nabigasyon"
     },
     "viewOptions": {
       "label": "Mga opsyon sa view",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Bilang toggle",
         "asLinkedTask": "Bilang naka-link na gawain",
         "asReminder": "Bilang paalala"
-      },
-      "actions": {
-        "insert": "Ipasok",
-        "open": "Buksan"
       },
       "close": "Isara ang menu",
       "matchesAlias": "tugma sa",
@@ -607,7 +592,6 @@
         "title": "Ilipat ang block sa tala",
         "searchPlaceholder": "Maghanap ng mga tala…",
         "noResults": "Walang tumutugmang tala",
-        "moved": "Nailipat ang block sa “{title}”",
         "failed": "Hindi mailipat ang block"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Balangkas",
     "aria": "Balangkas ng dokumento",
-    "emptyYet": "Wala pang heading",
     "readTime": "{count} minutong pagbasa",
     "words": "{count} salita",
     "created": "Ginawa",
@@ -839,11 +822,9 @@
     "toolbarComment": "Magkomento",
     "commentPlaceholder": "Magdagdag ng komento…",
     "createdTooltip": "Ginawa noong {date}, {time}",
-    "cancel": "Kanselahin",
     "resolve": "Lutasin",
     "edit": "I-edit ang komento",
     "delete": "Tanggalin ang komento",
-    "replyPlaceholder": "Tumugon…",
     "attachAria": "Mag-attach ng file",
     "mentionAria": "Banggitin ang isang tao, pahina o petsa",
     "sendAria": "Ipadala ang komento",
@@ -856,13 +837,7 @@
       "code": "Code"
     },
     "openImageAria": "Buksan ang larawang {name}",
-    "openAttachmentAria": "Buksan ang attachment na {name}",
-    "kind": {
-      "comment": "Komento",
-      "addition": "Pagdaragdag",
-      "deletion": "Pagtanggal",
-      "substitution": "Pagpapalit"
-    }
+    "openAttachmentAria": "Buksan ang attachment na {name}"
   },
   "tagsRow": {
     "aria": "Mga tag",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Mga property",
     "noteAria": "Mga property ng tala",
-    "workspaceAria": "Mga property ng workspace",
     "listAria": "Listahan ng mga property",
     "add": "Magdagdag ng property",
     "addDescription": "Magdagdag ng bagong property sa talang ito",
@@ -932,7 +906,6 @@
       "inProgress": "Ginagawa",
       "done": "Tapos na"
     },
-    "projectAlreadySet": "May property na ng proyekto ang talang ito",
     "projectPlaceholder": "Walang proyekto",
     "projectSearch": "Maghanap ng mga proyekto",
     "projectEmpty": "Walang proyekto",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
-      "filters": "Mga filter",
-      "clearAll": "I-clear lahat",
-      "noFiltersApplied": "Walang inilapat na mga filter",
-      "addFiltersToNarrowDownYourNotes": "Magdagdag ng mga filter para paliitin ang listahan ng mga tala mo",
       "match": "Tumugma sa",
-      "allAnd": "Lahat (AND)",
-      "anyOr": "Alinman (OR)",
-      "ofTheFollowing": "sa mga sumusunod:",
       "match2": "Tumugma sa",
       "all": "Lahat",
       "any": "Alinman",
-      "of": "ng:",
       "addCondition": "Magdagdag ng kundisyon",
       "addFilter": "Magdagdag ng filter",
       "addGroup": "Magdagdag ng grupo",
@@ -1207,7 +1172,6 @@
       "available": "Available: ",
       "preview": "Preview",
       "fixExpressionErrorsToSeePreview": "Ayusin ang mga error sa expression para makita ang preview",
-      "usingNote": "Gamit ang tala: “",
       "cancel": "Kanselahin",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Nilo-load ang mga folder…",
       "suggested": "MGA MUNGKAHI",
       "bestMatch": "Pinakatugma",
-      "current": "kasalukuyan)",
       "allFolders": "LAHAT NG FOLDER",
-      "noFoldersMatch": "Walang folder na tumutugma sa \"",
-      "create": "Gumawa ng \"",
       "cancel": "Kanselahin",
       "currentFolderBadge": "(kasalukuyan)",
       "noFoldersMatchQuery": "Walang folder na tumutugma sa “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "default",
       "viewActions": "Mga aksyon ng view",
-      "rename": "Palitan ang pangalan",
       "duplicate": "I-duplicate",
       "setAsDefault": "Itakda bilang default",
       "delete": "Tanggalin",
-      "createNewView": "Gumawa ng bagong view",
-      "createNewView2": "Gumawa ng bagong view",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Gumawa ng bagong view na may custom na column, filter at pagkakasunod.",
-      "viewName": "Pangalan ng view",
       "myCustomView": "Custom view ko",
-      "baseConfiguration": "Batayang configuration",
-      "copyFromCurrentView": "Kopyahin mula sa kasalukuyang view",
-      "startFreshDefaultColumns": "Magsimula ng bago (mga default na column)",
       "cancel": "Kanselahin",
-      "renameView": "Palitan ang pangalan ng view",
-      "enterANewNameForThisView": "Ilagay ang bagong pangalan para sa view na ito.",
-      "viewName2": "Pangalan ng view",
-      "viewName3": "Pangalan ng view",
-      "cancel2": "Kanselahin",
       "deleteView": "Tanggalin ang view",
       "areYouSureYouWantToDelete": "Sigurado ka bang gusto mong tanggalin ang \"",
       "thisActionCannotBeUndone": "Hindi na ito maibabalik.",
@@ -1289,22 +1237,17 @@
       "layout": "Layout",
       "table": "Talahanayan",
       "list": "Listahan",
-      "gallery": "Galerya",
-      "createView": "Gumawa ng view",
-      "save": "I-save"
+      "gallery": "Galerya"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Hindi ma-load ang PDF: ",
-      "download": "I-download",
       "download2": "I-download",
       "noFileAttached": "Walang naka-attach na file",
       "resizePdf": "Baguhin ang laki ng PDF",
       "resizeHtml": "Baguhin ang laki ng HTML embed",
       "alignLeft": "Ihanay sa kaliwa",
       "alignCenter": "Ihanay sa gitna",
-      "alignRight": "Ihanay sa kanan",
-      "previousPage": "Nakaraang pahina",
-      "nextPage": "Susunod na pahina"
+      "alignRight": "Ihanay sa kanan"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Buksan sa panel ng gawain",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8.5 x 11 in)",
       "legal85X14In": "Legal (8.5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Naka-sync"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Mga salita",
       "characters": "Mga karakter",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Wala pang bookmark",
       "moreOptions": "Higit pang mga pagpipilian",
       "remove": "Alisin"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Buksan",
-      "openToTheSide": "Buksan sa gilid",
-      "pinToTabs": "I-pin sa mga tab",
-      "edit": "I-edit",
-      "delete": "Tanggalin",
-      "copyLink": "Kopyahin ang link"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Nilo-load ang mga tag…",
@@ -1380,26 +1309,9 @@
       "cancel": "Kanselahin"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Bumalik",
-      "notes": "mga tala",
-      "loadingNotes": "Nilo-load ang mga tala…",
-      "noNotesWithThisTag": "Walang talang may tag na ito",
-      "addThisTagToANoteToSeeItHere": "Idagdag ang tag na ito sa isang tala para makita ito rito",
-      "pinned": "NAKA-PIN",
-      "allNotes": "LAHAT NG TALA",
-      "allNotesArePinned": "Naka-pin ang lahat ng tala",
-      "tasks": "MGA GAWAIN",
-      "unpinFromTag": "I-unpin mula sa tag",
-      "unpin": "I-unpin",
-      "pinToTag": "I-pin sa tag",
-      "pin": "I-pin",
       "tagActions": "Mga aksyon sa tag",
-      "editTagName": "I-edit ang pangalan ng tag",
       "changeColor": "Baguhin ang kulay",
-      "deleteTag": "Tanggalin ang tag",
-      "recent": "Kamakailan",
-      "created": "Ginawa",
-      "alphabetical": "Alpabetikal"
+      "deleteTag": "Tanggalin ang tag"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Palitan ang pangalan ng tag",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Gumawa ng bagong tala",
-      "viewSettings": "Mga setting ng view",
-      "displayDensity": "Densidad ng display",
-      "comfortable": "Komportable",
-      "compact": "Siksik",
-      "showSummaries": "Ipakita ang mga buod",
       "cancel": "Kanselahin"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Buksan ang hub ng mga tag"
   },
   "tagView": {
-    "moreActions": "Higit pang aksyon",
     "pin": {
       "action": "I-pin ang {count, plural, one {# tala} other {# tala}} sa tag",
       "success": "Na-pin ang {count, plural, one {# tala} other {# tala}} sa tag",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Pangalanan ang paghahanap na ito",
     "saveDialogPlaceholder": "hal. Mga pulong sa trabaho",
     "cancel": "Kanselahin",
-    "save": "I-save",
-    "addToFilterHint": "I-Ctrl/Cmd-click ang isang tag para idagdag ito sa filter"
+    "save": "I-save"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Sumusulat…",
       "writtenBy": "Isinulat ni {agent}",
       "retry": "Nabigo ang huling takbo · Subukan ulit",
-      "retryAction": "Subukan ulit",
       "captionOff": "I-on ang Ibuod ang mahahabang tala sa Mga setting → AI",
       "captionNoAgent": "Walang nakakonektang agent · Mga setting → AI",
       "unknownAgent": "AI"

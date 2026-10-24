@@ -17,18 +17,6 @@
       "filterAll": "Alle filer"
     },
     "exportCancelled": "Eksporten blev annulleret",
-    "update": {
-      "availableTitle": "Opdatering tilgængelig",
-      "availableMessage": "memrynote {version} er tilgængelig.",
-      "availableDetailFallback": "Vil du hente opdateringen nu?",
-      "buttonDownload": "Hent",
-      "buttonLater": "Senere",
-      "readyTitle": "Opdatering klar",
-      "readyMessage": "memrynote {version} er hentet.",
-      "readyDetailFallback": "Genstart memrynote for at afslutte installationen af opdateringen.",
-      "buttonRestartNow": "Genstart nu",
-      "releaseNotesLabel": "Udgivelsesbemærkninger:"
-    },
     "dataDbRecovery": {
       "title": "Reparér boksens database",
       "message": "Memrys database for denne boks er beskadiget.",

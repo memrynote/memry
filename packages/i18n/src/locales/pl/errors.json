@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Brak uwierzytelnienia",
-    "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
     "setupSessionExpired": "Sesja logowania wygasła, zanim ten proces się zakończył. Zaloguj się ponownie, a następnie wpisz frazę odzyskiwania.",
     "setupSessionExpiredLinking": "Sesja logowania wygasła, zanim to urządzenie zostało połączone. Zaloguj się ponownie, a następnie jeszcze raz zeskanuj kod.",
     "invalidRecoveryPhraseFormat": "Nieprawidłowy format frazy odzyskiwania",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Nie udało się załadować modelu",
     "voiceModelDownloadFailed": "Nie udało się pobrać modelu transkrypcji głosu",
     "terminalCommandInstallFailed": "Nie udało się zainstalować polecenia terminala",
-    "terminalCommandUninstallFailed": "Nie udało się odinstalować polecenia terminala",
-    "shortcutInUse": "Skrót {shortcut} jest już używany"
+    "terminalCommandUninstallFailed": "Nie udało się odinstalować polecenia terminala"
   },
   "tag": {
     "renameInProgress": "Zmiana nazwy #{from} na #{to} wciąż trwa. Spróbuj ponownie, gdy się zakończy.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} już przejmuje pola z tego tagu",
     "unreadableSchema": "Nowsza wersja Memry zmieniła ten tag. Zaktualizuj Memry, aby go edytować",
     "relationTargetRequired": "Wybierz, na jaki tag wskazuje ta relacja",
-    "editFailed": "Nie udało się zmienić pól tagu",
-    "previewFailed": "Nie udało się policzyć, czego dotyczy ta zmiana",
-    "snapshotFailed": "Nie udało się wczytać pól tagu",
     "renameRunning": "Inna zmiana nazwy pola wciąż się kończy ({from} na {to}). Spróbuj ponownie, gdy się zakończy."
   }
 }

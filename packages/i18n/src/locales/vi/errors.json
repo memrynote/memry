@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Chưa xác thực",
-    "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
     "setupSessionExpired": "Phiên đăng nhập đã hết thời gian chờ trước khi quá trình này hoàn tất. Đăng nhập lại, rồi nhập cụm từ khôi phục.",
     "setupSessionExpiredLinking": "Phiên đăng nhập đã hết thời gian chờ trước khi thiết bị này liên kết xong. Đăng nhập lại, rồi quét mã thêm một lần nữa.",
     "invalidRecoveryPhraseFormat": "Định dạng cụm từ khôi phục không hợp lệ",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Không thể tải mô hình",
     "voiceModelDownloadFailed": "Không thể tải xuống mô hình giọng nói",
     "terminalCommandInstallFailed": "Không thể cài đặt lệnh terminal",
-    "terminalCommandUninstallFailed": "Không thể gỡ lệnh terminal",
-    "shortcutInUse": "Phím tắt {shortcut} đang được sử dụng"
+    "terminalCommandUninstallFailed": "Không thể gỡ lệnh terminal"
   },
   "tag": {
     "renameInProgress": "Việc đổi tên #{from} thành #{to} vẫn đang chạy. Hãy thử lại khi nó hoàn tất.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} đã lấy các trường của nó từ thẻ này",
     "unreadableSchema": "Một phiên bản Memry mới hơn đã thay đổi thẻ này. Hãy cập nhật Memry để sửa nó",
     "relationTargetRequired": "Hãy chọn thẻ mà quan hệ này trỏ tới",
-    "editFailed": "Không thể thay đổi các trường của thẻ",
-    "previewFailed": "Không thể đếm những gì thay đổi này ảnh hưởng đến",
-    "snapshotFailed": "Không thể tải các trường của thẻ",
     "renameRunning": "Một lần đổi tên trường khác vẫn đang hoàn tất ({from} thành {to}). Hãy thử lại khi nó xong."
   }
 }

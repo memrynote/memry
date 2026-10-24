@@ -15,19 +15,13 @@
       "showWithCount": "Показати відкладені елементи ({count})",
       "hide": "Сховати відкладені елементи"
     },
-    "density": {
-      "toComfortable": "Комфортний вигляд",
-      "toCompact": "Компактний вигляд"
-    },
     "filter": {
-      "button": "Фільтр",
       "byType": "Фільтрувати за типом",
       "active": "{count, plural, one {Фільтрування за # типом} few {Фільтрування за # типами} many {Фільтрування за # типами} other {Фільтрування за # типами}}",
       "clearAll": "Очистити все"
     },
     "jobs": {
-      "running": "{count, plural, one {Виконується # фонова операція} few {Виконуються # фонові операції} many {Виконується # фонових операцій} other {Виконується # фонової операції}}",
-      "failed": "Не вдалося: {count}"
+      "running": "{count, plural, one {Виконується # фонова операція} few {Виконуються # фонові операції} many {Виконується # фонових операцій} other {Виконується # фонової операції}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Створити «{name}»",
     "addTags": "Додати теги…",
     "linkToNote": "Посилання на нотатку",
-    "linkANote": "Пов’язати нотатку",
-    "suggestedCount": "Запропоновано: {count}",
-    "linkNotesPlaceholder": "Пов’язати нотатки…",
     "linkOrCreateNotePlaceholder": "Знайти або створити нотатку…",
     "createNote": "Створити «{title}»",
     "pendingNote": "Нова нотатка",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Дані нагадування недоступні.",
     "triggered": "Нагадування спрацювало",
-    "noteLabel": "Примітка до нагадування",
     "source": "Джерело",
     "journalTitle": "Щоденник — {date}",
     "noteFallback": "Нотатка",
@@ -514,9 +504,7 @@
       "settings": "Налаштування",
       "processing": "Обробка…",
       "cancelRecording": "Скасувати запис",
-      "cancel": "Скасувати",
       "stopRecording": "Зупинити запис",
-      "stop": "Зупинити",
       "recordingError": "Сталася помилка запису",
       "microphoneAccessDenied": "Доступ до мікрофона заборонено",
       "noMicrophoneFound": "Мікрофон не знайдено",

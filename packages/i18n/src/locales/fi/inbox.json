@@ -15,19 +15,13 @@
       "showWithCount": "Näytä torkutetut kohteet ({count})",
       "hide": "Piilota torkutetut kohteet"
     },
-    "density": {
-      "toComfortable": "Väljä näkymä",
-      "toCompact": "Tiivis näkymä"
-    },
     "filter": {
-      "button": "Suodata",
       "byType": "Suodata tyypin mukaan",
       "active": "{count, plural, one {Suodatettu # tyypin mukaan} other {Suodatettu # tyypin mukaan}}",
       "clearAll": "Tyhjennä kaikki"
     },
     "jobs": {
-      "running": "{count, plural, one {# taustatyö käynnissä} other {# taustatyötä käynnissä}}",
-      "failed": "{count} epäonnistui"
+      "running": "{count, plural, one {# taustatyö käynnissä} other {# taustatyötä käynnissä}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Luo ”{name}”",
     "addTags": "Lisää tunnisteita…",
     "linkToNote": "Linkitä muistiinpanoon",
-    "linkANote": "Linkitä muistiinpano",
-    "suggestedCount": "{count} ehdotettu",
-    "linkNotesPlaceholder": "Linkitä muistiinpanoja…",
     "linkOrCreateNotePlaceholder": "Hae tai luo muistiinpano…",
     "createNote": "Luo ”{title}”",
     "pendingNote": "Uusi muistiinpano",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Muistutustiedot eivät ole saatavilla.",
     "triggered": "Muistutus aktivoitu",
-    "noteLabel": "Muistutuksen muistiinpano",
     "source": "Lähde",
     "journalTitle": "Päiväkirja – {date}",
     "noteFallback": "Muistiinpano",
@@ -514,9 +504,7 @@
       "settings": "Asetukset",
       "processing": "Käsitellään…",
       "cancelRecording": "Peruuta tallennus",
-      "cancel": "Peruuta",
       "stopRecording": "Lopeta tallennus",
-      "stop": "Lopeta",
       "recordingError": "Tallennuksessa tapahtui virhe",
       "microphoneAccessDenied": "Mikrofonin käyttö estetty",
       "noMicrophoneFound": "Mikrofonia ei löytynyt",

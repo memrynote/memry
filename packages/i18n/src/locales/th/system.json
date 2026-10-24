@@ -17,18 +17,6 @@
       "filterAll": "ทุกไฟล์"
     },
     "exportCancelled": "ยกเลิกการส่งออกแล้ว",
-    "update": {
-      "availableTitle": "มีการอัปเดตใหม่",
-      "availableMessage": "memrynote {version} พร้อมใช้งาน",
-      "availableDetailFallback": "ดาวน์โหลดการอัปเดตตอนนี้หรือไม่?",
-      "buttonDownload": "ดาวน์โหลด",
-      "buttonLater": "ภายหลัง",
-      "readyTitle": "พร้อมอัปเดต",
-      "readyMessage": "ดาวน์โหลด memrynote {version} แล้ว",
-      "readyDetailFallback": "เริ่ม memrynote ใหม่เพื่อติดตั้งอัปเดตให้เสร็จ",
-      "buttonRestartNow": "เริ่มใหม่ตอนนี้",
-      "releaseNotesLabel": "บันทึกประจำเวอร์ชัน:"
-    },
     "dataDbRecovery": {
       "title": "ซ่อมแซมฐานข้อมูลคลังข้อมูล",
       "message": "ฐานข้อมูลของ Memry สำหรับคลังข้อมูลนี้เสียหาย",

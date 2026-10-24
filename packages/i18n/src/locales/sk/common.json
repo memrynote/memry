@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Akcia zlyhala",
-    "nothingToUndo": "Nie je čo vrátiť späť",
     "undone": "Vrátené: {description}",
     "undoFailed": "Nepodarilo sa vrátiť akciu späť",
     "filesImported": "{count, plural, one {Importovaný # súbor} few {Importované # súbory} other {Importovaných # súborov}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agent chce vytvoriť {title}. Pred použitím zmenu skontrolujte.",
       "descriptionDelete": "Agent chce odstrániť {title}. Pred použitím zmenu skontrolujte.",
       "fallbackTitle": "túto položku",
-      "current": "Aktuálne",
       "candidate": "Navrhovaný obsah",
       "loading": "Načítava sa…",
       "apply": "Použiť",
@@ -383,12 +381,8 @@
       "removeAttachment": "Odstrániť {label}",
       "placeholder": "Požiadajte memrynote o čokoľvek… @ – zmienka o poznámke, úlohe alebo udalosti",
       "send": "Odoslať",
-      "providerLabel": "Poskytovateľ agenta: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Pripojené nástroje",
       "connectTool": "Pripojiť {tool}",
-      "addContext": "Pridať kontext",
-      "addContextWithPermissions": "Pridať kontext ({permissions})",
       "mentionContext": "Zmieniť sa o poznámke, úlohe alebo udalosti",
       "files": {
         "attach": "Priložiť textový súbor",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Nepodarilo sa prepísať hlasový vstup"
         }
       },
-      "modelLabel": "Model agenta: {provider} {model}",
-      "reasoningLabel": "Uvažovanie agenta: {reasoning}",
       "providers": {
-        "label": "Poskytovateľ",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Prístup k počítaču"
       },
       "webSearch": {
-        "on": "Zapnuté",
-        "off": "Vypnuté",
         "label": "Webové vyhľadávanie"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent nie je dostupný – otvoriť Nastavenia…"
       },
       "settings": {
-        "reasoning": "Uvažovanie",
         "effort": "Úsilie"
       },
       "includeCurrentNote": "Zahrnúť aktuálnu poznámku",
@@ -472,11 +460,8 @@
           "max": "Maximálna"
         }
       },
-      "permissionsLabel": "Povolenia agenta: {access}, webové vyhľadávanie: {webSearch}",
       "permissions": {
-        "label": "Povolenia",
-        "access": "Prístup",
-        "tools": "Nástroje"
+        "access": "Prístup"
       },
       "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nový priečinok",
       "newProject": "Nový projekt",
       "bookmarks": "Záložky",
-      "chart": "Diagram",
       "tags": "Značky",
       "reorderSection": "Zmeniť poradie sekcie {section}",
       "dropFilesToImport": "Pretiahnite súbory na import",
       "dropFilesIntoVaultRoot": "Koreňový priečinok trezora",
       "newNoteN": "Nová poznámka (⌘N)",
-      "new": "Nové",
       "newItemMenu": "Vytvoriť nové…",
       "feedbackButton": "Odoslať spätnú väzbu",
       "feedbackTitle": "Odoslať spätnú väzbu",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Nájsť, nahradiť, opýtať sa…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Preskočiť úvodné nastavenie",
-      "welcomeToMemry": "Vitajte v aplikácii memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobná znalostná báza. Za 2 minúty vás prevedieme základmi.",
-      "getStarted": "Začať ",
-      "createYourFirstNote": "Vytvorte svoju prvú poznámku",
-      "markdownBasedStoredLocallyAsPlainFiles": "Na báze Markdown, uložené lokálne ako obyčajné súbory.",
-      "eGMeetingNotesIdeasAnything": "napr. poznámky zo stretnutí, nápady, čokoľvek…",
-      "skip": "Preskočiť",
-      "createNote": "Vytvoriť poznámku ",
-      "addYourFirstTask": "Pridajte svoju prvú úlohu",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Úlohy sa viažu na vaše poznámky, s prioritami a termínmi.",
-      "eGReviewProjectProposal": "napr. Skontrolovať návrh projektu…",
-      "skip2": "Preskočiť",
-      "createTask": "Vytvoriť úlohu ",
-      "syncAcrossDevices": "Synchronizovať medzi zariadeniami",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Majte poznámky a úlohy synchronizované na všetkých svojich zariadeniach. Nastaviť to môžete aj neskôr.",
-      "skipForNow": "Zatiaľ preskočiť",
-      "doneLetSGo": "Hotovo – poďme na to! "
+      "skip": "Preskočiť"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Nastaviť ikonu priečinka",
@@ -852,8 +818,7 @@
       "unknownTabType": "Neznámy typ karty: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "neuložené zmeny",
-      "preview": "náhľad"
+      "unsavedChanges": "neuložené zmeny"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nová karta",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Potiahnutím zmeniť veľkosť · Dvojklikom obnoviť"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Vitajte v aplikácii memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Váš osobný systém správy znalostí.",
-      "selectAFolderToStoreYourNotesAndTasks": "Vyberte priečinok, do ktorého sa budú ukladať poznámky a úlohy.",
       "opening": "Otvára sa…",
-      "selectVaultFolder": "Vybrať priečinok trezora",
-      "plainMarkdown": "Čistý Markdown",
-      "yourNotesStayPortable": "Vaše poznámky zostávajú prenosné",
-      "syncAnywhere": "Synchronizovať kdekoľvek",
-      "useDropboxIcloudGit": "Použite Dropbox, iCloud, Git",
       "recentVaults": "Posledné trezory",
-      "notesLastOpened": "poznámky · Naposledy otvorené",
-      "preRelease": "Beta",
       "createNewVault": "Vytvoriť nový trezor",
-      "createNewVaultDesc": "Založte nový trezor v priečinku podľa vlastného výberu.",
-      "openExistingVault": "Otvoriť existujúci trezor",
-      "openExistingVaultDesc": "Vyberte priečinok so súbormi Markdown, ktoré už máte.",
-      "signInToSync": "Prihlásiť sa na synchronizáciu",
-      "signInToSyncDesc": "Trezory šifrované end-to-end na všetkých vašich zariadeniach.",
-      "create": "Vytvoriť",
       "open": "Otvoriť",
-      "signIn": "Prihlásiť sa",
       "helpAndDocs": "Pomoc a dokumentácia",
-      "signInRequiresVault": "Najprv otvorte alebo vytvorte trezor, aby ste nastavili synchronizáciu.",
       "addVault": "Pridať trezor",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Zatiaľ žiadne trezory",
       "openVault": "Otvoriť trezor",
       "settings": "Nastavenia",
-      "logOut": "Odhlásiť sa",
-      "signInToSync": "Prihlásiť sa na synchronizáciu",
       "remove": "Odstrániť",
       "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odstránený z aplikácie, ale vaše súbory zostanú na disku. Vždy ho môžete neskôr znova pridať.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Zmeniť…",
       "download": "Stiahnuť",
       "downloadFailed": "Trezor sa nepodarilo stiahnuť",
-      "deleteFromAccount": "Odstrániť z účtu",
       "deleteVaultTitle": "Odstrániť „{name}“ z vášho účtu?",
       "deleteVaultBody": "Týmto sa natrvalo odstránia všetky synchronizované údaje tohto trezora zo serverov služby Memry. Túto akciu nemožno vrátiť späť. Vaše súbory na disku sa neodstránia.",
       "deleteVaultConfirm": "Odstrániť z účtu",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Odstrániť widget",
       "dragAria": "Presunúť widget",
-      "configAria": "Konfigurovať widget",
-      "resizeAria": "Zmeniť veľkosť na {size}",
       "menuAria": "Možnosti widgetu",
-      "resize": "Veľkosť",
       "remove": "Odstrániť",
       "filter": {
         "all": "Všetky",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Vyberte priečinok",
       "folderEmpty": "Zatiaľ žiadne priečinky",
       "folderNoSelection": "Nie je vybraný žiadny priečinok",
-      "folderView_list": "Zoznam",
-      "folderView_gallery": "Galéria",
       "folderViewSelect": "Zobrazenie",
       "project": "Projekt",
       "projectNoSelection": "Nie je vybraný žiadny projekt",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Rozloženie stránky Domov",
       "deleteAria": "Odstrániť rozloženie",
-      "newAria": "Nová nástenka",
       "newName": "Nová nástenka",
       "defaultName": "Domov",
       "manage": "Spravovať nástenky",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# úloha s termínom dnes} few {# úlohy s termínom dnes} other {# úloh s termínom dnes}}",
       "events": "{count, plural, one {# udalosť} few {# udalosti} other {# udalostí}}"
     },
-    "edit": "Upraviť",
-    "done": "Hotovo",
     "addWidget": "Pridať widget",
     "cover": {
       "add": "Pridať obálku"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Úvodné nastavenie je dokončené",
-      "body": "Dajte nám, prosím, hviezdičku v službe GitHub – pomôžete tak ďalším ľuďom nájsť aplikáciu MemryNote.",
-      "action": "Dať hviezdičku v službe GitHub"
+      "body": "Dajte nám, prosím, hviezdičku v službe GitHub – pomôžete tak ďalším ľuďom nájsť aplikáciu MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Aktualizácia je pripravená",
     "failed": "Aktualizácia zlyhala",
     "downloadAction": "Stiahnuť",
-    "restartAction": "Reštartovať",
     "detailsAction": "Podrobnosti",
     "popover": {
       "readyTitle": "Verzia MemryNote {version} je pripravená",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Trezory",
     "position": "{name}, trezor {index} z {count}",
-    "openList": "{position}. Otvoriť zoznam trezorov",
     "switchTo": "Prepnúť na {name}",
     "switchingTo": "Prepína sa na {name}",
     "changeIcon": "Zmeniť ikonu…",
@@ -1501,7 +1433,6 @@
       "onDevice": "V {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Nájdený # trezor} few {Nájdené # trezory} other {Nájdených # trezorov}}",
-      "notion": "Notion",
       "otherApps": "Ďalšie aplikácie a súbory",
       "otherAppsHint": "a {count} ďalších",
       "detectedFootnote": "Zistené kontrolou nainštalovaných aplikácií. Nič neopustí zariadenie: všetko zostáva v {device}.",

@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "完成「{title}」",
     "task-completed": "任務已完成",
-    "could-not-complete": "無法完成任務",
     "could-not-update-status": "無法變更任務狀態",
     "duration-minutes": "{minutes} 分鐘",
     "duration-hours": "{hours} 小時",
@@ -215,12 +213,9 @@
     "next-week": "下週",
     "open-task": "開啟任務",
     "source-note": "來源筆記",
-    "reschedule": "重新排程",
     "mark-done": "標記為已完成",
     "mark-not-done": "標記為未完成",
-    "later-today": "今天稍晚",
     "tomorrow": "明天",
-    "next-week-mon": "下週 · 星期一",
     "pick-date-time": "選擇日期和時間…",
     "remove-due-date": "移除到期日",
     "subtasks-prefix": "子任務",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "已訂閱的行事曆"
     },
     "caldav": {
       "name": "CalDAV"

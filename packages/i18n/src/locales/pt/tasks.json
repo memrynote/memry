@@ -53,8 +53,7 @@
       "high": "Alta",
       "urgent": "Urgente"
     },
-    "unarchive": "Desarquivar tarefa",
-    "archivedOn": "Arquivada em {date}"
+    "unarchive": "Desarquivar tarefa"
   },
   "reminders": {
     "summary": "Lembrete: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Adicionar subtarefa",
     "subIssuePlaceholder": "Adicionar subtarefa…",
     "noSubIssues": "Ainda não há subtarefas",
-    "linkedNotes": "Relacionados",
-    "linkNote": "Adicionar item relacionado",
     "loading": "Carregando…",
-    "searchNotes": "Pesquisar itens relacionados…",
-    "noMatchingNotes": "Nenhum item correspondente",
-    "noNotesAvailable": "Nenhum item disponível",
-    "noLinkedNotes": "Ainda não há itens relacionados",
-    "removeLinkTo": "Remover item relacionado {title}",
-    "removeLinkFallback": "item",
     "related": "Relacionados",
     "addRelatedItem": "Adicionar item relacionado",
     "searchRelated": "Pesquisar itens relacionados…",
     "noMatchingRelated": "Nenhum item correspondente",
     "noRelatedAvailable": "Nenhum item disponível",
-    "noRelatedItems": "Ainda não há itens relacionados",
     "removeRelatedItem": "Remover item relacionado {title}",
     "relatedItemFallback": "item",
     "relatedItemMissing": "Esse item relacionado não está mais neste cofre.",
@@ -251,7 +241,6 @@
     "deleted": "Tarefa excluída",
     "deletedSeries": "Série concluída!",
     "completed": "Tarefa concluída!",
-    "archived": "Tarefa arquivada",
     "undoNotAvailableForDelete": "Não é possível desfazer a exclusão",
     "alreadyAllComplete": "Todas as tarefas selecionadas já foram concluídas",
     "noCompletedSelected": "Nenhuma tarefa concluída selecionada",
@@ -331,7 +320,6 @@
       "archive": "Arquivar",
       "delete": "Excluir",
       "cancelSelection": "Cancelar seleção",
-      "cancel": "Cancelar",
       "unarchive": "Desarquivar"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Excluir \"",
       "thisProjectHas": "Este projeto tem ",
       "task": "tarefa",
-      "whatWouldYouLikeToDoWithThem": "O que você gostaria de fazer com elas?",
-      "moveTasksToPersonalProject": "Mover as tarefas para o projeto pessoal",
-      "deleteAllTasksPermanently": "Excluir todas as tarefas permanentemente",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Este projeto não possui tarefas e será excluído permanentemente.",
       "notesEventsAndFilesStayNotice": "As tarefas deste projeto são excluídas. Suas notas, eventos e arquivos continuam no seu cofre.",
       "thisActionCannotBeUndone": "Esta ação não pode ser desfeita.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Definir prazo para todas as subtarefas",
-      "setDueDateFor": "Definir prazo para ",
-      "alsoApplyToCompletedSubtasks": "Aplicar também às subtarefas concluídas (",
       "clearDate": "Limpar data",
       "cancel": "Cancelar",
       "apply": "Aplicar",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Definir prioridade para todas as subtarefas",
-      "setPriorityFor": "Definir prioridade para ",
-      "alsoApplyToCompletedSubtasks": "Aplicar também às subtarefas concluídas (",
       "cancel": "Cancelar",
       "apply": "Aplicar",
       "setPriorityForSubtasksIn": "Definir prioridade para {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} em “{title}”",
@@ -464,36 +445,13 @@
       "deleteAll": "Excluir tudo",
       "deleteSubtasksConfirmation": "Isso excluirá {count, plural, one {# subtarefa} many {# subtarefas} other {# subtarefas}} de “{title}”."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Excluir tarefa com subtarefas?",
-      "has": "tem ",
-      "subtask": "subtarefa",
-      "whatWouldYouLikeToDo": "O que você gostaria de fazer?",
-      "deleteTaskAndAllSubtasks": "Excluir tarefa e todas as subtarefas",
-      "permanentlyRemovesEverything": "Remove tudo permanentemente",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Excluir tarefa, manter subtarefas como tarefas autônomas",
-      "subtasksBecomeTopLevelTasks": "As subtarefas se tornam tarefas de primeiro nível",
-      "cancel": "Cancelar",
-      "delete": "Excluir"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplicar tarefa",
-      "createACopyOf": "Criar uma cópia de “",
-      "alsoDuplicateSubtasks": "Duplicar também as subtarefas (",
       "cancel": "Cancelar",
-      "duplicate": "Duplicar ",
       "createACopyOfTitle": "Criar uma cópia de “{title}”",
       "alsoDuplicateSubtasksCount": "Duplicar também as subtarefas ({count})",
       "duplicateWithItems": "Duplicar ({count, plural, one {# item} many {# itens} other {# itens}})",
       "duplicateTaskOnly": "Duplicar tarefa"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Tornar subtarefa de…",
-      "selectATaskToMake": "Selecione uma tarefa para tornar \"",
-      "aSubtaskOf": "subtarefa dela.",
-      "searchTasks": "Pesquisar tarefas…",
-      "sameProject": "Mesmo projeto",
-      "otherProjects": "Outros projetos"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Solte para reagendar para "
@@ -575,12 +533,6 @@
       "search": "pesquisa",
       "clearAll": "Limpar tudo"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filtrar por prazo",
-      "customRange": "Intervalo personalizado",
-      "clear": "Limpar",
-      "apply": "Aplicar"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filtrar por…"
     },
@@ -619,23 +571,9 @@
       "search": "Pesquisar…",
       "selected": "selecionada(s)"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Mais filtros",
-      "more": "Mais",
-      "status": "Status",
-      "hasTimeSet": "Tem horário definido",
-      "recurringOnly": "Apenas recorrentes",
-      "status2": "Status"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Filtrar por prioridade",
       "priority": "Prioridade"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filtrar por projeto",
-      "project": "Projeto",
-      "allProjects": "Todos os projetos",
-      "clear": "Limpar"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Filtros rápidos:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Hora: com hora",
       "summaryTimeWithout": "Hora: sem hora",
       "nameRequired": "Digite um nome para este filtro"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Filtros salvos",
-      "saved": "Salvos",
-      "noSavedFiltersYet": "Nenhum filtro salvo ainda",
-      "saveCurrentFilters": "Salvar filtros atuais",
-      "saveCurrentFilters2": "Salvar filtros atuais"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Nome do filtro",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "A página Tarefas abre neste projeto"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Selecionar projeto",
-      "selectProject2": "Selecionar projeto"
+      "selectProject": "Selecionar projeto"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Editar projeto",
@@ -725,11 +655,6 @@
       "selectProject": "Selecionar projeto",
       "noProjectsYet": "Ainda não há projetos",
       "createProject": "Criar projeto"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Nenhum projeto selecionado",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Selecione um projeto no menu suspenso ou crie um novo",
-      "createYourFirstProject": "Crie seu primeiro projeto"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Ajuda dos atalhos de adição rápida",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Selecionar horário",
-      "selectTime2": "Selecionar horário",
       "clearTime": "Remover horário"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Nenhum projeto selecionado",
     "emptyBody": "Escolha um projeto na barra lateral para abrir a página do projeto.",
-    "loadError": "Não foi possível carregar os detalhes do projeto",
     "overview": {
       "sectionTitle": "Visão geral",
       "create": "Criar nota de visão geral",
@@ -969,18 +892,11 @@
       "empty": "Nada em aberto neste projeto.",
       "expand": "Mostrar tarefas em {title}",
       "collapse": "Ocultar tarefas em {title}",
-      "taskSummary": "{open}/{total} em aberto",
       "daysLeft": "{count}d",
       "overdue": "{count}d de atraso",
       "columns": {
         "title": "Título",
         "daysLeft": "Dias restantes"
-      },
-      "status": {
-        "active": "Ativo",
-        "done": "Concluído",
-        "upcoming": "Próximo",
-        "past": "Passado"
       }
     }
   },

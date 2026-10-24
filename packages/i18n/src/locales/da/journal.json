@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI-forbindelser",
     "todaysNotes": "Dagens noter",
-    "todaysSchedule": "Dagens skema",
-    "todaysTasks": "Dagens opgaver",
     "tasks": "Opgaver",
     "technicalDetails": "Tekniske detaljer"
   },
@@ -102,8 +100,7 @@
       "afternoon": "God eftermiddag",
       "evening": "God aften",
       "night": "Godnat"
-    },
-    "allDay": "Hele dagen"
+    }
   },
   "nav": {
     "previousDay": "Forrige dag",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Flere muligheder",
     "documentStatistics": "Dokumentstatistik",
-    "dayContext": "Dagskontekst: opgaver og tidsplan",
-    "scheduleEvents": "Planlagte begivenheder",
-    "tasks": "Opgaver",
     "notesCreatedToday": "{count} noter oprettet i dag"
   },
   "empty": {
     "noEntry": "Intet indlæg",
     "noDaysInMonth": "Ingen dage i denne måned",
-    "noEventsScheduled": "Ingen planlagte begivenheder",
-    "noEventsScheduledToday": "Ingen begivenheder planlagt i dag",
-    "noEventsWereScheduled": "Der var ingen planlagte begivenheder",
-    "noTasksDue": "Ingen opgaver forfalder",
-    "noTasksDueToday": "Ingen opgaver forfalder i dag",
-    "noTasksWereDue": "Ingen opgaver forfaldt",
     "noNotesToday": "Ingen noter oprettet i dag",
     "startDocumenting": "Begynd at dokumentere dine tanker og ideer"
   },
@@ -155,9 +143,7 @@
     "day": "dag",
     "days": "dage",
     "event": "begivenhed",
-    "events": "begivenheder",
     "task": "opgave",
-    "todo": "at gøre",
     "moreConnections": "+ {count} forbindelse mere",
     "moreConnections_plural": "+ {count} flere forbindelser",
     "moreNotes": "+ {count} note mere",
@@ -166,7 +152,6 @@
     "charactersWritten": "tegn skrevet",
     "words": "{count} ord",
     "characters": "{count} tegn",
-    "completed": "{count} fuldført",
     "overdue": "{count} forfaldne"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Ændret {date}"
   },
   "task": {
-    "completed": "Fuldført",
-    "notCompleted": "Ikke fuldført",
-    "priority": "Prioritet: {priority}",
-    "overdue": "forfalden",
-    "markComplete": "Markér »{title}« som fuldført",
-    "markNotComplete": "Markér »{title}« som ikke fuldført"
+    "priority": "Prioritet: {priority}"
   },
   "template": {
     "using": "Bruger »{templateName}«"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Dit indhold er stadig i hukommelsen. Klik for at prøve at gemme igen.",
-    "noteNotFound": "Noten »{target}« blev ikke fundet",
     "createLinkedFailed": "Kunne ikke oprette den linkede note",
     "fileNotFound": "Filen blev ikke fundet: {target}",
     "openLinkedItemFailed": "Kunne ikke åbne det linkede element",

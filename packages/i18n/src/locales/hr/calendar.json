@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Dovrši „{title}”",
     "task-completed": "Zadatak dovršen",
-    "could-not-complete": "Nije moguće dovršiti zadatak",
     "could-not-update-status": "Status zadatka nije moguće promijeniti",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
@@ -215,12 +213,9 @@
     "next-week": "Sljedeći tjedan",
     "open-task": "Otvori zadatak",
     "source-note": "Izvorna bilješka",
-    "reschedule": "Promijeni rok",
     "mark-done": "Označi kao dovršeno",
     "mark-not-done": "Označi kao nedovršeno",
-    "later-today": "Kasnije danas",
     "tomorrow": "Sutra",
-    "next-week-mon": "Sljedeći tjedan · pon.",
     "pick-date-time": "Odaberi datum i vrijeme…",
     "remove-due-date": "Ukloni rok",
     "subtasks-prefix": "Podzadaci",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Pretplaćeni kalendari"
     },
     "caldav": {
       "name": "CalDAV"

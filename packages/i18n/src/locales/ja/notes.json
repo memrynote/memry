@@ -122,10 +122,6 @@
       "body": "ノートを作成して始めましょう",
       "newNote": "新規ノート"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise の同期",
-      "failed": "Readwise の同期に失敗しました"
-    },
     "syncing": {
       "body": "ノートを同期中です。届いたものから順にここに表示されます"
     },
@@ -157,12 +153,6 @@
       "bookmark": "ブックマークに追加",
       "removeFromBookmarks": "ブックマークを解除",
       "journalSettings": "ジャーナルの設定…"
-    },
-    "nav": {
-      "label": "ナビゲーション",
-      "ariaExpanded": "ナビゲーションセクション（展開）",
-      "ariaCollapsed": "ナビゲーションセクション（折りたたみ）",
-      "saveFailed": "ナビゲーションセクションの状態を保存できませんでした"
     },
     "viewOptions": {
       "label": "表示オプション",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "トグルとして",
         "asLinkedTask": "リンクされたタスクとして",
         "asReminder": "リマインダーとして"
-      },
-      "actions": {
-        "insert": "挿入",
-        "open": "開く"
       },
       "close": "メニューを閉じる",
       "matchesAlias": "一致：",
@@ -607,7 +592,6 @@
         "title": "ブロックをノートに移動",
         "searchPlaceholder": "ノートを検索…",
         "noResults": "一致するノートはありません",
-        "moved": "ブロックを「{title}」に移動しました",
         "failed": "ブロックを移動できませんでした"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "アウトライン",
     "aria": "ドキュメントのアウトライン",
-    "emptyYet": "まだ見出しがありません",
     "readTime": "{count} 分で読めます",
     "words": "{count} 語",
     "created": "作成日",
@@ -839,11 +822,9 @@
     "toolbarComment": "コメント",
     "commentPlaceholder": "コメントを追加…",
     "createdTooltip": "{date} {time} に作成",
-    "cancel": "キャンセル",
     "resolve": "解決",
     "edit": "コメントを編集",
     "delete": "コメントを削除",
-    "replyPlaceholder": "返信…",
     "attachAria": "ファイルを添付",
     "mentionAria": "人物、ページ、日付をメンション",
     "sendAria": "コメントを送信",
@@ -856,13 +837,7 @@
       "code": "コード"
     },
     "openImageAria": "画像 {name} を開く",
-    "openAttachmentAria": "添付ファイル {name} を開く",
-    "kind": {
-      "comment": "コメント",
-      "addition": "追加",
-      "deletion": "削除",
-      "substitution": "置き換え"
-    }
+    "openAttachmentAria": "添付ファイル {name} を開く"
   },
   "tagsRow": {
     "aria": "タグ",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "プロパティ",
     "noteAria": "ノートのプロパティ",
-    "workspaceAria": "ワークスペースのプロパティ",
     "listAria": "プロパティリスト",
     "add": "プロパティの追加",
     "addDescription": "このノートに新しいプロパティを追加",
@@ -932,7 +906,6 @@
       "inProgress": "進行中",
       "done": "完了"
     },
-    "projectAlreadySet": "このノートにはすでにプロジェクトプロパティがあります",
     "projectPlaceholder": "プロジェクトなし",
     "projectSearch": "プロジェクトを検索",
     "projectEmpty": "プロジェクトはありません",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "フィルター",
-      "filters": "フィルター",
-      "clearAll": "すべてクリア",
-      "noFiltersApplied": "フィルターは適用されていません",
-      "addFiltersToNarrowDownYourNotes": "フィルターを追加してノートを絞り込めます",
       "match": "条件",
-      "allAnd": "すべて（AND）",
-      "anyOr": "いずれか（OR）",
-      "ofTheFollowing": "次の条件：",
       "match2": "条件",
       "all": "すべてに一致",
       "any": "いずれかに一致",
-      "of": "条件：",
       "addCondition": "条件の追加",
       "addFilter": "フィルターを追加",
       "addGroup": "グループを追加",
@@ -1207,7 +1172,6 @@
       "available": "利用可能: ",
       "preview": "プレビュー",
       "fixExpressionErrorsToSeePreview": "プレビューを表示するには式のエラーを修正してください",
-      "usingNote": "使用するノート：「",
       "cancel": "キャンセル",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "フォルダーを読み込み中…",
       "suggested": "提案",
       "bestMatch": "ベストマッチ",
-      "current": "現在）",
       "allFolders": "すべてのフォルダー",
-      "noFoldersMatch": "一致するフォルダーはありません：\"",
-      "create": "作成：\"",
       "cancel": "キャンセル",
       "currentFolderBadge": "（現在）",
       "noFoldersMatchQuery": "「{query}」に一致するフォルダーはありません",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "デフォルト",
       "viewActions": "ビューの操作",
-      "rename": "名前を変更",
       "duplicate": "複製",
       "setAsDefault": "デフォルトとして設定",
       "delete": "削除",
-      "createNewView": "新しいビューの作成",
-      "createNewView2": "新しいビューの作成",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "カスタム列、フィルター、並べ替えを使用して新しいビューを作成します。",
-      "viewName": "ビュー名",
       "myCustomView": "カスタムビュー",
-      "baseConfiguration": "ベースとなる設定",
-      "copyFromCurrentView": "現在のビューからコピー",
-      "startFreshDefaultColumns": "最初から作成（デフォルトの列）",
       "cancel": "キャンセル",
-      "renameView": "ビューの名前を変更",
-      "enterANewNameForThisView": "このビューの新しい名前を入力してください。",
-      "viewName2": "ビュー名",
-      "viewName3": "ビュー名",
-      "cancel2": "キャンセル",
       "deleteView": "ビューの削除",
       "areYouSureYouWantToDelete": "このビューを削除してもよろしいですか？\"",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
@@ -1289,22 +1237,17 @@
       "layout": "レイアウト",
       "table": "テーブル",
       "list": "リスト",
-      "gallery": "ギャラリー",
-      "createView": "ビューを作成",
-      "save": "保存"
+      "gallery": "ギャラリー"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF を読み込めませんでした： ",
-      "download": "ダウンロード",
       "download2": "ダウンロード",
       "noFileAttached": "ファイルが添付されていません",
       "resizePdf": "PDF のサイズを変更",
       "resizeHtml": "HTML 埋め込みのサイズを変更",
       "alignLeft": "左揃え",
       "alignCenter": "中央揃え",
-      "alignRight": "右揃え",
-      "previousPage": "前のページ",
-      "nextPage": "次のページ"
+      "alignRight": "右揃え"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "タスクパネルで開く",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "レター（8.5 × 11 インチ）",
       "legal85X14In": "リーガル（8.5 × 14 インチ）"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "同期済み"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "単語数",
       "characters": "文字数",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "まだブックマークはありません",
       "moreOptions": "その他のオプション",
       "remove": "ブックマークを解除"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "開く",
-      "openToTheSide": "横に並べて開く",
-      "pinToTabs": "タブにピン留め",
-      "edit": "編集",
-      "delete": "削除",
-      "copyLink": "リンクをコピー"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "タグを読み込み中…",
@@ -1380,26 +1309,9 @@
       "cancel": "キャンセル"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "戻る",
-      "notes": "ノート",
-      "loadingNotes": "ノートを読み込み中…",
-      "noNotesWithThisTag": "このタグが付いたノートはありません",
-      "addThisTagToANoteToSeeItHere": "ノートにこのタグを追加すると、ここに表示されます",
-      "pinned": "ピン留め",
-      "allNotes": "すべてのノート",
-      "allNotesArePinned": "すべてのノートがピン留めされています",
-      "tasks": "タスク",
-      "unpinFromTag": "タグのピン留めを解除",
-      "unpin": "ピン留めを解除",
-      "pinToTag": "タグにピン留め",
-      "pin": "ピン留め",
       "tagActions": "タグの操作",
-      "editTagName": "タグ名の編集",
       "changeColor": "色を変更",
-      "deleteTag": "タグの削除",
-      "recent": "最近更新した順",
-      "created": "作成日順",
-      "alphabetical": "アルファベット順"
+      "deleteTag": "タグの削除"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "タグ名の変更",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "新規ノートを作成",
-      "viewSettings": "ビューの設定",
-      "displayDensity": "表示密度",
-      "comfortable": "ゆったり",
-      "compact": "コンパクト",
-      "showSummaries": "サマリーを表示",
       "cancel": "キャンセル"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "タグハブを開く"
   },
   "tagView": {
-    "moreActions": "その他の操作",
     "pin": {
       "action": "{count, plural, other {ノート # 件をタグにピン留め}}",
       "success": "{count, plural, other {ノート # 件をタグにピン留めしました}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "検索に名前を付ける",
     "saveDialogPlaceholder": "例：仕事の会議",
     "cancel": "キャンセル",
-    "save": "保存",
-    "addToFilterHint": "Ctrl/Cmd を押しながらタグをクリックするとフィルターに追加されます"
+    "save": "保存"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "作成中…",
       "writtenBy": "{agent} が作成",
       "retry": "前回の実行に失敗しました · 再試行",
-      "retryAction": "再試行",
       "captionOff": "設定 → AI で「長いノートを要約」をオンにしてください",
       "captionNoAgent": "エージェント未接続 · 設定 → AI",
       "unknownAgent": "AI"

@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Selesaikan {title}",
     "task-completed": "Tugas selesai",
-    "could-not-complete": "Tidak dapat menyelesaikan tugas",
     "could-not-update-status": "Tidak dapat menukar status tugas",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} j",
@@ -215,12 +213,9 @@
     "next-week": "Minggu depan",
     "open-task": "Buka tugas",
     "source-note": "Nota sumber",
-    "reschedule": "Jadualkan semula",
     "mark-done": "Tandakan selesai",
     "mark-not-done": "Tandakan belum selesai",
-    "later-today": "Kemudian hari ini",
     "tomorrow": "Esok",
-    "next-week-mon": "Minggu depan · Isn",
     "pick-date-time": "Pilih tarikh & masa…",
     "remove-due-date": "Alih keluar tarikh akhir",
     "subtasks-prefix": "Subtugas",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Kalendar yang dilanggan"
     },
     "caldav": {
       "name": "CalDAV"

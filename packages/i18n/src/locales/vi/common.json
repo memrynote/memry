@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Không thể thực hiện thao tác",
-    "nothingToUndo": "Không có gì để hoàn tác",
     "undone": "Đã hoàn tác: {description}",
     "undoFailed": "Không thể hoàn tác thao tác",
     "filesImported": "{count, plural, other {Đã nhập # tệp}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Tác nhân muốn tạo {title}. Xem lại thay đổi trước khi áp dụng.",
       "descriptionDelete": "Tác nhân muốn xóa {title}. Xem lại thay đổi trước khi áp dụng.",
       "fallbackTitle": "mục này",
-      "current": "Hiện tại",
       "candidate": "Bản đề xuất",
       "loading": "Đang tải…",
       "apply": "Áp dụng",
@@ -383,12 +381,8 @@
       "removeAttachment": "Gỡ {label}",
       "placeholder": "Làm bất cứ điều gì với memrynote… @ để đề cập ghi chú, công việc và sự kiện",
       "send": "Gửi",
-      "providerLabel": "Nhà cung cấp tác nhân: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Công cụ đã kết nối",
       "connectTool": "Kết nối {tool}",
-      "addContext": "Thêm ngữ cảnh",
-      "addContextWithPermissions": "Thêm ngữ cảnh ({permissions})",
       "mentionContext": "Đề cập ghi chú, công việc hoặc sự kiện",
       "files": {
         "attach": "Đính kèm tệp văn bản",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Không thể chuyển giọng nói thành văn bản"
         }
       },
-      "modelLabel": "Mô hình tác nhân: {provider} {model}",
-      "reasoningLabel": "Mức suy luận của tác nhân: {reasoning}",
       "providers": {
-        "label": "Nhà cung cấp",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Truy cập máy tính"
       },
       "webSearch": {
-        "on": "Bật",
-        "off": "Tắt",
         "label": "Tìm kiếm web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Tác nhân không khả dụng — mở Cài đặt…"
       },
       "settings": {
-        "reasoning": "Suy luận",
         "effort": "Mức nỗ lực"
       },
       "includeCurrentNote": "Bao gồm ghi chú hiện tại",
@@ -472,11 +460,8 @@
           "max": "Tối đa"
         }
       },
-      "permissionsLabel": "Quyền của tác nhân: {access}, tìm kiếm web {webSearch}",
       "permissions": {
-        "label": "Quyền",
-        "access": "Quyền truy cập",
-        "tools": "Công cụ"
+        "access": "Quyền truy cập"
       },
       "modelSettingsLabel": "Cài đặt mô hình tác nhân: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Thư mục mới",
       "newProject": "Dự án mới",
       "bookmarks": "Dấu trang",
-      "chart": "Biểu đồ",
       "tags": "Thẻ",
       "reorderSection": "Sắp xếp lại {section}",
       "dropFilesToImport": "Thả tệp để nhập",
       "dropFilesIntoVaultRoot": "Thư mục gốc của kho",
       "newNoteN": "Ghi chú mới (⌘N)",
-      "new": "Mới",
       "newItemMenu": "Tạo mới…",
       "feedbackButton": "Gửi phản hồi",
       "feedbackTitle": "Gửi phản hồi",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Tìm, thay thế, hỏi…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Bỏ qua hướng dẫn",
-      "welcomeToMemry": "Chào mừng đến với memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Cơ sở tri thức cá nhân của bạn. Hãy dành 2 phút để bắt đầu.",
-      "getStarted": "Bắt đầu ",
-      "createYourFirstNote": "Tạo ghi chú đầu tiên của bạn",
-      "markdownBasedStoredLocallyAsPlainFiles": "Dựa trên Markdown, lưu cục bộ dưới dạng tệp văn bản thuần.",
-      "eGMeetingNotesIdeasAnything": "vd. Ghi chú cuộc họp, ý tưởng, bất cứ điều gì…",
-      "skip": "Bỏ qua",
-      "createNote": "Tạo ghi chú ",
-      "addYourFirstTask": "Thêm công việc đầu tiên của bạn",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Công việc liên kết với ghi chú, kèm mức ưu tiên và ngày đến hạn.",
-      "eGReviewProjectProposal": "vd. Xem lại đề xuất dự án…",
-      "skip2": "Bỏ qua",
-      "createTask": "Tạo công việc ",
-      "syncAcrossDevices": "Đồng bộ trên các thiết bị",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Giữ ghi chú và công việc của bạn đồng bộ trên tất cả các thiết bị. Bạn luôn có thể thiết lập điều này sau.",
-      "skipForNow": "Để sau",
-      "doneLetSGo": "Xong — bắt đầu thôi! "
+      "skip": "Bỏ qua"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Đặt biểu tượng thư mục",
@@ -852,8 +818,7 @@
       "unknownTabType": "Loại tab không xác định: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "thay đổi chưa lưu",
-      "preview": "xem trước"
+      "unsavedChanges": "thay đổi chưa lưu"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Tab mới",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Kéo để thay đổi kích thước · Nhấp đúp để đặt lại"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Chào mừng đến với memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Hệ thống quản lý tri thức cá nhân của bạn.",
-      "selectAFolderToStoreYourNotesAndTasks": "Chọn một thư mục để lưu ghi chú và công việc.",
       "opening": "Đang mở…",
-      "selectVaultFolder": "Chọn thư mục kho",
-      "plainMarkdown": "Markdown thuần",
-      "yourNotesStayPortable": "Ghi chú dễ dàng mang đi nơi khác",
-      "syncAnywhere": "Đồng bộ ở bất cứ đâu",
-      "useDropboxIcloudGit": "Sử dụng Dropbox, iCloud, Git",
       "recentVaults": "Kho gần đây",
-      "notesLastOpened": "ghi chú · Mở lần cuối",
-      "preRelease": "Beta",
       "createNewVault": "Tạo kho mới",
-      "createNewVaultDesc": "Bắt đầu một kho mới trong thư mục bạn chọn.",
-      "openExistingVault": "Mở kho hiện có",
-      "openExistingVaultDesc": "Chọn thư mục chứa các tệp Markdown bạn đã có.",
-      "signInToSync": "Đăng nhập để đồng bộ",
-      "signInToSyncDesc": "Kho được mã hóa đầu cuối trên các thiết bị của bạn.",
-      "create": "Tạo",
       "open": "Mở",
-      "signIn": "Đăng nhập",
       "helpAndDocs": "Trợ giúp & tài liệu",
-      "signInRequiresVault": "Hãy mở hoặc tạo một kho trước để thiết lập đồng bộ.",
       "addVault": "Thêm kho",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Chưa có kho nào",
       "openVault": "Mở kho",
       "settings": "Cài đặt",
-      "logOut": "Đăng xuất",
-      "signInToSync": "Đăng nhập để đồng bộ",
       "remove": "Gỡ “",
       "removeVaultTitle": "Gỡ “{name}” khỏi danh sách?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Kho này sẽ được gỡ khỏi ứng dụng, nhưng các tệp vẫn còn trên ổ đĩa. Bạn luôn có thể thêm lại sau.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Thay đổi…",
       "download": "Tải xuống",
       "downloadFailed": "Không thể tải xuống kho",
-      "deleteFromAccount": "Xóa khỏi tài khoản",
       "deleteVaultTitle": "Xóa “{name}” khỏi tài khoản của bạn?",
       "deleteVaultBody": "Thao tác này xóa vĩnh viễn toàn bộ dữ liệu đã đồng bộ của kho này khỏi máy chủ Memry và không thể hoàn tác. Các tệp trên ổ đĩa của bạn không bị xóa.",
       "deleteVaultConfirm": "Xóa khỏi tài khoản",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Gỡ tiện ích",
       "dragAria": "Kéo tiện ích",
-      "configAria": "Cấu hình tiện ích",
-      "resizeAria": "Đổi kích thước thành {size}",
       "menuAria": "Tùy chọn tiện ích",
-      "resize": "Kích thước",
       "remove": "Gỡ bỏ",
       "filter": {
         "all": "Tất cả",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Chọn thư mục",
       "folderEmpty": "Chưa có thư mục nào",
       "folderNoSelection": "Chưa chọn thư mục",
-      "folderView_list": "Danh sách",
-      "folderView_gallery": "Lưới",
       "folderViewSelect": "Chế độ xem",
       "project": "Dự án",
       "projectNoSelection": "Chưa chọn dự án",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Bố cục trang chủ",
       "deleteAria": "Xóa bố cục",
-      "newAria": "Bảng mới",
       "newName": "Bảng mới",
       "defaultName": "Trang chủ",
       "manage": "Quản lý bảng",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, other {# công việc đến hạn hôm nay}}",
       "events": "{count, plural, other {# sự kiện}}"
     },
-    "edit": "Chỉnh sửa",
-    "done": "Xong",
     "addWidget": "Thêm tiện ích",
     "cover": {
       "add": "Thêm ảnh bìa"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Đã hoàn tất hướng dẫn bắt đầu",
-      "body": "Hãy gắn sao cho chúng tôi trên GitHub — điều đó giúp người khác tìm thấy MemryNote.",
-      "action": "Gắn sao trên GitHub"
+      "body": "Hãy gắn sao cho chúng tôi trên GitHub — điều đó giúp người khác tìm thấy MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Bản cập nhật đã sẵn sàng",
     "failed": "Không thể cập nhật",
     "downloadAction": "Tải xuống",
-    "restartAction": "Khởi động lại",
     "detailsAction": "Chi tiết",
     "popover": {
       "readyTitle": "MemryNote {version} đã sẵn sàng",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Kho",
     "position": "{name}, kho {index} trên {count}",
-    "openList": "{position}. Mở danh sách kho",
     "switchTo": "Chuyển sang {name}",
     "switchingTo": "Đang chuyển sang {name}",
     "changeIcon": "Đổi biểu tượng…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Trên {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {Tìm thấy # kho}}",
-      "notion": "Notion",
       "otherApps": "Ứng dụng và tệp khác",
       "otherAppsHint": "và {count} nguồn nữa",
       "detectedFootnote": "Phát hiện bằng cách kiểm tra các ứng dụng đã cài. Không có gì rời khỏi {device}.",

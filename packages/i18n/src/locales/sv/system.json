@@ -17,18 +17,6 @@
       "filterAll": "Alla filer"
     },
     "exportCancelled": "Export avbruten",
-    "update": {
-      "availableTitle": "Uppdatering tillgänglig",
-      "availableMessage": "memrynote {version} är tillgänglig.",
-      "availableDetailFallback": "Ladda ner uppdateringen nu?",
-      "buttonDownload": "Ladda ner",
-      "buttonLater": "Senare",
-      "readyTitle": "Uppdatering redo",
-      "readyMessage": "memrynote {version} har laddats ner.",
-      "readyDetailFallback": "Starta om memrynote för att slutföra installationen av uppdateringen.",
-      "buttonRestartNow": "Starta om nu",
-      "releaseNotesLabel": "Versionsinformation:"
-    },
     "dataDbRecovery": {
       "title": "Reparera valvets databas",
       "message": "Memrys databas för det här valvet är skadad.",

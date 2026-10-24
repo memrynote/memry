@@ -53,8 +53,7 @@
       "high": "Високий",
       "urgent": "Терміновий"
     },
-    "unarchive": "Розархівувати завдання",
-    "archivedOn": "Заархівовано {date}"
+    "unarchive": "Розархівувати завдання"
   },
   "reminders": {
     "summary": "Нагадування: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Додати підзавдання",
     "subIssuePlaceholder": "Додати підзавдання…",
     "noSubIssues": "Підзавдань ще немає",
-    "linkedNotes": "Пов’язане",
-    "linkNote": "Додати пов’язаний елемент",
     "loading": "Завантаження…",
-    "searchNotes": "Шукати пов’язане…",
-    "noMatchingNotes": "Немає відповідних елементів",
-    "noNotesAvailable": "Немає доступних елементів",
-    "noLinkedNotes": "Ще немає пов’язаних елементів",
-    "removeLinkTo": "Прибрати пов’язаний елемент {title}",
-    "removeLinkFallback": "елемент",
     "related": "Пов’язане",
     "addRelatedItem": "Додати пов’язаний елемент",
     "searchRelated": "Шукати пов’язане…",
     "noMatchingRelated": "Немає відповідних елементів",
     "noRelatedAvailable": "Немає доступних елементів",
-    "noRelatedItems": "Ще немає пов’язаних елементів",
     "removeRelatedItem": "Прибрати пов’язаний елемент {title}",
     "relatedItemFallback": "елемент",
     "relatedItemMissing": "Цього пов’язаного елемента більше немає в сховищі.",
@@ -251,7 +241,6 @@
     "deleted": "Завдання видалено",
     "deletedSeries": "Серію завершено!",
     "completed": "Завдання виконано!",
-    "archived": "Завдання заархівовано",
     "undoNotAvailableForDelete": "Видалення не можна скасувати",
     "alreadyAllComplete": "Усі вибрані завдання вже виконані",
     "noCompletedSelected": "Жодне виконане завдання не вибрано",
@@ -331,7 +320,6 @@
       "archive": "Архівувати",
       "delete": "Видалити",
       "cancelSelection": "Скасувати вибір",
-      "cancel": "Скасувати",
       "unarchive": "Розархівувати"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Видалити \"",
       "thisProjectHas": "У цьому проєкті ",
       "task": "завдання",
-      "whatWouldYouLikeToDoWithThem": "Що ви хочете зробити з ними?",
-      "moveTasksToPersonalProject": "Перемістити завдання до проєкту «Особистий»",
-      "deleteAllTasksPermanently": "Видалити всі завдання назавжди",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "У цьому проєкті немає завдань, тож його буде видалено назавжди.",
       "notesEventsAndFilesStayNotice": "Завдання в цьому проєкті буде видалено. Ваші нотатки, події та файли залишаться у сховищі.",
       "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Встановити термін для всіх підзавдань",
-      "setDueDateFor": "Установити термін для ",
-      "alsoApplyToCompletedSubtasks": "Також застосувати до виконаних підзавдань (",
       "clearDate": "Очистити дату",
       "cancel": "Скасувати",
       "apply": "Застосувати",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Встановити пріоритет для всіх підзавдань",
-      "setPriorityFor": "Встановити пріоритет для ",
-      "alsoApplyToCompletedSubtasks": "Також застосувати до виконаних підзавдань (",
       "cancel": "Скасувати",
       "apply": "Застосувати",
       "setPriorityForSubtasksIn": "Встановити пріоритет для {count, plural, one {# підзавдання} few {# підзавдань} many {# підзавдань} other {# підзавдання}} у «{title}»",
@@ -464,36 +445,13 @@
       "deleteAll": "Видалити все",
       "deleteSubtasksConfirmation": "Це видалить {count, plural, one {# підзавдання} few {# підзавдання} many {# підзавдань} other {# підзавдання}} з «{title}»."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Видалити завдання з підзавданнями?",
-      "has": "має ",
-      "subtask": "підзавдання",
-      "whatWouldYouLikeToDo": "Що ви хочете зробити?",
-      "deleteTaskAndAllSubtasks": "Видалити завдання та всі підзавдання",
-      "permanentlyRemovesEverything": "Безповоротно видаляє все",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Видалити завдання, залишивши підзавдання як окремі завдання",
-      "subtasksBecomeTopLevelTasks": "Підзавдання стають завданнями верхнього рівня",
-      "cancel": "Скасувати",
-      "delete": "Видалити"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Дублювати завдання",
-      "createACopyOf": "Створити копію «",
-      "alsoDuplicateSubtasks": "Також дублювати підзавдання (",
       "cancel": "Скасувати",
-      "duplicate": "Дублювати ",
       "createACopyOfTitle": "Створити копію «{title}»",
       "alsoDuplicateSubtasksCount": "Також дублювати підзавдання ({count})",
       "duplicateWithItems": "Дублювати ({count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}})",
       "duplicateTaskOnly": "Дублювати завдання"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Зробити підзавданням…",
-      "selectATaskToMake": "Виберіть завдання, для якого \"",
-      "aSubtaskOf": "стане підзавданням.",
-      "searchTasks": "Шукати завдання…",
-      "sameProject": "Той самий проєкт",
-      "otherProjects": "Інші проєкти"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Відпустіть, щоб перенести на "
@@ -575,12 +533,6 @@
       "search": "пошук",
       "clearAll": "Очистити все"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Фільтрувати за терміном",
-      "customRange": "Власний діапазон",
-      "clear": "Очистити",
-      "apply": "Застосувати"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Фільтрувати за…"
     },
@@ -619,23 +571,9 @@
       "search": "Шукати…",
       "selected": "вибрано"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Більше фільтрів",
-      "more": "Більше",
-      "status": "Статус",
-      "hasTimeSet": "Встановлено час",
-      "recurringOnly": "Тільки повторювані",
-      "status2": "Статус"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Фільтрувати за пріоритетом",
       "priority": "Пріоритет"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Фільтрувати за проєктом",
-      "project": "Проєкт",
-      "allProjects": "Усі проєкти",
-      "clear": "Очистити"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Швидкі фільтри:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Час: із часом",
       "summaryTimeWithout": "Час: без часу",
       "nameRequired": "Будь ласка, введіть назву для цього фільтра"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Збережені фільтри",
-      "saved": "Збережені",
-      "noSavedFiltersYet": "Ще немає збережених фільтрів",
-      "saveCurrentFilters": "Зберегти поточні фільтри",
-      "saveCurrentFilters2": "Зберегти поточні фільтри"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Назва фільтра",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "Сторінка завдань відкривається в цьому проєкті"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Вибрати проєкт",
-      "selectProject2": "Вибрати проєкт"
+      "selectProject": "Вибрати проєкт"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Редагувати проєкт",
@@ -725,11 +655,6 @@
       "selectProject": "Вибрати проєкт",
       "noProjectsYet": "Ще немає проєктів",
       "createProject": "Створити проєкт"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Проєкт не вибрано",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Виберіть проєкт зі списку або створіть новий",
-      "createYourFirstProject": "Створіть свій перший проєкт"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Довідка зі скорочень для швидкого додавання",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Вибрати час",
-      "selectTime2": "Вибрати час",
       "clearTime": "Очистити час"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Проєкт не вибрано",
     "emptyBody": "Виберіть проєкт на бічній панелі, щоб відкрити сторінку проєкту.",
-    "loadError": "Не вдалося завантажити деталі проєкту",
     "overview": {
       "sectionTitle": "Огляд",
       "create": "Створити нотатку огляду",
@@ -969,18 +892,11 @@
       "empty": "У цьому проєкті немає відкритих завдань.",
       "expand": "Показати завдання в «{title}»",
       "collapse": "Сховати завдання в «{title}»",
-      "taskSummary": "{open}/{total} відкрито",
       "daysLeft": "{count} дн.",
       "overdue": "прострочено на {count} дн.",
       "columns": {
         "title": "Назва",
         "daysLeft": "Залишилось днів"
-      },
-      "status": {
-        "active": "Активні",
-        "done": "Виконані",
-        "upcoming": "Майбутні",
-        "past": "Минулі"
       }
     }
   },

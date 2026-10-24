@@ -15,19 +15,13 @@
       "showWithCount": "إظهار العناصر المؤجلة ({count})",
       "hide": "إخفاء العناصر المؤجلة"
     },
-    "density": {
-      "toComfortable": "عرض مريح",
-      "toCompact": "عرض مضغوط"
-    },
     "filter": {
-      "button": "تصفية",
       "byType": "تصفية حسب النوع",
       "active": "{count, plural, zero {التصفية حسب # نوع} one {التصفية حسب نوع واحد} two {التصفية حسب نوعين} few {التصفية حسب # أنواع} many {التصفية حسب # نوعًا} other {التصفية حسب # نوع}}",
       "clearAll": "مسح الكل"
     },
     "jobs": {
-      "running": "{count, plural, zero {لا توجد عمليات قيد التشغيل في الخلفية} one {عملية واحدة قيد التشغيل في الخلفية} two {عمليتان قيد التشغيل في الخلفية} few {# عمليات قيد التشغيل في الخلفية} many {# عملية قيد التشغيل في الخلفية} other {# عملية قيد التشغيل في الخلفية}}",
-      "failed": "فشلت: {count}"
+      "running": "{count, plural, zero {لا توجد عمليات قيد التشغيل في الخلفية} one {عملية واحدة قيد التشغيل في الخلفية} two {عمليتان قيد التشغيل في الخلفية} few {# عمليات قيد التشغيل في الخلفية} many {# عملية قيد التشغيل في الخلفية} other {# عملية قيد التشغيل في الخلفية}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "إنشاء «{name}»",
     "addTags": "إضافة وسوم…",
     "linkToNote": "ربط بملاحظة",
-    "linkANote": "ربط ملاحظة",
-    "suggestedCount": "المقترحة: {count}",
-    "linkNotesPlaceholder": "ربط ملاحظات…",
     "linkOrCreateNotePlaceholder": "البحث عن ملاحظة أو إنشاؤها…",
     "createNote": "إنشاء «{title}»",
     "pendingNote": "ملاحظة جديدة",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "بيانات التذكير غير متاحة.",
     "triggered": "حان موعد التذكير",
-    "noteLabel": "ملاحظة تذكيرية",
     "source": "المصدر",
     "journalTitle": "اليوميات — {date}",
     "noteFallback": "ملاحظة",
@@ -514,9 +504,7 @@
       "settings": "الإعدادات",
       "processing": "جارٍ المعالجة…",
       "cancelRecording": "إلغاء التسجيل",
-      "cancel": "إلغاء",
       "stopRecording": "إيقاف التسجيل",
-      "stop": "إيقاف",
       "recordingError": "حدث خطأ أثناء التسجيل",
       "microphoneAccessDenied": "تم رفض الوصول إلى الميكروفون",
       "noMicrophoneFound": "لم يتم العثور على ميكروفون",

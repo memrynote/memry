@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Nicht angemeldet",
-    "sessionExpired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
     "setupSessionExpired": "Deine Anmeldung ist abgelaufen, bevor der Vorgang abgeschlossen war. Melde dich erneut an und gib dann deine Wiederherstellungsphrase ein.",
     "setupSessionExpiredLinking": "Deine Anmeldung ist abgelaufen, bevor die Kopplung dieses Geräts abgeschlossen war. Melde dich erneut an und scanne den Code dann noch einmal.",
     "invalidRecoveryPhraseFormat": "Ungültiges Format der Wiederherstellungsphrase",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Das Modell konnte nicht geladen werden",
     "voiceModelDownloadFailed": "Das Sprachmodell konnte nicht heruntergeladen werden",
     "terminalCommandInstallFailed": "Der Terminalbefehl konnte nicht installiert werden",
-    "terminalCommandUninstallFailed": "Der Terminalbefehl konnte nicht deinstalliert werden",
-    "shortcutInUse": "Das Tastenkürzel {shortcut} wird bereits verwendet"
+    "terminalCommandUninstallFailed": "Der Terminalbefehl konnte nicht deinstalliert werden"
   },
   "tag": {
     "renameInProgress": "Die Umbenennung von #{from} in #{to} läuft noch. Versuche es erneut, wenn sie fertig ist.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} übernimmt seine Felder bereits von diesem Tag",
     "unreadableSchema": "Eine neuere Version von Memry hat diesen Tag geändert. Aktualisiere Memry, um ihn zu bearbeiten",
     "relationTargetRequired": "Wähle, auf welchen Tag diese Relation verweist",
-    "editFailed": "Die Felder des Tags konnten nicht geändert werden",
-    "previewFailed": "Die Auswirkungen dieser Änderung konnten nicht gezählt werden",
-    "snapshotFailed": "Tag-Felder konnten nicht geladen werden",
     "renameRunning": "Eine andere Feldumbenennung wird noch abgeschlossen ({from} in {to}). Versuche es erneut, wenn sie fertig ist."
   }
 }

@@ -7,11 +7,6 @@
     "backToApp": "Zurück zur App",
     "nav": {
       "groups": {
-        "account": "Konto",
-        "application": "Anwendung",
-        "editing": "Bearbeitung",
-        "modules": "Module",
-        "services": "Dienste",
         "data": "Daten",
         "workspace": "Arbeitsbereich",
         "features": "Funktionen"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "{module} konfigurieren"
-    },
-    "vaultImport": {
-      "label": "Aus einer anderen App importieren",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist und mehr",
-      "action": "Importieren…"
     },
     "search": {
       "placeholder": "Einstellungen durchsuchen",
@@ -102,12 +92,8 @@
       "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "startup": "Anwendungsstart",
       "updates": "Aktualisierungen",
       "languageRegion": "Sprache und Region",
-      "tabBehavior": "Tab-Verhalten",
-      "window": "Fensterverhalten",
-      "fileCreation": "Dateierstellung",
       "privacy": "Privatsphäre",
       "startupWindows": "Start und Fenster",
       "newNotes": "Neue Notizen",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Beim Anmelden starten",
-        "description": "Startet memrynote, wenn du dich anmeldest",
         "error": "Autostart-Einstellung konnte nicht aktualisiert werden"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Automatisch nach Updates suchen",
-        "description": "Beim Start und regelmäßig während der Nutzung nach neuen Versionen suchen.",
         "error": "Die Einstellung für die automatische Prüfung konnte nicht aktualisiert werden"
       },
       "autoDownload": {
         "label": "Updates automatisch herunterladen",
-        "description": "Neue Versionen im Hintergrund herunterladen und ohne Nachfrage installieren.",
         "error": "Die Einstellung für den automatischen Download konnte nicht aktualisiert werden"
       },
-      "appUpdates": "App-Updates",
-      "installedVersion": "Installierte Version {version}",
-      "availableVersion": "Verfügbare Version {version}",
-      "unsupported": "Mit gepackten Builds können Updates von GitHub-Releases überprüft, heruntergeladen und installiert werden",
       "available": "memrynote {version} steht zum Download bereit",
       "downloadingLatest": "Neueste Version wird heruntergeladen",
-      "downloadingLatestPercent": "Neueste Version wird heruntergeladen ({percent} %)",
       "downloaded": "memrynote {version} ist zur Installation bereit",
-      "upToDate": "Du verwendest die neueste veröffentlichte Version",
-      "checking": "GitHub-Releases werden nach einer neueren Version durchsucht",
-      "idle": "Suche nach neuen Versionen und installiere sie, ohne die App zu verlassen",
       "unsupportedToast": "Automatische Updates gibt es nur in gepackten Versionen",
       "upToDateToast": "memrynote {version} ist aktuell",
       "actionFailed": "Update-Aktion konnte nicht ausgeführt werden",
@@ -164,17 +139,10 @@
         "downloading": "Wird heruntergeladen…",
         "downloadingPercent": "Wird heruntergeladen: {percent} %",
         "downloaded": "Version {version} bereit zur Installation"
-      },
-      "mode": {
-        "label": "Update-Modus",
-        "off": "Nicht prüfen",
-        "notify": "Nur benachrichtigen",
-        "auto": "Automatisch herunterladen"
       }
     },
     "language": {
       "label": "Sprache",
-      "helper": "Der Großteil der App wird sofort aktualisiert. Einige Texte auf Systemebene – bereits angezeigte Benachrichtigungen, Dock-Beschriftung, Fenstertitelleiste – werden erst nach dem nächsten Start aktualisiert.",
       "changed": "Sprache auf {nativeName} umgestellt",
       "failed": "Die Sprache konnte nicht geändert werden. Versuch es erneut."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Zeitformat",
-      "description": "12-Stunden- oder 24-Stunden-Uhr",
       "options": {
         "12h": "12 Stunden",
         "24h": "24 Stunden"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Datumsformat",
-      "description": "Wie Datumsangaben angezeigt werden",
       "options": {
         "MM/DD/YYYY": "MM/TT/JJJJ (USA)",
         "DD/MM/YYYY": "TT/MM/JJJJ",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Seiten in neuem Tab öffnen",
-        "description": "Wenn du eine Seite anklickst oder erstellst – Notizen, Ordner, Projekte, Canvas, Tags, Lesezeichen –, wird sie in einem neuen Tab geöffnet. Ist die Option aus, wird der aktuelle Tab wiederverwendet, auch beim Folgen von Links in einer Notiz; angeheftete Tabs werden nie ersetzt. „In neuem Tab öffnen“, „Seitlich öffnen“ und Mittelklick öffnen immer einen neuen Tab."
+        "label": "Seiten in neuem Tab öffnen"
       },
       "restoreSession": {
         "label": "Tabs beim Start wiederherstellen",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Schaltfläche zum Schließen des Tabs",
-        "description": "Wann die Schaltfläche „Schließen“ angezeigt werden soll",
         "options": {
           "always": "Immer sichtbar",
           "hover": "Beim Darüberfahren",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Beim Schließen in der Menüleiste weiterlaufen",
-        "description": "Beim Schließen des Fensters wird memrynote in den Infobereich verschoben statt beendet. Klicke auf das Symbol im Infobereich, um es zurückzuholen. Unter macOS bleibt die App außerdem im Dock; auf Linux-Desktops ohne Infobereich wird das Fenster wie gewohnt geschlossen.",
         "error": "Einstellung zum Minimieren in den Infobereich konnte nicht aktualisiert werden"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Im ausgewählten Ordner erstellen",
-        "description": "Neue Notizen und Ordner werden im aktuell ausgewählten Ordner erstellt. Wenn diese Option deaktiviert ist, werden Elemente immer im Stammordner des Tresors erstellt."
+        "label": "Im ausgewählten Ordner erstellen"
       },
       "defaultNoteFolder": {
         "label": "Standardspeicherort",
         "description": "Wird verwendet, wenn in der Seitenleiste kein Ordner ausgewählt ist.",
-        "placeholder": "notizen",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Der Diagnosebericht konnte nicht gesendet werden",
         "sendReport": {
           "label": "Diagnosebericht",
-          "description": "Sende einmalig einen Bericht mit bereinigten technischen Protokollen, damit wir ein Problem nachvollziehen können, das bei dir aufgetreten ist.",
           "button": "Bericht senden…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "theme": "Design",
-      "accentColor": "Akzentfarbe",
-      "typography": "Typografie",
-      "zoom": "Zoom"
+      "theme": "Design"
     },
     "theme": {
       "colorMode": {
-        "label": "Farbmodus",
-        "description": "Wähle dein bevorzugtes Design",
         "aria": "Farbmodus"
       },
       "options": {
         "light": "Hell",
-        "white": "Weiß",
         "dark": "Dunkel",
         "system": "System"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Die Zwischenablage enthält kein memrynote-Design"
     },
     "accent": {
-      "pick": "Akzentfarbe wählen",
       "custom": {
-        "label": "Benutzerdefinierte Farbe",
-        "description": "Gib einen Hexwert ein",
-        "placeholder": "#000000"
+        "label": "Benutzerdefinierte Farbe"
       },
       "presets": {
         "indigo": "Indigo",
@@ -348,7 +299,6 @@
         "pink": "Rosa",
         "orange": "Orange"
       },
-      "error": "Akzentfarbe konnte nicht aktualisiert werden",
       "aria": "Vordefinierte Akzentfarbe",
       "options": {
         "theme": "Design",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Zoomstufe",
-      "description": "Gesamte Oberfläche skalieren",
       "decrease": "Verkleinern",
       "increase": "Vergrößern",
       "reset": "Zoom auf Standard zurücksetzen",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Schriftgröße",
-        "description": "Grundgröße des Oberflächentexts in Pixeln",
         "decrease": "Schrift verkleinern",
         "increase": "Schrift vergrößern",
         "reset": "Schriftgröße auf Standard zurücksetzen"
       },
       "fontFamily": {
         "label": "Schriftfamilie",
-        "description": "Primäre Schriftart der Oberfläche",
         "options": {
           "system": "Systemstandard",
           "sansSerif": "Ohne Serifen",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Die Schriftfamilie konnte nicht aktualisiert werden"
     },
     "v2": {
-      "groups": {
-        "text": "Text und Zoom"
-      },
       "colorMode": "Farbmodus",
       "colorTheme": "Design",
       "accent": "Akzentfarbe",
-      "customColor": "Benutzerdefinierte Farbe",
       "fontFamily": "Schriftfamilie",
       "fontSize": "Schriftgröße",
       "zoom": "Zoom"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Symbolleiste",
       "spelling": "Rechtschreibung",
       "checklists": "Checklisten",
       "attachments": "Anhänge",
@@ -473,7 +413,6 @@
       "error": "Callout-Typen konnten nicht aktualisiert werden"
     },
     "width": {
-      "label": "Editorbreite",
       "description": "Gilt für alle Notizen und Journalseiten",
       "options": {
         "normal": "Normal",
@@ -482,12 +421,10 @@
       "error": "Die Editorbreite konnte nicht aktualisiert werden"
     },
     "toolbarMode": {
-      "label": "Fixierte Formatierungsleiste",
       "description": "Symbolleiste immer über dem Editor anzeigen",
       "error": "Der Symbolleistenmodus konnte nicht aktualisiert werden"
     },
     "spellCheck": {
-      "label": "Rechtschreibung prüfen",
       "description": "Falsch geschriebene Wörter in Notizen und Journalen unterstreichen",
       "error": "Die Rechtschreibprüfung konnte nicht aktualisiert werden"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Verwalte Notizvorlagen zum schnellen Erstellen"
     },
     "actions": {
-      "new": "Neue Vorlage",
       "edit": "Bearbeiten",
       "duplicate": "Duplizieren",
       "delete": "Löschen"
     },
     "groups": {
-      "builtIn": "Integriert",
-      "myTemplates": "Meine Vorlagen"
+      "builtIn": "Integriert"
     },
     "loading": "Vorlagen werden geladen…",
     "newTemplateTitle": "Neue Vorlage",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Noch keine benutzerdefinierten Vorlagen",
       "description": "Erstelle eine Vorlage, um loszulegen"
-    },
-    "preview": {
-      "notFound": "Diese Vorlage konnte nicht geladen werden."
     },
     "toasts": {
       "deleted": "Vorlage gelöscht",
@@ -572,11 +504,7 @@
       "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "defaultTemplate": "Standardvorlage",
-      "location": "Speicherort und Format",
-      "sidebarVisibility": "Sichtbarkeit der Seitenleiste",
-      "footer": "Fußzeile",
-      "weekdayTemplates": "Vorlagen pro Wochentag"
+      "footer": "Fußzeile"
     },
     "template": {
       "label": "Vorlage",
@@ -588,18 +516,6 @@
       "updated": "Standardvorlage aktualisiert",
       "cleared": "Standardvorlage entfernt",
       "error": "Standardvorlage konnte nicht aktualisiert werden"
-    },
-    "showSchedule": {
-      "label": "Zeitplan anzeigen",
-      "description": "Heutige Termine und Kalender anzeigen"
-    },
-    "showTasks": {
-      "label": "Aufgaben anzeigen",
-      "description": "Aufgaben anzeigen, die am ausgewählten Tag fällig sind"
-    },
-    "showAIConnections": {
-      "label": "KI-Verbindungen anzeigen",
-      "description": "KI-gestützte Verbindungen zu verwandten Einträgen anzeigen"
     },
     "showStatsFooter": {
       "label": "Statistik-Fußzeile anzeigen",
@@ -632,7 +548,6 @@
       "inheritWith": "Standard · {name}",
       "inheritNone": "Standard · keine",
       "missing": "Gelöschte Vorlage",
-      "clear": "Zurücksetzen",
       "updated": "Vorlage für {day} aktualisiert",
       "cleared": "Vorlage für {day} zurückgesetzt",
       "error": "Vorlage für {day} konnte nicht aktualisiert werden",
@@ -751,11 +666,6 @@
       "subtitle": "Lege das Verhalten der Tageszellen im Tagesbereich fest",
       "loading": "Einstellungen werden geladen…"
     },
-    "groups": {
-      "weekStart": "Woche",
-      "dayCellClick": "Klick auf Tageszelle",
-      "notes": "Notizen"
-    },
     "weekStart": {
       "label": "Woche beginnt am",
       "description": "Erster Wochentag über alle Kalender hinweg",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Google erneut verbinden",
       "addAccount": "Konto hinzufügen",
-      "importedCalendars": "Importierte Kalender",
-      "selected": "{count} ausgewählt",
       "syncNow": "Jetzt synchronisieren",
       "disconnect": "Trennen",
       "reconnect": "Google erneut verbinden",
@@ -1025,10 +933,8 @@
       "loading": "Wird geladen…"
     },
     "groups": {
-      "identity": "Identität",
       "sync": "Synchronisierung",
       "billing": "Abrechnung",
-      "storage": "Speicher",
       "devices": "Geräte"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Abmelden",
         "description": "Dieses Gerät von der Synchronisierung trennen",
         "action": "Abmelden"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Bildsuche deaktiviert"
     },
     "unknownError": "Unbekannter Fehler",
-    "groups": {
-      "voice": "Sprachtranskription",
-      "embeddingModel": "Lokales Embedding-Modell",
-      "embeddingIndex": "Embedding-Index",
-      "inline": "Inline-KI-Bearbeitung"
-    },
     "voice": {
-      "provider": "Anbieter",
       "providerDescription": "Spracherkennungsanbieter für Sprachnotizen",
-      "providers": {
-        "local": "Lokal (Standard)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Benennung von Sprachnotizen",
       "memoNameModeDescription": "Wie Sprachnotizen nach der Transkription benannt werden",
       "naming": {
         "transcript": "Transkripttitel",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Sprache, die du in Sprachmemos sprichst",
       "languageDefault": "Standard",
       "languageError": "Transkriptionssprache konnte nicht aktualisiert werden",
-      "localModel": "Lokales Modell",
-      "localModelDescription": "Whisper Small wird bei Bedarf heruntergeladen und bleibt lokal zwischengespeichert",
       "status": {
         "ready": "Bereit",
         "downloading": "Wird heruntergeladen",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Geladen",
       "loading": "Wird geladen",
-      "cacheHint": "~210 MB · Lokal zwischengespeichert · Alles auf dem Gerät",
-      "dimensions": "Dimensionen",
-      "embeddings": "Embeddings",
       "downloadLoad": "Modell herunterladen und laden",
       "downloadingModel": "Modell wird heruntergeladen…",
       "loadingModel": "Modell wird geladen…",
       "loadSuccess": "Modell erfolgreich geladen",
       "loadFailed": "Modell konnte nicht geladen werden",
       "rebuildIndex": "Index neu erstellen",
-      "rebuildDescription": "Embeddings für alle Notizen neu erzeugen",
-      "rebuild": "Neu erstellen",
       "scanning": "Notizen werden gescannt…",
       "generating": "Embeddings werden erzeugt…",
       "complete": "Fertig!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Wird geladen…",
-      "title": "Inline-KI-Bearbeitung",
-      "enable": "Inline-KI aktivieren",
       "enableDescription": "KI-Menü beim Bearbeiten von Notizen anzeigen",
       "enabled": "Inline-KI-Bearbeitung aktiviert",
       "disabled": "Inline-KI-Bearbeitung deaktiviert",
       "provider": "Anbieter",
-      "providerDescription": "KI-Dienst für Textoperationen",
       "providers": {
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Aktiv auf Port {port}",
       "notConnected": "Nicht verbunden",
       "test": "Testen",
-      "stopFailed": "Der vorhandene Server konnte nicht gestoppt werden",
       "connected": "Verbunden! Server läuft auf Port {port}",
       "connectFailed": "Verbindung konnte nicht hergestellt werden",
       "testFailed": "Verbindungstest fehlgeschlagen",
@@ -1566,8 +1448,6 @@
       "onenote": "OneNote-Notizbücher importieren (erfordert ein Microsoft-Konto)",
       "readwise": "Importiere deine Highlights aus Readwise (Zugriffstoken erforderlich)"
     },
-    "action": "Importieren",
-    "select": "Wähle eine App zum Importieren aus…",
     "stats": {
       "notes": "{count, plural, one {# Notiz} other {# Notizen}}",
       "projects": "{count, plural, one {# Projekt} other {# Projekte}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Apple-Notes-Ordner auswählen…",
       "chooseDirectory": "Ordner wählen…",
       "folderKeepsAssets": "Wähle den Ordner, wenn die Bilder außerhalb des Notizordners liegen – Exporte legen Medien oft in einem gemeinsamen Ordner ab.",
-      "chooseHint": "{label} auswählen",
       "folderHint": "Klicke unten und wähle den Ordner „group.com.apple.notes“, wenn sich der Auswahldialog öffnet (er startet dort). So kann Memry deine Notizen und Anhänge lesen – kein Festplattenvollzugriff nötig.",
       "noteplanFolderHint": "Wähle deinen NotePlan-Ordner – entweder den Datenordner der App oder eine ihrer Backup-Kopien. Memry liest darin die Ordner Calendar, Notes und @Archive.",
       "selected": "{count, plural, one {# Datei ausgewählt} other {# Dateien ausgewählt}}",
       "start": "Import starten",
       "cancel": "Abbrechen",
-      "close": "Schließen",
       "done": "Fertig",
       "running": "Wird importiert…",
       "progress": "{completed} von {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Verbindung wird hergestellt…",
         "connectFailed": "Verbindung zu Readwise fehlgeschlagen",
         "takeOver": {
-          "syncsOn": "Readwise synchronisiert auf {device}.",
-          "syncsOnAnother": "Readwise synchronisiert auf einem anderen Gerät.",
           "explain": "Nur ein Gerät bezieht Daten von Readwise, damit dasselbe Highlight nie doppelt geschrieben wird. Um stattdessen von diesem Gerät zu beziehen, füge dein Token erneut ein: Es wandert nie zwischen Geräten. Das andere Gerät hört bei seinem nächsten Buch auf, und alle Notizen bleiben erhalten.",
           "button": "Stattdessen hier synchronisieren",
           "working": "Readwise wird hierher verschoben…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "App oder Dateityp suchen…",
       "noMatch": "Keine Quellen für „{query}“",
       "formatAccount": "Konto",
-      "showMore": "{count, plural, one {# weitere anzeigen} other {# weitere anzeigen}}",
-      "showLess": "Weniger anzeigen",
       "groups": {
         "reading": "Lesen",
         "noteApps": "Notiz-Apps",
@@ -1968,8 +1842,6 @@
       "subtitle": "Konfiguration und Speicher des Tresors"
     },
     "groups": {
-      "storageUsage": "Speichernutzung",
-      "location": "Speicherort",
       "accountVaults": "Tresore in deinem Konto",
       "largeNotes": "Notizen nahe am Sync-Limit",
       "activity": "Aktivität"
@@ -2229,8 +2101,6 @@
       "loading": "Einstellungen werden geladen…"
     },
     "searchPlaceholder": "Tastenkürzel durchsuchen…",
-    "resetAll": "Alles zurücksetzen",
-    "custom": "Benutzerdefiniert",
     "pressShortcut": "Tastenkombination drücken…",
     "cancelTitle": "Abbrechen",
     "rebindTitle": "Klicken, um neu zuzuweisen",
@@ -2241,7 +2111,6 @@
     "noMatch": "Keine Tastenkürzel passen zu deiner Suche",
     "conflict": "Konflikt mit: {labels}",
     "globalCapture": {
-      "title": "Globale Schnellerfassung",
       "description": "Notiz von überall aus erfassen",
       "active": "Aktiv",
       "inUse": "{shortcut} wird von einer anderen App verwendet. Wähle eine andere Kombination.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Systemweit",
       "globalCapture": "Globale Schnellerfassung",
       "recordingHint": "Tasten drücken… esc zum Abbrechen",
-      "reset": "Zurücksetzen",
       "resetAll": "Alle auf Standard zurücksetzen",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Code konnte nicht erneut gesendet werden",
       "failedToSetUpDevice": "Gerät konnte nicht eingerichtet werden",
       "failedToConfirmRecoveryPhrase": "Wiederherstellungsphrase konnte nicht bestätigt werden",
-      "failedToAnalyzeContent": "Inhalt konnte nicht analysiert werden",
       "failedToLoadUpdaterState": "Update-Status konnte nicht geladen werden",
       "failedToCheckForUpdates": "Die Suche nach Updates ist fehlgeschlagen",
       "failedToDownloadUpdate": "Update konnte nicht heruntergeladen werden",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Die Einstellungen des Notizeditors konnten nicht geladen werden",
       "failedToUpdateSettings": "Die Einstellungen konnten nicht aktualisiert werden",
       "failedToLoadTabSettings": "Die Tab-Einstellungen konnten nicht geladen werden",
-      "failedToLoadNotes": "Notizen konnten nicht geladen werden",
       "failedToLoadTags": "Tags konnten nicht geladen werden",
-      "failedToLoadTasks": "Aufgaben konnten nicht geladen werden",
       "failedToLoadVaultStatus": "Der Tresorstatus konnte nicht geladen werden",
       "failedToSelectVault": "Tresor konnte nicht ausgewählt werden",
       "failedToCloseVault": "Der Tresor konnte nicht geschlossen werden",
@@ -2565,18 +2430,12 @@
       "title": "Agent-MCP",
       "subtitle": "Lokaler Serverzugriff für externe MCP-Clients."
     },
-    "groups": {
-      "connection": "Verbindung",
-      "access": "Zugriff"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Verwende diesen localhost-Endpunkt in Cursor, Claude Desktop oder Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer-Token",
-        "description": "Zugangsdaten nur im Arbeitsspeicher, gültig für diesen App-Start."
+        "label": "Bearer-Token"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Agent-Berechtigungen",
       "subtitle": "Wähle Standardzugriff, Bestätigungen und lokale Anbieter für den Agent-Chat."
     },
-    "groups": {
-      "cliAgents": "CLI-Agenten",
-      "local": "Lokaler OpenAI-kompatibler Anbieter",
-      "actions": "Verbindungsprüfungen"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Agent-Berechtigungen",
       "access": {
-        "label": "Standardzugriff",
         "description": "Legt den anfänglichen Zugriffsmodus für neue Anfragen an den Agenten fest.",
         "vaultOnly": "Nur Tresor",
         "computerAccess": "Computerzugriff",
         "builtInNote": "Die integrierte Modellverbindung nutzt immer nur Tresor-Werkzeuge."
       },
       "confirm": {
-        "label": "Aktionen bestätigen",
         "description": "Lege fest, ob Tool-Aufrufe automatisch ausgeführt werden oder im Chat auf Freigabe warten. Gesperrte Notizen und Ordner bleiben in beiden Modi schreibgeschützt.",
         "alwaysAllow": "Immer erlauben",
         "askBeforeChanges": "Vor Änderungen fragen"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Speichern",
-      "models": "Modelle",
-      "test": "Verbindung testen",
-      "probe": "Tools prüfen"
+      "test": "Verbindung testen"
     },
     "status": {
       "label": "Verbindung",
       "checking": "Wird geprüft…",
       "connected": "Verbunden",
-      "disconnected": "Getrennt",
-      "toolsDisabled": "Tools deaktiviert",
-      "fullTools": "Alle Tools aktiviert"
+      "disconnected": "Getrennt"
     },
     "alwaysAllowed": {
-      "group": "Immer erlaubt",
       "description": "Tools, denen du in diesem Tresor eine dauerhafte Freigabe erteilt hast. Löschvorgänge können nie dauerhaft freigegeben werden.",
       "empty": "Nichts ist immer erlaubt. Bei jeder Änderung wird weiterhin gefragt.",
       "revoke": "Widerrufen",

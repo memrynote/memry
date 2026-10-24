@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Ολοκλήρωση της εργασίας «{title}»",
     "task-completed": "Η εργασία ολοκληρώθηκε",
-    "could-not-complete": "Δεν ήταν δυνατή η ολοκλήρωση της εργασίας",
     "could-not-update-status": "Δεν ήταν δυνατή η αλλαγή της κατάστασης της εργασίας",
     "duration-minutes": "{minutes}λ",
     "duration-hours": "{hours}ώ",
@@ -215,12 +213,9 @@
     "next-week": "Επόμενη εβδομάδα",
     "open-task": "Άνοιγμα εργασίας",
     "source-note": "Σημείωση προέλευσης",
-    "reschedule": "Επαναπρογραμματισμός",
     "mark-done": "Ολοκλήρωση",
     "mark-not-done": "Σήμανση ως μη ολοκληρωμένης",
-    "later-today": "Αργότερα σήμερα",
     "tomorrow": "Αύριο",
-    "next-week-mon": "Επόμενη εβδομάδα · Δευ",
     "pick-date-time": "Επιλογή ημερομηνίας και ώρας…",
     "remove-due-date": "Κατάργηση ημερομηνίας λήξης",
     "subtasks-prefix": "Υποεργασίες",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Ημερολόγια με συνδρομή"
     },
     "caldav": {
       "name": "CalDAV"

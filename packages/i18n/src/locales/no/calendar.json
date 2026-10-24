@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Fullfør {title}",
     "task-completed": "Oppgaven er fullført",
-    "could-not-complete": "Kunne ikke fullføre oppgaven",
     "could-not-update-status": "Kunne ikke endre oppgavestatus",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} t",
@@ -215,12 +213,9 @@
     "next-week": "Neste uke",
     "open-task": "Åpne oppgave",
     "source-note": "Kildenotat",
-    "reschedule": "Omplanlegg",
     "mark-done": "Merk som fullført",
     "mark-not-done": "Merk som ikke fullført",
-    "later-today": "Senere i dag",
     "tomorrow": "I morgen",
-    "next-week-mon": "Neste uke · man.",
     "pick-date-time": "Velg dato og klokkeslett …",
     "remove-due-date": "Fjern forfallsdato",
     "subtasks-prefix": "Deloppgaver",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Abonnerte kalendere"
     },
     "caldav": {
       "name": "CalDAV"

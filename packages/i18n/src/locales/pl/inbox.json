@@ -15,19 +15,13 @@
       "showWithCount": "Pokaż odłożone elementy ({count})",
       "hide": "Ukryj odłożone elementy"
     },
-    "density": {
-      "toComfortable": "Widok wygodny",
-      "toCompact": "Widok kompaktowy"
-    },
     "filter": {
-      "button": "Filtruj",
       "byType": "Filtruj według typu",
       "active": "{count, plural, one {Filtrowanie według # typu} few {Filtrowanie według # typów} many {Filtrowanie według # typów} other {Filtrowanie według # typu}}",
       "clearAll": "Wyczyść wszystko"
     },
     "jobs": {
-      "running": "{count, plural, one {Działa # proces w tle} few {Działają # procesy w tle} many {Działa # procesów w tle} other {Działa # procesu w tle}}",
-      "failed": "Nieudane: {count}"
+      "running": "{count, plural, one {Działa # proces w tle} few {Działają # procesy w tle} many {Działa # procesów w tle} other {Działa # procesu w tle}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Utwórz „{name}”",
     "addTags": "Dodaj tagi…",
     "linkToNote": "Link do notatki",
-    "linkANote": "Połącz z notatką",
-    "suggestedCount": "Sugerowane: {count}",
-    "linkNotesPlaceholder": "Połącz z notatkami…",
     "linkOrCreateNotePlaceholder": "Znajdź lub utwórz notatkę…",
     "createNote": "Utwórz „{title}”",
     "pendingNote": "Nowa notatka",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Dane przypomnienia są niedostępne.",
     "triggered": "Przypomnienie zostało uruchomione",
-    "noteLabel": "Notatka przypomnienia",
     "source": "Źródło",
     "journalTitle": "Dziennik – {date}",
     "noteFallback": "Notatka",
@@ -514,9 +504,7 @@
       "settings": "Ustawienia",
       "processing": "Przetwarzanie…",
       "cancelRecording": "Anuluj nagrywanie",
-      "cancel": "Anuluj",
       "stopRecording": "Zatrzymaj nagrywanie",
-      "stop": "Zatrzymaj",
       "recordingError": "Wystąpił błąd nagrywania",
       "microphoneAccessDenied": "Odmówiono dostępu do mikrofonu",
       "noMicrophoneFound": "Nie znaleziono mikrofonu",

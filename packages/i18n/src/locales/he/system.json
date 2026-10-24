@@ -17,18 +17,6 @@
       "filterAll": "כל הקבצים"
     },
     "exportCancelled": "הייצוא בוטל",
-    "update": {
-      "availableTitle": "עדכון זמין",
-      "availableMessage": "memrynote {version} זמין.",
-      "availableDetailFallback": "להוריד את העדכון עכשיו?",
-      "buttonDownload": "הורדה",
-      "buttonLater": "מאוחר יותר",
-      "readyTitle": "עדכון מוכן",
-      "readyMessage": "memrynote {version} הורד.",
-      "readyDetailFallback": "כדי לסיים את התקנת העדכון, יש להפעיל מחדש את memrynote.",
-      "buttonRestartNow": "הפעלה מחדש עכשיו",
-      "releaseNotesLabel": "הערות שחרור:"
-    },
     "dataDbRecovery": {
       "title": "תיקון מסד הנתונים של הכספת",
       "message": "מסד הנתונים של Memry עבור הכספת הזו ניזוק.",

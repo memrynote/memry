@@ -15,19 +15,13 @@
       "showWithCount": "แสดงรายการที่เลื่อนไว้ ({count})",
       "hide": "ซ่อนรายการที่เลื่อนไว้"
     },
-    "density": {
-      "toComfortable": "มุมมองสบายตา",
-      "toCompact": "มุมมองกระชับ"
-    },
     "filter": {
-      "button": "กรอง",
       "byType": "กรองตามประเภท",
       "active": "{count, plural, other {กรองตาม # ประเภท}}",
       "clearAll": "ล้างทั้งหมด"
     },
     "jobs": {
-      "running": "{count, plural, other {กำลังประมวลผลเบื้องหลัง # รายการ}}",
-      "failed": "ไม่สำเร็จ {count} รายการ"
+      "running": "{count, plural, other {กำลังประมวลผลเบื้องหลัง # รายการ}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "สร้าง “{name}”",
     "addTags": "เพิ่มแท็ก…",
     "linkToNote": "ลิงก์ไปยังโน้ต",
-    "linkANote": "เชื่อมโยงโน้ต",
-    "suggestedCount": "แนะนำ {count} รายการ",
-    "linkNotesPlaceholder": "ลิงก์โน้ต…",
     "linkOrCreateNotePlaceholder": "ค้นหาหรือสร้างโน้ต…",
     "createNote": "สร้าง “{title}”",
     "pendingNote": "โน้ตใหม่",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "ไม่มีข้อมูลการเตือน",
     "triggered": "เตือนแล้ว",
-    "noteLabel": "โน้ตของการเตือน",
     "source": "แหล่งที่มา",
     "journalTitle": "บันทึกประจำวัน — {date}",
     "noteFallback": "โน้ต",
@@ -514,9 +504,7 @@
       "settings": "การตั้งค่า",
       "processing": "กำลังประมวลผล…",
       "cancelRecording": "ยกเลิกการบันทึก",
-      "cancel": "ยกเลิก",
       "stopRecording": "หยุดการบันทึก",
-      "stop": "หยุด",
       "recordingError": "เกิดข้อผิดพลาดในการบันทึกเสียง",
       "microphoneAccessDenied": "ไม่ได้รับสิทธิ์เข้าถึงไมโครโฟน",
       "noMicrophoneFound": "ไม่พบไมโครโฟน",

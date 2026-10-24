@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Nie udało się wykonać operacji",
-    "nothingToUndo": "Nic do cofnięcia",
     "undone": "Cofnięto: {description}",
     "undoFailed": "Nie udało się cofnąć działania",
     "filesImported": "{count, plural, one {Zaimportowano # plik} few {Zaimportowano # pliki} many {Zaimportowano # plików} other {Zaimportowano # pliku}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agent chce utworzyć {title}. Przejrzyj zmianę przed jej zastosowaniem.",
       "descriptionDelete": "Agent chce usunąć {title}. Przejrzyj zmianę przed jej zastosowaniem.",
       "fallbackTitle": "ten element",
-      "current": "Obecna treść",
       "candidate": "Proponowana treść",
       "loading": "Ładowanie…",
       "apply": "Zastosuj",
@@ -383,12 +381,8 @@
       "removeAttachment": "Usuń {label}",
       "placeholder": "Poproś memrynote o cokolwiek… @, aby wspomnieć o notatkach, zadaniach i wydarzeniach",
       "send": "Wyślij",
-      "providerLabel": "Dostawca agenta: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Połączone narzędzia",
       "connectTool": "Połącz {tool}",
-      "addContext": "Dodaj kontekst",
-      "addContextWithPermissions": "Dodaj kontekst ({permissions})",
       "mentionContext": "Wspomnij o notatce, zadaniu lub wydarzeniu",
       "files": {
         "attach": "Załącz plik tekstowy",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Nie udało się zamienić nagrania na tekst"
         }
       },
-      "modelLabel": "Model agenta: {provider} {model}",
-      "reasoningLabel": "Rozumowanie agenta: {reasoning}",
       "providers": {
-        "label": "Dostawca",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Dostęp do komputera"
       },
       "webSearch": {
-        "on": "Włączone",
-        "off": "Wyłączone",
         "label": "Wyszukiwanie w sieci"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent niedostępny – otwórz ustawienia…"
       },
       "settings": {
-        "reasoning": "Rozumowanie",
         "effort": "Wysiłek"
       },
       "includeCurrentNote": "Dołącz aktualną notatkę",
@@ -472,11 +460,8 @@
           "max": "Maksymalna"
         }
       },
-      "permissionsLabel": "Uprawnienia agenta: {access}, wyszukiwanie w sieci: {webSearch}",
       "permissions": {
-        "label": "Uprawnienia",
-        "access": "Dostęp",
-        "tools": "Narzędzia"
+        "access": "Dostęp"
       },
       "modelSettingsLabel": "Ustawienia modelu agenta: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nowy folder",
       "newProject": "Nowy projekt",
       "bookmarks": "Zakładki",
-      "chart": "Wykres",
       "tags": "Tagi",
       "reorderSection": "Zmień kolejność: {section}",
       "dropFilesToImport": "Upuść pliki do zaimportowania",
       "dropFilesIntoVaultRoot": "Folder główny sejfu",
       "newNoteN": "Nowa notatka (⌘N)",
-      "new": "Nowy",
       "newItemMenu": "Utwórz nowy…",
       "feedbackButton": "Wyślij opinię",
       "feedbackTitle": "Wyślij opinię",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Znajdź, zamień, zapytaj…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Pomiń wprowadzenie",
-      "welcomeToMemry": "Witamy w memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Twoja osobista baza wiedzy. Na początek poświęćmy 2 minuty.",
-      "getStarted": "Zacznij ",
-      "createYourFirstNote": "Utwórz swoją pierwszą notatkę",
-      "markdownBasedStoredLocallyAsPlainFiles": "Oparte na formacie Markdown, przechowywane lokalnie jako zwykłe pliki.",
-      "eGMeetingNotesIdeasAnything": "np. notatki ze spotkań, pomysły, cokolwiek…",
-      "skip": "Pomiń",
-      "createNote": "Utwórz notatkę ",
-      "addYourFirstTask": "Dodaj swoje pierwsze zadanie",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadania łączą się z notatkami i mają priorytety oraz terminy.",
-      "eGReviewProjectProposal": "np. przejrzyj propozycję projektu…",
-      "skip2": "Pomiń",
-      "createTask": "Utwórz zadanie ",
-      "syncAcrossDevices": "Synchronizuj między urządzeniami",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Synchronizuj swoje notatki i zadania na wszystkich swoich urządzeniach. Zawsze możesz to skonfigurować później.",
-      "skipForNow": "Pomiń na razie",
-      "doneLetSGo": "Gotowe – zaczynamy! "
+      "skip": "Pomiń"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Ustaw ikonę folderu",
@@ -852,8 +818,7 @@
       "unknownTabType": "Nieznany typ karty: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "niezapisane zmiany",
-      "preview": "podgląd"
+      "unsavedChanges": "niezapisane zmiany"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nowa karta",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Przeciągnij, aby zmienić rozmiar · Kliknij dwukrotnie, aby zresetować"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Witamy w memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Twój osobisty system zarządzania wiedzą.",
-      "selectAFolderToStoreYourNotesAndTasks": "Wybierz folder do przechowywania notatek i zadań.",
       "opening": "Otwieranie…",
-      "selectVaultFolder": "Wybierz folder sejfu",
-      "plainMarkdown": "Zwykły Markdown",
-      "yourNotesStayPortable": "Twoje notatki pozostają przenośne",
-      "syncAnywhere": "Synchronizuj wszędzie",
-      "useDropboxIcloudGit": "Korzystaj z Dropbox, iCloud lub Git",
       "recentVaults": "Ostatnie sejfy",
-      "notesLastOpened": "notatki · Ostatnio otwarte",
-      "preRelease": "Beta",
       "createNewVault": "Utwórz nowy sejf",
-      "createNewVaultDesc": "Zacznij od pustego sejfu w wybranym folderze.",
-      "openExistingVault": "Otwórz istniejący sejf",
-      "openExistingVaultDesc": "Wybierz folder z plikami Markdown, które już masz.",
-      "signInToSync": "Zaloguj się, aby synchronizować",
-      "signInToSyncDesc": "Sejfy szyfrowane end-to-end na wszystkich twoich urządzeniach.",
-      "create": "Utwórz",
       "open": "Otwórz",
-      "signIn": "Zaloguj się",
       "helpAndDocs": "Pomoc i dokumentacja",
-      "signInRequiresVault": "Najpierw otwórz lub utwórz sejf, aby skonfigurować synchronizację.",
       "addVault": "Dodaj sejf",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Nie ma jeszcze sejfów",
       "openVault": "Otwórz sejf",
       "settings": "Ustawienia",
-      "logOut": "Wyloguj się",
-      "signInToSync": "Zaloguj się, aby synchronizować",
       "remove": "Usuń „",
       "removeVaultTitle": "Usunąć „{name}” z listy?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ten sejf zostanie usunięty z aplikacji, ale pliki pozostaną na dysku. Zawsze możesz dodać go ponownie później.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Zmień…",
       "download": "Pobierz",
       "downloadFailed": "Nie udało się pobrać sejfu",
-      "deleteFromAccount": "Usuń z konta",
       "deleteVaultTitle": "Usunąć „{name}” z konta?",
       "deleteVaultBody": "Spowoduje to trwałe usunięcie wszystkich zsynchronizowanych danych tego sejfu z serwerów Memry. Tej operacji nie można cofnąć. Pliki na dysku nie zostaną usunięte.",
       "deleteVaultConfirm": "Usuń z konta",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Usuń widżet",
       "dragAria": "Przeciągnij widżet",
-      "configAria": "Konfiguruj widżet",
-      "resizeAria": "Zmień rozmiar na {size}",
       "menuAria": "Opcje widżetu",
-      "resize": "Rozmiar",
       "remove": "Usuń",
       "filter": {
         "all": "Wszystkie",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Wybierz folder",
       "folderEmpty": "Brak folderów",
       "folderNoSelection": "Nie wybrano folderu",
-      "folderView_list": "Lista",
-      "folderView_gallery": "Galeria",
       "folderViewSelect": "Widok",
       "project": "Projekt",
       "projectNoSelection": "Nie wybrano projektu",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Układ strony głównej",
       "deleteAria": "Usuń układ",
-      "newAria": "Nowa tablica",
       "newName": "Nowa tablica",
       "defaultName": "Strona główna",
       "manage": "Zarządzaj tablicami",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# zadanie na dzisiaj} few {# zadania na dzisiaj} many {# zadań na dzisiaj} other {# zadania na dzisiaj}}",
       "events": "{count, plural, one {# wydarzenie} few {# wydarzenia} many {# wydarzeń} other {# wydarzenia}}"
     },
-    "edit": "Edytuj",
-    "done": "Gotowe",
     "addWidget": "Dodaj widżet",
     "cover": {
       "add": "Dodaj okładkę"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Wprowadzenie zakończone",
-      "body": "Daj nam gwiazdkę w serwisie GitHub – dzięki temu inni łatwiej znajdą MemryNote.",
-      "action": "Daj gwiazdkę w serwisie GitHub"
+      "body": "Daj nam gwiazdkę w serwisie GitHub – dzięki temu inni łatwiej znajdą MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Aktualizacja gotowa",
     "failed": "Aktualizacja nie powiodła się",
     "downloadAction": "Pobierz",
-    "restartAction": "Uruchom ponownie",
     "detailsAction": "Szczegóły",
     "popover": {
       "readyTitle": "Aktualizacja MemryNote {version} jest gotowa",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Sejfy",
     "position": "{name}, sejf {index} z {count}",
-    "openList": "{position}. Otwórz listę sejfów",
     "switchTo": "Przełącz na: {name}",
     "switchingTo": "Przełączanie na: {name}",
     "changeIcon": "Zmień ikonę…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Na {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Znaleziono # sejf} few {Znaleziono # sejfy} many {Znaleziono # sejfów} other {Znaleziono # sejfu}}",
-      "notion": "Notion",
       "otherApps": "Inne aplikacje i pliki",
       "otherAppsHint": "i {count} więcej",
       "detectedFootnote": "Wykryto po sprawdzeniu, które aplikacje są zainstalowane. Nic nie opuszcza urządzenia: wszystko zostaje na {device}.",

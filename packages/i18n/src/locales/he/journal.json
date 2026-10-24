@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "חיבורי AI",
     "todaysNotes": "הפתקים של היום",
-    "todaysSchedule": "לוח הזמנים של היום",
-    "todaysTasks": "המשימות של היום",
     "tasks": "משימות",
     "technicalDetails": "פרטים טכניים"
   },
@@ -102,8 +100,7 @@
       "afternoon": "צהריים טובים",
       "evening": "ערב טוב",
       "night": "לילה טוב"
-    },
-    "allDay": "כל היום"
+    }
   },
   "nav": {
     "previousDay": "היום הקודם",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "אפשרויות נוספות",
     "documentStatistics": "סטטיסטיקת המסמך",
-    "dayContext": "ההקשר של היום: משימות ולוח זמנים",
-    "scheduleEvents": "אירועים בלוח הזמנים",
-    "tasks": "משימות",
     "notesCreatedToday": "{count} פתקים שנוצרו היום"
   },
   "empty": {
     "noEntry": "אין רשומה",
     "noDaysInMonth": "אין ימים בחודש זה",
-    "noEventsScheduled": "לא מתוכננים אירועים",
-    "noEventsScheduledToday": "לא מתוכננים אירועים היום",
-    "noEventsWereScheduled": "לא נקבעו אירועים",
-    "noTasksDue": "אין משימות ליום הזה",
-    "noTasksDueToday": "אין משימות להיום",
-    "noTasksWereDue": "לא היו משימות ליום הזה",
     "noNotesToday": "לא נוצרו היום פתקים",
     "startDocumenting": "אפשר להתחיל לתעד כאן מחשבות ורעיונות"
   },
@@ -155,9 +143,7 @@
     "day": "יום",
     "days": "ימים",
     "event": "אירוע",
-    "events": "אירועים",
     "task": "משימה",
-    "todo": "לביצוע",
     "moreConnections": "+ {count} חיבור נוסף",
     "moreConnections_plural": "+ {count} חיבורים נוספים",
     "moreNotes": "+ {count} פתק נוסף",
@@ -166,7 +152,6 @@
     "charactersWritten": "תווים שנכתבו",
     "words": "{count} מילים",
     "characters": "{count} תווים",
-    "completed": "{count} הושלמו",
     "overdue": "{count} באיחור"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "שונה {date}"
   },
   "task": {
-    "completed": "הושלם",
-    "notCompleted": "לא הושלם",
-    "priority": "עדיפות {priority}",
-    "overdue": "באיחור",
-    "markComplete": "סימון \"{title}\" כהושלם",
-    "markNotComplete": "סימון \"{title}\" כלא הושלם"
+    "priority": "עדיפות {priority}"
   },
   "template": {
     "using": "שימוש ב-\"{templateName}\""
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "התוכן שלך עדיין בזיכרון. אפשר ללחוץ כדי לנסות לשמור שוב.",
-    "noteNotFound": "הפתק \"{target}\" לא נמצא",
     "createLinkedFailed": "יצירת הפתק המקושר נכשלה",
     "fileNotFound": "הקובץ לא נמצא: {target}",
     "openLinkedItemFailed": "פתיחת הפריט המקושר נכשלה",

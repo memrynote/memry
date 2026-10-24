@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Hindi nagawa ang aksyon",
-    "nothingToUndo": "Walang maa-undo",
     "undone": "Na-undo: {description}",
     "undoFailed": "Hindi ma-undo ang aksyon",
     "filesImported": "{count, plural, one {Na-import ang # file} other {Na-import ang # file}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Gustong gumawa ng agent ng {title}. Suriin ang pagbabago bago ito ilapat.",
       "descriptionDelete": "Gustong tanggalin ng agent ang {title}. Suriin ang pagbabago bago ito ilapat.",
       "fallbackTitle": "item na ito",
-      "current": "Kasalukuyan",
       "candidate": "Iminungkahing bersyon",
       "loading": "Naglo-load…",
       "apply": "Ilapat",
@@ -383,12 +381,8 @@
       "removeAttachment": "Alisin ang {label}",
       "placeholder": "Gawin ang kahit ano gamit ang memrynote… @ para banggitin ang mga tala, gawain, at kaganapan",
       "send": "Ipadala",
-      "providerLabel": "Provider ng agent: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Mga nakakonektang tool",
       "connectTool": "Ikonekta ang {tool}",
-      "addContext": "Magdagdag ng konteksto",
-      "addContextWithPermissions": "Magdagdag ng konteksto ({permissions})",
       "mentionContext": "Banggitin ang isang tala, gawain, o kaganapan",
       "files": {
         "attach": "Mag-attach ng text file",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Hindi ma-transcribe ang boses mo"
         }
       },
-      "modelLabel": "Modelo ng agent: {provider} {model}",
-      "reasoningLabel": "Pangangatwiran ng agent: {reasoning}",
       "providers": {
-        "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Access sa computer"
       },
       "webSearch": {
-        "on": "Naka-on",
-        "off": "Naka-off",
         "label": "Paghahanap sa web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Hindi available ang agent — buksan ang Mga setting…"
       },
       "settings": {
-        "reasoning": "Pangangatwiran",
         "effort": "Lalim ng pag-iisip"
       },
       "includeCurrentNote": "Isama ang kasalukuyang tala",
@@ -472,11 +460,8 @@
           "max": "Max"
         }
       },
-      "permissionsLabel": "Mga pahintulot ng agent: {access}, paghahanap sa web {webSearch}",
       "permissions": {
-        "label": "Mga pahintulot",
-        "access": "Pag-access",
-        "tools": "Mga tool"
+        "access": "Pag-access"
       },
       "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Bagong folder",
       "newProject": "Bagong proyekto",
       "bookmarks": "Mga bookmark",
-      "chart": "Chart",
       "tags": "Mga tag",
       "reorderSection": "Baguhin ang pagkakasunod ng {section}",
       "dropFilesToImport": "I-drop ang mga file para i-import",
       "dropFilesIntoVaultRoot": "Root ng vault",
       "newNoteN": "Bagong tala (⌘N)",
-      "new": "Bago",
       "newItemMenu": "Gumawa ng bago…",
       "feedbackButton": "Magpadala ng feedback",
       "feedbackTitle": "Magpadala ng feedback",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Hanapin, palitan, magtanong…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Laktawan ang panimula",
-      "welcomeToMemry": "Maligayang pagdating sa memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ang personal mong imbakan ng kaalaman. Maglaan tayo ng 2 minuto para makapagsimula ka.",
-      "getStarted": "Magsimula ",
-      "createYourFirstNote": "Gawin ang una mong tala",
-      "markdownBasedStoredLocallyAsPlainFiles": "Batay sa Markdown, nakaimbak nang lokal bilang mga simpleng file.",
-      "eGMeetingNotesIdeasAnything": "hal. Mga tala sa pulong, ideya, kahit ano…",
-      "skip": "Laktawan",
-      "createNote": "Gumawa ng tala ",
-      "addYourFirstTask": "Idagdag ang iyong unang gawain",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Naka-link sa mga tala mo ang mga gawain, may priyoridad at takdang petsa.",
-      "eGReviewProjectProposal": "hal. Suriin ang panukala sa proyekto…",
-      "skip2": "Laktawan",
-      "createTask": "Gumawa ng gawain ",
-      "syncAcrossDevices": "Mag-sync sa mga device",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Panatilihing naka-sync ang iyong mga tala at gawain sa lahat ng iyong device. Puwede mo pa rin itong i-set up mamaya.",
-      "skipForNow": "Laktawan sa ngayon",
-      "doneLetSGo": "Tapos na — tara na! "
+      "skip": "Laktawan"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Itakda ang icon ng folder",
@@ -852,8 +818,7 @@
       "unknownTabType": "Hindi kilalang uri ng tab: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "hindi na-save na mga pagbabago",
-      "preview": "preview"
+      "unsavedChanges": "hindi na-save na mga pagbabago"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Bagong tab",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "I-drag para baguhin ang laki · I-double-click para i-reset"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Maligayang pagdating sa memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ang iyong sistema ng pamamahala ng personal na kaalaman.",
-      "selectAFolderToStoreYourNotesAndTasks": "Pumili ng folder kung saan iimbak ang mga tala at gawain mo.",
       "opening": "Binubuksan…",
-      "selectVaultFolder": "Pumili ng folder ng vault",
-      "plainMarkdown": "Payak na Markdown",
-      "yourNotesStayPortable": "Nananatiling portable ang mga tala mo",
-      "syncAnywhere": "I-sync kahit saan",
-      "useDropboxIcloudGit": "Gumamit ng Dropbox, iCloud, Git",
       "recentVaults": "Mga kamakailang vault",
-      "notesLastOpened": "tala · Huling binuksan",
-      "preRelease": "Beta",
       "createNewVault": "Gumawa ng bagong vault",
-      "createNewVaultDesc": "Magsimula ng bagong vault sa folder na pipiliin mo.",
-      "openExistingVault": "Magbukas ng dati nang vault",
-      "openExistingVaultDesc": "Pumili ng folder ng mga Markdown file na mayroon ka na.",
-      "signInToSync": "Mag-sign in para mag-sync",
-      "signInToSyncDesc": "Mga vault na end-to-end na naka-encrypt sa lahat ng device mo.",
-      "create": "Gumawa",
       "open": "Buksan",
-      "signIn": "Mag-sign in",
       "helpAndDocs": "Tulong at docs",
-      "signInRequiresVault": "Magbukas o gumawa muna ng vault para ma-set up ang pag-sync.",
       "addVault": "Magdagdag ng vault",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Wala pang vault",
       "openVault": "Buksan ang vault",
       "settings": "Mga setting",
-      "logOut": "Mag-log out",
-      "signInToSync": "Mag-sign in para mag-sync",
       "remove": "Alisin ang “",
       "removeVaultTitle": "Alisin ang “{name}” sa listahan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Aalisin ang vault na ito sa app, pero mananatili ang mga file mo sa disk. Puwede mo itong idagdag ulit anumang oras.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Baguhin…",
       "download": "I-download",
       "downloadFailed": "Hindi ma-download ang vault",
-      "deleteFromAccount": "Tanggalin sa account",
       "deleteVaultTitle": "Tanggalin ang “{name}” sa iyong account?",
       "deleteVaultBody": "Permanenteng inaalis nito ang lahat ng naka-sync na data ng vault na ito mula sa mga server ng Memry at hindi na ito maibabalik. Hindi tinatanggal ang iyong mga file sa disk.",
       "deleteVaultConfirm": "Tanggalin sa account",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Alisin ang widget",
       "dragAria": "I-drag ang widget",
-      "configAria": "I-configure ang widget",
-      "resizeAria": "I-resize sa {size}",
       "menuAria": "Mga opsyon ng widget",
-      "resize": "Laki",
       "remove": "Alisin",
       "filter": {
         "all": "Lahat",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Pumili ng folder",
       "folderEmpty": "Wala pang folder",
       "folderNoSelection": "Walang napiling folder",
-      "folderView_list": "Listahan",
-      "folderView_gallery": "Galerya",
       "folderViewSelect": "View",
       "project": "Proyekto",
       "projectNoSelection": "Walang napiling proyekto",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Layout ng Home",
       "deleteAria": "Tanggalin ang layout",
-      "newAria": "Bagong board",
       "newName": "Bagong board",
       "defaultName": "Home",
       "manage": "Pamahalaan ang mga board",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# gawaing takda ngayong araw} other {# gawaing takda ngayong araw}}",
       "events": "{count, plural, one {# kaganapan} other {# kaganapan}}"
     },
-    "edit": "I-edit",
-    "done": "Tapos na",
     "addWidget": "Magdagdag ng widget",
     "cover": {
       "add": "Magdagdag ng cover"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Tapos na ang panimula",
-      "body": "Paki-star kami sa GitHub — nakakatulong ito para mahanap ng ibang tao ang MemryNote.",
-      "action": "I-star sa GitHub"
+      "body": "Paki-star kami sa GitHub — nakakatulong ito para mahanap ng ibang tao ang MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Handa na ang update",
     "failed": "Nabigo ang pag-update",
     "downloadAction": "I-download",
-    "restartAction": "I-restart",
     "detailsAction": "Mga detalye",
     "popover": {
       "readyTitle": "Handa na ang MemryNote {version}",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Mga vault",
     "position": "{name}, vault {index} sa {count}",
-    "openList": "{position}. Buksan ang listahan ng vault",
     "switchTo": "Lumipat sa {name}",
     "switchingTo": "Lumilipat sa {name}",
     "changeIcon": "Palitan ang icon…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Sa {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# vault ang nakita} other {# vault ang nakita}}",
-      "notion": "Notion",
       "otherApps": "Iba pang app at file",
       "otherAppsHint": "at {count} pa",
       "detectedFootnote": "Nakita sa pagsuri kung anong mga app ang naka-install. Walang lumalabas sa {device}.",

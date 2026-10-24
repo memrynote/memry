@@ -7,11 +7,6 @@
     "backToApp": "返回应用",
     "nav": {
       "groups": {
-        "account": "账户",
-        "application": "应用",
-        "editing": "编辑",
-        "modules": "模块",
-        "services": "服务",
         "data": "数据",
         "workspace": "工作区",
         "features": "功能"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "配置{module}"
-    },
-    "vaultImport": {
-      "label": "从其他应用导入",
-      "description": "Notion、Evernote、Bear、Apple Notes、Todoist 等",
-      "action": "导入…"
     },
     "search": {
       "placeholder": "搜索设置",
@@ -102,12 +92,8 @@
       "loading": "正在加载设置…"
     },
     "groups": {
-      "startup": "启动",
       "updates": "更新",
       "languageRegion": "语言和地区",
-      "tabBehavior": "标签页行为",
-      "window": "窗口行为",
-      "fileCreation": "文件创建",
       "privacy": "隐私",
       "startupWindows": "启动与窗口",
       "newNotes": "新建笔记",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "开机启动",
-        "description": "登录时启动 memrynote",
         "error": "无法更新开机启动设置"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "自动检查更新",
-        "description": "在启动时以及应用打开期间定期检查新版本。",
         "error": "无法更新自动检查设置"
       },
       "autoDownload": {
         "label": "自动下载更新",
-        "description": "在后台下载并安装新版本，无需提示。",
         "error": "无法更新自动下载设置"
       },
-      "appUpdates": "应用更新",
-      "installedVersion": "已安装版本 {version}",
-      "availableVersion": "可用版本 {version}",
-      "unsupported": "打包构建可从 GitHub Releases 检查、下载并安装更新",
       "available": "memrynote {version} 可供下载",
       "downloadingLatest": "正在下载最新版本",
-      "downloadingLatestPercent": "正在下载最新版本（{percent}%）",
       "downloaded": "memrynote {version} 已准备好安装",
-      "upToDate": "当前已是最新发布的版本",
-      "checking": "正在 GitHub Releases 上检查新版本",
-      "idle": "检查新版本并在不离开应用的情况下安装",
       "unsupportedToast": "自动更新仅在打包版本中提供",
       "upToDateToast": "memrynote {version} 已是最新",
       "actionFailed": "更新操作失败",
@@ -164,17 +139,10 @@
         "downloading": "正在下载…",
         "downloadingPercent": "正在下载 {percent}%",
         "downloaded": "版本 {version} 已可安装"
-      },
-      "mode": {
-        "label": "更新方式",
-        "off": "不检查",
-        "notify": "仅通知",
-        "auto": "自动下载"
       }
     },
     "language": {
       "label": "语言",
-      "helper": "应用的大部分内容会立即更新。部分系统级文本——已显示的通知、Dock 标签、窗口标题栏——会在下次启动后刷新。",
       "changed": "语言已更改为 {nativeName}",
       "failed": "无法更改语言，请重试。"
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "时间格式",
-      "description": "12 小时制或 24 小时制",
       "options": {
         "12h": "12 小时制",
         "24h": "24 小时制"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "日期格式",
-      "description": "日历日期的显示方式",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY（美国）",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "在新标签页中打开页面",
-        "description": "点击或创建页面（笔记、文件夹、项目、画布、标签、书签）时，会在新标签页中打开。关闭后，将复用当前标签页，包括在笔记中点击链接时；固定的标签页不会被替换。“在新标签页中打开”“在侧边打开”和鼠标中键点击始终会打开新标签页。"
+        "label": "在新标签页中打开页面"
       },
       "restoreSession": {
         "label": "启动时恢复标签页",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "标签页关闭按钮",
-        "description": "何时显示关闭按钮",
         "options": {
           "always": "始终可见",
           "hover": "悬停时显示",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "关闭窗口后在菜单栏中保持运行",
-        "description": "关闭窗口时，memrynote 会隐藏到系统托盘而不是退出。点击托盘图标即可恢复窗口。在 macOS 上，应用还会保留在 Dock 中；在没有系统托盘的 Linux 桌面上，窗口会照常关闭。",
         "error": "无法更新最小化到托盘设置"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "在选定文件夹中创建",
-        "description": "新笔记和文件夹将在当前所选的文件夹内创建。关闭后，始终在根目录创建。"
+        "label": "在选定文件夹中创建"
       },
       "defaultNoteFolder": {
         "label": "新笔记的默认位置",
         "description": "侧边栏中未选择文件夹时使用。",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "无法发送诊断报告",
         "sendReport": {
           "label": "诊断报告",
-          "description": "一次性发送一份脱敏的技术日志报告，帮助我们排查你遇到的问题。",
           "button": "发送报告…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "正在加载设置…"
     },
     "groups": {
-      "theme": "主题",
-      "accentColor": "强调色",
-      "typography": "字体排版",
-      "zoom": "缩放"
+      "theme": "主题"
     },
     "theme": {
       "colorMode": {
-        "label": "颜色模式",
-        "description": "选择你喜欢的主题",
         "aria": "颜色模式"
       },
       "options": {
         "light": "浅色",
-        "white": "白色",
         "dark": "深色",
         "system": "系统"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "剪贴板中没有 memrynote 主题"
     },
     "accent": {
-      "pick": "选择强调色",
       "custom": {
-        "label": "自定义颜色",
-        "description": "输入十六进制值",
-        "placeholder": "#000000"
+        "label": "自定义颜色"
       },
       "presets": {
         "indigo": "靛蓝",
@@ -348,7 +299,6 @@
         "pink": "粉色",
         "orange": "橙色"
       },
-      "error": "无法更新强调色",
       "aria": "强调色预设",
       "options": {
         "theme": "跟随主题",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "缩放级别",
-      "description": "缩放整个界面",
       "decrease": "缩小",
       "increase": "放大",
       "reset": "将缩放恢复为默认值",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "字体大小",
-        "description": "界面基础文字大小（像素）",
         "decrease": "减小字号",
         "increase": "增大字号",
         "reset": "将字号恢复为默认值"
       },
       "fontFamily": {
         "label": "字体系列",
-        "description": "界面的主要字体",
         "options": {
           "system": "系统默认",
           "sansSerif": "无衬线",
@@ -428,13 +373,9 @@
       "fontFamilyError": "无法更新字体系列"
     },
     "v2": {
-      "groups": {
-        "text": "文字与缩放"
-      },
       "colorMode": "颜色模式",
       "colorTheme": "主题",
       "accent": "强调色",
-      "customColor": "自定义颜色",
       "fontFamily": "字体系列",
       "fontSize": "字体大小",
       "zoom": "缩放"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "布局",
-      "toolbar": "工具栏",
       "spelling": "拼写",
       "checklists": "清单",
       "attachments": "附件",
@@ -473,7 +413,6 @@
       "error": "无法更新标注类型"
     },
     "width": {
-      "label": "编辑器宽度",
       "description": "应用于所有笔记和日记页面",
       "options": {
         "normal": "标准",
@@ -482,12 +421,10 @@
       "error": "无法更新编辑器宽度"
     },
     "toolbarMode": {
-      "label": "常驻格式工具栏",
       "description": "始终在编辑器上方显示工具栏",
       "error": "无法更新工具栏模式"
     },
     "spellCheck": {
-      "label": "拼写检查",
       "description": "为笔记和日记中拼写错误的单词加下划线",
       "error": "无法更新拼写检查设置"
     },
@@ -522,14 +459,12 @@
       "subtitle": "管理笔记模板以快速创建"
     },
     "actions": {
-      "new": "新建模板",
       "edit": "编辑",
       "duplicate": "复制",
       "delete": "删除"
     },
     "groups": {
-      "builtIn": "内置",
-      "myTemplates": "我的模板"
+      "builtIn": "内置"
     },
     "loading": "正在加载模板…",
     "newTemplateTitle": "新建模板",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "尚无自定义模板",
       "description": "创建模板以开始使用"
-    },
-    "preview": {
-      "notFound": "无法加载此模板。"
     },
     "toasts": {
       "deleted": "模板已删除",
@@ -572,11 +504,7 @@
       "loading": "正在加载设置…"
     },
     "groups": {
-      "defaultTemplate": "默认模板",
-      "location": "位置和格式",
-      "sidebarVisibility": "侧边栏可见性",
-      "footer": "页脚",
-      "weekdayTemplates": "按星期设置模板"
+      "footer": "页脚"
     },
     "template": {
       "label": "模板",
@@ -588,18 +516,6 @@
       "updated": "默认模板已更新",
       "cleared": "默认模板已清除",
       "error": "无法更新默认模板"
-    },
-    "showSchedule": {
-      "label": "显示日程",
-      "description": "显示今天的日程和日历"
-    },
-    "showTasks": {
-      "label": "显示任务",
-      "description": "显示所选日期到期的任务"
-    },
-    "showAIConnections": {
-      "label": "显示 AI 关联",
-      "description": "显示由 AI 发现的相关日记"
     },
     "showStatsFooter": {
       "label": "显示统计页脚",
@@ -632,7 +548,6 @@
       "inheritWith": "默认 · {name}",
       "inheritNone": "默认 · 无",
       "missing": "已删除的模板",
-      "clear": "清除",
       "updated": "已更新{day}的模板",
       "cleared": "已清除{day}的模板",
       "error": "无法更新{day}的模板",
@@ -751,11 +666,6 @@
       "subtitle": "配置日程面板中日期格的点击行为",
       "loading": "正在加载设置…"
     },
-    "groups": {
-      "weekStart": "周",
-      "dayCellClick": "点击日期格",
-      "notes": "笔记"
-    },
     "weekStart": {
       "label": "每周开始于",
       "description": "所有日历中一周的第一天",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "重新连接 Google",
       "addAccount": "添加账户",
-      "importedCalendars": "已导入的日历",
-      "selected": "已选择 {count} 个",
       "syncNow": "立即同步",
       "disconnect": "断开连接",
       "reconnect": "重新连接 Google",
@@ -1025,10 +933,8 @@
       "loading": "正在加载…"
     },
     "groups": {
-      "identity": "身份",
       "sync": "同步",
       "billing": "账单",
-      "storage": "存储",
       "devices": "设备"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "退出登录",
         "description": "将此设备从同步中断开",
         "action": "退出登录"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "图片搜索已停用"
     },
     "unknownError": "未知错误",
-    "groups": {
-      "voice": "语音转录",
-      "embeddingModel": "本地嵌入模型",
-      "embeddingIndex": "嵌入索引",
-      "inline": "内联 AI 编辑"
-    },
     "voice": {
-      "provider": "提供商",
       "providerDescription": "语音备忘录的语音转文字提供商",
-      "providers": {
-        "local": "本地（默认）",
-        "openai": "OpenAI（自带密钥）"
-      },
-      "memoNameMode": "备忘录命名",
       "memoNameModeDescription": "转录后语音备忘录的命名方式",
       "naming": {
         "transcript": "转录标题",
@@ -1432,8 +1325,6 @@
       "languageDescription": "你在语音备忘录中使用的语言",
       "languageDefault": "默认",
       "languageError": "无法更新转写语言",
-      "localModel": "本地模型",
-      "localModelDescription": "Whisper Small 会按需下载，并缓存在本地",
       "status": {
         "ready": "已准备好",
         "downloading": "正在下载",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "已加载",
       "loading": "正在加载",
-      "cacheHint": "约 210 MB · 缓存在本地 · 完全在设备上运行",
-      "dimensions": "维度",
-      "embeddings": "向量嵌入",
       "downloadLoad": "下载并加载模型",
       "downloadingModel": "正在下载模型…",
       "loadingModel": "正在加载模型…",
       "loadSuccess": "模型加载成功",
       "loadFailed": "无法加载模型",
       "rebuildIndex": "重建索引",
-      "rebuildDescription": "为所有笔记重新生成向量嵌入",
-      "rebuild": "重建",
       "scanning": "正在扫描笔记…",
       "generating": "正在生成向量嵌入…",
       "complete": "已完成！",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "正在加载…",
-      "title": "内联 AI 编辑",
-      "enable": "启用内联 AI",
       "enableDescription": "编辑笔记时显示 AI 菜单",
       "enabled": "内联 AI 编辑已启用",
       "disabled": "内联 AI 编辑已禁用",
       "provider": "提供商",
-      "providerDescription": "文本操作的 AI 服务",
       "providers": {
         "ollama": "Ollama（本地）",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "正在端口 {port} 上运行",
       "notConnected": "未连接",
       "test": "测试",
-      "stopFailed": "无法停止现有服务器",
       "connected": "已连接！服务器正在端口 {port} 上运行",
       "connectFailed": "无法连接",
       "testFailed": "连接测试失败",
@@ -1566,8 +1448,6 @@
       "onenote": "导入 OneNote 笔记本（需要 Microsoft 账户）",
       "readwise": "从 Readwise 导入你的高亮（需要访问令牌）"
     },
-    "action": "导入",
-    "select": "选择要从中导入的应用…",
     "stats": {
       "notes": "{count, plural, other {# 篇笔记}}",
       "projects": "{count, plural, other {# 个项目}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "选择 Apple Notes 文件夹…",
       "chooseDirectory": "选择文件夹…",
       "folderKeepsAssets": "当图片不在笔记所在的文件夹里时，请选择文件夹——导出内容常把媒体文件放在一个共享文件夹中。",
-      "chooseHint": "选择你的 {label}",
       "folderHint": "点击下方，并在选择器打开时选择“group.com.apple.notes”文件夹（默认就位于该位置）。这样 Memry 就能读取你的笔记和附件——无需“完全磁盘访问权限”。",
       "noteplanFolderHint": "选择 NotePlan 文件夹——可以是应用的数据文件夹，也可以是其 Backups 中的某个副本。Memry 会读取其中的 Calendar、Notes 和 @Archive 文件夹。",
       "selected": "{count, plural, other {已选择 # 个文件}}",
       "start": "开始导入",
       "cancel": "取消",
-      "close": "关闭",
       "done": "完成",
       "running": "正在导入…",
       "progress": "{completed} / {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "正在连接…",
         "connectFailed": "无法连接到 Readwise",
         "takeOver": {
-          "syncsOn": "Readwise 在 {device} 上同步。",
-          "syncsOnAnother": "Readwise 在另一台设备上同步。",
           "explain": "只有一台设备从 Readwise 拉取内容，因此同一条高亮不会被写入两次。若要改为从此设备拉取，请再次粘贴你的令牌：令牌不会在设备之间传输。另一台设备会在处理完当前这本书后停止，所有笔记都会保留。",
           "button": "改为在此处同步",
           "working": "正在将 Readwise 移到此处…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "查找应用或文件类型…",
       "noMatch": "没有与“{query}”匹配的来源",
       "formatAccount": "账户",
-      "showMore": "{count, plural, other {显示另外 # 个}}",
-      "showLess": "收起",
       "groups": {
         "reading": "阅读",
         "noteApps": "笔记应用",
@@ -1968,8 +1842,6 @@
       "subtitle": "仓库配置和存储"
     },
     "groups": {
-      "storageUsage": "存储使用情况",
-      "location": "位置",
       "accountVaults": "账户中的仓库",
       "largeNotes": "接近同步上限的笔记",
       "activity": "活动记录"
@@ -2229,8 +2101,6 @@
       "loading": "正在加载设置…"
     },
     "searchPlaceholder": "搜索快捷键…",
-    "resetAll": "全部重置",
-    "custom": "自定义",
     "pressShortcut": "按下快捷键…",
     "cancelTitle": "取消",
     "rebindTitle": "点击以重新绑定",
@@ -2241,7 +2111,6 @@
     "noMatch": "没有与搜索匹配的快捷键",
     "conflict": "与 {labels} 冲突",
     "globalCapture": {
-      "title": "全局快速收集",
       "description": "在任何位置快速收集笔记",
       "active": "已生效",
       "inUse": "{shortcut} 已被其他应用占用。请选择其他组合键。",
@@ -2458,7 +2327,6 @@
       "systemWide": "系统全局",
       "globalCapture": "全局快速收集",
       "recordingHint": "按下组合键…按 esc 取消",
-      "reset": "重置",
       "resetAll": "全部恢复默认",
       "sticky": "便签"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "无法重新发送验证码",
       "failedToSetUpDevice": "无法设置设备",
       "failedToConfirmRecoveryPhrase": "无法确认恢复短语",
-      "failedToAnalyzeContent": "无法分析内容",
       "failedToLoadUpdaterState": "无法加载更新状态",
       "failedToCheckForUpdates": "无法检查更新",
       "failedToDownloadUpdate": "无法下载更新",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "无法加载笔记编辑器设置",
       "failedToUpdateSettings": "无法更新设置",
       "failedToLoadTabSettings": "无法加载标签页设置",
-      "failedToLoadNotes": "无法加载笔记",
       "failedToLoadTags": "无法加载标签",
-      "failedToLoadTasks": "无法加载任务",
       "failedToLoadVaultStatus": "无法加载仓库状态",
       "failedToSelectVault": "无法选择仓库",
       "failedToCloseVault": "无法关闭仓库",
@@ -2565,18 +2430,12 @@
       "title": "智能体 MCP",
       "subtitle": "供外部 MCP 客户端访问的本地服务器。"
     },
-    "groups": {
-      "connection": "连接",
-      "access": "访问权限"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "在 Cursor、Claude Desktop 或 Zed 中使用此 localhost 地址。"
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer 令牌",
-        "description": "仅在本次应用启动期间有效的内存凭据。"
+        "label": "Bearer 令牌"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "智能体权限",
       "subtitle": "为智能体对话选择默认访问权限、确认方式和本地提供商。"
     },
-    "groups": {
-      "cliAgents": "CLI 智能体",
-      "local": "本地 OpenAI 兼容提供商",
-      "actions": "连接检查"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "智能体权限",
       "access": {
-        "label": "默认访问权限",
         "description": "设置智能体新一轮对话的初始访问模式。",
         "vaultOnly": "仅限仓库",
         "computerAccess": "计算机访问",
         "builtInNote": "内置模型连接始终仅使用仓库工具。"
       },
       "confirm": {
-        "label": "确认操作",
         "description": "选择工具调用是自动运行，还是在对话中等待批准。锁定的笔记和文件夹在两种模式下都保持只读。",
         "alwaysAllow": "始终允许",
         "askBeforeChanges": "更改前询问"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "保存",
-      "models": "获取模型",
-      "test": "测试连接",
-      "probe": "探测工具"
+      "test": "测试连接"
     },
     "status": {
       "label": "连接",
       "checking": "正在检查…",
       "connected": "已连接",
-      "disconnected": "未连接",
-      "toolsDisabled": "工具已禁用",
-      "fullTools": "已启用全部工具"
+      "disconnected": "未连接"
     },
     "alwaysAllowed": {
-      "group": "始终允许",
       "description": "你在此仓库中已授予长期批准的工具。删除操作永远无法获得长期批准。",
       "empty": "没有始终允许的工具。每次更改前仍会询问。",
       "revoke": "撤销",

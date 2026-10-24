@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "{title} 완료",
     "task-completed": "작업을 완료했습니다",
-    "could-not-complete": "작업을 완료하지 못했습니다",
     "could-not-update-status": "작업 상태를 변경하지 못했습니다",
     "duration-minutes": "{minutes}분",
     "duration-hours": "{hours}시간",
@@ -215,12 +213,9 @@
     "next-week": "다음 주",
     "open-task": "작업 열기",
     "source-note": "원본 노트",
-    "reschedule": "일정 변경",
     "mark-done": "완료로 표시",
     "mark-not-done": "미완료로 표시",
-    "later-today": "오늘 나중에",
     "tomorrow": "내일",
-    "next-week-mon": "다음 주 · 월",
     "pick-date-time": "날짜 및 시간 선택…",
     "remove-due-date": "마감일 삭제",
     "subtasks-prefix": "하위 작업",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "구독한 캘린더"
     },
     "caldav": {
       "name": "CalDAV"

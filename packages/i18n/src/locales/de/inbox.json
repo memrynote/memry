@@ -15,19 +15,13 @@
       "showWithCount": "Zurückgestellte Elemente anzeigen ({count})",
       "hide": "Zurückgestellte Elemente ausblenden"
     },
-    "density": {
-      "toComfortable": "Komfortable Ansicht",
-      "toCompact": "Kompakte Ansicht"
-    },
     "filter": {
-      "button": "Filtern",
       "byType": "Nach Typ filtern",
       "active": "{count, plural, one {Gefiltert nach # Typ} other {Gefiltert nach # Typen}}",
       "clearAll": "Alle entfernen"
     },
     "jobs": {
-      "running": "{count, plural, one {# Hintergrundvorgang läuft} other {# Hintergrundvorgänge laufen}}",
-      "failed": "{count} fehlgeschlagen"
+      "running": "{count, plural, one {# Hintergrundvorgang läuft} other {# Hintergrundvorgänge laufen}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "„{name}“ erstellen",
     "addTags": "Tags hinzufügen…",
     "linkToNote": "Mit Notiz verlinken",
-    "linkANote": "Notiz verlinken",
-    "suggestedCount": "{count} vorgeschlagen",
-    "linkNotesPlaceholder": "Notizen verlinken…",
     "linkOrCreateNotePlaceholder": "Notiz suchen oder erstellen…",
     "createNote": "„{title}“ erstellen",
     "pendingNote": "Neue Notiz",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Erinnerungsdaten nicht verfügbar.",
     "triggered": "Erinnerung ausgelöst",
-    "noteLabel": "Erinnerungsnotiz",
     "source": "Quelle",
     "journalTitle": "Journal – {date}",
     "noteFallback": "Notiz",
@@ -514,9 +504,7 @@
       "settings": "Einstellungen",
       "processing": "Wird verarbeitet…",
       "cancelRecording": "Aufnahme abbrechen",
-      "cancel": "Abbrechen",
       "stopRecording": "Aufnahme beenden",
-      "stop": "Stopp",
       "recordingError": "Bei der Aufnahme ist ein Fehler aufgetreten",
       "microphoneAccessDenied": "Mikrofonzugriff verweigert",
       "noMicrophoneFound": "Kein Mikrofon gefunden",

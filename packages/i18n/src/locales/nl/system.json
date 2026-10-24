@@ -17,18 +17,6 @@
       "filterAll": "Alle bestanden"
     },
     "exportCancelled": "Exporteren geannuleerd",
-    "update": {
-      "availableTitle": "Update beschikbaar",
-      "availableMessage": "memrynote {version} is beschikbaar.",
-      "availableDetailFallback": "De update nu downloaden?",
-      "buttonDownload": "Downloaden",
-      "buttonLater": "Later",
-      "readyTitle": "Update gereed",
-      "readyMessage": "memrynote {version} is gedownload.",
-      "readyDetailFallback": "Start memrynote opnieuw om de installatie van de update te voltooien.",
-      "buttonRestartNow": "Nu opnieuw starten",
-      "releaseNotesLabel": "Releaseopmerkingen:"
-    },
     "dataDbRecovery": {
       "title": "Kluisdatabase herstellen",
       "message": "De database van Memry voor deze kluis is beschadigd.",

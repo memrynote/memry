@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Conexiuni AI",
     "todaysNotes": "Notițele de astăzi",
-    "todaysSchedule": "Programul de astăzi",
-    "todaysTasks": "Sarcinile de astăzi",
     "tasks": "Sarcini",
     "technicalDetails": "Detalii tehnice"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Bună ziua",
       "evening": "Bună seara",
       "night": "Noapte bună"
-    },
-    "allDay": "Toată ziua"
+    }
   },
   "nav": {
     "previousDay": "Ziua anterioară",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Mai multe opțiuni",
     "documentStatistics": "Statisticile documentului",
-    "dayContext": "Contextul zilei: sarcini și program",
-    "scheduleEvents": "Evenimente programate",
-    "tasks": "Sarcini",
     "notesCreatedToday": "{count, plural, one {# notiță creată astăzi} few {# notițe create astăzi} other {# de notițe create astăzi}}"
   },
   "empty": {
     "noEntry": "Nicio înregistrare",
     "noDaysInMonth": "Fără zile în această lună",
-    "noEventsScheduled": "Nu au fost programate evenimente",
-    "noEventsScheduledToday": "Nu sunt evenimente programate astăzi",
-    "noEventsWereScheduled": "Nu au fost programate evenimente",
-    "noTasksDue": "Nicio sarcină cu termen",
-    "noTasksDueToday": "Nicio sarcină cu termen astăzi",
-    "noTasksWereDue": "Nu a existat nicio sarcină cu termen",
     "noNotesToday": "Nicio notiță creată astăzi",
     "startDocumenting": "Începeți să vă documentați gândurile și ideile"
   },
@@ -155,9 +143,7 @@
     "day": "zi",
     "days": "zile",
     "event": "eveniment",
-    "events": "evenimente",
     "task": "sarcină",
-    "todo": "de făcut",
     "moreConnections": "+ încă {count} conexiune",
     "moreConnections_plural": "+ încă {count, plural, one {# conexiune} few {# conexiuni} other {# de conexiuni}}",
     "moreNotes": "+ încă {count} notiță",
@@ -166,7 +152,6 @@
     "charactersWritten": "caractere scrise",
     "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
     "characters": "{count, plural, one {# caracter} few {# caractere} other {# de caractere}}",
-    "completed": "{count, plural, one {# finalizată} few {# finalizate} other {# finalizate}}",
     "overdue": "{count, plural, one {# restantă} few {# restante} other {# restante}}"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Modificat: {date}"
   },
   "task": {
-    "completed": "Finalizat",
-    "notCompleted": "Nefinalizat",
-    "priority": "Prioritate {priority}",
-    "overdue": "restantă",
-    "markComplete": "Marchează „{title}” ca finalizată",
-    "markNotComplete": "Marchează „{title}” ca nefinalizată"
+    "priority": "Prioritate {priority}"
   },
   "template": {
     "using": "Se folosește „{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Conținutul este încă în memorie. Faceți clic pentru a reîncerca salvarea.",
-    "noteNotFound": "Notița „{target}” nu a fost găsită",
     "createLinkedFailed": "Nu s-a putut crea notița legată",
     "fileNotFound": "Fișierul nu a fost găsit: {target}",
     "openLinkedItemFailed": "Nu s-a putut deschide elementul legat",

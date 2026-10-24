@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "ทำเครื่องหมายว่า “{title}” เสร็จแล้ว",
     "task-completed": "งานเสร็จแล้ว",
-    "could-not-complete": "ทำเครื่องหมายว่างานเสร็จแล้วไม่สำเร็จ",
     "could-not-update-status": "เปลี่ยนสถานะงานไม่สำเร็จ",
     "duration-minutes": "{minutes} นาที",
     "duration-hours": "{hours} ชม.",
@@ -215,12 +213,9 @@
     "next-week": "สัปดาห์หน้า",
     "open-task": "เปิดงาน",
     "source-note": "โน้ตต้นทาง",
-    "reschedule": "เปลี่ยนกำหนด",
     "mark-done": "ทำเครื่องหมายว่าเสร็จแล้ว",
     "mark-not-done": "ทำเครื่องหมายว่ายังไม่เสร็จ",
-    "later-today": "ภายหลังวันนี้",
     "tomorrow": "พรุ่งนี้",
-    "next-week-mon": "สัปดาห์หน้า · จันทร์",
     "pick-date-time": "เลือกวันที่และเวลา…",
     "remove-due-date": "ลบวันครบกำหนด",
     "subtasks-prefix": "งานย่อย",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "ปฏิทินที่สมัครรับ"
     },
     "caldav": {
       "name": "CalDAV"

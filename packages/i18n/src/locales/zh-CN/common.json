@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "操作失败",
-    "nothingToUndo": "没有可撤销的操作",
     "undone": "已撤销：{description}",
     "undoFailed": "撤销操作失败",
     "filesImported": "{count, plural, other {已导入 # 个文件}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "智能体想创建 {title}。请在应用前检查更改。",
       "descriptionDelete": "智能体想删除 {title}。请在应用前检查更改。",
       "fallbackTitle": "此条目",
-      "current": "当前",
       "candidate": "候选内容",
       "loading": "正在加载…",
       "apply": "应用",
@@ -383,12 +381,8 @@
       "removeAttachment": "移除 {label}",
       "placeholder": "在 memrynote 中做任何事…输入 @ 提及笔记、任务和日程",
       "send": "发送",
-      "providerLabel": "智能体提供商：{provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "已连接的工具",
       "connectTool": "连接 {tool}",
-      "addContext": "添加上下文",
-      "addContextWithPermissions": "添加上下文（{permissions}）",
       "mentionContext": "提及笔记、任务或日程",
       "files": {
         "attach": "附加文本文件",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "无法转写语音输入"
         }
       },
-      "modelLabel": "智能体模型：{provider} {model}",
-      "reasoningLabel": "智能体推理：{reasoning}",
       "providers": {
-        "label": "提供商",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "计算机访问"
       },
       "webSearch": {
-        "on": "开启",
-        "off": "关闭",
         "label": "联网搜索"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "智能体不可用——打开设置…"
       },
       "settings": {
-        "reasoning": "推理",
         "effort": "推理强度"
       },
       "includeCurrentNote": "包含当前笔记",
@@ -472,11 +460,8 @@
           "max": "最大"
         }
       },
-      "permissionsLabel": "智能体权限：{access}，联网搜索{webSearch}",
       "permissions": {
-        "label": "权限",
-        "access": "访问权限",
-        "tools": "工具"
+        "access": "访问权限"
       },
       "modelSettingsLabel": "智能体模型设置：{model}，{settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "新建文件夹",
       "newProject": "新建项目",
       "bookmarks": "书签",
-      "chart": "图表",
       "tags": "标签",
       "reorderSection": "调整{section}顺序",
       "dropFilesToImport": "拖放文件以导入",
       "dropFilesIntoVaultRoot": "仓库根目录",
       "newNoteN": "新建笔记（⌘N）",
-      "new": "新建",
       "newItemMenu": "新建…",
       "feedbackButton": "发送反馈",
       "feedbackTitle": "发送反馈",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "查找、替换、询问…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "跳过新手引导",
-      "welcomeToMemry": "欢迎使用 memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "你的个人知识库。只需 2 分钟即可上手。",
-      "getStarted": "开始使用 ",
-      "createYourFirstNote": "创建第一篇笔记",
-      "markdownBasedStoredLocallyAsPlainFiles": "基于 Markdown，以纯文本文件形式存储在本地。",
-      "eGMeetingNotesIdeasAnything": "例如：会议记录、想法，什么都可以…",
-      "skip": "跳过",
-      "createNote": "创建笔记 ",
-      "addYourFirstTask": "添加第一个任务",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "任务可链接到笔记，并支持优先级和截止日期。",
-      "eGReviewProjectProposal": "例如：审阅项目提案…",
-      "skip2": "跳过",
-      "createTask": "创建任务 ",
-      "syncAcrossDevices": "跨设备同步",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "在所有设备间同步笔记和任务。也可以稍后再设置。",
-      "skipForNow": "暂不设置",
-      "doneLetSGo": "完成——开始吧！ "
+      "skip": "跳过"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "设置文件夹图标",
@@ -852,8 +818,7 @@
       "unknownTabType": "未知的标签页类型："
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "未保存的更改",
-      "preview": "预览"
+      "unsavedChanges": "未保存的更改"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "新建标签页",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "拖动以调整大小 · 双击重置"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "欢迎使用 memrynote",
-      "yourPersonalKnowledgeManagementSystem": "你的个人知识管理系统。",
-      "selectAFolderToStoreYourNotesAndTasks": "选择一个文件夹来存储笔记和任务。",
       "opening": "正在打开…",
-      "selectVaultFolder": "选择仓库文件夹",
-      "plainMarkdown": "纯 Markdown",
-      "yourNotesStayPortable": "笔记可自由迁移",
-      "syncAnywhere": "随处同步",
-      "useDropboxIcloudGit": "使用 Dropbox、iCloud、Git",
       "recentVaults": "最近的仓库",
-      "notesLastOpened": "篇笔记 · 上次打开",
-      "preRelease": "Beta",
       "createNewVault": "创建新仓库",
-      "createNewVaultDesc": "在你选择的文件夹中开始一个新仓库。",
-      "openExistingVault": "打开现有仓库",
-      "openExistingVaultDesc": "选择一个已保存 Markdown 文件的文件夹。",
-      "signInToSync": "登录以同步",
-      "signInToSyncDesc": "在所有设备间同步端到端加密的仓库。",
-      "create": "创建",
       "open": "打开",
-      "signIn": "登录",
       "helpAndDocs": "帮助和文档",
-      "signInRequiresVault": "请先打开或创建一个仓库以设置同步。",
       "addVault": "添加仓库",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "还没有仓库",
       "openVault": "打开仓库",
       "settings": "设置",
-      "logOut": "退出登录",
-      "signInToSync": "登录以同步",
       "remove": "移除“",
       "removeVaultTitle": "从列表中移除“{name}”？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此仓库将从应用中移除，但文件仍会保留在磁盘上。你以后可以随时重新添加。",
@@ -1020,7 +965,6 @@
       "changeLocation": "更改…",
       "download": "下载",
       "downloadFailed": "无法下载仓库",
-      "deleteFromAccount": "从账户中删除",
       "deleteVaultTitle": "从你的账户中删除“{name}”？",
       "deleteVaultBody": "这会从 Memry 的服务器上永久删除此仓库的所有已同步数据，且无法撤销。磁盘上的文件不会被删除。",
       "deleteVaultConfirm": "从账户中删除",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "移除小组件",
       "dragAria": "拖动小组件",
-      "configAria": "配置小组件",
-      "resizeAria": "调整为 {size}",
       "menuAria": "小组件选项",
-      "resize": "大小",
       "remove": "移除",
       "filter": {
         "all": "全部",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "选择一个文件夹",
       "folderEmpty": "还没有文件夹",
       "folderNoSelection": "未选择文件夹",
-      "folderView_list": "列表",
-      "folderView_gallery": "画廊",
       "folderViewSelect": "视图",
       "project": "项目",
       "projectNoSelection": "未选择项目",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "首页布局",
       "deleteAria": "删除布局",
-      "newAria": "新建看板",
       "newName": "新建看板",
       "defaultName": "首页",
       "manage": "管理看板",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, other {今天有 # 个任务到期}}",
       "events": "{count, plural, other {# 个日程}}"
     },
-    "edit": "编辑",
-    "done": "完成",
     "addWidget": "添加小组件",
     "cover": {
       "add": "添加封面"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "新手引导已完成",
-      "body": "请在 GitHub 上为我们加星标——这能帮助更多人发现 MemryNote。",
-      "action": "在 GitHub 上加星标"
+      "body": "请在 GitHub 上为我们加星标——这能帮助更多人发现 MemryNote。"
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "更新已就绪",
     "failed": "更新失败",
     "downloadAction": "下载",
-    "restartAction": "重新启动",
     "detailsAction": "详细信息",
     "popover": {
       "readyTitle": "MemryNote {version} 已就绪",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "仓库",
     "position": "{name}，第 {index} 个仓库，共 {count} 个",
-    "openList": "{position}。打开仓库列表",
     "switchTo": "切换到 {name}",
     "switchingTo": "正在切换到 {name}",
     "changeIcon": "更改图标…",
@@ -1501,7 +1433,6 @@
       "onDevice": "在{device}上",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {找到 # 个仓库}}",
-      "notion": "Notion",
       "otherApps": "其他应用和文件",
       "otherAppsHint": "另有 {count} 个",
       "detectedFootnote": "通过检查已安装的应用得出。不会有任何内容离开{device}。",

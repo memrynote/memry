@@ -122,10 +122,6 @@
       "body": "Stvorite bilješku za početak",
       "newNote": "Nova bilješka"
     },
-    "readwiseSync": {
-      "tooltip": "Sinkronizacija s Readwiseom",
-      "failed": "Sinkronizacija s Readwiseom nije uspjela"
-    },
     "syncing": {
       "body": "Sinkronizacija bilješki – pojavit će se ovdje čim stignu"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Dodaj u favorite",
       "removeFromBookmarks": "Ukloni iz favorita",
       "journalSettings": "Postavke dnevnika…"
-    },
-    "nav": {
-      "label": "Navigacija",
-      "ariaExpanded": "Odjeljak navigacije, proširen",
-      "ariaCollapsed": "Odjeljak navigacije, sažet",
-      "saveFailed": "Nije moguće spremiti stanje odjeljka navigacije"
     },
     "viewOptions": {
       "label": "Mogućnosti prikaza",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Kao sklopivi naslov",
         "asLinkedTask": "Kao povezani zadatak",
         "asReminder": "Kao podsjetnik"
-      },
-      "actions": {
-        "insert": "Umetni",
-        "open": "Otvori"
       },
       "close": "Zatvori izbornik",
       "matchesAlias": "odgovara",
@@ -607,7 +592,6 @@
         "title": "Premjesti blok u bilješku",
         "searchPlaceholder": "Pretraži bilješke…",
         "noResults": "Nema odgovarajućih bilješki",
-        "moved": "Blok premješten u „{title}”",
         "failed": "Nije moguće premjestiti blok"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Struktura",
     "aria": "Struktura dokumenta",
-    "emptyYet": "Još nema naslova",
     "readTime": "{count} min čitanja",
     "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
     "created": "Stvoreno",
@@ -839,11 +822,9 @@
     "toolbarComment": "Komentiraj",
     "commentPlaceholder": "Dodaj komentar…",
     "createdTooltip": "Stvoreno {date} u {time}",
-    "cancel": "Odustani",
     "resolve": "Razriješi",
     "edit": "Uredi komentar",
     "delete": "Izbriši komentar",
-    "replyPlaceholder": "Odgovori…",
     "attachAria": "Priloži datoteku",
     "mentionAria": "Spomeni osobu, stranicu ili datum",
     "sendAria": "Pošalji komentar",
@@ -856,13 +837,7 @@
       "code": "Kôd"
     },
     "openImageAria": "Otvori sliku {name}",
-    "openAttachmentAria": "Otvori privitak {name}",
-    "kind": {
-      "comment": "Komentar",
-      "addition": "Dodavanje",
-      "deletion": "Brisanje",
-      "substitution": "Zamjena"
-    }
+    "openAttachmentAria": "Otvori privitak {name}"
   },
   "tagsRow": {
     "aria": "Oznake",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Svojstva",
     "noteAria": "Svojstva bilješke",
-    "workspaceAria": "Svojstva radnog prostora",
     "listAria": "Popis svojstava",
     "add": "Dodaj svojstvo",
     "addDescription": "Dodajte novo svojstvo ovoj bilješci",
@@ -932,7 +906,6 @@
       "inProgress": "U tijeku",
       "done": "Dovršeno"
     },
-    "projectAlreadySet": "Ova bilješka već ima svojstvo projekta",
     "projectPlaceholder": "Bez projekta",
     "projectSearch": "Pretraži projekte",
     "projectEmpty": "Nema projekata",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtar",
-      "filters": "Filtri",
-      "clearAll": "Očisti sve",
-      "noFiltersApplied": "Nema primijenjenih filtara",
-      "addFiltersToNarrowDownYourNotes": "Dodajte filtre da biste suzili popis bilješki",
       "match": "Zadovolji",
-      "allAnd": "Svi (I)",
-      "anyOr": "Bilo koji (ILI)",
-      "ofTheFollowing": "od sljedećeg:",
       "match2": "Zadovolji",
       "all": "sve",
       "any": "bilo koji",
-      "of": "od:",
       "addCondition": "Dodaj uvjet",
       "addFilter": "Dodaj filtar",
       "addGroup": "Dodaj grupu",
@@ -1207,7 +1172,6 @@
       "available": "Dostupno: ",
       "preview": "Pretpregled",
       "fixExpressionErrorsToSeePreview": "Ispravite pogreške u izrazu da biste vidjeli pretpregled",
-      "usingNote": "Koristi se bilješka: „",
       "cancel": "Odustani",
       "namePlaceholder": "dana_do_roka",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Učitavanje mapa…",
       "suggested": "PREDLOŽENO",
       "bestMatch": "Najbolje podudaranje",
-      "current": "trenutna)",
       "allFolders": "SVE MAPE",
-      "noFoldersMatch": "Nijedna mapa ne odgovara \"",
-      "create": "Stvori \"",
       "cancel": "Odustani",
       "currentFolderBadge": "(trenutna)",
       "noFoldersMatchQuery": "Nijedna mapa ne odgovara upitu „{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "zadani",
       "viewActions": "Radnje prikaza",
-      "rename": "Preimenuj",
       "duplicate": "Dupliciraj",
       "setAsDefault": "Postavi kao zadano",
       "delete": "Izbriši",
-      "createNewView": "Stvori novi prikaz",
-      "createNewView2": "Stvori novi prikaz",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Stvorite novi prikaz s prilagođenim stupcima, filtrima i sortiranjem.",
-      "viewName": "Naziv prikaza",
       "myCustomView": "Moj prilagođeni prikaz",
-      "baseConfiguration": "Osnovna konfiguracija",
-      "copyFromCurrentView": "Kopiraj iz trenutnog prikaza",
-      "startFreshDefaultColumns": "Počni ispočetka (zadani stupci)",
       "cancel": "Odustani",
-      "renameView": "Preimenuj prikaz",
-      "enterANewNameForThisView": "Unesite novi naziv za ovaj prikaz.",
-      "viewName2": "Naziv prikaza",
-      "viewName3": "Naziv prikaza",
-      "cancel2": "Odustani",
       "deleteView": "Izbriši prikaz",
       "areYouSureYouWantToDelete": "Jeste li sigurni da želite izbrisati \"",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
@@ -1289,22 +1237,17 @@
       "layout": "Raspored",
       "table": "Tablica",
       "list": "Popis",
-      "gallery": "Galerija",
-      "createView": "Stvori prikaz",
-      "save": "Spremi"
+      "gallery": "Galerija"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Učitavanje PDF-a nije uspjelo: ",
-      "download": "Preuzmi",
       "download2": "Preuzmi",
       "noFileAttached": "Nema priložene datoteke",
       "resizePdf": "Promijeni veličinu PDF-a",
       "resizeHtml": "Promijeni veličinu ugrađenog HTML-a",
       "alignLeft": "Poravnaj lijevo",
       "alignCenter": "Poravnaj po sredini",
-      "alignRight": "Poravnaj desno",
-      "previousPage": "Prethodna stranica",
-      "nextPage": "Sljedeća stranica"
+      "alignRight": "Poravnaj desno"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Otvori u panelu zadatka",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 in)",
       "legal85X14In": "Legal (8,5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.gggg"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Sinkronizirano"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Riječi",
       "characters": "Znakovi",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Još nema favorita",
       "moreOptions": "Više mogućnosti",
       "remove": "Ukloni"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Otvori",
-      "openToTheSide": "Otvori sa strane",
-      "pinToTabs": "Prikvači na kartice",
-      "edit": "Uredi",
-      "delete": "Izbriši",
-      "copyLink": "Kopiraj poveznicu"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Učitavanje oznaka…",
@@ -1380,26 +1309,9 @@
       "cancel": "Odustani"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Idi natrag",
-      "notes": "bilješke",
-      "loadingNotes": "Učitavanje bilješki…",
-      "noNotesWithThisTag": "Nema bilješki s ovom oznakom",
-      "addThisTagToANoteToSeeItHere": "Dodajte ovu oznaku bilješci da biste je vidjeli ovdje",
-      "pinned": "PRIKVAČENO",
-      "allNotes": "SVE BILJEŠKE",
-      "allNotesArePinned": "Sve bilješke su prikvačene",
-      "tasks": "ZADACI",
-      "unpinFromTag": "Otkvači s oznake",
-      "unpin": "Otkvači",
-      "pinToTag": "Prikvači uz oznaku",
-      "pin": "Prikvači",
       "tagActions": "Radnje s oznakom",
-      "editTagName": "Uredi naziv oznake",
       "changeColor": "Promijeni boju",
-      "deleteTag": "Izbriši oznaku",
-      "recent": "Nedavno",
-      "created": "Stvoreno",
-      "alphabetical": "Abecedno"
+      "deleteTag": "Izbriši oznaku"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Preimenuj oznaku",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Stvori novu bilješku",
-      "viewSettings": "Postavke prikaza",
-      "displayDensity": "Gustoća prikaza",
-      "comfortable": "Udoban",
-      "compact": "Kompaktan",
-      "showSummaries": "Prikaži sažetke",
       "cancel": "Odustani"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Otvori stranicu oznaka"
   },
   "tagView": {
-    "moreActions": "Više radnji",
     "pin": {
       "action": "Prikvači {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}} uz oznaku",
       "success": "{count, plural, one {# bilješka prikvačena uz oznaku} few {# bilješke prikvačene uz oznaku} other {# bilješki prikvačeno uz oznaku}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Imenujte ovo pretraživanje",
     "saveDialogPlaceholder": "npr. Poslovni sastanci",
     "cancel": "Odustani",
-    "save": "Spremi",
-    "addToFilterHint": "Ctrl/Cmd + klik na oznaku dodaje je u filtar"
+    "save": "Spremi"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Pisanje…",
       "writtenBy": "Napisao: {agent}",
       "retry": "Zadnje pokretanje nije uspjelo · Pokušaj ponovno",
-      "retryAction": "Pokušaj ponovno",
       "captionOff": "Uključite Sažimanje dugih bilješki u Postavke → AI",
       "captionNoAgent": "Nijedan agent nije povezan · Postavke → AI",
       "unknownAgent": "AI"

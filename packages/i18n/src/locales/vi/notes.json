@@ -122,10 +122,6 @@
       "body": "Tạo một ghi chú để bắt đầu",
       "newNote": "Ghi chú mới"
     },
-    "readwiseSync": {
-      "tooltip": "Đồng bộ Readwise",
-      "failed": "Đồng bộ Readwise thất bại"
-    },
     "syncing": {
       "body": "Đang đồng bộ ghi chú — ghi chú sẽ xuất hiện tại đây khi được tải về"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Đánh dấu trang",
       "removeFromBookmarks": "Gỡ khỏi dấu trang",
       "journalSettings": "Cài đặt nhật ký…"
-    },
-    "nav": {
-      "label": "Điều hướng",
-      "ariaExpanded": "Mục điều hướng, đã mở rộng",
-      "ariaCollapsed": "Mục điều hướng, đã thu gọn",
-      "saveFailed": "Không thể lưu trạng thái của mục điều hướng"
     },
     "viewOptions": {
       "label": "Tùy chọn hiển thị",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Dạng thu gọn được",
         "asLinkedTask": "Dạng công việc liên kết",
         "asReminder": "Dạng lời nhắc"
-      },
-      "actions": {
-        "insert": "Chèn",
-        "open": "Mở"
       },
       "close": "Đóng menu",
       "matchesAlias": "khớp",
@@ -607,7 +592,6 @@
         "title": "Di chuyển khối sang ghi chú",
         "searchPlaceholder": "Tìm kiếm ghi chú…",
         "noResults": "Không có ghi chú phù hợp",
-        "moved": "Đã di chuyển khối sang “{title}”",
         "failed": "Không thể di chuyển khối"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Dàn ý",
     "aria": "Dàn ý tài liệu",
-    "emptyYet": "Chưa có tiêu đề nào",
     "readTime": "{count} phút đọc",
     "words": "{count} từ",
     "created": "Ngày tạo",
@@ -839,11 +822,9 @@
     "toolbarComment": "Bình luận",
     "commentPlaceholder": "Thêm bình luận…",
     "createdTooltip": "Đã tạo {date} lúc {time}",
-    "cancel": "Hủy",
     "resolve": "Giải quyết",
     "edit": "Chỉnh sửa bình luận",
     "delete": "Xóa bình luận",
-    "replyPlaceholder": "Trả lời…",
     "attachAria": "Đính kèm tệp",
     "mentionAria": "Đề cập một người, trang hoặc ngày",
     "sendAria": "Gửi bình luận",
@@ -856,13 +837,7 @@
       "code": "Mã"
     },
     "openImageAria": "Mở ảnh {name}",
-    "openAttachmentAria": "Mở tệp đính kèm {name}",
-    "kind": {
-      "comment": "Bình luận",
-      "addition": "Bổ sung",
-      "deletion": "Xóa bỏ",
-      "substitution": "Thay thế"
-    }
+    "openAttachmentAria": "Mở tệp đính kèm {name}"
   },
   "tagsRow": {
     "aria": "Thẻ",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Thuộc tính",
     "noteAria": "Thuộc tính ghi chú",
-    "workspaceAria": "Thuộc tính không gian làm việc",
     "listAria": "Danh sách thuộc tính",
     "add": "Thêm thuộc tính",
     "addDescription": "Thêm thuộc tính mới cho ghi chú này",
@@ -932,7 +906,6 @@
       "inProgress": "Đang làm",
       "done": "Hoàn thành"
     },
-    "projectAlreadySet": "Ghi chú này đã có thuộc tính dự án",
     "projectPlaceholder": "Không có dự án",
     "projectSearch": "Tìm kiếm dự án",
     "projectEmpty": "Không có dự án nào",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Bộ lọc",
-      "filters": "Bộ lọc",
-      "clearAll": "Xóa tất cả",
-      "noFiltersApplied": "Chưa áp dụng bộ lọc nào",
-      "addFiltersToNarrowDownYourNotes": "Thêm bộ lọc để thu hẹp danh sách ghi chú",
       "match": "Khớp",
-      "allAnd": "Tất cả (VÀ)",
-      "anyOr": "Bất kỳ (HOẶC)",
-      "ofTheFollowing": "điều kiện sau:",
       "match2": "Khớp",
       "all": "Tất cả",
       "any": "Bất kỳ",
-      "of": "trong số:",
       "addCondition": "Thêm điều kiện",
       "addFilter": "Thêm bộ lọc",
       "addGroup": "Thêm nhóm",
@@ -1207,7 +1172,6 @@
       "available": "Có sẵn: ",
       "preview": "Xem trước",
       "fixExpressionErrorsToSeePreview": "Sửa lỗi biểu thức để xem trước",
-      "usingNote": "Đang dùng ghi chú: “",
       "cancel": "Hủy",
       "namePlaceholder": "so_ngay_den_han",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Đang tải thư mục…",
       "suggested": "ĐỀ XUẤT",
       "bestMatch": "Phù hợp nhất",
-      "current": "hiện tại)",
       "allFolders": "TẤT CẢ THƯ MỤC",
-      "noFoldersMatch": "Không có thư mục nào khớp với \"",
-      "create": "Tạo \"",
       "cancel": "Hủy",
       "currentFolderBadge": "(hiện tại)",
       "noFoldersMatchQuery": "Không có thư mục nào khớp với “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "mặc định",
       "viewActions": "Thao tác chế độ xem",
-      "rename": "Đổi tên",
       "duplicate": "Nhân bản",
       "setAsDefault": "Đặt làm mặc định",
       "delete": "Xóa",
-      "createNewView": "Tạo chế độ xem mới",
-      "createNewView2": "Tạo chế độ xem mới",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Tạo chế độ xem mới với các cột, bộ lọc và sắp xếp tùy chỉnh.",
-      "viewName": "Tên chế độ xem",
       "myCustomView": "Chế độ xem tùy chỉnh của tôi",
-      "baseConfiguration": "Cấu hình cơ sở",
-      "copyFromCurrentView": "Sao chép từ chế độ xem hiện tại",
-      "startFreshDefaultColumns": "Bắt đầu mới (các cột mặc định)",
       "cancel": "Hủy",
-      "renameView": "Đổi tên chế độ xem",
-      "enterANewNameForThisView": "Nhập tên mới cho chế độ xem này.",
-      "viewName2": "Tên chế độ xem",
-      "viewName3": "Tên chế độ xem",
-      "cancel2": "Hủy",
       "deleteView": "Xóa chế độ xem",
       "areYouSureYouWantToDelete": "Bạn có chắc muốn xóa \"",
       "thisActionCannotBeUndone": "Không thể hoàn tác thao tác này.",
@@ -1289,22 +1237,17 @@
       "layout": "Bố cục",
       "table": "Bảng",
       "list": "Danh sách",
-      "gallery": "Lưới",
-      "createView": "Tạo chế độ xem",
-      "save": "Lưu"
+      "gallery": "Lưới"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Không thể tải PDF: ",
-      "download": "Tải xuống",
       "download2": "Tải xuống",
       "noFileAttached": "Không có tệp đính kèm",
       "resizePdf": "Đổi kích thước PDF",
       "resizeHtml": "Đổi kích thước nội dung nhúng HTML",
       "alignLeft": "Căn trái",
       "alignCenter": "Căn giữa",
-      "alignRight": "Căn phải",
-      "previousPage": "Trang trước",
-      "nextPage": "Trang sau"
+      "alignRight": "Căn phải"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Mở trong bảng công việc",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 in)",
       "legal85X14In": "Legal (8,5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Đã đồng bộ"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Số từ",
       "characters": "Số ký tự",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Chưa có dấu trang nào",
       "moreOptions": "Tùy chọn khác",
       "remove": "Gỡ bỏ"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Mở",
-      "openToTheSide": "Mở bên cạnh",
-      "pinToTabs": "Ghim vào tab",
-      "edit": "Chỉnh sửa",
-      "delete": "Xóa",
-      "copyLink": "Sao chép liên kết"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Đang tải thẻ…",
@@ -1380,26 +1309,9 @@
       "cancel": "Hủy"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Quay lại",
-      "notes": "ghi chú",
-      "loadingNotes": "Đang tải ghi chú…",
-      "noNotesWithThisTag": "Không có ghi chú nào có thẻ này",
-      "addThisTagToANoteToSeeItHere": "Gắn thẻ này cho một ghi chú để ghi chú đó hiển thị tại đây",
-      "pinned": "ĐÃ GHIM",
-      "allNotes": "TẤT CẢ GHI CHÚ",
-      "allNotesArePinned": "Tất cả ghi chú đều đã được ghim",
-      "tasks": "CÔNG VIỆC",
-      "unpinFromTag": "Bỏ ghim khỏi thẻ",
-      "unpin": "Bỏ ghim",
-      "pinToTag": "Ghim vào thẻ",
-      "pin": "Ghim",
       "tagActions": "Thao tác với thẻ",
-      "editTagName": "Chỉnh sửa tên thẻ",
       "changeColor": "Đổi màu",
-      "deleteTag": "Xóa thẻ",
-      "recent": "Gần đây",
-      "created": "Ngày tạo",
-      "alphabetical": "Theo bảng chữ cái"
+      "deleteTag": "Xóa thẻ"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Đổi tên thẻ",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Tạo ghi chú mới",
-      "viewSettings": "Cài đặt chế độ xem",
-      "displayDensity": "Mật độ hiển thị",
-      "comfortable": "Thoải mái",
-      "compact": "Nhỏ gọn",
-      "showSummaries": "Hiển thị tóm tắt",
       "cancel": "Hủy"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Mở trang thẻ"
   },
   "tagView": {
-    "moreActions": "Thao tác khác",
     "pin": {
       "action": "Ghim {count, plural, other {# ghi chú}} vào thẻ",
       "success": "Đã ghim {count, plural, other {# ghi chú}} vào thẻ",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Đặt tên cho tìm kiếm này",
     "saveDialogPlaceholder": "vd. Cuộc họp công việc",
     "cancel": "Hủy",
-    "save": "Lưu",
-    "addToFilterHint": "Ctrl/Cmd + bấm vào thẻ để thêm vào bộ lọc"
+    "save": "Lưu"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Đang viết…",
       "writtenBy": "Do {agent} viết",
       "retry": "Lần chạy gần nhất thất bại · Thử lại",
-      "retryAction": "Thử lại",
       "captionOff": "Hãy bật Tóm tắt ghi chú dài trong Cài đặt → AI",
       "captionNoAgent": "Chưa kết nối tác nhân · Cài đặt → AI",
       "unknownAgent": "AI"

@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Befejezés: {title}",
     "task-completed": "Feladat befejezve",
-    "could-not-complete": "Nem sikerült befejezni a feladatot",
     "could-not-update-status": "Nem sikerült módosítani a feladat állapotát",
     "duration-minutes": "{minutes} p",
     "duration-hours": "{hours} ó",
@@ -215,12 +213,9 @@
     "next-week": "Jövő héten",
     "open-task": "Feladat megnyitása",
     "source-note": "Forrásjegyzet",
-    "reschedule": "Átütemezés",
     "mark-done": "Megjelölés befejezettként",
     "mark-not-done": "Megjelölés befejezetlenként",
-    "later-today": "Ma később",
     "tomorrow": "Holnap",
-    "next-week-mon": "Jövő hét · hétfő",
     "pick-date-time": "Dátum és időpont kiválasztása…",
     "remove-due-date": "Határidő eltávolítása",
     "subtasks-prefix": "Részfeladatok",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Feliratkozott naptárak"
     },
     "caldav": {
       "name": "CalDAV"

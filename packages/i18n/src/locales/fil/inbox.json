@@ -15,19 +15,13 @@
       "showWithCount": "Ipakita ang mga naka-snooze na item ({count})",
       "hide": "Itago ang mga naka-snooze na item"
     },
-    "density": {
-      "toComfortable": "Komportableng view",
-      "toCompact": "Compact na view"
-    },
     "filter": {
-      "button": "I-filter",
       "byType": "I-filter ayon sa uri",
       "active": "{count, plural, one {Naka-filter ayon sa # uri} other {Naka-filter ayon sa # uri}}",
       "clearAll": "I-clear lahat"
     },
     "jobs": {
-      "running": "{count, plural, one {# background job ang tumatakbo} other {# background job ang tumatakbo}}",
-      "failed": "Nabigo ang {count}"
+      "running": "{count, plural, one {# background job ang tumatakbo} other {# background job ang tumatakbo}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Gumawa ng “{name}”",
     "addTags": "Magdagdag ng mga tag…",
     "linkToNote": "I-link sa tala",
-    "linkANote": "Mag-link ng tala",
-    "suggestedCount": "{count} iminungkahi",
-    "linkNotesPlaceholder": "Mag-link ng mga tala…",
     "linkOrCreateNotePlaceholder": "Maghanap o gumawa ng tala…",
     "createNote": "Gumawa ng “{title}”",
     "pendingNote": "Bagong tala",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Hindi available ang data ng paalala.",
     "triggered": "Na-trigger ang paalala",
-    "noteLabel": "Tala ng paalala",
     "source": "Pinagmulan",
     "journalTitle": "Talaarawan — {date}",
     "noteFallback": "Tala",
@@ -514,9 +504,7 @@
       "settings": "Mga setting",
       "processing": "Pinoproseso…",
       "cancelRecording": "Kanselahin ang pagre-record",
-      "cancel": "Kanselahin",
       "stopRecording": "Itigil ang pagre-record",
-      "stop": "Itigil",
       "recordingError": "Nagkaroon ng error sa pag-record",
       "microphoneAccessDenied": "Tinanggihan ang access sa mikropono",
       "noMicrophoneFound": "Walang nakitang mikropono",

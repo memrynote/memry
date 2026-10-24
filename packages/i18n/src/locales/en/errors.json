@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Not authenticated",
-    "sessionExpired": "Session expired. Please sign in again.",
     "setupSessionExpired": "Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.",
     "setupSessionExpiredLinking": "Your sign-in timed out before this device finished linking. Sign in again, then scan the code once more.",
     "invalidRecoveryPhraseFormat": "Invalid recovery phrase format",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Failed to load model",
     "voiceModelDownloadFailed": "Failed to download voice model",
     "terminalCommandInstallFailed": "Failed to install terminal command",
-    "terminalCommandUninstallFailed": "Failed to uninstall terminal command",
-    "shortcutInUse": "Shortcut {shortcut} is already in use"
+    "terminalCommandUninstallFailed": "Failed to uninstall terminal command"
   },
   "tag": {
     "renameInProgress": "A rename of #{from} to #{to} is still running. Try again when it finishes.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} already takes its fields from this tag",
     "unreadableSchema": "A newer version of Memry changed this tag. Update Memry to edit it",
     "relationTargetRequired": "Choose which tag this relation points to",
-    "editFailed": "Could not change the tag's fields",
-    "previewFailed": "Could not count what this change affects",
-    "snapshotFailed": "Could not load tag fields",
     "renameRunning": "Another field rename is still finishing ({from} to {to}). Try again once it is done."
   }
 }

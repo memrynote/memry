@@ -15,19 +15,13 @@
       "showWithCount": "Показать отложенные ({count})",
       "hide": "Скрыть отложенные"
     },
-    "density": {
-      "toComfortable": "Свободный вид",
-      "toCompact": "Компактный вид"
-    },
     "filter": {
-      "button": "Фильтр",
       "byType": "Фильтровать по типу",
       "active": "Фильтр: {count, plural, one {# тип} few {# типа} many {# типов} other {# типа}}",
       "clearAll": "Очистить все"
     },
     "jobs": {
-      "running": "{count, plural, one {# фоновое задание выполняется} few {# фоновых задания выполняются} many {# фоновых заданий выполняется} other {# фонового задания выполняется}}",
-      "failed": "Ошибок: {count}"
+      "running": "{count, plural, one {# фоновое задание выполняется} few {# фоновых задания выполняются} many {# фоновых заданий выполняется} other {# фонового задания выполняется}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Создать «{name}»",
     "addTags": "Добавить теги…",
     "linkToNote": "Связать с заметкой",
-    "linkANote": "Связать с заметкой",
-    "suggestedCount": "Предложено: {count}",
-    "linkNotesPlaceholder": "Связать с заметками…",
     "linkOrCreateNotePlaceholder": "Найти или создать заметку…",
     "createNote": "Создать «{title}»",
     "pendingNote": "Новая заметка",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Данные напоминания недоступны.",
     "triggered": "Напоминание сработало",
-    "noteLabel": "Заметка к напоминанию",
     "source": "Источник",
     "journalTitle": "Журнал — {date}",
     "noteFallback": "Заметка",
@@ -514,9 +504,7 @@
       "settings": "Настройки",
       "processing": "Обработка…",
       "cancelRecording": "Отменить запись",
-      "cancel": "Отмена",
       "stopRecording": "Остановить запись",
-      "stop": "Стоп",
       "recordingError": "Произошла ошибка записи",
       "microphoneAccessDenied": "Доступ к микрофону запрещён",
       "noMicrophoneFound": "Микрофон не найден",

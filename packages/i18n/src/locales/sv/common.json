@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Åtgärden misslyckades",
-    "nothingToUndo": "Inget att ångra",
     "undone": "Ångrat: {description}",
     "undoFailed": "Det gick inte att ångra åtgärden",
     "filesImported": "{count, plural, one {# fil importerad} other {# filer importerade}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agenten vill skapa {title}. Granska ändringen innan du tillämpar den.",
       "descriptionDelete": "Agenten vill radera {title}. Granska ändringen innan du tillämpar den.",
       "fallbackTitle": "det här objektet",
-      "current": "Nuvarande",
       "candidate": "Förslag",
       "loading": "Läser in…",
       "apply": "Tillämpa",
@@ -383,12 +381,8 @@
       "removeAttachment": "Ta bort {label}",
       "placeholder": "Gör vad du vill med memrynote… @ för att nämna anteckningar, uppgifter och händelser",
       "send": "Skicka",
-      "providerLabel": "Agentleverantör: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Anslutna verktyg",
       "connectTool": "Anslut {tool}",
-      "addContext": "Lägg till kontext",
-      "addContextWithPermissions": "Lägg till kontext ({permissions})",
       "mentionContext": "Nämn en anteckning, uppgift eller händelse",
       "files": {
         "attach": "Bifoga en textfil",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Det gick inte att transkribera röstinmatningen"
         }
       },
-      "modelLabel": "Agentmodell: {provider} {model}",
-      "reasoningLabel": "Agentens resonemang: {reasoning}",
       "providers": {
-        "label": "Leverantör",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Datoråtkomst"
       },
       "webSearch": {
-        "on": "På",
-        "off": "Av",
         "label": "Webbsökning"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agenten är inte tillgänglig – öppna Inställningar…"
       },
       "settings": {
-        "reasoning": "Resonemang",
         "effort": "Ansträngning"
       },
       "includeCurrentNote": "Inkludera aktuell anteckning",
@@ -472,11 +460,8 @@
           "max": "Max"
         }
       },
-      "permissionsLabel": "Agentbehörigheter: {access}, webbsökning {webSearch}",
       "permissions": {
-        "label": "Behörigheter",
-        "access": "Åtkomst",
-        "tools": "Verktyg"
+        "access": "Åtkomst"
       },
       "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Ny mapp",
       "newProject": "Nytt projekt",
       "bookmarks": "Bokmärken",
-      "chart": "Diagram",
       "tags": "Taggar",
       "reorderSection": "Ändra ordning på {section}",
       "dropFilesToImport": "Släpp filer för att importera",
       "dropFilesIntoVaultRoot": "Valvets rotmapp",
       "newNoteN": "Ny anteckning (⌘N)",
-      "new": "Ny",
       "newItemMenu": "Skapa ny…",
       "feedbackButton": "Skicka feedback",
       "feedbackTitle": "Skicka feedback",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Sök, ersätt, fråga…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Hoppa över introduktionen",
-      "welcomeToMemry": "Välkommen till memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Det tar bara 2 minuter att komma igång.",
-      "getStarted": "Kom igång ",
-      "createYourFirstNote": "Skapa din första anteckning",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-baserad, lagras lokalt som vanliga filer.",
-      "eGMeetingNotesIdeasAnything": "t.ex. mötesanteckningar, idéer, vad som helst…",
-      "skip": "Hoppa över",
-      "createNote": "Skapa anteckning ",
-      "addYourFirstTask": "Lägg till din första uppgift",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Uppgifter länkas till dina anteckningar, med prioritet och förfallodatum.",
-      "eGReviewProjectProposal": "t.ex. granska projektförslaget…",
-      "skip2": "Hoppa över",
-      "createTask": "Skapa uppgift ",
-      "syncAcrossDevices": "Synkronisera mellan enheter",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Håll dina anteckningar och uppgifter synkroniserade på alla dina enheter. Du kan alltid konfigurera det senare.",
-      "skipForNow": "Hoppa över tills vidare",
-      "doneLetSGo": "Klart – nu kör vi! "
+      "skip": "Hoppa över"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Ställ in mappikon",
@@ -852,8 +818,7 @@
       "unknownTabType": "Okänd fliktyp: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "osparade ändringar",
-      "preview": "förhandsvisning"
+      "unsavedChanges": "osparade ändringar"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Ny flik",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Välkommen till memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ditt personliga kunskapshanteringssystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Välj en mapp för att lagra dina anteckningar och uppgifter.",
       "opening": "Öppnar…",
-      "selectVaultFolder": "Välj valvmapp",
-      "plainMarkdown": "Ren Markdown",
-      "yourNotesStayPortable": "Dina anteckningar förblir portabla",
-      "syncAnywhere": "Synkronisera var som helst",
-      "useDropboxIcloudGit": "Använd Dropbox, iCloud, Git",
       "recentVaults": "Senaste valven",
-      "notesLastOpened": "anteckningar · Senast öppnad",
-      "preRelease": "Beta",
       "createNewVault": "Skapa nytt valv",
-      "createNewVaultDesc": "Starta ett nytt valv i en valfri mapp.",
-      "openExistingVault": "Öppna befintligt valv",
-      "openExistingVaultDesc": "Välj en mapp med Markdown-filer som du redan har.",
-      "signInToSync": "Logga in för att synkronisera",
-      "signInToSyncDesc": "End-to-end-krypterade valv på dina enheter.",
-      "create": "Skapa",
       "open": "Öppna",
-      "signIn": "Logga in",
       "helpAndDocs": "Hjälp och dokumentation",
-      "signInRequiresVault": "Öppna eller skapa ett valv först för att konfigurera synkronisering.",
       "addVault": "Lägg till valv",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Inga valv ännu",
       "openVault": "Öppna valv",
       "settings": "Inställningar",
-      "logOut": "Logga ut",
-      "signInToSync": "Logga in för att synkronisera",
       "remove": "Ta bort ”",
       "removeVaultTitle": "Ta bort ”{name}” från listan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Valvet tas bort från appen, men dina filer finns kvar på disken. Du kan alltid lägga till det igen senare.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Ändra…",
       "download": "Ladda ner",
       "downloadFailed": "Det gick inte att ladda ner valvet",
-      "deleteFromAccount": "Radera från kontot",
       "deleteVaultTitle": "Radera ”{name}” från ditt konto?",
       "deleteVaultBody": "All synkroniserad data för det här valvet raderas permanent från Memrys servrar. Det går inte att ångra. Dina filer på disken raderas inte.",
       "deleteVaultConfirm": "Radera från kontot",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Ta bort widget",
       "dragAria": "Dra widget",
-      "configAria": "Konfigurera widget",
-      "resizeAria": "Ändra storlek till {size}",
       "menuAria": "Widgetalternativ",
-      "resize": "Storlek",
       "remove": "Ta bort",
       "filter": {
         "all": "Alla",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Välj en mapp",
       "folderEmpty": "Inga mappar än",
       "folderNoSelection": "Ingen mapp vald",
-      "folderView_list": "Lista",
-      "folderView_gallery": "Galleri",
       "folderViewSelect": "Vy",
       "project": "Projekt",
       "projectNoSelection": "Inget projekt valt",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Startsidans layout",
       "deleteAria": "Radera layout",
-      "newAria": "Ny tavla",
       "newName": "Ny tavla",
       "defaultName": "Start",
       "manage": "Hantera tavlor",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# uppgift förfaller idag} other {# uppgifter förfaller idag}}",
       "events": "{count, plural, one {# händelse} other {# händelser}}"
     },
-    "edit": "Redigera",
-    "done": "Klar",
     "addWidget": "Lägg till widget",
     "cover": {
       "add": "Lägg till omslag"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introduktionen är klar",
-      "body": "Stjärnmärk oss gärna på GitHub – det hjälper andra att hitta MemryNote.",
-      "action": "Stjärnmärk på GitHub"
+      "body": "Stjärnmärk oss gärna på GitHub – det hjälper andra att hitta MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Uppdatering redo",
     "failed": "Uppdateringen misslyckades",
     "downloadAction": "Ladda ner",
-    "restartAction": "Starta om",
     "detailsAction": "Detaljer",
     "popover": {
       "readyTitle": "MemryNote {version} är klar att installera",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Valv",
     "position": "{name}, valv {index} av {count}",
-    "openList": "{position}. Öppna listan med valv",
     "switchTo": "Byt till {name}",
     "switchingTo": "Byter till {name}",
     "changeIcon": "Byt ikon…",
@@ -1501,7 +1433,6 @@
       "onDevice": "På {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# valv hittades} other {# valv hittades}}",
-      "notion": "Notion",
       "otherApps": "Andra appar och filer",
       "otherAppsHint": "och {count} till",
       "detectedFootnote": "Hittades genom att kontrollera vilka appar som är installerade. Inget lämnar {device}.",

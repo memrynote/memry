@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Merkitse tehtävä {title} valmiiksi",
     "task-completed": "Tehtävä merkitty valmiiksi",
-    "could-not-complete": "Tehtävän merkitseminen valmiiksi epäonnistui",
     "could-not-update-status": "Tehtävän tilaa ei voitu muuttaa",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
@@ -215,12 +213,9 @@
     "next-week": "Ensi viikolla",
     "open-task": "Avaa tehtävä",
     "source-note": "Lähdemuistiinpano",
-    "reschedule": "Ajoita uudelleen",
     "mark-done": "Merkitse valmiiksi",
     "mark-not-done": "Merkitse keskeneräiseksi",
-    "later-today": "Myöhemmin tänään",
     "tomorrow": "Huomenna",
-    "next-week-mon": "Ensi viikolla · ma",
     "pick-date-time": "Valitse päivämäärä ja aika…",
     "remove-due-date": "Poista eräpäivä",
     "subtasks-prefix": "Alitehtävät",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Tilatut kalenterit"
     },
     "caldav": {
       "name": "CalDAV"
