@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Votre forfait synchronise moins de coffres que n'en contient ce compte : ce coffre reste donc sur cet appareil. Supprimez un coffre de votre compte dans Paramètres → Compte, ou passez à un forfait supérieur.",
     "certificatePinFailed": "La connexion sécurisée a échoué. Vérifiez votre connexion réseau.",
     "deviceKeyMismatch": "La clé de sécurité de cet appareil ne correspond plus à celle enregistrée pour votre compte : le serveur refuse donc ses modifications. Reconnectez-vous sur cet appareil pour l'enregistrer à nouveau.",
+    "deviceKeysMissing": "Les modifications de cet appareil ne sont pas envoyées, car ses clés d'appareil sont manquantes. Choisissez Réparer pour les restaurer. Si cet appareil ne possède plus ses clés, vous devrez vous reconnecter et peut-être saisir votre phrase de récupération. Les notes, tâches et projets non synchronisés sont conservés.",
     "keychainUnavailable": "La synchronisation est en pause, car Memry ne peut pas lire ses clés de synchronisation dans le trousseau de votre système pour le moment. Déverrouillez votre trousseau et la synchronisation reprendra d'elle-même ; sinon, redémarrez Memry. Rien n'a été supprimé.",
     "unknown": "Une erreur de synchronisation inattendue s'est produite. Nouvelle tentative automatique.",
     "statusFetchFailed": "Impossible de récupérer l'état de la synchronisation",
@@ -106,6 +107,10 @@
     "triggerFailed": "Échec de la synchronisation",
     "pauseFailed": "Impossible de suspendre la synchronisation",
     "resumeFailed": "Impossible de reprendre la synchronisation",
+    "syncNowSignedOut": "La synchronisation exige que vous vous reconnectiez sur cet appareil.",
+    "syncNowBusy": "La synchronisation est déjà en cours. Réessayez dans un instant.",
+    "syncNowPaused": "La synchronisation a été mise en pause pendant son exécution. Reprenez-la depuis le menu de synchronisation.",
+    "openAccountSettings": "Ouvrir les paramètres",
     "settingsNotInitialized": "La synchronisation des paramètres n'est pas initialisée",
     "securityQuarantinePermanent": "Un élément de synchronisation n'a pas pu être vérifié et a été mis en quarantaine pour des raisons de sécurité.",
     "securityQuarantineRetry": "La vérification de la signature d'un élément de synchronisation a échoué. Une nouvelle tentative aura lieu.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "La modification par l'IA dans l'éditeur est désactivée",
-    "listOllamaModelsFailed": "Impossible de récupérer la liste des modèles Ollama"
+    "listOllamaModelsFailed": "Impossible de récupérer la liste des modèles Ollama",
+    "writingAssistInvalid": "Cette requête n'a pas pu être envoyée au modèle d'IA.",
+    "apiKeyMissing": "Ajoutez votre clé d'API {provider} dans Paramètres → IA pour utiliser les outils d'écriture.",
+    "apiKeyInvalid": "Votre clé d'API {provider} a été refusée. Vérifiez-la dans Paramètres → IA.",
+    "ollamaUnreachable": "Ollama n'est pas en cours d'exécution. Lancez-le avec « ollama serve », ou choisissez un autre fournisseur dans Paramètres → IA.",
+    "providerUnreachable": "Impossible de joindre {provider}. Vérifiez votre connexion Internet et réessayez."
   },
   "auth": {
     "notAuthenticated": "Non authentifié",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "Impossible de convertir l'événement de calendrier externe",
     "onlyCalendarSourcesRetryable": "Une nouvelle tentative n'est possible que pour les sources de calendrier",
     "invalidProviderSettings": "Paramètres du fournisseur de calendrier non valides",
-    "getExternalEventFailed": "Impossible de charger cet événement. Il figure toujours dans votre calendrier ; essayez de le rouvrir."
+    "getExternalEventFailed": "Impossible de charger cet événement. Il figure toujours dans votre calendrier ; essayez de le rouvrir.",
+    "listLinkedNotesFailed": "Impossible de charger les notes liées à cet événement."
   },
   "canvasFolder": {
     "exists": "Un dossier de canevas portant ce nom existe déjà à cet emplacement.",
@@ -209,10 +220,35 @@
     "previewFailed": "L'aperçu a échoué",
     "listFailed": "Impossible de récupérer la liste des importateurs",
     "appleNotesFoldersFailed": "Impossible de lire vos dossiers Apple Notes",
+    "appleNotesPasswordFailed": "Impossible de vérifier le mot de passe de Notes.",
     "onenoteStatusFailed": "Impossible de lire l'état de la connexion OneNote",
     "onenoteConnectFailed": "Échec de la connexion à Microsoft",
     "onenoteDisconnectFailed": "Impossible de déconnecter le compte Microsoft",
-    "onenoteNotebooksFailed": "Impossible de charger les blocs-notes OneNote"
+    "onenoteNotebooksFailed": "Impossible de charger les blocs-notes OneNote",
+    "readwiseStatusFailed": "Impossible de lire l'état de la connexion Readwise",
+    "readwiseConnectFailed": "Impossible de se connecter à Readwise",
+    "readwiseInvalidToken": "Readwise n'a pas accepté ce jeton. Copiez-le à nouveau depuis readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise limite actuellement les requêtes. Réessayez dans une minute.",
+    "readwiseUnreachable": "Impossible de joindre Readwise. Vérifiez votre connexion et réessayez.",
+    "readwiseDisconnectFailed": "Impossible de déconnecter Readwise",
+    "readwiseSyncFailed": "Impossible de lancer la synchronisation Readwise",
+    "readwiseRunUnavailable": "Readwise ne se synchronise pas sur cet appareil.",
+    "readwiseRunInProgress": "Une importation Readwise est déjà en cours. Réessayez une fois terminée.",
+    "readwiseOptionsFailed": "Impossible d'enregistrer les paramètres Readwise",
+    "readwiseNotConnected": "Readwise n'est pas connecté. Collez d'abord votre jeton d'accès.",
+    "readwiseSyncsElsewhere": "Readwise se synchronise sur un autre appareil. Exécutez cette commande là-bas.",
+    "readwiseBookCommandFailed": "Impossible d'exécuter la commande Readwise",
+    "readwiseBookGone": "Ce livre n'est plus dans votre bibliothèque Readwise.",
+    "readwiseNotLinked": "Cette note n'est pas liée à un livre Readwise.",
+    "readwiseNotDeleted": "Ce livre ne figure pas dans la liste des éléments supprimés.",
+    "readwiseBookBusy": "La note a changé pendant l'exécution de la commande. Réessayez.",
+    "readwiseSyncsOnDevice": "Readwise se synchronise sur {device}. Utilisez « Synchroniser ici à la place » pour le déplacer ici.",
+    "readwiseAnotherDevice": "un autre appareil",
+    "readwiseNotReady": "Memry n'a pas encore fini de se synchroniser avec vos autres appareils. Réessayez dans un instant.",
+    "readwiseNeedsSync": "Activez la synchronisation pour déplacer Readwise entre appareils.",
+    "readwiseClaimNotDelivered": "Impossible de prévenir vos autres appareils pour le moment. Vérifiez votre connexion et réessayez.",
+    "readwiseTakeOverFailed": "Impossible de déplacer Readwise vers cet appareil",
+    "readwiseCancelFailed": "Impossible d'annuler la synchronisation Readwise"
   },
   "project": {
     "createFailed": "Impossible de créer le projet",
@@ -236,7 +272,8 @@
     "renameFailed": "Impossible de renommer la propriété",
     "createDefinitionFailed": "Impossible de créer la définition de propriété",
     "updateDefinitionFailed": "Impossible de mettre à jour la définition de propriété",
-    "setCalendarVisibilityFailed": "Impossible de modifier la visibilité de la propriété dans le calendrier"
+    "setCalendarVisibilityFailed": "Impossible de modifier la visibilité de la propriété dans le calendrier",
+    "definitionsFileUnreadable": "Impossible d'enregistrer les modifications des propriétés, car .memry/properties.md est illisible. Corrigez ou supprimez ce fichier, puis réessayez."
   },
   "reminder": {
     "notFound": "Rappel introuvable",
@@ -262,6 +299,7 @@
     "shortcutInUse": "Le raccourci {shortcut} est déjà utilisé"
   },
   "tag": {
+    "renameInProgress": "Le renommage de #{from} en #{to} est encore en cours. Réessayez une fois terminé.",
     "mergeSameTag": "Le tag source et le tag cible sont identiques",
     "categoryNameRequired": "Le nom de la catégorie est obligatoire",
     "pinNoteFailed": "Impossible d'épingler la note",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "Impossible de supprimer les tâches",
     "moveManyFailed": "Impossible de déplacer les tâches",
     "archiveManyFailed": "Impossible d'archiver les tâches",
-    "projectMissing": "Ce projet n'existe plus"
+    "projectMissing": "Ce projet n'existe plus",
+    "invalidParent": "Une tâche ne peut pas aller là"
   },
   "taskStatus": {
     "createFailed": "Impossible de créer le statut",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "Le propriétaire a mis cette note en lecture seule.",
     "folderReadOnly": "Le propriétaire a mis ce dossier en lecture seule."
+  },
+  "ocrLanguages": {
+    "unreachable": "Impossible de joindre le serveur de Memry. Les langues déjà présentes continuent de fonctionner, et Memry réessaiera au prochain démarrage.",
+    "unavailable": "Le serveur de Memry ne propose pas encore cette langue. Les langues déjà présentes continuent de fonctionner.",
+    "corrupt": "Les données téléchargées ne correspondaient pas à ce que Memry attend, elles n'ont donc pas été utilisées. Réessayez pour les télécharger à nouveau.",
+    "saveFailed": "Les données de langue n'ont pas pu être enregistrées sur cet ordinateur. Vérifiez l'espace disque disponible, puis réessayez."
+  },
+  "tagFields": {
+    "reservedName": "« {name} » est réservé et ne peut pas servir de nom de champ",
+    "duplicateField": "#{definedBy} a déjà un champ nommé « {name} »",
+    "unknownField": "Ce tag n'a aucun champ nommé « {name} »",
+    "inheritedField": "« {name} » vient de #{definedBy}. Modifiez-le là-bas",
+    "cycle": "#{parent} reprend déjà ses champs de ce tag",
+    "unreadableSchema": "Une version plus récente de Memry a modifié ce tag. Mettez Memry à jour pour le modifier",
+    "relationTargetRequired": "Choisissez le tag vers lequel pointe cette relation",
+    "editFailed": "Impossible de modifier les champs du tag",
+    "previewFailed": "Impossible de compter ce que ce changement affecte",
+    "snapshotFailed": "Impossible de charger les champs du tag",
+    "renameRunning": "Un autre renommage de champ est encore en cours ({from} en {to}). Réessayez une fois terminé."
   }
 }

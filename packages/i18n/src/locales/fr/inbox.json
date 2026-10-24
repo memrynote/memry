@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# élément reporté} other {# éléments reportés}}",
     "notificationBody": "{count, plural, one {Votre élément reporté est prêt à être passé en revue} other {Vos éléments reportés sont prêts}}",
     "toast": "{count, plural, =1 {« {itemTitle} » est de retour} one {# élément reporté est de retour} other {# éléments reportés sont de retour}}"
+  },
+  "sticky": {
+    "kindLabel": "Envoyer comme",
+    "kinds": {
+      "note": "Note",
+      "task": "Tâche",
+      "journal": "Journal"
+    },
+    "placeholders": {
+      "note": "Notez-le…",
+      "task": "Appeler Ana @demain #maison !haute",
+      "journal": "Ajouter au journal d'aujourd'hui…"
+    },
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "saveFailed": "Non enregistré",
+    "tuck": "Ranger",
+    "send": "Envoyer",
+    "hints": "Échap pour ranger · {mod}⌫ pour supprimer",
+    "sendAndCloseHint": "⌥{mod}↵ envoie et ferme",
+    "deleted": "Brouillon supprimé",
+    "open": "Ouvrir",
+    "undo": "Annuler",
+    "sent": {
+      "note": "Enregistré dans le dossier Sticky",
+      "task": "Tâche ajoutée",
+      "journal": "Ajouté au journal d'aujourd'hui"
+    },
+    "tab": {
+      "label": "{count, plural, one {# brouillon Sticky} other {# brouillons Sticky}}",
+      "newSticky": "Nouveau Sticky"
+    },
+    "errors": {
+      "empty": "Écrivez d'abord quelque chose.",
+      "taskFailed": "Impossible de créer la tâche.",
+      "tasksOff": "Les tâches sont désactivées dans les paramètres.",
+      "journalOff": "Le journal est désactivé dans les paramètres.",
+      "sendFailed": "Impossible d'envoyer le Sticky.",
+      "undoExpired": "Il est trop tard pour annuler.",
+      "undoFailed": "Impossible d'annuler l'envoi."
+    },
+    "inputLabel": "Texte du Sticky",
+    "dismissError": "Ignorer"
   }
 }

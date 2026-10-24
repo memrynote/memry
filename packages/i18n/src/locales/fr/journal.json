@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Supprimer l'entrée de journal",
     "description": "Voulez-vous vraiment supprimer « {title} » ? Cette action est irréversible."
+  },
+  "dayTimeline": {
+    "label": "Planning du jour",
+    "allDay": "Éléments sur la journée",
+    "unscheduled": "Non planifiées",
+    "unscheduledEmpty": "Aucune tâche non planifiée. Faites glisser un bloc ici pour effacer son horaire.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Terminer {title}"
   }
 }

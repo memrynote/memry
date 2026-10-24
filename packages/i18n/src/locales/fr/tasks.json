@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Date d'échéance effacée pour # sous-tâche} many {Date d'échéance effacée pour # sous-tâches} other {Date d'échéance effacée pour # sous-tâches}}",
       "prioritySet": "{count, plural, one {Priorité définie pour # sous-tâche} many {Priorité définie pour # sous-tâches} other {Priorité définie pour # sous-tâches}}",
       "deleted": "{count, plural, one {# sous-tâche supprimée} many {# sous-tâches supprimées} other {# sous-tâches supprimées}}"
-    }
+    },
+    "completedBranch": "{title} terminée, ainsi que {count, plural, one {# sous-tâche ouverte} other {# sous-tâches ouvertes}}",
+    "deletedKeepSubtasks": "{title} supprimée, sous-tâches conservées",
+    "deletedBranch": "{title} supprimée, ainsi que {count, plural, one {# sous-tâche} other {# sous-tâches}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "statut",
       "projectIs": "Projet :",
       "project": "projet",
+      "locationIs": "L'emplacement est",
+      "location": "emplacement",
+      "unknownNote": "Note inconnue",
       "due": "Échéance",
       "dueDate": "date d'échéance",
       "search": "recherche",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Date d'échéance"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Emplacement",
+      "search": "Rechercher des dossiers et des notes...",
+      "empty": "Aucun dossier ni note avec des tâches"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorité",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Vues du projet",
       "overview": "Vue d'ensemble",
+      "all": "Tout",
       "tasks": "Tâches",
       "notes": "Notes",
       "files": "Fichiers",
@@ -951,6 +963,25 @@
       "fileError": "Impossible de lier {name}",
       "fileErrorGeneric": "Impossible d'importer les fichiers",
       "label": "Ajouter à {name}"
+    },
+    "all": {
+      "showDone": "Afficher les terminées",
+      "empty": "Rien d'ouvert dans ce projet.",
+      "expand": "Afficher les tâches de {title}",
+      "collapse": "Masquer les tâches de {title}",
+      "taskSummary": "{open}/{total} ouvertes",
+      "daysLeft": "{count} j",
+      "overdue": "{count} j de retard",
+      "columns": {
+        "title": "Titre",
+        "daysLeft": "Jours restants"
+      },
+      "status": {
+        "active": "Actif",
+        "done": "Terminé",
+        "upcoming": "À venir",
+        "past": "Passé"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Violet",
     "pink": "Rose"
+  },
+  "subtaskTree": {
+    "addSubtask": "Ajouter une sous-tâche",
+    "dropInto": "Dans {title}",
+    "dropOut": "Remonter d'un niveau",
+    "draftPlaceholder": "Titre de la sous-tâche",
+    "draftLabel": "Nouvelle sous-tâche dans {title}",
+    "draftIn": "dans {title}",
+    "toggleComplete": "Terminer {title}",
+    "moveUnder": {
+      "title": "Déplacer sous",
+      "placeholder": "Déplacer sous…",
+      "empty": "Aucune tâche correspondante",
+      "topLevel": "Niveau supérieur de {project}",
+      "thisTask": "Cette tâche",
+      "currentParent": "Parent actuel",
+      "movesOne": "Déplace {title}",
+      "movesBranch": "Déplace {title} et {count, plural, one {# sous-tâche} other {# sous-tâches}}",
+      "keys": "↵ Déplacer ici · ⌘↵ Niveau supérieur · Échap Fermer"
+    },
+    "zoom": {
+      "path": "Chemin de la tâche",
+      "up": "Remonter d'un niveau",
+      "upShortcut": "Remonter d'un niveau (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Supprimer {title} ?",
+      "summary": "{direct, plural, one {Elle a # sous-tâche} other {Elle a # sous-tâches}}{deeper, plural, =0 {} one { et # de plus en dessous} other { et # de plus en dessous}}{open, plural, =0 {, toutes terminées.} one {, # encore ouverte.} other {, # encore ouvertes.}}",
+      "cancel": "Annuler",
+      "deleteAll": "Tout supprimer",
+      "keepSubtasks": "Garder les sous-tâches"
+    },
+    "menu": {
+      "open": "Ouvrir",
+      "complete": "Terminer",
+      "reopen": "Rouvrir",
+      "zoom": "Zoomer sur les sous-tâches",
+      "moveUnder": "Déplacer sous…",
+      "indent": "Déplacer sous {title}",
+      "outdent": "Remonter d'un niveau",
+      "topLevel": "Passer au niveau supérieur",
+      "delete": "Supprimer"
+    },
+    "openPath": "Ouvrir {path}"
   }
 }

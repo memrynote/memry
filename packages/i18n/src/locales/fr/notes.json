@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Introuvable – cliquez pour créer « {title} »"
   },
+  "wikiLinkMenu": {
+    "aria": "Actions du lien",
+    "open": "Ouvrir",
+    "openInNewTab": "Ouvrir dans un nouvel onglet",
+    "openToTheSide": "Ouvrir sur le côté",
+    "edit": "Modifier le lien",
+    "copy": "Copier le lien",
+    "unlink": "Supprimer le lien",
+    "displayRow": "Affichage…",
+    "sizeNone": "Aucune",
+    "sizeSmall": "Petite",
+    "sizeMedium": "Moyenne",
+    "showCover": "Afficher la couverture",
+    "showPreview": "Afficher l'aperçu",
+    "copyFailed": "Impossible de copier le lien"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Réimporter depuis Readwise",
+    "refreshAction": "Actualiser les infos du livre",
+    "syncsOn": "Readwise se synchronise sur {device}.",
+    "syncsOnAnotherDevice": "Readwise se synchronise sur un autre appareil.",
+    "takeOverHint": "Synchronisez sur cet appareil, ou reprenez la main dans Paramètres → Importation.",
+    "reimport": {
+      "title": "Réimporter « {title} » depuis Readwise ?",
+      "body": "La section Readwise est réécrite de zéro. Tout ce que vous y avez écrit est perdu.",
+      "note": "Le texte en dehors de la section et les propriétés de la note restent inchangés.",
+      "cancel": "Annuler",
+      "confirm": "Réimporter"
+    },
+    "commands": {
+      "reimported": "Réimporté depuis Readwise",
+      "refreshed": "Infos du livre actualisées",
+      "failed": "Impossible d'exécuter la commande Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Aucune note sélectionnée",
@@ -25,6 +61,7 @@
       "willSync": "La note sera synchronisée avec le cloud",
       "renameFailed": "Impossible de renommer la note",
       "titleRequired": "Une note doit avoir un titre",
+      "duplicateTitle": "Une autre note de {folder} s'appelle aussi « {title} ». Les liens vers ces notes incluront leur dossier.",
       "toggleLocalOnlyFailed": "Impossible de modifier le mode local uniquement",
       "toggleFullWidthFailed": "Impossible de modifier le mode pleine largeur",
       "pathCopied": "Chemin copié",
@@ -85,6 +122,10 @@
       "body": "Créez une note pour commencer",
       "newNote": "Nouvelle note"
     },
+    "readwiseSync": {
+      "tooltip": "Synchronisation Readwise",
+      "failed": "Échec de la synchronisation Readwise"
+    },
     "syncing": {
       "body": "Synchronisation de vos notes – elles apparaîtront ici au fur et à mesure"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Ouvrir sur le côté",
       "newNote": "Nouvelle note",
       "newFolder": "Nouveau dossier",
+      "showTasks": "Afficher les tâches",
       "expandSubfolders": "Développer tous les sous-dossiers",
       "collapseSubfolders": "Réduire tous les sous-dossiers",
       "rename": "Renommer",
@@ -138,7 +180,15 @@
       "folderSuffix": "dossier",
       "moreItems": "… et {count} de plus",
       "deleting": "Suppression…",
-      "deleteCount": "Supprimer {count}"
+      "deleteCount": "Supprimer {count}",
+      "journalFolderWarning": "Cela inclut votre dossier de journal. Chaque entrée de journal qu'il contient est supprimée, sur tous vos appareils."
+    },
+    "journalChange": {
+      "leaveTitle": "Transformer les entrées de journal en notes ?",
+      "leaveBody": "Déplacées hors du dossier du journal, ou renommées hors de son format de date, les entrées de journal deviennent des notes ordinaires et quittent votre Journal. Sur vos autres appareils, ces jours sont retirés du Journal et les notes apparaissent à la place.",
+      "joinTitle": "Transformer les notes en entrées de journal ?",
+      "joinBody": "Les fichiers nommés selon le format de date du journal dans le dossier du journal deviennent des entrées de journal. Sur vos autres appareils, ces notes sont remplacées par des entrées de journal.",
+      "confirm": "Continuer"
     },
     "toast": {
       "selectionBookmarked": "{count} éléments ajoutés aux favoris",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Titre",
       "listPlaceholder": "Élément de liste",
       "todoPlaceholder": "Tâche",
-      "htmlComment": "Commentaire HTML masqué"
+      "htmlComment": "Commentaire HTML masqué",
+      "percentComment": "Commentaire masqué",
+      "readwise": {
+        "noteStart": "Readwise · se synchronise automatiquement",
+        "noteEnd": "Fin de la section Readwise",
+        "dayStart": "Readwise · surlignages du jour",
+        "dayEnd": "Fin de Readwise",
+        "hint": "Modifiez dans cette section et Readwise cessera de la mettre à jour."
+      }
     },
     "table": {
       "keyboardMenuAria": "Actions du tableau pour la ligne {row}, colonne {column}",
-      "keyboardMenuTitle": "Ligne {row} · Colonne {column}"
+      "keyboardMenuTitle": "Ligne {row} · Colonne {column}",
+      "sizePicker": {
+        "aria": "Taille du tableau. Utilisez les flèches pour choisir les lignes et les colonnes, puis appuyez sur Entrée.",
+        "size": "{rows, plural, one {# ligne} other {# lignes}} × {columns, plural, one {# colonne} other {# colonnes}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Supprimer la ligne} other {Supprimer # lignes}}",
+        "addRowsAbove": "{count, plural, one {Ajouter une ligne au-dessus} other {Ajouter # lignes au-dessus}}",
+        "addRowsBelow": "{count, plural, one {Ajouter une ligne en dessous} other {Ajouter # lignes en dessous}}",
+        "deleteColumns": "{count, plural, one {Supprimer la colonne} other {Supprimer # colonnes}}",
+        "addColumnsLeft": "{count, plural, one {Ajouter une colonne à gauche} other {Ajouter # colonnes à gauche}}",
+        "addColumnsRight": "{count, plural, one {Ajouter une colonne à droite} other {Ajouter # colonnes à droite}}"
+      }
     },
     "list": {
       "bulleted": "Liste à puces",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Masquer le graphe local",
       "showLocalGraph": "Afficher le graphe local",
       "moreActions": "Plus d'actions",
+      "searchActions": "Rechercher des actions...",
+      "noMatchingActions": "Aucune action correspondante",
       "find": "Rechercher…",
       "versionHistory": "Historique des versions",
       "export": "Exporter",
@@ -215,6 +287,8 @@
       "notSynced": "Pas encore synchronisé sur cet appareil",
       "revealFailed": "Impossible d'afficher le fichier dans le gestionnaire de fichiers",
       "openFailed": "Impossible d'ouvrir le fichier",
+      "showAsLink": "Afficher comme lien",
+      "showAsEmbed": "Afficher en intégré",
       "missingTitle": "Fichier de la pièce jointe introuvable",
       "missingExpected": "Fichier attendu : {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Renommer",
       "renamed": "Renommé en {name}",
       "failed": "Impossible de renommer la pièce jointe"
+    },
+    "imageLightbox": {
+      "menuItem": "Agrandir",
+      "title": "Visionneuse d'images",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "reset": "Réinitialiser le zoom"
+    },
+    "imageCrop": {
+      "menuItem": "Recadrer…",
+      "title": "Recadrer l'image",
+      "description": "Faites glisser sur l'image pour choisir ce que la note affiche. Le fichier d'origine reste inchangé.",
+      "reset": "Afficher l'image entière",
+      "cancel": "Annuler",
+      "apply": "Recadrer",
+      "unavailable": "L'image n'est pas encore chargée, elle ne peut donc pas être recadrée"
     },
     "attachmentsDialog": {
       "title": "Pièces jointes",
@@ -248,12 +338,24 @@
       "title": "Encadré",
       "group": "Blocs de base",
       "subtext": "Mettre en évidence les informations importantes",
+      "customSubtext": "Votre type de callout personnalisé",
       "changeType": "Modifier le type d'encadré",
+      "expand": "Développer le callout",
+      "collapse": "Réduire le callout",
       "menuLabel": "Type d'encadré",
       "info": "Informations",
       "warning": "Avertissement",
       "error": "Erreur",
-      "success": "Succès"
+      "success": "Succès",
+      "note": "Note",
+      "abstract": "Résumé",
+      "todo": "À faire",
+      "tip": "Astuce",
+      "important": "Important",
+      "question": "Question",
+      "example": "Exemple",
+      "quote": "Citation",
+      "bug": "Bug"
     },
     "columns": {
       "group": "Blocs de base",
@@ -332,6 +434,83 @@
       "invalidShape": "La définition de cette vue n'a pas de source. Choisissez-en une ci-dessus ou corrigez-la ci-dessous.",
       "definition": "Définition"
     },
+    "chart": {
+      "title": "Graphique",
+      "subtext": "Tracez une propriété dans le temps : une courbe, des barres ou une carte de chaleur calendaire",
+      "layout": "Graphique",
+      "settings": "Paramètres du graphique",
+      "chooseProperty": "Choisissez ce qu'il faut tracer",
+      "source": "Source",
+      "headerMeta": "{range} · {type}",
+      "property": "Propriété",
+      "noProperties": "Rien à tracer pour l'instant. Ajoutez d'abord une propriété à une entrée de journal ou à une note.",
+      "chartType": "Graphique",
+      "suggested": "Suggéré",
+      "types": {
+        "line": "Courbe",
+        "bar": "Barres",
+        "heatmap": "Carte de chaleur"
+      },
+      "range": "Période",
+      "lastDays": "{count, plural, one {Dernier jour} other {# derniers jours}}",
+      "sameDay": "Entrées du même jour",
+      "aggregates": {
+        "average": "Moyenne",
+        "sum": "Somme",
+        "min": "Minimum",
+        "max": "Maximum",
+        "count": "Nombre"
+      },
+      "missingDays": "Jours manquants",
+      "missing": {
+        "gap": "Laisser un vide",
+        "zero": "Compter comme zéro"
+      },
+      "dateFrom": {
+        "label": "Date selon",
+        "created": "Création",
+        "modified": "Modification"
+      },
+      "propertyTypes": {
+        "text": "Texte",
+        "number": "Nombre",
+        "checkbox": "Case à cocher",
+        "date": "Date",
+        "url": "URL",
+        "status": "Statut",
+        "select": "Sélection",
+        "multiselect": "Sélection multiple",
+        "relation": "Relation",
+        "project": "Projet",
+        "rating": "Note"
+      },
+      "noEntry": "Aucune entrée",
+      "done": "Fait",
+      "notDone": "Pas fait",
+      "logged": "Enregistré",
+      "valueCount": "{count, plural, one {# valeur} other {# valeurs}}",
+      "average": "Moyenne",
+      "vsPrevious": "par rapport à la période précédente",
+      "lowest": "Minimum",
+      "currentStreak": "Série en cours",
+      "longestStreak": "Plus longue série",
+      "dayCount": "{count, plural, one {# jour} other {# jours}}",
+      "doneDays": "Fait",
+      "loggedDays": "Enregistré",
+      "mostCommon": "Le plus fréquent",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} sur les {days} derniers jours",
+      "noData": "Rien d'enregistré sur cette période pour l'instant.",
+      "loadFailed": "Impossible de charger ce graphique. Les entrées elles-mêmes ne sont pas touchées.",
+      "sourceJournal": "Journal",
+      "history": {
+        "show": "Afficher l'historique",
+        "title": "Historique de {property}",
+        "range": "13 dernières semaines",
+        "insert": "Copier comme bloc graphique",
+        "copied": "Bloc graphique copié. Collez-le dans n'importe quelle note."
+      }
+    },
     "slashMenu": {
       "aria": "Blocs et actions",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Insérer",
         "open": "Ouvrir"
       },
+      "close": "Fermer le menu",
       "matchesAlias": "correspond à",
       "noMatch": "Aucun bloc ne correspond à « {query} »",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Afficher comme",
+        "embed": "Intégré",
+        "link": "Lien"
+      },
       "title": {
         "image": "Ajouter une image",
         "media": "Ajouter un média",
@@ -525,6 +710,11 @@
       "empty": "Tapez pour créer un tag",
       "create": "Créer #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Afficher le PDF comme",
+      "embed": "Visionneuse intégrée",
+      "link": "Nom du fichier"
+    },
     "pasteLink": {
       "title": "Coller comme",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} min de lecture",
     "words": "{count} mots",
     "created": "Créé",
-    "modified": "Modifié"
+    "modified": "Modifié",
+    "sync": {
+      "label": "Synchronisation",
+      "confirmed": "Sur le serveur {time}",
+      "pending": "En attente depuis {time}",
+      "sent": "Envoi en cours",
+      "rejected": "Le serveur a refusé la dernière modification",
+      "notRecorded": "Rien en attente d'envoi",
+      "localOnly": "Local uniquement",
+      "notSyncing": "Non synchronisée",
+      "waiting": "En attente d'envoi"
+    }
   },
   "backlinks": {
     "sortRecent": "Récent",
@@ -587,7 +788,18 @@
     "expandSection": "Développer la section des rétroliens",
     "showMore": "Afficher {count} rétroliens de plus",
     "more": "{count} de plus",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Affiché dans un portail"
+  },
+  "unlinkedMentions": {
+    "title": "Mentions non liées",
+    "summary": "{count, plural, one {# mention non liée} other {# mentions non liées}}",
+    "sectionAria": "Mentions non liées",
+    "fromAria": "Mentions non liées dans {title}",
+    "link": "Lier",
+    "linkAria": "Lier {text}",
+    "gone": "Cette mention a changé depuis la lecture de la liste",
+    "linkFailed": "Impossible de lier la mention"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# lien sortant} other {# liens sortants}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "Impossible d'ajouter la note au canevas"
   },
   "suggestedTags": {
-    "label": "Tags suggérés :",
-    "hint": "Tags partagés par les notes les plus proches de celle-ci. Rien n'est ajouté tant que vous n'en choisissez pas un.",
-    "acceptAria": "Ajouter le tag {tag}",
-    "support": "{count, plural, one {Utilisé dans # note similaire} other {Utilisé dans # notes similaires}}",
-    "dismiss": "Masquer les tags suggérés"
+    "support": "{count, plural, one {Utilisé dans # note similaire} other {Utilisé dans # notes similaires}}"
   },
   "comments": {
     "railAria": "Commentaires",
@@ -663,6 +871,7 @@
     "removeAria": "Retirer le tag : {tag}",
     "inputPlaceholder": "Saisir le nom du tag…",
     "recent": "Récents",
+    "suggested": "Suggérés",
     "matching": "Tags correspondants",
     "all": "Tous les tags",
     "none": "Aucun tag trouvé",
@@ -755,6 +964,9 @@
     "repositionHint": "Faites glisser pour repositionner",
     "repositionSave": "enregistrer",
     "repositionCancel": "annuler",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "resize": "Faites glisser pour redimensionner la couverture",
     "credit": "Photo de {name} sur Unsplash",
     "focusFailed": "Impossible d'enregistrer la position de la couverture",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# note} many {# notes} other {# notes}}"
+    },
+    "noteTasks": {
+      "expand": "Afficher les tâches de {title}",
+      "collapse": "Masquer les tâches de {title}",
+      "list": "Tâches dans {title}",
+      "progressOpen": "{open}/{total} ouvertes",
+      "progressDone": "{total}/{total} terminées",
+      "nextDue": "Prochaine échéance",
+      "reminder": "Rappel défini"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "Enregistrer",
     "addToFilterHint": "Ctrl/Cmd-clic sur un tag pour l'ajouter au filtre"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternatives",
+      "overflow": "Débordement",
+      "menu": "Outils d'écriture",
+      "close": "Fermer les outils d'écriture"
+    },
+    "menu": {
+      "aria": "Actions de l'éditeur",
+      "cut": "Couper",
+      "copy": "Copier",
+      "paste": "Coller",
+      "selectAll": "Tout sélectionner",
+      "undo": "Annuler",
+      "redo": "Rétablir",
+      "comment": "Commenter",
+      "addAlternative": "Ajouter une alternative",
+      "suggestAlternatives": "Suggérer des alternatives",
+      "ghost": "Fantôme",
+      "revive": "Réactiver",
+      "stash": "Mettre de côté dans le débordement",
+      "noSpellingSuggestions": "Aucune suggestion",
+      "addToDictionary": "Ajouter au dictionnaire",
+      "clipboardFailed": "Impossible d'utiliser le presse-papiers"
+    },
+    "alternatives": {
+      "railAria": "Alternatives",
+      "hint": "{position} sur {total} ↑ ↓",
+      "original": "Original",
+      "byYou": "Écrit par vous",
+      "byAI": "Suggéré par l'IA",
+      "showing": "Affiché",
+      "addPlaceholder": "Ajouter une alternative…",
+      "removeSuggestions": "Supprimer les suggestions",
+      "removeVariant": "Supprimer l'alternative",
+      "empty": "Sélectionnez du texte et choisissez Ajouter une alternative pour garder d'autres façons de le dire.",
+      "suggesting": "Recherche d'alternatives…",
+      "suggestFailed": "Impossible de suggérer des alternatives",
+      "noSuggestions": "Aucune nouvelle alternative suggérée"
+    },
+    "overflow": {
+      "railAria": "Débordement",
+      "addPlaceholder": "Écrivez quelque chose à garder…",
+      "empty": "Les lignes que vous mettez de côté ou écrivez ici restent avec cette note, hors du texte.",
+      "dragHint": "Faire glisser dans la note",
+      "copy": "Copier",
+      "copied": "Copié",
+      "delete": "Supprimer"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Verrouiller la note",
+    "unlockNote": "Déverrouiller la note",
+    "lockFolder": "Verrouiller le dossier",
+    "unlockFolder": "Déverrouiller le dossier",
+    "toggleFailed": "Impossible de modifier le verrou",
+    "readOnlyIndicator": "Verrouillée. En lecture seule pour vous et pour les agents.",
+    "externalEditRestored": "« {title} » est verrouillée, la modification externe a donc été annulée",
+    "externalEditRestoredHint": "Le texte modifié est enregistré dans l'historique des versions de la note."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Personne",
+        "plural": "Personnes",
+        "fields": {
+          "company": "Entreprise",
+          "role": "Poste",
+          "email": "E-mail",
+          "phone": "Téléphone"
+        },
+        "inverse": {
+          "company": "Personnes"
+        },
+        "template": {
+          "name": "Personne",
+          "context": "Contexte",
+          "contextHint": "Comment nous nous sommes rencontrés, ce qui compte pour elle",
+          "notes": "Notes"
+        }
+      },
+      "company": {
+        "name": "Entreprise",
+        "plural": "Entreprises",
+        "fields": {
+          "website": "Site web",
+          "industry": "Secteur",
+          "location": "Lieu"
+        },
+        "template": {
+          "name": "Entreprise",
+          "overview": "Aperçu",
+          "overviewHint": "Ce qu'elle fait, qui nous connaissons là-bas",
+          "notes": "Notes"
+        }
+      },
+      "meeting": {
+        "name": "Réunion",
+        "plural": "Réunions",
+        "fields": {
+          "date": "Date",
+          "attendees": "Participants",
+          "company": "Entreprise"
+        },
+        "inverse": {
+          "attendees": "Réunions",
+          "company": "Réunions"
+        },
+        "template": {
+          "name": "Réunion",
+          "agenda": "Ordre du jour",
+          "notes": "Notes",
+          "actionItems": "Actions à mener"
+        }
+      },
+      "book": {
+        "name": "Livre",
+        "plural": "Livres",
+        "fields": {
+          "author": "Auteur",
+          "shelf": "Étagère",
+          "rating": "Évaluation",
+          "finished": "Terminé"
+        },
+        "shelf": {
+          "toRead": "À lire",
+          "reading": "En cours",
+          "read": "Lu"
+        },
+        "template": {
+          "name": "Livre",
+          "highlights": "Surlignages",
+          "thoughts": "Réflexions"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} est maintenant {tag}. Modèle ajouté.",
+      "templateChanged": "La note a changé après l'ajout du modèle, il reste donc en place.",
+      "undoFailed": "Impossible d'annuler",
+      "addFailed": "Impossible d'ajouter le tag",
+      "removeFailed": "Impossible de retirer le tag",
+      "removedKept": "#{tag} retiré. {count} valeurs conservées.",
+      "removedKeptOne": "#{tag} retiré. 1 valeur conservée."
+    },
+    "picker": {
+      "create": "Créer #{tag}",
+      "fillsTemplate": "Remplit cette note vide avec le modèle {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Tags prêts à l'emploi",
+        "subtitle": "Des tags livrés avec des champs. Les notes restent telles quelles jusqu'à ce que vous les taguiez.",
+        "notNow": "Pas maintenant",
+        "add": "Ajouter",
+        "addFields": "Ajouter des champs",
+        "added": "Ajouté",
+        "alreadyOn": "Déjà sur {count} notes",
+        "alreadyOnOne": "Déjà sur 1 note"
+      },
+      "dialog": {
+        "title": "Ajouter les champs {preset} à #{tag} ?",
+        "body": "#{tag} est déjà sur {count} notes. Elles gardent tout ce qu'elles ont et reçoivent ces champs, vides jusqu'à ce que quelqu'un les remplisse.",
+        "bodyOne": "#{tag} est déjà sur 1 note. Elle garde tout ce qu'elle a et reçoit ces champs, vides jusqu'à ce que quelqu'un les remplisse.",
+        "template": "Le modèle ({sections}) ne remplit que les notes vides.",
+        "alsoAddsPrefix": "Ajoute aussi",
+        "alsoAddsSuffix": "pour le champ {field}.",
+        "useAnotherName": "Utiliser un autre nom",
+        "nameLabel": "Nom du nouveau tag",
+        "namePlaceholder": "contact",
+        "cancel": "Annuler",
+        "addFields": "Ajouter des champs"
+      },
+      "toast": {
+        "added": "#{tag} ajouté",
+        "addedFields": "Champs {preset} ajoutés à #{tag}"
+      },
+      "hasFields": "A des champs"
+    },
+    "tasks": {
+      "thisTask": "Cette tâche",
+      "viaTag": "{name} via #{via}",
+      "clearValue": "Effacer {name}",
+      "chipAria": "{field} : {title}"
+    },
+    "panel": {
+      "via": "via #{tag}",
+      "groupMenu": "Options de {tag}",
+      "openTag": "Ouvrir #{tag}",
+      "thisNote": "Cette note"
+    },
+    "offer": {
+      "text": "Ajouter le modèle {tag} sous votre texte",
+      "add": "Ajouter",
+      "dismiss": "Ignorer",
+      "addFailed": "Impossible d'ajouter le modèle"
+    },
+    "settings": {
+      "title": "Paramètres de #{tag}",
+      "close": "Fermer",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "onCounts": "Sur {notes, plural, one {# note} other {# notes}} et {tasks, plural, one {# tâche} other {# tâches}}",
+      "onNotes": "Sur {count, plural, one {# note} other {# notes}}",
+      "headerFields": "{count, plural, one {# champ} other {# champs}}",
+      "editTag": "Modifier le tag",
+      "syncNote": "Les modifications se synchronisent sur vos autres appareils",
+      "newerVersion": "Une version plus récente de Memry a modifié ce tag. Mettez Memry à jour pour le modifier ici.",
+      "sections": {
+        "appearance": "Apparence",
+        "extends": "Hérite de",
+        "fields": "Champs · {count}",
+        "template": "Modèle"
+      },
+      "appearance": {
+        "icon": "Icône",
+        "color": "Couleur",
+        "customColor": "Personnalisée",
+        "category": "Catégorie",
+        "noCategory": "Aucune catégorie"
+      },
+      "extends": {
+        "nothing": "Rien",
+        "hint": "Reprenez les champs d'un autre tag et apparaissez dans son tableau.",
+        "hintSet": "Les notes {tag} reçoivent les champs de {parent} et apparaissent dans le tableau {parent}."
+      },
+      "types": {
+        "text": "Texte",
+        "number": "Nombre",
+        "date": "Date",
+        "url": "URL",
+        "status": "Statut",
+        "select": "Sélection",
+        "multiselect": "Sélection multiple",
+        "checkbox": "Case à cocher",
+        "relation": "Relation"
+      },
+      "fields": {
+        "empty": "Aucun champ pour l'instant. Ajoutez-en un pour donner les mêmes propriétés à chaque note #tag.",
+        "fromParent": "Depuis #{tag} · à modifier là-bas",
+        "inverseSub": "Affiché sur {target} sous le nom {inverse}",
+        "anyNoteSub": "Lie vers n'importe quelle note",
+        "actions": "Actions pour {field}",
+        "rename": "Renommer…",
+        "relationSettings": "Paramètres de la relation",
+        "remove": "Retirer…"
+      },
+      "addField": {
+        "button": "Ajouter un champ",
+        "namePlaceholder": "Nom du champ",
+        "existing": "Propriétés existantes",
+        "existingSub": "{type} · sur {count, plural, one {# note} other {# notes}} · réutiliser",
+        "newType": "Type du nouveau champ",
+        "relationSub": "Lier à des notes portant un tag",
+        "submit": "Ajouter le champ",
+        "reserved": "{name} est réservé et ne peut pas être un champ.",
+        "taken": "#{tag} a déjà {name}."
+      },
+      "relation": {
+        "target": "Pointe vers les notes taguées",
+        "pickTag": "Choisir un tag",
+        "howMany": "Combien",
+        "one": "Une",
+        "many": "Plusieurs",
+        "inverseLabel": "Sur la page {target}, les lister sous",
+        "inverseLabelAny": "Sur la page liée, les lister sous",
+        "inverseHint": "Une liste en lecture seule sur chaque {target}. Rien n'est écrit dans les notes {target}.",
+        "inverseHintAny": "Une liste en lecture seule sur chaque note liée. Rien n'est écrit dans ces notes."
+      },
+      "shared": {
+        "title": "Nouveau champ sur #{tag}",
+        "existsWith": "{name} existe déjà dans ce coffre avec {options}.",
+        "existsAs": "{name} existe déjà dans ce coffre comme propriété de type {type}.",
+        "shareWith": "#{tag} le partagera avec vos {others} notes.",
+        "shareAny": "#{tag} le partagera avec vos autres notes.",
+        "useInstead": "Utiliser {name} à la place",
+        "share": "Partager {name}"
+      },
+      "template": {
+        "edit": "Modifier le modèle",
+        "none": "Pas encore de modèle. Un modèle remplit les notes vides quand elles reçoivent le tag.",
+        "create": "Créer un modèle",
+        "defaultHeading": "Notes",
+        "inherited": "Depuis #{tag}",
+        "autofill": "Remplir les notes vides quand elles reçoivent #{tag}"
+      },
+      "remove": {
+        "title": "Retirer {field} de #{tag} ?",
+        "body": "{field} est rempli sur {filled, plural, one {# note} other {# notes}}. Ces valeurs restent sur les notes comme propriété ordinaire ; {empty, plural, one {# emplacement vide disparaît} other {# emplacements vides disparaissent}}.",
+        "confirm": "Retirer le champ"
+      },
+      "rename": {
+        "title": "Renommer {from} en {to}",
+        "titleEmpty": "Renommer {from}",
+        "label": "Nouveau nom",
+        "body": "{count, plural, one {# note a} other {# notes ont}} une valeur {field}. Memry renomme la clé dans chaque fichier et dans leurs propriétés ; Obsidian voit aussi le nouveau nom.",
+        "progress": "Renommage dans les notes",
+        "confirm": "Renommer",
+        "taken": "Ce tag a déjà {name}.",
+        "done": "{from} renommé en {to} dans {count, plural, one {# élément} other {# éléments}}.",
+        "skipped": "{from} renommé en {to} dans {count, plural, one {# élément} other {# éléments}}. {locked, plural, =0 {} one {# note verrouillée sera terminée à son déverrouillage.} other {# notes verrouillées seront terminées à leur déverrouillage.}} {existing, plural, =0 {} one {# note avait déjà {to} et garde les deux.} other {# notes avaient déjà {to} et gardent les deux.}}"
+      },
+      "delete": {
+        "button": "Supprimer le tag",
+        "title": "Supprimer #{tag} ?",
+        "body": "#{tag} sera retiré de {notes, plural, one {# note} other {# notes}} et le tag disparaîtra avec {fields, plural, one {son # champ} other {ses # champs}} et son modèle.",
+        "bodyNoTemplate": "#{tag} sera retiré de {notes, plural, one {# note} other {# notes}} et le tag disparaîtra avec {fields, plural, one {son # champ} other {ses # champs}}.",
+        "bodyPlain": "#{tag} sera retiré de chaque note qui l'a dans ses tags.",
+        "statNotes": "notes gardent leur texte",
+        "statValues": "valeurs restent comme propriétés",
+        "plainText": "Les notes qui mentionnent #{tag} dans leur texte le gardent comme texte brut.",
+        "confirm": "Supprimer le tag",
+        "done": "#{tag} supprimé."
+      },
+      "errors": {
+        "addField": "Impossible d'ajouter le champ.",
+        "removeField": "Impossible de retirer le champ.",
+        "renameField": "Impossible de renommer le champ.",
+        "moveField": "Impossible de déplacer le champ.",
+        "relation": "Impossible d'enregistrer la relation.",
+        "extends": "Impossible de modifier l'héritage de ce tag.",
+        "template": "Impossible de mettre à jour le modèle.",
+        "deleteTag": "Impossible de supprimer le tag.",
+        "icon": "Impossible de modifier l'icône.",
+        "color": "Impossible de modifier la couleur.",
+        "category": "Impossible de modifier la catégorie."
+      }
+    },
+    "fill": {
+      "action": "Remplir depuis la note",
+      "reading": "Lecture de la note…",
+      "disclosure": "Le modèle de votre agent ({model}) lit cette note pour suggérer des valeurs. Seule cette note est envoyée. Rien n'est enregistré avant que vous acceptiez.",
+      "disclosureLocal": "Votre modèle local ({model}) lit cette note sur cet appareil pour suggérer des valeurs. Rien ne quitte l'appareil, et rien n'est enregistré avant que vous acceptiez.",
+      "disclosureMany": "Le modèle de votre agent ({model}) lit ces notes une par une pour suggérer des valeurs. Seules ces notes sont envoyées. Rien n'est enregistré avant que vous acceptiez.",
+      "disclosureLocalMany": "Votre modèle local ({model}) lit ces notes sur cet appareil pour suggérer des valeurs. Rien ne quitte l'appareil, et rien n'est enregistré avant que vous acceptiez.",
+      "suggest": "Suggérer des valeurs",
+      "notNow": "Pas maintenant",
+      "countOne": "· {count} suggestion",
+      "count": "· {count} suggestions",
+      "dismiss": "Ignorer",
+      "acceptAll": "Tout accepter",
+      "accept": "Accepter {field}",
+      "reject": "Rejeter {field}",
+      "notInNote": "Absent de la note",
+      "createHint": "Crée un nouveau #{tag} à l'acceptation",
+      "nothingFound": "Rien dans cette note ne remplit les champs vides",
+      "failed": "Impossible de suggérer des valeurs. {message}",
+      "saveFailed": "Impossible d'enregistrer les valeurs acceptées",
+      "bulkAction": "Remplir les champs vides",
+      "bulkTitle": "Remplir les champs vides",
+      "bulkReading": "{done} notes sur {total} · lecture des notes…",
+      "bulkRead": "{done} notes lues sur {total}",
+      "stop": "Arrêter",
+      "name": "Nom",
+      "nothingInRow": "Rien trouvé",
+      "found": "{count} trouvés",
+      "reviewOneByOne": "Examiner un par un",
+      "acceptRow": "Accepter les valeurs pour {title}",
+      "rejectRow": "Ignorer {title}",
+      "bulkSavedOne": "{count} champ rempli sur {notes} notes",
+      "bulkSaved": "{count} champs remplis sur {notes} notes"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Créer {title} comme",
+      "asPrefix": "Créer",
+      "asSuffix": "comme",
+      "failed": "Impossible de créer la note",
+      "lastUsed": "Dernier utilisé",
+      "noteWord": "note",
+      "plainNote": "Note simple",
+      "readyMade": "Tag prêt à l'emploi",
+      "row": "Créer « {title} »",
+      "rowHint": "Comme {types}"
+    },
+    "hover": {
+      "at": "chez",
+      "lastMet": "Dernière rencontre · {title}",
+      "lastMetOn": "Dernière rencontre le {date} · {title}",
+      "mentionedIn": "{count, plural, one {Mentionné dans # note} other {Mentionné dans # notes}}",
+      "open": "Ouvrir",
+      "tasks": "{count, plural, one {# tâche · {field}} other {# tâches · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} dans le texte",
+      "explain": "Dans le texte, un tag est une étiquette. Cette note est listée sous Mentionné dans sur #{tag}.",
+      "made": "#{tag} ajouté aux tags de cette note",
+      "make": "Faire de cette note un(e) {tag}",
+      "makeFailed": "Impossible d'ajouter le tag",
+      "makeHint": "Ajoute #{tag} à l'en-tête et affiche ses champs",
+      "meta": "{count, plural, one {# objet} other {# objets}} · {fields, plural, one {# champ} other {# champs}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# champ} other {# champs}}",
+      "open": "Ouvrir #{tag}",
+      "remove": "Retirer le tag du texte"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Échap"
+    },
+    "linkedHere": {
+      "asField": "comme {field}",
+      "due": "Échéance {date}",
+      "inTheText": "dans le texte",
+      "mentionedIn": "Mentionné dans",
+      "tasks": "Tâches",
+      "title": "Lié ici"
+    },
+    "mention": {
+      "notes": "Notes"
+    },
+    "picker": {
+      "create": "Nouveau {tag}",
+      "createNamed": "Nouveau {tag} « {title} »",
+      "empty": "Aucun résultat",
+      "search": "Rechercher {tag}",
+      "untitled": "Nouveau {tag}"
+    },
+    "quickFields": {
+      "add": "Ajouter {field}",
+      "aria": "Premiers champs de {title}",
+      "done": "Terminé",
+      "later": "Plus tard",
+      "newObject": "Nouveau {tag}",
+      "saveFailed": "Impossible d'enregistrer les champs"
+    },
+    "table": {
+      "untitled": "Nouveau {tag}",
+      "newInGroup": "Nouveau {tag} dans {group}",
+      "newInGroupHint": "⌘↵ l'ouvre dans un nouvel onglet",
+      "new": "Nouveau {tag}",
+      "includes": "{field} inclut",
+      "removeFilter": "Supprimer le filtre",
+      "shown": "{shown} sur {total}",
+      "saveView": "Enregistrer la vue",
+      "mentionedMeta": "{count, plural, one {# note avec '#'{tag} dans son texte} other {# notes avec '#'{tag} dans leur texte}}",
+      "saveFailed": "Impossible d'enregistrer le champ",
+      "created": "{title} créé"
+    },
+    "relationDrop": {
+      "title": "Ajouter #{tag} à « {title} » ?",
+      "body": "Ce champ ne lie que des notes taguées #{tag}. Memry ajoute #{tag} à l'en-tête de « {title} », puis la lie ici.",
+      "confirm": "Ajouter #{tag} et lier",
+      "cancel": "Annuler",
+      "added": "« {title} » est maintenant un #{tag} et lié",
+      "notANote": "Seules les notes peuvent être liées ici comme #{tag}",
+      "failed": "Impossible de lier cette note"
+    }
+  },
   "names": {
     "also": "aussi",
     "add": "Ajouter un autre nom",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Rechercher des notes",
     "pickerEmpty": "Aucune note ne correspond",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Ajouter des détails"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portail",
+        "subtext": "Afficher en direct une note ou un bloc d'ailleurs"
+      },
+      "searchPortal": {
+        "title": "Portail de recherche",
+        "subtext": "Liste en direct des blocs correspondant à une requête"
+      }
+    },
+    "picker": {
+      "aria": "Choisir une note ou un bloc pour le portail",
+      "notes": "Notes",
+      "blocks": "Blocs",
+      "loading": "Recherche…",
+      "empty": "Aucune note ni aucun bloc ne correspond",
+      "hintInsert": "Insérer le portail",
+      "hintClose": "Fermer",
+      "keyEsc": "Échap",
+      "create": "Créer la note « {query} »",
+      "createFailed": "Impossible de créer cette note",
+      "stampFailed": "Impossible de préparer ce bloc pour un portail",
+      "retargetFailed": "Impossible de faire pointer le portail vers ce bloc"
+    },
+    "insert": {
+      "cycle": "Un portail ne peut pas afficher une note à l'intérieur d'elle-même."
+    },
+    "copy": {
+      "done": "Portail copié. Collez-le dans n'importe quelle note.",
+      "failed": "Impossible de copier un portail vers ce bloc"
+    },
+    "menu": {
+      "copyAsPortal": "Copier comme portail",
+      "hideInPortal": "Masquer dans ce portail"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Utilisé à # autre endroit} other {Utilisé à # autres endroits}}"
+    },
+    "whereUsed": {
+      "aria": "Où ce bloc est utilisé",
+      "portals": "Portails",
+      "links": "Liens",
+      "openBeside": "Ouvrir à côté",
+      "loadFailed": "Impossible de charger les endroits où ce bloc est affiché"
+    },
+    "hiddenBlocks": {
+      "title": "Blocs masqués",
+      "showAll": "Tout afficher",
+      "search": "Rechercher dans les blocs masqués",
+      "showFailed": "Impossible d'afficher ce bloc"
+    },
+    "searchQuery": {
+      "titleNew": "Portail de recherche",
+      "titleEdit": "Modifier la requête",
+      "text": "Contient les mots",
+      "textPlaceholder": "Mots du bloc",
+      "tag": "Tag",
+      "tagPlaceholder": "examen",
+      "limit": "Limite",
+      "footer": "Limité à {limit} résultats.",
+      "create": "Créer",
+      "apply": "Appliquer"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Supprimer ce bloc partout ?",
+        "note": "Supprimer cette note partout ?"
+      },
+      "description": {
+        "block": "« {title} » apparaît aussi dans {count, plural, one {# autre note} other {# autres notes}}.",
+        "note": "« {title} » est affichée ou liée dans {count, plural, one {# autre note} other {# autres notes}}."
+      },
+      "manyNotes": "{count} notes",
+      "source": "{title} (source)",
+      "removeHere": "Masquer ici à la place",
+      "cancel": "Annuler",
+      "everywhere": "Supprimer partout",
+      "undoToast": "{count, plural, one {Le bloc supprimé était affiché dans # autre note.} other {Le bloc supprimé était affiché dans # autres notes.}}",
+      "undo": "Annuler"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Complet",
+      "brief": "Bref",
+      "key": "Essentiel",
+      "takeaway": "Synthèse",
+      "topic": "Sujets"
+    },
+    "chrome": {
+      "fold": "Replier la note",
+      "unfold": "Repliée sur {level}. Afficher le texte complet",
+      "words": "{count, plural, one {# mot} other {# mots}}",
+      "writing": "Rédaction…",
+      "writtenBy": "Rédigé par {agent}",
+      "retry": "Dernière exécution échouée · Réessayer",
+      "retryAction": "Réessayer",
+      "captionOff": "Activez Résumer les notes longues dans Paramètres → IA",
+      "captionNoAgent": "Aucun agent connecté · Paramètres → IA",
+      "unknownAgent": "IA"
+    },
+    "hint": {
+      "title": "Note longue ? Survolez-la.",
+      "body": "Repliez-la sur ses phrases clés, puis ouvrez seulement le paragraphe dont vous avez besoin.",
+      "dismiss": "Compris"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# paragraphe ouvert} other {# paragraphes ouverts}}",
+      "escape": "échap",
+      "copy": "Copier comme texte",
+      "copied": "Copié",
+      "aria": "Vue repliée",
+      "hintMac": "Pincez, ⌘-défilez ou défilez sur cette barre pour zoomer · cliquez sur un paragraphe pour l'ouvrir",
+      "hint": "Pincez, Ctrl-défilez ou défilez sur cette barre pour zoomer · cliquez sur un paragraphe pour l'ouvrir"
+    },
+    "view": {
+      "aria": "Vue repliée {level}",
+      "paragraphOpen": "Ouvert en Complet · cliquez à nouveau pour replier",
+      "paragraphFold": "Replier ce paragraphe",
+      "paragraphOpenAction": "Ouvrir ce paragraphe en entier",
+      "unfoldSection": "Déplier la section {heading}",
+      "jumpToParagraph": "Afficher ce paragraphe en entier : {topic}",
+      "untitledSection": "Sans titre",
+      "skipped": {
+        "code": "… {count, plural, one {# bloc de code} other {# blocs de code}}",
+        "table": "… {count, plural, one {# tableau} other {# tableaux}}",
+        "image": "… {count, plural, one {# image} other {# images}}",
+        "callout": "… {count, plural, one {# callout} other {# callouts}}",
+        "embed": "… {count, plural, one {# intégration} other {# intégrations}}",
+        "other": "… {count, plural, one {# bloc de plus} other {# blocs de plus}}"
+      }
+    }
   }
 }
