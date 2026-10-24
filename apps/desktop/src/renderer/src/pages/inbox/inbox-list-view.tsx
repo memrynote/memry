@@ -165,8 +165,8 @@ export function InboxListView({
   // user closes the panel, and so switching tabs away and back does not
   // re-trigger after consumption.
   useEffect(() => {
-    if (!focusItemId || focusSequence === null) return
-    if (lastConsumedFocusTokenRef.current === focusSequence) return
+    if (!focusItemId || focusSequence === null) return undefined
+    if (lastConsumedFocusTokenRef.current === focusSequence) return undefined
     lastConsumedFocusTokenRef.current = focusSequence
     const focusTimer = window.setTimeout(() => {
       setActiveDetailItemId(focusItemId)
@@ -362,14 +362,14 @@ export function InboxListView({
             } else {
               throw new Error(result.error || t('toast.failedFile'))
             }
-          } catch (error) {
+          } catch (caught) {
             if (willBeEmpty) clearEmptyStateDelay()
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               next.delete(itemId)
               return next
             })
-            toast.error(extractErrorMessage(error, t('toast.failedFileItem')))
+            toast.error(extractErrorMessage(caught, t('toast.failedFileItem')))
           }
         })()
       }, 200)
@@ -414,14 +414,14 @@ export function InboxListView({
             } else {
               throw new Error(result.error || t('toast.failedFile'))
             }
-          } catch (error) {
+          } catch (caught) {
             if (willBeEmpty) clearEmptyStateDelay()
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               next.delete(itemId)
               return next
             })
-            toast.error(extractErrorMessage(error, t('toast.failedFileItem')))
+            toast.error(extractErrorMessage(caught, t('toast.failedFileItem')))
           }
         })()
       }, 200)
@@ -549,14 +549,14 @@ export function InboxListView({
             } else {
               throw new Error(result.error || t('toast.failedSnooze'))
             }
-          } catch (error) {
+          } catch (caught) {
             if (willBeEmpty) clearEmptyStateDelay()
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               next.delete(id)
               return next
             })
-            toast.error(extractErrorMessage(error, t('toast.failedSnoozeItem')))
+            toast.error(extractErrorMessage(caught, t('toast.failedSnoozeItem')))
           }
         })()
       }, 200)
@@ -606,13 +606,13 @@ export function InboxListView({
         } else {
           throw new Error(t('toast.failedFileItems'))
         }
-      } catch (error) {
+      } catch (caught) {
         setPendingArchiveIds((prev) => {
           const next = new Set(prev)
           itemIds.forEach((id) => next.delete(id))
           return next
         })
-        toast.error(extractErrorMessage(error, t('toast.failedFileItems')))
+        toast.error(extractErrorMessage(caught, t('toast.failedFileItems')))
       }
     },
     [queryClient, t]
@@ -631,8 +631,8 @@ export function InboxListView({
         } else {
           throw new Error(t('toast.failedApplyTags'))
         }
-      } catch (error) {
-        toast.error(extractErrorMessage(error, t('toast.failedApplyTags')))
+      } catch (caught) {
+        toast.error(extractErrorMessage(caught, t('toast.failedApplyTags')))
       }
     },
     [selectedItemIds, queryClient, t]
@@ -746,14 +746,14 @@ export function InboxListView({
             } else {
               throw new Error(t('toast.failedSnooze'))
             }
-          } catch (error) {
+          } catch (caught) {
             if (willBeEmpty) clearEmptyStateDelay()
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               idsToSnooze.forEach((id) => next.delete(id))
               return next
             })
-            toast.error(extractErrorMessage(error, t('toast.failedSnooze')))
+            toast.error(extractErrorMessage(caught, t('toast.failedSnooze')))
           }
         })()
       }, 200)
@@ -798,8 +798,8 @@ export function InboxListView({
         } else {
           throw new Error(result.error || t('toast.failedCaptureImage'))
         }
-      } catch (error) {
-        toast.error(extractErrorMessage(error, t('toast.failedCaptureImage')))
+      } catch (caught) {
+        toast.error(extractErrorMessage(caught, t('toast.failedCaptureImage')))
       } finally {
         setIsCapturingImage(false)
       }

@@ -148,7 +148,7 @@ describe('CanvasClusterSuggest', () => {
     expect(frames).toHaveLength(1)
     expect(frames[0].name).toBe('Sleep notes')
     const framed = state.elements.filter((el) => el.frameId === frames[0].id).map((el) => el.id)
-    expect(framed.sort()).toEqual(['el-a', 'el-b'])
+    expect(framed.toSorted()).toEqual(['el-a', 'el-b'])
     expect(state.elements.find((el) => el.id === 'el-c')?.frameId).toBeUndefined()
     expect(onSceneMutated).toHaveBeenCalled()
     expect(mocks.toastSuccess).toHaveBeenCalledWith('canvas.cluster.created')

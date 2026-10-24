@@ -3,7 +3,7 @@ import { createVaultLibraryAdapter } from './canvas-library-adapter'
 import type { CanvasLibraryItem } from '@memry/contracts/canvas-api'
 
 function item(id: string): CanvasLibraryItem {
-  return { id, status: 'unpublished', created: 1, elements: [] } as CanvasLibraryItem
+  return { id, status: 'unpublished', created: 1, elements: [] }
 }
 
 function makeAdapter(overrides: Partial<Parameters<typeof createVaultLibraryAdapter>[0]> = {}) {

@@ -32,7 +32,7 @@ export function useReadwiseBookCommands(note: Note | null): ReadwiseBookCommands
   })
 
   useEffect(() => {
-    if (!isLinked) return
+    if (!isLinked) return undefined
     let active = true
     void window.api.import.readwise
       .status()

@@ -29,6 +29,7 @@ function useImpact<K extends ImpactResult['kind']>(
     queryFn: () => tagsService.previewImpact(query)
   })
   const data = result.data
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- kind was just compared to query.kind but TS cannot narrow the generic union
   return data && data.kind === query.kind ? (data as Extract<ImpactResult, { kind: K }>) : undefined
 }
 
@@ -144,7 +145,7 @@ export function RenameFieldDialog({
   const runId = progress?.runId ?? null
 
   useEffect(() => {
-    if (!runId) return
+    if (!runId) return undefined
     return window.api.onTagsProgress((event) => {
       if (event.runId !== runId) return
       setProgress({ runId, done: event.done, total: event.total })

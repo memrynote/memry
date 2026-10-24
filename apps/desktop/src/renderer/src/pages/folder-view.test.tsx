@@ -48,6 +48,7 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
     error: null as string | null,
     folderNotFound: false,
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- widens the mock field; tests assign other values later
     activeView: null as unknown,
     notes: [] as unknown[],
     hasMore: false
@@ -148,15 +149,13 @@ vi.mock('@/hooks/use-folder-view', () => ({
   useFolderView: () => ({
     views: [{ id: 'default', name: 'Default' }],
     activeViewIndex: 0,
-    activeView:
-      mocks.folderState.activeView ??
-      ({
-        id: 'default',
-        name: 'Default',
-        columns: [{ id: 'title', displayName: 'Title', width: 150 }],
-        order: [],
-        showSummaries: false
-      } as unknown),
+    activeView: mocks.folderState.activeView ?? {
+      id: 'default',
+      name: 'Default',
+      columns: [{ id: 'title', displayName: 'Title', width: 150 }],
+      order: [],
+      showSummaries: false
+    },
     notes: mocks.folderState.notes,
     totalNotes: mocks.folderState.notes.length,
     unfilteredCount: mocks.folderState.notes.length,

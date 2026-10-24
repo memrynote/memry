@@ -20,5 +20,5 @@ export function runInTz<T>(tz: string, script: string): T {
     env: { ...process.env, TZ: tz },
     encoding: 'utf8'
   })
-  return JSON.parse(out) as T
+  return JSON.parse(out)
 }

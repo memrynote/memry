@@ -141,6 +141,7 @@ export function InboxSettings() {
             type="single"
             value={settings.imageFilingMode}
             onValueChange={(value) => {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
               if (value) void handleImageModeChange(value as ImageFilingMode)
             }}
             aria-label={t('inbox.imageFiling.mode.label')}

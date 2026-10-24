@@ -121,10 +121,12 @@ describe('AgentProvider', () => {
         return unsubscribe
       })
     }
-    ;(window as typeof window & { api: unknown }).api = {
-      ...window.api,
-      agent: agentApi
-    }
+    Object.assign(window, {
+      api: {
+        ...window.api,
+        agent: agentApi
+      }
+    })
   })
 
   it('bootstraps state from the agent IPC API', async () => {
@@ -427,7 +429,7 @@ describe('AgentProvider', () => {
       const target = (state.messagesByConversation[conversation.id] ?? []).find(
         (candidate) => candidate.id === message.id
       )
-      if (!target || target.content.role !== 'assistant') return ''
+      if (target?.content.role !== 'assistant') return ''
       return target.content.data.text
     }
 

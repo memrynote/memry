@@ -321,7 +321,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   // as signed out proves main still holds a live session.
   useEffect(() => {
     if (state.status === 'authenticated') sessionEndedRef.current = false
-    if (state.status !== 'unauthenticated') return
+    if (state.status !== 'unauthenticated') return undefined
     let cancelled = false
     const signedOutAt = Date.now()
     const recheck = (): void => {

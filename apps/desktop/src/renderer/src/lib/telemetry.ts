@@ -30,13 +30,14 @@ export interface TrackTelemetryOptions {
   error?: TelemetryEvent['error']
 }
 
+const random = (length: number): string =>
+  Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+
 const generateEventId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
   // Fallback (should not normally hit; jsdom provides crypto.randomUUID)
-  const random = (length: number): string =>
-    Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('')
   return `${random(8)}-${random(4)}-${random(4)}-${random(4)}-${random(12)}`
 }
 

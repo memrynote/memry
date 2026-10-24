@@ -306,7 +306,9 @@ describe('useFindInPage', () => {
       expect(hook.result.current.query).toBe('alpha')
 
       // Trailing edge: the last keystroke always lands, and within the deadline.
-      act(() => vi.advanceTimersByTime(RESULTS_DEADLINE_MS - KEYSTROKE_GAP_MS))
+      act(() => {
+        vi.advanceTimersByTime(RESULTS_DEADLINE_MS - KEYSTROKE_GAP_MS)
+      })
 
       expect(treeWalks).toBe(1)
       expect(textNodesVisited).toBe(200)
@@ -329,7 +331,9 @@ describe('useFindInPage', () => {
       expect(treeWalks).toBe(0)
       expect(hook.result.current.matchCount).toBe(0)
 
-      act(() => vi.advanceTimersByTime(RESULTS_DEADLINE_MS - KEYSTROKE_GAP_MS))
+      act(() => {
+        vi.advanceTimersByTime(RESULTS_DEADLINE_MS - KEYSTROKE_GAP_MS)
+      })
 
       expect(treeWalks).toBe(1)
       expect(hook.result.current.matchCount).toBe(2)
@@ -349,7 +353,9 @@ describe('useFindInPage', () => {
         vi.advanceTimersByTime(KEYSTROKE_GAP_MS)
       })
       act(() => hook.result.current.close())
-      act(() => vi.advanceTimersByTime(5000))
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
 
       expect(treeWalks).toBe(0)
       expect(hook.result.current.matchCount).toBe(0)
@@ -358,7 +364,9 @@ describe('useFindInPage', () => {
 
       // Reopening starts clean rather than resurrecting the cancelled search.
       act(() => hook.result.current.open())
-      act(() => vi.advanceTimersByTime(5000))
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
       expect(treeWalks).toBe(0)
       expect(hook.result.current.matchCount).toBe(0)
     })
@@ -388,7 +396,9 @@ describe('useFindInPage', () => {
       ])
 
       // The flush consumed the pending search; the timer must not fire again.
-      act(() => vi.advanceTimersByTime(5000))
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
       expect(treeWalks).toBe(2)
 
       act(() => hook.result.current.prev())
@@ -451,7 +461,9 @@ describe('useFindInPage', () => {
       })
 
       hook.unmount()
-      act(() => vi.advanceTimersByTime(5000))
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
 
       expect(treeWalks).toBe(0)
     })

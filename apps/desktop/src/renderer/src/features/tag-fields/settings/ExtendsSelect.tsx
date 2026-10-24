@@ -31,7 +31,7 @@ export function ExtendsSelect({
   const parent = parentKey ? (snapshot?.tags[parentKey] ?? null) : null
   const candidates = Object.values(snapshot?.tags ?? {})
     .filter((candidate) => candidate.key !== tagKey)
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .toSorted((a, b) => a.name.localeCompare(b.name))
 
   const change = async (value: string): Promise<void> => {
     const next = value === NOTHING ? null : value

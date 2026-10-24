@@ -246,6 +246,7 @@ export const useChordShortcuts = (): boolean => {
     const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
 
     // Ignore if typing in input
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
     const target = e.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       return

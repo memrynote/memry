@@ -39,7 +39,7 @@ function mockGlobalCaptureApi(
     registerStickyShortcut: vi.fn().mockResolvedValue({ status: 'unbound' }),
     setStickyShortcut
   })
-  window.api = api as unknown as typeof window.api
+  window.api = api as typeof window.api
   return { setGlobalCapture, setStickyShortcut }
 }
 

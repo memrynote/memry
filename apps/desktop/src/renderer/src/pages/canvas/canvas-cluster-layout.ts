@@ -73,6 +73,7 @@ export function planClusterLayout(
   if (resolved.length === 0) return { moves: [], frames: [] }
 
   const moving = new Set(resolved.flatMap((group) => group.cards.map((card) => card.id)))
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- resolved is non-empty here (early return above), so boundsOf is non-null
   const cardsBox = boundsOf(resolved.flatMap((group) => group.cards)) as Box
   // Everything that stays put: not a moving card and not a caption riding on one.
   const staying = live.filter(

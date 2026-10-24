@@ -38,6 +38,7 @@ vi.mock('@memry/i18n/renderer', () => {
   const t = (key: string, vars?: Record<string, unknown>) => {
     const last = key.split('.').at(-1) ?? key
     const filled = vars?.query ?? vars?.date
+    // oxlint-disable-next-line typescript/no-base-to-string -- test i18n mock stringifies whatever interpolation value the test passes
     return filled === undefined ? last : `${last}:${String(filled)}`
   }
   const useTResult = { t }

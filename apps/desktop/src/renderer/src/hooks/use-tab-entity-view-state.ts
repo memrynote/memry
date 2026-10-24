@@ -92,7 +92,8 @@ export function useTabEntityViewState<T>({
         entityId,
         value:
           typeof next === 'function'
-            ? (next as (previousValue: T) => T)(
+            ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T may itself be a function type; typeof check cannot narrow the updater generically
+              (next as (previousValue: T) => T)(
                 readStampedTabValue(previous, entityId, defaultValue)
               )
             : next

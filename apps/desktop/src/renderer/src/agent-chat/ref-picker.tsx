@@ -72,6 +72,7 @@ function toAttachmentResult(item: SearchResultItem): RefPickerResult | null {
         icon: { kind: 'inbox', itemType: item.metadata.itemType }
       }
   }
+  return null
 }
 
 function matchesCalendarEvent(event: CalendarEventRecord, query: string): boolean {
@@ -191,7 +192,7 @@ export function RefPicker({
   // the list never opens off-screen.
   useLayoutEffect(() => {
     const anchor = anchorRef.current
-    if (!anchor) return
+    if (!anchor) return undefined
 
     const reposition = (): void => {
       const rect = anchor.getBoundingClientRect()

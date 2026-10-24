@@ -62,7 +62,7 @@ export function useRecordRecentlyOpened(): void {
   const itemId = itemType ? (activeTab?.entityId ?? null) : null
 
   useEffect(() => {
-    if (!itemType || !itemId) return
+    if (!itemType || !itemId) return undefined
 
     // Tab-switching past an item should not enter the trail, so wait out the
     // dwell before writing; unmounting the effect cancels it.

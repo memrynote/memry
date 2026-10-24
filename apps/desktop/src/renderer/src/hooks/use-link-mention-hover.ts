@@ -108,9 +108,10 @@ export function useLinkMentionHover(
 
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handleMouseOver = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
       const target = e.target as HTMLElement
       const linkEl = target.closest('[data-link-mention]')
 
@@ -137,10 +138,12 @@ export function useLinkMentionHover(
     }
 
     const handleMouseOut = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
       const target = e.target as HTMLElement
       const linkEl = target.closest('[data-link-mention]')
       if (!linkEl) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
       const related = e.relatedTarget as HTMLElement | null
       // Ignore boundary crossings between the mention's own children (favicon,
       // site, title). mouseout bubbles, so sweeping across them would otherwise

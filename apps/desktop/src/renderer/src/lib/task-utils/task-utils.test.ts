@@ -3977,7 +3977,7 @@ describe('Task Utils', () => {
             noteIndex
           )
             .map((t) => t.id)
-            .sort()
+            .toSorted((a, b) => a.localeCompare(b))
 
         expect(run({ folderPaths: ['Infra/House'] })).toEqual(['in-subfolder', 'linked-only'])
         expect(run({ noteIds: ['garden'] })).toEqual(['garden'])

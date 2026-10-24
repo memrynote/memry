@@ -366,7 +366,7 @@ export function HexColorInput({
   })
   useEffect(() => {
     const picker = pickerRef.current
-    if (!picker) return
+    if (!picker) return undefined
     const onChange = (): void => commitRef.current(picker.value)
     picker.addEventListener('change', onChange)
     return () => picker.removeEventListener('change', onChange)
@@ -556,11 +556,12 @@ export function AdvancedDisclosure({
 
   useEffect(() => {
     const body = bodyRef.current
-    if (!body) return
+    if (!body) return undefined
     const observer = new MutationObserver((records) => {
       const hit = records.find(
         (r) => r.target instanceof Element && r.target.hasAttribute('data-search-hit')
       )
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- hit.target is an Element (search-hit highlight node)
       if (hit) revealRef.current(hit.target as Element)
     })
     // False positive: `open` only changes from the observer callback, not here.

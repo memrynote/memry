@@ -44,7 +44,7 @@ export function templatePreview(content: string): TemplatePreviewSection[] {
       continue
     }
     const current = sections.at(-1)
-    if (current && current.hint === null && line) current.hint = line
+    if (current?.hint === null && line) current.hint = line
   }
   return sections
 }

@@ -213,9 +213,9 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
    * needs a page size, and there is no longer one.
    */
   const fill = useCallback(function fillPages(): void {
-    const sessionId = sessionIdRef.current
+    const activeSessionId = sessionIdRef.current
     const range = rangeRef.current
-    if (!sessionId || !range || inFlightRef.current !== null) return
+    if (!activeSessionId || !range || inFlightRef.current !== null) return
 
     const pages = pagesRef.current
     // Pages touched in this pass are the ones on screen, and are never the
@@ -233,11 +233,15 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
     const requested = cursor
     inFlightRef.current = requested
     void window.api.notes
-      .largeFileReadLines({ sessionId, startLine: requested, count: LARGE_FILE_PAGE_LINES })
+      .largeFileReadLines({
+        sessionId: activeSessionId,
+        startLine: requested,
+        count: LARGE_FILE_PAGE_LINES
+      })
       .then((result) => {
         inFlightRef.current = null
         // A different file is open now; this page belongs to nothing.
-        if (sessionIdRef.current !== sessionId) return
+        if (sessionIdRef.current !== activeSessionId) return
         if (!result) {
           // The session is gone — evicted behind another file, or the main
           // process restarted. Reopening is cheaper than telling the user.

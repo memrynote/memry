@@ -24,7 +24,9 @@ export interface NodePosition {
 }
 
 function createNode(id: string, attrs: Record<string, unknown>): PhysicsNode {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- graphology attributes are an untyped bag; layout writes numeric x/y
   const x = (attrs.x as number) ?? 0
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- graphology attributes are an untyped bag; layout writes numeric x/y
   const y = (attrs.y as number) ?? 0
   const pinned = attrs[PINNED_ATTRIBUTE] === true
   return {
@@ -152,7 +154,7 @@ export class GraphPhysics {
 
     graph.forEachNode((id, attrs) => {
       const node = createNode(id, attrs)
-      node.radius = ((attrs.size as number) ?? 4) * 1.2 + this.settings.collidePadding
+      node.radius = (attrs.size ?? 4) * 1.2 + this.settings.collidePadding
       this.nodes.push(node)
       this.nodesById.set(id, node)
     })
@@ -205,7 +207,7 @@ export class GraphPhysics {
         this.nodesById.set(id, node)
         structureChanged = true
       }
-      node.radius = ((attrs.size as number) ?? 4) * 1.2 + this.settings.collidePadding
+      node.radius = (attrs.size ?? 4) * 1.2 + this.settings.collidePadding
       surviving.push(node)
     })
 

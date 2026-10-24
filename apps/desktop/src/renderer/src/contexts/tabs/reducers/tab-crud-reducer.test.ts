@@ -60,7 +60,7 @@ const openAction = (
       ? P
       : never
     : never
-): TabAction => ({ type: 'OPEN_TAB', payload }) as TabAction
+): TabAction => ({ type: 'OPEN_TAB', payload })
 
 describe('tabCrudReducer', () => {
   beforeEach(() => {

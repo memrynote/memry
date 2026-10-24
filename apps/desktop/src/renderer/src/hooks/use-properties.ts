@@ -75,7 +75,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   }, [fetchProperties])
 
   useEffect(() => {
-    if (!entityId) return
+    if (!entityId) return undefined
     const unsub = window.api.onItemSynced((event) => {
       if (event.operation !== 'pull') return
       if (event.itemId !== entityId) return
@@ -90,7 +90,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   // fetch. Refetch when an update lands with properties this hook does not hold;
   // this hook's own writes echo back identical and are skipped.
   useEffect(() => {
-    if (!entityId) return
+    if (!entityId) return undefined
     return onNoteUpdated((event) => {
       if (event.id !== entityId) return
       const next = event.changes.properties

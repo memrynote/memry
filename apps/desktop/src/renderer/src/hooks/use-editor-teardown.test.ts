@@ -92,10 +92,10 @@ describe('useEditorTeardown', () => {
     const second = createEditor()
 
     const { rerender, unmount } = renderHook(({ editor }) => useEditorTeardown(editor), {
-      initialProps: { editor: first.editor as unknown }
+      initialProps: { editor: first.editor }
     })
 
-    rerender({ editor: second.editor as unknown })
+    rerender({ editor: second.editor })
     await settleTeardown()
 
     expect(first.tiptap.destroy).toHaveBeenCalledTimes(1)

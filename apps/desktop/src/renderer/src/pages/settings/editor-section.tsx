@@ -20,6 +20,7 @@ export function EditorSettings() {
 
   const handleWidthChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const success = await updateSettings({ width: value as 'normal' | 'full' })
       if (!success) toast.error(t('editor.width.error'))
     },
@@ -44,6 +45,7 @@ export function EditorSettings() {
 
   const handlePdfDisplayModeChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const success = await updateSettings({ pdfDisplayMode: value as 'embed' | 'link' })
       if (!success) toast.error(t('editor.pdfDisplayMode.error'))
     },

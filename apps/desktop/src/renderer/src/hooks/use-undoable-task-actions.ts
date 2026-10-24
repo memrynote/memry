@@ -56,7 +56,7 @@ export const useUndoableTaskActions = ({
   const { t: tCommon } = useT('common')
 
   const findTask = useCallback(
-    (taskId: string): Task | undefined => tasks.find((t) => t.id === taskId),
+    (taskId: string): Task | undefined => tasks.find((candidate) => candidate.id === taskId),
     [tasks]
   )
 
@@ -94,7 +94,7 @@ export const useUndoableTaskActions = ({
           ? tree
               .descendantIds(taskId)
               .map((id) => findTask(id))
-              .filter((t): t is Task => t !== undefined)
+              .filter((found): found is Task => found !== undefined)
           : []
 
       if (subtasks === 'keep') {
@@ -166,7 +166,7 @@ export const useUndoableTaskActions = ({
       const completedAt = new Date()
 
       // The whole branch, at any depth: a done row never hides open work.
-      const byId = new Map(tasks.map((t) => [t.id, t]))
+      const byId = new Map(tasks.map((candidate) => [candidate.id, candidate]))
       const incompleteSubtasks = buildTaskTree(tasks)
         .descendantIds(taskId)
         .map((id) => byId.get(id))
@@ -379,12 +379,10 @@ export const useUndoableTaskActions = ({
       const undoableKeys = Object.keys(updates).filter((k) => UNDOABLE_FIELDS.has(k))
       if (undoableKeys.length === 0) return
 
-      const previousValues: Partial<Task> = {}
-      for (const key of undoableKeys) {
-        ;(previousValues as Record<string, unknown>)[key] = (
-          task as unknown as Record<string, unknown>
-        )[key]
-      }
+      const currentFields = new Map<string, unknown>(Object.entries(task))
+      const previousValues: Partial<Task> = Object.fromEntries(
+        undoableKeys.map((key) => [key, currentFields.get(key)])
+      )
 
       const fieldLabel =
         undoableKeys[0] === 'parentId'

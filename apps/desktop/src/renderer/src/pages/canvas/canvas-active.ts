@@ -42,6 +42,7 @@ export type ActiveAction =
   | { type: 'deactivate' }
   | { type: 'cardGone'; id: string }
 
+// oxlint-disable-next-line typescript/consistent-return -- the switch is exhaustive over the action/entity union, so every path returns
 export function nextActive(prev: string | null, action: ActiveAction): string | null {
   switch (action.type) {
     case 'activate':

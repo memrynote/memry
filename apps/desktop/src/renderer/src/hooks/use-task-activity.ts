@@ -43,6 +43,7 @@ export function useTaskActivity(options: UseTaskActivityOptions): UseTaskActivit
     queryKey: taskActivityKeys.list(taskId ?? '', { limit, actions }),
     queryFn: async ({ pageParam }) =>
       tasksService.getActivity({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a taskId
         taskId: taskId as string,
         offset: pageParam,
         limit: pageSize,
@@ -57,7 +58,7 @@ export function useTaskActivity(options: UseTaskActivityOptions): UseTaskActivit
   })
 
   useEffect(() => {
-    if (!taskId) return
+    if (!taskId) return undefined
 
     // Scoped to this task: a burst of edits elsewhere should not refetch every
     // open drawer's feed.
@@ -76,6 +77,6 @@ export function useTaskActivity(options: UseTaskActivityOptions): UseTaskActivit
     isLoading: query.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
     fetchNextPage: () => void query.fetchNextPage(),
-    error: (query.error as Error) ?? null
+    error: query.error ?? null
   }
 }

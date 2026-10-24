@@ -11,7 +11,7 @@ import {
   useNotesList,
   useNoteTagsQuery
 } from './use-notes-query'
-import type { Note, NoteLinksResponse, NoteListItem, NoteListResponse } from '@memry/rpc/notes'
+import type { Note, NoteListItem, NoteListResponse } from '@memry/rpc/notes'
 
 type NoteEvent = { id: string; changes?: { content?: unknown } }
 type EmptyHandler = () => void
@@ -169,7 +169,7 @@ describe('use-notes-query', () => {
     mocks.notesService.getLinks.mockResolvedValue({
       outgoing: [{ id: 'n2', title: 'Second' }],
       incoming: []
-    } as NoteLinksResponse)
+    })
     mocks.notesService.create.mockResolvedValue({ success: true, note: note('n2', 'Second') })
     mocks.notesService.update.mockResolvedValue({ success: true, note: note('n1', 'Updated') })
     mocks.notesService.delete.mockResolvedValue({ success: true })
@@ -304,7 +304,7 @@ describe('use-notes-query', () => {
     mocks.notesService.getLinks.mockResolvedValueOnce({
       outgoing: [],
       incoming: [{ id: 'n3', title: 'Third' }]
-    } as NoteLinksResponse)
+    })
     await act(async () => {
       mocks.handlers.updated.find(Boolean)?.({ id: 'other', changes: { content: 'changed' } })
     })

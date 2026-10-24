@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   authState: { status: 'authenticated', email: 'kaan@example.com' } as Record<string, unknown>,
   logout: vi.fn(),
   syncContext: {
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- widens the mock field; tests assign other values later
     linkingRequest: null as unknown,
     clearLinkingRequest: vi.fn(),
     triggerSync: vi.fn()

@@ -155,7 +155,7 @@ export const getRepeatDisplayText = (config: RepeatConfig, t: RepeatLabelTransla
       }
 
       const daysList = [...daysOfWeek]
-        .sort((a, b) => a - b)
+        .toSorted((a, b) => a - b)
         .map((d) => (daysOfWeek.length > 2 ? SHORT_DAY_NAMES[d] : DAY_NAMES[d]))
         .join(', ')
 

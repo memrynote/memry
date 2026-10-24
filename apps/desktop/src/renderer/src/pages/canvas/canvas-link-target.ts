@@ -27,6 +27,7 @@ export function resolveLinkTarget(api: ExcalidrawImperativeAPI): LinkTarget {
     .map(([id]) => id)
   if (selectedIds.length !== 1) return { kind: 'none' }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
   const element = api.getSceneElements().find((el) => el.id === selectedIds[0]) as
     | LinkableElement
     | undefined

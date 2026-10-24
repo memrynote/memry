@@ -26,7 +26,7 @@ export interface UseInboxJobsResult {
 export function useInboxJobs(itemIds: string[] = []): UseInboxJobsResult {
   const queryClient = useQueryClient()
 
-  const normalizedItemIds = [...new Set(itemIds.filter(Boolean))].sort()
+  const normalizedItemIds = [...new Set(itemIds.filter(Boolean))].toSorted()
 
   const query = useQuery({
     queryKey: inboxKeys.jobs(normalizedItemIds.length ? { itemIds: normalizedItemIds } : undefined),

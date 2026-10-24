@@ -9,7 +9,7 @@ import { isKeyboardBlocked, runCommand } from './run-command'
 import { isCommandAvailable } from './store'
 
 function isTypingTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null
+  const element = target instanceof HTMLElement ? target : null
   return (
     element?.tagName === 'INPUT' ||
     element?.tagName === 'TEXTAREA' ||

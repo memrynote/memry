@@ -18,11 +18,14 @@ export const INBOX_WIDGET_TYPES: InboxWidgetType[] = [
 
 export type ResolvedInboxFilter = { kind: 'all' } | { kind: 'type'; type: InboxWidgetType }
 
+const isInboxWidgetType = (value: string): value is InboxWidgetType =>
+  (INBOX_WIDGET_TYPES as string[]).includes(value)
+
 /** What the header pill reflects: a specific type when configured + valid, otherwise all types. */
 export function resolveInboxFilter(config: Record<string, unknown>): ResolvedInboxFilter {
   const type = typeof config.type === 'string' ? config.type : null
-  if (type && (INBOX_WIDGET_TYPES as string[]).includes(type)) {
-    return { kind: 'type', type: type as InboxWidgetType }
+  if (type && isInboxWidgetType(type)) {
+    return { kind: 'type', type }
   }
   return { kind: 'all' }
 }

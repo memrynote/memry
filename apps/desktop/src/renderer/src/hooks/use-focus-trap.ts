@@ -59,10 +59,11 @@ export function useFocusTrap({
   }, [])
 
   useEffect(() => {
-    if (!isActive) return
+    if (!isActive) return undefined
 
     // Store current focus for restoration
     if (restoreFocus) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
       previousFocusRef.current = document.activeElement as HTMLElement
     }
 
@@ -102,6 +103,7 @@ export function useFocusTrap({
       // If focus is outside container, bring it back
       else if (
         !containerRef.current?.contains(activeElement) &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
         containerRef.current?.contains(e.target as Node)
       ) {
         e.preventDefault()

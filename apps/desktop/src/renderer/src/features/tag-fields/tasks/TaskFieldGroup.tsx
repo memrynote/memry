@@ -6,12 +6,12 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { PropertyRow } from '@/components/note/info-section/PropertyRow'
 import type { Property, PropertyType } from '@/components/note/info-section/types'
 import type { Task } from '@/data/task-model'
-
-type TaskFields = NonNullable<Task['fields']>
 import { buildFieldGroups, isFilledValue, type FieldSlot } from '../build-field-groups'
 import { tagDisplayName } from '../tag-display-name'
 import { useTagSchemas } from '../use-tag-schemas'
 import { isRelationField } from './task-relation-chip-model'
+
+type TaskFields = NonNullable<Task['fields']>
 
 interface TaskFieldGroupsProps {
   tags: readonly string[]
@@ -32,6 +32,7 @@ export function TaskFieldGroups({ tags, fields, onFieldsChange }: TaskFieldGroup
   const write = (name: string, previous: unknown, next: unknown) => {
     if (isFilledValue(next)) {
       if (JSON.stringify(next) !== JSON.stringify(previous)) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- next is a user-edited unknown; task field patch accepts any stored field value
         onFieldsChange({ [name]: next as TaskFields[string] })
       }
     } else if (isFilledValue(previous)) {

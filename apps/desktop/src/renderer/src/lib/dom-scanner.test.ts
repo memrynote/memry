@@ -4,19 +4,18 @@ import { scanClickableElements } from './dom-scanner'
 const HINT_OVERLAY_ID = 'hint-mode-overlay'
 
 const mockRect = (el: HTMLElement, rect: Partial<DOMRect> = {}): void => {
-  el.getBoundingClientRect = () =>
-    ({
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 30,
-      top: 0,
-      left: 0,
-      bottom: 30,
-      right: 100,
-      toJSON: () => ({}),
-      ...rect
-    }) as DOMRect
+  el.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 30,
+    top: 0,
+    left: 0,
+    bottom: 30,
+    right: 100,
+    toJSON: () => ({}),
+    ...rect
+  })
 }
 
 const mockOffsetParent = (el: HTMLElement, parent: Element | null = document.body): void => {

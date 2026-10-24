@@ -56,7 +56,7 @@ describe('useRepaintSigmaWhenContainerRegainsWidth', () => {
       observe = vi.fn()
       unobserve = vi.fn()
       disconnect = disconnect
-    } as unknown as typeof ResizeObserver
+    }
     return {
       fire: () => callback?.([], {} as ResizeObserver),
       disconnect

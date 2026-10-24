@@ -341,6 +341,7 @@ export function planDraw(
     if (spec.type === 'image') {
       skeletons.push({
         ...base,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- id comes from the same map's keys, so get() is defined
         ...(rects.get(id) as Rect),
         fileId: spec.fileId
       })
@@ -350,12 +351,14 @@ export function planDraw(
     if (spec.type === 'embeddable') {
       skeletons.push({
         ...base,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- id comes from the same map's keys, so get() is defined
         ...(rects.get(id) as Rect),
         ...(spec.url ? { link: spec.url } : {})
       })
       return
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
     skeletons.push({ ...base, ...(rects.get(id) as Rect) })
   })
 
@@ -509,7 +512,7 @@ export function applyElementEdits(
       ...patch,
       version: typeof element.version === 'number' ? element.version + 1 : 1,
       updated: Date.now()
-    } as SceneEditElement
+    }
   })
 
   return { elements: next, updatedIds, deletedIds, missingIds: [...new Set(missingIds)] }

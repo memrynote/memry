@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
 const log = createLogger('OcrLanguagesRow')
 
 /** Each OCR language under the native name of the UI locale it belongs to. */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SUPPORTED_LOCALES is exhaustive, so fromEntries covers every OcrLanguage key
 const LANGUAGE_NAMES = Object.fromEntries(
   SUPPORTED_LOCALES.map((locale: Locale) => [
     OCR_LANGUAGE_BY_LOCALE[locale],
@@ -39,8 +40,8 @@ function useOcrLanguages(): OcrLanguagesState | null {
     let live = true
     window.api.ocrLanguages
       .get()
-      .then((next) => {
-        if (live) setState(next)
+      .then((languages) => {
+        if (live) setState(languages)
       })
       .catch((error: unknown) => log.error('Failed to read OCR languages', error))
     const unsubscribe = window.api.onOcrLanguagesChanged(setState)

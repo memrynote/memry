@@ -9,7 +9,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 
-const log = createLogger('Hook:Templates')
 import {
   templatesService,
   onTemplateCreated,
@@ -20,6 +19,8 @@ import {
   type TemplateCreateInput,
   type TemplateUpdateInput
 } from '@/services/templates-service'
+
+const log = createLogger('Hook:Templates')
 
 interface UseTemplatesOptions {
   /** Whether to auto-load templates on mount */
@@ -181,7 +182,7 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
 
   // Auto-load on mount
   useEffect(() => {
-    if (!autoLoad) return
+    if (!autoLoad) return undefined
     let cancelled = false
     void (async () => {
       await reload()

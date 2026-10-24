@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, params?: Record<string, unknown>) =>
+    t: (key: string, params?: Record<string, string | number | undefined>) =>
       params?.count === undefined ? key : `${key}:${params.count}`
   })
 }))

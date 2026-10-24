@@ -280,7 +280,7 @@ beforeEach(() => {
       events: [{ id: 'event-1' }],
       overdueCount: 2
     })
-  } as never
+  }
   api.onTaskUpdated = vi.fn((callback) => {
     mocks.taskListeners.apiUpdated = callback as never
     return mocks.unsubscribe
@@ -472,7 +472,9 @@ describe('navigation and keyboard hooks', () => {
       useCountdown(Math.floor(new Date('2026-05-10T12:01:05.000Z').getTime() / 1000))
     )
     expect(countdown.result.current.formattedTime).toBe('1:05')
-    act(() => vi.advanceTimersByTime(65_000))
+    act(() => {
+      vi.advanceTimersByTime(65_000)
+    })
     expect(countdown.result.current.isExpired).toBe(true)
     countdown.unmount()
 

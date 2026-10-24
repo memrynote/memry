@@ -118,8 +118,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const lastConsumedFocusTokenRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!focusInboxItemId || focusToken === null) return
-    if (lastConsumedFocusTokenRef.current === focusToken) return
+    if (!focusInboxItemId || focusToken === null) return undefined
+    if (lastConsumedFocusTokenRef.current === focusToken) return undefined
     lastConsumedFocusTokenRef.current = focusToken
     const focusTimer = window.setTimeout(() => {
       setShowSnoozedItems(true)
@@ -164,6 +164,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   const handleTypeToggle = useCallback(
     (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- filter chip values are InboxItemType members
       const type = value as InboxItemType
       setSelectedTypeFilter((prev) =>
         prev.includes(type) ? prev.filter((entry) => entry !== type) : [...prev, type]
@@ -205,7 +206,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   // then focuses itself via focusSignal). Re-fires on every click via the nonce.
   // Deferred setState matches the focus-item effect above and avoids a cascade render.
   useEffect(() => {
-    if (!focusCaptureSignal) return
+    if (!focusCaptureSignal) return undefined
     const timer = window.setTimeout(() => setCurrentView('inbox'), 0)
     return () => window.clearTimeout(timer)
   }, [focusCaptureSignal, setCurrentView])

@@ -58,7 +58,7 @@ class TestResizeObserver {
 
   static fireAll(): void {
     for (const instance of TestResizeObserver.instances) {
-      instance.callback([], instance as unknown as ResizeObserver)
+      instance.callback([], instance)
     }
   }
 

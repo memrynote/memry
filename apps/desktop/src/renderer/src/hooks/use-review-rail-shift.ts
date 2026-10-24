@@ -58,9 +58,9 @@ export function useReviewRailShift(
 
     if (!active) {
       emit(false)
-      return
+      return undefined
     }
-    if (!scrollEl || !contentEl) return
+    if (!scrollEl || !contentEl) return undefined
 
     const compute = () => {
       frameRef.current = null
@@ -91,6 +91,7 @@ export function useReviewRailShift(
 
   const shiftStyle = useMemo<CSSProperties>(
     () =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- CSS custom property is not part of CSSProperties
       active && !railHidden ? ({ '--review-rail-shift': `${shiftPx}px` } as CSSProperties) : {},
     [active, railHidden, shiftPx]
   )

@@ -19,7 +19,7 @@ export function useUnlinkedMentionsQuery(noteId: string | null, enabled: boolean
   })
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     const refresh = () => {
       void queryClient.invalidateQueries({ queryKey: unlinkedMentionsKey(noteId) })
     }

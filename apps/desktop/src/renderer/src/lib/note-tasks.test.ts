@@ -37,7 +37,7 @@ describe('groupTasksByNote', () => {
       new Set(['n1', 'n2'])
     )
 
-    expect([...result.keys()].sort()).toEqual(['n1', 'n2'])
+    expect([...result.keys()].toSorted()).toEqual(['n1', 'n2'])
     expect(result.get('n1')?.tasks.map((t) => t.id)).toEqual(['a', 'b'])
     expect(result.get('n2')?.tasks.map((t) => t.id)).toEqual(['b'])
   })

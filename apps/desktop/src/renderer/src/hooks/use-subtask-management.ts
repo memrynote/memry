@@ -542,7 +542,7 @@ export const useSubtaskManagement = ({
   const handleCompleteSubtask = useCallback(
     (subtaskId: string): void => {
       const subtask = tasks.find((t) => t.id === subtaskId)
-      if (!subtask || !subtask.parentId) return
+      if (!subtask?.parentId) return
 
       const parentId = subtask.parentId
       const isCompleted = subtask.completedAt !== null

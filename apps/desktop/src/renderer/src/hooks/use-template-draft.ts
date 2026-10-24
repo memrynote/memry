@@ -259,8 +259,8 @@ export function useTemplateDraft({
   // Auto-save only once the template exists. A draft is committed by the
   // Create button, never by a timer.
   useEffect(() => {
-    if (templateId === undefined) return
-    if (!isDirty) return
+    if (templateId === undefined) return undefined
+    if (!isDirty) return undefined
 
     const timer = setTimeout(() => {
       void saveRef.current()

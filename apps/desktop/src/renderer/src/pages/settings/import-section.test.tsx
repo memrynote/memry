@@ -30,7 +30,7 @@ let readwiseStatus: unknown = null
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) =>
+    t: (key: string, vars?: Record<string, string | number | undefined>) =>
       vars?.count !== undefined ? `${key}:${vars.count}` : key,
     i18n: { language: 'en' }
   })
@@ -109,9 +109,9 @@ describe('ImportSettings', () => {
         lastSyncAt: null,
         ...over
       }
-      const { unmount } = render(<ImportSettings />)
+      const rendered = render(<ImportSettings />)
       expect(screen.getByTestId('import-source-readwise')).toHaveTextContent(text)
-      unmount()
+      rendered.unmount()
     }
 
     // The token stays on the pulling device, so another device is never "connected".

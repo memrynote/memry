@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => {
   return {
     setZoomFactor: vi.fn(),
     updateSettings: vi.fn(),
-    settings: { zoomFactor: 1 } as { zoomFactor: number },
+    settings: { zoomFactor: 1 },
     isLoading: false
   }
 })

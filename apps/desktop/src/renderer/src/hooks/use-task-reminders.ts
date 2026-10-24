@@ -62,7 +62,7 @@ export function useTaskReminders(taskId: string | null): UseTaskRemindersResult 
 
   const allReminders = useMemo(
     () =>
-      [...taskReminders].sort(
+      taskReminders.toSorted(
         (a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime()
       ),
     [taskReminders]

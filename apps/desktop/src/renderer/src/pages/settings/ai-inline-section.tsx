@@ -74,10 +74,11 @@ function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string
   const [models, setModels] = useState<string[] | null>(null)
 
   useEffect(() => {
-    if (provider !== 'ollama') return
+    if (provider !== 'ollama') return undefined
     let cancelled = false
     void (async () => {
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
         const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
           success: boolean
           models?: string[]
@@ -123,13 +124,16 @@ export function AIInlineSettings(): React.JSX.Element {
     async function load(): Promise<void> {
       try {
         const [result, port] = await Promise.all([
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
           window.electron.ipcRenderer.invoke('ai-inline:get-settings') as Promise<AIInlineSettings>,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
           window.electron.ipcRenderer.invoke('ai-inline:get-server-port') as Promise<number | null>
         ])
         setSettings(result)
         // A running proxy port does not prove Ollama is reachable; probe it the
         // same way the Test button does so the status reflects reality on open.
         if (port && result.enabled && result.provider === 'ollama') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
           const probe = (await window.electron.ipcRenderer.invoke(
             'ai-inline:list-ollama-models'
           )) as { success: boolean }
@@ -151,6 +155,7 @@ export function AIInlineSettings(): React.JSX.Element {
   const updateSetting = useCallback(
     async (updates: Partial<AIInlineSettings>) => {
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
         const result = (await window.electron.ipcRenderer.invoke(
           'ai-inline:set-settings',
           updates
@@ -192,6 +197,7 @@ export function AIInlineSettings(): React.JSX.Element {
     try {
       // No stop-first: startChatServer reuses the running port when settings are
       // unchanged, so the proxy port stays stable instead of incrementing each test.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
       const startResult = (await window.electron.ipcRenderer.invoke('ai-inline:start-server')) as {
         success: boolean
         port?: number
@@ -207,6 +213,7 @@ export function AIInlineSettings(): React.JSX.Element {
       // The proxy starts without ever contacting the provider, so a running port does
       // not prove Ollama is reachable. Probe it for real before showing "connected".
       if (settings.provider === 'ollama') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
         const probe = (await window.electron.ipcRenderer.invoke(
           'ai-inline:list-ollama-models'
         )) as { success: boolean; error?: string }
@@ -282,6 +289,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Select
               value={settings.provider}
               onValueChange={(value) =>
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
                 void handleProviderChange(value as AIInlineSettings['provider'])
               }
             >

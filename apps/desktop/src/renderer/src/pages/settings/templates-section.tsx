@@ -97,8 +97,8 @@ export function TemplatesSettings() {
     setDuplicateName('')
   }, [duplicateId, duplicateName, duplicateTemplate, t])
 
-  const builtInTemplates = templates.filter((t) => t.isBuiltIn)
-  const customTemplates = templates.filter((t) => !t.isBuiltIn)
+  const builtInTemplates = templates.filter((tpl) => tpl.isBuiltIn)
+  const customTemplates = templates.filter((tpl) => !tpl.isBuiltIn)
 
   return (
     <div className="flex flex-col text-xs/4">

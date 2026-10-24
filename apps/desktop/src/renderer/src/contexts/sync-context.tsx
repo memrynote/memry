@@ -310,7 +310,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       dispatch({ type: 'RESET' })
       // oxlint-disable-next-line react/set-state-in-effect -- sign-out must drop the vault binding in the same pass as the reducer reset
       setVaultBinding(NEUTRAL_BINDING)
-      return
+      return undefined
     }
 
     let cancelled = false
@@ -322,6 +322,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         const error = status.error ? extractErrorMessage(status.error, '') : undefined
         dispatch({
           type: 'STATUS_CHANGED',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status is a plain string from main; SyncStatus is the closed set main emits
           status: status.status as SyncStatus,
           lastSyncAt: status.lastSyncAt,
           pendingCount: status.pendingCount,
@@ -365,6 +366,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         const error = event.error ? extractErrorMessage(event.error, '') : undefined
         dispatch({
           type: 'STATUS_CHANGED',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
           status: event.status as SyncStatus,
           lastSyncAt: event.lastSyncAt,
           pendingCount: event.pendingCount,
@@ -539,7 +541,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   // only cleared on logout. Sweep them on a timer; the reducer returns the same
   // state object when nothing expired, so an idle sweep costs no rerender.
   useEffect(() => {
-    if (authState.status !== 'authenticated') return
+    if (authState.status !== 'authenticated') return undefined
     const timer = setInterval(() => {
       dispatch({ type: 'PRUNE_STALE', now: Date.now() })
     }, PRUNE_INTERVAL_MS)

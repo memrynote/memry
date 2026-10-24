@@ -45,7 +45,7 @@ import { ThemeProvider } from 'next-themes'
 import { useTitleBarSymbolColorSync } from '@/lib/window-controls-overlay'
 
 // Tab System imports
-import { TabProvider, useTabs } from '@/contexts/tabs'
+import { TabProvider, useActiveTab, useTabs, type TabType } from '@/contexts/tabs'
 import { TabsCommandBridge } from '@/contexts/tabs/tabs-command-bridge'
 import {
   AppCommandOwners,
@@ -103,8 +103,6 @@ import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
 import { trackTelemetry } from '@/lib/telemetry'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
-import { useActiveTab } from '@/contexts/tabs'
-import type { TabType } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
@@ -331,8 +329,11 @@ const AppContent = (): React.JSX.Element => {
       })
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- window events have no map entry for this custom event name; only CustomEvent is ever dispatched
     window.addEventListener('memry:test-open-note', openTestNote as EventListener)
-    return () => window.removeEventListener('memry:test-open-note', openTestNote as EventListener)
+    return () =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- window events have no map entry for this custom event name; only CustomEvent is ever dispatched
+      window.removeEventListener('memry:test-open-note', openTestNote as EventListener)
   }, [openTab])
 
   useEffect(() => {
@@ -353,8 +354,10 @@ const AppContent = (): React.JSX.Element => {
       })
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- window events have no map entry for this custom event name; only CustomEvent is ever dispatched
     window.addEventListener('memry:test-open-folder', openTestFolder as EventListener)
     return () =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- window events have no map entry for this custom event name; only CustomEvent is ever dispatched
       window.removeEventListener('memry:test-open-folder', openTestFolder as EventListener)
   }, [openTab])
 
@@ -619,6 +622,7 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
     <ThemeSyncManager>
       <SidebarProvider
         className="bg-sidebar-rail"
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- CSS custom properties are not in CSSProperties
         style={{ '--sidebar-offset': `${APP_RAIL_WIDTH_PX}px` } as React.CSSProperties}
       >
         <DragProvider
@@ -691,9 +695,9 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
         const { action, query } = event
         const isFetch = action.type === 'fetch'
         if (!isFetch && (action.type !== 'success' || action.manual)) return
-        const { pending } = getVaultSwitchState()
+        const { pending: switchTarget } = getVaultSwitchState()
         const isOpenVault =
-          path === activePathRef.current && (pending === null || pending.path === path)
+          path === activePathRef.current && (switchTarget === null || switchTarget.path === path)
         if (isOpenVault) return
         if (isFetch) {
           // Stop the read before it lands and keep the rows this vault already
@@ -769,15 +773,15 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
   // switch fails and this vault stays open, refetch what the cache fence
   // emptied meanwhile, or those views would sit on an empty loading state.
   useEffect(() => {
-    let leaving = false
+    let switchingAway = false
     return subscribeVaultSwitchState(() => {
       if (!activePath) return
       const client = clientsRef.current.get(activePath)
       if (!client) return
-      const { pending, arrival } = getVaultSwitchState()
-      if (pending === null) {
-        if (!leaving) return
-        leaving = false
+      const { pending: switchPending, arrival } = getVaultSwitchState()
+      if (switchPending === null) {
+        if (!switchingAway) return
+        switchingAway = false
         // Only a failed switch leaves this vault open. After a successful one
         // main already serves the next vault, and `activePath` here is still
         // this one until React commits: a refetch now would ask the wrong vault.
@@ -798,8 +802,8 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
         })
         return
       }
-      if (pending.path === activePath || leaving) return
-      leaving = true
+      if (switchPending.path === activePath || switchingAway) return
+      switchingAway = true
       void client.cancelQueries()
       void client.invalidateQueries({ refetchType: 'none' })
     })

@@ -50,7 +50,7 @@ describe('createWindowApiForwarder', () => {
     const api = createTestApi()
     const proxy = createWindowApiForwarder<TestApi>(() => api)
 
-    expect(Object.keys(proxy).sort()).toEqual(['count', 'greet'])
+    expect(Object.keys(proxy).toSorted()).toEqual(['count', 'greet'])
   })
 
   it('resolves lazily — follows selectApi changes', () => {

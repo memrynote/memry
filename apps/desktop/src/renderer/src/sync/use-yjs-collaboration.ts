@@ -73,6 +73,8 @@ interface DocEntry extends DocEntryHandle {
  * Outside a workspace (`scope` null) the key is the bare noteId, as before.
  * Neither a vault path nor a note id contains NUL.
  */
+const allowRebind = (): boolean => true
+
 function registrySlotKey(scope: string | null, noteId: string): string {
   return scope === null ? noteId : `${scope}\0${noteId}`
 }
@@ -102,7 +104,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     isRemoteUpdateRef.current = false
   })
 
-  let rebindGate: (readyVaultPath: string | null | undefined) => boolean = () => true
+  let rebindGate: (readyVaultPath: string | null | undefined) => boolean = allowRebind
   const provider = new YjsIpcProvider({
     noteId,
     doc,
@@ -211,7 +213,7 @@ export function useYjsCollaboration(
     if (!noteId || !enabled) {
       // oxlint-disable-next-line react/set-state-in-effect -- resets owner state when the note is disabled; the effect synchronizes with the Y.Doc registry
       setIsSideEffectOwner(true)
-      return
+      return undefined
     }
 
     // Main runs one vault at a time and resets its CRDT provider on every
@@ -241,7 +243,7 @@ export function useYjsCollaboration(
     const slotKey = registrySlotKey(scope, noteId)
     const parked = parkedRef.current
     let entry: DocEntry
-    if (parked && parked.slotKey === slotKey) {
+    if (parked?.slotKey === slotKey) {
       // Revealed: the consumer slot was never given up, so reuse it.
       parked.unpark()
       parkedRef.current = null

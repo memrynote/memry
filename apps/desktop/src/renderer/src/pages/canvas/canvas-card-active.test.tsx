@@ -12,7 +12,7 @@ import type { CanvasCardRef } from './canvas-cards'
 // module graph.
 vi.mock('./canvas-card-body', () => ({
   CanvasCardBody: ({
-    cardRef,
+    cardRef: card,
     interactive,
     onDone
   }: {
@@ -21,7 +21,7 @@ vi.mock('./canvas-card-body', () => ({
     onDone?: () => void
   }) => (
     <button data-testid="canvas-card-body" data-interactive={String(interactive)} onClick={onDone}>
-      {`${cardRef.entityType}:${cardRef.entityId}`}
+      {`${card.entityType}:${card.entityId}`}
     </button>
   )
 }))

@@ -119,7 +119,7 @@ export function buildAllRows(input: AllRowsInput): AllRow[] {
   const visible = (row: AllRow): boolean => showDone || !row.isDone
 
   const noteRows = notes.map((note) => {
-    const children = (tasksByNote.get(note.id) ?? []).sort(byDue)
+    const children = (tasksByNote.get(note.id) ?? []).toSorted(byDue)
     const open = children.filter((child) => !child.isDone)
     const dated = open.length > 0 ? open : children
     const isDone = children.length > 0 && open.length === 0
@@ -168,7 +168,7 @@ export function buildAllRows(input: AllRowsInput): AllRow[] {
     ...noteRows.filter(({ row }) => visible(row)),
     ...orphanTasks.filter(visible).map((row) => ({ row, children: [] as AllRow[] })),
     ...eventRows.filter(visible).map((row) => ({ row, children: [] as AllRow[] }))
-  ].sort((a, b) => byDue(a.row, b.row))
+  ].toSorted((a, b) => byDue(a.row, b.row))
 
   return top.flatMap(({ row, children }) => [row, ...children.filter(visible)])
 }
@@ -176,7 +176,7 @@ export function buildAllRows(input: AllRowsInput): AllRow[] {
 /** Flat sort. A row without a due date stays last in both directions. */
 export function sortAllRows(rows: readonly AllRow[], sort: AllSort): AllRow[] {
   const sign = sort.dir === 'asc' ? 1 : -1
-  return [...rows].sort((a, b) => {
+  return rows.toSorted((a, b) => {
     if (sort.key === 'title') return sign * a.title.localeCompare(b.title)
     if (!a.due) return b.due ? 1 : 0
     if (!b.due) return -1

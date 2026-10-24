@@ -25,6 +25,7 @@ function parseOptions(definition: PropertyDefinition | undefined): SelectOption[
   if (!definition?.options) return []
   try {
     const parsed: unknown = JSON.parse(definition.options)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- options column is user-stored JSON; guarded by Array.isArray, element shape is trusted
     return Array.isArray(parsed) ? (parsed as SelectOption[]) : []
   } catch {
     return []

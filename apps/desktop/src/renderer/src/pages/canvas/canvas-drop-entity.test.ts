@@ -130,7 +130,7 @@ describe('entitiesFromDrag', () => {
   it('drops selected ids that no longer resolve to a task', () => {
     const refs = entitiesFromDrag({ type: 'task', task: task('t1') }, 't1', [
       task('t1'),
-      { id: '' } as { id: string }
+      { id: '' }
     ])
     expect(refs).toEqual([{ entityType: 'task', entityId: 't1' }])
   })

@@ -616,19 +616,19 @@ describe('JournalPage', () => {
     const { onInlineTagsChange } = mocks.contentAreaProps
 
     // #when the entry opens carrying `#work` and `#draft` in its body
-    act(() => onInlineTagsChange(['work', 'draft'], 'load'))
+    void act(() => onInlineTagsChange(['work', 'draft'], 'load'))
 
     // #then opening it modified nothing (#1454)
     expect(mocks.updateInlineTags).not.toHaveBeenCalled()
 
     // #when the user types `#life`
-    act(() => onInlineTagsChange(['work', 'draft', 'life'], 'edit'))
+    void act(() => onInlineTagsChange(['work', 'draft', 'life'], 'edit'))
     expect(mocks.updateInlineTags).toHaveBeenCalledWith({ add: ['life'], remove: [] })
 
-    act(() => onInlineTagsChange(['work', 'life'], 'edit'))
+    void act(() => onInlineTagsChange(['work', 'life'], 'edit'))
     expect(mocks.updateInlineTags).toHaveBeenCalledTimes(1)
 
-    act(() => onInlineTagsChange(['life'], 'edit'))
+    void act(() => onInlineTagsChange(['life'], 'edit'))
     expect(mocks.updateInlineTags).toHaveBeenLastCalledWith({ add: [], remove: ['work'] })
   })
 
@@ -790,7 +790,6 @@ describe('JournalPage', () => {
   })
 
   it('routes external links and every wiki-link resolution branch', async () => {
-    const { toast } = await import('sonner')
     const open = vi.fn()
     vi.stubGlobal('open', open)
     mocks.resolveWikiLink
@@ -834,7 +833,6 @@ describe('JournalPage', () => {
   })
 
   it('shows entry errors, save retry toast, export, history, and find controls', async () => {
-    const { toast } = await import('sonner')
     mocks.entryError = 'Load failed'
     mocks.saveError = 'Save failed'
 
@@ -1006,7 +1004,7 @@ describe('JournalPage', () => {
       broadcastLocks({ notes: [], folders: ['Journal'] })
 
       expect(mocks.propertySectionOptions.canEdit()).toBe(false)
-      act(() => mocks.propertySectionOptions.onBlocked('update'))
+      void act(() => mocks.propertySectionOptions.onBlocked('update'))
       expect(toast.error).toHaveBeenCalledWith('errors:vaultLock.noteReadOnly')
     })
   })

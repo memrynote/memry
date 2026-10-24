@@ -34,8 +34,9 @@ export function useInboxNotifications(): void {
           // ids, even with an identical title — still gets a banner of its own.
           const tag = `inbox-snooze-due:${dueItems
             .map((item) => item.id)
-            .sort()
+            .toSorted()
             .join(',')}`
+          // oxlint-disable-next-line no-new -- the Notification constructor is the side effect: it raises the OS banner
           new Notification(title, { body, icon: '/icon.png', tag })
         }
 

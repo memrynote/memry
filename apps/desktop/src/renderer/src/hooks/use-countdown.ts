@@ -14,7 +14,7 @@ export function useCountdown(expiresAt: number): CountdownResult {
 
   useEffect(() => {
     const remaining = Math.max(0, expiresAt - Math.floor(Date.now() / 1000))
-    if (remaining <= 0) return
+    if (remaining <= 0) return undefined
 
     const interval = setInterval(() => {
       const left = Math.max(0, expiresAt - Math.floor(Date.now() / 1000))

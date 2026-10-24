@@ -73,25 +73,42 @@ function dbStatusToUiStatus(dbStatus: Status): UiStatus {
   }
 }
 
+/** Persisted repeat config JSON: only frequency and endType are checked, the rest is passed through as stored. */
+interface StoredRepeatConfig {
+  frequency?: UiRepeatConfig['frequency']
+  interval?: number
+  daysOfWeek?: number[]
+  monthlyType?: UiRepeatConfig['monthlyType']
+  dayOfMonth?: number
+  weekOfMonth?: number
+  dayOfWeekForMonth?: number
+  endType?: UiRepeatConfig['endType']
+  endDate?: string
+  endCount?: number
+  completedCount?: number
+  createdAt?: string
+}
+
 function dbRepeatConfigToUiRepeatConfig(dbConfig: unknown): UiRepeatConfig | null {
   if (!dbConfig || typeof dbConfig !== 'object') return null
 
-  const config = dbConfig as Record<string, unknown>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted JSON written by older builds; field types are not validated, only frequency/endType presence
+  const config = dbConfig as StoredRepeatConfig
   if (!config.frequency || !config.endType) return null
 
   return {
-    frequency: config.frequency as UiRepeatConfig['frequency'],
-    interval: (config.interval as number) ?? 1,
-    daysOfWeek: config.daysOfWeek as number[] | undefined,
-    monthlyType: config.monthlyType as UiRepeatConfig['monthlyType'],
-    dayOfMonth: config.dayOfMonth as number | undefined,
-    weekOfMonth: config.weekOfMonth as number | undefined,
-    dayOfWeekForMonth: config.dayOfWeekForMonth as number | undefined,
-    endType: config.endType as UiRepeatConfig['endType'],
-    endDate: config.endDate ? new Date(config.endDate as string) : null,
-    endCount: config.endCount as number | undefined,
-    completedCount: (config.completedCount as number) ?? 0,
-    createdAt: config.createdAt ? new Date(config.createdAt as string) : new Date()
+    frequency: config.frequency,
+    interval: config.interval ?? 1,
+    daysOfWeek: config.daysOfWeek,
+    monthlyType: config.monthlyType,
+    dayOfMonth: config.dayOfMonth,
+    weekOfMonth: config.weekOfMonth,
+    dayOfWeekForMonth: config.dayOfWeekForMonth,
+    endType: config.endType,
+    endDate: config.endDate ? new Date(config.endDate) : null,
+    endCount: config.endCount,
+    completedCount: config.completedCount ?? 0,
+    createdAt: config.createdAt ? new Date(config.createdAt) : new Date()
   }
 }
 
@@ -138,8 +155,7 @@ function attachSubtaskIds(tasks: UiTask[]): UiTask[] {
     if (!subtasks || subtasks.length === 0) return task
 
     const sortedSubtaskIds = subtasks
-      .slice()
-      .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+      .toSorted((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
       .map((subtask) => subtask.id)
 
     return {
@@ -221,7 +237,7 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
   })
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     const invalidateTasks = (): void => {
       void queryClient.invalidateQueries({ queryKey: taskKeys.tasks() })

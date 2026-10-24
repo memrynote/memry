@@ -49,6 +49,7 @@ function parseSettingsTarget(section?: string): {
     return { section: 'import', focusTarget: 'readwise-import' }
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- section is an open string from callers and deep links; unknown values must pass through unchanged
   return { section: (section as SettingsSection) ?? DEFAULT_SECTION, focusTarget: null }
 }
 
@@ -87,6 +88,7 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
   }, [])
 
   // Owns `nav.settings` (⌘, and File → Preferences), and one command per section.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries widens keys to string; keys are exactly SETTINGS_SECTIONS mapped through settingsCommandId
   const sectionImpls = Object.fromEntries(
     SETTINGS_SECTIONS.map((section) => [
       settingsCommandId(section),

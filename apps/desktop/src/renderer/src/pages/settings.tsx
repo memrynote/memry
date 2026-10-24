@@ -258,6 +258,7 @@ interface SettingsPageContentProps {
   focusRequestId: number
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over the section union with no default; adding one would drop the compile-time exhaustiveness check
 function SettingsPageContent({
   section,
   page,
@@ -379,7 +380,7 @@ function useSettingsSearchHighlight(
 ) {
   useEffect(() => {
     const container = containerRef.current
-    if (!container || !label) return
+    if (!container || !label) return undefined
 
     let marked: Element | null = null
     const tryMark = (): boolean => {

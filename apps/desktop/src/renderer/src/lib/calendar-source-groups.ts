@@ -20,7 +20,7 @@ export function groupSourcesByProvider(sources: CalendarSourceRecord[]): Calenda
   }
   return [...groups.entries()]
     .map(([provider, list]) => ({ provider, sources: list }))
-    .sort((left, right) => {
+    .toSorted((left, right) => {
       if (left.provider === right.provider) return 0
       if (left.provider === GOOGLE_CALENDAR_PROVIDER) return -1
       if (right.provider === GOOGLE_CALENDAR_PROVIDER) return 1

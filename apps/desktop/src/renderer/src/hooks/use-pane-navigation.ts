@@ -140,7 +140,7 @@ export const getGroupOrder = (layout: SplitLayout): string[] => {
   const positions = calculateGroupPositions(layout)
 
   return Object.entries(positions)
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       // Sort by Y first (top to bottom), then by X (left to right)
       const yDiff = a[1].centerY - b[1].centerY
       if (Math.abs(yDiff) > 0.1) return yDiff

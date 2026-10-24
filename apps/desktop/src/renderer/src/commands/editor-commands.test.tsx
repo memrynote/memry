@@ -178,9 +178,11 @@ describe('editor commands target the active pane', () => {
 })
 
 describe('undo and redo', () => {
+  // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to trigger native undo/redo in inputs; no standard replacement
   const originalExecCommand = document.execCommand
 
   afterEach(() => {
+    // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to trigger native undo/redo in inputs; no standard replacement
     document.execCommand = originalExecCommand
   })
 
@@ -217,6 +219,7 @@ describe('undo and redo', () => {
 
   it('keeps native undo for focused inputs and textareas, with no editor mounted', async () => {
     const execCommand = vi.fn()
+    // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to trigger native undo/redo in inputs; no standard replacement
     document.execCommand = execCommand
     render(<Owner />)
 
@@ -237,6 +240,7 @@ describe('undo and redo', () => {
     const editor = makeEditor()
     renderEditor(editor)
     const execCommand = vi.fn()
+    // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to trigger native undo/redo in inputs; no standard replacement
     document.execCommand = execCommand
 
     const composer = document.createElement('div')

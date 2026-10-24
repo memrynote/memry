@@ -84,6 +84,7 @@ export const CanvasNodeLinkLayer = ({
     if (appState.activeTool.type !== 'selection') return null
     if (appState.selectedElementsAreBeingDragged || appState.resizingElement) return null
 
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     const elements = excalidrawAPI.getSceneElements() as unknown as readonly SceneElement[]
     const scene = viewportCoordsToSceneCoords(pointer, appState)
     const hit = hitMindMapBox(
@@ -109,7 +110,7 @@ export const CanvasNodeLinkLayer = ({
 
   useEffect(() => {
     const wrapper = wrapperRef.current
-    if (!wrapper) return
+    if (!wrapper) return undefined
 
     const onPointerMove = (event: PointerEvent): void => {
       // The card sits over the surface, so a pointer on it reaches this

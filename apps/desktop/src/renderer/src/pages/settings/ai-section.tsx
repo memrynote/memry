@@ -237,7 +237,7 @@ export function AISettings({
   }
 
   useEffect(() => {
-    if (voiceModelFocusRequestId === null) return
+    if (voiceModelFocusRequestId === null) return undefined
     const timeout = window.setTimeout(() => setVoiceModelFocusRequestId(null), 2700)
     return () => window.clearTimeout(timeout)
   }, [voiceModelFocusRequestId])
@@ -426,7 +426,7 @@ export function AISettings({
   const languageOptions = VOICE_TRANSCRIPTION_LANGUAGES.map((code) => ({
     code,
     label: languageNames.of(code) ?? code
-  })).sort((a, b) => a.label.localeCompare(b.label, i18n.language))
+  })).toSorted((a, b) => a.label.localeCompare(b.label, i18n.language))
 
   if (isLoading) {
     return (
@@ -475,6 +475,7 @@ export function AISettings({
       </SettingsGroup>
 
       {settings.enabled && (
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
         <Tabs value={tab} onValueChange={(value) => setTab(value as AISettingsTab)}>
           <TabsList className={AI_TABS_LIST}>
             <TabsTrigger value="models" className={AI_TAB}>
@@ -654,6 +655,7 @@ export function AISettings({
                   value={voiceSettings.memoNameMode}
                   onValueChange={(value) =>
                     void handleVoiceMemoNameModeChange(
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
                       value as VoiceTranscriptionSettings['memoNameMode']
                     )
                   }
@@ -676,6 +678,7 @@ export function AISettings({
                 <Select
                   value={voiceSettings.language ?? ''}
                   onValueChange={(value) =>
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
                     void handleVoiceLanguageChange(value as VoiceTranscriptionLanguage)
                   }
                 >

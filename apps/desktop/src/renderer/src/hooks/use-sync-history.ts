@@ -62,6 +62,7 @@ export function useSyncHistory(): UseSyncHistoryReturn {
     setIsLoading(true)
     try {
       const result = await window.api.syncOps.getHistory({ limit: FETCH_SIZE, offset })
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- IPC getHistory entries are typed loosely at the contract; shape is SyncHistoryEntry
       const entries = result.entries as unknown as SyncHistoryEntry[]
       if (append) {
         setAllEntries((prev) => [...prev, ...entries])

@@ -130,6 +130,7 @@ export function pointerFromDragEnd(
   activatorEvent: Event | null | undefined,
   delta: { x: number; y: number } | null | undefined
 ): { clientX: number; clientY: number } | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
   const source = activatorEvent as { clientX?: unknown; clientY?: unknown } | null | undefined
   if (typeof source?.clientX !== 'number' || typeof source?.clientY !== 'number') {
     return null

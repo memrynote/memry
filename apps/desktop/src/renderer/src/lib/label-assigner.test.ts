@@ -2,18 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { assignLabels, extractElementText } from './label-assigner'
 
 const mockRect = (el: HTMLElement): void => {
-  el.getBoundingClientRect = () =>
-    ({
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 30,
-      top: 0,
-      left: 0,
-      bottom: 30,
-      right: 100,
-      toJSON: () => ({})
-    }) as DOMRect
+  el.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 30,
+    top: 0,
+    left: 0,
+    bottom: 30,
+    right: 100,
+    toJSON: () => ({})
+  })
 }
 
 const mockElement = (text: string, ariaLabel?: string): HTMLElement => {

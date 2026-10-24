@@ -115,7 +115,7 @@ export function useEditorTarget(editor: EditorHandle | null): void {
   const tabId = useTabIdentity()?.tabId ?? NO_TAB
 
   useEffect(() => {
-    if (!editor) return
+    if (!editor) return undefined
     return registerEditor(tabId, editor)
   }, [editor, tabId])
 }

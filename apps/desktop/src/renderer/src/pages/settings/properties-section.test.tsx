@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import i18next from 'i18next'
+import { getFixedT } from 'i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertiesSettings } from './properties-section'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
@@ -169,7 +169,7 @@ describe('PropertiesSettings', () => {
     // (getStatusCategoryLabel), so the header shows the `notes` locale value
     // rather than the English label stored on the definition ('To do'). Option
     // values are user data and still render verbatim.
-    const todoLabel = i18next.getFixedT(null, 'notes')('properties.statusCategories.todo')
+    const todoLabel = getFixedT(null, 'notes')('properties.statusCategories.todo')
     expect(todoLabel).toBe('To-do')
     expect(screen.getByText(todoLabel)).toBeInTheDocument()
     expect(screen.getByText('Backlog')).toBeInTheDocument()

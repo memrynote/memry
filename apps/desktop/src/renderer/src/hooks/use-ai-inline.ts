@@ -62,6 +62,7 @@ export function useAIInline(aiEnabled = true): AIInlineState {
       setLoading(true)
 
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC invoke resolves to any; the payload shape is fixed by the main-process handler for this channel
         const settings = (await window.electron.ipcRenderer.invoke(
           AI_GET_SETTINGS_CHANNEL
         )) as AIInlineSettings
@@ -74,6 +75,7 @@ export function useAIInline(aiEnabled = true): AIInlineState {
           return
         }
 
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC invoke resolves to any; the payload shape is fixed by the main-process handler for this channel
         const existingPort = (await window.electron.ipcRenderer.invoke(AI_GET_PORT_CHANNEL)) as
           | number
           | null
@@ -93,6 +95,7 @@ export function useAIInline(aiEnabled = true): AIInlineState {
           }
         }
 
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC invoke resolves to any; the payload shape is fixed by the main-process handler for this channel
         const result = (await window.electron.ipcRenderer.invoke(AI_START_CHANNEL)) as {
           success: boolean
           port?: number

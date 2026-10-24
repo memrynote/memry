@@ -291,7 +291,7 @@ export function searchSettings(query: string, t: Translate): SettingsSearchResul
   })
 
   return scored
-    .sort((a, b) => a.score - b.score || a.order - b.order)
+    .toSorted((a, b) => a.score - b.score || a.order - b.order)
     .map(({ entry, label, path }) => ({ entry, label, path }))
 }
 

@@ -113,6 +113,7 @@ export async function externalizeSceneAssets(
   upload: AssetUploader,
   options: ExternalizeOptions = {}
 ): Promise<string> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
   const scene = JSON.parse(sceneJson) as SceneShape
   const files = scene.files
   if (!files || typeof files !== 'object') {

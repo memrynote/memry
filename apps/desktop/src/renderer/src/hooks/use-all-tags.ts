@@ -132,7 +132,7 @@ export function useAllTags(): UseAllTagsResult {
     }
 
     // Convert to array and sort by count (descending)
-    return Array.from(tagMap.values()).sort((a, b) => b.count - a.count)
+    return Array.from(tagMap.values()).toSorted((a, b) => b.count - a.count)
   }, [notesQuery.data, inboxQuery.data])
 
   // Search tags with fuzzy matching
@@ -150,7 +150,7 @@ export function useAllTags(): UseAllTagsResult {
       )
 
       // Sort: exact match first, then starts with, then contains
-      return filtered.sort((a, b) => {
+      return filtered.toSorted((a, b) => {
         const aExact = a.name.toLowerCase() === normalizedQuery
         const bExact = b.name.toLowerCase() === normalizedQuery
         const aStartsWith = a.name.toLowerCase().startsWith(normalizedQuery)

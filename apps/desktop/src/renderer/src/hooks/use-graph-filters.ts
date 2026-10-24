@@ -63,6 +63,7 @@ const ENTITY_TYPE_KEYS = {
   tag: 'showTags'
 } as const
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default; falls through to undefined only for off-type input, kept to preserve that
 export function filterReducer(
   state: GraphFilterState,
   action: GraphFilterAction

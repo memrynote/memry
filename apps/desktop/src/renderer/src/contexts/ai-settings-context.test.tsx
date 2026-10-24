@@ -26,9 +26,7 @@ function Probe(): React.JSX.Element {
 describe('AISettingsProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const api = window.api as typeof window.api & {
-      onSettingsChanged?: (callback: (event: { key: string; value: unknown }) => void) => () => void
-    }
+    const api = window.api
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
     api.onSettingsChanged = vi.fn(() => vi.fn())
   })
@@ -45,9 +43,7 @@ describe('AISettingsProvider', () => {
 
   it('loads AI settings and follows settings change events', async () => {
     let onSettingsChanged: ((event: { key: string; value: unknown }) => void) | undefined
-    const api = window.api as typeof window.api & {
-      onSettingsChanged: (callback: (event: { key: string; value: unknown }) => void) => () => void
-    }
+    const api = window.api
     vi.mocked(api.settings.getAISettings).mockResolvedValue({ enabled: true })
     api.onSettingsChanged = vi.fn((callback) => {
       onSettingsChanged = callback
@@ -76,7 +72,7 @@ describe('AISettingsProvider', () => {
 
   it('falls back safely when settings loading fails and reload recovers', async () => {
     const user = userEvent.setup()
-    const api = window.api as typeof window.api
+    const api = window.api
     vi.mocked(api.settings.getAISettings)
       .mockRejectedValueOnce(new Error('settings failed'))
       .mockResolvedValueOnce({ enabled: true })
@@ -96,11 +92,7 @@ describe('AISettingsProvider', () => {
 
   it('enables AI when the settings API is unavailable', async () => {
     const user = userEvent.setup()
-    const api = window.api as typeof window.api & {
-      settings: typeof window.api.settings & {
-        getAISettings?: typeof window.api.settings.getAISettings
-      }
-    }
+    const api = window.api
     api.settings.getAISettings = undefined
 
     render(
@@ -118,7 +110,7 @@ describe('AISettingsProvider', () => {
 
   it('disables AI when a manual reload fails', async () => {
     const user = userEvent.setup()
-    const api = window.api as typeof window.api
+    const api = window.api
     vi.mocked(api.settings.getAISettings)
       .mockResolvedValueOnce({ enabled: true })
       .mockRejectedValueOnce(new Error('reload failed'))
@@ -136,9 +128,7 @@ describe('AISettingsProvider', () => {
   })
 
   it('loads without a settings change listener', async () => {
-    const api = window.api as typeof window.api & {
-      onSettingsChanged?: (callback: (event: { key: string; value: unknown }) => void) => () => void
-    }
+    const api = window.api
     api.onSettingsChanged = undefined
 
     render(

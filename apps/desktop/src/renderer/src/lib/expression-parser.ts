@@ -553,7 +553,7 @@ class Parser {
  * // => { type: 'call', callee: 'dateDiff', arguments: [...] }
  */
 export function parseExpression(expression: string): ASTNode {
-  if (!expression || !expression.trim()) {
+  if (!expression?.trim()) {
     throw new ParseError('Expression cannot be empty', 0)
   }
 

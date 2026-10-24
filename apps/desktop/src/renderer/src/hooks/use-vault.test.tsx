@@ -310,6 +310,7 @@ describe('useVault during a vault switch', () => {
     registerPendingSave('note-1', () => {
       order.push('flush')
     })
+    // oxlint-disable-next-line typescript/no-misused-promises -- vaultApi() types the mock as a bare vi.fn() whose implementation is void-returning
     api.vault.switch.mockImplementation(async () => {
       order.push('switch')
       return { success: true, vault: { path: '/b' } }

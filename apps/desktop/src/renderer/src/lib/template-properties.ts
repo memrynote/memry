@@ -82,9 +82,11 @@ export const TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE = {
 } as const satisfies Record<PropertyType, TemplateProperty['type'] | null>
 
 /** Hidden from the picker on template surfaces. */
-export const TEMPLATE_UNSUPPORTED_PROPERTY_TYPES: PropertyType[] = (
-  Object.keys(TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE) as PropertyType[]
-).filter((type) => TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE[type] === null)
+export const TEMPLATE_UNSUPPORTED_PROPERTY_TYPES: PropertyType[] =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; the keys are the PropertyType-keyed table's own
+  (Object.keys(TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE) as PropertyType[]).filter(
+    (type) => TEMPLATE_PROPERTY_TYPE_BY_UI_TYPE[type] === null
+  )
 
 type StorablePropertyType = Exclude<PropertyType, 'relation'>
 

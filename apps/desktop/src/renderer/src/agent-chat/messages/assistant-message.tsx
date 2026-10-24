@@ -40,14 +40,16 @@ interface AssistantMessageProps {
   onContinue?: () => void
 }
 
+function isAssistantMessage(message: Message): message is AssistantMessageModel {
+  return message.content.role === 'assistant'
+}
+
 export function AssistantMessage({
   message,
   onContinue
 }: AssistantMessageProps): React.JSX.Element | null {
-  if (message.content.role !== 'assistant') return null
-  return (
-    <AssistantMessageContent message={message as AssistantMessageModel} onContinue={onContinue} />
-  )
+  if (!isAssistantMessage(message)) return null
+  return <AssistantMessageContent message={message} onContinue={onContinue} />
 }
 
 function AssistantMessageContent({

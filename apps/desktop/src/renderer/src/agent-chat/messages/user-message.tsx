@@ -117,7 +117,7 @@ function renderUserTextWithMentions({
   const inlinedAttachmentKeys = new Set<string>()
   let content: Array<string | React.JSX.Element> = [text]
 
-  for (const attachment of [...attachments].sort((a, b) => b.label.length - a.label.length)) {
+  for (const attachment of attachments.toSorted((a, b) => b.label.length - a.label.length)) {
     const href = hrefForAttachment(attachment)
     if (!href) continue
 

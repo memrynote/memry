@@ -36,7 +36,7 @@ export function extractTitleFromBlocks(blocks: Block[]): string {
 
   if (!Array.isArray(content)) return ''
 
-  const raw = extractTextFromInlineContent(content as InlineItem[])
+  const raw = extractTextFromInlineContent(content)
   const trimmed = raw.trim()
 
   if (trimmed.length === 0) return ''

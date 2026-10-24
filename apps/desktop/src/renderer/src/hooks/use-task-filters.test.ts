@@ -203,7 +203,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('initial')
 
     // Advance timer
-    act(() => vi.advanceTimersByTime(300))
+    void act(() => vi.advanceTimersByTime(300))
 
     expect(result.current).toBe('updated')
   })
@@ -214,10 +214,10 @@ describe('useDebouncedValue', () => {
     })
 
     rerender({ value: 'v2' })
-    act(() => vi.advanceTimersByTime(100))
+    void act(() => vi.advanceTimersByTime(100))
 
     rerender({ value: 'v3' })
-    act(() => vi.advanceTimersByTime(100))
+    void act(() => vi.advanceTimersByTime(100))
 
     rerender({ value: 'v4' })
 
@@ -225,7 +225,7 @@ describe('useDebouncedValue', () => {
     expect(result.current).toBe('v1')
 
     // Complete the debounce
-    act(() => vi.advanceTimersByTime(300))
+    void act(() => vi.advanceTimersByTime(300))
 
     expect(result.current).toBe('v4')
   })
@@ -745,12 +745,12 @@ describe('useFilteredAndSortedTasks', () => {
     rerender({ filters: { ...defaultFilters, search: 'query' } })
 
     const callCountBeforeDebounce = vi.mocked(applyFiltersAndSortWithContext).mock.calls.length
-    act(() => vi.advanceTimersByTime(100))
+    void act(() => vi.advanceTimersByTime(100))
     expect(vi.mocked(applyFiltersAndSortWithContext).mock.calls.length).toBe(
       callCountBeforeDebounce
     )
 
-    act(() => vi.advanceTimersByTime(100))
+    void act(() => vi.advanceTimersByTime(100))
 
     expect(applyFiltersAndSortWithContext).toHaveBeenCalledWith(
       mockTasks,

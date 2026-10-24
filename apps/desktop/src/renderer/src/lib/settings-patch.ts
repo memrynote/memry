@@ -26,6 +26,7 @@
 export function mergeSettingsPatch<T extends object>(prev: T, patch: Partial<T>): T {
   let changed = false
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; keys come from `patch: Partial<T>`
   for (const key of Object.keys(patch) as (keyof T)[]) {
     if (!Object.is(prev[key], patch[key])) {
       changed = true

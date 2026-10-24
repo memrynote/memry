@@ -173,7 +173,7 @@ export function useNoteEditor(
 
   // Listen for note deletion events
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const handleDeleted = (event: { id: string }) => {
       if (event.id === noteId) {
@@ -198,7 +198,7 @@ export function useNoteEditor(
 
   // Register with save registry + flush on unmount
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const registryKey = `note-editor:${noteId}`
 
@@ -239,6 +239,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.update({ id: noteId, content })
         if (result) {
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
           lastSavedContentRef.current = content
           setSaveStatus('saved')
@@ -279,6 +280,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.rename(noteId, title)
         if (result) {
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
         }
       } catch (err) {
@@ -334,6 +336,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.update({ id: noteId, emoji })
         if (result) {
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
         }
       } catch (err) {
@@ -358,6 +361,7 @@ export function useNoteEditor(
       try {
         const result = await notesService.update({ id: noteId, headerTags })
         if (result) {
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
         }
       } catch (err) {

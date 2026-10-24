@@ -18,7 +18,7 @@ export const NOTE_READABLE_MARK = 'memry:note-readable'
 
 const readTabState = (key: string): Partial<PersistedTabState> | null => {
   const raw = localStorage.getItem(key)
-  return raw ? (JSON.parse(raw) as Partial<PersistedTabState>) : null
+  return raw ? JSON.parse(raw) : null
 }
 
 export const readRestoredActiveTab = (): { type: string; entityId?: string } | null => {
@@ -69,6 +69,7 @@ const PREFETCH_KEYS: Partial<Record<TabType, string>> = {
 
 export const prefetchRestoredTabPage = (): void => {
   if (!restoredTab) return
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted tab type may be unknown to this build; lookup yields undefined and is guarded
   const key = PREFETCH_KEYS[restoredTab.type as TabType]
   if (key) prefetchPageModule(key)
 }

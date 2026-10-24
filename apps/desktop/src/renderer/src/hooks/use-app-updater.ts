@@ -148,6 +148,7 @@ export type UpdatePresetName = (typeof UPDATE_PRESET_NAMES)[number]
 
 const DEMO_VERSION = '2026.999.9'
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default; falls through to undefined only for off-type input, kept to preserve that
 export function buildUpdatePreset(
   preset: UpdatePresetName,
   current: string,
@@ -204,11 +205,13 @@ if (import.meta.env.DEV) {
       log.warn(`unknown preset "${preset}" — try one of ${UPDATE_PRESET_NAMES.join(', ')}`)
       return
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- preset was checked against UPDATE_PRESET_NAMES on the line above
     devOverride = buildUpdatePreset(preset as UpdatePresetName, baseState.currentVersion, opts)
     emit({ ...snapshot, state: withOverride(baseState) })
     log.info(`update preset "${preset}" applied`)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- dev-only window.memryUpdate hook is installed by this module, absent from the Window type
   const win = window as unknown as {
     memryUpdate?: (preset: string, opts?: { percent?: number }) => void
   }

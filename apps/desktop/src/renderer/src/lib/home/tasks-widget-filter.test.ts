@@ -76,17 +76,17 @@ describe('selectTasksForWidget', () => {
     }
     const result = selectTasksForWidget(tasks, projects, [saved], { savedFilterId: 'sf1' })
     // default filters keep all active tasks
-    expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
+    expect(result.map((t) => t.id).toSorted()).toEqual(['next-week', 'today', 'tomorrow'])
   })
 
   it('selects every open task for the all view', () => {
     const result = selectTasksForWidget(tasks, projects, [], { dateRange: 'all' })
-    expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
+    expect(result.map((t) => t.id).toSorted()).toEqual(['next-week', 'today', 'tomorrow'])
   })
 
   it('spans the next seven days for the next7 view', () => {
     const result = selectTasksForWidget(tasks, projects, [], { dateRange: 'next7' })
-    expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
+    expect(result.map((t) => t.id).toSorted()).toEqual(['next-week', 'today', 'tomorrow'])
   })
 
   it('selects only undated tasks for the nodue view', () => {

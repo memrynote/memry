@@ -17,7 +17,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import i18next from 'i18next'
+import i18next, { getFixedT } from 'i18next'
 import { useBulkActions } from './use-bulk-actions'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
@@ -37,7 +37,7 @@ const { tCalls } = vi.hoisted(() => ({ tCalls: [] as TCall[] }))
 /** Records the call, then resolves the real English ICU message. */
 const recordAndRender = (ns: string, key: string, values?: Record<string, unknown>): string => {
   tCalls.push({ ns, key, values })
-  return i18next.getFixedT(null, ns)(key, values) as string
+  return getFixedT(null, ns)(key, values)
 }
 
 // Stable identity per namespace so the hook's useCallback deps do not churn.
@@ -113,7 +113,7 @@ const expectNoLookup = (key: string): void => {
 
 /** The real English render of a message, for cross-checking the toast text. */
 const render = (ns: string, key: string, values?: Record<string, unknown>): string =>
-  i18next.getFixedT(null, ns)(key, values) as string
+  getFixedT(null, ns)(key, values)
 
 // ============================================================================
 // Fixtures
@@ -1013,7 +1013,7 @@ describe('useBulkActions — i18n toast contract', () => {
       })
 
       const namespaces = new Set(tCalls.map((c) => c.ns))
-      expect([...namespaces].sort()).toEqual(['common', 'tasks'])
+      expect([...namespaces].toSorted()).toEqual(['common', 'tasks'])
 
       // Every string handed to sonner came out of a recorded lookup.
       const rendered = new Set(tCalls.map((c) => render(c.ns, c.key, c.values)))

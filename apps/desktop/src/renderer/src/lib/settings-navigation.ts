@@ -19,6 +19,7 @@ export function requestOpenSettings(section: string): void {
 
 export function onOpenSettingsRequested(callback: (section: string) => void): () => void {
   const listener = (event: Event): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- addEventListener's Event is a CustomEvent for this event name; detail is re-validated as a string below
     const section = (event as CustomEvent<unknown>).detail
     if (typeof section === 'string') callback(section)
   }

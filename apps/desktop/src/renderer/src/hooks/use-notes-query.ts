@@ -182,7 +182,7 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
 
   // Subscribe to note events for cache invalidation
   useEffect(() => {
-    if (!id) return
+    if (!id) return undefined
 
     const unsubUpdated = onNoteUpdated((event) => {
       if (event.id === id) {
@@ -298,7 +298,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
   // note events.
   const includeJournals = listOptions.includeJournals === true
   useEffect(() => {
-    if (!includeJournals) return
+    if (!includeJournals) return undefined
     const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
@@ -489,7 +489,7 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
 
   // Refresh links when notes change (links may be affected)
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const refresh = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.links(noteId) })

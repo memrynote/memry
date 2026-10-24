@@ -60,7 +60,7 @@ describe('useTemplateDraft', () => {
     const { result } = renderHook(() => useTemplateDraft({ initial: emptyFields }))
 
     act(() => result.current.setFields({ name: 'Meeting' }))
-    act(() => vi.advanceTimersByTime(5000))
+    void act(() => vi.advanceTimersByTime(5000))
 
     expect(createTemplate).not.toHaveBeenCalled()
   })
@@ -112,7 +112,7 @@ describe('useTemplateDraft', () => {
     )
 
     act(() => result.current.setFields({ content: 'a' }))
-    act(() => vi.advanceTimersByTime(400))
+    void act(() => vi.advanceTimersByTime(400))
     act(() => result.current.setFields({ content: 'ab' }))
     await act(async () => {
       vi.advanceTimersByTime(800)

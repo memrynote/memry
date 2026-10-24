@@ -128,7 +128,7 @@ const findSameDomainCluster = (
     domainCounts.set(domain, (domainCounts.get(domain) || 0) + 1)
   })
 
-  const topDomain = Array.from(domainCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+  const topDomain = Array.from(domainCounts.entries()).toSorted((a, b) => b[1] - a[1])[0][0]
 
   return {
     items: sameDomainItems,
@@ -212,7 +212,7 @@ const findTopicCluster = (
 export const getClusterKey = (suggestion: ClusterSuggestion): string => {
   const itemIds = suggestion.items
     .map((i) => i.id)
-    .sort()
+    .toSorted()
     .join(',')
   return `${suggestion.reason}:${itemIds}`
 }

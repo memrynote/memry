@@ -46,6 +46,7 @@ const readStateAt = (storageKey: string): PersistedTabState | null => {
       return null
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result is any; shape is gated by the version/tabGroups/layout check above and older builds persisted it
     return parsed as PersistedTabState
   } catch (error) {
     log.error('Failed to load tab state from localStorage:', error)

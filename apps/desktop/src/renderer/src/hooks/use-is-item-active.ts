@@ -39,7 +39,7 @@ export const useIsItemActive = () => {
   // This computation happens on every state change, but it's cheap
   const activeTabIdentity = useMemo((): ActiveTabIdentity | null => {
     const group = state.tabGroups[state.activeGroupId]
-    if (!group || !group.activeTabId) return null
+    if (!group?.activeTabId) return null
 
     const activeTab = group.tabs.find((t) => t.id === group.activeTabId)
     if (!activeTab) return null

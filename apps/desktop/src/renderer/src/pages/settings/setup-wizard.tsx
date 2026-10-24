@@ -75,7 +75,7 @@ export function SetupWizard({
   const expiresIn = wizardExpiresAt ? Math.max(0, Math.floor((wizardExpiresAt - now) / 1000)) : 60
 
   useEffect(() => {
-    if (!wizardExpiresAt) return
+    if (!wizardExpiresAt) return undefined
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [wizardExpiresAt])
@@ -91,8 +91,8 @@ export function SetupWizard({
   }, [wizardStep])
 
   useEffect(() => {
-    if (wizardStep !== 'recovery-display' && wizardStep !== 'recovery-confirm') return
-    if (recoveryPhrase) return
+    if (wizardStep !== 'recovery-display' && wizardStep !== 'recovery-confirm') return undefined
+    if (recoveryPhrase) return undefined
     let cancelled = false
     void window.api.syncSetup
       .getRecoveryPhrase()
