@@ -17,10 +17,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+// Darwin 22 is macOS 13: electron-updater skips the release on macOS 12 and older.
+export const MINIMUM_SYSTEM_VERSION = '22.0.0'
+
 const sha512Pattern = /^[A-Za-z0-9+/=]{80,}$/
 
 export function parseManifest(text) {
-  const manifest = { version: undefined, files: [] }
+  const manifest = { version: undefined, minimumSystemVersion: undefined, files: [] }
   let inFiles = false
   let current = null
 
@@ -44,6 +47,9 @@ export function parseManifest(text) {
       }
       if (match[1] === 'version') {
         manifest.version = stripValue(match[2])
+      }
+      if (match[1] === 'minimumSystemVersion') {
+        manifest.minimumSystemVersion = stripValue(match[2])
       }
       continue
     }
@@ -75,6 +81,12 @@ export function validateManifest(manifest) {
   }
   if (!Array.isArray(manifest.files) || manifest.files.length < 2) {
     errors.push(`Manifest files[] must list both arch zips, found ${manifest.files?.length ?? 0}.`)
+  }
+
+  if (manifest.minimumSystemVersion !== MINIMUM_SYSTEM_VERSION) {
+    errors.push(
+      `Manifest minimumSystemVersion must be ${MINIMUM_SYSTEM_VERSION}, found ${manifest.minimumSystemVersion ?? '<missing>'}.`
+    )
   }
 
   const zips = (manifest.files || []).filter(

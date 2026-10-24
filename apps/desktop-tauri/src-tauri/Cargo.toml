@@ -23,6 +23,8 @@ path = "src/bin/export_bindings.rs"
 [features]
 # Step 03 (#3520) fills it.
 e2e = []
+# Step 07 (#3524): rehearsal-only Velopack probe. Step 38 (#3555) replaces it with the real updater.
+update-probe = []
 
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
@@ -37,6 +39,7 @@ specta-typescript = "=0.0.13"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+velopack = { workspace = true }
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 

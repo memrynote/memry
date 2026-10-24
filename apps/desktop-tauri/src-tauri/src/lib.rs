@@ -6,6 +6,8 @@ pub mod commands;
 pub mod events;
 pub mod registry;
 pub mod startup;
+#[cfg(feature = "update-probe")]
+pub mod update_probe;
 pub mod windows;
 
 use memry_desktop::launch_env::LaunchEnv;
@@ -65,9 +67,12 @@ fn mount_events(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let state = StartupState::default();
-    windows::create_main(app, &state)
-        .map(|_| ())
-        .map_err(|error| CommandError::new(ErrorKind::Internal, "create_window", error.to_string()))
+    windows::create_main(app, &state).map_err(|error| {
+        CommandError::new(ErrorKind::Internal, "create_window", error.to_string())
+    })?;
+    #[cfg(feature = "update-probe")]
+    update_probe::spawn();
+    Ok(())
 }
 
 /// Builds and runs the app. `context` carries the profile identifier `main.rs` set.

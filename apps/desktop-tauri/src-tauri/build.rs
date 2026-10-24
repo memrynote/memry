@@ -35,5 +35,8 @@ fn main() {
         );
     }
 
+    // Rehearsal builds bake the update feed in (`update_probe.rs`).
+    println!("cargo:rerun-if-env-changed=MEMRY_UPDATE_FEED_URL");
+
     tauri_build::build();
 }
