@@ -39,7 +39,7 @@ describe('applyStartupState', () => {
       ...baseState,
       theme: 'dark',
       locale: 'ar',
-      zoom: 1.25,
+      zoom: 1.3,
       platform: 'win32'
     }
 
@@ -53,7 +53,7 @@ describe('applyStartupState', () => {
     expect(root.getAttribute('dir')).toBe('rtl')
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('ar')
-    expect(window.localStorage.getItem(ZOOM_STORAGE_KEY)).toBe('1.25')
+    expect(window.localStorage.getItem(ZOOM_STORAGE_KEY)).toBe('1.3')
   })
 
   it('applies the white theme as a class', () => {

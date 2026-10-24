@@ -32,23 +32,18 @@ void addI18nextPlugin(IcuFormatter)
     initImmediate: false
   })
 
-vi.mock('electron-log/renderer', () => {
-  const createScopedLogger = () => ({
+// The renderer logger writes to the console; tests that assert on log calls read these spies.
+vi.mock('@/lib/logger', () => {
+  const createLogger = () => ({
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
+    verbose: vi.fn(),
+    log: vi.fn()
   })
 
-  return {
-    default: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      scope: vi.fn(() => createScopedLogger())
-    }
-  }
+  return { log: createLogger(), createLogger }
 })
 
 // ============================================================================

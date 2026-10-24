@@ -35,6 +35,10 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/renderer/**/*.{test,spec}.{ts,tsx}', 'scripts/*.test.ts'],
     setupFiles: ['tests/setup.ts', 'tests/setup-dom.ts'],
+    // `threads`, as in apps/desktop: tests such as renderer-process-env-tz-is-inert document its
+    // per-worker `process.env`.
+    pool: 'threads',
+    isolate: true,
     css: true,
     // `@react-sigma/core` is the one dependency a test drives for real rather than stubbing
     // (local-graph-panel-sigma-lifecycle.test.tsx needs its genuine recreate rule); inlined,

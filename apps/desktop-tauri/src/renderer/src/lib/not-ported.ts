@@ -41,9 +41,15 @@ function createLevel(callPath: string, name: string): unknown {
  * Calling a leaf throws `NotPortedError`; an `onXxx` leaf returns a no-op unsubscribe function
  * and logs once per name. Step 43 (#3560) deletes this file.
  */
-export function installNotPortedShim(): void {
+/** What the shim is installed on: `window`, or a stand-in in tests. */
+export interface NotPortedHost {
+  api?: unknown
+  electron?: unknown
+}
+
+export function installNotPortedShim(target: NotPortedHost = window): void {
   for (const root of ['api', 'electron']) {
-    Object.defineProperty(window, root, {
+    Object.defineProperty(target, root, {
       value: createLevel(`window.${root}`, root),
       configurable: true,
       writable: true
