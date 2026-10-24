@@ -39,7 +39,7 @@ function canvasElements() {
     .readdirSync(dir)
     .filter((n) => n.endsWith('.excalidraw'))
     .map((n) => path.join(dir, n))
-    .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
+    .toSorted((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
   return JSON.parse(fs.readFileSync(file, 'utf8')).elements.filter((e) => !e.isDeleted)
 }
 /**
@@ -50,6 +50,7 @@ function canvasElements() {
 const liveCards = (page) =>
   page.evaluate(() => {
     const el = document.querySelector('.excalidraw')
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- page.evaluate serializes this callback; the helper must stay inside it
     const isApi = (v) =>
       typeof v?.getSceneElements === 'function' && typeof v.getAppState === 'function'
     const fiber = Object.keys(el).find((k) => k.startsWith('__reactFiber'))
@@ -76,8 +77,9 @@ const liveCards = (page) =>
 
 /** Viewport point of a graph node. Sigma draws the nodes in WebGL, so ask its renderer. */
 const graphNode = (page, label) =>
-  page.evaluate((label) => {
+  page.evaluate((nodeLabel) => {
     const el = document.querySelector('.sigma-container')
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- page.evaluate serializes this callback; the helper must stay inside it
     const isSigma = (v) => v && typeof v === 'object' && typeof v.graphToViewport === 'function'
     const seen = new Set()
     const scan = (v, depth) => {
@@ -95,7 +97,7 @@ const graphNode = (page, label) =>
     for (let f = el[fiber]; f && !sigma; f = f.return)
       sigma = scan(f.memoizedState, 0) || scan(f.memoizedProps, 0)
     const graph = sigma.getGraph()
-    const node = graph.findNode((_, a) => a.label === label)
+    const node = graph.findNode((_, a) => a.label === nodeLabel)
     const p = sigma.graphToViewport(graph.getNodeAttributes(node))
     const r = sigma.getContainer().getBoundingClientRect()
     return { x: r.x + p.x, y: r.y + p.y }
@@ -113,6 +115,8 @@ const endOf = (locator) =>
     const b = r.getBoundingClientRect()
     return { x: b.right + 1, y: b.y + b.height / 2 }
   })
+
+const mid = (c) => ({ x: c.x + c.w / 2, y: c.y + c.h / 2 })
 
 /** The hour label in the middle of the day panel's visible timeline, whatever time it is. */
 const midHour = (page) =>
@@ -133,11 +137,11 @@ const midHour = (page) =>
 
 /** A full-window layer drawn inside the app, so the recorder films it like any other UI. */
 const overlay = (page, html) =>
-  page.evaluate((html) => {
+  page.evaluate((markup) => {
     document.getElementById('__demo_layer')?.remove()
     const d = document.createElement('div')
     d.id = '__demo_layer'
-    d.innerHTML = html
+    d.innerHTML = markup
     document.documentElement.appendChild(d)
   }, html)
 const clearOverlay = (page) =>
@@ -443,7 +447,6 @@ export const scenes = {
   async connect({ page, rec, at, zoom, sleep }) {
     const cards = await liveCards(page)
     const [kickoff, idea, task] = cards
-    const mid = (c) => ({ x: c.x + c.w / 2, y: c.y + c.h / 2 })
     // Frame the three cards, so the arrows read at film size.
     const [x0, x1] = [Math.min(...cards.map((c) => c.x)), Math.max(...cards.map((c) => c.x + c.w))]
     const [y0, y1] = [Math.min(...cards.map((c) => c.y)), Math.max(...cards.map((c) => c.y + c.h))]
@@ -510,6 +513,7 @@ export const checks = [
       if (rows.length !== 2 || rows.some((r) => r.filed_action !== 'folder'))
         return JSON.stringify(rows)
       if (!vaultText(`${LINK_TITLE}.md`) || !vaultText(`${IDEA}.md`)) return 'note files missing'
+      return undefined
     }
   ],
   [
@@ -518,6 +522,7 @@ export const checks = [
       const body = vaultText(`${IDEA}.md`)
       if (!body.includes(`[[${LINK_TITLE}]]`) || !body.includes(`- [ ] ${TASK}`))
         return JSON.stringify(body)
+      return undefined
     }
   ],
   [
@@ -525,6 +530,7 @@ export const checks = [
     (q) => {
       const [t] = q(`SELECT priority, due_date, due_time FROM tasks WHERE title = '${TASK}'`)
       if (t?.priority !== 3 || t.due_date !== day() || !t.due_time) return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -534,6 +540,7 @@ export const checks = [
         JOIN projects p ON p.id = t.project_id WHERE t.title = '${NEW_TASK}'`)
       if (t?.project !== 'Website Redesign' || t.priority !== 3 || t.due_date !== day(1))
         return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -541,6 +548,7 @@ export const checks = [
     () => {
       const body = vaultText(`journal/${day()}.md`)
       if (!body.includes(`[[${IDEA}]]`)) return JSON.stringify(body)
+      return undefined
     }
   ],
   [
@@ -549,6 +557,7 @@ export const checks = [
       const arrows = canvasElements().filter((e) => e.type === 'arrow')
       if (arrows.length !== 2 || arrows.some((a) => !a.startBinding || !a.endBinding))
         return JSON.stringify(arrows.map((a) => [!!a.startBinding, !!a.endBinding]))
+      return undefined
     }
   ]
 ]

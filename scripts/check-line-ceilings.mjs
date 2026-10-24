@@ -88,7 +88,8 @@ if (violations.length === 0) {
 }
 
 console.error('line ceiling check failed:')
-for (const violation of violations.sort()) console.error(`- ${violation}`)
+for (const violation of violations.toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)))
+  console.error(`- ${violation}`)
 console.error(
   '\nSplit the file along an existing seam, or move the rule in scripts/check-line-ceilings.mjs.'
 )

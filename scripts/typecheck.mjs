@@ -48,7 +48,7 @@ const args = [
   'all'
 ]
 const budget = process.platform === 'win32' ? 24_000 : 400_000
-const sorted = [...files].sort()
+const sorted = [...files].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 let failed = false
 for (let i = 0; i < sorted.length;) {
   const chunk = []

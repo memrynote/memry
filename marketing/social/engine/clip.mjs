@@ -67,6 +67,7 @@ if (slot) {
   process.env.TMPDIR = `/tmp/memry-social/slot-${slot}`
   fs.mkdirSync(process.env.TMPDIR, { recursive: true })
 }
+// oxlint-disable-next-line react-hooks/rules-of-hooks -- useApp is the agent-app helper that selects the target app, not a React hook
 useApp(app)
 if (close) {
   stopApp()
@@ -86,18 +87,24 @@ const out = path.join(dir, 'out')
 const film = path.join(out, `${slug}.mp4`)
 const ff = (...a) =>
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...a], { stdio: 'inherit' })
+const probe = (f, what) =>
+  execFileSync('ffprobe', ['-v', 'error', ...what, '-of', 'csv=p=0', f], {
+    encoding: 'utf8'
+  }).trim()
+const mb = (f) => (fs.statSync(f).size / 1e6).toFixed(1)
+const noop = () => {}
 
 // Vaults are rebuilt each day, because the seeds date everything relative to today.
 const VAULTS = `/tmp/memry-social/vaults/${day(0)}`
-async function vaultAt(dir, make, rebuild) {
-  const vault = path.join(dir, 'Maya')
+async function vaultAt(vaultDir, make, rebuild) {
+  const vault = path.join(vaultDir, 'Maya')
   if (fs.existsSync(vault) && !rebuild) return vault
-  const tmp = `${dir}.tmp-${process.pid}`
+  const tmp = `${vaultDir}.tmp-${process.pid}`
   fs.rmSync(tmp, { recursive: true, force: true })
   await make(path.join(tmp, 'Maya'))
-  if (rebuild) fs.rmSync(dir, { recursive: true, force: true })
+  if (rebuild) fs.rmSync(vaultDir, { recursive: true, force: true })
   try {
-    fs.renameSync(tmp, dir)
+    fs.renameSync(tmp, vaultDir)
   } catch (err) {
     // Another slot built the same vault first; theirs is as good as ours.
     if (!fs.existsSync(vault)) throw err
@@ -196,7 +203,7 @@ if (N.page && step('record')) {
   // The screencast sends frames at the device scale factor only when it is forced on the command
   // line; the context's deviceScaleFactor alone still yields 1600x900 frames.
   const browser = await chromium.launch({ args: ['--force-device-scale-factor=2'] })
-  let release = () => {}
+  let release = noop
   try {
     const context = await browser.newContext({
       viewport: { width: 1600, height: 900 },
@@ -223,7 +230,7 @@ if (N.page && step('record')) {
 if (!N.page && step('record')) {
   const vault = await clipVault()
   start(vault)
-  let release = () => {}
+  let release = noop
   try {
     await new Promise((r) => setTimeout(r, 2500))
     release = await takeTurn()
@@ -347,11 +354,6 @@ if (step('qa')) {
     path.join(qa, 'phone-upright.png')
   )
   fs.rmSync(sheet, { recursive: true })
-  const probe = (f, what) =>
-    execFileSync('ffprobe', ['-v', 'error', ...what, '-of', 'csv=p=0', f], {
-      encoding: 'utf8'
-    }).trim()
-  const mb = (f) => (fs.statSync(f).size / 1e6).toFixed(1)
   console.log(
     `  ${film}\n  ${Number(probe(film, ['-show_entries', 'format=duration'])).toFixed(1)}s, ` +
       `${probe(film, ['-select_streams', 'v:0', '-show_entries', 'stream=width,height,r_frame_rate'])}, ` +

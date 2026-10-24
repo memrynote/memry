@@ -37,7 +37,9 @@ export function selectDraftRelease(releases, tag) {
 
   const drafts = releases
     .filter((release) => release.isDraft)
-    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .toSorted(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    )
 
   if (drafts.length === 0) {
     throw new Error('No draft release found')
@@ -186,7 +188,7 @@ export function selectDispatchedWorkflowRun(runs, dispatchedAfter) {
     runs
       .filter((run) => run.event === 'workflow_dispatch')
       .filter((run) => new Date(run.createdAt).getTime() >= dispatchedAfterTime)
-      .sort(
+      .toSorted(
         (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
       )
       .at(0) ?? null

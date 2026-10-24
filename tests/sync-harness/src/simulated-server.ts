@@ -85,7 +85,7 @@ export class SimulatedServer {
     } else if (input instanceof URL) {
       url = input.toString()
     } else {
-      url = (input as Request).url
+      url = input.url
     }
 
     return this.mf.dispatchFetch(url, init)
@@ -177,7 +177,8 @@ export class SimulatedServer {
     const rawSchema = fs
       .readdirSync(MIGRATIONS_DIR)
       .filter((file) => file.endsWith('.sql'))
-      .sort()
+      // oxlint-disable-next-line unicorn/no-array-sort -- tsconfig target ES2022 has no Array#toSorted; the array is a fresh filter() result
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
       .map((file) => fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8'))
       .join('\n')
 

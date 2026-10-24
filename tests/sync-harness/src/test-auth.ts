@@ -1,4 +1,4 @@
-import sodium from 'libsodium-wrappers-sumo'
+import { base64_variants, to_base64 } from 'libsodium-wrappers-sumo'
 import type { SimulatedServer } from './simulated-server.js'
 import type { DeviceIdentity } from './types.js'
 import { generateSigningKeypair, generateVaultKey, initCrypto } from './crypto.js'
@@ -24,7 +24,7 @@ export async function createTestDevice(
   const vaultKey = opts.vaultKey ?? generateVaultKey()
   const { publicKey, secretKey } = generateSigningKeypair()
 
-  const authPublicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
+  const authPublicKeyBase64 = to_base64(publicKey, base64_variants.ORIGINAL)
 
   const now = Math.floor(Date.now() / 1000)
 

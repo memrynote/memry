@@ -59,7 +59,10 @@ function api(token) {
       headers['content-type'] = 'application/json; charset=UTF-8'
       body = JSON.stringify(json)
     } else if (type) headers['content-type'] = type
-    const res = await fetch(url, { method, headers, body })
+    const res = await fetch(
+      url,
+      body === undefined ? { method, headers } : { method, headers, body }
+    )
     if (!res.ok) throw await googleError(res)
     return res.json()
   }
@@ -141,7 +144,10 @@ async function signIn(clientFile) {
   const code = new Promise((resolve, reject) => {
     server.on('request', (req, res) => {
       const q = new URL(req.url, redirect).searchParams
-      if (!q.has('code') && !q.has('error')) return void res.writeHead(404).end()
+      if (!q.has('code') && !q.has('error')) {
+        res.writeHead(404).end()
+        return
+      }
       const ok = q.get('state') === state && q.has('code')
       res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' })
       res.end(ok ? 'Signed in. Close this tab.' : 'Sign-in failed. The terminal says why.')
@@ -200,7 +206,7 @@ async function upload(token, file, body) {
   // Each PUT answers 308 with the bytes stored so far, or 200 with the video once it is whole.
   const put = (range, chunk) =>
     fetch(session, { method: 'PUT', headers: { 'content-range': range }, body: chunk }).catch(
-      (e) => {
+      (/** @type {unknown} */ e) => {
         console.log(`  upload: ${e.cause?.code ?? e.message}`)
         return null
       }

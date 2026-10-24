@@ -28,7 +28,7 @@ export async function renderCaptions(dir) {
       const scene = TL.find((x) => x.id === s.id)
       const style = s.style ?? (i === 0 ? 'hook' : 'step')
       await page.evaluate(
-        ([text, style, logo]) => window.show(text, style, logo),
+        ([text, captionStyle, logo]) => window.show(text, captionStyle, logo),
         [s.text, style, pathToFileURL(LOGO).href]
       )
       await page.evaluate(() => document.fonts.ready)

@@ -93,6 +93,7 @@ export const checks = [
         !t.due_date
       )
         return JSON.stringify(t)
+      return undefined
     }
   ]
 ]

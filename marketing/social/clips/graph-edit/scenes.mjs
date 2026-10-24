@@ -139,7 +139,7 @@ export async function setup({ page }) {
   const options = TARGETS.filter((t) => now[t])
   target =
     options.find((t) => d(t) >= 200 && d(t) <= 520) ??
-    options.sort((p, q) => Math.abs(d(p) - 320) - Math.abs(d(q) - 320))[0]
+    options.toSorted((p, q) => Math.abs(d(p) - 320) - Math.abs(d(q) - 320))[0]
   // Ana and the target in the upper middle of the pane, clear of the caption band.
   const b = now[target]
   await pan(page, 780 - (a.x + b.x) / 2, 400 - (a.y + b.y) / 2)

@@ -155,7 +155,7 @@ export default {
   },
   lint: true,
   deadCode: true,
-  failOn: 'error',
+  blocking: 'error',
   supplyChain: {
     // vitest is a dev/build-only test runner — its Socket vulnerability axis
     // does not gate what we ship, so exclude devDependencies from scoring.

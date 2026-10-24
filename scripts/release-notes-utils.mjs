@@ -358,6 +358,7 @@ function normalizeLabels(labels = []) {
 }
 
 function normalizeTitle(title = '') {
+  // oxlint-disable-next-line typescript/no-unnecessary-type-conversion -- JS callers pass GitHub JSON: title may be null or a non-string, only undefined takes the default
   return String(title).replace(/\s+/g, ' ').trim()
 }
 

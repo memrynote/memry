@@ -163,12 +163,12 @@ function runClaude(prompt, options) {
     )
   }
 
-  const output = result.stdout?.trim()
-  if (!output) {
+  const notes = result.stdout?.trim()
+  if (!notes) {
     throw new Error('claude returned no release notes output')
   }
 
-  return output
+  return notes
 }
 
 function selectPreviousTag({ draftBody, draftTag, releases }) {
@@ -179,7 +179,9 @@ function selectPreviousTag({ draftBody, draftTag, releases }) {
 
   const previousRelease = releases
     .filter((release) => !release.isDraft && release.tagName !== draftTag)
-    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .toSorted(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    )
     .at(0)
 
   if (!previousRelease) {
@@ -261,7 +263,7 @@ Options:
 `)
 }
 
-runCli().catch((error) => {
+runCli().catch((/** @type {unknown} */ error) => {
   console.error(error instanceof Error ? error.message : String(error))
   process.exit(1)
 })

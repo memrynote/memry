@@ -40,6 +40,7 @@ export class OracleModel {
   resolve(): Map<string, SyncItem> {
     const items = new Map<string, SyncItem>()
 
+    // oxlint-disable-next-line unicorn/no-array-sort -- tsconfig target ES2022 has no Array#toSorted; sorts a copy
     const sorted = [...this.operations].sort((a, b) => a.timestamp - b.timestamp)
 
     for (const op of sorted) {

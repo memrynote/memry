@@ -86,7 +86,7 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+main().catch((/** @type {unknown} */ error) => {
   console.error(error)
   process.exit(1)
 })

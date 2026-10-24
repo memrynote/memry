@@ -116,7 +116,7 @@ for (const c of CASES) {
   await page.waitForTimeout(3000)
   check(`${c.name} not rewritten on open`, fs.readFileSync(c.abs, 'utf8') === text)
   await page.screenshot({ path: path.join(outDir, `${c.name}-0-open.png`) })
-  await typeAtEnd(editor, Q, '!').catch((e) =>
+  await typeAtEnd(editor, Q, '!').catch((/** @type {unknown} */ e) =>
     log(`${c.name} typeAtEnd error ${e.message.split('\n')[0]}`)
   )
   await page.screenshot({ path: path.join(outDir, `${c.name}-1-first-edit.png`) })
@@ -133,7 +133,7 @@ for (const c of CASES) {
     `${c.name} unchanged after reopen`,
     fs.readFileSync(c.abs, 'utf8') === results[c.name].first
   )
-  await typeAtEnd(editor, Q, '?').catch((e) =>
+  await typeAtEnd(editor, Q, '?').catch((/** @type {unknown} */ e) =>
     log(`${c.name} typeAtEnd2 error ${e.message.split('\n')[0]}`)
   )
   await page.screenshot({ path: path.join(outDir, `${c.name}-2-second-edit.png`) })
@@ -150,7 +150,7 @@ for (const c of CASES) {
   const editor = await openNote(note, name)
   await page.waitForTimeout(3000)
   check(`${name} unchanged after open`, fs.readFileSync(abs, 'utf8') === text)
-  await typeAtEnd(editor, Q, '?').catch((e) =>
+  await typeAtEnd(editor, Q, '?').catch((/** @type {unknown} */ e) =>
     log(`${name} typeAtEnd error ${e.message.split('\n')[0]}`)
   )
   await page.screenshot({ path: path.join(outDir, `${name}-fresh-parse-edit.png`) })

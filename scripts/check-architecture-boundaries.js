@@ -528,7 +528,7 @@ const iosNetworkSymbols = ['URLSessionWebSocketTask', 'URLSession']
 // past the symbol is a different identifier. Longest candidate first so
 // `URLSessionWebSocketTask` is not shadowed by `URLSession`.
 const iosNetworkPatterns = [...iosNetworkSymbols]
-  .sort((a, b) => b.length - a.length)
+  .toSorted((a, b) => b.length - a.length)
   .map((symbol) => ({ symbol, pattern: new RegExp(`(?<![A-Za-z0-9_])${symbol}(?![A-Za-z0-9_])`) }))
 
 // Both directions, asserted on every run. The matcher was loosened once, to
@@ -549,10 +549,10 @@ function codeOnly(line) {
   return line.slice(0, marker)
 }
 
-function assertIosNetworkMatcher() {
-  const symbolFor = (line) =>
-    iosNetworkPatterns.find(({ pattern }) => pattern.test(codeOnly(line)))?.symbol ?? null
+const symbolFor = (line) =>
+  iosNetworkPatterns.find(({ pattern }) => pattern.test(codeOnly(line)))?.symbol ?? null
 
+function assertIosNetworkMatcher() {
   const mustCatch = [
     ['let s = URLSession.shared', 'URLSession'],
     ['URLSession(configuration: cfg)', 'URLSession'],
@@ -798,14 +798,16 @@ async function main() {
   }
 
   console.error('architecture boundary check failed:')
-  for (const violation of [...blockingViolations].sort()) {
+  for (const violation of [...blockingViolations].toSorted((a, b) =>
+    a < b ? -1 : a > b ? 1 : 0
+  )) {
     console.error(`- ${violation}`)
   }
 
   process.exit(1)
 }
 
-main().catch((error) => {
+main().catch((/** @type {unknown} */ error) => {
   console.error(error)
   process.exit(1)
 })

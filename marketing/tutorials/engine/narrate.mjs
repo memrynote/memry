@@ -50,7 +50,7 @@ export async function narrate(dir, { takes = 2, only = [] } = {}) {
     }
     const pick = s.take
       ? scored.find((t) => t.k === s.take)
-      : [...scored].sort((a, b) => a.wer - b.wer || a.k - b.k)[0]
+      : scored.toSorted((a, b) => a.wer - b.wer || a.k - b.k)[0]
     const from = path.join(takesDir, `${s.id}-${pick.k}`)
     fs.copyFileSync(from + '.mp3', path.join(dir, 'vo', `${s.id}.mp3`))
     const { alignment } = JSON.parse(fs.readFileSync(from + '.json', 'utf8'))

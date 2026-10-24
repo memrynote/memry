@@ -16,7 +16,7 @@ const ASSETS = path.resolve(
 const FILES = fs
   .readdirSync(ASSETS)
   .filter((f) => f.endsWith('.html'))
-  .sort()
+  .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
   .map((f) => path.join(ASSETS, f))
 const OPEN = FILES[2].replace(/^.*\/|\.html$/g, '')
 
