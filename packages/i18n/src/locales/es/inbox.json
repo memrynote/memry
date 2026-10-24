@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# elemento pospuesto} other {# elementos pospuestos}}",
     "notificationBody": "{count, plural, one {Tu elemento pospuesto está listo para revisarlo} other {Tus elementos pospuestos están listos}}",
     "toast": "{count, plural, =1 {«{itemTitle}» ya no está pospuesto} one {# elemento ya no está pospuesto} other {# elementos pospuestos han vuelto}}"
+  },
+  "sticky": {
+    "kindLabel": "Enviar como",
+    "kinds": {
+      "note": "Nota",
+      "task": "Tarea",
+      "journal": "Diario"
+    },
+    "placeholders": {
+      "note": "Apúntalo…",
+      "task": "Llamar a Ana @mañana #casa !alta",
+      "journal": "Añadir al diario de hoy…"
+    },
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveFailed": "No guardado",
+    "tuck": "Guardar a un lado",
+    "send": "Enviar",
+    "hints": "Esc guardar a un lado · {mod}⌫ eliminar",
+    "sendAndCloseHint": "⌥{mod}↵ envía y cierra",
+    "deleted": "Borrador eliminado",
+    "open": "Abrir",
+    "undo": "Deshacer",
+    "sent": {
+      "note": "Guardado en la carpeta Sticky",
+      "task": "Tarea añadida",
+      "journal": "Añadido al diario de hoy"
+    },
+    "tab": {
+      "label": "{count, plural, one {# borrador sticky} other {# borradores sticky}}",
+      "newSticky": "Nuevo sticky"
+    },
+    "errors": {
+      "empty": "Escribe algo primero.",
+      "taskFailed": "No se pudo crear la tarea.",
+      "tasksOff": "Las tareas están desactivadas en Ajustes.",
+      "journalOff": "El diario está desactivado en Ajustes.",
+      "sendFailed": "No se pudo enviar el sticky.",
+      "undoExpired": "Es demasiado tarde para deshacerlo.",
+      "undoFailed": "No se pudo deshacer el envío."
+    },
+    "inputLabel": "Texto del sticky",
+    "dismissError": "Descartar"
   }
 }

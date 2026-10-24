@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Fecha de vencimiento borrada de # subtarea} many {Fecha de vencimiento borrada de # subtareas} other {Fecha de vencimiento borrada de # subtareas}}",
       "prioritySet": "{count, plural, one {Prioridad establecida para # subtarea} many {Prioridad establecida para # subtareas} other {Prioridad establecida para # subtareas}}",
       "deleted": "{count, plural, one {# subtarea eliminada} many {# subtareas eliminadas} other {# subtareas eliminadas}}"
-    }
+    },
+    "completedBranch": "Se completó {title} y {count, plural, one {# subtarea abierta} other {# subtareas abiertas}}",
+    "deletedKeepSubtasks": "Se eliminó {title} y se conservaron sus subtareas",
+    "deletedBranch": "Se eliminó {title} y {count, plural, one {# subtarea} other {# subtareas}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "estado",
       "projectIs": "El proyecto es",
       "project": "proyecto",
+      "locationIs": "La ubicación es",
+      "location": "ubicación",
+      "unknownNote": "Nota desconocida",
       "due": "Vence",
       "dueDate": "fecha de vencimiento",
       "search": "búsqueda",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Fecha de vencimiento"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Ubicación",
+      "search": "Buscar carpetas y notas...",
+      "empty": "No hay carpetas ni notas con tareas"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioridad",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Vistas del proyecto",
       "overview": "Resumen",
+      "all": "Todas",
       "tasks": "Tareas",
       "notes": "Notas",
       "files": "Archivos",
@@ -951,6 +963,25 @@
       "fileError": "No se pudo enlazar {name}",
       "fileErrorGeneric": "No se pudieron importar los archivos",
       "label": "Añadir a {name}"
+    },
+    "all": {
+      "showDone": "Mostrar hechas",
+      "empty": "No hay nada abierto en este proyecto.",
+      "expand": "Mostrar tareas de {title}",
+      "collapse": "Ocultar tareas de {title}",
+      "taskSummary": "{open}/{total} abiertas",
+      "daysLeft": "{count} d",
+      "overdue": "{count} d de retraso",
+      "columns": {
+        "title": "Título",
+        "daysLeft": "Días restantes"
+      },
+      "status": {
+        "active": "Activo",
+        "done": "Hecho",
+        "upcoming": "Próximo",
+        "past": "Pasado"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Índigo",
     "purple": "Morado",
     "pink": "Rosa"
+  },
+  "subtaskTree": {
+    "addSubtask": "Añadir subtarea",
+    "dropInto": "Dentro de {title}",
+    "dropOut": "Subir un nivel",
+    "draftPlaceholder": "Título de la subtarea",
+    "draftLabel": "Nueva subtarea en {title}",
+    "draftIn": "en {title}",
+    "toggleComplete": "Completar {title}",
+    "moveUnder": {
+      "title": "Mover bajo",
+      "placeholder": "Mover bajo…",
+      "empty": "Ninguna tarea coincide",
+      "topLevel": "Nivel superior de {project}",
+      "thisTask": "Esta tarea",
+      "currentParent": "Padre actual",
+      "movesOne": "Mueve {title}",
+      "movesBranch": "Mueve {title} y {count, plural, one {# subtarea} other {# subtareas}}",
+      "keys": "↵ Mover aquí · ⌘↵ Nivel superior · esc Cerrar"
+    },
+    "zoom": {
+      "path": "Ruta de la tarea",
+      "up": "Subir un nivel",
+      "upShortcut": "Subir un nivel (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "¿Eliminar {title}?",
+      "summary": "{direct, plural, one {Tiene # subtarea} other {Tiene # subtareas}}{deeper, plural, =0 {} one { y # más debajo} other { y # más debajo}}{open, plural, =0 {, todas hechas.} one {, # sigue abierta.} other {, # siguen abiertas.}}",
+      "cancel": "Cancelar",
+      "deleteAll": "Eliminar todo",
+      "keepSubtasks": "Conservar subtareas"
+    },
+    "menu": {
+      "open": "Abrir",
+      "complete": "Completar",
+      "reopen": "Reabrir",
+      "zoom": "Acercar a las subtareas",
+      "moveUnder": "Mover bajo…",
+      "indent": "Mover bajo {title}",
+      "outdent": "Subir un nivel",
+      "topLevel": "Convertir en tarea de nivel superior",
+      "delete": "Eliminar"
+    },
+    "openPath": "Abrir {path}"
   }
 }

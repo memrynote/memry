@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Eliminar entrada del diario",
     "description": "¿Seguro que quieres eliminar «{title}»? Esta acción no se puede deshacer."
+  },
+  "dayTimeline": {
+    "label": "Agenda del día",
+    "allDay": "Elementos de todo el día",
+    "unscheduled": "Sin programar",
+    "unscheduledEmpty": "No hay tareas sin programar. Arrastra un bloque aquí para quitarle la hora.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Completar {title}"
   }
 }

@@ -110,7 +110,8 @@
       "fileCreation": "Creación de archivos",
       "privacy": "Privacidad",
       "startupWindows": "Inicio y ventanas",
-      "newNotes": "Notas nuevas"
+      "newNotes": "Notas nuevas",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "Casi toda la app se actualiza al instante. Algunos textos del sistema (notificaciones ya mostradas, etiqueta del Dock, barra de título de la ventana) se actualizan en el próximo inicio.",
       "changed": "Idioma cambiado a {nativeName}",
       "failed": "No se pudo cambiar el idioma. Inténtalo de nuevo."
+    },
+    "ocrLanguages": {
+      "label": "Reconocimiento de texto",
+      "helper": "Idiomas que se leen en PDF e imágenes escaneados, para que la búsqueda encuentre sus palabras. El inglés viene incluido. Los demás se descargan del servidor de Memry.",
+      "more": "{names} +{count}",
+      "downloading": "Descargando {language}: {percent} %",
+      "failed": "La descarga falló. Los idiomas que ya están aquí siguen funcionando.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Reintentar",
+      "saveFailed": "No se pudieron cambiar los idiomas de reconocimiento de texto."
     },
     "clockFormat": {
       "label": "Formato de hora",
@@ -264,6 +275,22 @@
           "description": "Envía un informe puntual con registros técnicos anonimizados para ayudarnos a resolver un problema que hayas encontrado.",
           "button": "Enviar informe…"
         }
+      }
+    },
+    "sticky": {
+      "description": "El atajo de Sticky (Atajos de teclado → Todo el sistema) abre el sticky mientras Memry se está ejecutando. El texto sin enviar se queda como borrador en el borde de la pantalla.",
+      "error": "No se pudieron guardar los ajustes del sticky.",
+      "defaultKind": {
+        "label": "Los nuevos sticky se envían como",
+        "last": "Último usado",
+        "note": "Nota",
+        "task": "Tarea",
+        "journal": "Diario"
+      },
+      "tuckEdge": {
+        "label": "Guardar a un lado en",
+        "left": "Borde izquierdo",
+        "right": "Borde derecho"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "Disposición",
       "toolbar": "Barra de herramientas",
       "spelling": "Ortografía",
-      "checklists": "Listas de verificación"
+      "checklists": "Listas de verificación",
+      "attachments": "Archivos adjuntos",
+      "calloutTypes": "Tipos de destacado"
+    },
+    "calloutTypes": {
+      "description": "Tus propios destacados, escritos como > [!nombre] en la nota. Otra app los muestra como una cita normal.",
+      "empty": "Aún no hay tipos de destacado personalizados",
+      "add": "Añadir tipo",
+      "edit": "Editar {name}",
+      "delete": "Eliminar {name}",
+      "name": "Nombre en markdown",
+      "namePlaceholder": "mitipo",
+      "label": "Nombre visible",
+      "color": "Color",
+      "icon": "Icono",
+      "nameInvalid": "Usa letras minúsculas, dígitos, - o _, empezando por una letra",
+      "nameBuiltIn": "Ese nombre ya es un destacado integrado",
+      "nameTaken": "Ya tienes un tipo con ese nombre",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "error": "No se pudieron actualizar los tipos de destacado"
     },
     "width": {
       "label": "Ancho del editor",
@@ -449,7 +496,16 @@
       "toolbarMode": "Barra de herramientas de formato fija",
       "spellCheck": "Corrección ortográfica",
       "convertChecklists": "Convertir elementos de lista en tareas",
-      "convertAgentChecklists": "Convertir en tareas los elementos de lista que escribe un agente"
+      "convertAgentChecklists": "Convertir en tareas los elementos de lista que escribe un agente",
+      "pdfDisplayMode": "Mostrar los PDF nuevos como"
+    },
+    "pdfDisplayMode": {
+      "description": "Cómo aparece un PDF que añades a una nota. Cada PDF se puede cambiar desde su menú.",
+      "options": {
+        "embed": "Incrustado",
+        "link": "Nombre del archivo"
+      },
+      "error": "No se pudo actualizar la visualización de PDF"
     },
     "convertChecklists": {
       "description": "Cada nuevo elemento de la lista se convierte en una tarea. Desactivado, las listas quedan como casillas simples; haz clic derecho en una para convertirla en tarea.",
@@ -561,7 +617,8 @@
       "renameNote": "Cambiar el formato renombra los archivos de diario existentes. Un archivo cuyo nuevo nombre ya está en uso se deja como está.",
       "tokensHelp": "Ayuda sobre el formato de fecha",
       "tokensNote": "Los demás caracteres se mantienen tal cual. Los nombres de los días siempre están en inglés.",
-      "tokensTitle": "Códigos de formato"
+      "tokensTitle": "Códigos de formato",
+      "foldersNote": "Usa / para archivar entradas en subcarpetas: YYYY/MMMM/YYYY-MM-DD coloca cada día bajo su año y mes."
     },
     "preview": {
       "label": "Vista previa",
@@ -586,6 +643,10 @@
         "defaultTemplate": "Plantilla predeterminada",
         "location": "Ubicación y formato"
       }
+    },
+    "showInSidebar": {
+      "label": "Mostrar en la barra lateral",
+      "description": "Muestra la carpeta del diario y sus entradas en el árbol de notas"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "Valores predeterminados",
+      "subtasks": "Subtareas",
       "inbox": "Bandeja de entrada"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "Las tareas que superan esta antigüedad se resaltan como sin procesar",
       "unit": "días",
       "error": "No se pudo actualizar la antigüedad de elementos sin procesar"
+    },
+    "nestedSubtasks": {
+      "label": "Subtareas dentro de subtareas",
+      "description": "Anida subtareas a cualquier profundidad. Los dispositivos con versiones antiguas solo muestran el primer nivel hasta que se actualicen.",
+      "error": "No se pudieron actualizar las subtareas anidadas"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "Sincronizando…",
         "paused": "En pausa",
         "syncError": "Error de sincronización",
+        "deviceKeysMissing": "Sincronización en pausa: faltan las claves del dispositivo",
         "offline": "Sin conexión",
         "connecting": "Conectando…",
         "localOnly": "Solo local",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "Completando la activación",
         "description": "Tu plan está activo. La sincronización empezará en cuanto lo confirmemos; actualizar el estado suele bastar."
+      },
+      "unsent": {
+        "title": "Notas con cambios sin enviar",
+        "count": "{count, plural, one {# nota} other {# notas}}",
+        "description": "Este dispositivo tiene cambios en estas notas que el servidor aún no ha almacenado.",
+        "waitingSince": "Esperando desde {time}",
+        "more": "{count, plural, one {Y # nota más} other {Y # notas más}}",
+        "reasons": {
+          "body": "Texto",
+          "record": "Detalles",
+          "file_not_taken": "Archivo aún sin combinar",
+          "rejected": "Rechazado por el servidor"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "No se pudo actualizar el estado de facturación",
         "billingActive": "La facturación está activa",
         "activationPending": "Activación pendiente",
-        "portalFailed": "No se pudo abrir el portal de facturación"
+        "portalFailed": "No se pudo abrir el portal de facturación",
+        "portalNoCustomer": "Aún no se encontró ninguna cuenta de facturación. Si acabas de pagar, elige Actualizar estado e inténtalo de nuevo."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "Funciones de IA desactivadas",
       "error": "No se pudo actualizar el ajuste"
     },
+    "summarizeLongNotes": {
+      "label": "Resumir notas largas",
+      "description": "Escribe versiones más cortas de las notas largas con tu agente conectado, para que puedas plegar una nota hasta sus puntos clave. Se ejecuta en este dispositivo.",
+      "error": "No se pudo actualizar el resumen de notas largas",
+      "failed": "La última ejecución falló ·",
+      "retry": "Reintentar",
+      "retryError": "No se pudo reintentar el resumen",
+      "agentLabel": "Agente que escribe los resúmenes",
+      "agentAuto": "Automático",
+      "agentError": "No se pudo cambiar el agente de resúmenes",
+      "noAgent": "No se encontró ningún agente ·",
+      "openAgents": "Abrir Agentes"
+    },
+    "imageSearch": {
+      "label": "Buscar imágenes por contenido",
+      "description": "Encuentra fotos por lo que muestran. Descarga un modelo de imágenes de 109 MB la primera vez que se indexa una imagen.",
+      "enabled": "Búsqueda de imágenes activada",
+      "disabled": "Búsqueda de imágenes desactivada"
+    },
     "unknownError": "Error desconocido",
     "groups": {
       "voice": "Transcripción de voz",
@@ -1324,6 +1425,9 @@
         "none": "No renombrar"
       },
       "namingError": "No se pudo actualizar cómo se nombran las notas de voz",
+      "audioSearch": "Buscar notas de voz por sonido",
+      "audioSearchDescription": "Encuentra notas de voz sin transcripción, como música o sonidos, por cómo suenan. Descarga un modelo de audio de 189 MB la primera vez que hay que indexar una.",
+      "audioSearchError": "No se pudo actualizar la búsqueda de notas de voz",
       "language": "Idioma hablado",
       "languageDescription": "Idioma en el que hablas en las notas de voz",
       "languageDefault": "Predeterminado",
@@ -1459,7 +1563,8 @@
       "csv": "Importa un archivo .csv: una nota por fila, las columnas se convierten en propiedades",
       "raindrop": "Importa una exportación de marcadores de Raindrop.io (.csv): los marcadores van a la bandeja de entrada",
       "apple-notes": "Importa desde la base de datos de Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Importa cuadernos de OneNote (requiere una cuenta de Microsoft)"
+      "onenote": "Importa cuadernos de OneNote (requiere una cuenta de Microsoft)",
+      "readwise": "Importa tus resaltados desde Readwise (requiere un token de acceso)"
     },
     "action": "Importar",
     "select": "Seleccionar una app desde la que importar…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Advertencias",
-      "confirm": "Importar"
+      "confirm": "Importar",
+      "readwise": {
+        "books": "{count, plural, one {# libro} other {# libros}}",
+        "highlights": "{count, plural, one {# resaltado} other {# resaltados}}",
+        "documents": "{count, plural, one {# documento} other {# documentos}}"
+      }
     },
     "dialog": {
       "title": "Importar desde {name}",
@@ -1505,7 +1615,18 @@
         "deselectAll": "Quitar selección",
         "foldersSelected": "{count, plural, one {# carpeta seleccionada} other {# carpetas seleccionadas}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# nota bloqueada} other {# notas bloqueadas}}",
+          "hint": "Introduce tu contraseña de Notas para importarlas. Solo se usa para esta importación y nunca se guarda. Los archivos adjuntos de las notas bloqueadas no se importan.",
+          "label": "Contraseña de Notas",
+          "placeholder": "Contraseña de Notas",
+          "check": "Comprobar",
+          "wrong": "Esa contraseña no desbloquea ninguna nota bloqueada.",
+          "unlockedAll": "{count, plural, one {Desbloquea la nota bloqueada.} other {Desbloquea las # notas bloqueadas.}}",
+          "unlockedSome": "Desbloquea {unlocked} de {total} notas bloqueadas. El resto usa otra contraseña y se omitirá.",
+          "checkError": "No se pudo comprobar la contraseña."
+        }
       },
       "chooseFolder": "Seleccionar carpeta de Apple Notes…",
       "chooseDirectory": "Elegir carpeta…",
@@ -1529,12 +1650,206 @@
         "failed": "{count} con errores"
       },
       "error": "La importación falló",
-      "previewError": "La vista previa falló"
+      "previewError": "La vista previa falló",
+      "readwise": {
+        "intro": "Pega tu token de acceso de Readwise. Memry lo comprueba primero con Readwise y luego lo guarda en el llavero del sistema de este dispositivo. Nunca se sincroniza.",
+        "tokenLabel": "Token de acceso",
+        "tokenPlaceholder": "Pega tu token",
+        "getToken": "Obtén tu token",
+        "connect": "Conectar",
+        "connecting": "Conectando…",
+        "connectFailed": "No se pudo conectar con Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise se sincroniza en {device}.",
+          "syncsOnAnother": "Readwise se sincroniza en otro dispositivo.",
+          "explain": "Solo un dispositivo descarga de Readwise, así que el mismo resaltado nunca se escribe dos veces. Para descargar desde este dispositivo, pega tu token de nuevo: nunca viaja entre dispositivos. El otro dispositivo se detiene en su próximo libro y todas las notas se conservan.",
+          "button": "Sincronizar aquí en su lugar",
+          "working": "Moviendo Readwise aquí…",
+          "failed": "No se pudo mover Readwise a este dispositivo"
+        },
+        "groups": {
+          "location": "Adónde van las notas",
+          "categories": "Qué traer",
+          "reader": "Readwise Reader",
+          "journal": "Diario",
+          "sync": "Sincronización"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Listar los resaltados de cada día en el diario",
+            "description": "Añade una sección de Readwise al día en que resaltaste, enlazando cada nota de libro. Solo resaltados nuevos, sin relleno retroactivo.",
+            "firstImport": "La primera importación no escribe nada en el diario."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Importar también los documentos guardados de Reader",
+            "description": "Desactivado por defecto. Puede añadir miles de notas."
+          },
+          "fullText": {
+            "label": "Incluir el texto completo del artículo",
+            "description": "Se escribe una sola vez, al crear la nota"
+          }
+        },
+        "rootFolder": {
+          "label": "Carpeta",
+          "description": "Los libros nuevos van aquí. Las notas existentes se quedan donde están."
+        },
+        "layout": {
+          "label": "Organización de carpetas",
+          "description": "Se aplica solo a los libros nuevos.",
+          "options": {
+            "by-category": "Por categoría",
+            "flat": "Una carpeta"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Libros",
+            "description": "Resaltados de Kindle, Apple Books y otros"
+          },
+          "articles": {
+            "label": "Artículos",
+            "description": "Artículos web y boletines"
+          },
+          "tweets": {
+            "label": "Tuits",
+            "description": "Tuits e hilos guardados"
+          },
+          "podcasts": {
+            "label": "Pódcast",
+            "description": "Episodios y fragmentos de pódcast"
+          },
+          "supplementals": {
+            "label": "Complementarios",
+            "description": "Libros que Readwise añade por sí mismo, sin tus resaltados"
+          },
+          "other": {
+            "label": "Otros",
+            "description": "Categorías que Readwise añadió después de esta versión"
+          }
+        },
+        "cadence": {
+          "label": "Frecuencia",
+          "description": "Con qué frecuencia llegan los resaltados nuevos.",
+          "options": {
+            "manual": "Manual",
+            "hourly": "Cada hora",
+            "daily": "Diaria"
+          }
+        },
+        "syncNow": {
+          "label": "Sincronizar ahora",
+          "description": "Busca resaltados nuevos en Readwise.",
+          "button": "Sincronizar ahora"
+        },
+        "disconnect": "Desconectar",
+        "disconnectHint": "Desconectar quita el token de este dispositivo. Tus notas se conservan.",
+        "deleted": {
+          "heading": "Libros eliminados",
+          "description": "Notas que eliminaste en memry. Siguen eliminadas hasta que las restaures.",
+          "meta": "Eliminado el {date} · {count, plural, one {# resaltado} other {# resaltados}}",
+          "metaDocument": "Eliminado el {date} · artículo guardado",
+          "restore": "Restaurar",
+          "footer": "Restaurar vuelve a crear la nota con todos sus resaltados.",
+          "empty": "No hay libros eliminados",
+          "syncsOn": "Readwise se sincroniza en {device}.",
+          "syncsOnAnotherDevice": "Readwise se sincroniza en otro dispositivo.",
+          "loadFailed": "No se pudieron cargar los libros eliminados",
+          "restoreFailed": "No se pudo restaurar la nota"
+        },
+        "importNow": "Importar ahora",
+        "importBooks": "{count, plural, one {Importar # libro} other {Importar # libros}}",
+        "importNotes": "{count, plural, one {Importar # nota} other {Importar # notas}}",
+        "importNone": "Importar",
+        "preview": {
+          "intro": "{highlights, plural, one {# resaltado} other {# resaltados}} en {books, plural, one {# libro} other {# libros}} están listos. No se escribe nada hasta que confirmes.",
+          "introOff": "{highlights, plural, one {# resaltado} other {# resaltados}} en {books, plural, one {# libro} other {# libros}} están listos. Desactivado: {off}. {willImport, plural, one {Se importará # libro} other {Se importarán # libros}}. No se escribe nada hasta que confirmes.",
+          "introReaderOnly": "Tu biblioteca de Readwise aún no tiene resaltados. {documents, plural, one {Se importará # documento guardado de Reader} other {Se importarán # documentos guardados de Reader}} como notas. No se escribe nada hasta que confirmes.",
+          "readerLabel": "Documentos guardados de Reader",
+          "empty": "Tu biblioteca de Readwise aún no tiene resaltados. No se escribe nada. Importa para terminar la configuración.",
+          "willImport": "se importará",
+          "off": "desactivado",
+          "retry": "Inténtalo de nuevo"
+        },
+        "status": {
+          "connected": "Conectado",
+          "synced": "Sincronizado {time}",
+          "syncing": "Sincronizando con Readwise",
+          "reading": "Leyendo tu biblioteca…",
+          "writing": "Escribiendo libros, {done} de {total}",
+          "finishing": "Terminando…",
+          "waitingTitle": "Esperando la sincronización de memry",
+          "waitingDetail": "Memry espera a que lleguen las notas de tus otros dispositivos, para que ningún libro se escriba dos veces. Readwise empieza justo después.",
+          "otherTitle": "Se sincroniza en {device}",
+          "otherTitleUnknown": "Se sincroniza en otro dispositivo",
+          "otherDetail": "Solo un dispositivo descarga de Readwise, así que el mismo resaltado nunca se escribe dos veces.",
+          "lastRun": "Última ejecución: {counts}",
+          "lastRunNothing": "Última ejecución: nada nuevo",
+          "nextRun": "Próxima sincronización {time}",
+          "retryAt": "Memry lo reintentará {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise necesita un token nuevo",
+              "detail": "Readwise no aceptó el token guardado. Pega uno nuevo desde readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Tu suscripción de Readwise ha caducado",
+              "detail": "Renueva tu suscripción en readwise.io e inténtalo de nuevo."
+            },
+            "rate-limited": {
+              "title": "Readwise está limitando las solicitudes",
+              "detail": "Demasiadas solicitudes en poco tiempo."
+            },
+            "network": {
+              "title": "No se puede conectar con Readwise",
+              "detail": "Comprueba tu conexión."
+            },
+            "server": {
+              "title": "Readwise tuvo un problema",
+              "detail": "Readwise respondió con un error."
+            },
+            "unexpected": {
+              "title": "La sincronización se detuvo",
+              "detail": "Algo salió mal durante la ejecución."
+            }
+          },
+          "counts": {
+            "added": "{count} añadidos",
+            "updated": "{count} actualizados",
+            "appended": "{count} ampliados",
+            "deferred": "{count} esperando a una nota abierta",
+            "failed": "{count} fallidos",
+            "highlights": "{count, plural, one {# resaltado} other {# resaltados}}"
+          },
+          "actions": {
+            "cancel": "Cancelar",
+            "retry": "Reintentar ahora",
+            "newToken": "Pegar un token nuevo",
+            "reconnect": "Volver a conectar",
+            "syncHere": "Sincronizar aquí en su lugar"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise necesita un token nuevo",
+            "description": "La sincronización está en pausa hasta que pegues uno nuevo."
+          },
+          "subscription-expired": {
+            "title": "Tu suscripción de Readwise ha caducado",
+            "description": "La sincronización está en pausa hasta que la suscripción vuelva a estar activa."
+          },
+          "open": "Abrir Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "No se pudo leer el archivo",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {No se importó # nota bloqueada; Memry no puede leerla sin tu contraseña de Notas.} other {No se importaron # notas bloqueadas; Memry no puede leerlas sin tu contraseña de Notas.}}"
+        "lockedNote": "{count, plural, one {No se importó # nota bloqueada; Memry no puede leerla sin tu contraseña de Notas.} other {No se importaron # notas bloqueadas; Memry no puede leerlas sin tu contraseña de Notas.}}",
+        "lockedWrongPassword": "{count, plural, one {No se importó # nota bloqueada;} other {No se importaron # notas bloqueadas;}} {count, plural, one {usa} other {usan}} una contraseña distinta de la que introdujiste.",
+        "lockedUnreadable": "{count, plural, one {No se pudo descifrar # nota bloqueada y no se importó.} other {No se pudieron descifrar # notas bloqueadas y no se importaron.}}",
+        "lockedAttachment": "{count, plural, one {No se importó # archivo adjunto de una nota bloqueada;} other {No se importaron # archivos adjuntos de notas bloqueadas;}} el texto de la nota sí."
       },
       "csv": {
         "noHeaders": "El archivo CSV no tiene encabezados",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "Prioridad desconocida {priority} → ninguna",
         "unparsedDate": "No se pudo interpretar la fecha «{date}»",
         "subtaskNoParent": "La subtarea «{title}» no tiene tarea principal en la sangría {indent}; se importó al nivel superior"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise no está conectado.",
+        "tokenInvalid": "Readwise no aceptó el token guardado. Desconecta y vuelve a conectar con uno nuevo.",
+        "unreachable": "No se pudo conectar con Readwise. Comprueba tu conexión e inténtalo de nuevo.",
+        "categoryOff": "{count, plural, one {# libro está en una categoría que desactivaste y no se importó.} other {# libros están en una categoría que desactivaste y no se importaron.}}",
+        "unchanged": "{count, plural, one {# libro ya estaba actualizado.} other {# libros ya estaban actualizados.}}",
+        "sourceDeleted": "{count, plural, one {Se eliminó # libro en Readwise.} other {Se eliminaron # libros en Readwise.}} Las notas se conservan.",
+        "noteDeleted": "{count, plural, one {Se eliminó # nota en Memry y sigue eliminada.} other {Se eliminaron # notas en Memry y siguen eliminadas.}}",
+        "busy": "{count, plural, one {# nota está abierta en un editor y se escribirá} other {# notas están abiertas en un editor y se escribirán}} en la próxima ejecución."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Importando las tareas de Todoist…"
+      },
+      "readwise": {
+        "fetching": "Leyendo tu biblioteca de Readwise…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, one {Mostrar # más} other {Mostrar # más}}",
       "showLess": "Mostrar menos",
       "groups": {
+        "reading": "Lectura",
         "noteApps": "Apps de notas",
         "tasks": "Tareas, diario y marcadores",
         "files": "Archivos"
+      },
+      "readwise": {
+        "notConnected": "No conectado",
+        "connected": "Conectado",
+        "synced": "Sincronizado {time}",
+        "syncing": "Sincronizando…",
+        "waiting": "Esperando la sincronización",
+        "otherDevice": "Se sincroniza en {device}",
+        "otherDeviceUnknown": "Se sincroniza en otro lugar",
+        "invalidToken": "Necesita un token nuevo",
+        "subscriptionExpired": "Suscripción caducada",
+        "rateLimited": "Límite de solicitudes",
+        "network": "No se puede conectar con Readwise",
+        "server": "Error de Readwise",
+        "unexpected": "La sincronización falló"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "Se cambió el nombre de «{oldName}» a «{newName}»",
       "renameFailed": "No se pudo cambiar el nombre de la etiqueta",
+      "renaming": "Renombrando #{oldName}: {done} / {total} notas",
+      "renamedBodySkipped": "\"{newName}\" no se puede escribir como etiqueta en línea, así que #{oldName} en el texto de las notas se queda como estaba",
+      "renamedSomeFailed": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Ábrela y añade la etiqueta de nuevo",
       "deleteFailed": "No se pudo eliminar la etiqueta",
       "deleted": "Se eliminó «{name}» de {count, plural, one {# elemento} other {# elementos}}",
       "mergeFailed": "No se pudieron fusionar las etiquetas",
@@ -1901,12 +2248,29 @@
       "unsupported": "{shortcut} no se puede usar como atajo global. Elige otra combinación.",
       "fallbackInUse": "Otra app está usando el atajo predeterminado {shortcut}. Configura otra combinación para usar la captura global."
     },
+    "folderNotes": {
+      "title": "Nueva nota en la carpeta",
+      "description": "Crea una nota directamente en una carpeta que elijas",
+      "add": "Añadir carpeta",
+      "empty": "Aún no hay atajos de carpeta. Añade una carpeta para darle uno.",
+      "rowDescription": "Crea una nota en esta carpeta",
+      "missing": "Esta carpeta ya no existe. Elige otra carpeta o quita el atajo.",
+      "changeFolder": "Cambiar carpeta",
+      "searchFolders": "Buscar carpetas...",
+      "noFolders": "No se encontraron carpetas",
+      "remove": "Quitar atajo",
+      "conflictLabel": "Nueva nota en {folder}",
+      "missingToast": "La carpeta \"{folder}\" ya no existe",
+      "missingToastAction": "Editar atajo",
+      "foldersLoadFailed": "No se pudo comprobar la carpeta de este atajo"
+    },
     "toasts": {
       "saveGlobalFailed": "No se pudo guardar el atajo de captura global",
       "saveFailed": "No se pudo guardar el atajo",
       "resetFailed": "No se pudo restablecer el atajo",
       "resetAllSuccess": "Se restablecieron todos los atajos a sus valores predeterminados",
-      "resetAllFailed": "No se pudieron restablecer los atajos"
+      "resetAllFailed": "No se pudieron restablecer los atajos",
+      "saveStickyFailed": "No se pudo guardar el atajo de sticky"
     },
     "categories": {
       "navigation": "Navegación",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "Buscar",
           "description": "Abrir búsqueda global"
+        },
+        "commands": {
+          "label": "Paleta de comandos",
+          "description": "Busca y ejecuta cualquier comando"
         },
         "settings": {
           "label": "Abrir Ajustes",
@@ -2042,6 +2410,10 @@
           "label": "Mostrar u ocultar la barra lateral",
           "description": "Mostrar u ocultar la barra lateral"
         },
+        "toggleDayPanel": {
+          "label": "Mostrar u ocultar panel del día",
+          "description": "Muestra u oculta el panel del día a la derecha"
+        },
         "shortcuts": {
           "label": "Ayuda de atajos de teclado",
           "description": "Mostrar referencia de atajos de teclado"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "Tamaño real",
           "description": "Restablecer el zoom al 100 %"
+        },
+        "foldFull": {
+          "label": "Plegado: Completo",
+          "description": "Muestra cada palabra de la nota"
+        },
+        "foldBrief": {
+          "label": "Plegado: Breve",
+          "description": "Muestra solo las frases clave, tal como se escribieron"
+        },
+        "foldKey": {
+          "label": "Plegado: Clave",
+          "description": "Muestra cada punto y su motivo"
+        },
+        "foldTakeaway": {
+          "label": "Plegado: Conclusión",
+          "description": "Muestra una línea por párrafo"
+        },
+        "foldTopic": {
+          "label": "Plegado: Tema",
+          "description": "Muestra la nota como un mapa de sus secciones"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "Captura global",
       "recordingHint": "Pulsa las teclas… esc para cancelar",
       "reset": "Restablecer",
-      "resetAll": "Restablecer todo a los valores predeterminados"
+      "resetAll": "Restablecer todo a los valores predeterminados",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Abre el sticky desde cualquier app mientras memrynote se está ejecutando"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "Desfase del reloj detectado",
       "items": "elementos",
       "willSyncWhenBackOnline": "Se sincronizará cuando vuelva a estar en línea",
-      "openSyncSettings": "Abrir ajustes de sincronización"
+      "stalled": "Los cambios llevan un tiempo sin sincronizarse. Prueba Sincronizar ahora.",
+      "openSyncSettings": "Abrir ajustes de sincronización",
+      "repairDeviceKeys": "Reparar",
+      "signInToRepair": "Inicia sesión de nuevo para configurar las claves de este dispositivo. Las notas, tareas y proyectos sin sincronizar se conservan. Puede que necesites tu frase de recuperación.",
+      "repairFailed": "No se pudieron reparar las claves de este dispositivo. Inténtalo de nuevo.",
+      "syncNotStarted": {
+        "vault-binding": "Las claves de este dispositivo están restauradas, pero esta bóveda aún no está configurada para sincronizarse con tu cuenta. Elige cómo sincronizarla desde el menú de sincronización.",
+        "vault-foreign": "Las claves de este dispositivo están restauradas, pero esta bóveda pertenece a otra cuenta. Se queda en local en este dispositivo.",
+        "entitlement": "Las claves de este dispositivo están restauradas, pero la sincronización necesita un plan Sync activo.",
+        "unavailable": "Las claves de este dispositivo están restauradas, pero la sincronización no pudo iniciarse. Se reintentará; reinicia Memry si no lo hace."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "Modelo",
         "description": "Elige uno de los modelos devueltos o escribe uno manualmente."
       },
+      "thinking": {
+        "label": "Razonamiento",
+        "description": "Desactivado pide a los modelos de tipo DeepSeek que se salten el razonamiento para respuestas más rápidas y baratas.",
+        "default": "Predeterminado",
+        "off": "Desactivado"
+      },
       "apiKey": {
         "label": "Clave de API",
         "description": "Credencial opcional guardada en el llavero del sistema operativo.",
@@ -2286,6 +2698,17 @@
       "revoke": "Revocar",
       "revokeLabel": "Revocar la aprobación permanente de {tool}",
       "ignoredInPageReview": "Ignorado: las ediciones de notas y del diario siempre piden aprobación."
+    },
+    "memory": {
+      "group": "Memoria",
+      "description": "Los agentes se ejecutan en una carpeta guardada para esta bóveda, fuera de ella, así que lo que guardan allí pasa a la siguiente conversación.",
+      "clear": "Borrar la memoria de los agentes",
+      "clearDescription": "Elimina lo que los agentes guardaron sobre esta bóveda. Las notas y el historial de chat se conservan.",
+      "clearAction": "Borrar",
+      "cleared": "Memoria de los agentes borrada.",
+      "failed": "No se pudo borrar la memoria de los agentes.",
+      "confirmTitle": "¿Borrar la memoria de los agentes?",
+      "confirmDescription": "Los agentes pierden lo que guardaron sobre esta bóveda, incluida la memoria de proyecto de Claude Code. No se puede deshacer. Las notas y el historial de chat se conservan."
     },
     "v2": {
       "permissions": {

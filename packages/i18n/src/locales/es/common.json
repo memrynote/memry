@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "No se pudo copiar el portal",
+    "hiddenCount": "{count} ocultos",
+    "windowFailed": "No se pudo abrir este portal. Abre la nota de origen en su lugar.",
+    "noTarget": "Este portal aún no tiene destino. Añade una nota a la definición o quita el bloque.",
+    "invalidJson": "La definición de este portal no es un JSON válido. Corrígela abajo o quita el bloque.",
+    "invalidShape": "La definición de este portal no tiene ninguna nota ni búsqueda. Corrígela abajo o quita el bloque.",
+    "search": {
+      "editQuery": "Editar consulta",
+      "count": "{count, plural, one {# bloque} other {# bloques}}",
+      "loading": "Buscando…",
+      "empty": "Ningún bloque coincide con esta consulta.",
+      "failed": "No se pudo ejecutar la búsqueda.",
+      "retry": "Reintentar",
+      "truncated": "Mostrando las primeras {count} coincidencias."
+    },
+    "copiedContents": "Contenido copiado",
+    "copiedLink": "Enlace copiado",
+    "actionFailed": "No se pudo modificar este portal",
+    "keepsOneBlock": "Un portal conserva al menos un bloque. Quita el portal en su lugar.",
+    "expandChildren": "Mostrar hijos",
+    "collapseChildren": "Ocultar hijos",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Incluir «{block}»",
+      "locked": "{note} está bloqueada · solo lectura",
+      "more": "Más",
+      "openBeside": "Abrir {note} al lado",
+      "click": "Clic",
+      "copyContents": "Copiar contenido",
+      "copyLink": "Copiar enlace",
+      "remove": "Quitar portal",
+      "removeHint": "{note} conserva todos sus bloques"
+    },
+    "states": {
+      "missingNote": {
+        "text": "La nota de origen se eliminó. La referencia se conserva.",
+        "action": "Quitar"
+      },
+      "missingBlock": {
+        "text": "El bloque se eliminó en {source}.",
+        "action": "Elegir otro"
+      },
+      "notSynced": {
+        "text": "Esperando a que se sincronice la nota de origen.",
+        "action": "Reintentar"
+      },
+      "cycle": {
+        "text": "Este portal vuelve a sí mismo.",
+        "action": "Abrir origen"
+      },
+      "tooDeep": {
+        "text": "Los portales se anidan hasta {max} niveles. Este se abre como enlace.",
+        "action": "Abrir origen"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Enfocar el campo de captura",
@@ -43,6 +100,50 @@
     "showInFileManager": "Mostrar en el gestor de archivos",
     "openInDefaultApp": "Abrir en la app predeterminada",
     "revealFailed": "No se pudo mostrar en la carpeta"
+  },
+  "commands": {
+    "runFailed": "No se pudo ejecutar ese comando. Inténtalo de nuevo."
+  },
+  "commandsPalette": {
+    "title": "Comandos",
+    "placeholder": "Escribe un comando…",
+    "groups": {
+      "navigation": "Navegación",
+      "create": "Crear",
+      "tabs": "Pestañas",
+      "editor": "Editor",
+      "view": "Vista",
+      "app": "App",
+      "note": "Nota",
+      "settings": "Ajustes",
+      "sync": "Sincronización",
+      "help": "Ayuda",
+      "project": "Proyecto",
+      "tasks": "Tareas",
+      "canvas": "Lienzo",
+      "folder": "Carpeta",
+      "file": "Archivo"
+    },
+    "contexts": {
+      "note": "Esta nota",
+      "journal": "Este diario",
+      "project": "Este proyecto",
+      "tasks": "Estas tareas",
+      "canvas": "Este lienzo",
+      "folder": "Esta carpeta",
+      "tag": "Esta etiqueta",
+      "file": "Este archivo"
+    },
+    "recent": "Recientes",
+    "empty": "Ningún comando coincide con «{query}»",
+    "searchHint": "Buscar notas: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# comando} other {# comandos}}"
+    },
+    "actions": {
+      "run": "Ejecutar",
+      "searchNotes": "Buscar notas"
+    }
   },
   "tabs": {
     "pin": "Fijar pestaña",
@@ -131,6 +232,20 @@
     "openInTab": "Abrir conversación en pestaña",
     "stop": "Detener",
     "thinking": "El agente está pensando",
+    "toolsUnavailable": "Las herramientas de la bóveda están desactivadas para este modelo. No superó la comprobación de herramientas, así que solo puede chatear.",
+    "toolsUnavailableWithDetail": "Las herramientas de la bóveda están desactivadas para este modelo. No superó la comprobación de herramientas, así que solo puede chatear. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Las herramientas de la bóveda están desactivadas para este modelo. El proveedor rechazó una solicitud de prueba que incluía herramientas, así que el modelo solo puede chatear.",
+      "noToolCall": "Las herramientas de la bóveda están desactivadas para este modelo. Respondió a una solicitud de prueba sin llamar a la herramienta, así que solo puede chatear.",
+      "toolResultRejected": "Las herramientas de la bóveda están desactivadas para este modelo. Llamó a una herramienta de prueba, pero falló al recibir el resultado, así que solo puede chatear.",
+      "streamingUnsupported": "Las herramientas de la bóveda están desactivadas para este modelo. El proveedor no transmitió una respuesta de prueba, así que el modelo solo puede chatear.",
+      "providerSaid": "El proveedor dijo: {detail}",
+      "wroteToolCall": "El modelo escribió una llamada a una herramienta como texto y no se ejecutó nada."
+    },
+    "stepLimit": {
+      "notice": "Se detuvo al alcanzar el límite de pasos.",
+      "continue": "Continuar"
+    },
     "enable": {
       "title": "Activar el agente de memrynote",
       "description": "El agente de memrynote usa la CLI de agente local que elijas para conversar sobre tu bóveda. Claude envía los turnos a Anthropic; Codex los envía a OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Añadir contexto",
       "addContextWithPermissions": "Añadir contexto ({permissions})",
       "mentionContext": "Mencionar una nota, tarea o evento",
+      "files": {
+        "attach": "Adjuntar un archivo de texto",
+        "refused": {
+          "unsupportedType": "{name} no es un archivo de texto compatible. Adjunta un archivo .txt, .md, .log, .csv, .tsv, .json, .yaml o .yml.",
+          "notText": "{name} no es un archivo de texto UTF-8. Adjunta un archivo de texto en su lugar.",
+          "tooLarge": "{name} haría que este mensaje superara el límite de 100 KB. Quita un archivo o adjunta uno más pequeño.",
+          "readFailed": "No se pudo leer {name}. Comprueba que el archivo siga existiendo y que puedas abrirlo, y vuelve a adjuntarlo."
+        }
+      },
       "voice": {
         "start": "Iniciar dictado por voz",
         "stop": "Detener dictado por voz",
@@ -340,6 +464,14 @@
           "extraHigh": "Extra alto"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Predeterminado",
+          "default": "Profundidad predeterminada",
+          "high": "Alta",
+          "max": "Máxima"
+        }
+      },
       "permissionsLabel": "Permisos del agente: {access}, búsqueda web {webSearch}",
       "permissions": {
         "label": "Permisos",
@@ -347,6 +479,17 @@
         "tools": "Herramientas"
       },
       "modelSettingsLabel": "Ajustes del modelo del agente: {model}, {settings}",
+      "queue": {
+        "label": "Mensajes en cola",
+        "queueMessage": "Poner mensaje en cola",
+        "edit": "Editar mensaje en cola",
+        "editLabel": "Texto del mensaje en cola",
+        "remove": "Quitar mensaje en cola",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "sending": "Enviando…",
+        "notSent": "No enviado. Edítalo para enviarlo de nuevo o quítalo."
+      },
       "unavailable": {
         "vaultToolsOnly": "Solo herramientas de la bóveda con este modelo"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "No se pudo guardar el estado del aviso",
       "resolveWindow": "No se pudo resolver la ventana de origen del agente",
       "detectCli": "No se pudieron detectar los backends del agente",
-      "loadDisclosure": "No se pudo cargar el estado del aviso"
+      "loadDisclosure": "No se pudo cargar el estado del aviso",
+      "turnFailed": "La respuesta se detuvo con un error. Tu mensaje se conserva, así que puedes enviarlo de nuevo."
     },
     "actions": {
       "copy": "Copiar",
@@ -576,6 +720,7 @@
       "newFolder2": "Nueva carpeta",
       "newProject": "Nuevo proyecto",
       "bookmarks": "Marcadores",
+      "chart": "Gráfico",
       "tags": "Etiquetas",
       "reorderSection": "Reordenar {section}",
       "dropFilesToImport": "Soltar archivos para importar",
@@ -863,6 +1008,11 @@
       "cancel": "Cancelar",
       "remove2": "Quitar",
       "inYourAccount": "En tu cuenta",
+      "trySandbox": "Probar la bóveda de pruebas",
+      "sandboxVault": "Bóveda de pruebas",
+      "sandboxPreparing": "Preparando la bóveda de pruebas…",
+      "sandboxFailed": "No se pudo preparar la bóveda de pruebas",
+      "resetSandbox": "Restablecer la bóveda de pruebas",
       "itemsCount": "{count} elementos",
       "untitledVault": "Bóveda",
       "downloadVaultTitle": "Descargar «{name}»",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Las notas que abras aparecerán aquí",
       "bookmarks": "Marcadores",
       "tasks": "Tareas",
+      "chart": "Gráfico",
       "calendar": "Calendario",
       "calendarToday": "Hoy",
       "openCalendar": "Abrir calendario",
@@ -978,6 +1129,9 @@
     "edit": "Editar",
     "done": "Listo",
     "addWidget": "Añadir widget",
+    "cover": {
+      "add": "Añadir portada"
+    },
     "empty": {
       "title": "Tu tablero está vacío",
       "body": "Los widgets reúnen tus notas, tareas y marcadores en un solo lugar tranquilo.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Cambiar icono…",
     "resetIcon": "Restablecer icono",
     "iconButton": "Cambiar el icono de {name}",
+    "leaveSandbox": "Volver a {name}",
     "iconFailed": "No se pudo cambiar el icono de la bóveda"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Tipo",
     "filterModified": "Modificado",
     "matches": "Coincidencias",
+    "matchesMore": "{count, plural, one {# coincidencia más} other {# coincidencias más}}",
+    "matchesHide": "Ocultar coincidencias",
+    "matchOf": "Coincidencia {index} de {total}",
     "showMore": "Mostrar {count} más",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Siguiente sección",
       "open": "Abrir",
       "openNote": "Abrir nota",
+      "openAtMatch": "Abrir en la coincidencia",
       "openFile": "Abrir archivo",
       "openJournal": "Abrir diario",
       "openTask": "Abrir tarea",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Elegir etiqueta",
       "addTag": "Añadir etiqueta",
       "showAll": "Mostrar todo",
+      "hideMatches": "Ocultar coincidencias",
       "searchEverywhere": "Buscar en todo",
       "clearFilters": "Borrar filtros"
     },

@@ -29,6 +29,23 @@
       "buttonRestartNow": "Reiniciar ahora",
       "releaseNotesLabel": "Notas de la versión:"
     },
+    "dataDbRecovery": {
+      "title": "Reparar la base de datos de la bóveda",
+      "message": "La base de datos de Memry para esta bóveda está dañada.",
+      "detail": "Tus notas y archivos del diario no se ven afectados. Reparar conserva la base de datos dañada como copia de seguridad en {path}, crea una nueva, reconstruye lo que pueda a partir de los archivos de tu bóveda y restaura los elementos sincronizados en la próxima sincronización. Los cambios que aún no se habían sincronizado se recuperan cuando es posible.",
+      "buttonRecover": "Reparar",
+      "buttonLater": "Ahora no"
+    },
+    "obsidianVault": {
+      "title": "Abrir bóveda de Obsidian",
+      "message": "¿Abrir una copia de esta bóveda de Obsidian?",
+      "detail": "Abrir una bóveda de Obsidian en memrynote puede hacer perder datos de los que dependen tus plugins de Obsidian. Cuando memrynote convierte la línea de tarea de un plugin en una tarea, reescribe la línea. Campos como las fechas de vencimiento del plugin Tasks salen del archivo y Obsidian ya no los ve.\n\nmemrynote puede copiar «{name}» como «{copyName}» a su lado y abrir la copia. «{name}» queda exactamente como está.",
+      "detailExistingCopy": "Abrir una bóveda de Obsidian en memrynote puede hacer perder datos de los que dependen tus plugins de Obsidian. Cuando memrynote convierte la línea de tarea de un plugin en una tarea, reescribe la línea. Campos como las fechas de vencimiento del plugin Tasks salen del archivo y Obsidian ya no los ve.\n\nYa hay una copia de memrynote, «{copyName}», a su lado. memrynote puede abrir esa copia. «{name}» queda exactamente como está.",
+      "buttonCopy": "Crear copia",
+      "buttonOpenCopy": "Abrir copia",
+      "buttonOpenOriginal": "Abrir original",
+      "buttonCancel": "Cancelar"
+    },
     "pair": {
       "title": "Vincular la extensión del navegador",
       "message": "¿Permitir que la extensión de navegador de Memry envíe capturas a esta app?",

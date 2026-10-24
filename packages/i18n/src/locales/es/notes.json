@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "No encontrada: haz clic para crear «{title}»"
   },
+  "wikiLinkMenu": {
+    "aria": "Acciones del enlace",
+    "open": "Abrir",
+    "openInNewTab": "Abrir en una pestaña nueva",
+    "openToTheSide": "Abrir al lado",
+    "edit": "Editar enlace",
+    "copy": "Copiar enlace",
+    "unlink": "Quitar enlace",
+    "displayRow": "Mostrar…",
+    "sizeNone": "Ninguno",
+    "sizeSmall": "Pequeño",
+    "sizeMedium": "Mediano",
+    "showCover": "Mostrar portada",
+    "showPreview": "Mostrar vista previa",
+    "copyFailed": "No se pudo copiar el enlace"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Reimportar desde Readwise",
+    "refreshAction": "Actualizar información del libro",
+    "syncsOn": "Readwise se sincroniza en {device}.",
+    "syncsOnAnotherDevice": "Readwise se sincroniza en otro dispositivo.",
+    "takeOverHint": "Sincroniza en ese dispositivo o asume el control en Ajustes → Importar.",
+    "reimport": {
+      "title": "¿Reimportar «{title}» desde Readwise?",
+      "body": "La sección de Readwise se reescribe desde cero. Se pierde todo lo que hayas escrito dentro.",
+      "note": "El texto fuera de la sección y las propiedades de la nota se quedan como están.",
+      "cancel": "Cancelar",
+      "confirm": "Reimportar"
+    },
+    "commands": {
+      "reimported": "Reimportado desde Readwise",
+      "refreshed": "Información del libro actualizada",
+      "failed": "No se pudo completar el comando de Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Ninguna nota seleccionada",
@@ -25,6 +61,7 @@
       "willSync": "La nota se sincronizará con la nube",
       "renameFailed": "No se pudo cambiar el nombre de la nota",
       "titleRequired": "La nota necesita un título",
+      "duplicateTitle": "Otra nota de {folder} también se llama «{title}». Los enlaces a estas notas incluirán su carpeta.",
       "toggleLocalOnlyFailed": "No se pudo cambiar el modo solo local",
       "toggleFullWidthFailed": "No se pudo activar o desactivar el ancho completo",
       "pathCopied": "Ruta copiada",
@@ -85,6 +122,10 @@
       "body": "Crea una nota para comenzar",
       "newNote": "Nueva nota"
     },
+    "readwiseSync": {
+      "tooltip": "Sincronización de Readwise",
+      "failed": "La sincronización de Readwise falló"
+    },
     "syncing": {
       "body": "Sincronizando tus notas: aparecerán aquí a medida que lleguen"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Abrir al lado",
       "newNote": "Nueva nota",
       "newFolder": "Nueva carpeta",
+      "showTasks": "Mostrar tareas",
       "expandSubfolders": "Expandir todas las subcarpetas",
       "collapseSubfolders": "Contraer todas las subcarpetas",
       "rename": "Cambiar nombre",
@@ -138,7 +180,15 @@
       "folderSuffix": "carpeta",
       "moreItems": "…y {count} más",
       "deleting": "Eliminando…",
-      "deleteCount": "Eliminar {count}"
+      "deleteCount": "Eliminar {count}",
+      "journalFolderWarning": "Esto incluye la carpeta de tu diario. Todas las entradas del diario que contiene se eliminan, en todos tus dispositivos."
+    },
+    "journalChange": {
+      "leaveTitle": "¿Convertir las entradas del diario en notas?",
+      "leaveBody": "Al sacarlas de la carpeta del diario o cambiarles el nombre fuera de su formato de fecha, las entradas del diario pasan a ser notas normales y salen de tu Diario. En tus otros dispositivos esos días se quitan del Diario y aparecen las notas en su lugar.",
+      "joinTitle": "¿Convertir las notas en entradas del diario?",
+      "joinBody": "Los archivos nombrados con el formato de fecha del diario dentro de la carpeta del diario pasan a ser entradas del diario. En tus otros dispositivos esas notas se sustituyen por entradas del diario.",
+      "confirm": "Continuar"
     },
     "toast": {
       "selectionBookmarked": "{count} elementos añadidos a marcadores",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Encabezado",
       "listPlaceholder": "Elemento de lista",
       "todoPlaceholder": "Tarea pendiente",
-      "htmlComment": "Comentario HTML oculto"
+      "htmlComment": "Comentario HTML oculto",
+      "percentComment": "Comentario oculto",
+      "readwise": {
+        "noteStart": "Readwise · se sincroniza automáticamente",
+        "noteEnd": "Fin de la sección de Readwise",
+        "dayStart": "Readwise · resaltados de hoy",
+        "dayEnd": "Fin de Readwise",
+        "hint": "Si editas dentro de esta sección, Readwise deja de actualizarla."
+      }
     },
     "table": {
       "keyboardMenuAria": "Acciones de tabla para la fila {row}, columna {column}",
-      "keyboardMenuTitle": "Fila {row} · Columna {column}"
+      "keyboardMenuTitle": "Fila {row} · Columna {column}",
+      "sizePicker": {
+        "aria": "Tamaño de la tabla. Usa las flechas para elegir filas y columnas y pulsa Intro.",
+        "size": "{rows, plural, one {# fila} other {# filas}} × {columns, plural, one {# columna} other {# columnas}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Eliminar fila} other {Eliminar # filas}}",
+        "addRowsAbove": "{count, plural, one {Añadir fila arriba} other {Añadir # filas arriba}}",
+        "addRowsBelow": "{count, plural, one {Añadir fila abajo} other {Añadir # filas abajo}}",
+        "deleteColumns": "{count, plural, one {Eliminar columna} other {Eliminar # columnas}}",
+        "addColumnsLeft": "{count, plural, one {Añadir columna a la izquierda} other {Añadir # columnas a la izquierda}}",
+        "addColumnsRight": "{count, plural, one {Añadir columna a la derecha} other {Añadir # columnas a la derecha}}"
+      }
     },
     "list": {
       "bulleted": "Lista con viñetas",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Ocultar grafo local",
       "showLocalGraph": "Mostrar grafo local",
       "moreActions": "Más acciones",
+      "searchActions": "Buscar acciones...",
+      "noMatchingActions": "Ninguna acción coincide",
       "find": "Buscar…",
       "versionHistory": "Historial de versiones",
       "export": "Exportar",
@@ -215,6 +287,8 @@
       "notSynced": "Aún no se ha sincronizado con este dispositivo",
       "revealFailed": "No se pudo mostrar el archivo",
       "openFailed": "No se pudo abrir el archivo",
+      "showAsLink": "Mostrar como enlace",
+      "showAsEmbed": "Mostrar incrustado",
       "missingTitle": "Falta el archivo adjunto",
       "missingExpected": "Archivo esperado: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Cambiar nombre",
       "renamed": "Nombre cambiado a {name}",
       "failed": "No se pudo cambiar el nombre del adjunto"
+    },
+    "imageLightbox": {
+      "menuItem": "Ver más grande",
+      "title": "Visor de imágenes",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "reset": "Restablecer zoom"
+    },
+    "imageCrop": {
+      "menuItem": "Recortar…",
+      "title": "Recortar imagen",
+      "description": "Arrastra sobre la imagen para elegir lo que muestra la nota. El archivo original se conserva tal cual.",
+      "reset": "Mostrar la imagen completa",
+      "cancel": "Cancelar",
+      "apply": "Recortar",
+      "unavailable": "La imagen aún no se ha cargado, así que no se puede recortar"
     },
     "attachmentsDialog": {
       "title": "Adjuntos",
@@ -248,12 +338,24 @@
       "title": "Destacado",
       "group": "Bloques básicos",
       "subtext": "Resalta información importante",
+      "customSubtext": "Tu tipo de destacado personalizado",
       "changeType": "Cambiar tipo de destacado",
+      "expand": "Expandir destacado",
+      "collapse": "Contraer destacado",
       "menuLabel": "Tipo de destacado",
       "info": "Información",
       "warning": "Advertencia",
       "error": "Error",
-      "success": "Éxito"
+      "success": "Éxito",
+      "note": "Nota",
+      "abstract": "Resumen",
+      "todo": "Por hacer",
+      "tip": "Consejo",
+      "important": "Importante",
+      "question": "Pregunta",
+      "example": "Ejemplo",
+      "quote": "Cita",
+      "bug": "Error"
     },
     "columns": {
       "group": "Bloques básicos",
@@ -332,6 +434,83 @@
       "invalidShape": "La definición de esta vista no tiene origen. Elige uno arriba o corrígela abajo.",
       "definition": "Definición"
     },
+    "chart": {
+      "title": "Gráfico",
+      "subtext": "Representa una propiedad a lo largo del tiempo: una línea, barras o un mapa de calor de calendario",
+      "layout": "Gráfico",
+      "settings": "Ajustes del gráfico",
+      "chooseProperty": "Elige qué representar",
+      "source": "Origen",
+      "headerMeta": "{range} · {type}",
+      "property": "Propiedad",
+      "noProperties": "Aún no hay nada que representar. Primero añade una propiedad a una entrada del diario o a una nota.",
+      "chartType": "Gráfico",
+      "suggested": "Sugerido",
+      "types": {
+        "line": "Línea",
+        "bar": "Barras",
+        "heatmap": "Mapa de calor"
+      },
+      "range": "Rango",
+      "lastDays": "{count, plural, one {Último día} other {Últimos # días}}",
+      "sameDay": "Entradas del mismo día",
+      "aggregates": {
+        "average": "Promedio",
+        "sum": "Suma",
+        "min": "Mínimo",
+        "max": "Máximo",
+        "count": "Recuento"
+      },
+      "missingDays": "Días sin datos",
+      "missing": {
+        "gap": "Dejar un hueco",
+        "zero": "Contar como cero"
+      },
+      "dateFrom": {
+        "label": "Fecha desde",
+        "created": "Creación",
+        "modified": "Modificación"
+      },
+      "propertyTypes": {
+        "text": "Texto",
+        "number": "Número",
+        "checkbox": "Casilla",
+        "date": "Fecha",
+        "url": "URL",
+        "status": "Estado",
+        "select": "Selección",
+        "multiselect": "Selección múltiple",
+        "relation": "Relación",
+        "project": "Proyecto",
+        "rating": "Valoración"
+      },
+      "noEntry": "Sin entrada",
+      "done": "Hecho",
+      "notDone": "No hecho",
+      "logged": "Registrado",
+      "valueCount": "{count, plural, one {# valor} other {# valores}}",
+      "average": "Promedio",
+      "vsPrevious": "frente al periodo anterior",
+      "lowest": "Mínimo",
+      "currentStreak": "Racha actual",
+      "longestStreak": "Racha más larga",
+      "dayCount": "{count, plural, one {# día} other {# días}}",
+      "doneDays": "Hecho",
+      "loggedDays": "Registrado",
+      "mostCommon": "Más común",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} en los últimos {days} días",
+      "noData": "Aún no hay nada registrado en este rango.",
+      "loadFailed": "No se pudo cargar este gráfico. Las entradas no se han tocado.",
+      "sourceJournal": "Diario",
+      "history": {
+        "show": "Mostrar historial",
+        "title": "Historial de {property}",
+        "range": "Últimas 13 semanas",
+        "insert": "Copiar como bloque de gráfico",
+        "copied": "Bloque de gráfico copiado. Pégalo en cualquier nota."
+      }
+    },
     "slashMenu": {
       "aria": "Bloques y acciones",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Insertar",
         "open": "Abrir"
       },
+      "close": "Cerrar menú",
       "matchesAlias": "coincide con",
       "noMatch": "Ningún bloque coincide con «{query}»",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Mostrar como",
+        "embed": "Incrustado",
+        "link": "Enlace"
+      },
       "title": {
         "image": "Añadir una imagen",
         "media": "Añadir contenido multimedia",
@@ -525,6 +710,11 @@
       "empty": "Escribe para crear una etiqueta nueva",
       "create": "Crear #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Mostrar PDF como",
+      "embed": "Visor incrustado",
+      "link": "Nombre del archivo"
+    },
     "pasteLink": {
       "title": "Pegar como",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} min de lectura",
     "words": "{count} palabras",
     "created": "Creado",
-    "modified": "Modificado"
+    "modified": "Modificado",
+    "sync": {
+      "label": "Sincronización",
+      "confirmed": "En el servidor {time}",
+      "pending": "Esperando desde {time}",
+      "sent": "Enviando",
+      "rejected": "El servidor rechazó el último cambio",
+      "notRecorded": "Nada pendiente de enviar",
+      "localOnly": "Solo local",
+      "notSyncing": "Sin sincronizar",
+      "waiting": "Esperando para enviar"
+    }
   },
   "backlinks": {
     "sortRecent": "Reciente",
@@ -587,7 +788,18 @@
     "expandSection": "Expandir la sección de enlaces entrantes",
     "showMore": "Mostrar {count} enlaces entrantes más",
     "more": "{count} más",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Se muestra en un portal"
+  },
+  "unlinkedMentions": {
+    "title": "Menciones sin enlazar",
+    "summary": "{count, plural, one {# mención sin enlazar} other {# menciones sin enlazar}}",
+    "sectionAria": "Menciones sin enlazar",
+    "fromAria": "Menciones sin enlazar en {title}",
+    "link": "Enlazar",
+    "linkAria": "Enlazar {text}",
+    "gone": "Esa mención cambió desde que se leyó la lista",
+    "linkFailed": "No se pudo enlazar la mención"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# enlace saliente} other {# enlaces salientes}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "No se pudo añadir la nota al lienzo"
   },
   "suggestedTags": {
-    "label": "Etiquetas sugeridas:",
-    "hint": "Etiquetas que comparten las notas más parecidas a esta. No se añade nada hasta que elijas una.",
-    "acceptAria": "Añadir la etiqueta {tag}",
-    "support": "{count, plural, one {Se usa en # nota similar} other {Se usa en # notas similares}}",
-    "dismiss": "Ocultar etiquetas sugeridas"
+    "support": "{count, plural, one {Se usa en # nota similar} other {Se usa en # notas similares}}"
   },
   "comments": {
     "railAria": "Comentarios",
@@ -663,6 +871,7 @@
     "removeAria": "Quitar etiqueta: {tag}",
     "inputPlaceholder": "Escribe el nombre de la etiqueta…",
     "recent": "Recientes",
+    "suggested": "Sugeridas",
     "matching": "Coincidencias",
     "all": "Todas las etiquetas",
     "none": "No se encontraron etiquetas",
@@ -755,6 +964,9 @@
     "repositionHint": "Arrastra para reposicionar",
     "repositionSave": "guardar",
     "repositionCancel": "cancelar",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "resize": "Arrastra para cambiar el tamaño de la portada",
     "credit": "Foto de {name} en Unsplash",
     "focusFailed": "No se pudo guardar la posición de la portada",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# nota} many {# notas} other {# notas}}"
+    },
+    "noteTasks": {
+      "expand": "Mostrar tareas de {title}",
+      "collapse": "Ocultar tareas de {title}",
+      "list": "Tareas en {title}",
+      "progressOpen": "{open}/{total} abiertas",
+      "progressDone": "{total}/{total} hechas",
+      "nextDue": "Próximo vencimiento",
+      "reminder": "Recordatorio establecido"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "Guardar",
     "addToFilterHint": "Ctrl/Cmd + clic en una etiqueta para añadirla al filtro"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternativas",
+      "overflow": "Desbordamiento",
+      "menu": "Herramientas de escritura",
+      "close": "Cerrar herramientas de escritura"
+    },
+    "menu": {
+      "aria": "Acciones del editor",
+      "cut": "Cortar",
+      "copy": "Copiar",
+      "paste": "Pegar",
+      "selectAll": "Seleccionar todo",
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "comment": "Comentar",
+      "addAlternative": "Añadir alternativa",
+      "suggestAlternatives": "Sugerir alternativas",
+      "ghost": "Fantasma",
+      "revive": "Reavivar",
+      "stash": "Guardar en el desbordamiento",
+      "noSpellingSuggestions": "Sin sugerencias",
+      "addToDictionary": "Añadir al diccionario",
+      "clipboardFailed": "No se pudo usar el portapapeles"
+    },
+    "alternatives": {
+      "railAria": "Alternativas",
+      "hint": "{position} de {total} ↑ ↓",
+      "original": "Original",
+      "byYou": "Escrito por ti",
+      "byAI": "Sugerido por la IA",
+      "showing": "Mostrando",
+      "addPlaceholder": "Añadir alternativa…",
+      "removeSuggestions": "Quitar sugerencias",
+      "removeVariant": "Quitar alternativa",
+      "empty": "Selecciona texto y elige Añadir alternativa para conservar otras formas de decirlo.",
+      "suggesting": "Sugiriendo alternativas…",
+      "suggestFailed": "No se pudieron sugerir alternativas",
+      "noSuggestions": "No se sugirió ninguna alternativa nueva"
+    },
+    "overflow": {
+      "railAria": "Desbordamiento",
+      "addPlaceholder": "Escribe algo para conservar…",
+      "empty": "Las líneas que guardes o escribas aquí se quedan con esta nota, fuera del texto.",
+      "dragHint": "Arrastra a la nota",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "delete": "Eliminar"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Bloquear nota",
+    "unlockNote": "Desbloquear nota",
+    "lockFolder": "Bloquear carpeta",
+    "unlockFolder": "Desbloquear carpeta",
+    "toggleFailed": "No se pudo cambiar el bloqueo",
+    "readOnlyIndicator": "Bloqueada. Solo lectura para ti y para los agentes.",
+    "externalEditRestored": "«{title}» está bloqueada, así que se deshizo su edición externa",
+    "externalEditRestoredHint": "El texto editado se guarda en el historial de versiones de la nota."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Persona",
+        "plural": "Personas",
+        "fields": {
+          "company": "Empresa",
+          "role": "Cargo",
+          "email": "Correo",
+          "phone": "Teléfono"
+        },
+        "inverse": {
+          "company": "Personas"
+        },
+        "template": {
+          "name": "Persona",
+          "context": "Contexto",
+          "contextHint": "Cómo nos conocimos, qué le importa",
+          "notes": "Notas"
+        }
+      },
+      "company": {
+        "name": "Empresa",
+        "plural": "Empresas",
+        "fields": {
+          "website": "Sitio web",
+          "industry": "Sector",
+          "location": "Ubicación"
+        },
+        "template": {
+          "name": "Empresa",
+          "overview": "Resumen",
+          "overviewHint": "A qué se dedica, a quién conocemos allí",
+          "notes": "Notas"
+        }
+      },
+      "meeting": {
+        "name": "Reunión",
+        "plural": "Reuniones",
+        "fields": {
+          "date": "Fecha",
+          "attendees": "Asistentes",
+          "company": "Empresa"
+        },
+        "inverse": {
+          "attendees": "Reuniones",
+          "company": "Reuniones"
+        },
+        "template": {
+          "name": "Reunión",
+          "agenda": "Orden del día",
+          "notes": "Notas",
+          "actionItems": "Acciones pendientes"
+        }
+      },
+      "book": {
+        "name": "Libro",
+        "plural": "Libros",
+        "fields": {
+          "author": "Autor",
+          "shelf": "Estantería",
+          "rating": "Valoración",
+          "finished": "Terminado"
+        },
+        "shelf": {
+          "toRead": "Por leer",
+          "reading": "Leyendo",
+          "read": "Leído"
+        },
+        "template": {
+          "name": "Libro",
+          "highlights": "Resaltados",
+          "thoughts": "Reflexiones"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} ahora es {tag}. Plantilla añadida.",
+      "templateChanged": "La nota cambió después de añadir la plantilla, así que se queda.",
+      "undoFailed": "No se pudo deshacer",
+      "addFailed": "No se pudo añadir la etiqueta",
+      "removeFailed": "No se pudo quitar la etiqueta",
+      "removedKept": "Se quitó #{tag}. Se conservan {count} valores.",
+      "removedKeptOne": "Se quitó #{tag}. Se conserva 1 valor."
+    },
+    "picker": {
+      "create": "Crear #{tag}",
+      "fillsTemplate": "Rellena esta nota vacía con la plantilla {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Etiquetas prediseñadas",
+        "subtitle": "Etiquetas que vienen con campos. Las notas se quedan como están hasta que las etiquetes.",
+        "notNow": "Ahora no",
+        "add": "Añadir",
+        "addFields": "Añadir campos",
+        "added": "Añadida",
+        "alreadyOn": "Ya está en {count} notas",
+        "alreadyOnOne": "Ya está en 1 nota"
+      },
+      "dialog": {
+        "title": "¿Añadir los campos de {preset} a #{tag}?",
+        "body": "#{tag} ya está en {count} notas. Conservan todo lo que tienen y reciben estos campos, vacíos hasta que alguien los rellene.",
+        "bodyOne": "#{tag} ya está en 1 nota. Conserva todo lo que tiene y recibe estos campos, vacíos hasta que alguien los rellene.",
+        "template": "La plantilla ({sections}) solo rellena las notas que están vacías.",
+        "alsoAddsPrefix": "También añade",
+        "alsoAddsSuffix": "para el campo {field}.",
+        "useAnotherName": "Usar otro nombre",
+        "nameLabel": "Nombre de la etiqueta nueva",
+        "namePlaceholder": "contacto",
+        "cancel": "Cancelar",
+        "addFields": "Añadir campos"
+      },
+      "toast": {
+        "added": "Se añadió #{tag}",
+        "addedFields": "Se añadieron los campos de {preset} a #{tag}"
+      },
+      "hasFields": "Tiene campos"
+    },
+    "tasks": {
+      "thisTask": "Esta tarea",
+      "viaTag": "{name} vía #{via}",
+      "clearValue": "Borrar {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "vía #{tag}",
+      "groupMenu": "Opciones de {tag}",
+      "openTag": "Abrir #{tag}",
+      "thisNote": "Esta nota"
+    },
+    "offer": {
+      "text": "Añadir la plantilla {tag} debajo de tu texto",
+      "add": "Añadir",
+      "dismiss": "Descartar",
+      "addFailed": "No se pudo añadir la plantilla"
+    },
+    "settings": {
+      "title": "Ajustes de #{tag}",
+      "close": "Cerrar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "onCounts": "En {notes, plural, one {# nota} other {# notas}} y {tasks, plural, one {# tarea} other {# tareas}}",
+      "onNotes": "En {count, plural, one {# nota} other {# notas}}",
+      "headerFields": "{count, plural, one {# campo} other {# campos}}",
+      "editTag": "Editar etiqueta",
+      "syncNote": "Los cambios se sincronizan con tus otros dispositivos",
+      "newerVersion": "Una versión más reciente de Memry cambió esta etiqueta. Actualiza Memry para editarla aquí.",
+      "sections": {
+        "appearance": "Apariencia",
+        "extends": "Extiende",
+        "fields": "Campos · {count}",
+        "template": "Plantilla"
+      },
+      "appearance": {
+        "icon": "Icono",
+        "color": "Color",
+        "customColor": "Personalizado",
+        "category": "Categoría",
+        "noCategory": "Sin categoría"
+      },
+      "extends": {
+        "nothing": "Nada",
+        "hint": "Toma los campos de otra etiqueta y aparece en su tabla.",
+        "hintSet": "Las notas de {tag} reciben los campos de {parent} y aparecen en la tabla de {parent}."
+      },
+      "types": {
+        "text": "Texto",
+        "number": "Número",
+        "date": "Fecha",
+        "url": "URL",
+        "status": "Estado",
+        "select": "Selección",
+        "multiselect": "Selección múltiple",
+        "checkbox": "Casilla",
+        "relation": "Relación"
+      },
+      "fields": {
+        "empty": "Aún no hay campos. Añade uno para dar las mismas propiedades a todas las notas con #etiqueta.",
+        "fromParent": "De #{tag} · edítalo allí",
+        "inverseSub": "Se muestra en {target} como {inverse}",
+        "anyNoteSub": "Enlaza a cualquier nota",
+        "actions": "Acciones de {field}",
+        "rename": "Renombrar…",
+        "relationSettings": "Ajustes de la relación",
+        "remove": "Quitar…"
+      },
+      "addField": {
+        "button": "Añadir campo",
+        "namePlaceholder": "Nombre del campo",
+        "existing": "Propiedades existentes",
+        "existingSub": "{type} · en {count, plural, one {# nota} other {# notas}} · reutilizar",
+        "newType": "Tipo de campo nuevo",
+        "relationSub": "Enlaza a notas con una etiqueta",
+        "submit": "Añadir campo",
+        "reserved": "{name} está reservado y no puede ser un campo.",
+        "taken": "#{tag} ya tiene {name}."
+      },
+      "relation": {
+        "target": "Apunta a notas con la etiqueta",
+        "pickTag": "Elige una etiqueta",
+        "howMany": "Cuántas",
+        "one": "Una",
+        "many": "Varias",
+        "inverseLabel": "En la página de {target}, listarlas como",
+        "inverseLabelAny": "En la página enlazada, listarlas como",
+        "inverseHint": "Una lista de solo lectura en cada {target}. No se escribe nada en las notas de {target}.",
+        "inverseHintAny": "Una lista de solo lectura en cada nota enlazada. No se escribe nada en esas notas."
+      },
+      "shared": {
+        "title": "Campo nuevo en #{tag}",
+        "existsWith": "{name} ya existe en esta bóveda con {options}.",
+        "existsAs": "{name} ya existe en esta bóveda como propiedad de tipo {type}.",
+        "shareWith": "#{tag} lo compartirá con tus {others} notas.",
+        "shareAny": "#{tag} lo compartirá con tus otras notas.",
+        "useInstead": "Usar {name} en su lugar",
+        "share": "Compartir {name}"
+      },
+      "template": {
+        "edit": "Editar plantilla",
+        "none": "Aún no hay plantilla. Una plantilla rellena las notas vacías cuando reciben la etiqueta.",
+        "create": "Crear plantilla",
+        "defaultHeading": "Notas",
+        "inherited": "De #{tag}",
+        "autofill": "Rellenar las notas vacías cuando reciban #{tag}"
+      },
+      "remove": {
+        "title": "¿Quitar {field} de #{tag}?",
+        "body": "{field} está rellenado en {filled, plural, one {# nota} other {# notas}}. Esos valores se quedan en las notas como una propiedad normal; {empty, plural, one {# hueco vacío desaparece} other {# huecos vacíos desaparecen}}.",
+        "confirm": "Quitar campo"
+      },
+      "rename": {
+        "title": "Renombrar {from} a {to}",
+        "titleEmpty": "Renombrar {from}",
+        "label": "Nombre nuevo",
+        "body": "{count, plural, one {# nota tiene} other {# notas tienen}} un valor de {field}. Memry renombra la clave en cada archivo y en sus propiedades; Obsidian también ve el nombre nuevo.",
+        "progress": "Renombrando en las notas",
+        "confirm": "Renombrar",
+        "taken": "Esta etiqueta ya tiene {name}.",
+        "done": "Se renombró {from} a {to} en {count, plural, one {# elemento} other {# elementos}}.",
+        "skipped": "Se renombró {from} a {to} en {count, plural, one {# elemento} other {# elementos}}. {locked, plural, =0 {} one {# nota bloqueada termina cuando se desbloquea.} other {# notas bloqueadas terminan cuando se desbloquean.}} {existing, plural, =0 {} one {# nota ya tenía {to} y conserva ambos.} other {# notas ya tenían {to} y conservan ambos.}}"
+      },
+      "delete": {
+        "button": "Eliminar etiqueta",
+        "title": "¿Eliminar #{tag}?",
+        "body": "#{tag} se quitará de {notes, plural, one {# nota} other {# notas}} y la etiqueta desaparecerá con {fields, plural, one {su # campo} other {sus # campos}} y su plantilla.",
+        "bodyNoTemplate": "#{tag} se quitará de {notes, plural, one {# nota} other {# notas}} y la etiqueta desaparecerá con {fields, plural, one {su # campo} other {sus # campos}}.",
+        "bodyPlain": "#{tag} se quitará de todas las notas que la tengan en sus etiquetas.",
+        "statNotes": "notas conservan su texto",
+        "statValues": "valores se quedan como propiedades",
+        "plainText": "Las notas que mencionan #{tag} en su texto lo conservan como texto sin formato.",
+        "confirm": "Eliminar etiqueta",
+        "done": "Se eliminó #{tag}."
+      },
+      "errors": {
+        "addField": "No se pudo añadir el campo.",
+        "removeField": "No se pudo quitar el campo.",
+        "renameField": "No se pudo renombrar el campo.",
+        "moveField": "No se pudo mover el campo.",
+        "relation": "No se pudo guardar la relación.",
+        "extends": "No se pudo cambiar lo que extiende esta etiqueta.",
+        "template": "No se pudo actualizar la plantilla.",
+        "deleteTag": "No se pudo eliminar la etiqueta.",
+        "icon": "No se pudo cambiar el icono.",
+        "color": "No se pudo cambiar el color.",
+        "category": "No se pudo cambiar la categoría."
+      }
+    },
+    "fill": {
+      "action": "Rellenar desde la nota",
+      "reading": "Leyendo la nota…",
+      "disclosure": "Tu modelo de agente ({model}) lee esta nota para sugerir valores. Solo se envía esta nota. No se guarda nada hasta que aceptes.",
+      "disclosureLocal": "Tu modelo local ({model}) lee esta nota en este dispositivo para sugerir valores. Nada sale del dispositivo y no se guarda nada hasta que aceptes.",
+      "disclosureMany": "Tu modelo de agente ({model}) lee estas notas una por una para sugerir valores. Solo se envían esas notas. No se guarda nada hasta que aceptes.",
+      "disclosureLocalMany": "Tu modelo local ({model}) lee estas notas en este dispositivo para sugerir valores. Nada sale del dispositivo y no se guarda nada hasta que aceptes.",
+      "suggest": "Sugerir valores",
+      "notNow": "Ahora no",
+      "countOne": "· {count} sugerencia",
+      "count": "· {count} sugerencias",
+      "dismiss": "Descartar",
+      "acceptAll": "Aceptar todo",
+      "accept": "Aceptar {field}",
+      "reject": "Rechazar {field}",
+      "notInNote": "No está en la nota",
+      "createHint": "Crea un nuevo #{tag} al aceptar",
+      "nothingFound": "Nada en esta nota rellena los campos vacíos",
+      "failed": "No se pudieron sugerir valores. {message}",
+      "saveFailed": "No se pudieron guardar los valores aceptados",
+      "bulkAction": "Rellenar campos vacíos",
+      "bulkTitle": "Rellenar campos vacíos",
+      "bulkReading": "{done} de {total} notas · leyendo notas…",
+      "bulkRead": "{done} de {total} notas leídas",
+      "stop": "Detener",
+      "name": "Nombre",
+      "nothingInRow": "No se encontró nada",
+      "found": "{count} encontrados",
+      "reviewOneByOne": "Revisar uno por uno",
+      "acceptRow": "Aceptar valores de {title}",
+      "rejectRow": "Omitir {title}",
+      "bulkSavedOne": "Se rellenó {count} campo en {notes} notas",
+      "bulkSaved": "Se rellenaron {count} campos en {notes} notas"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Crear {title} como",
+      "asPrefix": "Crear",
+      "asSuffix": "como",
+      "failed": "No se pudo crear la nota",
+      "lastUsed": "Último usado",
+      "noteWord": "nota",
+      "plainNote": "Nota simple",
+      "readyMade": "Etiqueta prediseñada",
+      "row": "Crear «{title}»",
+      "rowHint": "Como {types}"
+    },
+    "hover": {
+      "at": "en",
+      "lastMet": "Último encuentro · {title}",
+      "lastMetOn": "Último encuentro el {date} · {title}",
+      "mentionedIn": "{count, plural, one {Mencionado en # nota} other {Mencionado en # notas}}",
+      "open": "Abrir",
+      "tasks": "{count, plural, one {# tarea · {field}} other {# tareas · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} en el texto",
+      "explain": "En el texto, una etiqueta es una marca. Esta nota aparece en Mencionado en de #{tag}.",
+      "made": "Se añadió #{tag} a las etiquetas de esta nota",
+      "make": "Convertir esta nota en {tag}",
+      "makeFailed": "No se pudo añadir la etiqueta",
+      "makeHint": "Añade #{tag} a la cabecera y muestra sus campos",
+      "meta": "{count, plural, one {# objeto} other {# objetos}} · {fields, plural, one {# campo} other {# campos}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# campo} other {# campos}}",
+      "open": "Abrir #{tag}",
+      "remove": "Quitar la etiqueta del texto"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "como {field}",
+      "due": "Vence el {date}",
+      "inTheText": "en el texto",
+      "mentionedIn": "Mencionado en",
+      "tasks": "Tareas",
+      "title": "Enlazado aquí"
+    },
+    "mention": {
+      "notes": "Notas"
+    },
+    "picker": {
+      "create": "Nuevo {tag}",
+      "createNamed": "Nuevo {tag} «{title}»",
+      "empty": "Sin coincidencias",
+      "search": "Buscar {tag}",
+      "untitled": "Nuevo {tag}"
+    },
+    "quickFields": {
+      "add": "Añadir {field}",
+      "aria": "Primeros campos de {title}",
+      "done": "Listo",
+      "later": "Más tarde",
+      "newObject": "Nuevo {tag}",
+      "saveFailed": "No se pudieron guardar los campos"
+    },
+    "table": {
+      "untitled": "Nuevo {tag}",
+      "newInGroup": "Nuevo {tag} en {group}",
+      "newInGroupHint": "⌘↵ lo abre en una pestaña nueva",
+      "new": "Nuevo {tag}",
+      "includes": "{field} incluye",
+      "removeFilter": "Quitar filtro",
+      "shown": "{shown} de {total}",
+      "saveView": "Guardar vista",
+      "mentionedMeta": "{count, plural, one {# nota con '#'{tag} en su texto} other {# notas con '#'{tag} en su texto}}",
+      "saveFailed": "No se pudo guardar el campo",
+      "created": "Se creó {title}"
+    },
+    "relationDrop": {
+      "title": "¿Añadir #{tag} a «{title}»?",
+      "body": "Este campo solo enlaza notas con la etiqueta #{tag}. Memry añade #{tag} a la cabecera de «{title}» y luego la enlaza aquí.",
+      "confirm": "Añadir #{tag} y enlazar",
+      "cancel": "Cancelar",
+      "added": "«{title}» ahora es #{tag} y está enlazada",
+      "notANote": "Aquí solo se pueden enlazar notas como #{tag}",
+      "failed": "No se pudo enlazar esta nota"
+    }
+  },
   "names": {
     "also": "también",
     "add": "Añadir otro nombre",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Buscar notas",
     "pickerEmpty": "Ninguna nota coincide",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Añadir detalles"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Muestra en vivo una nota o un bloque de otro lugar"
+      },
+      "searchPortal": {
+        "title": "Portal de búsqueda",
+        "subtext": "Lista en vivo de bloques que coinciden con una consulta"
+      }
+    },
+    "picker": {
+      "aria": "Elige una nota o un bloque para el portal",
+      "notes": "Notas",
+      "blocks": "Bloques",
+      "loading": "Buscando…",
+      "empty": "Ninguna nota ni bloque coincide",
+      "hintInsert": "Insertar portal",
+      "hintClose": "Cerrar",
+      "keyEsc": "Esc",
+      "create": "Crear nota «{query}»",
+      "createFailed": "No se pudo crear esa nota",
+      "stampFailed": "No se pudo preparar ese bloque para un portal",
+      "retargetFailed": "No se pudo apuntar el portal a ese bloque"
+    },
+    "insert": {
+      "cycle": "Un portal no puede mostrar una nota dentro de sí misma."
+    },
+    "copy": {
+      "done": "Portal copiado. Pégalo en cualquier nota.",
+      "failed": "No se pudo copiar un portal de este bloque"
+    },
+    "menu": {
+      "copyAsPortal": "Copiar como portal",
+      "hideInPortal": "Ocultar en este portal"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Usado en # otro lugar} other {Usado en # otros lugares}}"
+    },
+    "whereUsed": {
+      "aria": "Dónde se usa este bloque",
+      "portals": "Portales",
+      "links": "Enlaces",
+      "openBeside": "Abrir al lado",
+      "loadFailed": "No se pudo cargar dónde se muestra este bloque"
+    },
+    "hiddenBlocks": {
+      "title": "Bloques ocultos",
+      "showAll": "Mostrar todos",
+      "search": "Buscar bloques ocultos",
+      "showFailed": "No se pudo mostrar este bloque"
+    },
+    "searchQuery": {
+      "titleNew": "Portal de búsqueda",
+      "titleEdit": "Editar consulta",
+      "text": "Contiene las palabras",
+      "textPlaceholder": "Palabras del bloque",
+      "tag": "Etiqueta",
+      "tagPlaceholder": "examen",
+      "limit": "Límite",
+      "footer": "Límite de {limit} resultados.",
+      "create": "Crear",
+      "apply": "Aplicar"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "¿Eliminar este bloque en todas partes?",
+        "note": "¿Eliminar esta nota en todas partes?"
+      },
+      "description": {
+        "block": "«{title}» también aparece en {count, plural, one {# otra nota} other {# otras notas}}.",
+        "note": "«{title}» se muestra o está enlazada en {count, plural, one {# otra nota} other {# otras notas}}."
+      },
+      "manyNotes": "{count} notas",
+      "source": "{title} (origen)",
+      "removeHere": "Ocultar aquí en su lugar",
+      "cancel": "Cancelar",
+      "everywhere": "Eliminar en todas partes",
+      "undoToast": "{count, plural, one {El bloque eliminado se mostraba en # otra nota.} other {El bloque eliminado se mostraba en # otras notas.}}",
+      "undo": "Deshacer"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Completo",
+      "brief": "Breve",
+      "key": "Clave",
+      "takeaway": "Conclusión",
+      "topic": "Tema"
+    },
+    "chrome": {
+      "fold": "Plegar nota",
+      "unfold": "Plegada a {level}. Mostrar el texto completo",
+      "words": "{count, plural, one {# palabra} other {# palabras}}",
+      "writing": "Escribiendo…",
+      "writtenBy": "Escrito por {agent}",
+      "retry": "La última ejecución falló · Reintentar",
+      "retryAction": "Reintentar",
+      "captionOff": "Activa Resumir notas largas en Ajustes → IA",
+      "captionNoAgent": "Ningún agente conectado · Ajustes → IA",
+      "unknownAgent": "IA"
+    },
+    "hint": {
+      "title": "¿Nota larga? Échale un vistazo.",
+      "body": "Pliégala hasta sus frases clave y abre solo el párrafo que necesites.",
+      "dismiss": "Entendido"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# párrafo abierto} other {# párrafos abiertos}}",
+      "escape": "esc",
+      "copy": "Copiar como texto",
+      "copied": "Copiado",
+      "aria": "Vista plegada",
+      "hintMac": "Pellizca, desplázate con ⌘ o desplázate sobre esta barra para hacer zoom · haz clic en un párrafo para abrirlo",
+      "hint": "Pellizca, desplázate con Ctrl o desplázate sobre esta barra para hacer zoom · haz clic en un párrafo para abrirlo"
+    },
+    "view": {
+      "aria": "Vista plegada {level}",
+      "paragraphOpen": "Abierto en Completo · haz clic de nuevo para plegar",
+      "paragraphFold": "Plegar este párrafo",
+      "paragraphOpenAction": "Abrir este párrafo completo",
+      "unfoldSection": "Desplegar la sección {heading}",
+      "jumpToParagraph": "Mostrar este párrafo completo: {topic}",
+      "untitledSection": "Sin título",
+      "skipped": {
+        "code": "… {count, plural, one {# bloque de código} other {# bloques de código}}",
+        "table": "… {count, plural, one {# tabla} other {# tablas}}",
+        "image": "… {count, plural, one {# imagen} other {# imágenes}}",
+        "callout": "… {count, plural, one {# destacado} other {# destacados}}",
+        "embed": "… {count, plural, one {# incrustado} other {# incrustados}}",
+        "other": "… {count, plural, one {# bloque más} other {# bloques más}}"
+      }
+    }
   }
 }

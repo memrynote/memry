@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Tu plan sincroniza menos bóvedas de las que tiene esta cuenta, así que esta bóveda se queda en este dispositivo. Quita una bóveda de tu cuenta en Ajustes → Cuenta o mejora tu plan.",
     "certificatePinFailed": "No se pudo establecer una conexión segura. Comprueba tu conexión de red.",
     "deviceKeyMismatch": "La clave de seguridad de este dispositivo ya no coincide con la registrada en tu cuenta, así que el servidor rechaza sus cambios. Vuelve a iniciar sesión en este dispositivo para registrarlo de nuevo.",
+    "deviceKeysMissing": "Los cambios de este dispositivo no se están subiendo porque faltan sus claves de dispositivo. Elige Reparar para restaurarlas. Si este dispositivo ya no conserva sus claves, volverás a iniciar sesión y puede que necesites tu frase de recuperación. Las notas, tareas y proyectos sin sincronizar se conservan.",
     "keychainUnavailable": "La sincronización está en pausa porque Memry no puede leer ahora sus claves de sincronización del llavero del sistema. Desbloquea el llavero y la sincronización se reanudará sola; si no, reinicia Memry. No se ha eliminado nada.",
     "unknown": "Se produjo un error de sincronización inesperado. Se volverá a intentar automáticamente.",
     "statusFetchFailed": "No se pudo recuperar el estado de sincronización",
@@ -106,6 +107,10 @@
     "triggerFailed": "Error de sincronización",
     "pauseFailed": "No se pudo pausar la sincronización",
     "resumeFailed": "No se pudo reanudar la sincronización",
+    "syncNowSignedOut": "La sincronización necesita que vuelvas a iniciar sesión en este dispositivo.",
+    "syncNowBusy": "La sincronización ya se está ejecutando. Inténtalo de nuevo en un momento.",
+    "syncNowPaused": "La sincronización se pausó mientras se ejecutaba. Reanúdala desde el menú de sincronización.",
+    "openAccountSettings": "Abrir los ajustes",
     "settingsNotInitialized": "La sincronización de ajustes no está inicializada",
     "securityQuarantinePermanent": "No se pudo verificar un elemento de sincronización y se puso en cuarentena por motivos de seguridad.",
     "securityQuarantineRetry": "Un elemento de sincronización falló en la verificación de firma y se volverá a intentar.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "La edición en línea con IA está desactivada",
-    "listOllamaModelsFailed": "No se pudieron listar los modelos de Ollama"
+    "listOllamaModelsFailed": "No se pudieron listar los modelos de Ollama",
+    "writingAssistInvalid": "No se pudo enviar esa solicitud al modelo de IA.",
+    "apiKeyMissing": "Añade tu clave de API de {provider} en Ajustes → IA para usar las herramientas de escritura.",
+    "apiKeyInvalid": "Se rechazó tu clave de API de {provider}. Compruébala en Ajustes → IA.",
+    "ollamaUnreachable": "Ollama no se está ejecutando. Inícialo con \"ollama serve\" o elige otro proveedor en Ajustes → IA.",
+    "providerUnreachable": "No se pudo conectar con {provider}. Comprueba tu conexión a internet e inténtalo de nuevo."
   },
   "auth": {
     "notAuthenticated": "No has iniciado sesión",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "No se pudo crear una copia vinculada del evento de calendario externo",
     "onlyCalendarSourcesRetryable": "Solo se pueden reintentar las fuentes de calendario",
     "invalidProviderSettings": "Ajustes del proveedor de calendario no válidos",
-    "getExternalEventFailed": "No se pudo cargar este evento. Sigue en tu calendario; prueba a abrirlo de nuevo."
+    "getExternalEventFailed": "No se pudo cargar este evento. Sigue en tu calendario; prueba a abrirlo de nuevo.",
+    "listLinkedNotesFailed": "No se pudieron cargar las notas vinculadas a este evento."
   },
   "canvasFolder": {
     "exists": "Ya existe aquí una carpeta de lienzos con ese nombre.",
@@ -209,10 +220,35 @@
     "previewFailed": "La vista previa falló",
     "listFailed": "No se pudieron listar los importadores",
     "appleNotesFoldersFailed": "No se pudieron leer tus carpetas de Apple Notes",
+    "appleNotesPasswordFailed": "No se pudo comprobar la contraseña de Notas.",
     "onenoteStatusFailed": "No se pudo leer el estado de la conexión con OneNote",
     "onenoteConnectFailed": "No se pudo iniciar sesión en Microsoft",
     "onenoteDisconnectFailed": "No se pudo desconectar la cuenta de Microsoft",
-    "onenoteNotebooksFailed": "No se pudieron cargar los blocs de notas de OneNote"
+    "onenoteNotebooksFailed": "No se pudieron cargar los blocs de notas de OneNote",
+    "readwiseStatusFailed": "No se pudo leer el estado de la conexión con Readwise",
+    "readwiseConnectFailed": "No se pudo conectar con Readwise",
+    "readwiseInvalidToken": "Readwise no aceptó este token. Cópialo de nuevo desde readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise está limitando las solicitudes ahora mismo. Inténtalo de nuevo en un minuto.",
+    "readwiseUnreachable": "No se pudo conectar con Readwise. Comprueba tu conexión e inténtalo de nuevo.",
+    "readwiseDisconnectFailed": "No se pudo desconectar Readwise",
+    "readwiseSyncFailed": "No se pudo iniciar la sincronización de Readwise",
+    "readwiseRunUnavailable": "Readwise no se sincroniza en este dispositivo.",
+    "readwiseRunInProgress": "Ya hay una importación de Readwise en curso. Inténtalo de nuevo cuando termine.",
+    "readwiseOptionsFailed": "No se pudieron guardar los ajustes de Readwise",
+    "readwiseNotConnected": "Readwise no está conectado. Pega primero tu token de acceso.",
+    "readwiseSyncsElsewhere": "Readwise se sincroniza en otro dispositivo. Ejecuta este comando allí.",
+    "readwiseBookCommandFailed": "No se pudo completar el comando de Readwise",
+    "readwiseBookGone": "Este libro ya no está en tu biblioteca de Readwise.",
+    "readwiseNotLinked": "Esta nota no está vinculada a un libro de Readwise.",
+    "readwiseNotDeleted": "Este libro no está en la lista de eliminados.",
+    "readwiseBookBusy": "La nota cambió mientras se ejecutaba el comando. Inténtalo de nuevo.",
+    "readwiseSyncsOnDevice": "Readwise se sincroniza en {device}. Usa «Sincronizar aquí en su lugar» para moverlo aquí.",
+    "readwiseAnotherDevice": "otro dispositivo",
+    "readwiseNotReady": "Memry aún no ha terminado de sincronizarse con tus otros dispositivos. Inténtalo de nuevo en un momento.",
+    "readwiseNeedsSync": "Activa la sincronización para mover Readwise entre dispositivos.",
+    "readwiseClaimNotDelivered": "Aún no se pudo avisar a tus otros dispositivos. Comprueba tu conexión e inténtalo de nuevo.",
+    "readwiseTakeOverFailed": "No se pudo mover Readwise a este dispositivo",
+    "readwiseCancelFailed": "No se pudo cancelar la sincronización de Readwise"
   },
   "project": {
     "createFailed": "No se pudo crear el proyecto",
@@ -236,7 +272,8 @@
     "renameFailed": "No se pudo renombrar la propiedad",
     "createDefinitionFailed": "No se pudo crear la definición de la propiedad",
     "updateDefinitionFailed": "No se pudo actualizar la definición de la propiedad",
-    "setCalendarVisibilityFailed": "No se pudo cambiar la visibilidad de la propiedad en el calendario"
+    "setCalendarVisibilityFailed": "No se pudo cambiar la visibilidad de la propiedad en el calendario",
+    "definitionsFileUnreadable": "No se pueden guardar los cambios de propiedades porque no se puede leer .memry/properties.md. Corrige o elimina ese archivo e inténtalo de nuevo."
   },
   "reminder": {
     "notFound": "Recordatorio no encontrado",
@@ -262,6 +299,7 @@
     "shortcutInUse": "El atajo {shortcut} ya está en uso"
   },
   "tag": {
+    "renameInProgress": "Aún se está renombrando #{from} a #{to}. Inténtalo de nuevo cuando termine.",
     "mergeSameTag": "La etiqueta de origen y la de destino son la misma",
     "categoryNameRequired": "El nombre de la categoría es obligatorio",
     "pinNoteFailed": "No se pudo fijar la nota",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "No se pudieron eliminar las tareas",
     "moveManyFailed": "No se pudieron mover las tareas",
     "archiveManyFailed": "No se pudieron archivar las tareas",
-    "projectMissing": "Ese proyecto ya no existe"
+    "projectMissing": "Ese proyecto ya no existe",
+    "invalidParent": "Una tarea no puede ir ahí"
   },
   "taskStatus": {
     "createFailed": "No se pudo crear el estado",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "El propietario hizo que esta nota sea de solo lectura.",
     "folderReadOnly": "El propietario hizo que esta carpeta sea de solo lectura."
+  },
+  "ocrLanguages": {
+    "unreachable": "No se pudo conectar con el servidor de Memry. Los idiomas que ya están aquí siguen funcionando y Memry lo reintentará en el próximo inicio.",
+    "unavailable": "El servidor de Memry aún no ofrece este idioma. Los idiomas que ya están aquí siguen funcionando.",
+    "corrupt": "Los datos descargados no coincidían con lo que Memry espera, así que no se usaron. Reintenta para descargarlos de nuevo.",
+    "saveFailed": "No se pudieron guardar los datos del idioma en este ordenador. Comprueba el espacio libre en disco y reintenta."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" está reservado y no puede ser el nombre de un campo",
+    "duplicateField": "#{definedBy} ya tiene un campo llamado \"{name}\"",
+    "unknownField": "Esta etiqueta no tiene ningún campo llamado \"{name}\"",
+    "inheritedField": "\"{name}\" viene de #{definedBy}. Edítalo allí",
+    "cycle": "#{parent} ya toma sus campos de esta etiqueta",
+    "unreadableSchema": "Una versión más reciente de Memry cambió esta etiqueta. Actualiza Memry para editarla",
+    "relationTargetRequired": "Elige a qué etiqueta apunta esta relación",
+    "editFailed": "No se pudieron modificar los campos de la etiqueta",
+    "previewFailed": "No se pudo contar qué afecta este cambio",
+    "snapshotFailed": "No se pudieron cargar los campos de la etiqueta",
+    "renameRunning": "Otro cambio de nombre de campo aún está terminando ({from} a {to}). Inténtalo de nuevo cuando acabe."
   }
 }
