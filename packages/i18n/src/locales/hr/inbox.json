@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# odgođena stavka} few {# odgođene stavke} other {# odgođenih stavki}}",
     "notificationBody": "{count, plural, =1 {Odgođena stavka spremna je za pregled} one {Odgođene stavke spremne su} few {Odgođene stavke spremne su} other {Odgođene stavke spremne su}}",
     "toast": "{count, plural, =1 {Stavka „{itemTitle}” vratila se iz odgode} one {# odgođena stavka ponovno je tu} few {# odgođene stavke ponovno su tu} other {# odgođenih stavki ponovno je tu}}"
+  },
+  "sticky": {
+    "kindLabel": "Pošalji kao",
+    "kinds": {
+      "note": "Bilješka",
+      "task": "Zadatak",
+      "journal": "Dnevnik"
+    },
+    "placeholders": {
+      "note": "Zapišite to…",
+      "task": "Nazvati Anu @sutra #dom !high",
+      "journal": "Dodaj u današnji dnevnik…"
+    },
+    "saving": "Spremanje…",
+    "saved": "Spremljeno",
+    "saveFailed": "Nije spremljeno",
+    "tuck": "Sakrij",
+    "send": "Pošalji",
+    "hints": "Esc sakrij · {mod}⌫ izbriši",
+    "sendAndCloseHint": "⌥{mod}↵ šalje i zatvara",
+    "deleted": "Skica je izbrisana",
+    "open": "Otvori",
+    "undo": "Poništi",
+    "sent": {
+      "note": "Spremljeno u mapu Sticky",
+      "task": "Zadatak je dodan",
+      "journal": "Dodano u današnji dnevnik"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky skica} few {# sticky skice} other {# sticky skica}}",
+      "newSticky": "Novi sticky"
+    },
+    "errors": {
+      "empty": "Najprije nešto napišite.",
+      "taskFailed": "Nije moguće stvoriti zadatak.",
+      "tasksOff": "Zadaci su isključeni u Postavkama.",
+      "journalOff": "Dnevnik je isključen u Postavkama.",
+      "sendFailed": "Nije moguće poslati sticky.",
+      "undoExpired": "Prekasno je za poništavanje.",
+      "undoFailed": "Nije moguće poništiti slanje."
+    },
+    "inputLabel": "Tekst stickyja",
+    "dismissError": "Odbaci"
   }
 }

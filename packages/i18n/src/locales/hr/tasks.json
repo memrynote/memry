@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Rok uklonjen za # podzadatak} few {Rok uklonjen za # podzadatka} other {Rok uklonjen za # podzadataka}}",
       "prioritySet": "{count, plural, one {Prioritet postavljen za # podzadatak} few {Prioritet postavljen za # podzadatka} other {Prioritet postavljen za # podzadataka}}",
       "deleted": "{count, plural, one {# podzadatak izbrisan} few {# podzadatka izbrisana} other {# podzadataka izbrisano}}"
-    }
+    },
+    "completedBranch": "Dovršeno: {title} i {count, plural, one {# otvoreni podzadatak} few {# otvorena podzadatka} other {# otvorenih podzadataka}}",
+    "deletedKeepSubtasks": "Izbrisano: {title}, podzadaci su zadržani",
+    "deletedBranch": "Izbrisano: {title} i {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Projekt je",
       "project": "projekt",
+      "locationIs": "Lokacija je",
+      "location": "lokacija",
+      "unknownNote": "Nepoznata bilješka",
       "due": "Rok",
       "dueDate": "rok",
       "search": "pretraživanje",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Rok"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Lokacija",
+      "search": "Pretraži mape i bilješke...",
+      "empty": "Nema mapa ni bilješki sa zadacima"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritet",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Prikazi projekta",
       "overview": "Pregled",
+      "all": "Sve",
       "tasks": "Zadaci",
       "notes": "Bilješke",
       "files": "Datoteke",
@@ -951,6 +963,25 @@
       "fileError": "Nije moguće povezati „{name}”",
       "fileErrorGeneric": "Nije moguće uvesti datoteke",
       "label": "Dodaj u „{name}”"
+    },
+    "all": {
+      "showDone": "Prikaži dovršeno",
+      "empty": "Ništa nije otvoreno u ovom projektu.",
+      "expand": "Prikaži zadatke u: {title}",
+      "collapse": "Sakrij zadatke u: {title}",
+      "taskSummary": "Otvoreno: {open}/{total}",
+      "daysLeft": "{count} d",
+      "overdue": "Kasni {count} d",
+      "columns": {
+        "title": "Naslov",
+        "daysLeft": "Preostalo dana"
+      },
+      "status": {
+        "active": "Aktivno",
+        "done": "Dovršeno",
+        "upcoming": "Nadolazeće",
+        "past": "Prošlo"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Ljubičasta",
     "pink": "Ružičasta"
+  },
+  "subtaskTree": {
+    "addSubtask": "Dodaj podzadatak",
+    "dropInto": "U: {title}",
+    "dropOut": "Jednu razinu van",
+    "draftPlaceholder": "Naslov podzadatka",
+    "draftLabel": "Novi podzadatak u: {title}",
+    "draftIn": "u: {title}",
+    "toggleComplete": "Dovrši {title}",
+    "moveUnder": {
+      "title": "Premjesti pod",
+      "placeholder": "Premjesti pod…",
+      "empty": "Nema odgovarajućeg zadatka",
+      "topLevel": "Najviša razina projekta {project}",
+      "thisTask": "Ovaj zadatak",
+      "currentParent": "Trenutni nadređeni",
+      "movesOne": "Premješta {title}",
+      "movesBranch": "Premješta {title} i {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}}",
+      "keys": "↵ Premjesti ovamo · ⌘↵ Najviša razina · esc Zatvori"
+    },
+    "zoom": {
+      "path": "Putanja zadatka",
+      "up": "Jednu razinu gore",
+      "upShortcut": "Jednu razinu gore (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Izbrisati {title}?",
+      "summary": "{direct, plural, one {Ima # podzadatak} few {Ima # podzadatka} other {Ima # podzadataka}}{deeper, plural, =0 {} one { i još # ispod njega} few { i još # ispod njih} other { i još # ispod njih}}{open, plural, =0 {, svi su dovršeni.} one {, # je još otvoren.} few {, # su još otvorena.} other {, # je još otvoreno.}}",
+      "cancel": "Odustani",
+      "deleteAll": "Izbriši sve",
+      "keepSubtasks": "Zadrži podzadatke"
+    },
+    "menu": {
+      "open": "Otvori",
+      "complete": "Dovrši",
+      "reopen": "Ponovno otvori",
+      "zoom": "Uvećaj podzadatke",
+      "moveUnder": "Premjesti pod…",
+      "indent": "Premjesti pod {title}",
+      "outdent": "Premjesti jednu razinu van",
+      "topLevel": "Pretvori u zadatak najviše razine",
+      "delete": "Izbriši"
+    },
+    "openPath": "Otvori {path}"
   }
 }
