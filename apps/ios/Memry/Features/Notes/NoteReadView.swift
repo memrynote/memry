@@ -60,6 +60,11 @@ struct NoteReadView: View {
         _backlinks = State(
             initialValue: BacklinksViewModel(noteId: route.id, search: search)
         )
+        _unlinkedMentions = State(
+            initialValue: UnlinkedMentionsViewModel(
+                noteId: route.id, search: search, reader: reader, editor: editor
+            )
+        )
         _reminders = State(
             initialValue: NoteRemindersViewModel(
                 noteId: route.id, reader: reader, writer: writer
@@ -105,6 +110,11 @@ struct NoteReadView: View {
         _backlinks = State(
             initialValue: BacklinksViewModel(noteId: model.route.id, search: search)
         )
+        _unlinkedMentions = State(
+            initialValue: UnlinkedMentionsViewModel(
+                noteId: model.route.id, search: search, reader: model.reader, editor: editor
+            )
+        )
         _reminders = State(
             initialValue: NoteRemindersViewModel(
                 noteId: model.route.id, reader: model.reader, writer: writer
@@ -148,6 +158,9 @@ struct NoteReadView: View {
 
     /// The notes linking here (N800).
     @State private var backlinks: BacklinksViewModel
+
+    /// Plain-text mentions of this note (#3330).
+    @State private var unlinkedMentions: UnlinkedMentionsViewModel
 
     /// What is set to remind the reader about this note (N804).
     @State private var reminders: NoteRemindersViewModel
@@ -258,31 +271,10 @@ struct NoteReadView: View {
                         picking: $choosingCover,
                         repositioning: $repositioningCover
                     )
-                    if metadataModel.canEdit {
-                        NoteTitleEditor(
-                            title: detail.summary.title,
-                            icon: model.metadata?.icon,
-                            canEdit: true,
-                            rename: { title in
-                                Task {
-                                    await metadataModel.rename(
-                                        to: title, current: model.displayTitle
-                                    )
-                                    await model.reload()
-                                }
-                            },
-                            setIcon: { icon in
-                                Task {
-                                    await metadataModel.setIcon(icon)
-                                    await model.reload()
-                                }
-                            },
-                            returnToBody: editorModel.canEdit
-                                ? { Task { await focusBody(atEnd: false) } } : nil
-                        )
-                    } else {
-                        NoteHeader(title: model.displayTitle, summary: detail.summary)
-                    }
+                    NotePageTitle(
+                        model: model, detail: detail, metadataModel: metadataModel,
+                        returnToBody: editorModel.canEdit ? { Task { await focusBody(atEnd: false) } } : nil
+                    )
                     }
                     NotePageContent(
                         model: model,
@@ -291,6 +283,7 @@ struct NoteReadView: View {
                         metadataModel: metadataModel,
                         composer: composer,
                         backlinks: backlinks,
+                        unlinkedMentions: unlinkedMentions,
                         linkedTasks: linkedTasks,
                         taskBridge: taskBridge,
                         open: openRoute,

@@ -37,6 +37,9 @@ protocol VaultSearching: Sendable {
     /// Every note or journal day linking to `targetId` (a note or journal
     /// record id), each with its kind and, for a day, its date (JP052).
     func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow]
+    /// Notes and journal days spelling `targetId`'s title or an alias as plain
+    /// text without linking to it (#3330). Matching is the core's.
+    func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention]
 }
 
 /// The production searcher: the core's own `Search`, over the shell's serial
@@ -81,6 +84,11 @@ struct CoreVaultSearch: VaultSearching {
         return try await executor.run {
             try search.linksTo(targetId: targetId, order: order)
         }
+    }
+
+    func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention] {
+        let search = search
+        return try await executor.run { try search.unlinkedMentions(targetId: targetId) }
     }
 }
 
