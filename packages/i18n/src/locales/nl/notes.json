@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Niet gevonden – klik om “{title}” te maken"
   },
+  "wikiLinkMenu": {
+    "aria": "Linkacties",
+    "open": "Openen",
+    "openInNewTab": "Openen in nieuw tabblad",
+    "openToTheSide": "Openen aan de zijkant",
+    "edit": "Link bewerken",
+    "copy": "Link kopiëren",
+    "unlink": "Link verwijderen",
+    "displayRow": "Weergave…",
+    "sizeNone": "Geen",
+    "sizeSmall": "Klein",
+    "sizeMedium": "Gemiddeld",
+    "showCover": "Omslag tonen",
+    "showPreview": "Voorvertoning tonen",
+    "copyFailed": "Kan de link niet kopiëren"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Opnieuw importeren uit Readwise",
+    "refreshAction": "Boekinfo vernieuwen",
+    "syncsOn": "Readwise synchroniseert op {device}.",
+    "syncsOnAnotherDevice": "Readwise synchroniseert op een ander apparaat.",
+    "takeOverHint": "Synchroniseer op dat apparaat, of neem het over via Instellingen → Importeren.",
+    "reimport": {
+      "title": "“{title}” opnieuw importeren uit Readwise?",
+      "body": "Het Readwise-gedeelte wordt helemaal opnieuw geschreven. Alles wat je daarin hebt geschreven, gaat verloren.",
+      "note": "Tekst buiten het gedeelte en de eigenschappen van de notitie blijven zoals ze zijn.",
+      "cancel": "Annuleren",
+      "confirm": "Opnieuw importeren"
+    },
+    "commands": {
+      "reimported": "Opnieuw geïmporteerd uit Readwise",
+      "refreshed": "Boekinfo vernieuwd",
+      "failed": "Kan de Readwise-opdracht niet voltooien"
+    }
+  },
   "page": {
     "empty": {
       "title": "Geen notitie geselecteerd",
@@ -25,6 +61,7 @@
       "willSync": "De notitie wordt gesynchroniseerd met de cloud",
       "renameFailed": "Kan de naam van de notitie niet wijzigen",
       "titleRequired": "Een notitie heeft een titel nodig",
+      "duplicateTitle": "Een andere notitie in {folder} heet ook “{title}”. Links naar deze notities bevatten hun map.",
       "toggleLocalOnlyFailed": "Kan “alleen lokaal” niet wijzigen",
       "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen",
       "pathCopied": "Pad gekopieerd",
@@ -85,6 +122,10 @@
       "body": "Maak een notitie om aan de slag te gaan",
       "newNote": "Nieuwe notitie"
     },
+    "readwiseSync": {
+      "tooltip": "Readwise-synchronisatie",
+      "failed": "Readwise-synchronisatie mislukt"
+    },
     "syncing": {
       "body": "Je notities worden gesynchroniseerd – ze verschijnen hier zodra ze binnenkomen"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Openen aan de zijkant",
       "newNote": "Nieuwe notitie",
       "newFolder": "Nieuwe map",
+      "showTasks": "Taken tonen",
       "expandSubfolders": "Alle submappen uitvouwen",
       "collapseSubfolders": "Alle submappen samenvouwen",
       "rename": "Hernoemen",
@@ -138,7 +180,15 @@
       "folderSuffix": "map",
       "moreItems": "…en nog {count}",
       "deleting": "Verwijderen…",
-      "deleteCount": "{count} verwijderen"
+      "deleteCount": "{count} verwijderen",
+      "journalFolderWarning": "Dit omvat je dagboekmap. Elke dagboeknotitie daarin wordt verwijderd, op al je apparaten."
+    },
+    "journalChange": {
+      "leaveTitle": "Dagboeknotities omzetten in notities?",
+      "leaveBody": "Als dagboeknotities uit de dagboekmap worden verplaatst of een andere naam krijgen dan het datumformaat, worden het gewone notities en verdwijnen ze uit je Dagboek. Op je andere apparaten worden die dagen uit het Dagboek verwijderd en verschijnen de notities in plaats daarvan.",
+      "joinTitle": "Notities omzetten in dagboeknotities?",
+      "joinBody": "Bestanden in de dagboekmap met een naam in het dagboekdatumformaat worden dagboeknotities. Op je andere apparaten worden die notities vervangen door dagboeknotities.",
+      "confirm": "Doorgaan"
     },
     "toast": {
       "selectionBookmarked": "{count} items als bladwijzer toegevoegd",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Kop",
       "listPlaceholder": "Lijstitem",
       "todoPlaceholder": "To-do-item",
-      "htmlComment": "Verborgen HTML-opmerking"
+      "htmlComment": "Verborgen HTML-opmerking",
+      "percentComment": "Verborgen opmerking",
+      "readwise": {
+        "noteStart": "Readwise · synchroniseert automatisch",
+        "noteEnd": "Einde van Readwise-gedeelte",
+        "dayStart": "Readwise · highlights van vandaag",
+        "dayEnd": "Einde van Readwise",
+        "hint": "Bewerk je iets in dit gedeelte, dan werkt Readwise het niet meer bij."
+      }
     },
     "table": {
       "keyboardMenuAria": "Tabelacties voor rij {row}, kolom {column}",
-      "keyboardMenuTitle": "Rij {row} · Kolom {column}"
+      "keyboardMenuTitle": "Rij {row} · Kolom {column}",
+      "sizePicker": {
+        "aria": "Tabelgrootte. Gebruik de pijltjestoetsen om rijen en kolommen te kiezen en druk daarna op Enter.",
+        "size": "{rows, plural, one {# rij} other {# rijen}} × {columns, plural, one {# kolom} other {# kolommen}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Rij verwijderen} other {# rijen verwijderen}}",
+        "addRowsAbove": "{count, plural, one {Rij erboven toevoegen} other {# rijen erboven toevoegen}}",
+        "addRowsBelow": "{count, plural, one {Rij eronder toevoegen} other {# rijen eronder toevoegen}}",
+        "deleteColumns": "{count, plural, one {Kolom verwijderen} other {# kolommen verwijderen}}",
+        "addColumnsLeft": "{count, plural, one {Kolom links toevoegen} other {# kolommen links toevoegen}}",
+        "addColumnsRight": "{count, plural, one {Kolom rechts toevoegen} other {# kolommen rechts toevoegen}}"
+      }
     },
     "list": {
       "bulleted": "Lijst met opsommingstekens",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Lokale grafiek verbergen",
       "showLocalGraph": "Lokale grafiek tonen",
       "moreActions": "Meer acties",
+      "searchActions": "Acties zoeken...",
+      "noMatchingActions": "Geen overeenkomende acties",
       "find": "Zoeken…",
       "versionHistory": "Versiegeschiedenis",
       "export": "Exporteren",
@@ -215,6 +287,8 @@
       "notSynced": "Nog niet naar dit apparaat gesynchroniseerd",
       "revealFailed": "Kan bestand niet in map tonen",
       "openFailed": "Kan bestand niet openen",
+      "showAsLink": "Tonen als link",
+      "showAsEmbed": "Ingesloten tonen",
       "missingTitle": "Bijlagebestand ontbreekt",
       "missingExpected": "Verwacht bestand: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Hernoemen",
       "renamed": "Hernoemd naar {name}",
       "failed": "Kan bijlage niet hernoemen"
+    },
+    "imageLightbox": {
+      "menuItem": "Groter bekijken",
+      "title": "Afbeeldingsviewer",
+      "zoomIn": "Inzoomen",
+      "zoomOut": "Uitzoomen",
+      "reset": "Zoom herstellen"
+    },
+    "imageCrop": {
+      "menuItem": "Bijsnijden…",
+      "title": "Afbeelding bijsnijden",
+      "description": "Sleep over de afbeelding om te kiezen wat de notitie toont. Het originele bestand blijft ongewijzigd.",
+      "reset": "Hele afbeelding tonen",
+      "cancel": "Annuleren",
+      "apply": "Bijsnijden",
+      "unavailable": "De afbeelding is nog niet geladen en kan dus niet worden bijgesneden"
     },
     "attachmentsDialog": {
       "title": "Bijlagen",
@@ -248,12 +338,24 @@
       "title": "Callout",
       "group": "Basisblokken",
       "subtext": "Markeer belangrijke informatie",
+      "customSubtext": "Je eigen callouttype",
       "changeType": "Type callout wijzigen",
+      "expand": "Callout uitklappen",
+      "collapse": "Callout inklappen",
       "menuLabel": "Type callout",
       "info": "Info",
       "warning": "Waarschuwing",
       "error": "Fout",
-      "success": "Succes"
+      "success": "Succes",
+      "note": "Notitie",
+      "abstract": "Samenvatting",
+      "todo": "Te doen",
+      "tip": "Tip",
+      "important": "Belangrijk",
+      "question": "Vraag",
+      "example": "Voorbeeld",
+      "quote": "Citaat",
+      "bug": "Bug"
     },
     "columns": {
       "group": "Basisblokken",
@@ -332,6 +434,83 @@
       "invalidShape": "De definitie van deze weergave heeft geen bron. Kies er hierboven een of herstel de definitie hieronder.",
       "definition": "Definitie"
     },
+    "chart": {
+      "title": "Grafiek",
+      "subtext": "Zet een eigenschap uit in de tijd: een lijn, staven of een kalenderheatmap",
+      "layout": "Grafiek",
+      "settings": "Grafiekinstellingen",
+      "chooseProperty": "Kies wat je wilt uitzetten",
+      "source": "Bron",
+      "headerMeta": "{range} · {type}",
+      "property": "Eigenschap",
+      "noProperties": "Nog niets om uit te zetten. Voeg eerst een eigenschap toe aan een dagboeknotitie of notitie.",
+      "chartType": "Grafiek",
+      "suggested": "Voorgesteld",
+      "types": {
+        "line": "Lijn",
+        "bar": "Staaf",
+        "heatmap": "Heatmap"
+      },
+      "range": "Bereik",
+      "lastDays": "{count, plural, one {Laatste dag} other {Laatste # dagen}}",
+      "sameDay": "Items van dezelfde dag",
+      "aggregates": {
+        "average": "Gemiddelde",
+        "sum": "Som",
+        "min": "Laagste",
+        "max": "Hoogste",
+        "count": "Aantal"
+      },
+      "missingDays": "Ontbrekende dagen",
+      "missing": {
+        "gap": "Gat laten",
+        "zero": "Als nul tellen"
+      },
+      "dateFrom": {
+        "label": "Datum van",
+        "created": "Gemaakt",
+        "modified": "Gewijzigd"
+      },
+      "propertyTypes": {
+        "text": "Tekst",
+        "number": "Getal",
+        "checkbox": "Selectievakje",
+        "date": "Datum",
+        "url": "URL",
+        "status": "Status",
+        "select": "Selectie",
+        "multiselect": "Meervoudige selectie",
+        "relation": "Relatie",
+        "project": "Project",
+        "rating": "Beoordeling"
+      },
+      "noEntry": "Geen item",
+      "done": "Klaar",
+      "notDone": "Niet klaar",
+      "logged": "Vastgelegd",
+      "valueCount": "{count, plural, one {# waarde} other {# waarden}}",
+      "average": "Gemiddelde",
+      "vsPrevious": "t.o.v. vorige periode",
+      "lowest": "Laagste",
+      "currentStreak": "Huidige reeks",
+      "longestStreak": "Langste reeks",
+      "dayCount": "{count, plural, one {# dag} other {# dagen}}",
+      "doneDays": "Klaar",
+      "loggedDays": "Vastgelegd",
+      "mostCommon": "Meest voorkomend",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} over de afgelopen {days} dagen",
+      "noData": "In dit bereik is nog niets vastgelegd.",
+      "loadFailed": "Kan deze grafiek niet laden. De items zelf zijn ongewijzigd.",
+      "sourceJournal": "Dagboek",
+      "history": {
+        "show": "Geschiedenis tonen",
+        "title": "Geschiedenis van {property}",
+        "range": "Laatste 13 weken",
+        "insert": "Kopiëren als grafiekblok",
+        "copied": "Grafiekblok gekopieerd. Plak het in een willekeurige notitie."
+      }
+    },
     "slashMenu": {
       "aria": "Blokken en acties",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Invoegen",
         "open": "Openen"
       },
+      "close": "Menu sluiten",
       "matchesAlias": "via",
       "noMatch": "Geen blokken gevonden voor “{query}”",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Tonen als",
+        "embed": "Ingesloten",
+        "link": "Link"
+      },
       "title": {
         "image": "Afbeelding toevoegen",
         "media": "Media toevoegen",
@@ -525,6 +710,11 @@
       "empty": "Typ om een nieuwe tag te maken",
       "create": "#{tag} maken"
     },
+    "pdfDisplay": {
+      "title": "PDF tonen als",
+      "embed": "Ingesloten viewer",
+      "link": "Bestandsnaam"
+    },
     "pasteLink": {
       "title": "Plakken als",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} min. leestijd",
     "words": "{count} woorden",
     "created": "Gemaakt",
-    "modified": "Gewijzigd"
+    "modified": "Gewijzigd",
+    "sync": {
+      "label": "Synchroniseren",
+      "confirmed": "Op de server {time}",
+      "pending": "Wacht sinds {time}",
+      "sent": "Verzenden",
+      "rejected": "De server heeft de laatste wijziging geweigerd",
+      "notRecorded": "Niets om te verzenden",
+      "localOnly": "Alleen lokaal",
+      "notSyncing": "Niet aan het synchroniseren",
+      "waiting": "Wacht om te verzenden"
+    }
   },
   "backlinks": {
     "sortRecent": "Recent",
@@ -587,7 +788,18 @@
     "expandSection": "Backlinksectie uitvouwen",
     "showMore": "Nog {count} backlinks tonen",
     "more": "Nog {count}",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Getoond in een portaal"
+  },
+  "unlinkedMentions": {
+    "title": "Ongekoppelde vermeldingen",
+    "summary": "{count, plural, one {# ongekoppelde vermelding} other {# ongekoppelde vermeldingen}}",
+    "sectionAria": "Ongekoppelde vermeldingen",
+    "fromAria": "Ongekoppelde vermeldingen in {title}",
+    "link": "Koppelen",
+    "linkAria": "{text} koppelen",
+    "gone": "Die vermelding is gewijzigd sinds de lijst is gelezen",
+    "linkFailed": "Kan de vermelding niet koppelen"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# uitgaande link} other {# uitgaande links}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "Kan de notitie niet aan het canvas toevoegen"
   },
   "suggestedTags": {
-    "label": "Voorgestelde tags:",
-    "hint": "Tags van de notities die het meest op deze lijken. Er wordt niets toegevoegd tot je er een kiest.",
-    "acceptAria": "Tag {tag} toevoegen",
-    "support": "{count, plural, one {Gebruikt in # vergelijkbare notitie} other {Gebruikt in # vergelijkbare notities}}",
-    "dismiss": "Voorgestelde tags verbergen"
+    "support": "{count, plural, one {Gebruikt in # vergelijkbare notitie} other {Gebruikt in # vergelijkbare notities}}"
   },
   "comments": {
     "railAria": "Opmerkingen",
@@ -663,6 +871,7 @@
     "removeAria": "Tag verwijderen: {tag}",
     "inputPlaceholder": "Tagnaam typen…",
     "recent": "Recent",
+    "suggested": "Voorgesteld",
     "matching": "Overeenkomend",
     "all": "Alle tags",
     "none": "Geen tags gevonden",
@@ -755,6 +964,9 @@
     "repositionHint": "Sleep om te verplaatsen",
     "repositionSave": "opslaan",
     "repositionCancel": "annuleren",
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "resize": "Sleep om het formaat van de omslag te wijzigen",
     "credit": "Foto van {name} op Unsplash",
     "focusFailed": "Kan de omslagpositie niet opslaan",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# notitie} other {# notities}}"
+    },
+    "noteTasks": {
+      "expand": "Taken van {title} tonen",
+      "collapse": "Taken van {title} verbergen",
+      "list": "Taken in {title}",
+      "progressOpen": "{open}/{total} open",
+      "progressDone": "{total}/{total} klaar",
+      "nextDue": "Eerstvolgende deadline",
+      "reminder": "Herinnering ingesteld"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "Opslaan",
     "addToFilterHint": "Ctrl/Cmd-klik op een tag om deze aan het filter toe te voegen"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternatieven",
+      "overflow": "Overloop",
+      "menu": "Schrijfhulp",
+      "close": "Schrijfhulp sluiten"
+    },
+    "menu": {
+      "aria": "Editoracties",
+      "cut": "Knippen",
+      "copy": "Kopiëren",
+      "paste": "Plakken",
+      "selectAll": "Alles selecteren",
+      "undo": "Ongedaan maken",
+      "redo": "Opnieuw uitvoeren",
+      "comment": "Opmerking",
+      "addAlternative": "Alternatief toevoegen",
+      "suggestAlternatives": "Alternatieven voorstellen",
+      "ghost": "Spook",
+      "revive": "Herstellen",
+      "stash": "Opbergen in overloop",
+      "noSpellingSuggestions": "Geen suggesties",
+      "addToDictionary": "Toevoegen aan woordenboek",
+      "clipboardFailed": "Kan het klembord niet gebruiken"
+    },
+    "alternatives": {
+      "railAria": "Alternatieven",
+      "hint": "{position} van {total} ↑ ↓",
+      "original": "Origineel",
+      "byYou": "Door jou geschreven",
+      "byAI": "Voorgesteld door AI",
+      "showing": "Getoond",
+      "addPlaceholder": "Alternatief toevoegen…",
+      "removeSuggestions": "Suggesties verwijderen",
+      "removeVariant": "Alternatief verwijderen",
+      "empty": "Selecteer tekst en kies Alternatief toevoegen om andere manieren van zeggen te bewaren.",
+      "suggesting": "Alternatieven voorstellen…",
+      "suggestFailed": "Kan geen alternatieven voorstellen",
+      "noSuggestions": "Er zijn geen nieuwe alternatieven voorgesteld"
+    },
+    "overflow": {
+      "railAria": "Overloop",
+      "addPlaceholder": "Schrijf iets om te bewaren…",
+      "empty": "Regels die je hier opbergt of schrijft, blijven bij deze notitie, buiten de tekst.",
+      "dragHint": "Sleep naar de notitie",
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "delete": "Verwijderen"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Notitie vergrendelen",
+    "unlockNote": "Notitie ontgrendelen",
+    "lockFolder": "Map vergrendelen",
+    "unlockFolder": "Map ontgrendelen",
+    "toggleFailed": "Kan het slot niet wijzigen",
+    "readOnlyIndicator": "Vergrendeld. Alleen-lezen voor jou en voor agents.",
+    "externalEditRestored": "“{title}” is vergrendeld, dus de bewerking van buitenaf is ongedaan gemaakt",
+    "externalEditRestoredHint": "De bewerkte tekst is opgeslagen in de versiegeschiedenis van de notitie."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Persoon",
+        "plural": "Personen",
+        "fields": {
+          "company": "Bedrijf",
+          "role": "Functie",
+          "email": "E-mail",
+          "phone": "Telefoon"
+        },
+        "inverse": {
+          "company": "Personen"
+        },
+        "template": {
+          "name": "Persoon",
+          "context": "Context",
+          "contextHint": "Hoe we elkaar leerden kennen, wat diegene belangrijk vindt",
+          "notes": "Notities"
+        }
+      },
+      "company": {
+        "name": "Bedrijf",
+        "plural": "Bedrijven",
+        "fields": {
+          "website": "Website",
+          "industry": "Branche",
+          "location": "Locatie"
+        },
+        "template": {
+          "name": "Bedrijf",
+          "overview": "Overzicht",
+          "overviewHint": "Wat ze doen, wie we daar kennen",
+          "notes": "Notities"
+        }
+      },
+      "meeting": {
+        "name": "Vergadering",
+        "plural": "Vergaderingen",
+        "fields": {
+          "date": "Datum",
+          "attendees": "Deelnemers",
+          "company": "Bedrijf"
+        },
+        "inverse": {
+          "attendees": "Vergaderingen",
+          "company": "Vergaderingen"
+        },
+        "template": {
+          "name": "Vergadering",
+          "agenda": "Agenda",
+          "notes": "Notities",
+          "actionItems": "Actiepunten"
+        }
+      },
+      "book": {
+        "name": "Boek",
+        "plural": "Boeken",
+        "fields": {
+          "author": "Auteur",
+          "shelf": "Plank",
+          "rating": "Beoordeling",
+          "finished": "Uitgelezen"
+        },
+        "shelf": {
+          "toRead": "Te lezen",
+          "reading": "Aan het lezen",
+          "read": "Gelezen"
+        },
+        "template": {
+          "name": "Boek",
+          "highlights": "Highlights",
+          "thoughts": "Gedachten"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} is nu een {tag}. Sjabloon toegevoegd.",
+      "templateChanged": "De notitie is gewijzigd nadat het sjabloon was toegevoegd, dus het blijft staan.",
+      "undoFailed": "Kan niet ongedaan maken",
+      "addFailed": "Kan de tag niet toevoegen",
+      "removeFailed": "Kan de tag niet verwijderen",
+      "removedKept": "#{tag} verwijderd. {count} waarden bewaard.",
+      "removedKeptOne": "#{tag} verwijderd. 1 waarde bewaard."
+    },
+    "picker": {
+      "create": "#{tag} maken",
+      "fillsTemplate": "Vult deze lege notitie met het sjabloon {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Kant-en-klare tags",
+        "subtitle": "Tags die met velden komen. Notities blijven zoals ze zijn tot je ze tagt.",
+        "notNow": "Niet nu",
+        "add": "Toevoegen",
+        "addFields": "Velden toevoegen",
+        "added": "Toegevoegd",
+        "alreadyOn": "Al op {count} notities",
+        "alreadyOnOne": "Al op 1 notitie"
+      },
+      "dialog": {
+        "title": "{preset}-velden toevoegen aan #{tag}?",
+        "body": "#{tag} staat al op {count} notities. Ze behouden alles wat ze hebben en krijgen deze velden, leeg tot iemand ze invult.",
+        "bodyOne": "#{tag} staat al op 1 notitie. Die behoudt alles wat ze heeft en krijgt deze velden, leeg tot iemand ze invult.",
+        "template": "Het sjabloon ({sections}) vult alleen notities die leeg zijn.",
+        "alsoAddsPrefix": "Voegt ook",
+        "alsoAddsSuffix": "toe voor het veld {field}.",
+        "useAnotherName": "Een andere naam gebruiken",
+        "nameLabel": "Nieuwe tagnaam",
+        "namePlaceholder": "contact",
+        "cancel": "Annuleren",
+        "addFields": "Velden toevoegen"
+      },
+      "toast": {
+        "added": "#{tag} toegevoegd",
+        "addedFields": "{preset}-velden toegevoegd aan #{tag}"
+      },
+      "hasFields": "Heeft velden"
+    },
+    "tasks": {
+      "thisTask": "Deze taak",
+      "viaTag": "{name} via #{via}",
+      "clearValue": "{name} wissen",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "via #{tag}",
+      "groupMenu": "Opties voor {tag}",
+      "openTag": "#{tag} openen",
+      "thisNote": "Deze notitie"
+    },
+    "offer": {
+      "text": "Voeg het sjabloon {tag} toe onder je tekst",
+      "add": "Toevoegen",
+      "dismiss": "Negeren",
+      "addFailed": "Kan het sjabloon niet toevoegen"
+    },
+    "settings": {
+      "title": "Instellingen voor #{tag}",
+      "close": "Sluiten",
+      "cancel": "Annuleren",
+      "save": "Opslaan",
+      "onCounts": "Op {notes, plural, one {# notitie} other {# notities}} en {tasks, plural, one {# taak} other {# taken}}",
+      "onNotes": "Op {count, plural, one {# notitie} other {# notities}}",
+      "headerFields": "{count, plural, one {# veld} other {# velden}}",
+      "editTag": "Tag bewerken",
+      "syncNote": "Wijzigingen worden gesynchroniseerd met je andere apparaten",
+      "newerVersion": "Een nieuwere versie van Memry heeft deze tag gewijzigd. Werk Memry bij om hem hier te bewerken.",
+      "sections": {
+        "appearance": "Uiterlijk",
+        "extends": "Breidt uit",
+        "fields": "Velden · {count}",
+        "template": "Sjabloon"
+      },
+      "appearance": {
+        "icon": "Pictogram",
+        "color": "Kleur",
+        "customColor": "Aangepast",
+        "category": "Categorie",
+        "noCategory": "Geen categorie"
+      },
+      "extends": {
+        "nothing": "Niets",
+        "hint": "Neem de velden van een andere tag over en verschijn in de bijbehorende tabel.",
+        "hintSet": "Notities met {tag} krijgen de velden van {parent} en verschijnen in de tabel van {parent}."
+      },
+      "types": {
+        "text": "Tekst",
+        "number": "Getal",
+        "date": "Datum",
+        "url": "URL",
+        "status": "Status",
+        "select": "Selectie",
+        "multiselect": "Meervoudige selectie",
+        "checkbox": "Selectievakje",
+        "relation": "Relatie"
+      },
+      "fields": {
+        "empty": "Nog geen velden. Voeg er een toe om elke #tag-notitie dezelfde eigenschappen te geven.",
+        "fromParent": "Van #{tag} · bewerk daar",
+        "inverseSub": "Getoond op de {target} als {inverse}",
+        "anyNoteSub": "Linkt naar elke notitie",
+        "actions": "Acties voor {field}",
+        "rename": "Naam wijzigen…",
+        "relationSettings": "Relatie-instellingen",
+        "remove": "Verwijderen…"
+      },
+      "addField": {
+        "button": "Veld toevoegen",
+        "namePlaceholder": "Veldnaam",
+        "existing": "Bestaande eigenschappen",
+        "existingSub": "{type} · op {count, plural, one {# notitie} other {# notities}} · hergebruiken",
+        "newType": "Nieuw veldtype",
+        "relationSub": "Link naar notities met een tag",
+        "submit": "Veld toevoegen",
+        "reserved": "{name} is gereserveerd en kan geen veld zijn.",
+        "taken": "#{tag} heeft al {name}."
+      },
+      "relation": {
+        "target": "Verwijst naar notities met tag",
+        "pickTag": "Kies een tag",
+        "howMany": "Hoeveel",
+        "one": "Eén",
+        "many": "Meerdere",
+        "inverseLabel": "Toon ze op de pagina van {target} als",
+        "inverseLabelAny": "Toon ze op de gelinkte pagina als",
+        "inverseHint": "Een alleen-lezen lijst bij elke {target}. Er wordt niets geschreven naar notities met {target}.",
+        "inverseHintAny": "Een alleen-lezen lijst bij elke gelinkte notitie. Er wordt niets geschreven naar die notities."
+      },
+      "shared": {
+        "title": "Nieuw veld op #{tag}",
+        "existsWith": "{name} bestaat al in deze kluis met {options}.",
+        "existsAs": "{name} bestaat al in deze kluis als eigenschap van het type {type}.",
+        "shareWith": "#{tag} deelt het met je {others} notities.",
+        "shareAny": "#{tag} deelt het met je andere notities.",
+        "useInstead": "{name} gebruiken",
+        "share": "{name} delen"
+      },
+      "template": {
+        "edit": "Sjabloon bewerken",
+        "none": "Nog geen sjabloon. Een sjabloon vult lege notities als ze de tag krijgen.",
+        "create": "Sjabloon maken",
+        "defaultHeading": "Notities",
+        "inherited": "Van #{tag}",
+        "autofill": "Lege notities vullen als ze #{tag} krijgen"
+      },
+      "remove": {
+        "title": "{field} verwijderen van #{tag}?",
+        "body": "{field} is ingevuld op {filled, plural, one {# notitie} other {# notities}}. Die waarden blijven als gewone eigenschap op de notities staan; {empty, plural, one {# leeg vak verdwijnt} other {# lege vakken verdwijnen}}.",
+        "confirm": "Veld verwijderen"
+      },
+      "rename": {
+        "title": "{from} hernoemen naar {to}",
+        "titleEmpty": "{from} hernoemen",
+        "label": "Nieuwe naam",
+        "body": "{count, plural, one {# notitie heeft} other {# notities hebben}} een waarde voor {field}. Memry hernoemt de sleutel in elk bestand en in hun eigenschappen; Obsidian ziet de nieuwe naam ook.",
+        "progress": "Hernoemen in notities",
+        "confirm": "Hernoemen",
+        "taken": "Deze tag heeft al {name}.",
+        "done": "{from} hernoemd naar {to} in {count, plural, one {# item} other {# items}}.",
+        "skipped": "{from} hernoemd naar {to} in {count, plural, one {# item} other {# items}}. {locked, plural, =0 {} one {# vergrendelde notitie wordt voltooid zodra die is ontgrendeld.} other {# vergrendelde notities worden voltooid zodra ze zijn ontgrendeld.}} {existing, plural, =0 {} one {# notitie had {to} al en behoudt beide.} other {# notities hadden {to} al en behouden beide.}}"
+      },
+      "delete": {
+        "button": "Tag verwijderen",
+        "title": "#{tag} verwijderen?",
+        "body": "#{tag} wordt verwijderd van {notes, plural, one {# notitie} other {# notities}} en de tag verdwijnt samen met {fields, plural, one {# veld} other {# velden}} en sjabloon.",
+        "bodyNoTemplate": "#{tag} wordt verwijderd van {notes, plural, one {# notitie} other {# notities}} en de tag verdwijnt samen met {fields, plural, one {# veld} other {# velden}}.",
+        "bodyPlain": "#{tag} wordt verwijderd van elke notitie met die tag.",
+        "statNotes": "notities behouden hun tekst",
+        "statValues": "waarden blijven als eigenschappen",
+        "plainText": "Notities die #{tag} in hun tekst noemen, behouden het als gewone tekst.",
+        "confirm": "Tag verwijderen",
+        "done": "#{tag} verwijderd."
+      },
+      "errors": {
+        "addField": "Kan het veld niet toevoegen.",
+        "removeField": "Kan het veld niet verwijderen.",
+        "renameField": "Kan de naam van het veld niet wijzigen.",
+        "moveField": "Kan het veld niet verplaatsen.",
+        "relation": "Kan de relatie niet opslaan.",
+        "extends": "Kan niet wijzigen wat deze tag uitbreidt.",
+        "template": "Kan het sjabloon niet bijwerken.",
+        "deleteTag": "Kan de tag niet verwijderen.",
+        "icon": "Kan het pictogram niet wijzigen.",
+        "color": "Kan de kleur niet wijzigen.",
+        "category": "Kan de categorie niet wijzigen."
+      }
+    },
+    "fill": {
+      "action": "Vullen vanuit notitie",
+      "reading": "Notitie lezen…",
+      "disclosure": "Je agentmodel ({model}) leest deze notitie om waarden voor te stellen. Alleen deze notitie wordt verzonden. Er wordt niets opgeslagen tot je het accepteert.",
+      "disclosureLocal": "Je lokale model ({model}) leest deze notitie op dit apparaat om waarden voor te stellen. Er verlaat niets het apparaat en er wordt niets opgeslagen tot je het accepteert.",
+      "disclosureMany": "Je agentmodel ({model}) leest deze notities een voor een om waarden voor te stellen. Alleen die notities worden verzonden. Er wordt niets opgeslagen tot je het accepteert.",
+      "disclosureLocalMany": "Je lokale model ({model}) leest deze notities op dit apparaat om waarden voor te stellen. Er verlaat niets het apparaat en er wordt niets opgeslagen tot je het accepteert.",
+      "suggest": "Waarden voorstellen",
+      "notNow": "Niet nu",
+      "countOne": "· {count} suggestie",
+      "count": "· {count} suggesties",
+      "dismiss": "Negeren",
+      "acceptAll": "Alles accepteren",
+      "accept": "{field} accepteren",
+      "reject": "{field} afwijzen",
+      "notInNote": "Niet in de notitie",
+      "createHint": "Maakt een nieuwe #{tag} bij accepteren",
+      "nothingFound": "Niets in deze notitie past bij de lege velden",
+      "failed": "Kan geen waarden voorstellen. {message}",
+      "saveFailed": "Kan de geaccepteerde waarden niet opslaan",
+      "bulkAction": "Lege velden vullen",
+      "bulkTitle": "Lege velden vullen",
+      "bulkReading": "{done} van {total} notities · notities lezen…",
+      "bulkRead": "{done} van {total} notities gelezen",
+      "stop": "Stoppen",
+      "name": "Naam",
+      "nothingInRow": "Niets gevonden",
+      "found": "{count} gevonden",
+      "reviewOneByOne": "Een voor een bekijken",
+      "acceptRow": "Waarden voor {title} accepteren",
+      "rejectRow": "{title} overslaan",
+      "bulkSavedOne": "{count} veld gevuld op {notes} notities",
+      "bulkSaved": "{count} velden gevuld op {notes} notities"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "{title} maken als",
+      "asPrefix": "Maak",
+      "asSuffix": "als",
+      "failed": "Kan de notitie niet maken",
+      "lastUsed": "Laatst gebruikt",
+      "noteWord": "notitie",
+      "plainNote": "Gewone notitie",
+      "readyMade": "Kant-en-klare tag",
+      "row": "“{title}” maken",
+      "rowHint": "Als {types}"
+    },
+    "hover": {
+      "at": "bij",
+      "lastMet": "Laatst ontmoet · {title}",
+      "lastMetOn": "Laatst ontmoet op {date} · {title}",
+      "mentionedIn": "{count, plural, one {Vermeld in # notitie} other {Vermeld in # notities}}",
+      "open": "Openen",
+      "tasks": "{count, plural, one {# taak · {field}} other {# taken · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} in de tekst",
+      "explain": "In de tekst is een tag een label. Deze notitie staat onder Vermeld in bij #{tag}.",
+      "made": "#{tag} toegevoegd aan de tags van deze notitie",
+      "make": "Maak van deze notitie een {tag}",
+      "makeFailed": "Kan de tag niet toevoegen",
+      "makeHint": "Voegt #{tag} toe aan de koptekst en toont de velden ervan",
+      "meta": "{count, plural, one {# object} other {# objecten}} · {fields, plural, one {# veld} other {# velden}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# veld} other {# velden}}",
+      "open": "#{tag} openen",
+      "remove": "Tag uit tekst verwijderen"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "als {field}",
+      "due": "Deadline {date}",
+      "inTheText": "in de tekst",
+      "mentionedIn": "Vermeld in",
+      "tasks": "Taken",
+      "title": "Hier gekoppeld"
+    },
+    "mention": {
+      "notes": "Notities"
+    },
+    "picker": {
+      "create": "Nieuwe {tag}",
+      "createNamed": "Nieuwe {tag} “{title}”",
+      "empty": "Geen resultaten",
+      "search": "{tag} zoeken",
+      "untitled": "Nieuwe {tag}"
+    },
+    "quickFields": {
+      "add": "{field} toevoegen",
+      "aria": "Eerste velden van {title}",
+      "done": "Klaar",
+      "later": "Later",
+      "newObject": "Nieuwe {tag}",
+      "saveFailed": "Kan de velden niet opslaan"
+    },
+    "table": {
+      "untitled": "Nieuwe {tag}",
+      "newInGroup": "Nieuwe {tag} in {group}",
+      "newInGroupHint": "⌘↵ opent het in een nieuw tabblad",
+      "new": "Nieuwe {tag}",
+      "includes": "{field} bevat",
+      "removeFilter": "Filter verwijderen",
+      "shown": "{shown} van {total}",
+      "saveView": "Weergave opslaan",
+      "mentionedMeta": "{count, plural, one {# notitie met '#'{tag} in de tekst} other {# notities met '#'{tag} in de tekst}}",
+      "saveFailed": "Kan het veld niet opslaan",
+      "created": "{title} gemaakt"
+    },
+    "relationDrop": {
+      "title": "#{tag} toevoegen aan “{title}”?",
+      "body": "Dit veld koppelt alleen notities met de tag #{tag}. Memry voegt #{tag} toe aan de koptekst van “{title}” en koppelt het daarna hier.",
+      "confirm": "#{tag} toevoegen en koppelen",
+      "cancel": "Annuleren",
+      "added": "“{title}” is nu een #{tag} en gekoppeld",
+      "notANote": "Alleen notities kunnen hier als #{tag} worden gekoppeld",
+      "failed": "Kan deze notitie niet koppelen"
+    }
+  },
   "names": {
     "also": "ook",
     "add": "Andere naam toevoegen",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Notities zoeken",
     "pickerEmpty": "Geen notities gevonden",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Details toevoegen"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portaal",
+        "subtext": "Toon een notitie of blok live van elders"
+      },
+      "searchPortal": {
+        "title": "Zoekportaal",
+        "subtext": "Live lijst van blokken die bij een zoekopdracht passen"
+      }
+    },
+    "picker": {
+      "aria": "Kies een notitie of blok voor het portaal",
+      "notes": "Notities",
+      "blocks": "Blokken",
+      "loading": "Zoeken…",
+      "empty": "Geen notities of blokken gevonden",
+      "hintInsert": "Portaal invoegen",
+      "hintClose": "Sluiten",
+      "keyEsc": "Esc",
+      "create": "Notitie “{query}” maken",
+      "createFailed": "Kan die notitie niet maken",
+      "stampFailed": "Kan dat blok niet voorbereiden voor een portaal",
+      "retargetFailed": "Kan het portaal niet naar dat blok laten verwijzen"
+    },
+    "insert": {
+      "cycle": "Een portaal kan een notitie niet in zichzelf tonen."
+    },
+    "copy": {
+      "done": "Portaal gekopieerd. Plak het in een willekeurige notitie.",
+      "failed": "Kan geen portaal naar dit blok kopiëren"
+    },
+    "menu": {
+      "copyAsPortal": "Kopiëren als portaal",
+      "hideInPortal": "Verbergen in dit portaal"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Gebruikt op # andere plek} other {Gebruikt op # andere plekken}}"
+    },
+    "whereUsed": {
+      "aria": "Waar dit blok wordt gebruikt",
+      "portals": "Portalen",
+      "links": "Links",
+      "openBeside": "Ernaast openen",
+      "loadFailed": "Kan niet laden waar dit blok wordt getoond"
+    },
+    "hiddenBlocks": {
+      "title": "Verborgen blokken",
+      "showAll": "Alles tonen",
+      "search": "Verborgen blokken zoeken",
+      "showFailed": "Kan dit blok niet tonen"
+    },
+    "searchQuery": {
+      "titleNew": "Zoekportaal",
+      "titleEdit": "Zoekopdracht bewerken",
+      "text": "Bevat woorden",
+      "textPlaceholder": "Woorden in het blok",
+      "tag": "Tag",
+      "tagPlaceholder": "tentamen",
+      "limit": "Limiet",
+      "footer": "Maximaal {limit} resultaten.",
+      "create": "Maken",
+      "apply": "Toepassen"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Dit blok overal verwijderen?",
+        "note": "Deze notitie overal verwijderen?"
+      },
+      "description": {
+        "block": "“{title}” staat ook in {count, plural, one {# andere notitie} other {# andere notities}}.",
+        "note": "“{title}” wordt getoond of gelinkt in {count, plural, one {# andere notitie} other {# andere notities}}."
+      },
+      "manyNotes": "{count} notities",
+      "source": "{title} (bron)",
+      "removeHere": "In plaats daarvan hier verbergen",
+      "cancel": "Annuleren",
+      "everywhere": "Overal verwijderen",
+      "undoToast": "{count, plural, one {Het verwijderde blok werd getoond in # andere notitie.} other {Het verwijderde blok werd getoond in # andere notities.}}",
+      "undo": "Ongedaan maken"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Volledig",
+      "brief": "Beknopt",
+      "key": "Kern",
+      "takeaway": "Conclusie",
+      "topic": "Onderwerp"
+    },
+    "chrome": {
+      "fold": "Notitie inklappen",
+      "unfold": "Ingeklapt tot {level}. Volledige tekst tonen",
+      "words": "{count, plural, one {# woord} other {# woorden}}",
+      "writing": "Schrijven…",
+      "writtenBy": "Geschreven door {agent}",
+      "retry": "Laatste poging mislukt · Opnieuw proberen",
+      "retryAction": "Opnieuw proberen",
+      "captionOff": "Zet Lange notities samenvatten aan in Instellingen → AI",
+      "captionNoAgent": "Geen agent verbonden · Instellingen → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Lange notitie? Blader erdoorheen.",
+      "body": "Klap hem in tot de kernzinnen en open daarna alleen de alinea die je nodig hebt.",
+      "dismiss": "Begrepen"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# alinea open} other {# alinea’s open}}",
+      "escape": "esc",
+      "copy": "Kopiëren als tekst",
+      "copied": "Gekopieerd",
+      "aria": "Ingeklapte weergave",
+      "hintMac": "Knijp, ⌘-scroll of scroll op deze balk om te zoomen · klik op een alinea om die te openen",
+      "hint": "Knijp, Ctrl-scroll of scroll op deze balk om te zoomen · klik op een alinea om die te openen"
+    },
+    "view": {
+      "aria": "Ingeklapte weergave {level}",
+      "paragraphOpen": "Geopend tot Volledig · klik nogmaals om in te klappen",
+      "paragraphFold": "Deze alinea inklappen",
+      "paragraphOpenAction": "Deze alinea volledig openen",
+      "unfoldSection": "Sectie {heading} uitklappen",
+      "jumpToParagraph": "Deze alinea volledig tonen: {topic}",
+      "untitledSection": "Zonder titel",
+      "skipped": {
+        "code": "… {count, plural, one {# codeblok} other {# codeblokken}}",
+        "table": "… {count, plural, one {# tabel} other {# tabellen}}",
+        "image": "… {count, plural, one {# afbeelding} other {# afbeeldingen}}",
+        "callout": "… {count, plural, one {# callout} other {# callouts}}",
+        "embed": "… {count, plural, one {# insluiting} other {# insluitingen}}",
+        "other": "… {count, plural, one {# blok meer} other {# blokken meer}}"
+      }
+    }
   }
 }

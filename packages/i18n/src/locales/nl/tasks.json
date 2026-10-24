@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Vervaldatum gewist voor # subtaak} other {Vervaldatum gewist voor # subtaken}}",
       "prioritySet": "{count, plural, one {Prioriteit ingesteld voor # subtaak} other {Prioriteit ingesteld voor # subtaken}}",
       "deleted": "{count, plural, one {# subtaak verwijderd} other {# subtaken verwijderd}}"
-    }
+    },
+    "completedBranch": "{title} en {count, plural, one {# open subtaak} other {# open subtaken}} voltooid",
+    "deletedKeepSubtasks": "{title} verwijderd en de subtaken behouden",
+    "deletedBranch": "{title} en {count, plural, one {# subtaak} other {# subtaken}} verwijderd"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Project is",
       "project": "project",
+      "locationIs": "Locatie is",
+      "location": "locatie",
+      "unknownNote": "Onbekende notitie",
       "due": "Vervalt",
       "dueDate": "vervaldatum",
       "search": "zoeken",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Vervaldatum"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Locatie",
+      "search": "Mappen en notities zoeken...",
+      "empty": "Geen mappen of notities met taken"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioriteit",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Projectweergaven",
       "overview": "Overzicht",
+      "all": "Alle",
       "tasks": "Taken",
       "notes": "Notities",
       "files": "Bestanden",
@@ -951,6 +963,25 @@
       "fileError": "Kan {name} niet koppelen",
       "fileErrorGeneric": "Kan de bestanden niet importeren",
       "label": "Toevoegen aan {name}"
+    },
+    "all": {
+      "showDone": "Voltooide tonen",
+      "empty": "Niets open in dit project.",
+      "expand": "Taken in {title} tonen",
+      "collapse": "Taken in {title} verbergen",
+      "taskSummary": "{open}/{total} open",
+      "daysLeft": "{count}d",
+      "overdue": "{count}d te laat",
+      "columns": {
+        "title": "Titel",
+        "daysLeft": "Dagen over"
+      },
+      "status": {
+        "active": "Actief",
+        "done": "Klaar",
+        "upcoming": "Aankomend",
+        "past": "Verleden"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Paars",
     "pink": "Roze"
+  },
+  "subtaskTree": {
+    "addSubtask": "Subtaak toevoegen",
+    "dropInto": "In {title}",
+    "dropOut": "Eén niveau eruit",
+    "draftPlaceholder": "Titel van subtaak",
+    "draftLabel": "Nieuwe subtaak in {title}",
+    "draftIn": "in {title}",
+    "toggleComplete": "{title} voltooien",
+    "moveUnder": {
+      "title": "Verplaatsen onder",
+      "placeholder": "Verplaatsen onder…",
+      "empty": "Geen overeenkomende taak",
+      "topLevel": "Hoogste niveau van {project}",
+      "thisTask": "Deze taak",
+      "currentParent": "Huidige bovenliggende taak",
+      "movesOne": "Verplaatst {title}",
+      "movesBranch": "Verplaatst {title} en {count, plural, one {# subtaak} other {# subtaken}}",
+      "keys": "↵ Hierheen verplaatsen · ⌘↵ Hoogste niveau · esc Sluiten"
+    },
+    "zoom": {
+      "path": "Taakpad",
+      "up": "Eén niveau omhoog",
+      "upShortcut": "Eén niveau omhoog (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "{title} verwijderen?",
+      "summary": "{direct, plural, one {Bevat # subtaak} other {Bevat # subtaken}}{deeper, plural, =0 {} one { en # meer eronder} other { en # meer eronder}}{open, plural, =0 {, allemaal klaar.} other {, # nog open.}}",
+      "cancel": "Annuleren",
+      "deleteAll": "Alles verwijderen",
+      "keepSubtasks": "Subtaken behouden"
+    },
+    "menu": {
+      "open": "Openen",
+      "complete": "Voltooien",
+      "reopen": "Heropenen",
+      "zoom": "Inzoomen op subtaken",
+      "moveUnder": "Verplaatsen onder…",
+      "indent": "Verplaatsen onder {title}",
+      "outdent": "Eén niveau eruit verplaatsen",
+      "topLevel": "Taak van hoogste niveau maken",
+      "delete": "Verwijderen"
+    },
+    "openPath": "{path} openen"
   }
 }

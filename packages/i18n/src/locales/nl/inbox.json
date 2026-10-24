@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# uitgesteld item} other {# uitgestelde items}}",
     "notificationBody": "{count, plural, one {Je uitgestelde item staat klaar om te bekijken} other {Je uitgestelde items staan klaar}}",
     "toast": "{count, plural, =1 {“{itemTitle}” staat weer in je inbox} one {# uitgesteld item staat weer in je inbox} other {# uitgestelde items staan weer in je inbox}}"
+  },
+  "sticky": {
+    "kindLabel": "Verzenden als",
+    "kinds": {
+      "note": "Notitie",
+      "task": "Taak",
+      "journal": "Dagboek"
+    },
+    "placeholders": {
+      "note": "Noteer het even…",
+      "task": "Ana bellen @morgen #thuis !hoog",
+      "journal": "Toevoegen aan het dagboek van vandaag…"
+    },
+    "saving": "Opslaan…",
+    "saved": "Opgeslagen",
+    "saveFailed": "Niet opgeslagen",
+    "tuck": "Wegstoppen",
+    "send": "Verzenden",
+    "hints": "Esc wegstoppen · {mod}⌫ verwijderen",
+    "sendAndCloseHint": "⌥{mod}↵ verzendt en sluit",
+    "deleted": "Concept verwijderd",
+    "open": "Openen",
+    "undo": "Ongedaan maken",
+    "sent": {
+      "note": "Opgeslagen in de map Sticky",
+      "task": "Taak toegevoegd",
+      "journal": "Toegevoegd aan het dagboek van vandaag"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky-concept} other {# sticky-concepten}}",
+      "newSticky": "Nieuwe sticky"
+    },
+    "errors": {
+      "empty": "Schrijf eerst iets.",
+      "taskFailed": "Kan de taak niet maken.",
+      "tasksOff": "Taken staan uit in Instellingen.",
+      "journalOff": "Dagboek staat uit in Instellingen.",
+      "sendFailed": "Kan de sticky niet verzenden.",
+      "undoExpired": "Het is te laat om dit ongedaan te maken.",
+      "undoFailed": "Kan het verzenden niet ongedaan maken."
+    },
+    "inputLabel": "Sticky-tekst",
+    "dismissError": "Sluiten"
   }
 }

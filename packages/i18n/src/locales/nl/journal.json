@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Dagboeknotitie verwijderen",
     "description": "Weet je zeker dat je “{title}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
+  },
+  "dayTimeline": {
+    "label": "Dagplanning",
+    "allDay": "Items voor de hele dag",
+    "unscheduled": "Niet ingepland",
+    "unscheduledEmpty": "Geen niet-geplande taken. Sleep een blok hierheen om de tijd te wissen.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} voltooien"
   }
 }
