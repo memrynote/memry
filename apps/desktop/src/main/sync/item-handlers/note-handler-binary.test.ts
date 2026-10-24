@@ -9,6 +9,10 @@ vi.mock('../../database/client', () => ({
   getDatabase: vi.fn(() => ({}))
 }))
 
+vi.mock('../../vault/note-snapshots', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-versions', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-crud', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-io', async () => await import('../../vault/notes'))
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: vi.fn(() => VAULT_ROOT),
   toRelativePath: vi.fn((p: string) => p.replace(`${VAULT_ROOT}/`, '')),
@@ -80,6 +84,11 @@ vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   applyPinnedTags: vi.fn()
 }))
 
+vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
+vi.mock('../crdt-writeback-port', async () => {
+  const writeback = await import('../crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../crdt-writeback', () => ({
   markWritebackIgnored: vi.fn()
 }))

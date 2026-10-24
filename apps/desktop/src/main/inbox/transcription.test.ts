@@ -58,6 +58,7 @@ vi.mock('../database', () => ({
   requireDatabase: vi.fn()
 }))
 
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   getStatus: vi.fn()
 }))

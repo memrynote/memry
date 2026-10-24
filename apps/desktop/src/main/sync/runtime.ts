@@ -17,7 +17,7 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
-import { getActiveRuntime, setActiveRuntime } from './runtime-state'
+import { getActiveRuntime, setActiveRuntime, type SyncRuntimeState } from './runtime-state'
 import { handleDeviceKeyMismatch } from './device-key-mismatch'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'

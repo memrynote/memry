@@ -14,7 +14,7 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 import { createSearchProjector } from '../projections/projectors/search-projector'
 import * as projections from '../projections'
 import { createFtsTable } from '../database/fts'
-import type * as IndexModule from './index'
+import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
 import type * as UnlinkedMentionsModule from './unlinked-mentions'
@@ -80,7 +80,7 @@ describe('unlinked mentions (#3320)', () => {
     vi.setSystemTime(new Date('2026-01-15T12:00:00.000Z'))
 
     // Import modules
-    vaultIndex = await import('./index')
+    vaultIndex = await import('./status')
     database = await import('../database')
     notes = await import('./notes')
 

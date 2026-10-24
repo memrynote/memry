@@ -45,7 +45,7 @@ vi.mock('../tags/runtime-effects', () => ({
   commitTaskRetag: vi.fn((_db: unknown, retag: () => unknown) => retag())
 }))
 
-import * as vaultIndex from '../vault/index'
+import * as vaultIndex from '../vault/status'
 import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 
 const SECRET = '---\ntags: [old]\n---\nOutside secret\n'

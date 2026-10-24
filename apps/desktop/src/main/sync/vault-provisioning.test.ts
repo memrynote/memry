@@ -22,6 +22,7 @@ vi.mock('../store', () => ({
   recordCrdtStoreRename: mockRecordCrdtStoreRename
 }))
 
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   createVaultInfo: mockCreateVaultInfo
 }))

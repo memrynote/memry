@@ -221,7 +221,7 @@ describe('Readwise Reader documents', () => {
       )
     )
 
-    const vaultIndex = await import('../vault/index')
+    const vaultIndex = await import('../vault/status')
     const database = await import('../database')
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
       isOpen: true,

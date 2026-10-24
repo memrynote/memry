@@ -25,6 +25,7 @@ vi.mock('../database/queries/notes/note-crud', () => ({
 
 let vaultPath = ''
 vi.mock('./notes-io', () => ({ getVaultRoot: () => vaultPath }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({ getStatus: () => ({ path: vaultPath }) }))
 
 import {

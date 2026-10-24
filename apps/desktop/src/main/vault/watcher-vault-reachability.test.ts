@@ -62,6 +62,7 @@ vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => {})
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getConfig: () => ({
     excludePatterns: [],

@@ -42,6 +42,7 @@ vi.mock('../database', () => ({
   isDatabaseInitialized: () => false,
   isIndexDatabaseInitialized: () => false
 }))
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({ getStatus: () => ({ path: state.vault }) }))
 
 import { setFileReadOnly, setFileReadOnlySync } from './files'

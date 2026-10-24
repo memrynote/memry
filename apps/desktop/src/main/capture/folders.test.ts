@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 let vaultPath: string | null = '/Users/k/Vaults/Notes'
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({ getStatus: () => ({ path: vaultPath }) }))
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getFolders: async () => [
     { path: 'Reading', icon: null },

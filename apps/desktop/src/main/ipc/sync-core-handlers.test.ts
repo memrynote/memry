@@ -130,6 +130,7 @@ vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: () => mockGetSettingsSyncManager()
 }))
 
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: vi.fn().mockReturnValue(null),
   startSyncRuntime: vi.fn().mockResolvedValue(null),

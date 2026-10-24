@@ -36,7 +36,7 @@ vi.mock('../../../inbox/suggestions', () => ({
 }))
 
 import * as database from '../../../database'
-import * as vaultIndex from '../../../vault'
+import * as vaultIndex from '../../../vault/status'
 import { createNote } from '../../../vault/notes'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../../projections'
 import { createNoteDerivedStateProjector } from '../../../projections/projectors/note-derived-state-projector'

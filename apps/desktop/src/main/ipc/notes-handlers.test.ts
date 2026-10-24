@@ -40,6 +40,10 @@ vi.mock('../database', () => ({
 }))
 
 // Mock vault/notes module - these are the actual operations we'll test
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getNoteById: vi.fn(),
   getNoteByPath: vi.fn(),

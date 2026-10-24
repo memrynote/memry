@@ -59,6 +59,7 @@ vi.mock('../sync/device-registration', () => ({
 
 const mockGetSyncEngine = vi.fn().mockReturnValue(null)
 const mockStartSyncRuntime = vi.fn()
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: () => mockGetSyncEngine(),
   startSyncRuntime: (...args: unknown[]) => mockStartSyncRuntime(...args)

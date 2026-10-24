@@ -35,6 +35,11 @@ vi.mock('../lib/logger', () => {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
   return { createLogger: () => logger }
 })
+vi.mock('./crdt-network-update', async () => await import('./crdt-writeback'))
+vi.mock('./crdt-writeback-port', async () => {
+  const writeback = await import('./crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('./crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: vi.fn(() => Promise.resolve()) })
@@ -54,11 +59,16 @@ vi.mock('../notes/runtime-effects', () => ({
   cleanupProjectLinksForDeletedNote: vi.fn(() => Promise.resolve())
 }))
 vi.mock('../inbox/runtime-effects', () => ({ syncInboxCreate }))
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => vaultPath,
   toRelativePath: (p: string) => path.relative(vaultPath, p),
   toAbsolutePath: (p: string) => path.join(vaultPath, p)
 }))
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getStatus: () => ({ path: vaultPath, isOpen: true }),
   getConfig: () => ({ journalFolder: 'journal', defaultNoteFolder: 'notes' })

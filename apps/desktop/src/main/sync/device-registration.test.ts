@@ -140,6 +140,7 @@ vi.mock('./http-client', () => ({
   deleteFromServer: (...args: unknown[]) => mocks.deleteFromServer(...args)
 }))
 
+vi.mock('./runtime-state', async () => await import('./runtime'))
 vi.mock('./runtime', () => ({
   getSyncEngine: (...args: unknown[]) => mocks.getSyncEngine(...args),
   getNoteBodyOutbox: (...args: unknown[]) => mocks.getNoteBodyOutbox(...args),

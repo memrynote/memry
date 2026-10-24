@@ -60,7 +60,7 @@ vi.mock('../sync/local-mutations', () => ({
   removePendingNoteSyncItems: vi.fn()
 }))
 
-import * as vaultIndex from '../vault/index'
+import * as vaultIndex from '../vault/status'
 import { createNote } from '../vault/notes'
 import { parseNote } from '../vault/frontmatter'
 import { createTemplate } from '../vault/templates'

@@ -34,6 +34,7 @@ vi.mock('../database', () => ({
   isDatabaseInitialized: () => state.data !== null,
   isIndexDatabaseInitialized: () => state.index !== null
 }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: () => ({ path: state.vaultPath, isOpen: true }),
   getConfig: () => ({

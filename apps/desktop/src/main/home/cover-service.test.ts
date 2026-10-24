@@ -16,6 +16,7 @@ vi.mock('electron', () => ({
 }))
 
 const vault = vi.hoisted(() => ({ path: '' }))
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({ getStatus: () => ({ path: vault.path }) }))
 
 const io = vi.hoisted(() => ({

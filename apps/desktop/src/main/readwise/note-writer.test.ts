@@ -109,7 +109,7 @@ describe('upsertReadwiseNote', () => {
     fetchCalls = []
     failingUrls = new Set()
 
-    const vaultIndex = await import('../vault/index')
+    const vaultIndex = await import('../vault/status')
     const database = await import('../database')
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
       isOpen: true,
@@ -608,7 +608,7 @@ describe('upsertReadwiseNote', () => {
 
   it('does not mark a note deleted while the vault is still indexing', async () => {
     const noteId = await created(book(1, { highlights: [highlight(1)] }))
-    const vaultIndex = await import('../vault/index')
+    const vaultIndex = await import('../vault/status')
     vi.mocked(vaultIndex.getStatus).mockReturnValue({
       isOpen: true,
       path: vault.path,

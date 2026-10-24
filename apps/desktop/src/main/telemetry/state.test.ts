@@ -11,6 +11,7 @@ vi.mock('../store', () => ({
   }
 }))
 
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: getSyncEngineMock
 }))

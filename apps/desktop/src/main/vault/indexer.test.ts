@@ -31,7 +31,7 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import type * as PromisesModule from 'fs/promises'
 import type * as DatabaseModule from '../database'
 import type * as IndexerModule from './indexer'
-import type * as IndexModule from './index'
+import type * as IndexModule from './status'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -42,6 +42,7 @@ const progressCalls: number[] = []
 const progressCounts: Array<{ indexed: number; total: number } | undefined> = []
 
 // Mock the vault/index module
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getConfig: vi.fn((): VaultConfig => ({
     excludePatterns: ['.git', 'node_modules', '.trash'],
@@ -124,7 +125,7 @@ describe('indexer', () => {
     // Import modules
     database = await import('../database')
     indexer = await import('./indexer')
-    vaultIndex = await import('./index')
+    vaultIndex = await import('./status')
 
     // Inject test database - spyOn ensures type compatibility
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))

@@ -96,7 +96,7 @@ describe('Readwise book commands (D16)', () => {
     readwise = new ReadwiseStub()
     vi.stubGlobal('fetch', vi.fn(readwise.handle))
 
-    const vaultIndex = await import('../vault/index')
+    const vaultIndex = await import('../vault/status')
     const database = await import('../database')
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
       isOpen: true,

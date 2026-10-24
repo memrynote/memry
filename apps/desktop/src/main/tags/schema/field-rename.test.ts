@@ -54,7 +54,7 @@ vi.mock('../../notes/runtime-effects', async (importOriginal) => ({
   syncNoteUpdate: vi.fn()
 }))
 
-import * as vaultIndex from '../../vault/index'
+import * as vaultIndex from '../../vault/status'
 import { createNote } from '../../vault/notes'
 import { parseNote } from '../../vault/frontmatter'
 import {

@@ -12,7 +12,7 @@ import type { DataDb } from '@main/database/types'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as projections from '../projections'
-import type * as IndexModule from './index'
+import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
 
@@ -79,7 +79,7 @@ describe('path-form wiki-links follow their target (#2562)', () => {
     vi.setSystemTime(new Date('2026-01-15T12:00:00.000Z'))
 
     // Import modules
-    vaultIndex = await import('./index')
+    vaultIndex = await import('./status')
     database = await import('../database')
     notes = await import('./notes')
 

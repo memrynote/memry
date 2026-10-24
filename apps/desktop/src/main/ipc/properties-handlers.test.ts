@@ -44,6 +44,10 @@ vi.mock('../notes/store', () => ({
   getJournalEntryByDate: mocks.getJournalEntryByDate
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   updateNote: mocks.updateNote
 }))

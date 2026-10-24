@@ -15,7 +15,7 @@ import {
   flushProjectionEvents
 } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
-import * as vaultIndex from './index'
+import * as vaultIndex from './status'
 import * as database from '../database'
 import * as notes from './notes'
 import { appendBlocksToNote } from './append-blocks'

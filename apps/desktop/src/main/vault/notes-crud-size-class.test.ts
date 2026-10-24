@@ -50,6 +50,11 @@ vi.mock('../lib/paths', async (importOriginal) => ({
   })
 }))
 vi.mock('../database', () => ({ getDatabase: vi.fn(), getIndexDatabase: vi.fn(() => ({})) }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({ hasPendingWriteback: vi.fn(() => false) }))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => undefined)
@@ -58,6 +63,7 @@ vi.mock('./note-sync', () => ({ syncNoteToCache: vi.fn(), deleteNoteFromCache: v
 vi.mock('./notes-versions', () => ({ maybeCreateSignificantSnapshot: vi.fn() }))
 vi.mock('./notes-queries', () => ({ noteToListItem: vi.fn() }))
 vi.mock('./folders', () => ({ readFolderConfig: vi.fn() }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({ getStatus: vi.fn(), getConfig: vi.fn(() => ({})) }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainLog: vi.fn() }))
 vi.mock('../notes/note-date-reminders', () => ({

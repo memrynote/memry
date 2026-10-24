@@ -50,6 +50,7 @@ function createTempVault(prefix = 'folders-test-'): TestDir {
 let mockVaultPath = '/mock/vault'
 
 // Mock the vault/index module
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: vi.fn(() => ({ path: mockVaultPath, isOpen: true })),
   getConfig: vi.fn(() => ({

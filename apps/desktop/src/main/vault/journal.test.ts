@@ -30,6 +30,7 @@ import {
 // ============================================================================
 
 // Mock the vault/index module for functions that need vault state
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: vi.fn(() => ({ path: '/mock/vault', isOpen: true })),
   getConfig: vi.fn(() => ({

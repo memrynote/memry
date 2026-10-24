@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockSelectVault = vi.hoisted(() => vi.fn())
 
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   selectVault: mockSelectVault
 }))

@@ -22,6 +22,7 @@ vi.mock('../store', () => ({
   findVault: () => mocks.stored,
   upsertVault: vi.fn()
 }))
+vi.mock('./runtime-state', async () => await import('./runtime'))
 vi.mock('./runtime', () => ({ startSyncRuntime: vi.fn(async () => null) }))
 vi.mock('./vault-adoption', () => ({ adoptVaultLocally: vi.fn() }))
 vi.mock('./vault-directory', () => ({ refreshVaultDirectory: vi.fn(async () => {}) }))

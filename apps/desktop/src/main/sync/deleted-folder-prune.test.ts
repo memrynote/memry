@@ -9,6 +9,7 @@ import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/t
 
 let vaultPath = ''
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getStatus: vi.fn(() => ({ path: vaultPath, isOpen: true }))
 }))

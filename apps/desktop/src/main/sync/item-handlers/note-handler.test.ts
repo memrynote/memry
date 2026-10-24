@@ -14,6 +14,10 @@ vi.mock('../../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({}))
 }))
 
+vi.mock('../../vault/note-snapshots', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-versions', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-crud', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-io', async () => await import('../../vault/notes'))
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: vi.fn(() => VAULT_ROOT),
   toRelativePath: vi.fn((p: string) => path.relative(VAULT_ROOT, p)),
@@ -103,6 +107,11 @@ vi.mock('../../notes/runtime-effects', () => ({
 }))
 
 const mockMarkWritebackIgnored = vi.fn()
+vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
+vi.mock('../crdt-writeback-port', async () => {
+  const writeback = await import('../crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../crdt-writeback', () => ({
   markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
 }))
@@ -156,6 +165,7 @@ vi.mock('../../vault/attachments', () => ({
   )
 }))
 
+vi.mock('../../vault/status', async () => await import('../../vault/index'))
 vi.mock('../../vault/index', () => ({
   getStatus: vi.fn(() => ({ path: VAULT_ROOT }))
 }))

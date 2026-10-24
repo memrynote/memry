@@ -34,10 +34,15 @@ vi.mock('../lib/embeddings', () => ({
   initEmbeddingModel: mockInitEmbeddingModel
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getNoteById: mockGetNoteById
 }))
 
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   getConfig: mockGetConfig
 }))

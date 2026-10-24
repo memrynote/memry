@@ -86,17 +86,9 @@ vi.mock('@main/database/queries/notes', async (importOriginal) => ({
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => undefined }))
 vi.mock('../vault/notes-io', () => ({
   emitNoteEvent: vi.fn(),
+  getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`
 }))
-vi.mock('../vault/notes', async () => {
-  const versions = await import('../vault/notes-versions')
-  return {
-    getVaultRoot: () => VAULT_ROOT,
-    toAbsolutePath: (relative: string) => `/vault/${relative}`,
-    createSnapshot: versions.createSnapshot,
-    maybeCreateSignificantSnapshot: versions.maybeCreateSignificantSnapshot
-  }
-})
 vi.mock('../vault/file-ops', () => ({
   safeRead: readMockFile,
   atomicWrite: async (absolute: string, content: string) => {

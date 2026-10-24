@@ -54,6 +54,7 @@ vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => '/tmp/memry-test-docs') }
 }))
 
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   selectVault: vi.fn(async (input: { path?: string }) => ({
     success: true,

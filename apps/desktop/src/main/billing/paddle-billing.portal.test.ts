@@ -11,6 +11,7 @@ vi.mock('../sync/http-client', async () => {
   const { SyncServerError } = await import('@memry/sync-client/http-errors')
   return { getFromServer: vi.fn(), postToServer: mocks.postToServer, SyncServerError }
 })
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({ startSyncRuntime: vi.fn() }))
 vi.mock('electron', () => ({ shell: { openExternal: mocks.openExternal } }))
 vi.mock('../lib/logger', () => ({ createLogger: () => ({ info: vi.fn(), warn: vi.fn() }) }))

@@ -35,6 +35,11 @@ vi.mock('../sync/crdt-provider', () => ({
     getDoc: (noteId: string) => (openDocs.has(noteId) ? {} : undefined)
   }))
 }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn(() => calls.push('markWritebackIgnored'))
 }))

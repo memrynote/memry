@@ -61,6 +61,10 @@ vi.mock('../store', () => ({
   recordCrdtPersistenceOutcome: vi.fn(() => 0)
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({ getVaultRoot: () => VAULT_ROOT, toAbsolutePath: vi.fn() }))
 vi.mock('../vault/file-ops', () => ({ safeRead: vi.fn() }))
 vi.mock('../vault/frontmatter', () => ({
@@ -120,6 +124,7 @@ vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
 const syncEngine = vi.hoisted(() => ({
   current: null as null | { mergeRemoteCrdtForNote: (noteId: string) => Promise<boolean> }
 }))
+vi.mock('./runtime-state', async () => await import('./runtime'))
 vi.mock('./runtime', () => ({ getSyncEngine: () => syncEngine.current }))
 
 vi.mock('y-leveldb', () => ({

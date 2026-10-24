@@ -229,6 +229,10 @@ vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => mocks.vaultRoot,
   toAbsolutePath: (vaultRelPath: string) => mocks.toAbsolutePath(vaultRelPath)

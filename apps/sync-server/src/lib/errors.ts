@@ -4,7 +4,7 @@ import type { Context } from 'hono'
 import { CRDT_SNAPSHOT_NOT_COVERED } from '@memry/contracts/sync-api'
 
 import { createLogger } from './logger'
-import { captureServerError } from '../services/analytics'
+import type { AnalyticsEnv, ServerErrorCaptureInput } from '../services/analytics'
 import type { AppContext } from '../types'
 
 const logger = createLogger('ErrorHandler')
@@ -139,6 +139,16 @@ export const formatErrorResponse = (
   }
 })
 
+// Loaded on demand: services/analytics reaches this module back through
+// services/telemetry (AppError), so a static import here is a cycle.
+const captureServerErrorLazily = async (
+  env: AnalyticsEnv,
+  input: ServerErrorCaptureInput
+): Promise<void> => {
+  const { captureServerError } = await import('../services/analytics')
+  return captureServerError(env, input)
+}
+
 const scheduleServerErrorCapture = (
   err: Error,
   c: Context<AppContext>,
@@ -159,7 +169,7 @@ const scheduleServerErrorCapture = (
   if (!executionCtx?.waitUntil) return
 
   executionCtx.waitUntil(
-    captureServerError(c.env, {
+    captureServerErrorLazily(c.env, {
       error: err,
       method: c.req.method,
       path: c.req.path,

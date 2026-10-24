@@ -61,6 +61,7 @@ vi.mock('./notes-io', () => ({
   getVaultRoot: () => state.vault,
   toAbsolutePath: (p: string) => path.join(state.vault, p)
 }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: () => ({ path: state.vault }),
   getConfig: () => ({

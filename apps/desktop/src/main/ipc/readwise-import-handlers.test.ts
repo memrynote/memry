@@ -16,6 +16,7 @@ vi.mock('electron', () => ({ app: mockApp, ipcMain: mockElectron.ipcMain }))
 
 let currentDb: DataDb | null = null
 vi.mock('../database', () => ({ getDatabase: () => currentDb }))
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({ getStatus: () => ({ path: '/vaults/a' }) }))
 const broadcast = vi.hoisted(() => vi.fn())
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: broadcast }))

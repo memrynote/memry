@@ -229,6 +229,7 @@ vi.mock('./sandbox', () => ({
   ensureSandboxVault: vi.fn()
 }))
 
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   startSyncRuntime: (...args: unknown[]) => mocks.startSyncRuntime(...args),
   stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)

@@ -121,6 +121,10 @@ vi.mock('@memry/storage-data', () => ({
     h.canonical?.id === noteId ? h.canonical : undefined
 }))
 
+vi.mock('../../vault/note-snapshots', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-versions', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-crud', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-io', async () => await import('../../vault/notes'))
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`,

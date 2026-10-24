@@ -185,11 +185,16 @@ vi.mock('../lib/paths', async (importOriginal) => ({
     mocks.readFileSync(`${vault}/${relativePath}`, 'utf-8')
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => '/vault',
   toAbsolutePath: (relativePath: string) => `/vault/${relativePath}`
 }))
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getConfig: () => ({ defaultNoteFolder: 'notes' })
 }))

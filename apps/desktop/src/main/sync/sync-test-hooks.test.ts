@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({ app: { getVersion: () => '9.9.9', getPath: () => tmpdir() } }))
+vi.mock('./runtime-state', async () => await import('./runtime'))
 vi.mock('./runtime', () => ({
   getSyncEngine: () => runtime.engine,
   getSyncWebSocket: () => runtime.ws,

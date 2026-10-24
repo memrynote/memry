@@ -27,6 +27,7 @@ vi.mock('./notes-io', () => ({
   }
 }))
 
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: () => ({ path: state.vaultPath, isOpen: true })
 }))

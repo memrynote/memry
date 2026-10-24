@@ -14,8 +14,10 @@ import type { DataDb } from '../database/types'
 
 let currentDb: DataDb | null = null
 vi.mock('../database', () => ({ getDatabase: () => currentDb }))
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({ getStatus: () => ({ path: '/vaults/a' }) }))
 vi.mock('electron', () => ({ net: { isOnline: () => true } }))
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({ getSyncEngine: () => ({ currentState: 'idle' }) }))
 vi.mock('../vault/activity-log', () => ({ recordActivity: vi.fn() }))
 

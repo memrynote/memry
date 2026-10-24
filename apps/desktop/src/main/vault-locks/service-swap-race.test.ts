@@ -62,6 +62,7 @@ vi.mock('../database', () => ({
   isDatabaseInitialized: () => state.data !== null,
   isIndexDatabaseInitialized: () => state.index !== null
 }))
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({ getStatus: () => ({ path: state.vaultPath }) }))
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: mocks.broadcast }))
 vi.mock('../vault/notes-versions', () => ({ createSnapshot: mocks.createSnapshot }))

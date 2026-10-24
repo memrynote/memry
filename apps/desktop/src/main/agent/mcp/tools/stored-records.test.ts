@@ -10,6 +10,10 @@ vi.mock('../../../database/queries/notes', () => ({
   getNoteCacheById: () => ({ fileType: 'markdown' })
 }))
 vi.mock('../../../database/queries/projects', () => ({ getStatusById: vi.fn() }))
+vi.mock('../../../vault/note-snapshots', async () => await import('../../../vault/notes'))
+vi.mock('../../../vault/notes-versions', async () => await import('../../../vault/notes'))
+vi.mock('../../../vault/notes-crud', async () => await import('../../../vault/notes'))
+vi.mock('../../../vault/notes-io', async () => await import('../../../vault/notes'))
 vi.mock('../../../vault/notes', () => ({ getNoteById: mocks.getNoteById }))
 vi.mock('../../../vault/journal', () => ({
   readJournalEntry: mocks.readJournalEntry,

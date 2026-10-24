@@ -177,6 +177,7 @@ vi.mock('./updater-install-health', () => ({
 }))
 
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
+import { describeUpdaterError } from './updater-error-description'
 import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
 
 async function loadUpdater() {
@@ -551,7 +552,6 @@ describe('updater', () => {
   // explicit fields object so the payload is diagnosable in Loki.
   describe('error payload enrichment (#842)', () => {
     it('extracts message, code, http status and url from an electron-updater error', async () => {
-      const updater = await loadUpdater()
       const error = Object.assign(
         new Error('Cannot download "https://x.test/latest.yml", status 404'),
         {
@@ -562,7 +562,7 @@ describe('updater', () => {
         }
       )
 
-      expect(updater.describeUpdaterError(error, 'download')).toMatchObject({
+      expect(describeUpdaterError(error, 'download')).toMatchObject({
         phase: 'download',
         errorName: 'HttpError',
         errorMessage: 'Cannot download "https://x.test/latest.yml", status 404',
@@ -570,15 +570,11 @@ describe('updater', () => {
         httpStatus: 404,
         url: 'https://x.test/latest.yml'
       })
-      expect(updater.describeUpdaterError(error, 'download').errorStack).toContain(
-        'updater.test.ts'
-      )
+      expect(describeUpdaterError(error, 'download').errorStack).toContain('updater.test.ts')
     })
 
     it('keeps a non-Error rejection diagnosable', async () => {
-      const updater = await loadUpdater()
-
-      expect(updater.describeUpdaterError('boom', 'startup-check')).toEqual({
+      expect(describeUpdaterError('boom', 'startup-check')).toEqual({
         phase: 'startup-check',
         errorName: 'NonError',
         errorMessage: 'boom'
@@ -586,13 +582,12 @@ describe('updater', () => {
     })
 
     it('reports the errno and cause of a network failure', async () => {
-      const updater = await loadUpdater()
       const error = Object.assign(new Error('request failed'), {
         code: 'ENOTFOUND',
         cause: Object.assign(new Error('getaddrinfo ENOTFOUND github.com'), { code: 'ENOTFOUND' })
       })
 
-      expect(updater.describeUpdaterError(error, 'scheduled-check')).toMatchObject({
+      expect(describeUpdaterError(error, 'scheduled-check')).toMatchObject({
         phase: 'scheduled-check',
         errorCode: 'ENOTFOUND',
         errorCause: 'Error: getaddrinfo ENOTFOUND github.com (ENOTFOUND)'

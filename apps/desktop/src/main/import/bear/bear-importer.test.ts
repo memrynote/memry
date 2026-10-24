@@ -13,7 +13,7 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
-import type * as IndexModule from '../../vault/index'
+import type * as IndexModule from '../../vault/status'
 import type * as DatabaseModule from '../../database'
 import type * as BearImporterModule from './bear-importer'
 import type * as ImportContextModule from '../import-context'
@@ -138,7 +138,7 @@ describe('bearImporter (integration)', () => {
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
 
-    vaultIndex = await import('../../vault/index')
+    vaultIndex = await import('../../vault/status')
     database = await import('../../database')
 
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({

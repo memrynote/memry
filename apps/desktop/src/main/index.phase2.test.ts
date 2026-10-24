@@ -192,6 +192,7 @@ vi.mock('./ipc/settings-handlers', () => ({
   setQuickCaptureShortcutHost: setQuickCaptureShortcutHostMock
 }))
 
+vi.mock('./vault/status', async () => await import('./vault'))
 vi.mock('./vault', () => ({
   autoOpenLastVault: autoOpenLastVaultMock,
   beginVaultShutdown: vi.fn(),

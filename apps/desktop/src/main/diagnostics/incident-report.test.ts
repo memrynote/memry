@@ -26,10 +26,12 @@ const getSyncEngineMock = vi.fn()
 vi.mock('../sync/token-manager', () => ({
   getValidAccessToken: vi.fn(async () => null)
 }))
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: () => getSyncEngineMock()
 }))
 
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   getStatus: vi.fn(() => ({
     isOpen: true,

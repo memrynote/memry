@@ -87,6 +87,7 @@ vi.mock('../notes/runtime-effects', async (importOriginal) => ({
 vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: vi.fn(async () => true)
 }))
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({ getSyncEngine: () => mocks.syncEngine }))
 vi.mock('../notes/domain', async (importOriginal) => {
   const actual = await importOriginal<typeof DomainModule>()
@@ -212,7 +213,7 @@ describe('one pulling device', () => {
     readwise = new ReadwiseStub()
     vi.stubGlobal('fetch', vi.fn(readwise.handle))
 
-    const vaultIndex = await import('../vault/index')
+    const vaultIndex = await import('../vault/status')
     const database = await import('../database')
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
       isOpen: true,

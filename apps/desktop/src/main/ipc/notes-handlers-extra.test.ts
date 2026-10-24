@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
 import type * as PromisesModule from 'fs/promises'
-import type * as IndexModule from '../vault/index'
+import type * as StatusModule from '../vault/status'
 import type * as FileTypesModule from '@memry/shared/file-types'
 import type * as ExportUtilsModule from '../lib/export-utils'
 
@@ -114,6 +114,10 @@ vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(() => ({ id: 'index-db' }))
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getNoteById: mocks.getNoteById,
   getNoteByPath: vi.fn(),
@@ -202,8 +206,8 @@ vi.mock('../lib/export-utils', () => ({
   sanitizeFilename: vi.fn((value: string) => value.replace(/\W+/g, '_'))
 }))
 
-vi.mock('../vault/index', async (importOriginal) => ({
-  ...(await importOriginal<typeof IndexModule>()),
+vi.mock('../vault/status', async (importOriginal) => ({
+  ...(await importOriginal<typeof StatusModule>()),
   getStatus: mocks.getVaultStatus
 }))
 

@@ -282,6 +282,7 @@ const vaultMocks = vi.hoisted(() => {
   return state
 })
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getStatus: () => vaultMocks.status,
   onVaultStatusChanged: (listener: (status: typeof vaultMocks.status) => void) => {

@@ -26,6 +26,7 @@ const notePaths: Record<string, string> = {
   'note-free': 'notes/free.md'
 }
 
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({ getStatus: () => ({ path: vaultPath, isOpen: true }) }))
 vi.mock('./notes-io', () => ({ getVaultRoot: () => vaultPath }))
 vi.mock('../database', () => ({ getIndexDatabase: () => ({}) }))

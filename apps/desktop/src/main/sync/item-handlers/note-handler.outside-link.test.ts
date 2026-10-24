@@ -25,16 +25,26 @@ vi.mock('../../database/client', () => ({
   getIndexDatabase: () => indexDb.db
 }))
 
+vi.mock('../../vault/note-snapshots', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-versions', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-crud', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-io', async () => await import('../../vault/notes'))
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: () => roots.vault,
   toRelativePath: (p: string) => path.relative(roots.vault, p),
   toAbsolutePath: (p: string) => path.join(roots.vault, p)
 }))
 
+vi.mock('../../vault/status', async () => await import('../../vault/index'))
 vi.mock('../../vault/index', () => ({
   getStatus: () => ({ path: roots.vault })
 }))
 
+vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
+vi.mock('../crdt-writeback-port', async () => {
+  const writeback = await import('../crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 
 import { noteHandler } from './note-handler'

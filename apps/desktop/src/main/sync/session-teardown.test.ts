@@ -80,6 +80,7 @@ vi.mock('../crypto', () => ({
   deleteKey: (...args: unknown[]) => mocks.deleteKey(...args)
 }))
 
+vi.mock('./runtime-state', async () => await import('./runtime'))
 vi.mock('./runtime', () => ({
   stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)
 }))

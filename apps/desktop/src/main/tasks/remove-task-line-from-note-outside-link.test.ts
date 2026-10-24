@@ -19,6 +19,11 @@ vi.mock('@main/database/queries/notes', () => ({
 }))
 vi.mock('../database', () => ({ getIndexDatabase: () => ({}) }))
 vi.mock('../sync/crdt-provider', () => ({ getCrdtProvider: () => ({ getDoc: () => undefined }) }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: crdt.feed }))
 vi.mock('../vault/note-sync', () => ({ syncNoteToCache: () => ({ wordCount: 0 }) }))

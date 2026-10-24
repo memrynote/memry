@@ -15,7 +15,7 @@ import {
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
-import * as vaultIndex from '../vault/index'
+import * as vaultIndex from '../vault/status'
 import * as database from '../database'
 import { createNote, updateNote } from '../vault/notes'
 import { writeJournalEntry, readJournalEntry } from '../vault/journal'

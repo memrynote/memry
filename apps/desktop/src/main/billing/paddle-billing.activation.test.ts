@@ -30,6 +30,7 @@ vi.mock('../sync/http-client', () => ({
   getFromServer: mocks.getFromServer,
   postToServer: mocks.postToServer
 }))
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: mocks.getSyncEngine,
   startSyncRuntime: mocks.startSyncRuntime

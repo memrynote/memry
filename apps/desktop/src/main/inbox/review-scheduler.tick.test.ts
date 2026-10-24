@@ -16,6 +16,7 @@ vi.mock('electron', () => ({
   },
   powerMonitor: { on: vi.fn(), removeListener: vi.fn() }
 }))
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({ getStatus: () => ({ isOpen: true }) }))
 vi.mock('../lib/main-i18n', () => ({
   getMainI18n: () => ({

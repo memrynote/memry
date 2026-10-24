@@ -7,6 +7,10 @@ const syncNoteUpdate = vi.fn()
 const enqueueJournalUpdate = vi.fn()
 const updateJournalProperties = vi.fn()
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   updateNote: (...args: unknown[]) => updateNote(...args)
 }))

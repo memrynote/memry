@@ -15,6 +15,11 @@ const released = vi.hoisted(() => vi.fn())
 
 vi.mock('../database', () => ({ getIndexDatabase, getDatabase: () => ({}) }))
 vi.mock('../search/store', () => ({ searchQueries: { searchAll } }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({ writebackNow, scheduleWriteback }))
 vi.mock('../vault-locks/registry', () => ({ isNoteLocked: (id: string) => locked.has(id) }))
 vi.mock('../sync/crdt-provider', () => ({

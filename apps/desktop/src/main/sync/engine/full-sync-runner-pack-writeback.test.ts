@@ -145,6 +145,10 @@ vi.mock('../../vault/note-sync', () => ({
   },
   deleteNoteFromCache: (_db: unknown, id: string) => mocks.rows.delete(id)
 }))
+vi.mock('../../vault/note-snapshots', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-versions', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-crud', async () => await import('../../vault/notes'))
+vi.mock('../../vault/notes-io', async () => await import('../../vault/notes'))
 vi.mock('../../vault/notes', () => ({
   getVaultRoot: () => mocks.vaultRoot,
   getDefaultNoteDir: () => mocks.vaultRoot,

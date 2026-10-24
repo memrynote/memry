@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../database', () => ({ getDatabase: () => mocks.db }))
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({ getFolders: async () => mocks.folders }))
 vi.mock('../store', () => ({ getCurrentVaultPath: () => mocks.vaultPath }))
 vi.mock('../sync/local-mutations', () => ({

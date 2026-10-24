@@ -111,6 +111,10 @@ vi.mock('../../../tasks/publisher', () => ({
   createTasksPublisher: mocks.createTasksPublisher
 }))
 
+vi.mock('../../../vault/note-snapshots', async () => await import('../../../vault/notes'))
+vi.mock('../../../vault/notes-versions', async () => await import('../../../vault/notes'))
+vi.mock('../../../vault/notes-crud', async () => await import('../../../vault/notes'))
+vi.mock('../../../vault/notes-io', async () => await import('../../../vault/notes'))
 vi.mock('../../../vault/notes', () => ({
   createFolder: mocks.createFolder,
   getFolders: mocks.getFolders,
@@ -122,6 +126,7 @@ vi.mock('../../../notes/folder-config-effects', () => ({
   syncFolderConfigCreate: mocks.syncFolderConfigCreate
 }))
 
+vi.mock('../../../vault/status', async () => await import('../../../vault'))
 vi.mock('../../../vault', () => ({
   getConfig: mocks.getConfig,
   getStatus: mocks.getStatus
@@ -149,6 +154,14 @@ vi.mock('./desktop-api', () => ({
   invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
 }))
 
+vi.mock(
+  '../../../sync/crdt-network-update',
+  async () => await import('../../../sync/crdt-writeback')
+)
+vi.mock('../../../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../../../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../../../sync/crdt-writeback', () => ({
   settleWriteback: mocks.settleWriteback
 }))

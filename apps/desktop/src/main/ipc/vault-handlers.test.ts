@@ -27,6 +27,7 @@ vi.mock('electron', () => ({
 }))
 
 // Mock vault module
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   selectVault: vi.fn(),
   getStatus: vi.fn(),

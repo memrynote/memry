@@ -26,11 +26,16 @@ vi.mock('../database/client', () => ({
   getIndexDatabase: () => ({ kind: 'index-db' })
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => mocks.vaultRoot,
   toAbsolutePath: (relative: string) => path.join(mocks.vaultRoot, relative)
 }))
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getConfig: () => ({ defaultNoteFolder: 'notes' })
 }))

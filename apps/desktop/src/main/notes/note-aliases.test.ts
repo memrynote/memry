@@ -30,7 +30,7 @@ vi.mock('../sync/crdt-provider', () => ({
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => false) }))
 vi.mock('../sync/local-mutations', () => sync)
 
-import * as vaultIndex from '../vault/index'
+import * as vaultIndex from '../vault/status'
 import { createNote } from '../vault/notes'
 import { parseNote } from '../vault/frontmatter'
 import { resolveLinkTargets } from '@main/database/queries/notes'

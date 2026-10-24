@@ -30,6 +30,11 @@ vi.mock('../sync/crdt-external-feed', () => ({
     feedCalls.push({ noteId, content })
   })
 }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn(() => calls.push('markWritebackIgnored'))
 }))

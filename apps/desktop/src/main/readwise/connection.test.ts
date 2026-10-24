@@ -5,6 +5,7 @@ import type { DataDb } from '../database/types'
 
 let currentDb: DataDb | null = null
 vi.mock('../database', () => ({ getDatabase: () => currentDb }))
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({ getStatus: () => ({ path: '/vaults/a' }) }))
 
 const secrets = new Map<string, string>()

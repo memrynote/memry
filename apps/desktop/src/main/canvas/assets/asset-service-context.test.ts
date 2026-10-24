@@ -38,12 +38,18 @@ const {
 }))
 
 vi.mock('../../database/client', () => ({ isDatabaseInitialized, getDatabase }))
+vi.mock('../../vault/status', async () => await import('../../vault/index'))
 vi.mock('../../vault/index', () => ({ getStatus: getVaultStatus }))
 vi.mock('../../agent/storage/vault-id', () => ({ getOrCreateVaultUuid }))
 vi.mock('../../ipc/sync-attachment-handlers', () => ({ getCanvasAssetIO }))
 vi.mock('../../sync/token-manager', () => ({ getValidAccessToken }))
 vi.mock('../../sync/runtime-state', () => ({ getSyncEngine }))
 vi.mock('@memry/sync-client/sync-server-url', () => ({ resolveSyncServerUrl }))
+vi.mock('../../sync/crdt-network-update', async () => await import('../../sync/crdt-writeback'))
+vi.mock('../../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../../sync/crdt-writeback', () => ({ markWritebackIgnored }))
 vi.mock('../../telemetry/track', () => ({ trackMainEvent }))
 vi.mock('./attachment-dereference', () => ({ dereferenceChunks }))

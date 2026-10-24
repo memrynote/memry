@@ -126,6 +126,11 @@ vi.mock('@memry/sync-client/attachment-download-state', async (importOriginal) =
   return { ...actual, markDownloadSucceeded: vi.fn(actual.markDownloadSucceeded) }
 })
 
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn()
 }))
@@ -142,6 +147,7 @@ vi.mock('../vault/attachment-rename', () => ({
   applyDownloadedAttachmentName: (...args: unknown[]) => mockApplyDownloadedAttachmentName(...args)
 }))
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getStatus: vi.fn().mockReturnValue({ path: null })
 }))

@@ -74,12 +74,18 @@ vi.mock('./note-sync', () => ({
 vi.mock('./notes-queries', () => ({ noteToListItem: vi.fn(() => ({})) }))
 vi.mock('./notes-versions', () => ({ maybeCreateSignificantSnapshot: vi.fn() }))
 vi.mock('./folders', () => ({ readFolderConfig: vi.fn(), getFolderTemplate: vi.fn(() => null) }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: vi.fn(),
   getConfig: vi.fn(() => ({ journalFolder: 'journal' }))
 }))
 vi.mock('./templates', () => ({ getTemplate: vi.fn(() => null), applyTemplate: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainLog: vi.fn() }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({ hasPendingWriteback: vi.fn(() => false) }))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => undefined)

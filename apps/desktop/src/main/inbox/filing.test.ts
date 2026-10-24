@@ -110,6 +110,10 @@ const mockUpdateNote = vi.fn()
 const mockCreateFolder = vi.fn()
 const mockGetFolders = vi.fn()
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   createNote: (...args: unknown[]) => mockCreateNote(...args),
   getNoteById: (...args: unknown[]) => mockGetNoteById(...args),
@@ -118,6 +122,7 @@ vi.mock('../vault/notes', () => ({
   getFolders: (...args: unknown[]) => mockGetFolders(...args)
 }))
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getStatus: vi.fn(() => ({ isOpen: true, path: '/mock-vault' })),
   getConfig: vi.fn(() => ({ defaultNoteFolder: 'notes' }))

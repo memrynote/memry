@@ -24,6 +24,11 @@ vi.mock('../../lib/logger', () => {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
   return { createLogger: () => logger }
 })
+vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
+vi.mock('../crdt-writeback-port', async () => {
+  const writeback = await import('../crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('../../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({ index: true })),
@@ -37,6 +42,7 @@ vi.mock('../../database', () => ({
 vi.mock('../../vault/init', () => ({
   getMemryDir: (vault: string) => path.join(vault, '.memry')
 }))
+vi.mock('../../vault/status', async () => await import('../../vault/index'))
 vi.mock('../../vault/index', () => ({
   getStatus: () => ({ path: vaultPath, isOpen: true }),
   getConfig: () => ({ journalFolder: 'journal', defaultNoteFolder: 'notes' })

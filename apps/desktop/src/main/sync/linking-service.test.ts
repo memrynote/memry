@@ -117,6 +117,7 @@ vi.mock('./vault-provisioning', () => ({
   dormantVaultFolderName: (uuid: string) => `memry-vault-${uuid.slice(0, 8)}`
 }))
 
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   selectVault: mockSelectVault
 }))

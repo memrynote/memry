@@ -16,7 +16,7 @@ import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@t
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
-import type * as IndexModule from './index'
+import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
 
@@ -64,7 +64,7 @@ describe('binary file metadata safety (#2073)', () => {
     dataDb = createTestDataDb()
     testDb = createTestIndexDb()
 
-    vaultIndex = await import('./index')
+    vaultIndex = await import('./status')
     database = await import('../database')
     notes = await import('./notes')
 

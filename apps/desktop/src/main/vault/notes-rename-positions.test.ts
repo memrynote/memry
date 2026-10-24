@@ -59,6 +59,11 @@ vi.mock('@memry/editor-schema/note-refs', async (importOriginal) => ({
   rewriteNoteRefsForMove: vi.fn(() => null)
 }))
 vi.mock('../sync/crdt-feed', () => ({ replaceNoteBodyInCrdt: vi.fn() }))
+vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
+vi.mock('../sync/crdt-writeback-port', async () => {
+  const writeback = await import('../sync/crdt-writeback')
+  return { crdtWriteback: () => writeback }
+})
 vi.mock('../sync/crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
 

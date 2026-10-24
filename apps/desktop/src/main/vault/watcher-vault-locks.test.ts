@@ -47,6 +47,7 @@ vi.mock('../sync/crdt-writeback', async (importOriginal) => ({
 }))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: () => ({ path: mocks.vaultPath }),
   getConfig: () => ({

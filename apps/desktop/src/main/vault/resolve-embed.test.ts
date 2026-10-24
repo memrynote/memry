@@ -8,7 +8,7 @@ import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
-import type * as IndexModule from './index'
+import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as ResolveEmbedModule from './resolve-embed'
 
@@ -35,7 +35,7 @@ describe('resolveVaultEmbed', () => {
     tempVault = createTestVault('resolve-embed-test')
     indexDb = createTestIndexDb()
 
-    vaultIndex = await import('./index')
+    vaultIndex = await import('./status')
     database = await import('../database')
 
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({

@@ -5,6 +5,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 const state = vi.hoisted(() => ({ db: null as unknown }))
 
 vi.mock('../crypto', () => ({ deleteKey: vi.fn(async () => {}) }))
+vi.mock('./runtime-state', async () => await import('./runtime'))
 vi.mock('./runtime', () => ({ stopSyncRuntime: vi.fn(async () => {}) }))
 vi.mock('./token-manager', () => ({
   resetTokenManagerState: vi.fn(),

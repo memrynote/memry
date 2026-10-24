@@ -64,6 +64,7 @@ vi.mock('../sync/http-client', () => ({
   postToServer: (...args: unknown[]) => mocks.postToServer(...args)
 }))
 
+vi.mock('../sync/runtime-state', async () => await import('../sync/runtime'))
 vi.mock('../sync/runtime', () => ({
   getSyncEngine: vi.fn().mockReturnValue(null)
 }))

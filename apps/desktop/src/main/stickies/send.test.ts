@@ -31,6 +31,10 @@ vi.mock('../notes/domain', () => ({
   createNoteCommand: notes.createNoteCommand,
   deleteNoteCommand: notes.deleteNoteCommand
 }))
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getFolders: notes.getFolders,
   createFolder: notes.createFolder

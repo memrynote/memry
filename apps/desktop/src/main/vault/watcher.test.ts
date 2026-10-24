@@ -118,6 +118,7 @@ vi.mock('../sync/crdt-feed', () => ({
   replaceNoteBodyInCrdt
 }))
 
+vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getConfig: vi.fn(() => baseConfig),
   getStatus: vi.fn(() => ({ path: null }))

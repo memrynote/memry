@@ -28,6 +28,7 @@ import {
 import type * as PathsModule from '../lib/paths'
 
 // Mock the vault module
+vi.mock('../vault/status', async () => await import('../vault'))
 vi.mock('../vault', () => ({
   getStatus: vi.fn()
 }))

@@ -6,7 +6,7 @@
  */
 
 import { getTemplate } from '../vault/templates'
-import { getNoteById, type Note, type NoteUpdateInput } from '../vault/notes'
+import { getNoteById, type Note } from '../vault/notes'
 import { updateNoteCommand } from './domain'
 import { buildTemplateApplyUpdate } from './template-update'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'

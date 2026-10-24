@@ -21,7 +21,7 @@ import { createNoteDerivedStateProjector } from '../../projections/projectors/no
 import { insertProject } from '../../database/queries/projects'
 import { listTasks } from '../../database/queries/tasks'
 import type { NotePlanTaskDeps } from './noteplan-importer'
-import type * as IndexModule from '../../vault/index'
+import type * as IndexModule from '../../vault/status'
 import type * as DatabaseModule from '../../database'
 import type * as NoteplanImporterModule from './noteplan-importer'
 import type * as ImportContextModule from '../import-context'
@@ -103,7 +103,7 @@ describe('notePlanImporter (integration)', () => {
     dataDb = createTestDataDb()
     indexDb = createTestIndexDb()
 
-    vaultIndex = await import('../../vault/index')
+    vaultIndex = await import('../../vault/status')
     database = await import('../../database')
 
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
@@ -357,7 +357,7 @@ describe('notePlanImporter (real production deps)', () => {
     tempVault = createTestVault('noteplan-import-real-deps-test')
     tempDbDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-noteplan-real-db-'))
 
-    vaultIndex = await import('../../vault/index')
+    vaultIndex = await import('../../vault/status')
     database = await import('../../database')
 
     vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({

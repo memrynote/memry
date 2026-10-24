@@ -50,6 +50,7 @@ vi.mock('../database', () => ({
   isDatabaseInitialized: () => mocks.isDatabaseInitialized()
 }))
 
+vi.mock('../vault/status', async () => await import('../vault/index'))
 vi.mock('../vault/index', () => ({
   getStatus: () => mocks.vaultPath
 }))
@@ -58,6 +59,10 @@ vi.mock('../vault/attachments', () => ({
   getNoteAttachmentsDir: (...args: unknown[]) => mocks.getNoteAttachmentsDir(...args)
 }))
 
+vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-crud', async () => await import('../vault/notes'))
+vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   toAbsolutePath: (p: string) => mocks.toAbsolutePath(p)
 }))

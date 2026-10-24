@@ -62,7 +62,7 @@ vi.mock('../journal/runtime-effects', () => ({
 }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
-import * as vaultIndex from '../vault/index'
+import * as vaultIndex from '../vault/status'
 import { createNote } from '../vault/notes'
 import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment } from '../sync/blocknote-converter'

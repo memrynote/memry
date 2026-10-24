@@ -25,7 +25,7 @@ import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
-import type * as IndexModule from './index'
+import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
 
@@ -50,6 +50,11 @@ vi.mock('electron', () => {
 })
 
 // Mock embedding updates (external AI service)
+// Note reads load the task reconciler lazily; left real, that load races this
+// file's own dynamic imports of the notes modules it shares a graph with.
+vi.mock('../tasks/reconcile-markdown-tasks', () => ({
+  reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => 0)
+}))
 vi.mock('../inbox/suggestions', () => ({
   updateNoteEmbedding: vi.fn(() => Promise.resolve())
 }))
@@ -93,7 +98,7 @@ describe('notes operations', () => {
     vi.setSystemTime(new Date('2026-01-15T12:00:00.000Z'))
 
     // Import modules
-    vaultIndex = await import('./index')
+    vaultIndex = await import('./status')
     database = await import('../database')
     flushProjectionEventsSpy = vi.spyOn(projections, 'flushProjectionEvents')
     notes = await import('./notes')
