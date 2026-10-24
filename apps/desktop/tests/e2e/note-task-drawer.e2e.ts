@@ -13,11 +13,15 @@ const DRAWER_SELECTOR = 'aside[aria-label="Task details"][data-state="open"]'
 
 async function createTaskInDb(page, title: string): Promise<string> {
   return (await page.evaluate(
-    async ({ title }) => {
+    async ({ title: titleArg }) => {
       const api = (window as any).api
       const projects = (await api.tasks.listProjects())?.projects ?? []
       const project = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-      const created = await api.tasks.create({ projectId: project.id, title, priority: 0 })
+      const created = await api.tasks.create({
+        projectId: project.id,
+        title: titleArg,
+        priority: 0
+      })
       if (!created?.success) throw new Error('tasks.create failed: ' + JSON.stringify(created))
       return created.task.id as string
     },
@@ -27,9 +31,11 @@ async function createTaskInDb(page, title: string): Promise<string> {
 
 async function listSubtaskTitles(page, parentId: string): Promise<string[]> {
   return (await page.evaluate(
-    async ({ parentId }) => {
+    async ({ parentId: parentIdArg }) => {
       const res = await (window as any).api.tasks.list({ includeCompleted: true })
-      return (res?.tasks ?? []).filter((t: any) => t.parentId === parentId).map((t: any) => t.title)
+      return (res?.tasks ?? [])
+        .filter((t: any) => t.parentId === parentIdArg)
+        .map((t: any) => t.title)
     },
     { parentId }
   )) as string[]
@@ -47,7 +53,7 @@ test.describe('Note task block detail drawer', () => {
     const taskId = await createTaskInDb(page, title)
     await page.locator(EDITOR_SELECTOR).first().waitFor({ state: 'visible', timeout: 8000 })
     await page.evaluate(
-      ({ taskId, title }) => {
+      ({ taskId: taskIdArg, title: titleArg }) => {
         const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
@@ -55,7 +61,10 @@ test.describe('Note task block detail drawer', () => {
             props: { level: 2 },
             content: [{ type: 'text', text: 'Plan', styles: {} }]
           },
-          { type: 'taskBlock', props: { taskId, title, checked: false, parentTaskId: '' } },
+          {
+            type: 'taskBlock',
+            props: { taskId: taskIdArg, title: titleArg, checked: false, parentTaskId: '' }
+          },
           { type: 'paragraph', content: [{ type: 'text', text: 'after', styles: {} }] }
         ])
       },
@@ -75,7 +84,7 @@ test.describe('Note task block detail drawer', () => {
     await expect(page.locator(EDITOR_SELECTOR).first()).toBeVisible()
 
     // The note's outline rail shares the drawer's edge; the drawer must be on top.
-    const outline = await page.locator('.outline-indicator').boundingBox()
+    const outline = (await page.locator('.outline-indicator').boundingBox())!
     expect(outline).not.toBeNull()
     const drawerOnTop = await page.evaluate(
       ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('aside[aria-label="Task details"]'),

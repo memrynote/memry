@@ -1,9 +1,10 @@
+import type { Page } from '@playwright/test'
 /**
  * Spatial canvas M6 — in-place live editing. Double-click promotes ONE card to
  * active; click-away/Escape returns to idle. ↗ redirect stays distinct from
  * editing (matrix #20). Later tasks add note/task/event body assertions.
  */
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { MOD, ready } from './utils/desktop-test-helpers'
 import { setOpenPagesInNewTab } from './utils/electron-helpers'
 
@@ -140,7 +141,7 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     // Re-activate, then click-away on empty canvas returns to idle.
     await dblclickCard(page, `note:${noteId}`)
     await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
-    const wrap = await page.locator('[data-canvas-editor]').boundingBox()
+    const wrap = (await page.locator('[data-canvas-editor]').boundingBox())!
     await page.mouse.click(wrap.x + 20, wrap.y + 20)
     await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
   })
@@ -449,8 +450,8 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     await expect.poll(markerCount, { timeout: 20000 }).toBe(1)
 
     // Deactivate (click empty canvas), then re-open the note in a tab (↗).
-    const wrap = await page.locator('[data-canvas-editor]').boundingBox()
-    await page.mouse.click(wrap!.x + 20, wrap!.y + 20)
+    const wrap = (await page.locator('[data-canvas-editor]').boundingBox())!
+    await page.mouse.click(wrap.x + 20, wrap.y + 20)
     await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
     await card.getByRole('button', { name: 'Open in tab' }).click()
     await expect(page.getByRole('tab', { name: title })).toBeVisible({ timeout: 20000 })

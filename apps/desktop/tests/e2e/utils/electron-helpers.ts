@@ -481,7 +481,7 @@ export async function toggleTaskCompletion(page: Page, taskTitle: string): Promi
     const task = page
       .locator(`[role="button"][aria-label*="Task:"][aria-label*="${taskTitle}"]`)
       .first()
-    const taskVisible = await task.isVisible({ timeout: 2000 }).catch(() => false)
+    const taskVisible = await task.isVisible().catch(() => false)
 
     if (taskVisible) {
       const checkbox = task.locator(SELECTORS.taskCheckbox).first()
@@ -592,9 +592,9 @@ export async function executeIpc(
   ...args: unknown[]
 ): Promise<unknown> {
   return electronApp.evaluate(
-    async (_ctx, { channel, args }) => {
+    async (_ctx, { channel: channelArg, args: argsArg }) => {
       // This would need proper IPC handling setup
-      return { channel, args }
+      return { channel: channelArg, args: argsArg }
     },
     { channel, args }
   )
@@ -628,7 +628,7 @@ export async function search(page: Page, query: string): Promise<void> {
     await page.waitForTimeout(300)
 
     const searchInput = page.locator(SELECTORS.searchInput).first()
-    const hasInput = await searchInput.isVisible({ timeout: 2000 }).catch(() => false)
+    const hasInput = await searchInput.isVisible().catch(() => false)
 
     if (hasInput) {
       await searchInput.fill(query)
@@ -639,7 +639,7 @@ export async function search(page: Page, query: string): Promise<void> {
     const cmdPaletteInput = page
       .locator('input[placeholder*="Search"], input[role="combobox"]')
       .first()
-    if (await cmdPaletteInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if (await cmdPaletteInput.isVisible().catch(() => false)) {
       await cmdPaletteInput.fill(query)
       await page.waitForTimeout(500)
     }
@@ -654,8 +654,8 @@ export async function search(page: Page, query: string): Promise<void> {
 export async function selectSearchResult(page: Page, text: string): Promise<void> {
   try {
     const result = page.locator(SELECTORS.searchResultItem).filter({ hasText: text }).first()
-    const isVisible = await result.isVisible({ timeout: 3000 }).catch(() => false)
-    if (isVisible) {
+    const isVisibleArg = await result.isVisible().catch(() => false)
+    if (isVisibleArg) {
       await result.click()
       await page.waitForTimeout(300)
     }

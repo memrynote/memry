@@ -36,7 +36,7 @@ async function clickSidebarItem(page, name: string) {
       `aside span:text("${name}"), aside button:has-text("${name}"), nav span:text("${name}")`
     )
     .first()
-  const isVisible = await item.isVisible({ timeout: 3000 }).catch(() => false)
+  const isVisible = await item.isVisible().catch(() => false)
   if (isVisible) {
     await item.click()
     await page.waitForTimeout(400)
@@ -127,6 +127,7 @@ test.describe('Tab System', () => {
         .first()
         .boundingBox()
       expect(activeBox).not.toBeNull()
+      if (!activeBox || !barBox) throw new Error('tab bar or active tab has no bounding box')
       expect(activeBox.x).toBeGreaterThanOrEqual(barBox.x - 1)
       expect(activeBox.x + activeBox.width).toBeLessThanOrEqual(barBox.x + barBox.width + 1)
     })
@@ -342,7 +343,7 @@ test.describe('Tab System', () => {
       await page.waitForTimeout(300)
 
       const contextMenu = page.locator('[role="menu"], [data-radix-menu-content]').first()
-      const menuVisible = await contextMenu.isVisible({ timeout: 2000 }).catch(() => false)
+      const menuVisible = await contextMenu.isVisible().catch(() => false)
 
       if (menuVisible) {
         await expect(contextMenu).toBeVisible()
@@ -383,7 +384,7 @@ test.describe('Split View', () => {
 
     // Pane should have content area
     const content = tabPane.locator('[data-tab-content]').first()
-    const _hasContent = await content.isVisible().catch(() => false)
+    await content.isVisible().catch(() => false)
     // Content may or may not be visible depending on tab type (placeholder views)
     expect(true).toBe(true)
   })
@@ -418,7 +419,7 @@ test.describe('Tab Content Integration', () => {
         `${SELECTORS.captureInput}, [data-tab-content]:has-text("Inbox"), h1:has-text("Inbox")`
       )
       .first()
-    const _hasContent = await inboxContent.isVisible({ timeout: 3000 }).catch(() => false)
+    await inboxContent.isVisible().catch(() => false)
     // The inbox page should render something
     expect(true).toBe(true)
   })
@@ -538,7 +539,7 @@ test.describe('Edge Cases', () => {
     const items = ['Inbox', 'Tasks', 'Journal', 'Inbox', 'Graph', 'Tasks']
     for (const item of items) {
       const el = page.locator(`aside span:text("${item}"), nav span:text("${item}")`).first()
-      const visible = await el.isVisible({ timeout: 1000 }).catch(() => false)
+      const visible = await el.isVisible().catch(() => false)
       if (visible) {
         await el.click()
         // Intentionally NO wait — stress test rapid clicks
@@ -585,7 +586,7 @@ test.describe('Chord Shortcuts', () => {
     const splitRight = page
       .locator('[role="menuitem"]:has-text("Split Right"), [role="menuitem"]:has-text("Split")')
       .first()
-    const hasSplitOption = await splitRight.isVisible({ timeout: 1500 }).catch(() => false)
+    const hasSplitOption = await splitRight.isVisible().catch(() => false)
     if (!hasSplitOption) {
       test.skip(true, 'Split menu item not found; chord maximize requires a split layout')
       await page.keyboard.press('Escape')
@@ -622,7 +623,7 @@ test.describe('Chord Shortcuts', () => {
     const splitRight = page
       .locator('[role="menuitem"]:has-text("Split Right"), [role="menuitem"]:has-text("Split")')
       .first()
-    const hasSplitOption = await splitRight.isVisible({ timeout: 1500 }).catch(() => false)
+    const hasSplitOption = await splitRight.isVisible().catch(() => false)
     if (!hasSplitOption) {
       test.skip(true, 'No split menu item available for reset-splits assertion')
       await page.keyboard.press('Escape')
@@ -674,7 +675,7 @@ test.describe('Tab Hover Preview', () => {
 
     // Find the note tab in the tab bar
     const noteTab = page.locator(`[role="tab"]:has-text("${noteTitle}")`).first()
-    const isVisible = await noteTab.isVisible({ timeout: 3000 }).catch(() => false)
+    const isVisible = await noteTab.isVisible().catch(() => false)
     if (!isVisible) {
       test.skip(true, 'Note tab not found')
       return
@@ -686,7 +687,7 @@ test.describe('Tab Hover Preview', () => {
 
     // The hover card content renders in a Radix portal
     const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
-    const hoverVisible = await hoverCard.isVisible({ timeout: 3000 }).catch(() => false)
+    const hoverVisible = await hoverCard.isVisible().catch(() => false)
 
     if (hoverVisible) {
       // Verify preview card shows the note title
@@ -716,7 +717,7 @@ test.describe('Tab Hover Preview', () => {
 
     // No hover card should appear for singleton tabs
     const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
-    const hoverVisible = await hoverCard.isVisible({ timeout: 500 }).catch(() => false)
+    const hoverVisible = await hoverCard.isVisible().catch(() => false)
     expect(hoverVisible).toBe(false)
   })
 
@@ -727,7 +728,7 @@ test.describe('Tab Hover Preview', () => {
     await page.waitForTimeout(1000)
 
     const noteTab = page.locator(`[role="tab"]:has-text("${noteTitle}")`).first()
-    const isVisible = await noteTab.isVisible({ timeout: 3000 }).catch(() => false)
+    const isVisible = await noteTab.isVisible().catch(() => false)
     if (!isVisible) {
       test.skip(true, 'Note tab not found')
       return
@@ -737,7 +738,7 @@ test.describe('Tab Hover Preview', () => {
     await page.waitForTimeout(800)
 
     const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
-    const hoverVisible = await hoverCard.isVisible({ timeout: 3000 }).catch(() => false)
+    const hoverVisible = await hoverCard.isVisible().catch(() => false)
 
     if (hoverVisible) {
       // The preview should contain part of the snippet text
@@ -753,7 +754,7 @@ test.describe('Tab Hover Preview', () => {
     await page.waitForTimeout(1000)
 
     const noteTab = page.locator(`[role="tab"]:has-text("${noteTitle}")`).first()
-    const isVisible = await noteTab.isVisible({ timeout: 3000 }).catch(() => false)
+    const isVisible = await noteTab.isVisible().catch(() => false)
     if (!isVisible) {
       test.skip(true, 'Note tab not found')
       return
@@ -764,7 +765,7 @@ test.describe('Tab Hover Preview', () => {
     await page.waitForTimeout(800)
 
     const hoverCard = page.locator('[data-slot="hover-card-content"]').first()
-    const hoverVisible = await hoverCard.isVisible({ timeout: 3000 }).catch(() => false)
+    const hoverVisible = await hoverCard.isVisible().catch(() => false)
 
     if (hoverVisible) {
       // Move mouse away from the tab

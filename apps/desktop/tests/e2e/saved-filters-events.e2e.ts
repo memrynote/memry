@@ -18,9 +18,9 @@ test.describe('Saved filter IPC events E2E', () => {
       const updated: Array<{ id: string; savedFilter: { name: string } }> = []
       const deleted: Array<{ id: string }> = []
 
-      const offCreated = api.onSavedFilterCreated((e) => created.push(e as never))
-      const offUpdated = api.onSavedFilterUpdated((e) => updated.push(e as never))
-      const offDeleted = api.onSavedFilterDeleted((e) => deleted.push(e as never))
+      const offCreated = api.onSavedFilterCreated((e) => created.push(e))
+      const offUpdated = api.onSavedFilterUpdated((e) => updated.push(e))
+      const offDeleted = api.onSavedFilterDeleted((e) => deleted.push(e))
 
       const createRes = await api.savedFilters.create({
         name,
@@ -30,6 +30,7 @@ test.describe('Saved filter IPC events E2E', () => {
             projectIds: [],
             priorities: [],
             dueDate: { type: 'any', customStart: null, customEnd: null },
+            tags: [],
             statusIds: [],
             completion: 'all',
             repeatType: 'all',
@@ -37,7 +38,7 @@ test.describe('Saved filter IPC events E2E', () => {
           },
           sort: { field: 'priority', direction: 'desc' },
           starred: false
-        }
+        } as Parameters<typeof api.savedFilters.create>[0]['config']
       })
       if (!createRes.success || !createRes.savedFilter) {
         throw new Error(createRes.error ?? 'create failed')

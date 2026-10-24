@@ -9,16 +9,16 @@ test.describe('Graph links E2E', () => {
     const sourceTitle = uniqueLabel('Graph Source')
 
     const seeded = await page.evaluate(
-      async ({ sourceTitle, targetTitle }) => {
+      async ({ sourceTitle: sourceTitleArg, targetTitle: targetTitleArg }) => {
         const api = window.api
         const target = await api.notes.create({
-          title: targetTitle,
+          title: targetTitleArg,
           content: 'Target body for graph coverage.',
           tags: ['e2e-graph']
         })
         const source = await api.notes.create({
-          title: sourceTitle,
-          content: `This note links to [[${targetTitle}]].`,
+          title: sourceTitleArg,
+          content: `This note links to [[${targetTitleArg}]].`,
           tags: ['e2e-graph']
         })
 
@@ -67,14 +67,14 @@ test.describe('Graph links E2E', () => {
     const sourceTitle = uniqueLabel('Backlink Source')
 
     const seeded = await page.evaluate(
-      async ({ sourceTitle, targetTitle }) => {
+      async ({ sourceTitle: sourceTitleArg, targetTitle: targetTitleArg }) => {
         const target = await window.api.notes.create({
-          title: targetTitle,
+          title: targetTitleArg,
           content: 'Target body for backlink rename coverage.'
         })
         const source = await window.api.notes.create({
-          title: sourceTitle,
-          content: `This source keeps a wikilink to [[${targetTitle}]].`
+          title: sourceTitleArg,
+          content: `This source keeps a wikilink to [[${targetTitleArg}]].`
         })
 
         if (!target.success || !target.note || !source.success || !source.note) {
@@ -84,7 +84,7 @@ test.describe('Graph links E2E', () => {
         return {
           sourceId: source.note.id,
           targetId: target.note.id,
-          oldWikilink: `[[${targetTitle}]]`
+          oldWikilink: `[[${targetTitleArg}]]`
         }
       },
       { sourceTitle, targetTitle }
@@ -111,7 +111,8 @@ test.describe('Graph links E2E', () => {
       })
 
     const renameResult = await page.evaluate(
-      ({ targetId, renamedTitle }) => window.api.notes.rename(targetId, renamedTitle),
+      ({ targetId, renamedTitle: renamedTitleArg }) =>
+        window.api.notes.rename(targetId, renamedTitleArg),
       { targetId: seeded.targetId, renamedTitle }
     )
     expect(renameResult.success).toBe(true)
@@ -123,7 +124,7 @@ test.describe('Graph links E2E', () => {
       .poll(
         () =>
           page.evaluate(
-            async ({ sourceId, targetId, renamedTitle }) => {
+            async ({ sourceId, targetId, renamedTitle: renamedTitleArg }) => {
               const [source, target, sourceLinks, targetLinks] = await Promise.all([
                 window.api.notes.get(sourceId),
                 window.api.notes.get(targetId),
@@ -136,7 +137,7 @@ test.describe('Graph links E2E', () => {
                 outgoingTargetIds: sourceLinks.outgoing.map((link) => link.targetId),
                 incomingSourceIds: targetLinks.incoming.map((link) => link.sourceId),
                 outgoingTargetTitles: sourceLinks.outgoing.map((link) => link.targetTitle),
-                renamedTitle
+                renamedTitle: renamedTitleArg
               }
             },
             { ...seeded, renamedTitle }

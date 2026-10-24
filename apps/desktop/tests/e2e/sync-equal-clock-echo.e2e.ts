@@ -75,16 +75,16 @@ async function divergeUnderSameClock(
   taskId: string
 ): Promise<void> {
   await app.evaluate(
-    (_electron, { dataDbPath, taskId, driver }) => {
+    (_electron, { dataDbPath: dataDbPathArg, taskId: taskIdArg, driver }) => {
       const load = (process as unknown as { mainModule: { require: (id: string) => unknown } })
         .mainModule.require
       const Database = load(driver) as new (file: string) => {
         prepare: (sql: string) => { run: (...args: unknown[]) => void }
         close: () => void
       }
-      const db = new Database(dataDbPath)
+      const db = new Database(dataDbPathArg)
       try {
-        db.prepare('UPDATE tasks SET title = ? WHERE id = ?').run('Diverged on B', taskId)
+        db.prepare('UPDATE tasks SET title = ? WHERE id = ?').run('Diverged on B', taskIdArg)
         db.prepare("UPDATE sync_state SET value = '0' WHERE key = 'lastCursor'").run()
       } finally {
         db.close()

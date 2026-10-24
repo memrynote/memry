@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Marquee Block Selection E2E Tests
  *
@@ -6,7 +7,7 @@
  * intersected blocks → block-only marquee state for keyboard actions.
  */
 
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady, createNote } from './utils/electron-helpers'
 import { marqueeGutterX } from './utils/marquee-helpers'
 
@@ -361,7 +362,7 @@ test.describe('Block marquee selection', () => {
     ])
     await page.waitForTimeout(400)
 
-    const _zone = await getMarqueeZoneBox(page)
+    await getMarqueeZoneBox(page)
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 

@@ -23,7 +23,7 @@ async function openGeneralSettings(
       BrowserWindow.getAllWindows()[0]?.webContents.send('settings:openSection', 'general')
     })
 
-    if (await languageLabel.isVisible({ timeout: 500 }).catch(() => false)) return
+    if (await languageLabel.isVisible().catch(() => false)) return
   }
 
   await expect(languageLabel).toBeVisible()
@@ -105,7 +105,7 @@ test.describe('i18n', () => {
     await waitForVaultReady(page)
     await dismissFirstRunOnboarding(page)
 
-    const reminderLabel = await electronApp.evaluate(async ({}, key: string) => {
+    const reminderLabel = await electronApp.evaluate(async (_electron, key: string) => {
       const hooks = (
         globalThis as typeof globalThis & {
           __memryTestHooks?: { translateInMain(k: string): Promise<string> }
@@ -117,7 +117,7 @@ test.describe('i18n', () => {
 
     expect(reminderLabel).toBe('Note reminder')
 
-    const exportTitle = await electronApp.evaluate(async ({}, key: string) => {
+    const exportTitle = await electronApp.evaluate(async (_electron, key: string) => {
       const hooks = (
         globalThis as typeof globalThis & {
           __memryTestHooks?: { translateInMain(k: string): Promise<string> }

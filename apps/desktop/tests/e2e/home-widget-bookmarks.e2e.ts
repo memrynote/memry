@@ -48,6 +48,7 @@ function writeNoteFile(
   // Post frontmatter-diet (#697) a note's title is its filename basename, not an
   // in-file `title:` key. Name the file after the requested title so lookups by
   // title (noteIdByTitle) resolve it.
+  // oxlint-disable-next-line typescript/no-base-to-string -- seeded titles are always strings; String() keeps the old coercion for any other value
   const base = String(frontmatter.title ?? fileName).replace(/\.md$/, '')
   const normalizedName = `${base}.md`
 
@@ -141,10 +142,14 @@ async function noteIdByTitle(page: Page, title: string): Promise<string> {
 }
 
 async function bookmark(page: Page, itemType: string, itemId: string): Promise<void> {
-  await page.evaluate(({ itemType, itemId }) => window.api.bookmarks.toggle({ itemType, itemId }), {
-    itemType,
-    itemId
-  })
+  await page.evaluate(
+    ({ itemType: itemTypeArg, itemId: itemIdArg }) =>
+      window.api.bookmarks.toggle({ itemType: itemTypeArg, itemId: itemIdArg }),
+    {
+      itemType,
+      itemId
+    }
+  )
 }
 
 /**
@@ -156,11 +161,11 @@ async function bookmark(page: Page, itemType: string, itemId: string): Promise<v
  */
 async function setWidgetHeight(page: Page, type: string, h: number): Promise<void> {
   await page.evaluate(
-    async ({ type, h }) => {
+    async ({ type: typeArg, h: hArg }) => {
       const boards = await window.api.homePages.list()
-      const board = boards.find((b) => b.widgets.some((w) => w.type === type))
-      if (!board) throw new Error(`no board with a ${type} widget`)
-      const widgets = board.widgets.map((w) => (w.type === type ? { ...w, h } : w))
+      const board = boards.find((b) => b.widgets.some((w) => w.type === typeArg))
+      if (!board) throw new Error(`no board with a ${typeArg} widget`)
+      const widgets = board.widgets.map((w) => (w.type === typeArg ? { ...w, h: hArg } : w))
       await window.api.homePages.update({ id: board.id, widgets })
     },
     { type, h }
@@ -236,7 +241,7 @@ test.describe('Group G — Bookmarks widget', () => {
       const projectId = projects?.projects?.[0]?.id
       if (!projectId) return ''
       const res = await window.api.tasks.create({ projectId, title: 'Variant Task G3' })
-      return res?.task?.id ?? res?.id ?? ''
+      return res?.task?.id ?? (res as { id?: string } | null)?.id ?? ''
     })
     if (taskId) {
       await bookmark(page, 'task', taskId)
@@ -284,7 +289,7 @@ test.describe('Group G — Bookmarks widget', () => {
       const projectId = projects?.projects?.[0]?.id
       if (!projectId) return ''
       const res = await window.api.tasks.create({ projectId, title: 'Clickable Task G4' })
-      return res?.task?.id ?? res?.id ?? ''
+      return res?.task?.id ?? (res as { id?: string } | null)?.id ?? ''
     })
     if (taskId) {
       await bookmark(page, 'task', taskId)

@@ -205,7 +205,8 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
       `--user-data-dir=${userDataDir}`,
       MAIN_ENTRY
     ],
-    env
+    // Playwright's type wants string values; process.env entries can be undefined at the type level.
+    env: env as Record<string, string>
   })
 
   app.on('console', (msg) => {
@@ -245,7 +246,9 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     }
     let resolvedUserDataDir = userDataDir
     try {
-      resolvedUserDataDir = await app.evaluate(({ app }) => app.getPath('userData'))
+      resolvedUserDataDir = await app.evaluate(({ app: electronApi }) =>
+        electronApi.getPath('userData')
+      )
     } catch {
       // fall back to requested dir
     }

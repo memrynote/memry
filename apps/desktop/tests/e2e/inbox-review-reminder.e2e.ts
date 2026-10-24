@@ -16,7 +16,7 @@ async function invokeHook<K extends keyof InboxReviewTestHooks>(
   arg: Parameters<InboxReviewTestHooks[K]>[0]
 ): Promise<Awaited<ReturnType<InboxReviewTestHooks[K]>>> {
   return electronApp.evaluate(
-    async (_context, { name, arg }) => {
+    async (_context, { name: nameArg, arg: argArg }) => {
       const hooks = (
         globalThis as typeof globalThis & {
           __memryTestHooks?: InboxReviewTestHooks
@@ -27,10 +27,11 @@ async function invokeHook<K extends keyof InboxReviewTestHooks>(
         throw new Error('Memry test hooks are not registered')
       }
 
-      return hooks[name](arg as never)
+      const hook = hooks[nameArg] as (input: unknown) => Promise<unknown>
+      return hook(argArg)
     },
     { name, arg }
-  )
+  ) as Promise<Awaited<ReturnType<InboxReviewTestHooks[K]>>>
 }
 
 test.describe('inbox scheduled review', () => {

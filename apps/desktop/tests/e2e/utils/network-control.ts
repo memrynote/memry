@@ -1,15 +1,12 @@
 import { expect as playwrightExpect, type ElectronApplication, type Page } from '@playwright/test'
 
 interface SyncStatusSnapshot {
-  status: 'idle' | 'syncing' | 'offline' | 'error'
+  status: string
   pendingCount: number
   offlineSince?: number
 }
 
-interface TriggerSyncResult {
-  success: boolean
-  error?: string
-}
+type TriggerSyncResult = { success: true } | { success: false; reason: string; error?: string }
 
 interface MemryNetworkTestHooks {
   setNetworkOnlineForTests(online: boolean): Promise<void>

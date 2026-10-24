@@ -153,7 +153,7 @@ async function readTask(
         day: Number(raw.slice(8, 10))
       }
     } else if (raw !== null && raw !== undefined) {
-      const parsed = raw instanceof Date ? raw : new Date(raw)
+      const parsed = (raw as unknown) instanceof Date ? (raw as unknown as Date) : new Date(raw)
       due = { year: parsed.getFullYear(), month: parsed.getMonth() + 1, day: parsed.getDate() }
     }
 

@@ -15,10 +15,16 @@ test.describe('Tasks and Kanban E2E', () => {
     const filterName = uniqueLabel('Saved Filter')
 
     const result = await page.evaluate(
-      async ({ projectName, activeTaskTitle, movedTaskTitle, completedTaskTitle, filterName }) => {
+      async ({
+        projectName: projectNameArg,
+        activeTaskTitle: activeTaskTitleArg,
+        movedTaskTitle: movedTaskTitleArg,
+        completedTaskTitle: completedTaskTitleArg,
+        filterName: filterNameArg
+      }) => {
         const api = window.api
         const projectResult = await api.tasks.createProject({
-          name: projectName,
+          name: projectNameArg,
           description: 'Advanced E2E project',
           color: '#3b82f6',
           icon: 'FolderKanban',
@@ -41,21 +47,21 @@ test.describe('Tasks and Kanban E2E', () => {
         const activeTask = await api.tasks.create({
           projectId,
           statusId: backlog.id,
-          title: activeTaskTitle,
+          title: activeTaskTitleArg,
           priority: 4,
           tags: ['e2e-tasks']
         })
         const movedTask = await api.tasks.create({
           projectId,
           statusId: backlog.id,
-          title: movedTaskTitle,
+          title: movedTaskTitleArg,
           priority: 3,
           tags: ['e2e-tasks']
         })
         const completedTask = await api.tasks.create({
           projectId,
           statusId: backlog.id,
-          title: completedTaskTitle,
+          title: completedTaskTitleArg,
           priority: 2,
           tags: ['e2e-tasks']
         })
@@ -86,13 +92,14 @@ test.describe('Tasks and Kanban E2E', () => {
         })
 
         const savedFilter = await api.savedFilters.create({
-          name: filterName,
+          name: filterNameArg,
           config: {
             filters: {
               search: 'E2E',
               projectIds: [projectId],
               priorities: ['urgent'],
               dueDate: { type: 'any', customStart: null, customEnd: null },
+              tags: [],
               statusIds: [doing.id],
               completion: 'all',
               repeatType: 'all',
@@ -100,14 +107,14 @@ test.describe('Tasks and Kanban E2E', () => {
             },
             sort: { field: 'priority', direction: 'desc' },
             starred: true
-          }
+          } as Parameters<typeof api.savedFilters.create>[0]['config']
         })
         if (!savedFilter.success || !savedFilter.savedFilter) {
           throw new Error(savedFilter.error ?? 'saved filter create failed')
         }
         const updatedFilter = await api.savedFilters.update({
           id: savedFilter.savedFilter.id,
-          name: `${filterName} Updated`
+          name: `${filterNameArg} Updated`
         })
         const filtersAfterUpdate = await api.savedFilters.list()
         await api.savedFilters.delete(savedFilter.savedFilter.id)

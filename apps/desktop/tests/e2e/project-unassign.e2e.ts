@@ -64,12 +64,12 @@ test.describe('Unassigning from a project', () => {
     const noteId = await seedNote(page, uniqueLabel('Unassign Note'), 'Body')
 
     await page.evaluate(
-      async ({ noteId, projectId, inboxId }) => {
-        for (const id of [projectId, inboxId]) {
+      async ({ noteId: noteIdArg, projectId: projectIdArg, inboxId: inboxIdArg }) => {
+        for (const id of [projectIdArg, inboxIdArg]) {
           const linked = await window.api.tasks.linkProjectItem({
             projectId: id,
             itemType: 'note',
-            itemId: noteId
+            itemId: noteIdArg
           })
           if (!linked.success) throw new Error(linked.error ?? 'link failed')
         }
@@ -153,12 +153,12 @@ test.describe('Unassigning from a project', () => {
       expect(fileId).toBeTruthy()
 
       await page.evaluate(
-        async ({ fileId, projectId, inboxId }) => {
-          for (const id of [projectId, inboxId]) {
+        async ({ fileId: fileIdArg, projectId: projectIdArg, inboxId: inboxIdArg }) => {
+          for (const id of [projectIdArg, inboxIdArg]) {
             const linked = await window.api.tasks.linkProjectItem({
               projectId: id,
               itemType: 'file',
-              itemId: fileId
+              itemId: fileIdArg
             })
             if (!linked.success) throw new Error(linked.error ?? 'link failed')
           }
@@ -208,9 +208,9 @@ async function seedTab(
 ): Promise<void> {
   const storageKey = await tabSessionStorageKey(page)
   await page.addInitScript(
-    ({ tab, storageKey }) => {
+    ({ tab: tabArg, storageKey: storageKeyArg }) => {
       localStorage.setItem(
-        storageKey,
+        storageKeyArg,
         JSON.stringify({
           version: 2,
           tabGroups: {
@@ -220,11 +220,11 @@ async function seedTab(
               tabs: [
                 {
                   id: 'seeded-tab',
-                  type: tab.type,
-                  title: tab.title,
-                  icon: tab.type,
-                  path: tab.path,
-                  entityId: tab.id,
+                  type: tabArg.type,
+                  title: tabArg.title,
+                  icon: tabArg.type,
+                  path: tabArg.path,
+                  entityId: tabArg.id,
                   isPinned: false
                 }
               ]

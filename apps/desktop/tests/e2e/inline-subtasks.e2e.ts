@@ -31,7 +31,9 @@ interface TaskRow {
 async function findTasksByTitles(page: Page, titles: string[]): Promise<TaskRow[]> {
   const all = (await page.evaluate(async () => {
     const api = (
-      window as unknown as { api?: { tasks?: { list?: (o: object) => Promise<unknown> } } }
+      window as unknown as {
+        api?: { tasks?: { list?: (o: Record<string, unknown>) => Promise<unknown> } }
+      }
     ).api
     if (!api?.tasks?.list) return []
     const res = (await api.tasks.list({ includeCompleted: true, includeArchived: true })) as {
@@ -73,7 +75,7 @@ function readNoteFiles(vaultPath: string): { name: string; content: string; mtim
   }
 
   walk(vaultPath)
-  return out.sort((a, b) => b.mtime - a.mtime)
+  return out.toSorted((a, b) => b.mtime - a.mtime)
 }
 
 async function focusEditor(page) {
@@ -113,7 +115,7 @@ async function expectEditorToContainVisibleText(page, text: string): Promise<voi
 // would create on the live edit path.
 async function createTaskInDb(page, title: string): Promise<string> {
   return (await page.evaluate(
-    async ({ title }) => {
+    async ({ title: titleArg }) => {
       const api = (window as any).api
       if (!api?.tasks) throw new Error('window.api.tasks not exposed')
       const projectsRes = await api.tasks.listProjects()
@@ -122,7 +124,7 @@ async function createTaskInDb(page, title: string): Promise<string> {
       if (!defaultProject) throw new Error('no default project found')
       const created = await api.tasks.create({
         projectId: defaultProject.id,
-        title,
+        title: titleArg,
         priority: 0
       })
       if (!created?.success || !created.task) {
@@ -143,15 +145,15 @@ async function setDocumentToParentWithSubtask(
   sub: { title: string }
 ): Promise<void> {
   await page.evaluate(
-    ({ parent, sub }) => {
+    ({ parent: parentArg, sub: subArg }) => {
       const editor = (window as any).__memryActiveEditor
       if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'taskBlock',
           props: {
-            taskId: parent.taskId,
-            title: parent.title,
+            taskId: parentArg.taskId,
+            title: parentArg.title,
             checked: false,
             parentTaskId: ''
           },
@@ -159,7 +161,7 @@ async function setDocumentToParentWithSubtask(
             {
               type: 'checkListItem',
               props: { isChecked: false },
-              content: [{ type: 'text', text: sub.title, styles: {} }]
+              content: [{ type: 'text', text: subArg.title, styles: {} }]
             }
           ]
         }
@@ -180,19 +182,24 @@ async function setDocumentToTabIndentedTasks(
   child: { taskId: string; title: string }
 ): Promise<void> {
   await page.evaluate(
-    ({ parent, child }) => {
+    ({ parent: parentArg, child: childArg }) => {
       const editor = (window as any).__memryActiveEditor
       if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'taskBlock',
-          props: { taskId: parent.taskId, title: parent.title, checked: false, parentTaskId: '' },
+          props: {
+            taskId: parentArg.taskId,
+            title: parentArg.title,
+            checked: false,
+            parentTaskId: ''
+          },
           children: [
             {
               type: 'taskBlock',
               props: {
-                taskId: child.taskId,
-                title: child.title,
+                taskId: childArg.taskId,
+                title: childArg.title,
                 checked: false,
                 // Stale: still empty even though tree position is nested.
                 parentTaskId: ''
@@ -216,15 +223,15 @@ async function setDocumentToParentSiblingSub(
   sub: { taskId: string; title: string }
 ): Promise<void> {
   await page.evaluate(
-    ({ parent, sub }) => {
+    ({ parent: parentArg, sub: subArg }) => {
       const editor = (window as any).__memryActiveEditor
       if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(editor.document, [
         {
           type: 'taskBlock',
           props: {
-            taskId: parent.taskId,
-            title: parent.title,
+            taskId: parentArg.taskId,
+            title: parentArg.title,
             checked: false,
             parentTaskId: ''
           }
@@ -232,12 +239,12 @@ async function setDocumentToParentSiblingSub(
         {
           type: 'taskBlock',
           props: {
-            taskId: sub.taskId,
-            title: sub.title,
+            taskId: subArg.taskId,
+            title: subArg.title,
             checked: false,
             // parentTaskId is still set: this is exactly the state after
             // Shift+Tab, before ContentArea.tsx:567-576 clears it.
-            parentTaskId: parent.taskId
+            parentTaskId: parentArg.taskId
           }
         }
       ])
@@ -386,7 +393,7 @@ test.describe('Inline Subtasks', () => {
     await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+k`)
     await page.waitForTimeout(400)
     const searchInput = page.locator('input[placeholder*="Search"], input[role="combobox"]').first()
-    if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('Seeded Subtask')
       await page.waitForTimeout(500)
       await page.keyboard.press('Enter')
@@ -472,7 +479,7 @@ test.describe('Inline Subtasks', () => {
     await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+k`)
     await page.waitForTimeout(400)
     const searchInput = page.locator('input[placeholder*="Search"], input[role="combobox"]').first()
-    if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill(title)
       await page.waitForTimeout(500)
       await page.keyboard.press('Enter')
@@ -557,9 +564,9 @@ test.describe('Inline Subtasks', () => {
 
     // Wire the child as a subtask of parent in the DB upfront.
     await page.evaluate(
-      async ({ childTaskId, parentTaskId }) => {
+      async ({ childTaskId: childTaskIdArg, parentTaskId: parentTaskIdArg }) => {
         const api = (window as any).api
-        await api.tasks.update({ id: childTaskId, parentId: parentTaskId })
+        await api.tasks.update({ id: childTaskIdArg, parentId: parentTaskIdArg })
       },
       { childTaskId, parentTaskId }
     )
@@ -667,7 +674,7 @@ test.describe('Inline Subtasks', () => {
     // just find the input and dispatch a Tab keydown that React will route
     // through handleTitleKeyDown.
     const dispatched = await page.evaluate(
-      async ({ childTaskId }) => {
+      async ({ childTaskId: childTaskIdArg }) => {
         const taskBlocks = document.querySelectorAll<HTMLElement>('[data-content-type="taskBlock"]')
         if (taskBlocks.length < 2) {
           return { reason: 'taskBlock count', taskBlocks: taskBlocks.length }
@@ -699,7 +706,7 @@ test.describe('Inline Subtasks', () => {
           cancelable: true
         })
         input.dispatchEvent(ev)
-        return { reason: 'ok', childTaskId }
+        return { reason: 'ok', childTaskId: childTaskIdArg }
       },
       { childTaskId }
     )
@@ -745,17 +752,26 @@ test.describe('Inline Subtasks', () => {
 
     // #when - a top-level checkListItem lands below the parent.
     await page.evaluate(
-      ({ parentTaskId, parentTitle, childTitle }) => {
+      ({
+        parentTaskId: parentTaskIdArg,
+        parentTitle: parentTitleArg,
+        childTitle: childTitleArg
+      }) => {
         const editor = (window as any).__memryActiveEditor
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
-            props: { taskId: parentTaskId, title: parentTitle, checked: false, parentTaskId: '' }
+            props: {
+              taskId: parentTaskIdArg,
+              title: parentTitleArg,
+              checked: false,
+              parentTaskId: ''
+            }
           },
           {
             type: 'checkListItem',
             props: { isChecked: false },
-            content: [{ type: 'text', text: childTitle, styles: {} }]
+            content: [{ type: 'text', text: childTitleArg, styles: {} }]
           }
         ])
       },
@@ -844,7 +860,7 @@ test.describe('Inline Subtasks', () => {
     expect(before).toHaveLength(1)
 
     await page.evaluate(
-      ({ parent, childTitle }) => {
+      ({ parent, childTitle: childTitleArg }) => {
         const editor = (window as any).__memryActiveEditor
         if (!editor) throw new Error('window.__memryActiveEditor not exposed')
         editor.replaceBlocks(editor.document, [
@@ -865,7 +881,7 @@ test.describe('Inline Subtasks', () => {
                 // presses Tab on a freshly-Enter'd block and starts typing.
                 props: {
                   taskId: '',
-                  title: childTitle,
+                  title: childTitleArg,
                   checked: false,
                   parentTaskId: parent.taskId
                 }
@@ -910,9 +926,9 @@ test.describe('Inline Subtasks', () => {
     const parentTaskId = await createTaskInDb(page, parentTitle)
     const subTaskId = await createTaskInDb(page, subTitle)
     await page.evaluate(
-      async ({ subTaskId, parentTaskId }) => {
+      async ({ subTaskId: subTaskIdArg, parentTaskId: parentTaskIdArg }) => {
         const api = (window as any).api
-        await api.tasks.update({ id: subTaskId, parentId: parentTaskId })
+        await api.tasks.update({ id: subTaskIdArg, parentId: parentTaskIdArg })
       },
       { subTaskId, parentTaskId }
     )
@@ -1015,13 +1031,13 @@ test.describe('Inline Subtasks', () => {
     const taskId = await createTaskInDb(page, taskTitle)
 
     await page.evaluate(
-      ({ taskId, title }) => {
+      ({ taskId: taskIdArg, title }) => {
         const editor = (window as any).__memryActiveEditor
         if (!editor) throw new Error('window.__memryActiveEditor not exposed')
         editor.replaceBlocks(editor.document, [
           {
             type: 'taskBlock',
-            props: { taskId, title, checked: false, parentTaskId: '' }
+            props: { taskId: taskIdArg, title, checked: false, parentTaskId: '' }
           }
         ])
       },

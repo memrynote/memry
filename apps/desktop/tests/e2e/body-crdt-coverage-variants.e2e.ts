@@ -601,12 +601,12 @@ test.describe('Body CRDT coverage variants', () => {
     const noteBOnB = noteB
 
     await Promise.all([
-      applyBlockEditToNote(pageA, noteBOnA!, {
+      applyBlockEditToNote(pageA, noteBOnA, {
         blockIndex: 0,
         cursorPosition: 'start',
         text: 'A '
       }),
-      applyBlockEditToNote(pageB, noteBOnB!, {
+      applyBlockEditToNote(pageB, noteBOnB, {
         blockIndex: 0,
         cursorPosition: 'end',
         text: ' B'
@@ -619,18 +619,18 @@ test.describe('Body CRDT coverage variants', () => {
       electronAppB,
       pageA,
       pageB,
-      noteBOnA!.id,
-      noteBOnB!.id,
+      noteBOnA.id,
+      noteBOnB.id,
       ['A noteB shared merge block B']
     )
 
     await Promise.all([
-      applyBlockEditToNote(pageA, noteAOnA!, {
+      applyBlockEditToNote(pageA, noteAOnA, {
         blockIndex: 0,
         cursorPosition: 'end',
         text: ' A'
       }),
-      applyBlockEditToNote(pageB, noteAOnB!, {
+      applyBlockEditToNote(pageB, noteAOnB, {
         blockIndex: 0,
         cursorPosition: 'start',
         text: 'B '
@@ -643,8 +643,8 @@ test.describe('Body CRDT coverage variants', () => {
       electronAppB,
       pageA,
       pageB,
-      noteAOnA!.id,
-      noteAOnB!.id,
+      noteAOnA.id,
+      noteAOnB.id,
       ['B noteA shared merge block A']
     )
   })

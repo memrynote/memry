@@ -88,7 +88,6 @@ test.describe('Notes Management', () => {
         await noteTitle.fill('Note with Tags')
 
         // Look for tag input
-        const _tagInput = page.locator('[data-testid="add-tag-button"], [data-testid="tag-input"]')
         // const hasTagInput = await tagInput.isVisible().catch(() => false)
 
         expect(true).toBe(true) // Test structure is valid
@@ -255,9 +254,6 @@ test.describe('Notes Management', () => {
       await page.waitForTimeout(500)
 
       // Look for backlinks section
-      const _backlinksSection = page.locator(
-        '[data-testid="backlinks-section"], [data-testid="backlinks"]'
-      )
       // const hasBacklinks = await backlinksSection.isVisible().catch(() => false)
 
       expect(true).toBe(true)
@@ -371,7 +367,6 @@ test.describe('Notes Management', () => {
       await search(page, noteTitle)
       await page.waitForTimeout(500)
 
-      const _results = page.locator(SELECTORS.searchResults)
       // const hasResults = await results.isVisible().catch(() => false)
 
       expect(true).toBe(true)
@@ -678,7 +673,7 @@ test.describe('Notes Management', () => {
       // Issue multiple reorder calls concurrently
       const results = await page.evaluate(async () => {
         if (typeof window !== 'undefined' && window.api?.notes?.reorder) {
-          const results = await Promise.all([
+          const resultsArg = await Promise.all([
             window.api.notes.reorder('', [
               'notes/Concurrent B.md',
               'notes/Concurrent A.md',
@@ -690,7 +685,7 @@ test.describe('Notes Management', () => {
               'notes/Concurrent A.md'
             ])
           ])
-          return results
+          return resultsArg
         }
         return []
       })

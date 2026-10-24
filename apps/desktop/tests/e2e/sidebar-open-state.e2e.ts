@@ -76,7 +76,7 @@ test('a collapsed sidebar is still collapsed after a restart', async () => {
   }
   delete env.ELECTRON_RUN_AS_NODE
 
-  const second = await electron.launch({ executablePath, args, env })
+  const second = await electron.launch({ executablePath, args, env: env as Record<string, string> })
   try {
     const page = await second.firstWindow({ timeout: 45_000 })
     await page.waitForLoadState('domcontentloaded')

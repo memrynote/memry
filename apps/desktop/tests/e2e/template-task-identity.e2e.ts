@@ -95,7 +95,7 @@ test.describe('Template task identity', () => {
     const noteTitle = uniqueLabel('From Template')
 
     const seeded = await page.evaluate(
-      async ({ name, title, noteTitle }) => {
+      async ({ name, title, noteTitle: noteTitleArg }) => {
         const { projects } = await window.api.tasks.listProjects()
         const projectId = projects[0]?.id
         if (!projectId) throw new Error('no project to create the source task in')
@@ -111,7 +111,7 @@ test.describe('Template task identity', () => {
           throw new Error(created.error ?? 'template create failed')
         }
 
-        const note = await window.api.notes.create({ title: noteTitle, content: '' })
+        const note = await window.api.notes.create({ title: noteTitleArg, content: '' })
         if (!note.note?.id) throw new Error(note.error ?? 'note create failed')
         const applied = await window.api.notes.applyTemplate({
           noteId: note.note.id,

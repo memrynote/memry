@@ -21,6 +21,7 @@
 
 import { test, expect, bootstrapSyncDevice } from './fixtures/sync-auth-fixtures'
 import { waitForAppReady } from './utils/electron-helpers'
+import type { SharedSyncBootstrap } from './utils/sync-backend'
 
 /** `notes:list` pages at 100 by default; the seeds are larger than that. */
 const NOTE_LIST_LIMIT = 1000
@@ -33,7 +34,9 @@ interface CursorShape {
   distinctCursors: number
 }
 
-async function readCursorShape(db: D1Database, email: string): Promise<CursorShape> {
+type SyncD1 = Awaited<ReturnType<SharedSyncBootstrap['server']['getD1']>>
+
+async function readCursorShape(db: SyncD1, email: string): Promise<CursorShape> {
   const row = await db
     .prepare(
       `SELECT COUNT(*) AS count,

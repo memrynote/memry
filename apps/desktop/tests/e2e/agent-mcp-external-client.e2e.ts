@@ -1,12 +1,6 @@
 import { test, expect } from './fixtures'
 import { waitForAppReady } from './utils/electron-helpers'
 
-type AgentStatus = {
-  url: string | null
-  ['token']: string | null
-  toolCount: number
-}
-
 type JsonRpcEnvelope = {
   id?: number | string
   result?: unknown
@@ -30,7 +24,7 @@ async function waitForAgentStatus(page: Parameters<typeof waitForAppReady>[0]): 
     )
     .toBe(true)
 
-  const status = (await page.evaluate(() => window.api.agentMcp.getStatus())) as AgentStatus
+  const status = await page.evaluate(() => window.api.agentMcp.getStatus())
   if (!status.url || !status.token) {
     throw new Error('Agent MCP status did not include URL and bearer value')
   }

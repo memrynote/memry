@@ -39,7 +39,7 @@ async function callHook<K extends keyof AdoptionStoreTestHooks>(
         globalThis as typeof globalThis & { __memryTestHooks?: AdoptionStoreTestHooks }
       ).__memryTestHooks
       if (!hooks) throw new Error('Memry test hooks are not registered')
-      const hook = hooks[hookName as keyof AdoptionStoreTestHooks] as (...a: unknown[]) => unknown
+      const hook = hooks[hookName] as (...a: unknown[]) => unknown
       return hook(...hookArgs)
     },
     { hookName: name, hookArgs: args as unknown[] }

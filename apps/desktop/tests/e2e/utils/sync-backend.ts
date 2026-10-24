@@ -1,3 +1,4 @@
+import type { D1Database } from '@cloudflare/workers-types'
 import sodium from 'libsodium-wrappers-sumo'
 import { SignJWT } from 'jose'
 import { ARGON2_PARAMS } from '@memry/contracts/crypto'
@@ -37,6 +38,7 @@ export interface SharedSyncBootstrap {
 }
 
 function toBase64(bytes: Uint8Array): string {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium attaches its API to the default export only after `ready`, so named imports are not reliable
   return sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
 }
 
@@ -94,6 +96,7 @@ async function createSharedUser(server: TestSyncServer, email: string): Promise<
 }
 
 export async function startSharedSyncBootstrap(): Promise<SharedSyncBootstrap> {
+  // oxlint-disable-next-line import/no-named-as-default-member -- see toBase64: API exists only on the default export
   await sodium.ready
 
   const { SimulatedServer } =

@@ -65,8 +65,8 @@ async function close(app: App): Promise<void> {
 }
 
 async function createNotes(page: Page, notes: Array<{ title: string; content: string }>) {
-  await page.evaluate(async (notes) => {
-    for (const note of notes) {
+  await page.evaluate(async (notesArg) => {
+    for (const note of notesArg) {
       const created = await window.api.notes.create(note)
       if (!created.success) throw new Error(`failed to seed "${note.title}"`)
     }

@@ -175,7 +175,7 @@ function readFolderConfig(vaultPath: string, folderPath: string): Record<string,
   const configFile = folderConfigPath(vaultPath, folderPath)
   if (!fs.existsSync(configFile)) return null
   const parsed = matter(fs.readFileSync(configFile, 'utf-8'))
-  return parsed.data as Record<string, unknown>
+  return parsed.data
 }
 
 async function openFolderView(page: Page, folderPath: string, folderName: string): Promise<void> {

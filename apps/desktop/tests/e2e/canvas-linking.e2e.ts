@@ -13,7 +13,8 @@
  * The tool is selected with the stable numeric shortcut '5' (mirrors M1's
  * freedraw-via-'7'); cards are aimed by their overlay DOM boundingBox.
  */
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 import { ensureDayPanelClosed } from './utils/electron-helpers'
 
@@ -89,6 +90,13 @@ async function sceneOf(page: Page, canvasId: string) {
     const c = await window.api.canvas.get(id)
     return { scene: c?.scene ?? '', parsed: c?.scene ? JSON.parse(c.scene) : { elements: [] } }
   }, canvasId)
+}
+
+// Same order as Array#sort()'s default (UTF-16 code units of the string form).
+const compareStrings = (a: string | null, b: string | null): number => {
+  const left = String(a)
+  const right = String(b)
+  return left < right ? -1 : left > right ? 1 : 0
 }
 
 function cardRects(parsed) {
@@ -170,7 +178,7 @@ test.describe('Spatial canvas — linking (M3)', () => {
     // spot (bottom-left, clear of the top toolbar island and bottom New-note
     // button), select the arrow tool via the stable numeric shortcut, then drag
     // center-to-center; Excalidraw binds to the rectangle it started/ended over.
-    const editor = await page.locator('[data-canvas-editor]').boundingBox()
+    const editor = (await page.locator('[data-canvas-editor]').boundingBox())!
     await page.mouse.click(editor.x + 30, editor.y + editor.height - 80)
     await page.keyboard.press('5')
     const centerA = await cardCenter(page, a)
@@ -187,15 +195,17 @@ test.describe('Spatial canvas — linking (M3)', () => {
       .toBe(true)
 
     let arrow = boundArrow((await sceneOf(page, canvasId)).parsed)
-    const boundIds = [arrow.startBinding.elementId, arrow.endBinding.elementId].sort()
-    expect(boundIds).toEqual([rectIdA, rectIdB].sort())
+    const boundIds = [arrow.startBinding.elementId, arrow.endBinding.elementId].toSorted(
+      compareStrings
+    )
+    expect(boundIds).toEqual([rectIdA, rectIdB].toSorted(compareStrings))
 
     // Binding is two-way: each rectangle lists the arrow in boundElements.
     const rectsById = Object.fromEntries(
       cardRects((await sceneOf(page, canvasId)).parsed).map((r) => [r.id, r])
     )
-    expect((rectsById[rectIdA].boundElements ?? []).some((be) => be.id === arrow.id)).toBe(true)
-    expect((rectsById[rectIdB].boundElements ?? []).some((be) => be.id === arrow.id)).toBe(true)
+    expect((rectsById[rectIdA!].boundElements ?? []).some((be) => be.id === arrow.id)).toBe(true)
+    expect((rectsById[rectIdB!].boundElements ?? []).some((be) => be.id === arrow.id)).toBe(true)
 
     const geometryBefore = arrowGeometry(arrow)
 
@@ -206,7 +216,7 @@ test.describe('Spatial canvas — linking (M3)', () => {
     // LOWER half instead — below the arrow line and clear of the top-end ↗
     // button — so mousedown hits the filled rectangle (selecting it, which
     // deselects the arrow) and the drag moves the card, re-routing the arrow.
-    const boxB = await page.locator(`[data-canvas-card-entity="note:${b}"]`).boundingBox()
+    const boxB = (await page.locator(`[data-canvas-card-entity="note:${b}"]`).boundingBox())!
     const bx = boxB.x + boxB.width * 0.5
     const by = boxB.y + boxB.height * 0.8
     await page.mouse.move(bx, by)
@@ -228,17 +238,17 @@ test.describe('Spatial canvas — linking (M3)', () => {
 
     // Bindings survive the move: same arrow, same two rectangle ids.
     arrow = boundArrow((await sceneOf(page, canvasId)).parsed)
-    expect([arrow.startBinding.elementId, arrow.endBinding.elementId].sort()).toEqual(
-      [rectIdA, rectIdB].sort()
-    )
+    expect(
+      [arrow.startBinding.elementId, arrow.endBinding.elementId].toSorted(compareStrings)
+    ).toEqual([rectIdA, rectIdB].toSorted(compareStrings))
 
     // Reload: the link persists in the restored scene.
     await page.reload()
     await openVault(page)
     const persisted = boundArrow((await sceneOf(page, canvasId)).parsed)
     expect(persisted).toBeTruthy()
-    expect([persisted.startBinding.elementId, persisted.endBinding.elementId].sort()).toEqual(
-      [rectIdA, rectIdB].sort()
-    )
+    expect(
+      [persisted.startBinding.elementId, persisted.endBinding.elementId].toSorted(compareStrings)
+    ).toEqual([rectIdA, rectIdB].toSorted(compareStrings))
   })
 })
