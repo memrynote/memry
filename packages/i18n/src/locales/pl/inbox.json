@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# odłożony element} few {# odłożone elementy} many {# odłożonych elementów} other {# odłożonego elementu}}",
     "notificationBody": "{count, plural, one {Odłożony element jest gotowy do przejrzenia} few {Odłożone elementy są gotowe} many {Odłożone elementy są gotowe} other {Odłożone elementy są gotowe}}",
     "toast": "{count, plural, =1 {Element „{itemTitle}” wraca do skrzynki odbiorczej} one {Wraca # odłożony element} few {Wracają # odłożone elementy} many {Wraca # odłożonych elementów} other {Wraca # odłożonego elementu}}"
+  },
+  "sticky": {
+    "kindLabel": "Wyślij jako",
+    "kinds": {
+      "note": "Notatka",
+      "task": "Zadanie",
+      "journal": "Dziennik"
+    },
+    "placeholders": {
+      "note": "Zapisz to…",
+      "task": "Zadzwonić do Ani @jutro #dom !wysoki",
+      "journal": "Dodaj do dzisiejszego dziennika…"
+    },
+    "saving": "Zapisywanie…",
+    "saved": "Zapisano",
+    "saveFailed": "Nie zapisano",
+    "tuck": "Schowaj",
+    "send": "Wyślij",
+    "hints": "Esc schowaj · {mod}⌫ usuń",
+    "sendAndCloseHint": "⌥{mod}↵ wysyła i zamyka",
+    "deleted": "Usunięto szkic",
+    "open": "Otwórz",
+    "undo": "Cofnij",
+    "sent": {
+      "note": "Zapisano w folderze Karteczki",
+      "task": "Dodano zadanie",
+      "journal": "Dodano do dzisiejszego dziennika"
+    },
+    "tab": {
+      "label": "{count, plural, one {# szkic karteczki} few {# szkice karteczek} many {# szkiców karteczek} other {# szkicu karteczek}}",
+      "newSticky": "Nowa karteczka"
+    },
+    "errors": {
+      "empty": "Najpierw coś napisz.",
+      "taskFailed": "Nie udało się utworzyć zadania.",
+      "tasksOff": "Zadania są wyłączone w Ustawieniach.",
+      "journalOff": "Dziennik jest wyłączony w Ustawieniach.",
+      "sendFailed": "Nie udało się wysłać karteczki.",
+      "undoExpired": "Na cofnięcie jest już za późno.",
+      "undoFailed": "Nie udało się cofnąć wysyłki."
+    },
+    "inputLabel": "Tekst karteczki",
+    "dismissError": "Zamknij"
   }
 }

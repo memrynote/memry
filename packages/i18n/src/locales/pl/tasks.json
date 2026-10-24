@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Wyczyszczono termin dla # podzadania} few {Wyczyszczono termin dla # podzadań} many {Wyczyszczono termin dla # podzadań} other {Wyczyszczono termin dla # podzadania}}",
       "prioritySet": "{count, plural, one {Ustawiono priorytet dla # podzadania} few {Ustawiono priorytet dla # podzadań} many {Ustawiono priorytet dla # podzadań} other {Ustawiono priorytet dla # podzadania}}",
       "deleted": "{count, plural, one {Usunięto # podzadanie} few {Usunięto # podzadania} many {Usunięto # podzadań} other {Usunięto # podzadania}}"
-    }
+    },
+    "completedBranch": "Ukończono {title} i {count, plural, one {# otwarte podzadanie} few {# otwarte podzadania} many {# otwartych podzadań} other {# otwartego podzadania}}",
+    "deletedKeepSubtasks": "Usunięto {title} i zachowano jego podzadania",
+    "deletedBranch": "Usunięto {title} i {count, plural, one {# podzadanie} few {# podzadania} many {# podzadań} other {# podzadania}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "status",
       "projectIs": "Projekt:",
       "project": "projekt",
+      "locationIs": "Lokalizacja to",
+      "location": "lokalizacja",
+      "unknownNote": "Nieznana notatka",
       "due": "Termin",
       "dueDate": "termin",
       "search": "wyszukiwanie",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Termin"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Lokalizacja",
+      "search": "Szukaj folderów i notatek...",
+      "empty": "Brak folderów ani notatek z zadaniami"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorytet",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Widoki projektu",
       "overview": "Przegląd",
+      "all": "Wszystkie",
       "tasks": "Zadania",
       "notes": "Notatki",
       "files": "Pliki",
@@ -951,6 +963,25 @@
       "fileError": "Nie udało się powiązać pliku „{name}”",
       "fileErrorGeneric": "Nie udało się zaimportować plików",
       "label": "Dodaj do projektu „{name}”"
+    },
+    "all": {
+      "showDone": "Pokaż ukończone",
+      "empty": "W tym projekcie nic nie jest otwarte.",
+      "expand": "Pokaż zadania w {title}",
+      "collapse": "Ukryj zadania w {title}",
+      "taskSummary": "{open}/{total} otwartych",
+      "daysLeft": "{count} d",
+      "overdue": "{count} d po terminie",
+      "columns": {
+        "title": "Tytuł",
+        "daysLeft": "Pozostało dni"
+      },
+      "status": {
+        "active": "Aktywne",
+        "done": "Ukończone",
+        "upcoming": "Nadchodzące",
+        "past": "Minione"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indygo",
     "purple": "Fioletowy",
     "pink": "Różowy"
+  },
+  "subtaskTree": {
+    "addSubtask": "Dodaj podzadanie",
+    "dropInto": "Do: {title}",
+    "dropOut": "Poziom wyżej",
+    "draftPlaceholder": "Tytuł podzadania",
+    "draftLabel": "Nowe podzadanie w {title}",
+    "draftIn": "w {title}",
+    "toggleComplete": "Ukończ {title}",
+    "moveUnder": {
+      "title": "Przenieś pod",
+      "placeholder": "Przenieś pod…",
+      "empty": "Brak pasującego zadania",
+      "topLevel": "Najwyższy poziom w {project}",
+      "thisTask": "To zadanie",
+      "currentParent": "Obecne zadanie nadrzędne",
+      "movesOne": "Przenosi {title}",
+      "movesBranch": "Przenosi {title} i {count, plural, one {# podzadanie} few {# podzadania} many {# podzadań} other {# podzadania}}",
+      "keys": "↵ Przenieś tutaj · ⌘↵ Najwyższy poziom · esc Zamknij"
+    },
+    "zoom": {
+      "path": "Ścieżka zadania",
+      "up": "Poziom wyżej",
+      "upShortcut": "Poziom wyżej (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Usunąć {title}?",
+      "summary": "{direct, plural, one {Ma # podzadanie} few {Ma # podzadania} many {Ma # podzadań} other {Ma # podzadania}}{deeper, plural, =0 {} one { i # niżej} few { i # niżej} many { i # niżej} other { i # niżej}}{open, plural, =0 {, wszystkie ukończone.} one {, # wciąż otwarte.} few {, # wciąż otwarte.} many {, # wciąż otwartych.} other {, # wciąż otwartego.}}",
+      "cancel": "Anuluj",
+      "deleteAll": "Usuń wszystko",
+      "keepSubtasks": "Zachowaj podzadania"
+    },
+    "menu": {
+      "open": "Otwórz",
+      "complete": "Ukończ",
+      "reopen": "Otwórz ponownie",
+      "zoom": "Przejdź do podzadań",
+      "moveUnder": "Przenieś pod…",
+      "indent": "Przenieś pod {title}",
+      "outdent": "Przenieś o poziom wyżej",
+      "topLevel": "Zrób z tego zadanie najwyższego poziomu",
+      "delete": "Usuń"
+    },
+    "openPath": "Otwórz {path}"
   }
 }
