@@ -1,10 +1,12 @@
 import { type ChildProcess } from 'node:child_process'
 import { browser } from '@wdio/globals'
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import E2eJunitReporter from './harness/junit-reporter'
+import { removeDir } from './harness/remove-dir'
 import { binaryPath, driverReady, forceKill, freePort, spawnApp } from './harness/app-process'
 import { EXPECT_TIMEOUT_MS, IS_CI, TEST_TIMEOUT_MS } from './harness/budgets'
 import { purgeAllCreatedDevices, startRun } from './harness/registry'
@@ -70,19 +72,11 @@ export const sharedConfig = {
   framework: 'mocha',
   waitforTimeout: EXPECT_TIMEOUT_MS,
   connectionRetryTimeout: 120_000,
+  logLevel: 'warn',
   connectionRetryCount: 1,
   specFileRetries: IS_CI ? 2 : 0,
   mochaOpts: { ui: 'bdd', timeout: TEST_TIMEOUT_MS },
-  reporters: [
-    'spec',
-    [
-      'junit',
-      {
-        outputDir: join(packageRoot, 'test-results/e2e'),
-        outputFileFormat: ({ cid }: { cid: string }) => `results-${cid}.xml`
-      }
-    ]
-  ],
+  reporters: ['spec', [E2eJunitReporter, { outputDir: join(packageRoot, 'test-results/e2e') }]],
   async onPrepare(): Promise<void> {
     startRun()
     const binary = binaryPath()
@@ -100,7 +94,7 @@ export const sharedConfig = {
     const started = workerApps.get(cid)
     for (const child of started?.children ?? []) if (child.pid) forceKill(child.pid)
     for (const port of started?.ports ?? []) {
-      rmSync(join(tmpdir(), 'memry-e2e', `default-${port}`), { recursive: true, force: true })
+      removeDir(join(tmpdir(), 'memry-e2e', `default-${port}`))
     }
     workerApps.delete(cid)
   },

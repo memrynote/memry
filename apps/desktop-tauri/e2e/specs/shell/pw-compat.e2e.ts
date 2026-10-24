@@ -14,6 +14,7 @@ async function showFixturePage(page: Page): Promise<void> {
       <div id="hover-target" style="width:120px;height:40px;background:#ddd">Hover me</div>
       <input id="agree" type="checkbox" aria-label="Agree">
       <button id="off" type="button" disabled>Disabled</button>
+      <button id="reveal" type="button">Reveal</button>
       <p id="late" hidden>Arrived</p>`
     document.documentElement.removeAttribute('class')
     const count = { value: 0 }
@@ -29,7 +30,7 @@ async function showFixturePage(page: Page): Promise<void> {
     el('hover-target').addEventListener('mouseover', () => {
       el('hover-target').dataset.hovered = 'yes'
     })
-    setTimeout(() => el('late').removeAttribute('hidden'), 400)
+    el('reveal').addEventListener('click', () => el('late').removeAttribute('hidden'))
   })
 }
 
@@ -62,8 +63,9 @@ test('click, fill, press, hover and expect polling work on a page inside the app
 
   await expect(page.locator('#off')).toBeDisabled()
   await expect(page.locator('#late')).toBeHidden()
+  await page.getByRole('button', { name: 'Reveal' }).click()
   await expect(page.getByText('Arrived')).toBeVisible()
-  await expect(page.locator('button')).toHaveCount(2)
+  await expect(page.locator('button')).toHaveCount(3)
   await expect.poll(() => page.locator('#inc').textContent()).toBe('Count: 1')
 })
 

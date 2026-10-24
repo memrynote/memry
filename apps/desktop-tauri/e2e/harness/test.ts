@@ -1,7 +1,7 @@
 // Playwright-shaped `test()` over mocha. A test declares the fixtures it wants by destructuring
 // its first parameter, as in Playwright; only those are built, and they are torn down in
 // reverse order after the test.
-import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,6 +10,7 @@ import { browser } from '@wdio/globals'
 
 import { TEST_TIMEOUT_MS } from './budgets'
 import { HarnessError } from './errors'
+import { removeDir } from './remove-dir'
 import { expect } from './pw-compat/expect'
 import { Page } from './pw-compat/page'
 import { type FreshOptions, type TauriApp, dispose, fresh } from './tauri-lifecycle'
@@ -71,8 +72,7 @@ function tempVault(prefix: string, { empty }: { empty: boolean }): Built {
   }
   return {
     value: vault,
-    teardown: async () =>
-      rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+    teardown: async () => removeDir(root)
   }
 }
 

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { driverReady, forceKill, isAlive, spawnApp } from './app-process'
 import { GRACEFUL_CLOSE_MS } from './budgets'
 import { HarnessError } from './errors'
+import { removeDir } from './remove-dir'
 import { type Executor, invokeTest } from './invoke-test'
 import { purgeKeychainForDevice } from './keychain-cleanup.mjs'
 import { recordDevice } from './registry'
@@ -184,12 +185,7 @@ async function stopRunningApp(executor: AppBrowser, port: number): Promise<void>
     throw new HarnessError(`an app is running on port ${port} but does not answer e2e_app_info`)
   await gracefulClose({ executor, pid: info.pid })
   if (info.device.startsWith('e2e-default-')) {
-    rmSync(join(tmpdir(), 'memry-e2e', `default-${port}`), {
-      recursive: true,
-      force: true,
-      maxRetries: 3,
-      retryDelay: 100
-    })
+    removeDir(join(tmpdir(), 'memry-e2e', `default-${port}`))
   }
 }
 
@@ -238,7 +234,7 @@ export async function restart(app: TauriApp): Promise<void> {
 /** Closes the app, removes its temp dirs and purges the keychain items its device minted. */
 export async function dispose(app: TauriApp): Promise<void> {
   await gracefulClose(app)
-  rmSync(app.dirs.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+  removeDir(app.dirs.root)
   rmSync(controlFilePath(app.port), { force: true })
   purgeKeychainForDevice(app.device)
 }

@@ -85,7 +85,8 @@ export function isAlive(pid: number): boolean {
 
 export function forceKill(pid: number): void {
   if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/F', '/PID', String(pid)], { stdio: 'ignore' })
+    // /T ends the WebView2 helper processes too; they hold the profile files open.
+    spawnSync('taskkill', ['/F', '/T', '/PID', String(pid)], { stdio: 'ignore' })
     return
   }
   try {
