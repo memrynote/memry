@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Das Portal konnte nicht kopiert werden",
+    "hiddenCount": "{count} ausgeblendet",
+    "windowFailed": "Dieses Portal konnte nicht geöffnet werden. Öffne stattdessen die Quellnotiz.",
+    "noTarget": "Dieses Portal hat noch kein Ziel. Füge der Definition eine Notiz hinzu oder entferne den Block.",
+    "invalidJson": "Die Definition dieses Portals ist kein gültiges JSON. Korrigiere sie unten oder entferne den Block.",
+    "invalidShape": "Die Definition dieses Portals enthält weder eine Notiz noch eine Suche. Korrigiere sie unten oder entferne den Block.",
+    "search": {
+      "editQuery": "Abfrage bearbeiten",
+      "count": "{count, plural, one {# Block} other {# Blöcke}}",
+      "loading": "Suche läuft…",
+      "empty": "Keine Blöcke passen zu dieser Abfrage.",
+      "failed": "Die Suche konnte nicht ausgeführt werden.",
+      "retry": "Erneut versuchen",
+      "truncated": "Die ersten {count} Treffer werden angezeigt."
+    },
+    "copiedContents": "Inhalt kopiert",
+    "copiedLink": "Link kopiert",
+    "actionFailed": "Dieses Portal konnte nicht geändert werden",
+    "keepsOneBlock": "Ein Portal behält mindestens einen Block. Entferne stattdessen das Portal.",
+    "expandChildren": "Unterelemente anzeigen",
+    "collapseChildren": "Unterelemente ausblenden",
+    "toolbar": {
+      "label": "Portal",
+      "include": "„{block}“ einbinden",
+      "locked": "{note} ist gesperrt · schreibgeschützt",
+      "more": "Mehr",
+      "openBeside": "{note} daneben öffnen",
+      "click": "Klick",
+      "copyContents": "Inhalt kopieren",
+      "copyLink": "Link kopieren",
+      "remove": "Portal entfernen",
+      "removeHint": "{note} behält alle Blöcke"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Die Quellnotiz wurde gelöscht. Der Verweis bleibt erhalten.",
+        "action": "Entfernen"
+      },
+      "missingBlock": {
+        "text": "Der Block wurde in {source} gelöscht.",
+        "action": "Anderen wählen"
+      },
+      "notSynced": {
+        "text": "Warten auf die Synchronisierung der Quellnotiz.",
+        "action": "Erneut versuchen"
+      },
+      "cycle": {
+        "text": "Dieses Portal führt zu sich selbst zurück.",
+        "action": "Quelle öffnen"
+      },
+      "tooDeep": {
+        "text": "Portale lassen sich {max} Ebenen tief verschachteln. Dieses öffnet sich als Link.",
+        "action": "Quelle öffnen"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Erfassungsfeld fokussieren",
@@ -43,6 +100,50 @@
     "showInFileManager": "Im Dateimanager anzeigen",
     "openInDefaultApp": "In der Standard-App öffnen",
     "revealFailed": "Element konnte nicht im Ordner angezeigt werden"
+  },
+  "commands": {
+    "runFailed": "Dieser Befehl konnte nicht ausgeführt werden. Versuche es erneut."
+  },
+  "commandsPalette": {
+    "title": "Befehle",
+    "placeholder": "Befehl eingeben…",
+    "groups": {
+      "navigation": "Navigation",
+      "create": "Erstellen",
+      "tabs": "Tabs",
+      "editor": "Editor",
+      "view": "Ansicht",
+      "app": "App",
+      "note": "Notiz",
+      "settings": "Einstellungen",
+      "sync": "Synchronisierung",
+      "help": "Hilfe",
+      "project": "Projekt",
+      "tasks": "Aufgaben",
+      "canvas": "Canvas",
+      "folder": "Ordner",
+      "file": "Datei"
+    },
+    "contexts": {
+      "note": "Diese Notiz",
+      "journal": "Dieses Journal",
+      "project": "Dieses Projekt",
+      "tasks": "Diese Aufgaben",
+      "canvas": "Dieser Canvas",
+      "folder": "Dieser Ordner",
+      "tag": "Dieser Tag",
+      "file": "Diese Datei"
+    },
+    "recent": "Zuletzt verwendet",
+    "empty": "Keine Befehle passen zu „{query}“",
+    "searchHint": "Notizen durchsuchen: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# Befehl} other {# Befehle}}"
+    },
+    "actions": {
+      "run": "Ausführen",
+      "searchNotes": "Notizen durchsuchen"
+    }
   },
   "tabs": {
     "pin": "Tab anheften",
@@ -131,6 +232,20 @@
     "openInTab": "Unterhaltung in Tab öffnen",
     "stop": "Stoppen",
     "thinking": "Agent denkt nach",
+    "toolsUnavailable": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat die Werkzeugprüfung nicht bestanden und kann nur chatten.",
+    "toolsUnavailableWithDetail": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat die Werkzeugprüfung nicht bestanden und kann nur chatten. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Der Anbieter hat eine Testanfrage mit Werkzeugen abgelehnt, daher kann das Modell nur chatten.",
+      "noToolCall": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat eine Testanfrage beantwortet, ohne das Werkzeug aufzurufen, und kann daher nur chatten.",
+      "toolResultRejected": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat ein Testwerkzeug aufgerufen, ist aber nach dem Erhalt des Ergebnisses gescheitert, und kann daher nur chatten.",
+      "streamingUnsupported": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Der Anbieter hat keine Testantwort gestreamt, daher kann das Modell nur chatten.",
+      "providerSaid": "Der Anbieter meldete: {detail}",
+      "wroteToolCall": "Das Modell hat einen Werkzeugaufruf als Text geschrieben, und nichts wurde ausgeführt."
+    },
+    "stepLimit": {
+      "notice": "Am Schrittlimit angehalten.",
+      "continue": "Fortsetzen"
+    },
     "enable": {
       "title": "memrynote-Agent aktivieren",
       "description": "Der memrynote-Agent nutzt die von dir ausgewählte lokale Agent-CLI, um mit dir über deinen Tresor zu chatten. Claude sendet Anfragen an Anthropic, Codex an OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Kontext hinzufügen",
       "addContextWithPermissions": "Kontext hinzufügen ({permissions})",
       "mentionContext": "Notiz, Aufgabe oder Termin erwähnen",
+      "files": {
+        "attach": "Textdatei anhängen",
+        "refused": {
+          "unsupportedType": "{name} ist keine unterstützte Textdatei. Hänge eine .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- oder .yml-Datei an.",
+          "notText": "{name} ist keine UTF-8-Textdatei. Hänge stattdessen eine Textdatei an.",
+          "tooLarge": "Mit {name} würde diese Nachricht das Limit von 100 KB überschreiten. Entferne eine Datei oder hänge eine kleinere an.",
+          "readFailed": "{name} konnte nicht gelesen werden. Prüfe, ob die Datei noch existiert und du sie öffnen kannst, und hänge sie dann erneut an."
+        }
+      },
       "voice": {
         "start": "Spracheingabe starten",
         "stop": "Spracheingabe beenden",
@@ -340,6 +464,14 @@
           "extraHigh": "Sehr hoch"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Standard",
+          "default": "Standardtiefe",
+          "high": "Hoch",
+          "max": "Maximal"
+        }
+      },
       "permissionsLabel": "Agent-Berechtigungen: {access}, Websuche {webSearch}",
       "permissions": {
         "label": "Berechtigungen",
@@ -347,6 +479,17 @@
         "tools": "Tools"
       },
       "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}",
+      "queue": {
+        "label": "Nachrichten in der Warteschlange",
+        "queueMessage": "Nachricht einreihen",
+        "edit": "Nachricht in der Warteschlange bearbeiten",
+        "editLabel": "Text der Nachricht in der Warteschlange",
+        "remove": "Nachricht aus der Warteschlange entfernen",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "sending": "Wird gesendet…",
+        "notSent": "Nicht gesendet. Bearbeite sie, um sie erneut zu senden, oder entferne sie."
+      },
       "unavailable": {
         "vaultToolsOnly": "Mit diesem Modell nur Tresor-Werkzeuge"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Zustimmungsstatus konnte nicht gespeichert werden",
       "resolveWindow": "Quellfenster des Agenten konnte nicht ermittelt werden",
       "detectCli": "Agent-Backends konnten nicht erkannt werden",
-      "loadDisclosure": "Zustimmungsstatus konnte nicht geladen werden"
+      "loadDisclosure": "Zustimmungsstatus konnte nicht geladen werden",
+      "turnFailed": "Die Antwort wurde mit einem Fehler abgebrochen. Deine Nachricht bleibt erhalten, du kannst sie erneut senden."
     },
     "actions": {
       "copy": "Kopieren",
@@ -576,6 +720,7 @@
       "newFolder2": "Neuer Ordner",
       "newProject": "Neues Projekt",
       "bookmarks": "Lesezeichen",
+      "chart": "Diagramm",
       "tags": "Tags",
       "reorderSection": "{section} neu anordnen",
       "dropFilesToImport": "Dateien hier ablegen, um sie zu importieren",
@@ -863,6 +1008,11 @@
       "cancel": "Abbrechen",
       "remove2": "Entfernen",
       "inYourAccount": "In deinem Konto",
+      "trySandbox": "Sandbox-Tresor ausprobieren",
+      "sandboxVault": "Sandbox-Tresor",
+      "sandboxPreparing": "Sandbox wird vorbereitet…",
+      "sandboxFailed": "Der Sandbox-Tresor konnte nicht vorbereitet werden",
+      "resetSandbox": "Sandbox-Tresor zurücksetzen",
       "itemsCount": "{count} Elemente",
       "untitledVault": "Tresor",
       "downloadVaultTitle": "„{name}“ herunterladen",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Notizen, die du öffnest, erscheinen hier",
       "bookmarks": "Lesezeichen",
       "tasks": "Aufgaben",
+      "chart": "Diagramm",
       "calendar": "Kalender",
       "calendarToday": "Heute",
       "openCalendar": "Kalender öffnen",
@@ -978,6 +1129,9 @@
     "edit": "Bearbeiten",
     "done": "Fertig",
     "addWidget": "Widget hinzufügen",
+    "cover": {
+      "add": "Cover hinzufügen"
+    },
     "empty": {
       "title": "Dein Board ist leer",
       "body": "Widgets bringen deine Notizen, Aufgaben und Lesezeichen an einem ruhigen Ort zusammen.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Symbol ändern…",
     "resetIcon": "Symbol zurücksetzen",
     "iconButton": "Symbol von {name} ändern",
+    "leaveSandbox": "Zurück zu {name}",
     "iconFailed": "Tresorsymbol konnte nicht geändert werden"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Typ",
     "filterModified": "Geändert",
     "matches": "Treffer",
+    "matchesMore": "{count, plural, one {# weiterer Treffer} other {# weitere Treffer}}",
+    "matchesHide": "Treffer ausblenden",
+    "matchOf": "Treffer {index} von {total}",
     "showMore": "{count} weitere anzeigen",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Nächster Abschnitt",
       "open": "Öffnen",
       "openNote": "Notiz öffnen",
+      "openAtMatch": "Beim Treffer öffnen",
       "openFile": "Datei öffnen",
       "openJournal": "Journal öffnen",
       "openTask": "Aufgabe öffnen",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Tag auswählen",
       "addTag": "Tag hinzufügen",
       "showAll": "Alle anzeigen",
+      "hideMatches": "Treffer ausblenden",
       "searchEverywhere": "Überall suchen",
       "clearFilters": "Filter zurücksetzen"
     },

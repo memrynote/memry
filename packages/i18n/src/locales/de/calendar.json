@@ -195,6 +195,7 @@
     "complete-task": "{title} erledigen",
     "task-completed": "Aufgabe erledigt",
     "could-not-complete": "Aufgabe konnte nicht als erledigt markiert werden",
+    "could-not-update-status": "Aufgabenstatus konnte nicht geändert werden",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Notiz konnte nicht geöffnet werden"
     }
   },
+  "eventNotes": {
+    "heading": "Notizen",
+    "create": "Neue Notiz",
+    "link": "Notiz verknüpfen",
+    "untitled": "Meeting-Notiz",
+    "searchPlaceholder": "Notizen suchen",
+    "noResults": "Keine Notizen gefunden",
+    "createFailed": "Für diesen Termin konnte keine Notiz erstellt werden.",
+    "linkFailed": "Die Notiz konnte nicht mit diesem Termin verknüpft werden.",
+    "loadFailed": "Die mit diesem Termin verknüpften Notizen konnten nicht geladen werden.",
+    "propertyTaken": "Diese Notiz hat bereits eine Eigenschaft „{name}“, die kein Link ist."
+  },
   "notePopover": {
     "kind": "Notiz",
     "kindDateReminder": "Datumserinnerung",
@@ -254,6 +267,10 @@
     "overdue": "überfällig",
     "untitled": "Ohne Titel",
     "days": "{count, plural, one {# Tag} other {# Tage}}",
+    "subtasks": {
+      "expand": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} von {title} anzeigen",
+      "collapse": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} von {title} ausblenden"
+    },
     "events": "Termine",
     "schedule-hint": "Klicken, um ein Datum festzulegen, ziehen, um einen Zeitraum festzulegen",
     "empty-title": "Hier ist nichts auf der Zeitachse",

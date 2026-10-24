@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Journaleintrag löschen",
     "description": "Möchtest du „{title}“ wirklich löschen? Das lässt sich nicht rückgängig machen."
+  },
+  "dayTimeline": {
+    "label": "Tagesplan",
+    "allDay": "Ganztägige Einträge",
+    "unscheduled": "Nicht eingeplant",
+    "unscheduledEmpty": "Keine nicht eingeplanten Aufgaben. Ziehe einen Block hierher, um seine Zeit zu entfernen.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} abschließen"
   }
 }

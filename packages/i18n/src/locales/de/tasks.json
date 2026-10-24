@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Fälligkeitsdatum für # Teilaufgabe entfernt} other {Fälligkeitsdatum für # Teilaufgaben entfernt}}",
       "prioritySet": "{count, plural, one {Priorität für # Teilaufgabe festgelegt} other {Priorität für # Teilaufgaben festgelegt}}",
       "deleted": "{count, plural, one {# Teilaufgabe gelöscht} other {# Teilaufgaben gelöscht}}"
-    }
+    },
+    "completedBranch": "{title} und {count, plural, one {# offene Teilaufgabe} other {# offene Teilaufgaben}} abgeschlossen",
+    "deletedKeepSubtasks": "{title} gelöscht, Teilaufgaben bleiben erhalten",
+    "deletedBranch": "{title} und {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} gelöscht"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "Status",
       "projectIs": "Projekt ist",
       "project": "Projekt",
+      "locationIs": "Ort ist",
+      "location": "Ort",
+      "unknownNote": "Unbekannte Notiz",
       "due": "Fällig",
       "dueDate": "Fälligkeitsdatum",
       "search": "Suche",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Fälligkeitsdatum"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Ort",
+      "search": "Ordner und Notizen suchen...",
+      "empty": "Keine Ordner oder Notizen mit Aufgaben"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorität",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Projektansichten",
       "overview": "Übersicht",
+      "all": "Alle",
       "tasks": "Aufgaben",
       "notes": "Notizen",
       "files": "Dateien",
@@ -951,6 +963,25 @@
       "fileError": "{name} konnte nicht verknüpft werden",
       "fileErrorGeneric": "Die Dateien konnten nicht importiert werden",
       "label": "Zu {name} hinzufügen"
+    },
+    "all": {
+      "showDone": "Erledigte anzeigen",
+      "empty": "In diesem Projekt ist nichts offen.",
+      "expand": "Aufgaben in {title} anzeigen",
+      "collapse": "Aufgaben in {title} ausblenden",
+      "taskSummary": "{open}/{total} offen",
+      "daysLeft": "{count} T",
+      "overdue": "{count} T überfällig",
+      "columns": {
+        "title": "Titel",
+        "daysLeft": "Verbleibende Tage"
+      },
+      "status": {
+        "active": "Aktiv",
+        "done": "Erledigt",
+        "upcoming": "Anstehend",
+        "past": "Vergangen"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Violett",
     "pink": "Rosa"
+  },
+  "subtaskTree": {
+    "addSubtask": "Teilaufgabe hinzufügen",
+    "dropInto": "In {title}",
+    "dropOut": "Eine Ebene nach oben",
+    "draftPlaceholder": "Titel der Teilaufgabe",
+    "draftLabel": "Neue Teilaufgabe in {title}",
+    "draftIn": "in {title}",
+    "toggleComplete": "{title} abschließen",
+    "moveUnder": {
+      "title": "Verschieben unter",
+      "placeholder": "Verschieben unter…",
+      "empty": "Keine passende Aufgabe",
+      "topLevel": "Oberste Ebene von {project}",
+      "thisTask": "Diese Aufgabe",
+      "currentParent": "Aktuell übergeordnet",
+      "movesOne": "Verschiebt {title}",
+      "movesBranch": "Verschiebt {title} und {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}}",
+      "keys": "↵ Hierher verschieben · ⌘↵ Oberste Ebene · esc Schließen"
+    },
+    "zoom": {
+      "path": "Aufgabenpfad",
+      "up": "Eine Ebene nach oben",
+      "upShortcut": "Eine Ebene nach oben (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "{title} löschen?",
+      "summary": "{direct, plural, one {Sie hat # Teilaufgabe} other {Sie hat # Teilaufgaben}}{deeper, plural, =0 {} one { und # weitere darunter} other { und # weitere darunter}}{open, plural, =0 {, alle erledigt.} other {, # davon noch offen.}}",
+      "cancel": "Abbrechen",
+      "deleteAll": "Alle löschen",
+      "keepSubtasks": "Teilaufgaben behalten"
+    },
+    "menu": {
+      "open": "Öffnen",
+      "complete": "Abschließen",
+      "reopen": "Wieder öffnen",
+      "zoom": "In Teilaufgaben hineinzoomen",
+      "moveUnder": "Verschieben unter…",
+      "indent": "Unter {title} verschieben",
+      "outdent": "Eine Ebene nach oben verschieben",
+      "topLevel": "Zur Aufgabe der obersten Ebene machen",
+      "delete": "Löschen"
+    },
+    "openPath": "{path} öffnen"
   }
 }
