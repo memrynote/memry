@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Hindi nahanap — i-click para gawin ang “{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "Mga aksyon sa link",
+    "open": "Buksan",
+    "openInNewTab": "Buksan sa bagong tab",
+    "openToTheSide": "Buksan sa tabi",
+    "edit": "I-edit ang link",
+    "copy": "Kopyahin ang link",
+    "unlink": "Alisin ang link",
+    "displayRow": "Display…",
+    "sizeNone": "Wala",
+    "sizeSmall": "Maliit",
+    "sizeMedium": "Katamtaman",
+    "showCover": "Ipakita ang cover",
+    "showPreview": "Ipakita ang preview",
+    "copyFailed": "Hindi makopya ang link"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "I-import ulit mula sa Readwise",
+    "refreshAction": "I-refresh ang info ng aklat",
+    "syncsOn": "Nagsi-sync ang Readwise sa {device}.",
+    "syncsOnAnotherDevice": "Nagsi-sync ang Readwise sa ibang device.",
+    "takeOverHint": "Mag-sync sa device na iyon, o pumalit sa Mga setting → Import.",
+    "reimport": {
+      "title": "I-import ulit ang “{title}” mula sa Readwise?",
+      "body": "Isinusulat muli mula sa simula ang seksyong Readwise. Mawawala ang anumang isinulat mo sa loob nito.",
+      "note": "Nananatili ang teksto sa labas ng seksyon at ang mga property ng tala.",
+      "cancel": "Kanselahin",
+      "confirm": "I-import ulit"
+    },
+    "commands": {
+      "reimported": "Na-import ulit mula sa Readwise",
+      "refreshed": "Na-refresh ang info ng aklat",
+      "failed": "Hindi makumpleto ang command ng Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Walang napiling tala",
@@ -25,6 +61,7 @@
       "willSync": "Magsi-sync ang tala sa cloud",
       "renameFailed": "Hindi mapalitan ang pangalan ng tala",
       "titleRequired": "Kailangan ng pamagat ang tala",
+      "duplicateTitle": "May isa pang tala sa {folder} na pinangalanang “{title}”. Isasama ng mga link sa mga talang ito ang kanilang folder.",
       "toggleLocalOnlyFailed": "Hindi mabago ang setting na lokal lang",
       "toggleFullWidthFailed": "Hindi mabago ang setting na buong lapad",
       "pathCopied": "Nakopya ang path",
@@ -85,6 +122,10 @@
       "body": "Gumawa ng tala para makapagsimula",
       "newNote": "Bagong tala"
     },
+    "readwiseSync": {
+      "tooltip": "Sync ng Readwise",
+      "failed": "Nabigo ang sync ng Readwise"
+    },
     "syncing": {
       "body": "Sini-sync ang mga tala mo — lalabas ang mga ito rito pagdating nila"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Buksan sa gilid",
       "newNote": "Bagong tala",
       "newFolder": "Bagong folder",
+      "showTasks": "Ipakita ang mga gawain",
       "expandSubfolders": "I-expand ang lahat ng subfolder",
       "collapseSubfolders": "I-collapse ang lahat ng subfolder",
       "rename": "Palitan ang pangalan",
@@ -138,7 +180,15 @@
       "folderSuffix": "folder",
       "moreItems": "…at {count} pa",
       "deleting": "Tinatanggal…",
-      "deleteCount": "Tanggalin ang {count}"
+      "deleteCount": "Tanggalin ang {count}",
+      "journalFolderWarning": "Kasama rito ang folder ng iyong talaarawan. Matatanggal ang bawat entry ng talaarawan dito, sa lahat ng iyong device."
+    },
+    "journalChange": {
+      "leaveTitle": "Gawing mga tala ang mga entry ng talaarawan?",
+      "leaveBody": "Kapag inilipat palabas ng folder ng talaarawan, o pinalitan ang pangalan para hindi na sumunod sa format ng petsa nito, magiging karaniwang tala ang mga entry ng talaarawan at aalis sa iyong Talaarawan. Sa iyong iba pang device, aalisin ang mga araw na iyon sa Talaarawan at lalabas ang mga tala bilang kapalit.",
+      "joinTitle": "Gawing mga entry ng talaarawan ang mga tala?",
+      "joinBody": "Ang mga file na pinangalanan ayon sa format ng petsa ng talaarawan sa loob ng folder ng talaarawan ay magiging mga entry ng talaarawan. Sa iyong iba pang device, papalitan ng mga entry ng talaarawan ang mga talang iyon.",
+      "confirm": "Magpatuloy"
     },
     "toast": {
       "selectionBookmarked": "Na-bookmark ang {count} item",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Heading",
       "listPlaceholder": "Item sa listahan",
       "todoPlaceholder": "Gagawin",
-      "htmlComment": "Nakatagong HTML comment"
+      "htmlComment": "Nakatagong HTML comment",
+      "percentComment": "Nakatagong komento",
+      "readwise": {
+        "noteStart": "Readwise · kusang nagsi-sync",
+        "noteEnd": "Katapusan ng seksyong Readwise",
+        "dayStart": "Readwise · mga highlight ngayong araw",
+        "dayEnd": "Katapusan ng Readwise",
+        "hint": "Kapag nag-edit ka sa loob ng seksyong ito, titigil ang Readwise sa pag-update nito."
+      }
     },
     "table": {
       "keyboardMenuAria": "Mga aksyon sa table para sa row {row}, column {column}",
-      "keyboardMenuTitle": "Row {row} · Column {column}"
+      "keyboardMenuTitle": "Row {row} · Column {column}",
+      "sizePicker": {
+        "aria": "Laki ng talahanayan. Gamitin ang mga arrow key para pumili ng mga row at column, tapos pindutin ang Enter.",
+        "size": "{rows, plural, one {# row} other {# row}} × {columns, plural, one {# column} other {# column}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Tanggalin ang row} other {Tanggalin ang # row}}",
+        "addRowsAbove": "{count, plural, one {Magdagdag ng row sa itaas} other {Magdagdag ng # row sa itaas}}",
+        "addRowsBelow": "{count, plural, one {Magdagdag ng row sa ibaba} other {Magdagdag ng # row sa ibaba}}",
+        "deleteColumns": "{count, plural, one {Tanggalin ang column} other {Tanggalin ang # column}}",
+        "addColumnsLeft": "{count, plural, one {Magdagdag ng column sa kaliwa} other {Magdagdag ng # column sa kaliwa}}",
+        "addColumnsRight": "{count, plural, one {Magdagdag ng column sa kanan} other {Magdagdag ng # column sa kanan}}"
+      }
     },
     "list": {
       "bulleted": "Listahang may bullet",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Itago ang lokal na graph",
       "showLocalGraph": "Ipakita ang lokal na graph",
       "moreActions": "Higit pang aksyon",
+      "searchActions": "Maghanap ng mga aksyon...",
+      "noMatchingActions": "Walang katugmang aksyon",
       "find": "Hanapin…",
       "versionHistory": "Kasaysayan ng bersyon",
       "export": "I-export",
@@ -215,6 +287,8 @@
       "notSynced": "Hindi pa naka-sync sa device na ito",
       "revealFailed": "Hindi maipakita ang file sa file manager",
       "openFailed": "Hindi mabuksan ang file",
+      "showAsLink": "Ipakita bilang link",
+      "showAsEmbed": "Ipakita na naka-embed",
       "missingTitle": "Nawawala ang file ng attachment",
       "missingExpected": "Inaasahang file: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Palitan ang pangalan",
       "renamed": "Pinalitan ang pangalan bilang {name}",
       "failed": "Hindi mapalitan ang pangalan ng attachment"
+    },
+    "imageLightbox": {
+      "menuItem": "Tingnan nang mas malaki",
+      "title": "Viewer ng larawan",
+      "zoomIn": "Mag-zoom in",
+      "zoomOut": "Mag-zoom out",
+      "reset": "I-reset ang zoom"
+    },
+    "imageCrop": {
+      "menuItem": "I-crop…",
+      "title": "I-crop ang larawan",
+      "description": "I-drag sa ibabaw ng larawan para piliin ang ipapakita ng tala. Nananatili ang orihinal na file.",
+      "reset": "Ipakita ang buong larawan",
+      "cancel": "Kanselahin",
+      "apply": "I-crop",
+      "unavailable": "Hindi pa na-load ang larawan, kaya hindi ito ma-crop"
     },
     "attachmentsDialog": {
       "title": "Mga attachment",
@@ -248,12 +338,24 @@
       "title": "Callout",
       "group": "Mga pangunahing block",
       "subtext": "I-highlight ang mahalagang impormasyon",
+      "customSubtext": "Ang custom mong uri ng callout",
       "changeType": "Baguhin ang uri ng callout",
+      "expand": "I-expand ang callout",
+      "collapse": "I-collapse ang callout",
       "menuLabel": "Uri ng callout",
       "info": "Impormasyon",
       "warning": "Babala",
       "error": "Error",
-      "success": "Tagumpay"
+      "success": "Tagumpay",
+      "note": "Tala",
+      "abstract": "Buod",
+      "todo": "To-do",
+      "tip": "Tip",
+      "important": "Mahalaga",
+      "question": "Tanong",
+      "example": "Halimbawa",
+      "quote": "Sipi",
+      "bug": "Bug"
     },
     "columns": {
       "group": "Mga pangunahing block",
@@ -332,6 +434,83 @@
       "invalidShape": "Walang source ang depinisyon ng view na ito. Pumili ng isa sa itaas, o ayusin ito sa ibaba.",
       "definition": "Depinisyon"
     },
+    "chart": {
+      "title": "Chart",
+      "subtext": "I-plot ang isang property sa paglipas ng panahon: linya, mga bar o calendar heatmap",
+      "layout": "Chart",
+      "settings": "Mga setting ng chart",
+      "chooseProperty": "Piliin ang ipo-plot",
+      "source": "Pinagmulan",
+      "headerMeta": "{range} · {type}",
+      "property": "Property",
+      "noProperties": "Wala pang mai-plot. Magdagdag muna ng property sa entry ng talaarawan o tala.",
+      "chartType": "Chart",
+      "suggested": "Iminumungkahi",
+      "types": {
+        "line": "Linya",
+        "bar": "Bar",
+        "heatmap": "Heatmap"
+      },
+      "range": "Saklaw",
+      "lastDays": "{count, plural, one {Huling araw} other {Huling # araw}}",
+      "sameDay": "Mga entry sa parehong araw",
+      "aggregates": {
+        "average": "Average",
+        "sum": "Kabuuan",
+        "min": "Pinakamababa",
+        "max": "Pinakamataas",
+        "count": "Bilang"
+      },
+      "missingDays": "Mga araw na wala",
+      "missing": {
+        "gap": "Mag-iwan ng puwang",
+        "zero": "Ibilang bilang zero"
+      },
+      "dateFrom": {
+        "label": "Petsa mula sa",
+        "created": "Ginawa",
+        "modified": "Binago"
+      },
+      "propertyTypes": {
+        "text": "Teksto",
+        "number": "Numero",
+        "checkbox": "Checkbox",
+        "date": "Petsa",
+        "url": "URL",
+        "status": "Katayuan",
+        "select": "Select",
+        "multiselect": "Multi-select",
+        "relation": "Relation",
+        "project": "Proyekto",
+        "rating": "Rating"
+      },
+      "noEntry": "Walang entry",
+      "done": "Tapos na",
+      "notDone": "Hindi pa tapos",
+      "logged": "Naitala",
+      "valueCount": "{count, plural, one {# value} other {# value}}",
+      "average": "Average",
+      "vsPrevious": "kumpara sa nakaraang panahon",
+      "lowest": "Pinakamababa",
+      "currentStreak": "Kasalukuyang streak",
+      "longestStreak": "Pinakamahabang streak",
+      "dayCount": "{count, plural, one {# araw} other {# araw}}",
+      "doneDays": "Tapos na",
+      "loggedDays": "Naitala",
+      "mostCommon": "Pinakakaraniwan",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} sa nakalipas na {days} araw",
+      "noData": "Wala pang naitala sa saklaw na ito.",
+      "loadFailed": "Hindi ma-load ang chart na ito. Hindi nagalaw ang mga entry mismo.",
+      "sourceJournal": "Talaarawan",
+      "history": {
+        "show": "Ipakita ang kasaysayan",
+        "title": "Kasaysayan ng {property}",
+        "range": "Huling 13 linggo",
+        "insert": "Kopyahin bilang chart block",
+        "copied": "Nakopya ang chart block. I-paste ito sa anumang tala."
+      }
+    },
     "slashMenu": {
       "aria": "Mga block at aksyon",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Ipasok",
         "open": "Buksan"
       },
+      "close": "Isara ang menu",
       "matchesAlias": "tugma sa",
       "noMatch": "Walang block na tumutugma sa “{query}”",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Ipakita bilang",
+        "embed": "Naka-embed",
+        "link": "Link"
+      },
       "title": {
         "image": "Magdagdag ng larawan",
         "media": "Magdagdag ng media",
@@ -525,6 +710,11 @@
       "empty": "Mag-type para gumawa ng bagong tag",
       "create": "Gumawa ng #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Ipakita ang PDF bilang",
+      "embed": "Naka-embed na viewer",
+      "link": "Pangalan ng file"
+    },
     "pasteLink": {
       "title": "I-paste bilang",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} minutong pagbasa",
     "words": "{count} salita",
     "created": "Ginawa",
-    "modified": "Binago"
+    "modified": "Binago",
+    "sync": {
+      "label": "Sync",
+      "confirmed": "Nasa server {time}",
+      "pending": "Naghihintay mula {time}",
+      "sent": "Ipinapadala",
+      "rejected": "Tinanggihan ng server ang huling pagbabago",
+      "notRecorded": "Walang naghihintay na ipadala",
+      "localOnly": "Lokal lang",
+      "notSyncing": "Hindi nagsi-sync",
+      "waiting": "Naghihintay na ipadala"
+    }
   },
   "backlinks": {
     "sortRecent": "Kamakailan",
@@ -587,7 +788,18 @@
     "expandSection": "I-expand ang seksyon ng mga backlink",
     "showMore": "Ipakita ang {count} pang backlink",
     "more": "{count} pa",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Ipinapakita sa isang portal"
+  },
+  "unlinkedMentions": {
+    "title": "Mga hindi naka-link na banggit",
+    "summary": "{count, plural, one {# hindi naka-link na banggit} other {# hindi naka-link na banggit}}",
+    "sectionAria": "Mga hindi naka-link na banggit",
+    "fromAria": "Mga hindi naka-link na banggit sa {title}",
+    "link": "I-link",
+    "linkAria": "I-link ang {text}",
+    "gone": "Nagbago ang banggit na iyon mula nang mabasa ang listahan",
+    "linkFailed": "Hindi ma-link ang banggit"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# papalabas na link} other {# papalabas na link}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "Hindi maidagdag ang tala sa canvas"
   },
   "suggestedTags": {
-    "label": "Mga mungkahing tag:",
-    "hint": "Mga tag na ginagamit ng mga talang pinakakahawig nito. Walang maidadagdag hanggang may piliin ka.",
-    "acceptAria": "Idagdag ang tag na {tag}",
-    "support": "{count, plural, one {Ginamit sa # katulad na tala} other {Ginamit sa # katulad na tala}}",
-    "dismiss": "Itago ang mga mungkahing tag"
+    "support": "{count, plural, one {Ginamit sa # katulad na tala} other {Ginamit sa # katulad na tala}}"
   },
   "comments": {
     "railAria": "Mga komento",
@@ -663,6 +871,7 @@
     "removeAria": "Alisin ang tag: {tag}",
     "inputPlaceholder": "I-type ang pangalan ng tag…",
     "recent": "Kamakailan",
+    "suggested": "Iminumungkahi",
     "matching": "Tumutugma",
     "all": "Lahat ng tag",
     "none": "Walang nakitang mga tag",
@@ -755,6 +964,9 @@
     "repositionHint": "I-drag para iayos ang posisyon",
     "repositionSave": "i-save",
     "repositionCancel": "kanselahin",
+    "zoomIn": "Mag-zoom in",
+    "zoomOut": "Mag-zoom out",
+    "resize": "I-drag para baguhin ang laki ng cover",
     "credit": "Larawan ni {name} sa Unsplash",
     "focusFailed": "Hindi ma-save ang posisyon ng cover",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# tala} other {# tala}}"
+    },
+    "noteTasks": {
+      "expand": "Ipakita ang mga gawain ng {title}",
+      "collapse": "Itago ang mga gawain ng {title}",
+      "list": "Mga gawain sa {title}",
+      "progressOpen": "{open}/{total} bukas",
+      "progressDone": "{total}/{total} tapos na",
+      "nextDue": "Susunod na takda",
+      "reminder": "May nakatakdang paalala"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "I-save",
     "addToFilterHint": "I-Ctrl/Cmd-click ang isang tag para idagdag ito sa filter"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Mga alternatibo",
+      "overflow": "Overflow",
+      "menu": "Mga tool sa pagsusulat",
+      "close": "Isara ang mga tool sa pagsusulat"
+    },
+    "menu": {
+      "aria": "Mga aksyon ng editor",
+      "cut": "I-cut",
+      "copy": "Kopyahin",
+      "paste": "I-paste",
+      "selectAll": "Piliin lahat",
+      "undo": "I-undo",
+      "redo": "I-redo",
+      "comment": "Magkomento",
+      "addAlternative": "Magdagdag ng alternatibo",
+      "suggestAlternatives": "Magmungkahi ng mga alternatibo",
+      "ghost": "Ghost",
+      "revive": "Buhayin muli",
+      "stash": "Itago sa overflow",
+      "noSpellingSuggestions": "Walang mungkahi",
+      "addToDictionary": "Idagdag sa diksyunaryo",
+      "clipboardFailed": "Hindi magamit ang clipboard"
+    },
+    "alternatives": {
+      "railAria": "Mga alternatibo",
+      "hint": "{position} sa {total} ↑ ↓",
+      "original": "Orihinal",
+      "byYou": "Isinulat mo",
+      "byAI": "Iminungkahi ng AI",
+      "showing": "Ipinapakita",
+      "addPlaceholder": "Magdagdag ng alternatibo…",
+      "removeSuggestions": "Alisin ang mga mungkahi",
+      "removeVariant": "Alisin ang alternatibo",
+      "empty": "Pumili ng teksto at piliin ang Magdagdag ng alternatibo para itabi ang iba pang paraan ng pagsasabi nito.",
+      "suggesting": "Nagmumungkahi ng mga alternatibo…",
+      "suggestFailed": "Hindi makapagmungkahi ng mga alternatibo",
+      "noSuggestions": "Walang bagong alternatibong iminungkahi"
+    },
+    "overflow": {
+      "railAria": "Overflow",
+      "addPlaceholder": "Magsulat ng itatabi…",
+      "empty": "Ang mga linyang itinabi o isinulat mo rito ay mananatili sa talang ito, sa labas ng teksto.",
+      "dragHint": "I-drag sa tala",
+      "copy": "Kopyahin",
+      "copied": "Nakopya",
+      "delete": "Tanggalin"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "I-lock ang tala",
+    "unlockNote": "I-unlock ang tala",
+    "lockFolder": "I-lock ang folder",
+    "unlockFolder": "I-unlock ang folder",
+    "toggleFailed": "Hindi mabago ang lock",
+    "readOnlyIndicator": "Naka-lock. Read-only para sa iyo at sa mga agent.",
+    "externalEditRestored": "Naka-lock ang “{title}”, kaya binawi ang pag-edit mula sa labas",
+    "externalEditRestoredHint": "Naka-save ang na-edit na teksto sa kasaysayan ng bersyon ng tala."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Tao",
+        "plural": "Mga tao",
+        "fields": {
+          "company": "Kumpanya",
+          "role": "Tungkulin",
+          "email": "Email",
+          "phone": "Telepono"
+        },
+        "inverse": {
+          "company": "Mga tao"
+        },
+        "template": {
+          "name": "Tao",
+          "context": "Konteksto",
+          "contextHint": "Paano kami nagkakilala, ano ang mahalaga sa kanila",
+          "notes": "Mga tala"
+        }
+      },
+      "company": {
+        "name": "Kumpanya",
+        "plural": "Mga kumpanya",
+        "fields": {
+          "website": "Website",
+          "industry": "Industriya",
+          "location": "Lokasyon"
+        },
+        "template": {
+          "name": "Kumpanya",
+          "overview": "Pangkalahatang-ideya",
+          "overviewHint": "Ano ang ginagawa nila, sino ang kilala natin doon",
+          "notes": "Mga tala"
+        }
+      },
+      "meeting": {
+        "name": "Pulong",
+        "plural": "Mga pulong",
+        "fields": {
+          "date": "Petsa",
+          "attendees": "Mga dadalo",
+          "company": "Kumpanya"
+        },
+        "inverse": {
+          "attendees": "Mga pulong",
+          "company": "Mga pulong"
+        },
+        "template": {
+          "name": "Pulong",
+          "agenda": "Agenda",
+          "notes": "Mga tala",
+          "actionItems": "Mga action item"
+        }
+      },
+      "book": {
+        "name": "Aklat",
+        "plural": "Mga aklat",
+        "fields": {
+          "author": "May-akda",
+          "shelf": "Istante",
+          "rating": "Rating",
+          "finished": "Natapos"
+        },
+        "shelf": {
+          "toRead": "Babasahin",
+          "reading": "Binabasa",
+          "read": "Nabasa na"
+        },
+        "template": {
+          "name": "Aklat",
+          "highlights": "Mga highlight",
+          "thoughts": "Mga saloobin"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "Ang {title} ay {tag} na ngayon. Naidagdag ang template.",
+      "templateChanged": "Nagbago ang tala pagkatapos idagdag ang template, kaya mananatili ito.",
+      "undoFailed": "Hindi ma-undo",
+      "addFailed": "Hindi maidagdag ang tag",
+      "removeFailed": "Hindi maalis ang tag",
+      "removedKept": "Inalis ang #{tag}. {count} value ang itinira.",
+      "removedKeptOne": "Inalis ang #{tag}. 1 value ang itinira."
+    },
+    "picker": {
+      "create": "Gumawa ng #{tag}",
+      "fillsTemplate": "Pupunan ang walang laman na talang ito ng template na {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Mga handang tag",
+        "subtitle": "Mga tag na may kasamang mga field. Nananatili ang mga tala hangga't hindi mo sila tina-tag.",
+        "notNow": "Huwag muna",
+        "add": "Idagdag",
+        "addFields": "Magdagdag ng mga field",
+        "added": "Naidagdag",
+        "alreadyOn": "Nasa {count} tala na",
+        "alreadyOnOne": "Nasa 1 tala na"
+      },
+      "dialog": {
+        "title": "Idagdag ang mga field ng {preset} sa #{tag}?",
+        "body": "Nasa {count} tala na ang #{tag}. Nananatili sa mga ito ang lahat ng mayroon sila at madaragdagan ng mga field na ito, walang laman hanggang may magpuno.",
+        "bodyOne": "Nasa 1 tala na ang #{tag}. Nananatili rito ang lahat ng mayroon ito at madaragdagan ng mga field na ito, walang laman hanggang may magpuno.",
+        "template": "Pinupunan lang ng template ({sections}) ang mga talang walang laman.",
+        "alsoAddsPrefix": "Nagdaragdag din ng",
+        "alsoAddsSuffix": "para sa field na {field}.",
+        "useAnotherName": "Gumamit ng ibang pangalan",
+        "nameLabel": "Pangalan ng bagong tag",
+        "namePlaceholder": "contact",
+        "cancel": "Kanselahin",
+        "addFields": "Magdagdag ng mga field"
+      },
+      "toast": {
+        "added": "Naidagdag ang #{tag}",
+        "addedFields": "Naidagdag ang mga field ng {preset} sa #{tag}"
+      },
+      "hasFields": "May mga field"
+    },
+    "tasks": {
+      "thisTask": "Ang gawaing ito",
+      "viaTag": "{name} sa pamamagitan ng #{via}",
+      "clearValue": "I-clear ang {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "sa pamamagitan ng #{tag}",
+      "groupMenu": "Mga opsyon ng {tag}",
+      "openTag": "Buksan ang #{tag}",
+      "thisNote": "Ang talang ito"
+    },
+    "offer": {
+      "text": "Idagdag ang template na {tag} sa ibaba ng iyong teksto",
+      "add": "Idagdag",
+      "dismiss": "Isara",
+      "addFailed": "Hindi maidagdag ang template"
+    },
+    "settings": {
+      "title": "Mga setting para sa #{tag}",
+      "close": "Isara",
+      "cancel": "Kanselahin",
+      "save": "I-save",
+      "onCounts": "Sa {notes, plural, one {# tala} other {# tala}} at {tasks, plural, one {# gawain} other {# gawain}}",
+      "onNotes": "Sa {count, plural, one {# tala} other {# tala}}",
+      "headerFields": "{count, plural, one {# field} other {# field}}",
+      "editTag": "I-edit ang tag",
+      "syncNote": "Nagsi-sync ang mga pagbabago sa iyong iba pang device",
+      "newerVersion": "Binago ng mas bagong bersyon ng Memry ang tag na ito. I-update ang Memry para ma-edit ito rito.",
+      "sections": {
+        "appearance": "Hitsura",
+        "extends": "Nagpapalawak ng",
+        "fields": "Mga field · {count}",
+        "template": "Template"
+      },
+      "appearance": {
+        "icon": "Icon",
+        "color": "Kulay",
+        "customColor": "Custom",
+        "category": "Kategorya",
+        "noCategory": "Walang kategorya"
+      },
+      "extends": {
+        "nothing": "Wala",
+        "hint": "Kunin ang mga field ng ibang tag at lumabas sa talahanayan nito.",
+        "hintSet": "Makukuha ng mga tala ng {tag} ang mga field ng {parent} at lalabas sa talahanayan ng {parent}."
+      },
+      "types": {
+        "text": "Teksto",
+        "number": "Numero",
+        "date": "Petsa",
+        "url": "URL",
+        "status": "Katayuan",
+        "select": "Select",
+        "multiselect": "Multi-select",
+        "checkbox": "Checkbox",
+        "relation": "Relation"
+      },
+      "fields": {
+        "empty": "Wala pang field. Magdagdag ng isa para magkaroon ng parehong mga property ang bawat tala ng #tag.",
+        "fromParent": "Mula sa #{tag} · i-edit doon",
+        "inverseSub": "Ipinapakita sa {target} bilang {inverse}",
+        "anyNoteSub": "Nagli-link sa anumang tala",
+        "actions": "Mga aksyon para sa {field}",
+        "rename": "Palitan ang pangalan…",
+        "relationSettings": "Mga setting ng relation",
+        "remove": "Alisin…"
+      },
+      "addField": {
+        "button": "Magdagdag ng field",
+        "namePlaceholder": "Pangalan ng field",
+        "existing": "Mga kasalukuyang property",
+        "existingSub": "{type} · sa {count, plural, one {# tala} other {# tala}} · gamitin ulit",
+        "newType": "Uri ng bagong field",
+        "relationSub": "Mag-link sa mga talang may tag",
+        "submit": "Magdagdag ng field",
+        "reserved": "Nakareserba ang {name} at hindi puwedeng maging field.",
+        "taken": "May {name} na ang #{tag}."
+      },
+      "relation": {
+        "target": "Tumuturo sa mga talang may tag na",
+        "pickTag": "Pumili ng tag",
+        "howMany": "Ilan",
+        "one": "Isa",
+        "many": "Marami",
+        "inverseLabel": "Sa pahina ng {target}, ilista ang mga ito bilang",
+        "inverseLabelAny": "Sa naka-link na pahina, ilista ang mga ito bilang",
+        "inverseHint": "Read-only na listahan sa bawat {target}. Walang isinusulat sa mga tala ng {target}.",
+        "inverseHintAny": "Read-only na listahan sa bawat naka-link na tala. Walang isinusulat sa mga talang iyon."
+      },
+      "shared": {
+        "title": "Bagong field sa #{tag}",
+        "existsWith": "Nasa vault na ito na ang {name} na may {options}.",
+        "existsAs": "Nasa vault na ito na ang {name} bilang property na {type}.",
+        "shareWith": "Ibabahagi ito ng #{tag} sa iyong {others} tala.",
+        "shareAny": "Ibabahagi ito ng #{tag} sa iyong iba pang tala.",
+        "useInstead": "Gamitin na lang ang {name}",
+        "share": "Ibahagi ang {name}"
+      },
+      "template": {
+        "edit": "I-edit ang template",
+        "none": "Wala pang template. Pinupunan ng template ang mga walang laman na tala kapag nakuha nila ang tag.",
+        "create": "Gumawa ng template",
+        "defaultHeading": "Mga tala",
+        "inherited": "Mula sa #{tag}",
+        "autofill": "Punan ang mga walang laman na tala kapag nakuha nila ang #{tag}"
+      },
+      "remove": {
+        "title": "Alisin ang {field} sa #{tag}?",
+        "body": "May laman ang {field} sa {filled, plural, one {# tala} other {# tala}}. Mananatili ang mga value na iyon sa mga tala bilang karaniwang property; mawawala ang {empty, plural, one {# walang lamang slot} other {# walang lamang slot}}.",
+        "confirm": "Alisin ang field"
+      },
+      "rename": {
+        "title": "Palitan ang pangalan ng {from} ng {to}",
+        "titleEmpty": "Palitan ang pangalan ng {from}",
+        "label": "Bagong pangalan",
+        "body": "{count, plural, one {# tala ang may} other {# tala ang may}} value na {field}. Pinapalitan ng Memry ang key sa bawat file at sa mga property ng mga ito; makikita rin ng Obsidian ang bagong pangalan.",
+        "progress": "Pinapalitan ang pangalan sa mga tala",
+        "confirm": "Palitan ang pangalan",
+        "taken": "May {name} na ang tag na ito.",
+        "done": "Napalitan ang pangalan ng {from} ng {to} sa {count, plural, one {# item} other {# item}}.",
+        "skipped": "Napalitan ang pangalan ng {from} ng {to} sa {count, plural, one {# item} other {# item}}. {locked, plural, =0 {} one {Matatapos ang # naka-lock na tala kapag na-unlock ito.} other {Matatapos ang # naka-lock na tala kapag na-unlock ang mga ito.}} {existing, plural, =0 {} one {# tala ang may {to} na at itinatago ang dalawa.} other {# tala ang may {to} na at itinatago ang dalawa.}}"
+      },
+      "delete": {
+        "button": "Tanggalin ang tag",
+        "title": "Tanggalin ang #{tag}?",
+        "body": "Aalisin ang #{tag} sa {notes, plural, one {# tala} other {# tala}} at mawawala ang tag kasama ang {fields, plural, one {# field} other {# field}} at template nito.",
+        "bodyNoTemplate": "Aalisin ang #{tag} sa {notes, plural, one {# tala} other {# tala}} at mawawala ang tag kasama ang {fields, plural, one {# field} other {# field}} nito.",
+        "bodyPlain": "Aalisin ang #{tag} sa bawat talang may ganito sa mga tag nito.",
+        "statNotes": "nananatili ang teksto ng mga tala",
+        "statValues": "nananatili ang mga value bilang property",
+        "plainText": "Ang mga talang bumabanggit ng #{tag} sa teksto nila ay itinatago ito bilang karaniwang teksto.",
+        "confirm": "Tanggalin ang tag",
+        "done": "Natanggal ang #{tag}."
+      },
+      "errors": {
+        "addField": "Hindi maidagdag ang field.",
+        "removeField": "Hindi maalis ang field.",
+        "renameField": "Hindi mapalitan ang pangalan ng field.",
+        "moveField": "Hindi mailipat ang field.",
+        "relation": "Hindi ma-save ang relation.",
+        "extends": "Hindi mabago kung ano ang pinapalawak ng tag na ito.",
+        "template": "Hindi ma-update ang template.",
+        "deleteTag": "Hindi matanggal ang tag.",
+        "icon": "Hindi mabago ang icon.",
+        "color": "Hindi mabago ang kulay.",
+        "category": "Hindi mabago ang kategorya."
+      }
+    },
+    "fill": {
+      "action": "Punan mula sa tala",
+      "reading": "Binabasa ang tala…",
+      "disclosure": "Binabasa ng iyong agent model ({model}) ang talang ito para magmungkahi ng mga value. Ang talang ito lang ang ipinapadala. Walang sine-save hangga't hindi mo tinatanggap.",
+      "disclosureLocal": "Binabasa ng iyong lokal na model ({model}) ang talang ito sa device na ito para magmungkahi ng mga value. Walang umaalis sa device, at walang sine-save hangga't hindi mo tinatanggap.",
+      "disclosureMany": "Binabasa nang isa-isa ng iyong agent model ({model}) ang mga talang ito para magmungkahi ng mga value. Ang mga talang iyon lang ang ipinapadala. Walang sine-save hangga't hindi mo tinatanggap.",
+      "disclosureLocalMany": "Binabasa ng iyong lokal na model ({model}) ang mga talang ito sa device na ito para magmungkahi ng mga value. Walang umaalis sa device, at walang sine-save hangga't hindi mo tinatanggap.",
+      "suggest": "Magmungkahi ng mga value",
+      "notNow": "Huwag muna",
+      "countOne": "· {count} mungkahi",
+      "count": "· {count} mungkahi",
+      "dismiss": "Isara",
+      "acceptAll": "Tanggapin lahat",
+      "accept": "Tanggapin ang {field}",
+      "reject": "Tanggihan ang {field}",
+      "notInNote": "Wala sa tala",
+      "createHint": "Gagawa ng bagong #{tag} kapag tinanggap",
+      "nothingFound": "Walang nasa talang ito na pupuno sa mga walang laman na field",
+      "failed": "Hindi makapagmungkahi ng mga value. {message}",
+      "saveFailed": "Hindi ma-save ang mga tinanggap na value",
+      "bulkAction": "Punan ang mga walang laman na field",
+      "bulkTitle": "Punan ang mga walang laman na field",
+      "bulkReading": "{done} sa {total} tala · binabasa ang mga tala…",
+      "bulkRead": "{done} sa {total} tala ang nabasa",
+      "stop": "Ihinto",
+      "name": "Pangalan",
+      "nothingInRow": "Walang nahanap",
+      "found": "{count} ang nahanap",
+      "reviewOneByOne": "Suriin nang isa-isa",
+      "acceptRow": "Tanggapin ang mga value para sa {title}",
+      "rejectRow": "Laktawan ang {title}",
+      "bulkSavedOne": "Napunan ang {count} field sa {notes} tala",
+      "bulkSaved": "Napunan ang {count} field sa {notes} tala"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Gawin ang {title} bilang",
+      "asPrefix": "Gawin",
+      "asSuffix": "bilang",
+      "failed": "Hindi magawa ang tala",
+      "lastUsed": "Huling ginamit",
+      "noteWord": "tala",
+      "plainNote": "Karaniwang tala",
+      "readyMade": "Handang tag",
+      "row": "Gumawa ng “{title}”",
+      "rowHint": "Bilang {types}"
+    },
+    "hover": {
+      "at": "sa",
+      "lastMet": "Huling nakita · {title}",
+      "lastMetOn": "Huling nakita {date} · {title}",
+      "mentionedIn": "{count, plural, one {Binanggit sa # tala} other {Binanggit sa # tala}}",
+      "open": "Buksan",
+      "tasks": "{count, plural, one {# gawain · {field}} other {# gawain · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} sa teksto",
+      "explain": "Sa teksto, label ang tag. Nakalista ang talang ito sa ilalim ng Binanggit sa sa #{tag}.",
+      "made": "Naidagdag ang #{tag} sa mga tag ng talang ito",
+      "make": "Gawing {tag} ang talang ito",
+      "makeFailed": "Hindi maidagdag ang tag",
+      "makeHint": "Idinaragdag ang #{tag} sa header at ipinapakita ang mga field nito",
+      "meta": "{count, plural, one {# object} other {# object}} · {fields, plural, one {# field} other {# field}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# field} other {# field}}",
+      "open": "Buksan ang #{tag}",
+      "remove": "Alisin ang tag sa teksto"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "bilang {field}",
+      "due": "Takda {date}",
+      "inTheText": "sa teksto",
+      "mentionedIn": "Binanggit sa",
+      "tasks": "Mga gawain",
+      "title": "Naka-link dito"
+    },
+    "mention": {
+      "notes": "Mga tala"
+    },
+    "picker": {
+      "create": "Bagong {tag}",
+      "createNamed": "Bagong {tag} na “{title}”",
+      "empty": "Walang tugma",
+      "search": "Maghanap ng {tag}",
+      "untitled": "Bagong {tag}"
+    },
+    "quickFields": {
+      "add": "Idagdag ang {field}",
+      "aria": "Mga unang field ng {title}",
+      "done": "Tapos na",
+      "later": "Mamaya",
+      "newObject": "Bagong {tag}",
+      "saveFailed": "Hindi ma-save ang mga field"
+    },
+    "table": {
+      "untitled": "Bagong {tag}",
+      "newInGroup": "Bagong {tag} sa {group}",
+      "newInGroupHint": "Binubuksan ito ng ⌘↵ sa bagong tab",
+      "new": "Bagong {tag}",
+      "includes": "Kasama sa {field} ang",
+      "removeFilter": "Alisin ang filter",
+      "shown": "{shown} sa {total}",
+      "saveView": "I-save ang view",
+      "mentionedMeta": "{count, plural, one {# tala na may '#'{tag} sa teksto nito} other {# tala na may '#'{tag} sa teksto nila}}",
+      "saveFailed": "Hindi ma-save ang field",
+      "created": "Nagawa ang {title}"
+    },
+    "relationDrop": {
+      "title": "Idagdag ang #{tag} sa “{title}”?",
+      "body": "Ang field na ito ay nagli-link lang ng mga talang may tag na #{tag}. Idinaragdag ng Memry ang #{tag} sa header ng “{title}”, tapos ili-link ito rito.",
+      "confirm": "Idagdag ang #{tag} at i-link",
+      "cancel": "Kanselahin",
+      "added": "Ang “{title}” ay #{tag} na ngayon at naka-link",
+      "notANote": "Mga tala lang ang maaaring i-link dito bilang #{tag}",
+      "failed": "Hindi ma-link ang talang ito"
+    }
+  },
   "names": {
     "also": "kilala rin bilang",
     "add": "Magdagdag ng ibang pangalan",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Maghanap ng notes",
     "pickerEmpty": "Walang tugmang note",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Magdagdag ng mga detalye"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Ipakita nang live ang tala o block mula sa ibang lugar"
+      },
+      "searchPortal": {
+        "title": "Portal ng paghahanap",
+        "subtext": "Live na listahan ng mga block na tumutugma sa query"
+      }
+    },
+    "picker": {
+      "aria": "Pumili ng tala o block na gagawing portal",
+      "notes": "Mga tala",
+      "blocks": "Mga block",
+      "loading": "Naghahanap…",
+      "empty": "Walang tumutugmang tala o block",
+      "hintInsert": "Maglagay ng portal",
+      "hintClose": "Isara",
+      "keyEsc": "Esc",
+      "create": "Gumawa ng tala na “{query}”",
+      "createFailed": "Hindi magawa ang talang iyon",
+      "stampFailed": "Hindi maihanda ang block na iyon para sa portal",
+      "retargetFailed": "Hindi maituro ang portal sa block na iyon"
+    },
+    "insert": {
+      "cycle": "Hindi maipapakita ng portal ang tala sa loob ng sarili nito."
+    },
+    "copy": {
+      "done": "Nakopya ang portal. I-paste ito sa anumang tala.",
+      "failed": "Hindi makopya ang portal para sa block na ito"
+    },
+    "menu": {
+      "copyAsPortal": "Kopyahin bilang portal",
+      "hideInPortal": "Itago sa portal na ito"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Ginagamit sa # pang lugar} other {Ginagamit sa # pang lugar}}"
+    },
+    "whereUsed": {
+      "aria": "Kung saan ginagamit ang block na ito",
+      "portals": "Mga portal",
+      "links": "Mga link",
+      "openBeside": "Buksan sa tabi",
+      "loadFailed": "Hindi ma-load kung saan ipinapakita ang block na ito"
+    },
+    "hiddenBlocks": {
+      "title": "Mga nakatagong block",
+      "showAll": "Ipakita lahat",
+      "search": "Maghanap ng mga nakatagong block",
+      "showFailed": "Hindi maipakita ang block na ito"
+    },
+    "searchQuery": {
+      "titleNew": "Portal ng paghahanap",
+      "titleEdit": "I-edit ang query",
+      "text": "May mga salitang",
+      "textPlaceholder": "Mga salita sa block",
+      "tag": "Tag",
+      "tagPlaceholder": "exam",
+      "limit": "Limitasyon",
+      "footer": "Limitasyon: {limit} resulta.",
+      "create": "Gumawa",
+      "apply": "Ilapat"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Tanggalin ang block na ito sa lahat ng lugar?",
+        "note": "Tanggalin ang talang ito sa lahat ng lugar?"
+      },
+      "description": {
+        "block": "Lumalabas din ang “{title}” sa {count, plural, one {# pang tala} other {# pang tala}}.",
+        "note": "Ipinapakita o naka-link ang “{title}” sa {count, plural, one {# pang tala} other {# pang tala}}."
+      },
+      "manyNotes": "{count} tala",
+      "source": "{title} (pinagmulan)",
+      "removeHere": "Itago na lang dito",
+      "cancel": "Kanselahin",
+      "everywhere": "Tanggalin sa lahat ng lugar",
+      "undoToast": "{count, plural, one {Ipinakita ang natanggal na block sa # pang tala.} other {Ipinakita ang natanggal na block sa # pang tala.}}",
+      "undo": "I-undo"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Buo",
+      "brief": "Maikli",
+      "key": "Susi",
+      "takeaway": "Takeaway",
+      "topic": "Paksa"
+    },
+    "chrome": {
+      "fold": "I-fold ang tala",
+      "unfold": "Naka-fold sa {level}. Ipakita ang buong teksto",
+      "words": "{count, plural, one {# salita} other {# salita}}",
+      "writing": "Sumusulat…",
+      "writtenBy": "Isinulat ni {agent}",
+      "retry": "Nabigo ang huling takbo · Subukan ulit",
+      "retryAction": "Subukan ulit",
+      "captionOff": "I-on ang Ibuod ang mahahabang tala sa Mga setting → AI",
+      "captionNoAgent": "Walang nakakonektang agent · Mga setting → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Mahabang tala? Silipin lang.",
+      "body": "I-fold ito sa mga pangunahing pangungusap, tapos buksan lang ang talatang kailangan mo.",
+      "dismiss": "Sige"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# talata ang bukas} other {# talata ang bukas}}",
+      "escape": "esc",
+      "copy": "Kopyahin bilang teksto",
+      "copied": "Nakopya",
+      "aria": "Naka-fold na view",
+      "hintMac": "Mag-pinch, ⌘-scroll, o mag-scroll sa bar na ito para mag-zoom · i-click ang talata para buksan ito",
+      "hint": "Mag-pinch, Ctrl-scroll, o mag-scroll sa bar na ito para mag-zoom · i-click ang talata para buksan ito"
+    },
+    "view": {
+      "aria": "Naka-fold na view ng {level}",
+      "paragraphOpen": "Nabuksan sa Buo · i-click ulit para i-fold",
+      "paragraphFold": "I-fold ang talatang ito",
+      "paragraphOpenAction": "Buksan nang buo ang talatang ito",
+      "unfoldSection": "I-unfold ang seksyong {heading}",
+      "jumpToParagraph": "Ipakita nang buo ang talatang ito: {topic}",
+      "untitledSection": "Walang pamagat",
+      "skipped": {
+        "code": "… {count, plural, one {# code block} other {# code block}}",
+        "table": "… {count, plural, one {# talahanayan} other {# talahanayan}}",
+        "image": "… {count, plural, one {# larawan} other {# larawan}}",
+        "callout": "… {count, plural, one {# callout} other {# callout}}",
+        "embed": "… {count, plural, one {# embed} other {# embed}}",
+        "other": "… {count, plural, one {# pang block} other {# pang block}}"
+      }
+    }
   }
 }

@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# naka-snooze na item} other {# naka-snooze na item}}",
     "notificationBody": "{count, plural, =1 {Handa nang suriin ang naka-snooze mong item} one {Handa na ang mga naka-snooze mong item} other {Handa na ang mga naka-snooze mong item}}",
     "toast": "{count, plural, =1 {Bumalik na mula sa snooze ang “{itemTitle}”} one {Bumalik na ang # naka-snooze na item} other {Bumalik na ang # naka-snooze na item}}"
+  },
+  "sticky": {
+    "kindLabel": "Ipadala bilang",
+    "kinds": {
+      "note": "Tala",
+      "task": "Gawain",
+      "journal": "Talaarawan"
+    },
+    "placeholders": {
+      "note": "Isulat mo na…",
+      "task": "Tawagan si Ana @bukas #bahay !high",
+      "journal": "Idagdag sa talaarawan ngayong araw…"
+    },
+    "saving": "Sine-save…",
+    "saved": "Na-save",
+    "saveFailed": "Hindi na-save",
+    "tuck": "Itabi",
+    "send": "Ipadala",
+    "hints": "Esc itabi · {mod}⌫ tanggalin",
+    "sendAndCloseHint": "⌥{mod}↵ nagpapadala at nagsasara",
+    "deleted": "Natanggal ang draft",
+    "open": "Buksan",
+    "undo": "I-undo",
+    "sent": {
+      "note": "Na-save sa folder na Sticky",
+      "task": "Naidagdag ang gawain",
+      "journal": "Naidagdag sa talaarawan ngayong araw"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky draft} other {# sticky draft}}",
+      "newSticky": "Bagong sticky"
+    },
+    "errors": {
+      "empty": "Magsulat muna ng kahit ano.",
+      "taskFailed": "Hindi nagawa ang gawain.",
+      "tasksOff": "Naka-off ang Mga gawain sa Mga setting.",
+      "journalOff": "Naka-off ang Talaarawan sa Mga setting.",
+      "sendFailed": "Hindi naipadala ang sticky.",
+      "undoExpired": "Huli na para i-undo ito.",
+      "undoFailed": "Hindi na-undo ang pagpapadala."
+    },
+    "inputLabel": "Teksto ng sticky",
+    "dismissError": "Isara"
   }
 }
