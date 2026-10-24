@@ -6,7 +6,7 @@
  * is the single source of truth for the format — imported by both sides.
  */
 
-import { isObject } from './is-record'
+import { isObject } from './is-record.ts'
 
 export type RemindOffset =
   | 'none'

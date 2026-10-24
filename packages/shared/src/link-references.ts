@@ -21,7 +21,7 @@
  */
 
 import { createFenceTracker } from './markdown-fences'
-import { isObject } from './is-record'
+import { isObject } from './is-record.ts'
 
 export interface LinkReferenceDefinition {
   /** Case-folded, whitespace-collapsed label — the key a usage matches on. */

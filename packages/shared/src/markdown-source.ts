@@ -42,7 +42,7 @@
  * which is what every build before this one wrote.
  */
 
-import { isObject } from './is-record'
+import { isObject } from './is-record.ts'
 
 /**
  * Re-parses markdown through the same pipeline that produced `canonicalNow`.

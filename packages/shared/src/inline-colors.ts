@@ -28,7 +28,7 @@
  * to them keep valid CommonMark flanking (`:*em*:` parses, `x*em*x` does not).
  */
 
-import { isObject } from './is-record'
+import { isObject } from './is-record.ts'
 
 export interface InlineColorStyles {
   textColor?: string

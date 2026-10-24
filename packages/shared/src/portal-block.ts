@@ -36,7 +36,7 @@
  * build cannot read is shown as invalid and its bytes are left alone.
  */
 
-import { isRecord } from './is-record'
+import { isRecord } from './is-record.ts'
 
 /** The fence info string. Also the `codeBlock` `language` prop value. */
 export const PORTAL_BLOCK_LANGUAGE = 'memry-portal'

@@ -10,7 +10,7 @@
  * three, so a stale echo loses on `t` whatever clock carried it.
  */
 
-import { isRecord } from './is-record'
+import { isRecord } from './is-record.ts'
 
 export type JsonValue =
   | string

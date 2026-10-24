@@ -33,7 +33,7 @@
  * the block's "invalid definition" notice and keeps the bytes as they are.
  */
 
-import { isRecord } from './is-record'
+import { isRecord } from './is-record.ts'
 
 /** The fence info string. Also the `codeBlock` `language` prop value. */
 export const VIEW_BLOCK_LANGUAGE = 'memry-view'

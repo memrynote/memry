@@ -7,7 +7,7 @@ import {
   serializeBlockColorsMarker,
   serializeTableCellColorsMarker
 } from './block-colors'
-import { isObject, isRecord } from './is-record'
+import { isObject, isRecord } from './is-record.ts'
 import { applyLinkCard, parseLinkCardMarker, serializeLinkCardMarker } from './link-card-marker'
 
 /**

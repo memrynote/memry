@@ -1,4 +1,4 @@
-import { isRecord } from './is-record'
+import { isRecord } from './is-record.ts'
 import {
   DEFAULT_WIKI_LINK_DISPLAY,
   isWikiLinkSize,

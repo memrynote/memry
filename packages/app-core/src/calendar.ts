@@ -29,6 +29,8 @@ import type {
   CalendarService
 } from './calendar-types.ts'
 
+export type { CalendarService }
+
 function nowIso(): string {
   return new Date().toISOString()
 }

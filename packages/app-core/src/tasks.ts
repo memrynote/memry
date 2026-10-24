@@ -14,6 +14,7 @@ import { deleteTaskBranches } from './task-delete.ts'
 import type { TaskRecord, ProjectRecord, StatusRecord, TasksService } from './tasks-types.ts'
 
 export type { DeleteTaskOptions } from './task-delete.ts'
+export type { TaskRecord, TasksService }
 
 function nowIso(): string {
   return new Date().toISOString()

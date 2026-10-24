@@ -1,4 +1,4 @@
-import { isObject, isRecord } from './is-record'
+import { isObject, isRecord } from './is-record.ts'
 
 export interface BlockColors {
   textColor?: string
