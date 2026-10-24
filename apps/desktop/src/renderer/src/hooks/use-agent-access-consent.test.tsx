@@ -26,7 +26,7 @@ describe('useAgentAccessConsent (#1394)', () => {
         setCalendarGoogleSettings,
         setCalendarProviderSettings
       }
-    } as typeof window.api
+    }
   })
 
   afterEach(() => {
@@ -53,7 +53,7 @@ describe('useAgentAccessConsent (#1394)', () => {
         await result.current.decide(false)
       })
     }
-    expect(asked.sort()).toEqual(['caldav', 'google', 'ics'])
+    expect(asked.toSorted()).toEqual(['caldav', 'google', 'ics'])
     expect(result.current.promptProvider).toBeNull()
   })
 })

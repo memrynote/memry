@@ -77,6 +77,7 @@ function start(): void {
 
   api.onSettingsChanged?.((event) => {
     if (event.key !== 'keyboard') return
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed event value is untyped IPC payload for the keyboard group; fields are defaulted below
     const value = event.value as
       | { overrides?: Record<string, ShortcutBinding>; folderNoteShortcuts?: FolderNoteShortcut[] }
       | undefined

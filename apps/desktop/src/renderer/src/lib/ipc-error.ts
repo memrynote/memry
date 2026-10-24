@@ -81,6 +81,7 @@ export function unwrapIpcResult<T>(
   if (result && typeof result === 'object' && (result as { success?: boolean }).success === false) {
     throw new Error((result as { error?: string }).error || fallback)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the envelope check above proved `result` is not the failure shape, so it is the caller's T
   return result as T
 }
 

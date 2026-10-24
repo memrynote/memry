@@ -76,9 +76,7 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
 
   const allReminders = useMemo(
     () =>
-      [...reminders].sort(
-        (a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime()
-      ),
+      reminders.toSorted((a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime()),
     [reminders]
   )
 

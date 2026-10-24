@@ -53,7 +53,7 @@ export function useSystemFonts(enabled: boolean): SystemFontsState {
         // face rather than copying or spreading the object.
         const families = [
           ...new Set(fonts.map((font) => sanitizeFontFamilyName(font.family)).filter(Boolean))
-        ].sort((a, b) => a.localeCompare(b))
+        ].toSorted((a, b) => a.localeCompare(b))
         setState(families.length > 0 ? { status: 'ready', families } : { status: 'unavailable' })
       } catch (error) {
         log.warn('Failed to enumerate local fonts', error)

@@ -68,9 +68,11 @@ function toEntry(id: ShortcutId): ShortcutEntry {
   }
 }
 
-export const SHORTCUT_ENTRIES: readonly ShortcutEntry[] = (
-  Object.keys(COMMANDS) as CommandId[]
-).flatMap((id) => ('keyboard' in COMMANDS[id] ? [toEntry(id as ShortcutId)] : []))
+export const SHORTCUT_ENTRIES: readonly ShortcutEntry[] =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; the keys are COMMANDS' own
+  (Object.keys(COMMANDS) as CommandId[])
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `'keyboard' in COMMANDS[id]` proved this command is a shortcut command
+    .flatMap((id) => ('keyboard' in COMMANDS[id] ? [toEntry(id as ShortcutId)] : []))
 
 /** Display order of the groups in Settings → Shortcuts. */
 export const SHORTCUT_GROUP_ORDER: readonly CommandGroup[] = [

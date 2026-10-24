@@ -203,10 +203,11 @@ describe('useTasksLinkedToNote', () => {
       const tasks = [createMockTask({ id: 'task-1' })]
 
       ;(window.api.tasks.getLinkedTasks as ReturnType<typeof vi.fn>).mockResolvedValue(tasks)
+      const initialProps: { noteId: string | null } = { noteId: 'note-1' }
 
       const { result, rerender } = renderHook(({ noteId }) => useTasksLinkedToNote(noteId), {
         wrapper,
-        initialProps: { noteId: 'note-1' as string | null }
+        initialProps
       })
 
       await waitFor(() => {

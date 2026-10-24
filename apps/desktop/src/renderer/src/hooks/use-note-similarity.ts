@@ -28,7 +28,7 @@ function useRefreshOnContentChange(
 ): void {
   const queryClient = useQueryClient()
   useEffect(() => {
-    if (!noteId || !enabled) return
+    if (!noteId || !enabled) return undefined
     return onNoteUpdated((event) => {
       if (event.id !== noteId && event.changes.content === undefined) return
       void queryClient.invalidateQueries({ queryKey: key(noteId) })
@@ -44,6 +44,7 @@ export function useSimilarNotes(noteId: string | null): SimilarNoteItem[] {
 
   const { data } = useQuery({
     queryKey: similarityKeys.similar(noteId ?? ''),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a noteId
     queryFn: () => notesService.getSimilar(noteId as string),
     enabled,
     staleTime: STALE_TIME
@@ -62,6 +63,7 @@ export function useTagSuggestions(
 
   const { data } = useQuery({
     queryKey: similarityKeys.tagSuggestions(noteId ?? ''),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a noteId
     queryFn: () => notesService.getTagSuggestions(noteId as string),
     enabled,
     staleTime: STALE_TIME

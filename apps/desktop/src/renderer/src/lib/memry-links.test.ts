@@ -129,7 +129,7 @@ describe('parseMemryHref anchors', () => {
     // written before anchors existed.
     const parsed = parseMemryHref('memry://note/n1')
     expect(parsed).toEqual({ kind: 'note', id: 'n1', label: null })
-    expect(Object.keys(parsed ?? {}).sort()).toEqual(['id', 'kind', 'label'])
+    expect(Object.keys(parsed ?? {}).toSorted()).toEqual(['id', 'kind', 'label'])
   })
 
   it.each([

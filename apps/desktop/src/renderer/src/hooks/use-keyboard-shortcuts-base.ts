@@ -51,6 +51,7 @@ export const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.pl
 /**
  * Get platform-specific modifier key label
  */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default; falls through to undefined only for off-type input, kept to preserve that
 export const getModifierSymbol = (modifier: 'meta' | 'ctrl' | 'shift' | 'alt'): string => {
   switch (modifier) {
     case 'meta':
@@ -237,6 +238,7 @@ export const useKeyboardShortcuts = (
       // half-open vault.
       if (getVaultSwitchState().pending) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
       const target = e.target as HTMLElement
 
       // Check if typing in input/textarea

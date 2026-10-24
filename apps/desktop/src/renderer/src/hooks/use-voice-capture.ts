@@ -175,6 +175,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         setDuration(0)
       }
 
+      // oxlint-disable-next-line unicorn/prefer-add-event-listener -- tests drive the onerror property of their MediaRecorder mock
       mediaRecorder.onerror = (event) => {
         log.error('MediaRecorder error', event)
         optionsRef.current.onError({ kind: 'recorder-failed', cause: event })

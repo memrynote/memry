@@ -18,8 +18,8 @@ const byDueDate = (a: Task, b: Task): number => {
 }
 
 const summarize = (tasks: Task[]): NoteTasks => {
-  const open = tasks.filter((task) => !task.completedAt).sort(byDueDate)
-  const done = tasks.filter((task) => task.completedAt).sort(byDueDate)
+  const open = tasks.filter((task) => !task.completedAt).toSorted(byDueDate)
+  const done = tasks.filter((task) => task.completedAt).toSorted(byDueDate)
   return {
     tasks: [...open, ...done],
     total: tasks.length,

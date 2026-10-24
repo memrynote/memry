@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import i18next from 'i18next'
+import { getFixedT } from 'i18next'
 import type { RepeatConfig, RepeatFrequency } from '@/data/task-model'
 import type { RepeatLabelTranslator } from './repeat-utils'
 import {
@@ -44,7 +44,7 @@ import {
 
 // `setup-dom.ts` initializes i18next with English resources synchronously, so a
 // fixed-namespace `t` function is available here without an explicit provider.
-const t = i18next.getFixedT('en', 'common') as RepeatLabelTranslator
+const t: RepeatLabelTranslator = getFixedT('en', 'common')
 
 // ============================================================================
 // MOCK FACTORIES

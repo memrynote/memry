@@ -35,6 +35,12 @@ const folderSortKey = (folderPath: string): string => `${folderPath.toLowerCase(
 const noteSortKey = (folderPath: string, title: string): string =>
   `${folderPath ? `${folderPath.toLowerCase()}/` : ''}\u0000${title.toLowerCase()}`
 
+const add = (map: Map<string, Set<string>>, key: string, taskId: string): void => {
+  const set = map.get(key)
+  if (set) set.add(taskId)
+  else map.set(key, new Set([taskId]))
+}
+
 /**
  * Folders and notes that hold at least one of `tasks`, as a tree in display
  * order. Selected entries stay listed even when nothing in `tasks` is filed
@@ -50,11 +56,6 @@ export const buildTaskLocationOptions = (
 ): TaskLocationOption[] => {
   const noteTasks = new Map<string, Set<string>>()
   const folderTasks = new Map<string, Set<string>>()
-  const add = (map: Map<string, Set<string>>, key: string, taskId: string): void => {
-    const set = map.get(key)
-    if (set) set.add(taskId)
-    else map.set(key, new Set([taskId]))
-  }
 
   for (const task of tasks) {
     if (task.parentId !== null) continue

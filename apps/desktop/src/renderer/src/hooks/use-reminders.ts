@@ -192,7 +192,7 @@ export function useRemindersForTarget(
 
   // Subscribe to events for real-time updates
   useEffect(() => {
-    if (!targetId) return
+    if (!targetId) return undefined
 
     const invalidateIfMatching = (event: Parameters<typeof eventMatchesTarget>[0]): void => {
       if (!eventMatchesTarget(event, targetType, targetId)) return

@@ -188,7 +188,7 @@ export const useDragHandlers = ({
       case 'move-project':
         if (lastAction.previousProjectId) {
           lastAction.taskIds.forEach((id) => {
-            const task = tasks.find((t) => t.id === id)
+            const task = tasks.find((candidate) => candidate.id === id)
             if (task) {
               // Find the target project and get default status
               const targetProject = projects.find((p) => p.id === lastAction.previousProjectId)
@@ -287,7 +287,7 @@ export const useDragHandlers = ({
       // Store previous dates for undo
       const previousDates = new Map<string, Date | null>()
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         previousDates.set(id, task?.dueDate || null)
       })
 
@@ -318,12 +318,12 @@ export const useDragHandlers = ({
       if (!targetStatus) return
 
       // Store previous status for undo (using first task's status)
-      const firstTask = tasks.find((t) => taskIds.includes(t.id))
+      const firstTask = tasks.find((candidate) => taskIds.includes(candidate.id))
       const previousStatusId = firstTask?.statusId
 
       // Update all tasks
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         if (!task) return
 
         const updates: Partial<Task> = {
@@ -362,7 +362,7 @@ export const useDragHandlers = ({
     (taskIds: string[], priority: Priority) => {
       const previousPriorities = new Map<string, Priority>()
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         if (task) previousPriorities.set(id, task.priority)
       })
 
@@ -395,7 +395,7 @@ export const useDragHandlers = ({
       const previousStatusIds = new Map<string, string>()
 
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         if (!task) return
 
         previousStatusIds.set(id, task.statusId)
@@ -443,14 +443,14 @@ export const useDragHandlers = ({
       const previousDates = new Map<string, Date | null>()
       const previousTimes = new Map<string, string | null>()
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         previousDates.set(id, task?.dueDate || null)
         previousTimes.set(id, task?.dueTime ?? null)
       })
 
       // Update all tasks
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         const nextDueTime = changesTime ? (options.dueTime ?? null) : (task?.dueTime ?? null)
         const durationMinutes = droppedDuration(
           task?.dueTime,
@@ -500,12 +500,12 @@ export const useDragHandlers = ({
       if (!targetProject) return
 
       // Store previous project for undo (using first task's project)
-      const firstTask = tasks.find((t) => taskIds.includes(t.id))
+      const firstTask = tasks.find((candidate) => taskIds.includes(candidate.id))
       const previousProjectId = firstTask?.projectId
 
       // Update all tasks
       taskIds.forEach((id) => {
-        const task = tasks.find((t) => t.id === id)
+        const task = tasks.find((candidate) => candidate.id === id)
         if (!task) return
 
         // Find current status type and map to new project
@@ -754,7 +754,7 @@ export const useDragHandlers = ({
   // Handle dropping on trash (delete)
   const handleTrashDrop = useCallback(
     (taskIds: string[]) => {
-      const _tasksToDelete = tasks.filter((t) => taskIds.includes(t.id))
+      const _tasksToDelete = tasks.filter((candidate) => taskIds.includes(candidate.id))
 
       taskIds.forEach((id) => {
         onDeleteTask(id)
@@ -817,8 +817,10 @@ export const useDragHandlers = ({
         dragState.overId !== null &&
         dragState.overSectionId !== null &&
         eventOverData?.type === 'column' &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
         ((eventOverData?.sectionId as string | undefined) ?? null) === dragState.overSectionId
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
       const overId = shouldPreferRowHoverTarget ? dragState.overId : (over.id as string)
       const overData = shouldPreferRowHoverTarget
         ? {
@@ -826,6 +828,7 @@ export const useDragHandlers = ({
             type: 'task',
             sectionId: dragState.overSectionId,
             columnId:
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
               dragState.overColumnId ?? (eventOverData?.columnId as string | undefined) ?? null
           }
         : eventOverData
@@ -843,10 +846,12 @@ export const useDragHandlers = ({
           if (!overId) break
 
           const overSectionId = overData?.sectionId
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const overSectionTaskIds = overData?.sectionTaskIds as string[] | undefined
           const overColumnId = overData?.columnId
           const sourceSectionId = dragState.sourceContainerId
           const sourceSectionTaskIds =
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
             (event.active.data.current?.sectionTaskIds as string[] | undefined) ?? taskIds
 
           if (
@@ -890,6 +895,7 @@ export const useDragHandlers = ({
               targetSectionTaskIds: overSectionTaskIds,
               overId,
               overColumnId,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
               overTask: overData?.task as Task | undefined,
               overTaskEdge: dropTaskEdge,
               sectionDropPosition: dragState.sectionDropPosition
@@ -918,6 +924,7 @@ export const useDragHandlers = ({
               }
             }
           } else if (overSectionId && overSectionId !== sourceSectionId) {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
             const overTask = overData?.task as Task | undefined
             if (overTask?.dueDate) {
               handleSectionDrop(taskIds, overTask.dueDate, overSectionId)
@@ -927,18 +934,24 @@ export const useDragHandlers = ({
         }
 
         case 'section': {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const targetDate = overData?.date as Date | null
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const sectionLabel = overData?.label as string
           handleSectionDrop(taskIds, targetDate, sectionLabel)
           break
         }
 
         case 'column': {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const targetColumnId = (overData?.columnId || overId) as string
           const sourceSectionId = dragState.sourceContainerId
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const targetSectionId = (overData?.sectionId as string | undefined) ?? null
           const sourceSectionTaskIds =
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
             (event.active.data.current?.sectionTaskIds as string[] | undefined) ?? taskIds
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const targetSectionTaskIds = overData?.sectionTaskIds as string[] | undefined
 
           if (
@@ -987,7 +1000,9 @@ export const useDragHandlers = ({
         }
 
         case 'weekday': {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const weekdayDate = overData?.date as Date | undefined
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const weekdayLabel = overData?.label as string
           if (weekdayDate) {
             handleSectionDrop(taskIds, weekdayDate, weekdayLabel)
@@ -996,6 +1011,7 @@ export const useDragHandlers = ({
         }
 
         case 'date': {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const targetDate = overData?.date as Date
           if (targetDate) {
             handleDateDrop(taskIds, targetDate, resolveDropOptions(overData, event))
@@ -1004,6 +1020,7 @@ export const useDragHandlers = ({
         }
 
         case 'project': {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; its shape is set by the draggable/droppable registrations
           const targetProjectId = overData?.projectId as string
           if (targetProjectId) {
             handleProjectDrop(taskIds, targetProjectId)

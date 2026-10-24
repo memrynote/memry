@@ -76,7 +76,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
 
   // Combine and sort all reminders
   const allReminders = useMemo(() => {
-    return [...noteReminders, ...highlightReminders].sort(
+    return [...noteReminders, ...highlightReminders].toSorted(
       (a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime()
     )
   }, [noteReminders, highlightReminders])
@@ -100,7 +100,7 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
    */
   const replaceableReminder = useMemo(() => {
     const active = noteReminders.filter((r) => r.status === 'pending' || r.status === 'snoozed')
-    const sorted = [...active].sort(
+    const sorted = active.toSorted(
       (a, b) => new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime()
     )
     return sorted[0] ?? null

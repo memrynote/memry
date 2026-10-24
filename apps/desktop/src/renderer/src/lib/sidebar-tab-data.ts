@@ -42,6 +42,7 @@ export const noteTabData = (note: NoteLike): OpenTargetTab => {
     }
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- note.fileType is the persisted string; unknown values flow through to the generic file branch
   const fileType = (note.fileType ?? 'markdown') as FileType
   const isMarkdown = fileType === 'markdown'
 

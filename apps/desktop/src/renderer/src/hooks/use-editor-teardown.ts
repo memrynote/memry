@@ -90,6 +90,7 @@ export function useEditorTeardown(
     }
 
     return () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- editor is typed unknown by callers; _tiptapEditor is the tiptap-react host shape
       const tiptap = (editor as TiptapHost | null)?._tiptapEditor
       const destroy = (): void => {
         try {
@@ -97,6 +98,7 @@ export function useEditorTeardown(
         } catch (error) {
           log.warn('Failed to destroy editor on unmount', error)
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- ProseMirror debug handle is a runtime global absent from the Window type
         const globalHandle = window as unknown as { ProseMirror?: unknown }
         if (tiptap && globalHandle.ProseMirror === tiptap) {
           delete globalHandle.ProseMirror

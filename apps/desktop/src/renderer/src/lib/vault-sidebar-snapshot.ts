@@ -41,6 +41,7 @@ const memory = new Map<string, string>()
  * focus targets, and no ids or tour anchors that would duplicate live ones.
  */
 export function serializeSidebarSnapshot(root: Element): string {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- cloneNode returns Node; cloning an Element yields an Element
   const clone = root.cloneNode(true) as Element
   for (const el of clone.querySelectorAll(REMOVED_ELEMENTS)) el.remove()
   for (const el of [clone, ...clone.querySelectorAll('*')]) {
@@ -108,6 +109,7 @@ export function resetVaultSidebarSnapshots(): void {
  * `--tint` alone would leave them on the open vault's colour.
  */
 export function vaultTintStyle(accent: string): CSSProperties {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- React CSSProperties has no index signature for custom properties (`--tint` etc.)
   return {
     '--user-accent-color': accent,
     '--tint': accent,

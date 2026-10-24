@@ -70,7 +70,7 @@ export function useToggleTagOnActiveTagTab(): (tag: string) => boolean {
     (tag: string): boolean => {
       if (!saveTabState || !getActiveTabSnapshot) return false
       const tab = getActiveTabSnapshot()
-      if (!tab || tab.type !== 'tag' || !tab.entityId) return false
+      if (tab?.type !== 'tag' || !tab.entityId) return false
       if (tagKey(tag) === tagKey(tab.entityId)) return false
 
       const current = parseTagAndTags(tab.viewState?.[FOLDER_VIEW_STATE_KEYS.tagAndTags]) ?? []

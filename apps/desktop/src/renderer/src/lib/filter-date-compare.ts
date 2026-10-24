@@ -49,9 +49,10 @@ function toLocalDay(value: unknown): string | null {
   return date ? toPlainDay(date) : null
 }
 
+const pad = (n: number): string => String(n).padStart(2, '0')
+
 /** The local calendar day of `date` as `YYYY-MM-DD`, the shape the date picker stores. */
 export function toPlainDay(date: Date): string {
-  const pad = (n: number): string => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 

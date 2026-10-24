@@ -74,7 +74,7 @@ export function fullTagSelection(primaryTag: string, andTags: readonly string[])
  */
 export function sameTagSelection(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false
-  const sortedA = [...a].map(tagKey).sort()
-  const sortedB = [...b].map(tagKey).sort()
+  const sortedA = [...a].map(tagKey).toSorted()
+  const sortedB = [...b].map(tagKey).toSorted()
   return sortedA.every((value, index) => value === sortedB[index])
 }

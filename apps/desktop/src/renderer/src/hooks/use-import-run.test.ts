@@ -245,12 +245,9 @@ describe('useImportRun', () => {
 
     // No flattening to a display string, and no translation at this layer.
     expect(result.current.progress?.status).toEqual(status)
-    expect((result.current.progress?.status as ImportMessage).code).toBe(
-      'import.warning.attachmentMissing'
-    )
-    expect((result.current.progress?.status as ImportMessage).params).toEqual({
-      name: 'logo.png',
-      count: 2
+    expect(result.current.progress?.status).toMatchObject({
+      code: 'import.warning.attachmentMissing',
+      params: { name: 'logo.png', count: 2 }
     })
   })
 

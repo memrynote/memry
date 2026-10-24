@@ -59,7 +59,8 @@ export function groupItemsByTimePeriod<T>(
   items.forEach((item) => {
     const itemDate = dateAccessor
       ? dateAccessor(item)
-      : getItemDate(item as InboxItem | InboxItemListItem)
+      : // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- without a dateAccessor, callers group InboxItem or InboxItemListItem; T is not constrained to them
+        getItemDate(item as InboxItem | InboxItemListItem)
     if (isSameDay(itemDate, now)) {
       groups.TODAY.push(item)
     } else if (isSameDay(itemDate, yesterday)) {

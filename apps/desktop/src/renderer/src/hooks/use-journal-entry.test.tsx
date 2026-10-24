@@ -52,6 +52,7 @@ describe('useJournalEntry dedicated hook', () => {
     ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(
       createMockJournalEntry({ date: '2026-05-10', content: 'Existing' })
     )
+    // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockImplementation((input) =>
       Promise.resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
     )
@@ -218,6 +219,7 @@ describe('useJournalEntry dedicated hook', () => {
     await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
     let finishFirstSave: () => void = () => {}
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
       (input) =>
         new Promise((resolve) => {
           finishFirstSave = () => resolve(createMockJournalEntry({ date: input.date }))
@@ -453,6 +455,7 @@ describe('useJournalEntry dedicated hook', () => {
       let finishFirstSave: () => void = () => {}
       updateEntry.mockClear()
       updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
         (input: { date: string; content?: string }) =>
           new Promise((resolve) => {
             finishFirstSave = () =>
@@ -477,6 +480,7 @@ describe('useJournalEntry dedicated hook', () => {
       act(() => {
         flush = flushAllPendingSaves().then(() => {
           flushed = true
+          return undefined
         })
       })
       await act(async () => {

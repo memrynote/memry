@@ -19,12 +19,13 @@ export type ResolvedTasksFilter =
   | { kind: 'view'; viewId: TaskWidgetView }
   | { kind: 'saved'; savedFilterId: string }
 
+const isTaskWidgetView = (value: string): value is TaskWidgetView =>
+  (TASK_WIDGET_VIEWS as ReadonlySet<string>).has(value)
+
 /** Configs written before the widget adopted the Tasks page windows still say `week`. */
 function normalizeView(dateRange: string): TaskWidgetView {
   if (dateRange === 'week' || dateRange === 'upcoming') return 'next7'
-  return TASK_WIDGET_VIEWS.has(dateRange as TaskWidgetView)
-    ? (dateRange as TaskWidgetView)
-    : 'today'
+  return isTaskWidgetView(dateRange) ? dateRange : 'today'
 }
 
 /** What the header pill should reflect: a saved filter wins, otherwise a date view (default today). */

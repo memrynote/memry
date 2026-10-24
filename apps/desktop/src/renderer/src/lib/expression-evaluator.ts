@@ -587,6 +587,7 @@ export function evaluateAST(node: ASTNode, context: FormulaContext): unknown {
       // Handle property access on evaluated value
       const obj = evaluateAST(node.object, context)
       if (obj && typeof obj === 'object' && node.property in obj) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `in` check proved the property exists on this object; the AST value is dynamic user-expression data
         return (obj as Record<string, unknown>)[node.property]
       }
       return undefined
@@ -792,7 +793,7 @@ export function evaluateFormulaWithContext(expression: string, context: FormulaC
  * Get list of available built-in functions.
  */
 export function getBuiltInFunctions(): string[] {
-  return Object.keys(BUILT_IN_FUNCTIONS).sort()
+  return Object.keys(BUILT_IN_FUNCTIONS).toSorted()
 }
 
 /**

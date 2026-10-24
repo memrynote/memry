@@ -65,6 +65,7 @@ const BASE_STATE = {
  * is only a journal reminder whose `targetId` is not a real calendar day. The
  * caller reports it instead of opening some other date.
  */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; every case returns, the implicit end is unreachable and must keep returning undefined for unknown runtime values
 export function buildReminderTargetTab(input: ReminderTargetInput): ReminderTargetTab | null {
   const { targetType, targetId, targetTitle, projectId, fallbacks } = input
 

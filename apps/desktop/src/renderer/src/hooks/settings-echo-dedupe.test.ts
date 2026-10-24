@@ -43,7 +43,7 @@ const CASES: SettingsCase[] = [
     key: 'general',
     loaded: { theme: 'dark', fontSize: 14, language: 'en' },
     change: { theme: 'light' },
-    render: () => useGeneralSettings(),
+    render: useGeneralSettings,
     read: (s) => s.theme,
     expected: 'light'
   },
@@ -53,7 +53,7 @@ const CASES: SettingsCase[] = [
     key: 'editor',
     loaded: { width: 'normal', toolbarMode: 'floating', spellCheck: false },
     change: { width: 'full' },
-    render: () => useEditorSettings(),
+    render: useEditorSettings,
     read: (s) => s.width,
     expected: 'full'
   },
@@ -69,7 +69,7 @@ const CASES: SettingsCase[] = [
       showStatsFooter: false
     },
     change: { showTasks: false },
-    render: () => useJournalSettings(),
+    render: useJournalSettings,
     read: (s) => s.showTasks,
     expected: false
   },
@@ -79,7 +79,7 @@ const CASES: SettingsCase[] = [
     key: 'tabs',
     loaded: { restoreSessionOnStart: true, tabCloseButton: 'hover' },
     change: { tabCloseButton: 'always' },
-    render: () => useTabPreferences(),
+    render: useTabPreferences,
     read: (s) => s.tabCloseButton,
     expected: 'always'
   },
@@ -89,7 +89,7 @@ const CASES: SettingsCase[] = [
     key: 'inbox',
     loaded: { reviewReminderEnabled: false, reviewReminderTime: '09:00' },
     change: { reviewReminderTime: '18:30' },
-    render: () => useInboxPreferences(),
+    render: useInboxPreferences,
     read: (s) => s.reviewReminderTime,
     expected: '18:30'
   },
@@ -99,7 +99,7 @@ const CASES: SettingsCase[] = [
     key: 'keyboard',
     loaded: { overrides: {}, globalCapture: null },
     change: { globalCapture: 'CommandOrControl+Shift+K' },
-    render: () => useKeyboardSettings(),
+    render: useKeyboardSettings,
     read: (s) => s.globalCapture,
     expected: 'CommandOrControl+Shift+K'
   },
@@ -109,7 +109,7 @@ const CASES: SettingsCase[] = [
     key: 'noteEditor',
     loaded: { toolbarMode: 'floating' },
     change: { toolbarMode: 'fixed' },
-    render: () => useNoteEditorSettings(),
+    render: useNoteEditorSettings,
     read: (s) => s.toolbarMode,
     expected: 'fixed'
   },
@@ -119,7 +119,7 @@ const CASES: SettingsCase[] = [
     key: 'calendar',
     loaded: { dayCellClickBehavior: 'journal', calendarPageClickOverride: 'calendar' },
     change: { dayCellClickBehavior: 'calendar' },
-    render: () => useCalendarPreferences(),
+    render: useCalendarPreferences,
     read: (s) => s.dayCellClickBehavior,
     expected: 'calendar'
   }
@@ -150,7 +150,7 @@ describe('settings:changed echo dedupe (#1063)', () => {
     await waitFor(() => {
       expect(rendered.result.current.isLoading).toBe(false)
     })
-    return rendered as never
+    return rendered
   }
 
   for (const testCase of CASES) {

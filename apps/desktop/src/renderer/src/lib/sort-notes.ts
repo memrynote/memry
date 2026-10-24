@@ -47,7 +47,7 @@ function compareNonEmpty(a: unknown, b: unknown): number {
 export function sortNotes(notes: NoteWithProperties[], order?: OrderEntry[]): NoteWithProperties[] {
   if (!order || order.length === 0) return notes
 
-  return [...notes].sort((na, nb) => {
+  return [...notes].toSorted((na, nb) => {
     for (const { property, direction } of order) {
       const av = getSortValue(na, property)
       const bv = getSortValue(nb, property)

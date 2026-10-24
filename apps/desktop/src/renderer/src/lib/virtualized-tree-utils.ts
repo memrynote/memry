@@ -114,20 +114,20 @@ export const VIRTUALIZATION_THRESHOLD = 100
 // Utility Functions
 // ============================================================================
 
+function countFolder(folder: FolderNode): number {
+  let folderCount = 1 // The folder itself
+  folderCount += folder.notes.length
+  for (const child of folder.children) {
+    folderCount += countFolder(child)
+  }
+  return folderCount
+}
+
 /**
  * Count total items in a tree structure (folders + notes)
  */
 export function countTreeItems(tree: TreeStructure): number {
   let count = tree.rootNotes.length
-
-  function countFolder(folder: FolderNode): number {
-    let folderCount = 1 // The folder itself
-    folderCount += folder.notes.length
-    for (const child of folder.children) {
-      folderCount += countFolder(child)
-    }
-    return folderCount
-  }
 
   for (const folder of tree.folders) {
     count += countFolder(folder)
@@ -270,5 +270,5 @@ export function dropGapStartIndex(
  */
 export function withPinnedIndex(indexes: number[], pinnedIndex: number): number[] {
   if (pinnedIndex < 0 || indexes.includes(pinnedIndex)) return indexes
-  return [...indexes, pinnedIndex].sort((a, b) => a - b)
+  return [...indexes, pinnedIndex].toSorted((a, b) => a - b)
 }

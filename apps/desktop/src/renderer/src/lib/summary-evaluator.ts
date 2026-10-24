@@ -152,6 +152,7 @@ function computeMin(values: unknown[]): number | string | null {
 
     // Try as number
     if (typeof value === 'number' && !isNaN(value)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the accumulator mixes numbers and Dates across rows; relational operators coerce both to numbers, which is the existing semantics
       if (min === null || value < (min as number)) {
         min = value
       }
@@ -162,6 +163,7 @@ function computeMin(values: unknown[]): number | string | null {
     if (typeof value === 'string') {
       const date = new Date(value)
       if (!isNaN(date.getTime())) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the accumulator mixes numbers and Dates across rows; relational operators coerce both to numbers, which is the existing semantics
         if (min === null || date < (min as Date)) {
           min = date
         }
@@ -171,6 +173,7 @@ function computeMin(values: unknown[]): number | string | null {
       // Try as numeric string
       const num = parseFloat(value)
       if (!isNaN(num)) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the accumulator mixes numbers and Dates across rows; relational operators coerce both to numbers, which is the existing semantics
         if (min === null || num < (min as number)) {
           min = num
         }
@@ -194,6 +197,7 @@ function computeMax(values: unknown[]): number | string | null {
 
     // Try as number
     if (typeof value === 'number' && !isNaN(value)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the accumulator mixes numbers and Dates across rows; relational operators coerce both to numbers, which is the existing semantics
       if (max === null || value > (max as number)) {
         max = value
       }
@@ -204,6 +208,7 @@ function computeMax(values: unknown[]): number | string | null {
     if (typeof value === 'string') {
       const date = new Date(value)
       if (!isNaN(date.getTime())) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the accumulator mixes numbers and Dates across rows; relational operators coerce both to numbers, which is the existing semantics
         if (max === null || date > (max as Date)) {
           max = date
         }
@@ -213,6 +218,7 @@ function computeMax(values: unknown[]): number | string | null {
       // Try as numeric string
       const num = parseFloat(value)
       if (!isNaN(num)) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the accumulator mixes numbers and Dates across rows; relational operators coerce both to numbers, which is the existing semantics
         if (max === null || num > (max as number)) {
           max = num
         }
@@ -265,7 +271,7 @@ function computeCountBy(values: unknown[]): string {
   if (counts.size === 0) return ''
 
   // Sort by count (descending), then alphabetically
-  const sorted = Array.from(counts.entries()).sort((a, b) => {
+  const sorted = Array.from(counts.entries()).toSorted((a, b) => {
     if (b[1] !== a[1]) return b[1] - a[1]
     return a[0].localeCompare(b[0])
   })

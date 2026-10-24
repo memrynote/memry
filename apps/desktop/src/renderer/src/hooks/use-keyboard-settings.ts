@@ -53,6 +53,7 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'keyboard') {
         setSettings((prev) =>
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings:changed event.value is unknown; the patch shape is fixed by the settings key this listener filtered on
           mergeSettingsPatch(prev, event.value as Partial<KeyboardShortcutsDTO>)
         )
       }

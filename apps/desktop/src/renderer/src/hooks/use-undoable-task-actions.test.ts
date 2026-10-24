@@ -112,7 +112,7 @@ describe('useUndoableTaskActions', () => {
       const task = makeTask({ id: 'new-task', title: 'New' })
 
       act(() => {
-        result.current.createTask(task)
+        void result.current.createTask(task)
       })
 
       expect(deps.addTask).toHaveBeenCalledWith(task)
@@ -138,7 +138,7 @@ describe('useUndoableTaskActions', () => {
       const task = makeTask({ id: 'new-task', title: 'New' })
 
       act(() => {
-        result.current.createTask(task)
+        void result.current.createTask(task)
       })
 
       expect(deps.registerUndo).toHaveBeenCalledWith(
@@ -152,7 +152,7 @@ describe('useUndoableTaskActions', () => {
       const task = makeTask({ id: 'new-task', title: 'New' })
 
       act(() => {
-        result.current.createTask(task)
+        void result.current.createTask(task)
       })
 
       // #when — execute the registered undo function

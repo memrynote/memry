@@ -93,7 +93,7 @@ describe('useTagCategories', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.categories).toHaveLength(0)
-    expect(result.current.uncategorized.map((t) => t.tag).sort()).toEqual(['idea', 'meetings'])
+    expect(result.current.uncategorized.map((t) => t.tag).toSorted()).toEqual(['idea', 'meetings'])
   })
 
   it('surfaces a failed load as an error string', async () => {

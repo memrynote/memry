@@ -25,7 +25,7 @@ beforeEach(() => {
   window.api = {
     ...originalApi,
     settings: { ...originalApi?.settings, getGraphViews, setGraphViews }
-  } as typeof window.api
+  }
 })
 
 afterEach(() => {

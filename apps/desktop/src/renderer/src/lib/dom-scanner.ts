@@ -39,7 +39,7 @@ const isEnabled = (el: HTMLElement): boolean => {
 
 const isInsideOverlay = (el: HTMLElement): boolean => {
   const overlay = document.getElementById(HINT_OVERLAY_ID)
-  return overlay !== null && overlay.contains(el)
+  return overlay?.contains(el) ?? false
 }
 
 export const scanClickableElements = (): HTMLElement[] => {

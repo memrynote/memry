@@ -63,8 +63,8 @@ export const useRevealInSidebar = (
    */
   const findItem = useCallback(
     (path: string, entityId?: string): SidebarItem | null => {
-      const search = (items: SidebarItem[]): SidebarItem | null => {
-        for (const item of items) {
+      const search = (siblings: SidebarItem[]): SidebarItem | null => {
+        for (const item of siblings) {
           // Match by entityId first (more specific)
           if (entityId && item.entityId === entityId) {
             return item
@@ -133,9 +133,11 @@ export const useRevealInSidebar = (
       }
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event listener needs EventListener; handler reads CustomEvent detail
     window.addEventListener('reveal-in-sidebar', handleReveal as EventListener)
 
     return () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event listener needs EventListener; handler reads CustomEvent detail
       window.removeEventListener('reveal-in-sidebar', handleReveal as EventListener)
     }
   }, [findItem, scrollToItem, setHighlightedItemId, expandSection])

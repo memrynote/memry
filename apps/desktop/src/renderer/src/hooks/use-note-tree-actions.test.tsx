@@ -193,7 +193,7 @@ describe('useNoteTreeActions', () => {
     vi.mocked(notesService.create).mockResolvedValue({
       success: true,
       note: createNote('created', 'Other/New note.md')
-    } as never)
+    })
     vi.mocked(notesService.renameFolder).mockResolvedValue(true)
     vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
@@ -472,7 +472,7 @@ describe('useNoteTreeActions', () => {
     vi.mocked(notesService.create).mockResolvedValueOnce({
       success: true,
       note: { id: 'created', title: 'Created', path: 'Work/Created.md' }
-    } as never)
+    })
     await act(async () => {
       await result.current.handleCreateNoteInFolder('Work')
     })
@@ -599,7 +599,7 @@ describe('useNoteTreeActions', () => {
     vi.mocked(notesService.create).mockResolvedValueOnce({
       success: true,
       note: createNote('created', 'Work/New note 1.md')
-    } as never)
+    })
     await act(async () => {
       await result.current.handleCreateNoteInFolder('Work')
     })

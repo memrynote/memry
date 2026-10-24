@@ -138,7 +138,7 @@ describe('Formula Evaluation & Cache', () => {
       expect(functions).toContain('concat')
       expect(functions).toContain('sum')
       // Should be sorted
-      expect(functions).toEqual([...functions].sort())
+      expect(functions).toEqual([...functions].toSorted())
     })
   })
 

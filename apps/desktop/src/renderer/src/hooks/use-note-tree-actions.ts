@@ -758,9 +758,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         delete next.template
         await notesService.setFolderConfig(folderPath, next)
         deps.setFolderTemplateNames((prev) => {
-          const next = new Map(prev)
-          next.delete(folderPath)
-          return next
+          const nextNames = new Map(prev)
+          nextNames.delete(folderPath)
+          return nextNames
         })
         toast.success(getI18n().getFixedT(null, 'notes')('phaseI.toasts.defaultTemplateCleared'))
       } catch (err) {

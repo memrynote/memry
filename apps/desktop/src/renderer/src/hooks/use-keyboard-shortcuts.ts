@@ -26,6 +26,7 @@ export const altKey = isMac ? '⌥' : 'Alt'
 // app-wide single-key shortcuts (hint mode on `f`, `?`) stand down meanwhile.
 const blockSelectionOwners = new Set<object>()
 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- owners are arbitrary editor instances compared by identity; no shared owner type exists
 export const claimKeysForBlockSelection = (owner: object): (() => void) => {
   blockSelectionOwners.add(owner)
   return () => {
@@ -39,6 +40,7 @@ export const claimKeysForBlockSelection = (owner: object): (() => void) => {
  */
 export const isInputFocused = (): boolean => {
   if (blockSelectionOwners.size > 0) return true
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
   const activeElement = document.activeElement as HTMLElement | null
   const tagName = activeElement?.tagName.toLowerCase()
   const contentEditable = activeElement?.contentEditable
@@ -59,6 +61,7 @@ export const isInputFocused = (): boolean => {
  * expected outcome (e.g. renaming a note).
  */
 export const isPlainTextInputFocused = (): boolean => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
   const activeElement = document.activeElement as HTMLElement | null
   const tagName = activeElement?.tagName.toLowerCase()
   return tagName === 'input' || tagName === 'textarea' || tagName === 'select'
@@ -75,6 +78,7 @@ export const isPlainTextInputFocused = (): boolean => {
  * do not claim the chord.
  */
 export const isRichTextFocused = (): boolean => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
   const activeElement = document.activeElement as HTMLElement | null
   if (!activeElement) return false
   if (activeElement.isContentEditable) return true

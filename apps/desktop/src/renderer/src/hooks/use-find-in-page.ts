@@ -183,7 +183,7 @@ export function useFindInPage(
   // Re-search when editor DOM mutates while find bar is open
   useLayoutEffect(() => {
     const container = containerRef.current
-    if (!isOpen || !query || !container) return
+    if (!isOpen || !query || !container) return undefined
 
     let timeoutId: ReturnType<typeof setTimeout>
     const observer = new MutationObserver(() => {
@@ -291,14 +291,14 @@ export function useFindInPage(
   // the way. A bar the user opened with Cmd+F stays until they close it.
   useEffect(() => {
     const container = containerRef.current
-    if (!isOpen || !autoClose || !container) return
+    if (!isOpen || !autoClose || !container) return undefined
     container.addEventListener('pointerdown', close, { capture: true, once: true })
     return () => container.removeEventListener('pointerdown', close, { capture: true })
   }, [isOpen, autoClose, containerRef, close])
 
   // Cmd+F / Ctrl+F shortcut
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     const handler = (e: KeyboardEvent) => {
       if (isShortcutRecording()) return

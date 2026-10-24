@@ -3,9 +3,9 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { createLogger } from '@/lib/logger'
 import { useVaultScope } from '@/contexts/vault-scope'
 
-const log = createLogger('Hook:TaskOrder')
-
 import type { Task } from '@/data/task-model'
+
+const log = createLogger('Hook:TaskOrder')
 
 // ============================================================================
 // TYPES

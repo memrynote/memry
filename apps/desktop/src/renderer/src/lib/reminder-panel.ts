@@ -162,6 +162,7 @@ export function buildReminderPanel(input: ReminderPanelInput): ReminderPanel {
         key: `inbox:${item.id}`,
         timeMs: until,
         time: new Date(until),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- metadata is a loose JSON bag; reminder-type inbox items carry ReminderMetadata
         nav: metadataToNav(item.metadata as ReminderMetadata),
         inboxItemId: item.id
       })
@@ -185,6 +186,7 @@ export function buildReminderPanel(input: ReminderPanelInput): ReminderPanel {
     if (item.type !== 'reminder' || !item.metadata) continue
     if (item.snoozedUntil && item.snoozedUntil.getTime() > nowMs) continue
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- metadata is a loose JSON bag; reminder-type inbox items carry ReminderMetadata
     const meta = item.metadata as ReminderMetadata
     const fromMeta = Date.parse(meta.remindAt)
     const timeMs = Number.isNaN(fromMeta) ? item.createdAt.getTime() : fromMeta

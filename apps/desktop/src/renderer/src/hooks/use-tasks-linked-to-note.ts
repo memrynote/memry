@@ -58,7 +58,7 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
 
   // Load tasks when noteId changes; cancel-pattern keeps stale results from clobbering current state.
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     let cancelled = false
     void (async () => {
       await loadTasks(noteId)
@@ -71,7 +71,7 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
 
   // Subscribe to task events to refresh when tasks change
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const refresh = (): void => {
       void loadTasks(noteId)

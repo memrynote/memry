@@ -288,6 +288,7 @@ export function useTabScrollRestore({
     }
 
     const handleKeyDown = (event: Event): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- addEventListener handler receives a generic Event for a keydown listener
       if (!SCROLL_KEYS.has((event as KeyboardEvent).key)) return
       handleUserIntent()
     }

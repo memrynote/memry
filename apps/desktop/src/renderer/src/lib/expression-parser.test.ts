@@ -401,6 +401,7 @@ describe('expression-parser', () => {
 
       it('should parse floating point', () => {
         const result = parseExpression('3.14159') as LiteralNode
+        // oxlint-disable-next-line oxc/approx-constant -- the literal is the parser input under test, not a stand-in for Math.PI
         expect(result).toEqual({ type: 'literal', value: 3.14159 })
       })
     })

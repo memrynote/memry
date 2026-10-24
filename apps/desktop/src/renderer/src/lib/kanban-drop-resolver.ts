@@ -12,6 +12,9 @@ export type ColumnDropResult =
 const VALID_PRIORITIES = new Set<string>(['urgent', 'high', 'medium', 'low', 'none'])
 const CANONICAL_STATUSES = new Set<string>(['todo', 'in_progress', 'done'])
 
+const isPriority = (value: string): value is Priority => VALID_PRIORITIES.has(value)
+const isCanonicalStatus = (value: string): value is StatusType => CANONICAL_STATUSES.has(value)
+
 export const dueBucketToDate = (bucket: string): { date: Date | null; label: string } => {
   const now = new Date()
   switch (bucket) {
@@ -38,8 +41,8 @@ export const resolveColumnDrop = (
 ): ColumnDropResult | null => {
   if (targetColumnId.startsWith('priority-')) {
     const level = targetColumnId.slice('priority-'.length)
-    if (VALID_PRIORITIES.has(level)) {
-      return { type: 'priority', priority: level as Priority }
+    if (isPriority(level)) {
+      return { type: 'priority', priority: level }
     }
     return null
   }
@@ -55,8 +58,8 @@ export const resolveColumnDrop = (
     return { type: 'project', projectId }
   }
 
-  if (CANONICAL_STATUSES.has(targetColumnId)) {
-    return { type: 'canonicalStatus', statusType: targetColumnId as StatusType }
+  if (isCanonicalStatus(targetColumnId)) {
+    return { type: 'canonicalStatus', statusType: targetColumnId }
   }
 
   const project = projects.find((p) => p.statuses.some((s) => s.id === targetColumnId))

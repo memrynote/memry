@@ -109,6 +109,7 @@ function getEnglishErrorResource(key: string): string | undefined {
   let current: unknown = enErrors
   for (const segment of key.split('.')) {
     if (!current || typeof current !== 'object' || !(segment in current)) return undefined
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `current` was narrowed to a non-null object and `segment in current` checked just above
     current = (current as Record<string, unknown>)[segment]
   }
   return typeof current === 'string' ? current : undefined
@@ -122,6 +123,7 @@ function resolveErrorKey(key: string): string {
 }
 
 export function getUserErrorMessage(code: string, fallback?: string): string {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `code` is an arbitrary runtime string; the lookup yields undefined for unknown codes
   const key = ERROR_MESSAGE_KEYS[code] ?? SYNC_ERROR_KEYS[code as SyncErrorCategory]
   if (key) return resolveErrorKey(key)
   return fallback ?? resolveErrorKey('generic.somethingWentWrong')

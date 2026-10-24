@@ -56,6 +56,7 @@ export function useEditorSettings(): UseEditorSettingsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'editor') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings:changed event.value is unknown; the patch shape is fixed by the settings key this listener filtered on
         setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<EditorSettingsDTO>))
       }
     })

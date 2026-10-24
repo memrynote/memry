@@ -27,6 +27,7 @@ export function hasWebGLSupport(): boolean {
       canvas.getContext('experimental-webgl')
     if (!context) return reportUnavailable()
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- getContext('webgl') yields a WebGLRenderingContext; the union includes other context kinds
     ;(context as WebGLRenderingContext).getExtension('WEBGL_lose_context')?.loseContext()
     return true
   } catch {

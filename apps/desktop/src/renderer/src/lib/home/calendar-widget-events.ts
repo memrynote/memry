@@ -71,7 +71,7 @@ export function toCalendarWidgetEvents(
       color: getEventBaseColor(item.visualType),
       metaLabel: getMetaLabel(item)
     }))
-    .sort((a, b) => a.startAtMs - b.startAtMs)
+    .toSorted((a, b) => a.startAtMs - b.startAtMs)
 }
 
 // Index of the first event that has not started yet (the "next up" highlight). -1 when none.

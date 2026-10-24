@@ -248,9 +248,10 @@ describe('prepareVoiceMemoAudio', () => {
 
     await prepareVoiceMemoAudio(makeBlob())
 
-    const releasedAt = (source.disconnect.mock.invocationCallOrder[0] ?? Infinity) as number
-    const encodedAt = ((rendered.getChannelData as unknown as ReturnType<typeof vi.fn>).mock
-      .invocationCallOrder[0] ?? -Infinity) as number
+    const releasedAt = source.disconnect.mock.invocationCallOrder[0] ?? Infinity
+    const encodedAt =
+      (rendered.getChannelData as unknown as ReturnType<typeof vi.fn>).mock
+        .invocationCallOrder[0] ?? -Infinity
 
     expect(source.buffer).toBeNull()
     expect(releasedAt).toBeLessThan(encodedAt)

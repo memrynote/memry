@@ -65,7 +65,7 @@ function sortNotes(
   sortOrder: 'asc' | 'desc'
 ): NoteWithProperties[] {
   const dir = sortOrder === 'asc' ? 1 : -1
-  return [...notes].sort((a, b) => {
+  return notes.toSorted((a, b) => {
     if (sortBy === 'title') return a.title.localeCompare(b.title) * dir
     return a[sortBy].localeCompare(b[sortBy]) * dir
   })
