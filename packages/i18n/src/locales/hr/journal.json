@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Izbriši zapis u dnevniku",
     "description": "Jeste li sigurni da želite izbrisati „{title}”? Ova se radnja ne može poništiti."
+  },
+  "dayTimeline": {
+    "label": "Raspored dana",
+    "allDay": "Stavke za cijeli dan",
+    "unscheduled": "Neplanirano",
+    "unscheduledEmpty": "Nema neplaniranih zadataka. Povucite blok ovamo da mu uklonite vrijeme.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Dovrši {title}"
   }
 }

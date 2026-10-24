@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Határidő törölve # részfeladatnál} other {Határidő törölve # részfeladatnál}}",
       "prioritySet": "{count, plural, one {Prioritás beállítva # részfeladathoz} other {Prioritás beállítva # részfeladathoz}}",
       "deleted": "{count, plural, one {# részfeladat törölve} other {# részfeladat törölve}}"
-    }
+    },
+    "completedBranch": "{title} és {count, plural, one {# nyitott részfeladata} other {# nyitott részfeladata}} befejezve",
+    "deletedKeepSubtasks": "{title} törölve, a részfeladatai megmaradtak",
+    "deletedBranch": "{title} és {count, plural, one {# részfeladata} other {# részfeladata}} törölve"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "állapot",
       "projectIs": "Projekt:",
       "project": "projekt",
+      "locationIs": "A hely:",
+      "location": "hely",
+      "unknownNote": "Ismeretlen jegyzet",
       "due": "Határidő:",
       "dueDate": "határidő",
       "search": "keresés",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Határidő"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Hely",
+      "search": "Mappák és jegyzetek keresése...",
+      "empty": "Nincs feladatot tartalmazó mappa vagy jegyzet"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritás",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Projektnézetek",
       "overview": "Áttekintés",
+      "all": "Mind",
       "tasks": "Feladatok",
       "notes": "Jegyzetek",
       "files": "Fájlok",
@@ -951,6 +963,25 @@
       "fileError": "Nem sikerült a projekthez kapcsolni: {name}",
       "fileErrorGeneric": "Nem sikerült importálni a fájlokat",
       "label": "Hozzáadás ehhez: {name}"
+    },
+    "all": {
+      "showDone": "Elkészültek megjelenítése",
+      "empty": "Ebben a projektben nincs nyitott elem.",
+      "expand": "{title} feladatainak megjelenítése",
+      "collapse": "{title} feladatainak elrejtése",
+      "taskSummary": "{open}/{total} nyitott",
+      "daysLeft": "{count} nap",
+      "overdue": "{count} napja lejárt",
+      "columns": {
+        "title": "Cím",
+        "daysLeft": "Hátralévő napok"
+      },
+      "status": {
+        "active": "Aktív",
+        "done": "Kész",
+        "upcoming": "Közelgő",
+        "past": "Múltbeli"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigó",
     "purple": "Lila",
     "pink": "Rózsaszín"
+  },
+  "subtaskTree": {
+    "addSubtask": "Részfeladat hozzáadása",
+    "dropInto": "Ebbe: {title}",
+    "dropOut": "Egy szinttel feljebb",
+    "draftPlaceholder": "Részfeladat címe",
+    "draftLabel": "Új részfeladat ebben: {title}",
+    "draftIn": "ebben: {title}",
+    "toggleComplete": "{title} befejezése",
+    "moveUnder": {
+      "title": "Áthelyezés alá",
+      "placeholder": "Áthelyezés alá…",
+      "empty": "Nincs egyező feladat",
+      "topLevel": "{project} legfelső szintje",
+      "thisTask": "Ez a feladat",
+      "currentParent": "Jelenlegi szülő",
+      "movesOne": "Áthelyezi: {title}",
+      "movesBranch": "Áthelyezi: {title} és {count, plural, one {# részfeladata} other {# részfeladata}}",
+      "keys": "↵ Áthelyezés ide · ⌘↵ Legfelső szint · esc Bezárás"
+    },
+    "zoom": {
+      "path": "Feladat útvonala",
+      "up": "Egy szinttel feljebb",
+      "upShortcut": "Egy szinttel feljebb (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Törli: {title}?",
+      "summary": "{direct, plural, one {# részfeladata van} other {# részfeladata van}}{deeper, plural, =0 {} one { és alatta még #} other { és alattuk még #}}{open, plural, =0 {, mind kész.} other {, # még nyitott.}}",
+      "cancel": "Mégse",
+      "deleteAll": "Összes törlése",
+      "keepSubtasks": "Részfeladatok megtartása"
+    },
+    "menu": {
+      "open": "Megnyitás",
+      "complete": "Befejezés",
+      "reopen": "Újranyitás",
+      "zoom": "Ráközelítés a részfeladatokra",
+      "moveUnder": "Áthelyezés alá…",
+      "indent": "Áthelyezés ez alá: {title}",
+      "outdent": "Kiemelés egy szinttel",
+      "topLevel": "Legfelső szintű feladattá tétel",
+      "delete": "Törlés"
+    },
+    "openPath": "{path} megnyitása"
   }
 }

@@ -110,7 +110,8 @@
       "fileCreation": "Stvaranje datoteka",
       "privacy": "Privatnost",
       "startupWindows": "Pokretanje i prozori",
-      "newNotes": "Nove bilješke"
+      "newNotes": "Nove bilješke",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "Većina aplikacije ažurira se odmah. Dio teksta na razini sustava – već prikazane obavijesti, oznaka u Docku, naslovna traka prozora – osvježava se nakon sljedećeg pokretanja.",
       "changed": "Jezik promijenjen: {nativeName}",
       "failed": "Promjena jezika nije uspjela. Pokušajte ponovno."
+    },
+    "ocrLanguages": {
+      "label": "Prepoznavanje teksta",
+      "helper": "Jezici koji se čitaju u skeniranim PDF-ovima i slikama kako bi pretraživanje pronalazilo njihove riječi. Engleski je ugrađen. Ostali se preuzimaju s Memryjeva poslužitelja.",
+      "more": "{names} +{count}",
+      "downloading": "Preuzimanje jezika {language}: {percent}%",
+      "failed": "Preuzimanje nije uspjelo. Jezici koji su već ovdje i dalje rade.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Pokušaj ponovno",
+      "saveFailed": "Jezike za prepoznavanje teksta nije moguće promijeniti."
     },
     "clockFormat": {
       "label": "Format vremena",
@@ -264,6 +275,22 @@
           "description": "Pošaljite jednokratno izvješće s tehničkim zapisnicima bez osjetljivih podataka kako bismo lakše otklonili problem na koji ste naišli.",
           "button": "Pošalji izvješće…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Prečac za Sticky (Tipkovni prečaci → Na razini sustava) otvara sticky dok je Memry pokrenut. Neposlani tekst ostaje kao skica na rubu zaslona.",
+      "error": "Nije moguće spremiti postavke stickyja.",
+      "defaultKind": {
+        "label": "Novi stickyji šalju se kao",
+        "last": "Zadnje korišteno",
+        "note": "Bilješka",
+        "task": "Zadatak",
+        "journal": "Dnevnik"
+      },
+      "tuckEdge": {
+        "label": "Sakrij uz",
+        "left": "Lijevi rub",
+        "right": "Desni rub"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "Raspored",
       "toolbar": "Alatna traka",
       "spelling": "Pravopis",
-      "checklists": "Kontrolni popisi"
+      "checklists": "Kontrolni popisi",
+      "attachments": "Privici",
+      "calloutTypes": "Vrste isticanja"
+    },
+    "calloutTypes": {
+      "description": "Vaša vlastita isticanja, zapisana kao > [!naziv] u bilješci. Druga aplikacija prikazuje ih kao običan citat.",
+      "empty": "Još nema prilagođenih vrsta isticanja",
+      "add": "Dodaj vrstu",
+      "edit": "Uredi {name}",
+      "delete": "Izbriši {name}",
+      "name": "Naziv u markdownu",
+      "namePlaceholder": "mojavrsta",
+      "label": "Prikazani naziv",
+      "color": "Boja",
+      "icon": "Ikona",
+      "nameInvalid": "Koristite mala slova, znamenke, - ili _, počevši slovom",
+      "nameBuiltIn": "Taj naziv već je ugrađeno isticanje",
+      "nameTaken": "Već imate vrstu s tim nazivom",
+      "save": "Spremi",
+      "cancel": "Odustani",
+      "error": "Nije uspjelo ažuriranje vrsta isticanja"
     },
     "width": {
       "label": "Širina uređivača",
@@ -449,7 +496,16 @@
       "toolbarMode": "Fiksna alatna traka za oblikovanje",
       "spellCheck": "Provjera pravopisa",
       "convertChecklists": "Pretvaraj stavke popisa u zadatke",
-      "convertAgentChecklists": "Pretvaraj stavke popisa koje piše agent u zadatke"
+      "convertAgentChecklists": "Pretvaraj stavke popisa koje piše agent u zadatke",
+      "pdfDisplayMode": "Prikaži nove PDF-ove kao"
+    },
+    "pdfDisplayMode": {
+      "description": "Kako se prikazuje PDF koji dodate u bilješku. Svaki se PDF može promijeniti iz svog izbornika.",
+      "options": {
+        "embed": "Ugrađeno",
+        "link": "Naziv datoteke"
+      },
+      "error": "Nije uspjelo ažuriranje prikaza PDF-a"
     },
     "convertChecklists": {
       "description": "Svaka nova stavka kontrolnog popisa postaje zadatak. Kad je isključeno, popisi ostaju obični potvrdni okviri; desnim klikom stavku pretvarate u zadatak.",
@@ -561,7 +617,8 @@
       "renameNote": "Promjena formata preimenuje postojeće datoteke dnevnika. Datoteka čiji je novi naziv već zauzet ostaje nepromijenjena.",
       "tokensHelp": "Pomoć za format datuma",
       "tokensNote": "Ostali znakovi ostaju nepromijenjeni. Nazivi dana u tjednu uvijek su na engleskom.",
-      "tokensTitle": "Simboli formata"
+      "tokensTitle": "Simboli formata",
+      "foldersNote": "Upotrijebite / za slaganje zapisa u podmape: YYYY/MMMM/YYYY-MM-DD smješta svaki dan pod njegovu godinu i mjesec."
     },
     "preview": {
       "label": "Pretpregled",
@@ -586,6 +643,10 @@
         "defaultTemplate": "Zadani predložak",
         "location": "Lokacija i format"
       }
+    },
+    "showInSidebar": {
+      "label": "Prikaži na bočnoj traci",
+      "description": "Prikaži mapu dnevnika i njezine zapise u stablu bilješki"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "Zadane postavke",
+      "subtasks": "Podzadaci",
       "inbox": "Ulazni pretinac"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "Zadaci stariji od ovoga označavaju se kao zapostavljeni",
       "unit": "dana",
       "error": "Ažuriranje praga zapostavljenosti nije uspjelo"
+    },
+    "nestedSubtasks": {
+      "label": "Podzadaci unutar podzadataka",
+      "description": "Ugniježdite podzadatke na bilo kojoj dubini. Uređaji sa starijim verzijama prikazuju samo prvu razinu dok se ne ažuriraju.",
+      "error": "Nije uspjelo ažuriranje ugniježđenih podzadataka"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "Sinkronizacija…",
         "paused": "Pauzirano",
         "syncError": "Pogreška sinkronizacije",
+        "deviceKeysMissing": "Sinkronizacija je pauzirana: nedostaju ključevi uređaja",
         "offline": "Izvan mreže",
         "connecting": "Povezivanje…",
         "localOnly": "Samo lokalno",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "Dovršavanje aktivacije",
         "description": "Vaš je plan aktivan. Sinkronizacija počinje čim ga potvrdimo – osvježavanje obično pomaže."
+      },
+      "unsent": {
+        "title": "Bilješke s neposlanim promjenama",
+        "count": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+        "description": "Ovaj uređaj ima promjene tih bilješki koje poslužitelj još nije pohranio.",
+        "waitingSince": "Čeka od {time}",
+        "more": "{count, plural, one {I još # bilješka} few {I još # bilješke} other {I još # bilješki}}",
+        "reasons": {
+          "body": "Tekst",
+          "record": "Pojedinosti",
+          "file_not_taken": "Datoteka još nije spojena",
+          "rejected": "Poslužitelj je odbio"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "Nije moguće osvježiti status naplate",
         "billingActive": "Naplata je aktivna",
         "activationPending": "Aktivacija na čekanju",
-        "portalFailed": "Nije moguće otvoriti portal za naplatu"
+        "portalFailed": "Nije moguće otvoriti portal za naplatu",
+        "portalNoCustomer": "Još nije pronađen račun za naplatu. Ako ste upravo platili, odaberite Osvježi status i pokušajte ponovno."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "AI značajke isključene",
       "error": "Ažuriranje postavke nije uspjelo"
     },
+    "summarizeLongNotes": {
+      "label": "Sažimanje dugih bilješki",
+      "description": "Piše kraće verzije dugih bilješki pomoću vašeg povezanog agenta kako biste bilješku mogli sažeti na ključne točke. Izvodi se na ovom uređaju.",
+      "error": "Nije uspjelo ažuriranje sažimanja dugih bilješki",
+      "failed": "Zadnje pokretanje nije uspjelo ·",
+      "retry": "Pokušaj ponovno",
+      "retryError": "Ponovno sažimanje nije moguće pokrenuti",
+      "agentLabel": "Agent koji piše sažetke",
+      "agentAuto": "Automatski",
+      "agentError": "Nije uspjela promjena agenta za sažetke",
+      "noAgent": "Agent nije pronađen ·",
+      "openAgents": "Otvori agente"
+    },
+    "imageSearch": {
+      "label": "Pretraživanje slika po sadržaju",
+      "description": "Pronađite fotografije prema onome što prikazuju. Pri prvom indeksiranju slike preuzima se model slika od 109 MB.",
+      "enabled": "Pretraživanje slika je uključeno",
+      "disabled": "Pretraživanje slika je isključeno"
+    },
     "unknownError": "Nepoznata pogreška",
     "groups": {
       "voice": "Transkripcija glasa",
@@ -1324,6 +1425,9 @@
         "none": "Ne preimenuj"
       },
       "namingError": "Ažuriranje imenovanja glasovnih zapisa nije uspjelo",
+      "audioSearch": "Pretraživanje glasovnih bilježaka po zvuku",
+      "audioSearchDescription": "Pronađite glasovne bilješke bez transkripta, poput glazbe ili zvukova, prema tome kako zvuče. Pri prvom indeksiranju preuzima se audio model od 189 MB.",
+      "audioSearchError": "Nije uspjelo ažuriranje pretraživanja glasovnih bilježaka",
       "language": "Govorni jezik",
       "languageDescription": "Jezik kojim govorite u glasovnim bilješkama",
       "languageDefault": "Zadano",
@@ -1459,7 +1563,8 @@
       "csv": "Uvezite .csv datoteku – jedna bilješka po retku, stupci postaju svojstva",
       "raindrop": "Uvezite izvoz favorita iz Raindrop.io (.csv) – favoriti dolaze u ulazni pretinac",
       "apple-notes": "Uvezite iz baze podataka Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Uvezite OneNote bilježnice (potreban Microsoft račun)"
+      "onenote": "Uvezite OneNote bilježnice (potreban Microsoft račun)",
+      "readwise": "Uvezite svoja istaknuta mjesta iz Readwisea (potreban je pristupni token)"
     },
     "action": "Uvezi",
     "select": "Odaberite aplikaciju iz koje uvozite…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Upozorenja",
-      "confirm": "Uvezi"
+      "confirm": "Uvezi",
+      "readwise": {
+        "books": "{count, plural, one {# knjiga} few {# knjige} other {# knjiga}}",
+        "highlights": "{count, plural, one {# istaknuto mjesto} few {# istaknuta mjesta} other {# istaknutih mjesta}}",
+        "documents": "{count, plural, one {# dokument} few {# dokumenta} other {# dokumenata}}"
+      }
     },
     "dialog": {
       "title": "Uvoz iz aplikacije {name}",
@@ -1505,7 +1615,18 @@
         "deselectAll": "Poništi odabir",
         "foldersSelected": "{count, plural, one {# mapa odabrana} few {# mape odabrane} other {# mapa odabrano}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# zaključana bilješka} few {# zaključane bilješke} other {# zaključanih bilješki}}",
+          "hint": "Unesite zaporku za Notes da biste ih uvezli. Koristi se samo za ovaj uvoz i nikad se ne sprema. Privici unutar zaključanih bilješki ne uvoze se.",
+          "label": "Zaporka za Notes",
+          "placeholder": "Zaporka za Notes",
+          "check": "Provjeri",
+          "wrong": "Ta zaporka ne otključava nijednu zaključanu bilješku.",
+          "unlockedAll": "{count, plural, one {Otključava zaključanu bilješku.} few {Otključava sve # zaključane bilješke.} other {Otključava svih # zaključanih bilješki.}}",
+          "unlockedSome": "Otključava {unlocked} od {total} zaključanih bilješki. Ostale koriste drugu zaporku i bit će preskočene.",
+          "checkError": "Nije moguće provjeriti zaporku."
+        }
       },
       "chooseFolder": "Odaberi mapu aplikacije Apple Notes…",
       "chooseDirectory": "Odaberi mapu…",
@@ -1529,12 +1650,206 @@
         "failed": "Neuspješno: {count}"
       },
       "error": "Uvoz nije uspio",
-      "previewError": "Pretpregled nije uspio"
+      "previewError": "Pretpregled nije uspio",
+      "readwise": {
+        "intro": "Zalijepite svoj Readwise pristupni token. Memry ga najprije provjerava s Readwiseom, a zatim ga sprema u privjesak ključeva vašeg sustava na ovom uređaju. Nikad se ne sinkronizira.",
+        "tokenLabel": "Pristupni token",
+        "tokenPlaceholder": "Zalijepite svoj token",
+        "getToken": "Nabavite svoj token",
+        "connect": "Poveži",
+        "connecting": "Povezivanje…",
+        "connectFailed": "Nije moguće povezati se s Readwiseom",
+        "takeOver": {
+          "syncsOn": "Readwise se sinkronizira na uređaju {device}.",
+          "syncsOnAnother": "Readwise se sinkronizira na drugom uređaju.",
+          "explain": "Samo jedan uređaj povlači podatke iz Readwisea pa se isto istaknuto mjesto nikad ne zapiše dvaput. Da biste umjesto toga povlačili s ovog uređaja, ponovno zalijepite svoj token: on nikad ne putuje između uređaja. Drugi uređaj staje kod sljedeće knjige, a sve bilješke ostaju.",
+          "button": "Sinkroniziraj ovdje umjesto toga",
+          "working": "Premještanje Readwisea ovamo…",
+          "failed": "Nije moguće premjestiti Readwise na ovaj uređaj"
+        },
+        "groups": {
+          "location": "Kamo idu bilješke",
+          "categories": "Što uvesti",
+          "reader": "Readwise Reader",
+          "journal": "Dnevnik",
+          "sync": "Sinkronizacija"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Navedi istaknuta mjesta svakog dana u dnevniku",
+            "description": "Dodaje odjeljak Readwise u dan kada ste istaknuli, s poveznicom na bilješku svake knjige. Samo nova istaknuta mjesta, bez popunjavanja unatrag.",
+            "firstImport": "Prvi uvoz ne zapisuje ništa u dnevnik."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Uvezi i spremljene dokumente iz Readera",
+            "description": "Zadano isključeno. Može dodati tisuće bilješki."
+          },
+          "fullText": {
+            "label": "Uključi puni tekst članka",
+            "description": "Zapisuje se jednom, pri stvaranju bilješke"
+          }
+        },
+        "rootFolder": {
+          "label": "Mapa",
+          "description": "Nove knjige završavaju ovdje. Postojeće bilješke ostaju gdje jesu."
+        },
+        "layout": {
+          "label": "Raspored mapa",
+          "description": "Odnosi se samo na nove knjige.",
+          "options": {
+            "by-category": "Po kategoriji",
+            "flat": "Jedna mapa"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Knjige",
+            "description": "Istaknuta mjesta iz Kindlea, Apple Books i drugih izvora"
+          },
+          "articles": {
+            "label": "Članci",
+            "description": "Web-članci i newsletteri"
+          },
+          "tweets": {
+            "label": "Tweetovi",
+            "description": "Spremljeni tweetovi i nizovi"
+          },
+          "podcasts": {
+            "label": "Podcasti",
+            "description": "Epizode podcasta i isječci"
+          },
+          "supplementals": {
+            "label": "Dodatni materijali",
+            "description": "Knjige koje Readwise sam dodaje, bez vaših istaknutih mjesta"
+          },
+          "other": {
+            "label": "Ostalo",
+            "description": "Kategorije koje je Readwise dodao nakon ove verzije"
+          }
+        },
+        "cadence": {
+          "label": "Učestalost",
+          "description": "Koliko često stižu nova istaknuta mjesta.",
+          "options": {
+            "manual": "Ručno",
+            "hourly": "Svaki sat",
+            "daily": "Svaki dan"
+          }
+        },
+        "syncNow": {
+          "label": "Sinkroniziraj sada",
+          "description": "Provjeri ima li u Readwiseu novih istaknutih mjesta.",
+          "button": "Sinkroniziraj sada"
+        },
+        "disconnect": "Odspoji",
+        "disconnectHint": "Odspajanje uklanja token s ovog uređaja. Vaše bilješke ostaju.",
+        "deleted": {
+          "heading": "Izbrisane knjige",
+          "description": "Bilješke koje ste izbrisali u memryju. Ostaju izbrisane dok ih ne vratite.",
+          "meta": "Izbrisano {date} · {count, plural, one {# istaknuto mjesto} few {# istaknuta mjesta} other {# istaknutih mjesta}}",
+          "metaDocument": "Izbrisano {date} · spremljeni članak",
+          "restore": "Vrati",
+          "footer": "Vraćanje ponovno stvara bilješku sa svim njezinim istaknutim mjestima.",
+          "empty": "Nema izbrisanih knjiga",
+          "syncsOn": "Readwise se sinkronizira na uređaju {device}.",
+          "syncsOnAnotherDevice": "Readwise se sinkronizira na drugom uređaju.",
+          "loadFailed": "Nije moguće učitati izbrisane knjige",
+          "restoreFailed": "Nije moguće vratiti bilješku"
+        },
+        "importNow": "Uvezi sada",
+        "importBooks": "{count, plural, one {Uvezi # knjigu} few {Uvezi # knjige} other {Uvezi # knjiga}}",
+        "importNotes": "{count, plural, one {Uvezi # bilješku} few {Uvezi # bilješke} other {Uvezi # bilješki}}",
+        "importNone": "Uvezi",
+        "preview": {
+          "intro": "Spremno je {highlights, plural, one {# istaknuto mjesto} few {# istaknuta mjesta} other {# istaknutih mjesta}} u {books, plural, one {# knjizi} few {# knjige} other {# knjiga}}. Ništa se ne zapisuje dok ne potvrdite.",
+          "introOff": "Spremno je {highlights, plural, one {# istaknuto mjesto} few {# istaknuta mjesta} other {# istaknutih mjesta}} u {books, plural, one {# knjizi} few {# knjige} other {# knjiga}}. Isključeno: {off}. Uvest će se: {willImport, plural, one {# knjiga} few {# knjige} other {# knjiga}}. Ništa se ne zapisuje dok ne potvrdite.",
+          "introReaderOnly": "Vaša Readwise knjižnica još nema istaknutih mjesta. Kao bilješke uvest će se: {documents, plural, one {# spremljeni Reader dokument} few {# spremljena Reader dokumenta} other {# spremljenih Reader dokumenata}}. Ništa se ne zapisuje dok ne potvrdite.",
+          "readerLabel": "Spremljeni Reader dokumenti",
+          "empty": "Vaša Readwise knjižnica još nema istaknutih mjesta. Ništa se ne zapisuje. Uvezite da dovršite postavljanje.",
+          "willImport": "uvest će se",
+          "off": "isključeno",
+          "retry": "Pokušaj ponovno"
+        },
+        "status": {
+          "connected": "Povezano",
+          "synced": "Sinkronizirano {time}",
+          "syncing": "Sinkronizacija s Readwiseom",
+          "reading": "Čitanje vaše knjižnice…",
+          "writing": "Zapisivanje knjiga, {done} od {total}",
+          "finishing": "Dovršavanje…",
+          "waitingTitle": "Čeka se memry sinkronizacija",
+          "waitingDetail": "Memry čeka da stignu bilješke s vaših drugih uređaja kako se nijedna knjiga ne bi zapisala dvaput. Readwise počinje odmah potom.",
+          "otherTitle": "Sinkronizira se na uređaju {device}",
+          "otherTitleUnknown": "Sinkronizira se na drugom uređaju",
+          "otherDetail": "Samo jedan uređaj povlači podatke iz Readwisea pa se isto istaknuto mjesto nikad ne zapiše dvaput.",
+          "lastRun": "Zadnje pokretanje: {counts}",
+          "lastRunNothing": "Zadnje pokretanje: ništa novo",
+          "nextRun": "Sljedeća sinkronizacija {time}",
+          "retryAt": "Memry pokušava ponovno {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise treba novi token",
+              "detail": "Readwise nije prihvatio spremljeni token. Zalijepite novi s readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Vaša Readwise pretplata je istekla",
+              "detail": "Obnovite pretplatu na readwise.io pa pokušajte ponovno."
+            },
+            "rate-limited": {
+              "title": "Readwise ograničava zahtjeve",
+              "detail": "Previše zahtjeva u kratkom vremenu."
+            },
+            "network": {
+              "title": "Nije moguće doći do Readwisea",
+              "detail": "Provjerite vezu."
+            },
+            "server": {
+              "title": "Readwise ima problem",
+              "detail": "Readwise je odgovorio pogreškom."
+            },
+            "unexpected": {
+              "title": "Sinkronizacija se zaustavila",
+              "detail": "Nešto je pošlo po zlu tijekom izvođenja."
+            }
+          },
+          "counts": {
+            "added": "dodano: {count}",
+            "updated": "ažurirano: {count}",
+            "appended": "prošireno: {count}",
+            "deferred": "čeka otvorenu bilješku: {count}",
+            "failed": "neuspjelo: {count}",
+            "highlights": "{count, plural, one {# istaknuto mjesto} few {# istaknuta mjesta} other {# istaknutih mjesta}}"
+          },
+          "actions": {
+            "cancel": "Odustani",
+            "retry": "Pokušaj sada",
+            "newToken": "Zalijepi novi token",
+            "reconnect": "Ponovno poveži",
+            "syncHere": "Sinkroniziraj ovdje umjesto toga"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise treba novi token",
+            "description": "Sinkronizacija je pauzirana dok ne zalijepite novi."
+          },
+          "subscription-expired": {
+            "title": "Vaša Readwise pretplata je istekla",
+            "description": "Sinkronizacija je pauzirana dok pretplata ponovno ne postane aktivna."
+          },
+          "open": "Otvori Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Čitanje datoteke nije uspjelo",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# zaključana bilješka nije uvezena} few {# zaključane bilješke nisu uvezene} other {# zaključanih bilješki nije uvezeno}}; Memry ne može čitati zaključane bilješke bez lozinke za Apple Notes."
+        "lockedNote": "{count, plural, one {# zaključana bilješka nije uvezena} few {# zaključane bilješke nisu uvezene} other {# zaključanih bilješki nije uvezeno}}; Memry ne može čitati zaključane bilješke bez lozinke za Apple Notes.",
+        "lockedWrongPassword": "Nije uvezeno: {count, plural, one {# zaključana bilješka} few {# zaključane bilješke} other {# zaključanih bilješki}}. Zaporka se razlikuje od one koju ste unijeli.",
+        "lockedUnreadable": "Nije uvezeno jer se nije moglo dešifrirati: {count, plural, one {# zaključana bilješka} few {# zaključane bilješke} other {# zaključanih bilješki}}.",
+        "lockedAttachment": "Nije uvezeno: {count, plural, one {# privitak u zaključanoj bilješci} few {# privitka u zaključanim bilješkama} other {# privitaka u zaključanim bilješkama}}; tekst bilješke jest."
       },
       "csv": {
         "noHeaders": "CSV datoteka nema zaglavlja",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "Nepoznat prioritet {priority} → bez prioriteta",
         "unparsedDate": "Nije moguće raščlaniti datum „{date}”",
         "subtaskNoParent": "Podzadatak „{title}” nema nadređeni zadatak na uvlaci {indent}; uvezen na najvišu razinu"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise nije povezan.",
+        "tokenInvalid": "Readwise nije prihvatio spremljeni token. Odspojite se i ponovno povežite s novim.",
+        "unreachable": "Nije moguće doći do Readwisea. Provjerite vezu i pokušajte ponovno.",
+        "categoryOff": "Nije uvezeno jer je kategorija isključena: {count, plural, one {# knjiga} few {# knjige} other {# knjiga}}.",
+        "unchanged": "Već ažurno: {count, plural, one {# knjiga} few {# knjige} other {# knjiga}}.",
+        "sourceDeleted": "Izbrisano u Readwiseu: {count, plural, one {# knjiga} few {# knjige} other {# knjiga}}. Bilješke ostaju.",
+        "noteDeleted": "Izbrisano u Memryju i ostaje izbrisano: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}.",
+        "busy": "Otvoreno u uređivaču i bit će zapisano pri sljedećem pokretanju: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Uvoz Todoist zadataka…"
+      },
+      "readwise": {
+        "fetching": "Čitanje vaše Readwise knjižnice…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, one {Prikaži još #} few {Prikaži još #} other {Prikaži još #}}",
       "showLess": "Prikaži manje",
       "groups": {
+        "reading": "Čitanje",
         "noteApps": "Aplikacije za bilješke",
         "tasks": "Zadaci, dnevnik i favoriti",
         "files": "Datoteke"
+      },
+      "readwise": {
+        "notConnected": "Nije povezano",
+        "connected": "Povezano",
+        "synced": "Sinkronizirano {time}",
+        "syncing": "Sinkronizacija…",
+        "waiting": "Čeka sinkronizaciju",
+        "otherDevice": "Sinkronizira se na uređaju {device}",
+        "otherDeviceUnknown": "Sinkronizira se drugdje",
+        "invalidToken": "Treba novi token",
+        "subscriptionExpired": "Pretplata je istekla",
+        "rateLimited": "Ograničen broj zahtjeva",
+        "network": "Nije moguće doći do Readwisea",
+        "server": "Pogreška Readwisea",
+        "unexpected": "Sinkronizacija nije uspjela"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "Oznaka „{oldName}” preimenovana u „{newName}”",
       "renameFailed": "Promjena naziva oznake nije uspjela",
+      "renaming": "Preimenovanje #{oldName}: {done} / {total} bilješki",
+      "renamedBodySkipped": "„{newName}” nije moguće upisati kao oznaku u tekstu pa #{oldName} u tekstu bilješke ostaje kako je napisano",
+      "renamedSomeFailed": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Otvorite ih i ponovno dodajte oznaku",
       "deleteFailed": "Brisanje oznake nije uspjelo",
       "deleted": "Oznaka „{name}” izbrisana iz {count, plural, one {# stavke} few {# stavke} other {# stavki}}",
       "mergeFailed": "Spajanje oznaka nije uspjelo",
@@ -1901,12 +2248,29 @@
       "unsupported": "{shortcut} ne može se koristiti kao globalni prečac. Odaberite drugu kombinaciju.",
       "fallbackInUse": "Zadani prečac {shortcut} koristi druga aplikacija. Postavite drugu kombinaciju da biste koristili brzi zapis s bilo kojeg mjesta."
     },
+    "folderNotes": {
+      "title": "Nova bilješka u mapi",
+      "description": "Stvorite bilješku izravno u mapi koju odaberete",
+      "add": "Dodaj mapu",
+      "empty": "Još nema prečaca za mape. Dodajte mapu da biste joj dodijelili prečac.",
+      "rowDescription": "Stvara bilješku u ovoj mapi",
+      "missing": "Ova mapa više ne postoji. Odaberite drugu mapu ili uklonite prečac.",
+      "changeFolder": "Promijeni mapu",
+      "searchFolders": "Pretraži mape...",
+      "noFolders": "Nema pronađenih mapa",
+      "remove": "Ukloni prečac",
+      "conflictLabel": "Nova bilješka u {folder}",
+      "missingToast": "Mapa „{folder}” više ne postoji",
+      "missingToastAction": "Uredi prečac",
+      "foldersLoadFailed": "Nije moguće provjeriti mapu za ovaj prečac"
+    },
     "toasts": {
       "saveGlobalFailed": "Spremanje prečaca za brzi zapis nije uspjelo",
       "saveFailed": "Spremanje prečaca nije uspjelo",
       "resetFailed": "Vraćanje prečaca na zadano nije uspjelo",
       "resetAllSuccess": "Svi prečaci vraćeni na zadano",
-      "resetAllFailed": "Vraćanje prečaca na zadano nije uspjelo"
+      "resetAllFailed": "Vraćanje prečaca na zadano nije uspjelo",
+      "saveStickyFailed": "Nije uspjelo spremanje prečaca za sticky"
     },
     "categories": {
       "navigation": "Navigacija",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "Pretraži",
           "description": "Otvorite globalno pretraživanje"
+        },
+        "commands": {
+          "label": "Paleta naredbi",
+          "description": "Pretraži i pokreni bilo koju naredbu"
         },
         "settings": {
           "label": "Otvori postavke",
@@ -2042,6 +2410,10 @@
           "label": "Prikaži/sakrij bočnu traku",
           "description": "Prikažite ili sakrijte bočnu traku"
         },
+        "toggleDayPanel": {
+          "label": "Uključi/isključi ploču dana",
+          "description": "Prikaži ili sakrij ploču dana s desne strane"
+        },
         "shortcuts": {
           "label": "Pomoć za tipkovničke prečace",
           "description": "Prikažite popis tipkovničkih prečaca"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "Stvarna veličina",
           "description": "Vratite zumiranje na 100 %"
+        },
+        "foldFull": {
+          "label": "Sažimanje: Potpuno",
+          "description": "Prikaži svaku riječ bilješke"
+        },
+        "foldBrief": {
+          "label": "Sažimanje: Kratko",
+          "description": "Prikaži samo ključne rečenice, kako su napisane"
+        },
+        "foldKey": {
+          "label": "Sažimanje: Ključno",
+          "description": "Prikaži svaku točku i njezin razlog"
+        },
+        "foldTakeaway": {
+          "label": "Sažimanje: Zaključak",
+          "description": "Prikaži jedan redak po odlomku"
+        },
+        "foldTopic": {
+          "label": "Sažimanje: Tema",
+          "description": "Prikaži bilješku kao kartu njezinih odjeljaka"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "Brzi zapis s bilo kojeg mjesta",
       "recordingHint": "Pritisnite tipke… esc za odustajanje",
       "reset": "Vrati na zadano",
-      "resetAll": "Vrati sve na zadano"
+      "resetAll": "Vrati sve na zadano",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Otvorite sticky iz bilo koje aplikacije dok je memrynote pokrenut"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "Otkriveno odstupanje sata",
       "items": "stavki",
       "willSyncWhenBackOnline": "Sinkronizirat će se kada veza ponovno bude dostupna",
-      "openSyncSettings": "Otvori postavke sinkronizacije"
+      "stalled": "Promjene se neko vrijeme nisu sinkronizirale. Pokušajte Sinkroniziraj sada.",
+      "openSyncSettings": "Otvori postavke sinkronizacije",
+      "repairDeviceKeys": "Popravi",
+      "signInToRepair": "Prijavite se ponovno da biste postavili ključeve ovog uređaja. Nesinkronizirane bilješke, zadaci i projekti su sačuvani. Možda će vam trebati fraza za oporavak.",
+      "repairFailed": "Nije moguće popraviti ključeve ovog uređaja. Pokušajte ponovno.",
+      "syncNotStarted": {
+        "vault-binding": "Ključevi ovog uređaja su vraćeni, ali ovaj trezor još nije postavljen za sinkronizaciju s vašim računom. Odaberite kako ga sinkronizirati iz izbornika sinkronizacije.",
+        "vault-foreign": "Ključevi ovog uređaja su vraćeni, ali ovaj trezor pripada drugom računu. Ostaje lokalan na ovom uređaju.",
+        "entitlement": "Ključevi ovog uređaja su vraćeni, ali sinkronizacija zahtijeva aktivan plan Sync.",
+        "unavailable": "Ključevi ovog uređaja su vraćeni, ali se sinkronizacija nije mogla pokrenuti. Pokušat će ponovno; ponovno pokrenite Memry ako ne uspije."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "Model",
         "description": "Odaberite jedan od ponuđenih modela ili ga unesite ručno."
       },
+      "thinking": {
+        "label": "Razmišljanje",
+        "description": "Isključeno traži od modela u stilu DeepSeeka da preskoče razmišljanje radi bržih i jeftinijih odgovora.",
+        "default": "Zadano",
+        "off": "Isključeno"
+      },
       "apiKey": {
         "label": "API ključ",
         "description": "Neobavezna vjerodajnica pohranjena u privjesku ključeva sustava.",
@@ -2286,6 +2698,17 @@
       "revoke": "Opozovi",
       "revokeLabel": "Opozovi trajno odobrenje za alat {tool}",
       "ignoredInPageReview": "Zanemareno: izmjene bilješki i dnevnika uvijek traže potvrdu."
+    },
+    "memory": {
+      "group": "Memorija",
+      "description": "Agenti rade u mapi koja se čuva za ovaj trezor, izvan trezora, pa ono što tamo spreme prelazi u sljedeći razgovor.",
+      "clear": "Očisti memoriju agenta",
+      "clearDescription": "Briše ono što su agenti spremili o ovom trezoru. Bilješke i povijest razgovora ostaju.",
+      "clearAction": "Očisti",
+      "cleared": "Memorija agenta je očišćena.",
+      "failed": "Nije moguće očistiti memoriju agenta.",
+      "confirmTitle": "Očistiti memoriju agenta?",
+      "confirmDescription": "Agenti gube ono što su spremili o ovom trezoru, uključujući Claude Codeovu memoriju projekta za njega. Ovo se ne može poništiti. Bilješke i povijest razgovora ostaju."
     },
     "v2": {
       "permissions": {

@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Portál sa nepodarilo skopírovať",
+    "hiddenCount": "Skryté: {count}",
+    "windowFailed": "Tento portál sa nepodarilo otvoriť. Otvorte radšej zdrojovú poznámku.",
+    "noTarget": "Tento portál zatiaľ nemá cieľ. Pridajte do definície poznámku alebo blok odstráňte.",
+    "invalidJson": "Definícia tohto portálu nie je platný JSON. Opravte ju nižšie alebo blok odstráňte.",
+    "invalidShape": "Definícia tohto portálu neobsahuje poznámku ani vyhľadávanie. Opravte ju nižšie alebo blok odstráňte.",
+    "search": {
+      "editQuery": "Upraviť dopyt",
+      "count": "{count, plural, one {# blok} few {# bloky} other {# blokov}}",
+      "loading": "Hľadá sa…",
+      "empty": "Tomuto dopytu nezodpovedajú žiadne bloky.",
+      "failed": "Vyhľadávanie sa nepodarilo spustiť.",
+      "retry": "Skúsiť znova",
+      "truncated": "Zobrazuje sa prvých {count} zhôd."
+    },
+    "copiedContents": "Obsah skopírovaný",
+    "copiedLink": "Odkaz skopírovaný",
+    "actionFailed": "Tento portál sa nepodarilo zmeniť",
+    "keepsOneBlock": "Portál musí obsahovať aspoň jeden blok. Odstráňte radšej celý portál.",
+    "expandChildren": "Zobraziť podradené",
+    "collapseChildren": "Skryť podradené",
+    "toolbar": {
+      "label": "Portál",
+      "include": "Zahrnúť „{block}“",
+      "locked": "{note} je zamknutá · iba na čítanie",
+      "more": "Viac",
+      "openBeside": "Otvoriť {note} vedľa",
+      "click": "Kliknutie",
+      "copyContents": "Kopírovať obsah",
+      "copyLink": "Kopírovať odkaz",
+      "remove": "Odstrániť portál",
+      "removeHint": "{note} si ponechá všetky bloky"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Zdrojová poznámka bola odstránená. Odkaz sa zachoval.",
+        "action": "Odstrániť"
+      },
+      "missingBlock": {
+        "text": "Blok bol odstránený v poznámke {source}.",
+        "action": "Vybrať iný"
+      },
+      "notSynced": {
+        "text": "Čaká sa na synchronizáciu zdrojovej poznámky.",
+        "action": "Skúsiť znova"
+      },
+      "cycle": {
+        "text": "Tento portál vedie späť na seba.",
+        "action": "Otvoriť zdroj"
+      },
+      "tooDeep": {
+        "text": "Portály sa vnárajú najviac do hĺbky {max}. Tento sa otvorí ako odkaz.",
+        "action": "Otvoriť zdroj"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Prejsť do poľa rýchleho záznamu",
@@ -43,6 +100,50 @@
     "showInFileManager": "Zobraziť v správcovi súborov",
     "openInDefaultApp": "Otvoriť v predvolenej aplikácii",
     "revealFailed": "Nepodarilo sa zobraziť v priečinku"
+  },
+  "commands": {
+    "runFailed": "Tento príkaz sa nepodarilo spustiť. Skúste to znova."
+  },
+  "commandsPalette": {
+    "title": "Príkazy",
+    "placeholder": "Zadajte príkaz…",
+    "groups": {
+      "navigation": "Navigácia",
+      "create": "Vytvoriť",
+      "tabs": "Karty",
+      "editor": "Editor",
+      "view": "Zobrazenie",
+      "app": "Aplikácia",
+      "note": "Poznámka",
+      "settings": "Nastavenia",
+      "sync": "Synchronizácia",
+      "help": "Pomoc",
+      "project": "Projekt",
+      "tasks": "Úlohy",
+      "canvas": "Plátno",
+      "folder": "Priečinok",
+      "file": "Súbor"
+    },
+    "contexts": {
+      "note": "Táto poznámka",
+      "journal": "Tento denník",
+      "project": "Tento projekt",
+      "tasks": "Tieto úlohy",
+      "canvas": "Toto plátno",
+      "folder": "Tento priečinok",
+      "tag": "Táto značka",
+      "file": "Tento súbor"
+    },
+    "recent": "Nedávne",
+    "empty": "Príkazy nezodpovedajú výrazu „{query}“",
+    "searchHint": "Hľadať poznámky: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# príkaz} few {# príkazy} other {# príkazov}}"
+    },
+    "actions": {
+      "run": "Spustiť",
+      "searchNotes": "Hľadať poznámky"
+    }
   },
   "tabs": {
     "pin": "Pripnúť kartu",
@@ -131,6 +232,20 @@
     "openInTab": "Otvoriť konverzáciu na karte",
     "stop": "Zastaviť",
     "thinking": "Agent premýšľa",
+    "toolsUnavailable": "Nástroje trezoru sú pre tento model vypnuté. Neprešiel kontrolou nástrojov, preto môže iba konverzovať.",
+    "toolsUnavailableWithDetail": "Nástroje trezoru sú pre tento model vypnuté. Neprešiel kontrolou nástrojov, preto môže iba konverzovať. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Nástroje trezoru sú pre tento model vypnuté. Poskytovateľ odmietol skúšobnú požiadavku s nástrojmi, preto model môže iba konverzovať.",
+      "noToolCall": "Nástroje trezoru sú pre tento model vypnuté. Na skúšobnú požiadavku odpovedal bez volania nástroja, preto môže iba konverzovať.",
+      "toolResultRejected": "Nástroje trezoru sú pre tento model vypnuté. Zavolal skúšobný nástroj, ale po prijatí výsledku zlyhal, preto môže iba konverzovať.",
+      "streamingUnsupported": "Nástroje trezoru sú pre tento model vypnuté. Poskytovateľ neposlal skúšobnú odpoveď po častiach, preto model môže iba konverzovať.",
+      "providerSaid": "Poskytovateľ uviedol: {detail}",
+      "wroteToolCall": "Model napísal volanie nástroja ako text a nič sa nespustilo."
+    },
+    "stepLimit": {
+      "notice": "Zastavené pri dosiahnutí limitu krokov.",
+      "continue": "Pokračovať"
+    },
     "enable": {
       "title": "Zapnúť agenta memrynote",
       "description": "Agent memrynote používa vybrané lokálne CLI agenta na konverzáciu o vašom trezore. Claude posiela správy spoločnosti Anthropic, Codex spoločnosti OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Pridať kontext",
       "addContextWithPermissions": "Pridať kontext ({permissions})",
       "mentionContext": "Zmieniť sa o poznámke, úlohe alebo udalosti",
+      "files": {
+        "attach": "Priložiť textový súbor",
+        "refused": {
+          "unsupportedType": "{name} nie je podporovaný textový súbor. Priložte súbor .txt, .md, .log, .csv, .tsv, .json, .yaml alebo .yml.",
+          "notText": "{name} nie je textový súbor v kódovaní UTF-8. Priložte radšej textový súbor.",
+          "tooLarge": "Súbor {name} by prekročil limit správy 100 KB. Odstráňte súbor alebo priložte menší.",
+          "readFailed": "Súbor {name} sa nepodarilo prečítať. Skontrolujte, či stále existuje a či ho môžete otvoriť, a potom ho priložte znova."
+        }
+      },
       "voice": {
         "start": "Spustiť hlasové diktovanie",
         "stop": "Zastaviť hlasové diktovanie",
@@ -340,6 +464,14 @@
           "extraHigh": "Extra vysoká"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Predvolené",
+          "default": "Predvolená hĺbka",
+          "high": "Vysoká",
+          "max": "Maximálna"
+        }
+      },
       "permissionsLabel": "Povolenia agenta: {access}, webové vyhľadávanie: {webSearch}",
       "permissions": {
         "label": "Povolenia",
@@ -347,6 +479,17 @@
         "tools": "Nástroje"
       },
       "modelSettingsLabel": "Nastavenia modelu agenta: {model}, {settings}",
+      "queue": {
+        "label": "Správy vo fronte",
+        "queueMessage": "Zaradiť správu do frontu",
+        "edit": "Upraviť správu vo fronte",
+        "editLabel": "Text správy vo fronte",
+        "remove": "Odstrániť správu z frontu",
+        "save": "Uložiť",
+        "cancel": "Zrušiť",
+        "sending": "Odosiela sa…",
+        "notSent": "Neodoslané. Upravte ju a odošlite znova, alebo ju odstráňte."
+      },
       "unavailable": {
         "vaultToolsOnly": "S týmto modelom iba nástroje trezoru"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Nepodarilo sa uložiť potvrdenie upozornenia",
       "resolveWindow": "Nepodarilo sa určiť zdrojové okno agenta",
       "detectCli": "Nepodarilo sa zistiť backendy agentov",
-      "loadDisclosure": "Nepodarilo sa načítať potvrdenie upozornenia"
+      "loadDisclosure": "Nepodarilo sa načítať potvrdenie upozornenia",
+      "turnFailed": "Odpoveď sa zastavila s chybou. Vaša správa sa zachovala, môžete ju odoslať znova."
     },
     "actions": {
       "copy": "Kopírovať",
@@ -576,6 +720,7 @@
       "newFolder2": "Nový priečinok",
       "newProject": "Nový projekt",
       "bookmarks": "Záložky",
+      "chart": "Diagram",
       "tags": "Značky",
       "reorderSection": "Zmeniť poradie sekcie {section}",
       "dropFilesToImport": "Pretiahnite súbory na import",
@@ -863,6 +1008,11 @@
       "cancel": "Zrušiť",
       "remove2": "Odstrániť",
       "inYourAccount": "Vo vašom účte",
+      "trySandbox": "Vyskúšať testovací trezor",
+      "sandboxVault": "Testovací trezor",
+      "sandboxPreparing": "Pripravuje sa testovacie prostredie…",
+      "sandboxFailed": "Testovací trezor sa nepodarilo pripraviť",
+      "resetSandbox": "Obnoviť testovací trezor",
       "itemsCount": "{count, plural, one {# položka} few {# položky} other {# položiek}}",
       "untitledVault": "Trezor",
       "downloadVaultTitle": "Stiahnuť „{name}“",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Tu sa zobrazia poznámky, ktoré otvoríte",
       "bookmarks": "Záložky",
       "tasks": "Úlohy",
+      "chart": "Diagram",
       "calendar": "Kalendár",
       "calendarToday": "Dnes",
       "openCalendar": "Otvoriť kalendár",
@@ -978,6 +1129,9 @@
     "edit": "Upraviť",
     "done": "Hotovo",
     "addWidget": "Pridať widget",
+    "cover": {
+      "add": "Pridať obálku"
+    },
     "empty": {
       "title": "Vaša nástenka je prázdna",
       "body": "Widgety spájajú vaše poznámky, úlohy a záložky na jednom pokojnom mieste.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Zmeniť ikonu…",
     "resetIcon": "Obnoviť ikonu",
     "iconButton": "Zmeniť ikonu trezora {name}",
+    "leaveSandbox": "Späť na {name}",
     "iconFailed": "Nepodarilo sa zmeniť ikonu trezora"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Typ",
     "filterModified": "Zmenené",
     "matches": "Zhody",
+    "matchesMore": "{count, plural, one {# ďalšia zhoda} few {# ďalšie zhody} other {# ďalších zhôd}}",
+    "matchesHide": "Skryť zhody",
+    "matchOf": "Zhoda {index} z {total}",
     "showMore": "Zobraziť ďalších {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Ďalšia sekcia",
       "open": "Otvoriť",
       "openNote": "Otvoriť poznámku",
+      "openAtMatch": "Otvoriť pri zhode",
       "openFile": "Otvoriť súbor",
       "openJournal": "Otvoriť denník",
       "openTask": "Otvoriť úlohu",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Vybrať značku",
       "addTag": "Pridať značku",
       "showAll": "Zobraziť všetko",
+      "hideMatches": "Skryť zhody",
       "searchEverywhere": "Hľadať všade",
       "clearFilters": "Vymazať filtre"
     },

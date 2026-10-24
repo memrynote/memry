@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# element amânat} few {# elemente amânate} other {# de elemente amânate}}",
     "notificationBody": "{count, plural, one {Elementul amânat este gata pentru revizuire} few {Elementele amânate sunt gata} other {Elementele amânate sunt gata}}",
     "toast": "{count, plural, =1 {„{itemTitle}” a revenit din amânare} one {# element amânat a revenit} few {# elemente amânate au revenit} other {# de elemente amânate au revenit}}"
+  },
+  "sticky": {
+    "kindLabel": "Trimite ca",
+    "kinds": {
+      "note": "Notiță",
+      "task": "Sarcină",
+      "journal": "Jurnal"
+    },
+    "placeholders": {
+      "note": "Notează aici…",
+      "task": "Sună-o pe Ana @mâine #acasă !high",
+      "journal": "Adaugă în jurnalul de azi…"
+    },
+    "saving": "Se salvează…",
+    "saved": "Salvat",
+    "saveFailed": "Nesalvat",
+    "tuck": "Ascunde",
+    "send": "Trimite",
+    "hints": "Esc ascunde · {mod}⌫ șterge",
+    "sendAndCloseHint": "⌥{mod}↵ trimite și închide",
+    "deleted": "Ciornă ștearsă",
+    "open": "Deschide",
+    "undo": "Anulează",
+    "sent": {
+      "note": "Salvat în dosarul Sticky",
+      "task": "Sarcină adăugată",
+      "journal": "Adăugat în jurnalul de azi"
+    },
+    "tab": {
+      "label": "{count, plural, one {# ciornă sticky} few {# ciorne sticky} other {# de ciorne sticky}}",
+      "newSticky": "Sticky nou"
+    },
+    "errors": {
+      "empty": "Scrie mai întâi ceva.",
+      "taskFailed": "Nu s-a putut crea sarcina.",
+      "tasksOff": "Sarcinile sunt dezactivate în Setări.",
+      "journalOff": "Jurnalul este dezactivat în Setări.",
+      "sendFailed": "Nu s-a putut trimite sticky-ul.",
+      "undoExpired": "Este prea târziu pentru a anula.",
+      "undoFailed": "Nu s-a putut anula trimiterea."
+    },
+    "inputLabel": "Text sticky",
+    "dismissError": "Închide"
   }
 }

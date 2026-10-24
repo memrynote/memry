@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Ștergeți înregistrarea din jurnal",
     "description": "Sigur doriți să ștergeți „{title}”? Acțiunea nu poate fi anulată."
+  },
+  "dayTimeline": {
+    "label": "Programul zilei",
+    "allDay": "Elemente pe toată ziua",
+    "unscheduled": "Neprogramate",
+    "unscheduledEmpty": "Nicio sarcină neprogramată. Trage un bloc aici pentru a-i elimina ora.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Finalizează {title}"
   }
 }

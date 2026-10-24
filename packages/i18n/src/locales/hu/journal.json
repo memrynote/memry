@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Naplóbejegyzés törlése",
     "description": "Biztosan törli a(z) „{title}” bejegyzést? Ez a művelet nem vonható vissza."
+  },
+  "dayTimeline": {
+    "label": "Napi ütemterv",
+    "allDay": "Egész napos elemek",
+    "unscheduled": "Nem ütemezett",
+    "unscheduledEmpty": "Nincs nem ütemezett feladat. Húzzon ide egy blokkot az idejének törléséhez.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} befejezése"
   }
 }

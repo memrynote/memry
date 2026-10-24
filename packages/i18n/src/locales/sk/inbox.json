@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# odložená položka} few {# odložené položky} other {# odložených položiek}}",
     "notificationBody": "{count, plural, one {Odložená položka je pripravená na kontrolu} few {Odložené položky sú pripravené} other {Odložené položky sú pripravené}}",
     "toast": "{count, plural, =1 {Položka „{itemTitle}“ sa vrátila z odloženia} one {# odložená položka sa vrátila} few {# odložené položky sa vrátili} other {# odložených položiek sa vrátilo}}"
+  },
+  "sticky": {
+    "kindLabel": "Odoslať ako",
+    "kinds": {
+      "note": "Poznámka",
+      "task": "Úloha",
+      "journal": "Denník"
+    },
+    "placeholders": {
+      "note": "Zapíšte si to…",
+      "task": "Zavolať Ane @zajtra #domov !vysoká",
+      "journal": "Pridať do dnešného denníka…"
+    },
+    "saving": "Ukladá sa…",
+    "saved": "Uložené",
+    "saveFailed": "Neuložené",
+    "tuck": "Odložiť",
+    "send": "Odoslať",
+    "hints": "Esc odložiť · {mod}⌫ odstrániť",
+    "sendAndCloseHint": "⌥{mod}↵ odošle a zavrie",
+    "deleted": "Koncept odstránený",
+    "open": "Otvoriť",
+    "undo": "Vrátiť späť",
+    "sent": {
+      "note": "Uložené do priečinka Sticky",
+      "task": "Úloha pridaná",
+      "journal": "Pridané do dnešného denníka"
+    },
+    "tab": {
+      "label": "{count, plural, one {# koncept Sticky} few {# koncepty Sticky} other {# konceptov Sticky}}",
+      "newSticky": "Nový Sticky"
+    },
+    "errors": {
+      "empty": "Najprv niečo napíšte.",
+      "taskFailed": "Úlohu sa nepodarilo vytvoriť.",
+      "tasksOff": "Úlohy sú vypnuté v Nastaveniach.",
+      "journalOff": "Denník je vypnutý v Nastaveniach.",
+      "sendFailed": "Sticky sa nepodarilo odoslať.",
+      "undoExpired": "Na vrátenie je už neskoro.",
+      "undoFailed": "Odoslanie sa nepodarilo vrátiť späť."
+    },
+    "inputLabel": "Text Sticky",
+    "dismissError": "Zavrieť"
   }
 }

@@ -195,6 +195,7 @@
     "complete-task": "Dovrši „{title}”",
     "task-completed": "Zadatak dovršen",
     "could-not-complete": "Nije moguće dovršiti zadatak",
+    "could-not-update-status": "Status zadatka nije moguće promijeniti",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Nije moguće otvoriti bilješku"
     }
   },
+  "eventNotes": {
+    "heading": "Bilješke",
+    "create": "Nova bilješka",
+    "link": "Poveži bilješku",
+    "untitled": "Bilješka sa sastanka",
+    "searchPlaceholder": "Pretraži bilješke",
+    "noResults": "Nema pronađenih bilješki",
+    "createFailed": "Nije moguće stvoriti bilješku za ovaj događaj.",
+    "linkFailed": "Nije moguće povezati bilješku s ovim događajem.",
+    "loadFailed": "Nije moguće učitati bilješke povezane s ovim događajem.",
+    "propertyTaken": "Ova bilješka već ima svojstvo „{name}” koje nije poveznica."
+  },
   "notePopover": {
     "kind": "Bilješka",
     "kindDateReminder": "Podsjetnik na datum",
@@ -254,6 +267,10 @@
     "overdue": "zakašnjelo",
     "untitled": "Bez naslova",
     "days": "{count, plural, one {# dan} few {# dana} other {# dana}}",
+    "subtasks": {
+      "expand": "Prikaži {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}} za {title}",
+      "collapse": "Sakrij {count, plural, one {# podzadatak} few {# podzadatka} other {# podzadataka}} za {title}"
+    },
     "events": "Događaji",
     "schedule-hint": "Kliknite za postavljanje datuma, povucite za postavljanje raspona",
     "empty-title": "Ovdje na vremenskoj crti nema ničega",
