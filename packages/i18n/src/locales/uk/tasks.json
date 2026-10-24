@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Термін очищено для # підзавдання} few {Термін очищено для # підзавдань} many {Термін очищено для # підзавдань} other {Термін очищено для # підзавдання}}",
       "prioritySet": "{count, plural, one {Пріоритет встановлено для # підзавдання} few {Пріоритет встановлено для # підзавдань} many {Пріоритет встановлено для # підзавдань} other {Пріоритет встановлено для # підзавдання}}",
       "deleted": "{count, plural, one {# підзавдання видалено} few {# підзавдання видалено} many {# підзавдань видалено} other {# підзавдання видалено}}"
-    }
+    },
+    "completedBranch": "Завершено «{title}» і {count, plural, one {# відкрите підзавдання} few {# відкриті підзавдання} many {# відкритих підзавдань} other {# відкритого підзавдання}}",
+    "deletedKeepSubtasks": "Видалено «{title}», підзавдання збережено",
+    "deletedBranch": "Видалено «{title}» і {count, plural, one {# підзавдання} few {# підзавдання} many {# підзавдань} other {# підзавдання}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "статус",
       "projectIs": "Проєкт:",
       "project": "проєкт",
+      "locationIs": "Розташування:",
+      "location": "розташування",
+      "unknownNote": "Невідома нотатка",
       "due": "Термін",
       "dueDate": "термін",
       "search": "пошук",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Термін"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Розташування",
+      "search": "Шукати теки й нотатки...",
+      "empty": "Немає тек чи нотаток із завданнями"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Пріоритет",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Розділи проєкту",
       "overview": "Огляд",
+      "all": "Усі",
       "tasks": "Завдання",
       "notes": "Нотатки",
       "files": "Файли",
@@ -951,6 +963,25 @@
       "fileError": "Не вдалося пов’язати {name}",
       "fileErrorGeneric": "Не вдалося імпортувати файли",
       "label": "Додати до {name}"
+    },
+    "all": {
+      "showDone": "Показати виконані",
+      "empty": "У цьому проєкті немає відкритих завдань.",
+      "expand": "Показати завдання в «{title}»",
+      "collapse": "Сховати завдання в «{title}»",
+      "taskSummary": "{open}/{total} відкрито",
+      "daysLeft": "{count} дн.",
+      "overdue": "прострочено на {count} дн.",
+      "columns": {
+        "title": "Назва",
+        "daysLeft": "Залишилось днів"
+      },
+      "status": {
+        "active": "Активні",
+        "done": "Виконані",
+        "upcoming": "Майбутні",
+        "past": "Минулі"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Індиго",
     "purple": "Фіолетовий",
     "pink": "Рожевий"
+  },
+  "subtaskTree": {
+    "addSubtask": "Додати підзавдання",
+    "dropInto": "У «{title}»",
+    "dropOut": "На рівень вище",
+    "draftPlaceholder": "Назва підзавдання",
+    "draftLabel": "Нове підзавдання в «{title}»",
+    "draftIn": "у «{title}»",
+    "toggleComplete": "Завершити «{title}»",
+    "moveUnder": {
+      "title": "Перемістити під",
+      "placeholder": "Перемістити під…",
+      "empty": "Немає відповідного завдання",
+      "topLevel": "Верхній рівень у {project}",
+      "thisTask": "Це завдання",
+      "currentParent": "Поточне батьківське",
+      "movesOne": "Переміщує «{title}»",
+      "movesBranch": "Переміщує «{title}» і {count, plural, one {# підзавдання} few {# підзавдання} many {# підзавдань} other {# підзавдання}}",
+      "keys": "↵ Перемістити сюди · ⌘↵ Верхній рівень · esc Закрити"
+    },
+    "zoom": {
+      "path": "Шлях завдання",
+      "up": "На рівень вище",
+      "upShortcut": "На рівень вище (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Видалити «{title}»?",
+      "summary": "{direct, plural, one {Має # підзавдання} few {Має # підзавдання} many {Має # підзавдань} other {Має # підзавдання}}{deeper, plural, =0 {} one { і ще # нижче} few { і ще # нижче} many { і ще # нижче} other { і ще # нижче}}{open, plural, =0 {, усі виконані.} other {, # ще відкрито.}}",
+      "cancel": "Скасувати",
+      "deleteAll": "Видалити все",
+      "keepSubtasks": "Залишити підзавдання"
+    },
+    "menu": {
+      "open": "Відкрити",
+      "complete": "Завершити",
+      "reopen": "Відкрити знову",
+      "zoom": "Перейти до підзавдань",
+      "moveUnder": "Перемістити під…",
+      "indent": "Перемістити під «{title}»",
+      "outdent": "Перемістити на рівень вище",
+      "topLevel": "Зробити завданням верхнього рівня",
+      "delete": "Видалити"
+    },
+    "openPath": "Відкрити {path}"
   }
 }

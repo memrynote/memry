@@ -195,6 +195,7 @@
     "complete-task": "Виконати «{title}»",
     "task-completed": "Завдання виконано",
     "could-not-complete": "Не вдалося позначити завдання як виконане",
+    "could-not-update-status": "Не вдалося змінити статус завдання",
     "duration-minutes": "{minutes} хв",
     "duration-hours": "{hours} год",
     "duration-hours-minutes": "{hours} год {minutes} хв"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Не вдалося відкрити нотатку"
     }
   },
+  "eventNotes": {
+    "heading": "Нотатки",
+    "create": "Нова нотатка",
+    "link": "Прив’язати нотатку",
+    "untitled": "Нотатка до зустрічі",
+    "searchPlaceholder": "Шукати нотатки",
+    "noResults": "Нотаток не знайдено",
+    "createFailed": "Не вдалося створити нотатку для цієї події.",
+    "linkFailed": "Не вдалося прив’язати нотатку до цієї події.",
+    "loadFailed": "Не вдалося завантажити нотатки, прив’язані до цієї події.",
+    "propertyTaken": "Ця нотатка вже має властивість «{name}», яка не є посиланням."
+  },
   "notePopover": {
     "kind": "Нотатка",
     "kindDateReminder": "Нагадування про дату",
@@ -254,6 +267,10 @@
     "overdue": "прострочено",
     "untitled": "Без назви",
     "days": "{count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
+    "subtasks": {
+      "expand": "Показати {count, plural, one {# підзавдання} few {# підзавдання} many {# підзавдань} other {# підзавдання}} для «{title}»",
+      "collapse": "Сховати {count, plural, one {# підзавдання} few {# підзавдання} many {# підзавдань} other {# підзавдання}} для «{title}»"
+    },
     "events": "Події",
     "schedule-hint": "Натисніть, щоб установити дату, або перетягніть, щоб задати діапазон",
     "empty-title": "Тут на хронології нічого немає",

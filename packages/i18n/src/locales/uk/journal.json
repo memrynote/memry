@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Видалити запис щоденника",
     "description": "Ви впевнені, що хочете видалити «{title}»? Цю дію неможливо скасувати."
+  },
+  "dayTimeline": {
+    "label": "Розклад дня",
+    "allDay": "Події на весь день",
+    "unscheduled": "Без розкладу",
+    "unscheduledEmpty": "Немає незапланованих завдань. Перетягніть сюди блок, щоб прибрати його час.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Завершити «{title}»"
   }
 }
