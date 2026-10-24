@@ -439,8 +439,8 @@ describe('CanvasCardLayer', () => {
       { entityType: 'file', entityId: 'r2' }
     ])
     // The batch comes back selected, so it moves as one.
-    expect(Object.keys(passed.appState.selectedElementIds).sort()).toEqual(
-      created.map((e: { id: string }) => e.id).sort()
+    expect(Object.keys(passed.appState.selectedElementIds).toSorted()).toEqual(
+      created.map((e: { id: string }) => e.id).toSorted()
     )
     expect(toastMock.success).toHaveBeenCalledWith('canvas.card.bulkAddedSkipped')
   })

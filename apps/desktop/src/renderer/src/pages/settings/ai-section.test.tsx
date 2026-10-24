@@ -64,7 +64,7 @@ describe('AISettings', () => {
       HTMLElement.prototype.scrollIntoView = vi.fn()
     }
 
-    api = createMockApi() as SettingsApi
+    api = createMockApi()
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
     api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.getAIModelStatus = vi

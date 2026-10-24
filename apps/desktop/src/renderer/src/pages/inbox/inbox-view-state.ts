@@ -58,9 +58,7 @@ export const INBOX_ITEM_TYPES: InboxItemType[] = [
 ]
 
 export const parseInboxView = (raw: unknown): InboxView | undefined =>
-  typeof raw === 'string' && (INBOX_VIEWS as string[]).includes(raw)
-    ? (raw as InboxView)
-    : undefined
+  typeof raw === 'string' ? INBOX_VIEWS.find((view) => view === raw) : undefined
 
 /** Unknown type names are dropped rather than rejecting the whole filter. */
 export const parseTypeFilter = (raw: unknown): InboxItemType[] | undefined =>

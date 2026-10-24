@@ -289,7 +289,8 @@ export function GeneralSettings() {
       <SettingsGroup label={t('general.groups.languageRegion')}>
         <SettingRow label={t('general.language.label')}>
           <Select
-            value={i18n.language as Locale}
+            value={i18n.language}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
             onValueChange={(value) => void handleLocaleChange(value as Locale)}
             disabled={isChangingLocale}
           >
@@ -318,6 +319,7 @@ export function GeneralSettings() {
             type="single"
             value={generalSettings.clockFormat}
             onValueChange={(value) => {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
               if (value) void handleClockFormatChange(value as '12h' | '24h')
             }}
             aria-label={t('general.clockFormat.label')}
@@ -337,6 +339,7 @@ export function GeneralSettings() {
             value={generalSettings.dateFormat}
             onValueChange={(value) =>
               void handleDateFormatChange(
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
                 value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY'
               )
             }
@@ -397,6 +400,7 @@ export function GeneralSettings() {
           <Select
             value={tabSettings.tabCloseButton}
             onValueChange={(value) =>
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
               void handleCloseButtonChange(value as 'always' | 'hover' | 'active')
             }
           >

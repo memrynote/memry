@@ -128,7 +128,7 @@ export function AgentProvidersSection({
 
   // Auto-save edits (debounced), then re-check the connection and surface any error inline.
   useEffect(() => {
-    if (!dirty || !settings) return
+    if (!dirty || !settings) return undefined
     const handle = setTimeout(() => {
       void (async () => {
         setBusy('save')

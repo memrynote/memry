@@ -493,7 +493,7 @@ vi.mock('@/components/note', () => ({
     onLinkClick: (href: string) => void
     onInternalLinkClick: (target: string) => void
     onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
-    focusAtEndRef: React.MutableRefObject<(() => void) | null>
+    focusAtEndRef: React.RefObject<(() => void) | null>
     review?: { onEditorReady?: (editor: unknown) => void }
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
@@ -2431,7 +2431,7 @@ describe('NotePage', () => {
             props: { level: 1 },
             content: [{ type: 'text', text: `Section ${top}` }]
           },
-          ...Array.from({ length: 12 }, (_, mid) => [
+          ...Array.from({ length: 12 }, (_slot, mid) => [
             {
               id: `h2-${top}-${mid}`,
               type: 'heading',

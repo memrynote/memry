@@ -96,7 +96,7 @@ export const parseChartState = (raw: unknown): ViewBlockChart | null | undefined
  */
 export const parseTagAndTags = (raw: unknown): string[] | undefined =>
   Array.isArray(raw) && raw.every((v) => typeof v === 'string' && v.trim() !== '')
-    ? (raw as string[]).map((v) => v.trim())
+    ? raw.map((v: string) => v.trim())
     : undefined
 
 export const parseLinkedFilter = (raw: unknown): string | null | undefined =>

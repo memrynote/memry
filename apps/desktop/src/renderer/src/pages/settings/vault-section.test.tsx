@@ -19,7 +19,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, vars?: Record<string, unknown>) => (vars?.name ? `${key}:${vars.name}` : key)
+    t: (key: string, vars?: Record<string, string | number | undefined>) =>
+      vars?.name ? `${key}:${vars.name}` : key
   })
 }))
 vi.mock('@/hooks/use-storage-usage', () => ({

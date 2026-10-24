@@ -371,6 +371,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       | 'project'
     > = {}
     for (const prop of availableProperties) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property definition type is a string in the IPC DTO; the stored value is one of these
       map[prop.name] = prop.type as
         | 'text'
         | 'number'
@@ -682,18 +683,18 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   )
 
   // Handle delete request (shows confirmation dialog)
-  const handleDeleteRequest = useCallback((noteIds: string[]): void => {
-    setNotesToDelete(noteIds)
+  const handleDeleteRequest = useCallback((requestedNoteIds: string[]): void => {
+    setNotesToDelete(requestedNoteIds)
     setDeleteDialogOpen(true)
   }, [])
 
   // Handle move to folder request (shows move dialog) - Phase 27
   const handleMoveRequest = useCallback(
-    (noteIds: string[]): void => {
-      setNotesToMove(noteIds)
+    (requestedNoteIds: string[]): void => {
+      setNotesToMove(requestedNoteIds)
       // Get title of first note for dialog header
-      if (noteIds.length === 1) {
-        const note = notes.find((n) => n.id === noteIds[0])
+      if (requestedNoteIds.length === 1) {
+        const note = notes.find((n) => n.id === requestedNoteIds[0])
         setMovingNoteTitle(note?.title)
       } else {
         setMovingNoteTitle(undefined)
@@ -1113,6 +1114,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
           {/* Filter */}
           <FilterBuilder
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
             filters={activeView?.filters as FilterExpression | undefined}
             availableProperties={availableProperties}
             tagSuggestions={tagSuggestions}
@@ -1151,6 +1153,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
           {/* Group */}
           <GroupBySelector
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
             groupBy={activeView?.groupBy as GroupByConfig | undefined}
             availableProperties={availableProperties}
             builtInColumns={builtInColumns}
@@ -1237,6 +1240,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         filter={tagFields.linkedFilter}
         shown={notes.length}
         total={unfilteredCount}
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
         viewFilters={activeView?.filters as FilterExpression | undefined}
         onClear={() => tagFields.setLinkedFilter(null)}
         updateFilters={updateFilters}
@@ -1250,9 +1254,9 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               variant="folder-not-found"
               onGoBack={() => {
                 // Close the current tab
-                const activeTab = getActiveTab()
-                if (activeTab) {
-                  closeTab(activeTab.id)
+                const currentTab = getActiveTab()
+                if (currentTab) {
+                  closeTab(currentTab.id)
                 }
               }}
               className="h-full"
@@ -1310,6 +1314,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               columns={activeView?.columns ?? DEFAULT_COLUMNS}
               formulas={formulasMap}
               propertyTypes={propertyTypesMap}
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
               groupBy={activeView.groupBy as GroupByConfig}
               initialSorting={activeView?.order}
               globalFilter={debouncedSearchQuery}
@@ -1511,7 +1516,7 @@ function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): Re
   // the work (synchronous after layout).
   useLayoutEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const calculateRows = (): void => {
       const height = container.clientHeight

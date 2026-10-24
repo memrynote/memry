@@ -13,7 +13,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type RefObject,
   type UIEvent
 } from 'react'
 import { cn } from '@/lib/utils'
@@ -189,7 +188,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // date into the tab and the page has to follow it.
   const tabDate = useMemo(() => {
     if (!identity) return undefined
-    const tab = tabState.tabGroups[identity.groupId]?.tabs.find((t) => t.id === identity.tabId)
+    const tab = tabState.tabGroups[identity.groupId]?.tabs.find((tg) => tg.id === identity.tabId)
     const raw = tab?.viewState?.[JOURNAL_DATE_KEY]
     return typeof raw === 'string' ? raw : undefined
   }, [identity, tabState.tabGroups])
@@ -251,7 +250,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   // Show toast when save error occurs
   useEffect(() => {
-    if (!saveError) return
+    if (!saveError) return undefined
 
     const toastId = toast.error(saveError, {
       description: t('toast.unsavedRetry'),
@@ -370,7 +369,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const isActiveJournal = activeTab?.type === 'journal'
   const findInPage = useFindInPage(
-    editorContainerRef as RefObject<HTMLElement | null>,
+    editorContainerRef,
     isActiveJournal && currentViewState.type === 'day'
   )
 
@@ -421,10 +420,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const monthEntries = useMemo(() => {
     const entries = new Map<string, { preview: string; characterCount: number }>()
-    monthEntriesData.forEach((entry) => {
-      entries.set(entry.date, {
-        preview: entry.preview || '',
-        characterCount: entry.characterCount
+    monthEntriesData.forEach((monthEntry) => {
+      entries.set(monthEntry.date, {
+        preview: monthEntry.preview || '',
+        characterCount: monthEntry.characterCount
       })
     })
     return entries
@@ -440,6 +439,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         const monthName = getMonthName(month, dateLabels)
 
         if (backendStats) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Math.round of a 0..4 average; the backend bounds it to the level range
           const avgLevel = Math.round(backendStats.averageLevel) as 0 | 1 | 2 | 3 | 4
           // Entries with no counted characters average to level 0; a month
           // with entries still shows activity.
@@ -499,9 +499,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // and editable text) → focus editor at end. Attached imperatively so it
   // coexists with the marquee hook's own mousedown listener.
   useEffect(() => {
-    if (!marqueeZoneEl) return
+    if (!marqueeZoneEl) return undefined
     const handler = (event: MouseEvent): void => {
       if (event.button !== 0) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event.target is an HTMLElement or null for DOM mousedown events
       const target = event.target as HTMLElement | null
       if (!target) return
       if (target.closest('[data-marquee-ignore]')) return
@@ -552,8 +553,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Maps keyed by lowercase: tag identity is case-insensitive, display keeps user casing
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const t of allAvailableTags) {
-      map.set(foldTag(t.tag), t.color)
+    for (const tagInfo of allAvailableTags) {
+      map.set(foldTag(tagInfo.tag), tagInfo.color)
     }
     // Just-created tags aren't in allAvailableTags until reindex+refetch;
     // without this the editor pill falls back to the hashed default color
@@ -565,8 +566,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const t of allAvailableTags) {
-      if (t.icon) map.set(foldTag(t.tag), t.icon)
+    for (const tagInfo of allAvailableTags) {
+      if (tagInfo.icon) map.set(foldTag(tagInfo.tag), tagInfo.icon)
     }
     return map
   }, [allAvailableTags])
@@ -581,10 +582,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entry?.tags, tagColorMap, tagIconMap, pendingTagColors])
 
   const availableTags: Tag[] = useMemo(() => {
-    return allAvailableTags.map((t) => ({
-      id: t.tag,
-      name: t.tag,
-      color: t.color
+    return allAvailableTags.map((tagInfo) => ({
+      id: tagInfo.tag,
+      name: tagInfo.tag,
+      color: tagInfo.color
     }))
   }, [allAvailableTags])
 
@@ -1042,7 +1043,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Tag Handlers - use refs to avoid dependency on entry (which changes on every keystroke)
   const handleAddTag = useCallback(
     (tagId: string) => {
-      const tagToAdd = availableTags.find((t) => t.id === tagId)
+      const tagToAdd = availableTags.find((tg) => tg.id === tagId)
       const currentTags = entryTags
       if (tagToAdd && !currentTags.includes(tagToAdd.name)) {
         updateTags([...currentTags, tagToAdd.name])
@@ -1065,7 +1066,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const handleRemoveTag = useCallback(
     (tagId: string) => {
       const currentTags = entryTags
-      updateTags(currentTags.filter((t) => t !== tagId))
+      updateTags(currentTags.filter((tg) => tg !== tagId))
     },
     [entryTags, updateTags]
   )
@@ -1186,6 +1187,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         {/* Main Content Area */}
         <main
           className={cn('flex-1 min-w-0 h-full relative flex flex-col')}
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- CSS custom property is not in CSSProperties; standard React inline-style cast
           style={{ '--note-chrome-height': '2.25rem' } as CSSProperties}
         >
           <FindBar
@@ -1280,12 +1282,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                         showCanvasRail && 'review-canvas',
                         isMindMapOpen && 'invisible pointer-events-none'
                       )}
-                      style={
-                        {
-                          maxWidth: isFullWidth ? '100%' : (journalContentWidth ?? '640px'),
-                          ...railShiftStyle
-                        } as CSSProperties
-                      }
+                      style={{
+                        maxWidth: isFullWidth ? '100%' : (journalContentWidth ?? '640px'),
+                        ...railShiftStyle
+                      }}
                     >
                       <div ref={dayBodyRef} className="min-w-0 flex flex-col flex-1">
                         <div
@@ -1333,7 +1333,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           <GhostAffordanceRow
                             availableTags={availableTags}
                             recentTags={recentTags}
-                            currentTagIds={journalTags.map((t) => t.id)}
+                            currentTagIds={journalTags.map((tg) => tg.id)}
                             onAddTag={handleAddTag}
                             onCreateTag={handleCreateTag}
                             onAddProperty={handleAddPropertyWithExpand}

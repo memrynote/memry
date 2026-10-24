@@ -106,6 +106,7 @@ const VIEWPORT_SAVE_THROTTLE_MS = 500
 const viewportAppState = (
   viewport: CanvasViewport
 ): NonNullable<ExcalidrawInitialDataState['appState']> =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw's initial appState is a full AppState partial; only the camera is known here
   ({
     scrollX: viewport.scrollX,
     scrollY: viewport.scrollY,
@@ -300,6 +301,7 @@ export const CanvasEditor = ({
     // was already ruled out above, so a throw here cannot happen — but if it
     // ever did, Excalidraw catches it and surfaces its own error message
     // rather than mounting a silently empty scene.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
     const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
     return {
       elements: parsed.elements ?? [],
@@ -316,7 +318,7 @@ export const CanvasEditor = ({
   // cropped. So it is framed whole, once, as soon as initialData has landed —
   // which can already have happened by the time the API reaches this effect.
   useEffect(() => {
-    if (!api || !embedded) return
+    if (!api || !embedded) return undefined
     let framed = false
     const frame = (): void => {
       framed = true
@@ -325,7 +327,7 @@ export const CanvasEditor = ({
     }
     if (!api.getAppState().isLoading) {
       frame()
-      return
+      return undefined
     }
     return api.onChange((_elements, appState) => {
       if (!framed && !appState.isLoading) frame()
@@ -390,14 +392,14 @@ export const CanvasEditor = ({
 
   useEffect(() => {
     if (corrupt) {
-      return
+      return undefined
     }
     // Shared by serialize and signature so a readable-scene check can never
     // drift between them: a signature taken from a scene the serializer would
     // refuse to read must not advance the dedupe baseline.
     const readableApi = (): ExcalidrawImperativeAPI | null => {
-      const api = apiRef.current
-      if (!api) {
+      const current = apiRef.current
+      if (!current) {
         return null
       }
       // Teardown guard: on an in-session unmount (tab switch / close), React
@@ -420,10 +422,10 @@ export const CanvasEditor = ({
       // with the wrapper still attached). Serializing here would persist
       // an empty scene over the stored one, so treat a still-loading
       // scene as not readable.
-      if (api.getAppState().isLoading) {
+      if (current.getAppState().isLoading) {
         return null
       }
-      return api
+      return current
     }
 
     const persister = createScenePersister({
@@ -432,18 +434,18 @@ export const CanvasEditor = ({
       // serializeAsJSON (inline image data URLs included) just to discover the
       // string was unchanged. Null on any failure — never "unchanged".
       signature: () => {
-        const api = readableApi()
-        if (!api) {
+        const liveApi = readableApi()
+        if (!liveApi) {
           return null
         }
         try {
           return computeSceneSignature({
-            elements: api.getSceneElements(),
-            files: api.getFiles(),
+            elements: liveApi.getSceneElements(),
+            files: liveApi.getFiles(),
             // serializeAsJSON exports only a few appState keys; running it
             // over an empty scene yields exactly those, without paying for
             // elements or files.
-            appStateJson: serializeAsJSON([], api.getAppState(), {}, 'local')
+            appStateJson: serializeAsJSON([], liveApi.getAppState(), {}, 'local')
           })
         } catch (err) {
           log.error('Failed to fingerprint canvas scene; falling back to a full serialize', err)
@@ -451,12 +453,17 @@ export const CanvasEditor = ({
         }
       },
       serialize: () => {
-        const api = readableApi()
-        if (!api) {
+        const liveApi = readableApi()
+        if (!liveApi) {
           return null
         }
         try {
-          return serializeAsJSON(api.getSceneElements(), api.getAppState(), api.getFiles(), 'local')
+          return serializeAsJSON(
+            liveApi.getSceneElements(),
+            liveApi.getAppState(),
+            liveApi.getFiles(),
+            'local'
+          )
         } catch (err) {
           log.error('Failed to serialize canvas scene', err)
           trackRendererError('canvas_scene_serialize', err)
@@ -466,6 +473,7 @@ export const CanvasEditor = ({
       save: async (scene) => {
         // Advisory entity refs are derived from the same scene, so the dedupe
         // key (scene string) still governs whether a save runs.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
         const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as CardElement[]
         let sceneToSave = scene
         try {
@@ -534,7 +542,7 @@ export const CanvasEditor = ({
    */
   useEffect(() => {
     const wrapper = wrapperRef.current
-    if (!wrapper || corrupt || typeof MutationObserver === 'undefined') return
+    if (!wrapper || corrupt || typeof MutationObserver === 'undefined') return undefined
 
     const setText = (anchor: HTMLAnchorElement, label: string): void => {
       if (anchor.isConnected && anchor.textContent !== label) {
@@ -561,6 +569,7 @@ export const CanvasEditor = ({
         if (action.kind !== 'element') {
           continue
         }
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
         const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as LabelElement[]
         const target = elementLinkTarget(action.elementId, elements)
 
@@ -606,12 +615,14 @@ export const CanvasEditor = ({
   // Main is told which window owns the canvas so it can route the write here.
   // A board in view mode stays out of it (see `embed`).
   useEffect(() => {
-    if (!api || corrupt || viewMode) return
+    if (!api || corrupt || viewMode) return undefined
 
     const handle: LiveCanvasHandle = {
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
       getElements: () => api.getSceneElements() as unknown as SceneEditElement[],
       updateScene: (elements) => {
         api.updateScene({
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw wants its branded ordered-element type; the scene model is structurally identical but not nominally typed
           elements: elements as never,
           captureUpdate: CaptureUpdateAction.IMMEDIATELY
         })
@@ -731,15 +742,15 @@ export const CanvasEditor = ({
           void openMemryTarget(action.href)
           return
         case 'element': {
-          const api = apiRef.current
-          if (!api) return
-          const target = api.getSceneElements().find((el) => el.id === action.elementId)
+          const canvasApi = apiRef.current
+          if (!canvasApi) return
+          const target = canvasApi.getSceneElements().find((el) => el.id === action.elementId)
           if (!target) {
             toast.error(t('canvas.link.elementMissing'))
             return
           }
-          api.scrollToContent(target, { fitToContent: true, animate: true })
-          api.updateScene({
+          canvasApi.scrollToContent(target, { fitToContent: true, animate: true })
+          canvasApi.updateScene({
             appState: { selectedElementIds: { [action.elementId]: true } },
             captureUpdate: CaptureUpdateAction.EVENTUALLY
           })
@@ -769,10 +780,10 @@ export const CanvasEditor = ({
 
   /** Opens the "Link to item" picker for the current selection (see `resolveLinkTarget`). */
   const openLinkPicker = useCallback((): void => {
-    const api = apiRef.current
-    if (!api) return
+    const canvasApi = apiRef.current
+    if (!canvasApi) return
 
-    const target = resolveLinkTarget(api)
+    const target = resolveLinkTarget(canvasApi)
     if (target.kind !== 'shape') {
       toast.error(
         target.kind === 'card' ? t('canvas.link.cardsCannotLink') : t('canvas.link.selectOneShape')
@@ -787,19 +798,19 @@ export const CanvasEditor = ({
   /** Writes the chosen item's href onto the shape the picker was opened for. */
   const applyLink = useCallback(
     (href: string): void => {
-      const api = apiRef.current
+      const canvasApi = apiRef.current
       const targetId = linkTargetId
-      if (!api || !targetId) return
+      if (!canvasApi || !targetId) return
 
-      const elements = api.getSceneElements()
+      const elements = canvasApi.getSceneElements()
       if (!elements.some((el) => el.id === targetId)) {
         // Deleted while the picker was open.
         toast.error(t('canvas.link.elementMissing'))
         return
       }
 
-      api.updateScene({
-        elements: elements.map((el) => (el.id === targetId ? { ...el, link: href } : el)) as never,
+      canvasApi.updateScene({
+        elements: elements.map((el) => (el.id === targetId ? { ...el, link: href } : el)),
         captureUpdate: CaptureUpdateAction.IMMEDIATELY
       })
       // updateScene does not run the editor's onChange, so the persister has to

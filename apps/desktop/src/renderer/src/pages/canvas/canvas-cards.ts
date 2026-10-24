@@ -376,6 +376,11 @@ function rectsOverlap(
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 }
 
+function clockwise([dx, dy]: [number, number]): number {
+  const angle = Math.atan2(dy, dx)
+  return angle < 0 ? angle + 2 * Math.PI : angle
+}
+
 /**
  * Grid offsets forming one square ring at radius `ring`, ordered clockwise from
  * due east so the next card lands beside its predecessor rather than diagonally
@@ -393,11 +398,7 @@ function ringCells(ring: number): [number, number][] {
       }
     }
   }
-  const clockwise = ([dx, dy]: [number, number]): number => {
-    const angle = Math.atan2(dy, dx)
-    return angle < 0 ? angle + 2 * Math.PI : angle
-  }
-  return cells.sort((a, b) => clockwise(a) - clockwise(b))
+  return cells.toSorted((a, b) => clockwise(a) - clockwise(b))
 }
 
 /**

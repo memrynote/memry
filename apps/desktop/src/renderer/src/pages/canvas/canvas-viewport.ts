@@ -51,6 +51,7 @@ export interface ViewportAppState {
  */
 export function parseCanvasViewport(raw: unknown): CanvasViewport | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
   const { scrollX, scrollY, zoom } = raw as Record<string, unknown>
   if (typeof scrollX !== 'number' || !Number.isFinite(scrollX)) return undefined
   if (typeof scrollY !== 'number' || !Number.isFinite(scrollY)) return undefined

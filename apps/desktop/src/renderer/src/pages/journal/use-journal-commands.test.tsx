@@ -126,7 +126,7 @@ describe('journal commands', () => {
   it('leaves the day-only commands out of month and year views', () => {
     render(mount({ viewType: 'month' }))
     act(() => publishActiveContext({ activeTabId: 't', activeGroupId: 'group' }))
-    expect(available.map((c) => c.id).sort()).toEqual([
+    expect(available.map((c) => c.id).toSorted()).toEqual([
       'journal.next',
       'journal.previous',
       'journal.today'

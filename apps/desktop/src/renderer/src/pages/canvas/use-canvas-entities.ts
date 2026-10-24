@@ -78,6 +78,7 @@ type Action =
   | { type: 'set'; key: string; state: CanvasEntityState }
   | { type: 'prune'; keep: ReadonlySet<string> }
 
+// oxlint-disable-next-line typescript/consistent-return -- the switch is exhaustive over the action/entity union, so every path returns
 function reducer(state: EntityMap, action: Action): EntityMap {
   switch (action.type) {
     case 'set': {
@@ -104,6 +105,7 @@ function reducer(state: EntityMap, action: Action): EntityMap {
 }
 
 function shallowEqual(a: CanvasEntityState, b: CanvasEntityState): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; keys come from a CanvasEntityState value
   const ak = Object.keys(a) as (keyof CanvasEntityState)[]
   const bk = Object.keys(b)
   if (ak.length !== bk.length) {
@@ -116,6 +118,7 @@ function shallowEqual(a: CanvasEntityState, b: CanvasEntityState): boolean {
 
 const DANGLING: CanvasEntityState = { status: 'dangling' }
 
+// oxlint-disable-next-line typescript/consistent-return -- the switch is exhaustive over the action/entity union, so every path returns
 async function loadEntity(
   entityType: CanvasEntityType,
   entityId: string
@@ -208,7 +211,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
     }
     return map
   }, [visibleRefs])
-  const wantedSignature = useMemo(() => Array.from(wanted.keys()).sort().join('|'), [wanted])
+  const wantedSignature = useMemo(() => Array.from(wanted.keys()).toSorted().join('|'), [wanted])
   const wantedRef = useRef(wanted)
   // Declared before the load effect so it runs first and the load effect reads
   // the fresh map (effects fire in declaration order).

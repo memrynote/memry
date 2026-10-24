@@ -7,15 +7,7 @@ import { getI18n } from 'react-i18next'
  * Loads real note data via useNotes() hook and saves changes via updateNote().
  */
 
-import {
-  useState,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useMemo,
-  type RefObject
-} from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -322,7 +314,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const isFreshTitle = !!noteId && freshTitleNoteId === noteId
   const hasNote = !!note
   useEffect(() => {
-    if (!isFreshTitle || !hasNote || !noteId) return
+    if (!isFreshTitle || !hasNote || !noteId) return undefined
     clearNewNoteTitlePending(noteId)
     // Deferred past the tab switch and the editor mount, which focus on their own.
     const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
@@ -350,7 +342,7 @@ export function NotePage({ noteId }: NotePageProps) {
   })
   const fileProbeStatus = fileProbe.id === noteId ? fileProbe.status : 'pending'
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     let cancelled = false
     void notesService
       .getFile(noteId)
@@ -497,9 +489,10 @@ export function NotePage({ noteId }: NotePageProps) {
   // and editable text) → focus editor at end. Attached imperatively so it
   // coexists with the marquee hook's own mousedown listener.
   useEffect(() => {
-    if (!marqueeZoneEl) return
+    if (!marqueeZoneEl) return undefined
     const handler = (event: MouseEvent): void => {
       if (event.button !== 0) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event.target is an HTMLElement or null for DOM mousedown events
       const target = event.target as HTMLElement | null
       if (!target) return
       if (target.closest('[data-marquee-ignore]')) return
@@ -534,10 +527,7 @@ export function NotePage({ noteId }: NotePageProps) {
   // virtualized rows out of millions — searching them would answer confidently
   // about the wrong thing. The viewer owns find on that surface instead.
   const isLargeFile = note?.sizeClass === 'large-file'
-  const findInPage = useFindInPage(
-    editorContainerRef as RefObject<HTMLElement | null>,
-    isActiveNote && !isLargeFile
-  )
+  const findInPage = useFindInPage(editorContainerRef, isActiveNote && !isLargeFile)
   const openLargeFileFindRef = useRef<(() => void) | null>(null)
   const openFind = useCallback((): void => {
     if (isLargeFile) openLargeFileFindRef.current?.()
@@ -614,7 +604,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Register with save registry + flush on unmount
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const registryKey = `note-page:${noteId}`
     liveNoteIdRef.current = noteId
@@ -646,7 +636,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Listen for note deletion events
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const handleDeleted = (event: { id: string }) => {
       if (event.id === noteId) {
@@ -665,7 +655,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Listen for sync-driven rename events to update tab title
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const unsub = onNoteRenamed((event) => {
       if (event.id === noteId) {
@@ -681,7 +671,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const isSavingRef = useRef(false)
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     const handleUpdated = (event: { id: string; changes: Partial<Note>; source?: string }) => {
       if (event.id !== noteId) return
@@ -722,8 +712,8 @@ export function NotePage({ noteId }: NotePageProps) {
   // Maps keyed by lowercase: tag identity is case-insensitive, display keeps user casing
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const t of allAvailableTags) {
-      map.set(foldTag(t.tag), t.color)
+    for (const tagInfo of allAvailableTags) {
+      map.set(foldTag(tagInfo.tag), tagInfo.color)
     }
     // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
     for (const key of pendingTagColorsRef.current.keys()) {
@@ -742,8 +732,8 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const tagIconMap = useMemo(() => {
     const map = new Map<string, string>()
-    for (const t of allAvailableTags) {
-      if (t.icon) map.set(foldTag(t.tag), t.icon)
+    for (const tagInfo of allAvailableTags) {
+      if (tagInfo.icon) map.set(foldTag(tagInfo.tag), tagInfo.icon)
     }
     return map
   }, [allAvailableTags])
@@ -763,10 +753,10 @@ export function NotePage({ noteId }: NotePageProps) {
   }, [note?.headerTags, tagColorMap, tagIconMap])
 
   const availableTags: Tag[] = useMemo(() => {
-    return allAvailableTags.map((t) => ({
-      id: t.tag,
-      name: t.tag,
-      color: t.color // Use color from backend
+    return allAvailableTags.map((tagInfo) => ({
+      id: tagInfo.tag,
+      name: tagInfo.tag,
+      color: tagInfo.color // Use color from backend
     }))
   }, [allAvailableTags])
 
@@ -1104,7 +1094,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   const handleAddTag = useCallback(
     async (tagId: string) => {
-      const tagToAdd = availableTags.find((t) => t.id === tagId)
+      const tagToAdd = availableTags.find((tg) => tg.id === tagId)
       if (tagToAdd) await addHeaderTag(tagToAdd.name)
     },
     [availableTags, addHeaderTag]
@@ -1680,6 +1670,7 @@ export function NotePage({ noteId }: NotePageProps) {
         onValueChange={(id) => {
           // Full width flips in place: the switch is the feedback.
           if (id !== 'note.toggleFullWidth') setMoreMenuOpen(false)
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu item ids come from the NoteCommandId-typed command list
           void noteCommands[id as NoteCommandId].run({ source: 'ui' })
         }}
         open={moreMenuOpen}
@@ -2019,7 +2010,7 @@ export function NotePage({ noteId }: NotePageProps) {
             noteId={noteId}
             availableTags={availableTags}
             recentTags={recentTags}
-            currentTagIds={headerTags.map((t) => t.id)}
+            currentTagIds={headerTags.map((tg) => tg.id)}
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddPropertyWithExpand}
@@ -2060,7 +2051,7 @@ export function NotePage({ noteId }: NotePageProps) {
             <EditorErrorBoundary
               noteId={noteId}
               onRecover={refetchNote}
-              onError={(error) => log.error('Editor error:', error)}
+              onError={(editorError) => log.error('Editor error:', editorError)}
             >
               {agentReview ? (
                 <AgentReviewSurface

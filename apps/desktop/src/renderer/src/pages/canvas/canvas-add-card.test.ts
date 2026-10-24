@@ -56,7 +56,7 @@ function taskHit(id: string, title: string): SearchResultItem {
       completedAt: null,
       createdAt: '2026-06-01T00:00:00.000Z'
     }
-  } as SearchResultItem
+  }
 }
 
 describe('candidatesFromSearch', () => {

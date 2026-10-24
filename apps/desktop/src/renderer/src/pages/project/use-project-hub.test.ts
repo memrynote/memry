@@ -206,7 +206,7 @@ describe('useProjectHub', () => {
     workspace.current = { tasks, projects: [project] }
 
     vi.mocked(tasksService.listProjectContents).mockResolvedValue(emptyContents)
-    vi.mocked(tasksService.getProject).mockResolvedValue(null as never)
+    vi.mocked(tasksService.getProject).mockResolvedValue(null)
 
     const { result } = renderHook(() => useProjectHub('p1'))
     await waitFor(() => expect(result.current.isLoading).toBe(false))

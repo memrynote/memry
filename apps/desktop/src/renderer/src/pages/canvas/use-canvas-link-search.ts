@@ -47,7 +47,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
   // The folder tree is one vault-wide list, so it is fetched per opening rather
   // than per keystroke; the query filters it locally.
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     window.api?.notes
       ?.getFolders?.()
@@ -76,7 +76,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       setResults([])
       setEvents([])
       setLoading(false)
-      return
+      return undefined
     }
     setLoading(true)
     let cancelled = false
@@ -86,6 +86,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       const searching = searchService.quick(trimmed).then(
         (response) => {
           if (!cancelled) setResults(response.results)
+          return undefined
         },
         (err: unknown) => {
           if (!cancelled) {
@@ -97,6 +98,7 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
       const searchingEvents = calendarService.searchEvents({ query: trimmed }).then(
         (response) => {
           if (!cancelled) setEvents(response.events)
+          return undefined
         },
         (err: unknown) => {
           if (!cancelled) {

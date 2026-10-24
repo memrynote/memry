@@ -40,6 +40,7 @@ export function CalendarSettingsSection() {
 
   const handleGlobalChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const next = value as CalendarSettings['dayCellClickBehavior']
       const success = await updateSettings({ dayCellClickBehavior: next })
       if (!success) toast.error(t('calendar.defaultBehavior.error'))
@@ -49,6 +50,7 @@ export function CalendarSettingsSection() {
 
   const handleOverrideChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const next = value as CalendarSettings['calendarPageClickOverride']
       const success = await updateSettings({ calendarPageClickOverride: next })
       if (!success) toast.error(t('calendar.pageOverride.error'))
@@ -59,6 +61,7 @@ export function CalendarSettingsSection() {
   const handleWeekStartChange = useCallback(
     async (value: string) => {
       if (!value) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const next = value as CalendarSettings['weekStartDay']
       const success = await updateSettings({ weekStartDay: next })
       if (!success) toast.error(t('calendar.weekStart.error'))

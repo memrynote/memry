@@ -130,6 +130,7 @@ export const CanvasFrameLayer = ({
 
   const sceneElements = useCallback(
     (): FrameSceneElement[] =>
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
       excalidrawAPI.getSceneElementsIncludingDeleted() as unknown as FrameSceneElement[],
     [excalidrawAPI]
   )
@@ -137,12 +138,13 @@ export const CanvasFrameLayer = ({
   const rebaseline = useCallback((): void => {
     const elements = excalidrawAPI.getSceneElementsIncludingDeleted()
     lastElementsRef.current = elements
-    baselineRef.current = cardMembership(elements as unknown as FrameSceneElement[])
+    baselineRef.current = cardMembership(elements)
   }, [excalidrawAPI])
 
   const replaceScene = useCallback(
     (elements: readonly FrameSceneElement[]): void => {
       excalidrawAPI.updateScene({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw wants its branded ordered-element type; the scene model is structurally identical but not nominally typed
         elements: elements as never,
         captureUpdate: CaptureUpdateAction.IMMEDIATELY
       })
@@ -172,6 +174,7 @@ export const CanvasFrameLayer = ({
   /** Scene → viewport, the same mapping the card overlay applies. */
   const chipTransform = useCallback(
     (frame: FrameView): string => {
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
       const appState = excalidrawAPI.getAppState() as unknown as AppState
       const zoom = appState.zoom.value
       // Physical coordinates: this is scene space, not layout.
@@ -426,11 +429,13 @@ export const CanvasFrameLayer = ({
   )
 
   const process = useCallback((): void => {
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     const appState = excalidrawAPI.getAppState() as unknown as AppState
     // Excalidraw reports its empty pre-load scene first; a baseline taken from
     // it would read every card of the stored board as "just dropped in".
     if (appState.isLoading) return
     const raw = excalidrawAPI.getSceneElementsIncludingDeleted()
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     const elements = raw as unknown as FrameSceneElement[]
     refreshFrames(elements, appState)
     // Excalidraw replaces the elements array on every committed scene change
@@ -476,6 +481,7 @@ export const CanvasFrameLayer = ({
       }
     }
     const onPointerDown = (event: PointerEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target narrowed to Element for closest(); listeners are only attached to DOM nodes
       const target = event.target as Element | null
       if (target?.closest('.undo-button-container, .redo-button-container')) {
         historyAtRef.current = Date.now()
@@ -566,6 +572,7 @@ export const CanvasFrameLayer = ({
             values: entry.values
           }))
 
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
         const appState = excalidrawAPI.getAppState() as unknown as AppState
         const rect = viewportSceneRect(appState, {
           width: window.innerWidth,
@@ -592,6 +599,7 @@ export const CanvasFrameLayer = ({
           }
         })
         const created = convertToExcalidrawElements(
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
           skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
         ).map((element, index) => {
           // Geometry is set after conversion: the skeleton path recomputes a
@@ -599,6 +607,7 @@ export const CanvasFrameLayer = ({
           // coordinate as "unset".
           const frame = plan.frames[index]
           return {
+            // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
             ...(element as unknown as FrameSceneElement),
             x: frame.x,
             y: frame.y,
@@ -618,6 +627,7 @@ export const CanvasFrameLayer = ({
           next = placeInFrame(next, new Set(frame.childIds), created[index].id)
         })
         replaceScene(next)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw wants its branded ordered-element type; the scene model is structurally identical but not nominally typed
         excalidrawAPI.scrollToContent(created as never, { fitToContent: true, animate: true })
         toast.success(
           tr('canvas.frame.layoutDone', {

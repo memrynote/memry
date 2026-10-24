@@ -59,7 +59,7 @@ describe('nextActive', () => {
 
 describe('withActivePinned', () => {
   it('adds the active id to the visible set; no-op when null or already present', () => {
-    expect([...withActivePinned(new Set(['a']), 'b')].sort()).toEqual(['a', 'b'])
+    expect([...withActivePinned(new Set(['a']), 'b')].toSorted()).toEqual(['a', 'b'])
     expect([...withActivePinned(new Set(['a']), null)]).toEqual(['a'])
     expect([...withActivePinned(new Set(['a']), 'a')]).toEqual(['a'])
   })

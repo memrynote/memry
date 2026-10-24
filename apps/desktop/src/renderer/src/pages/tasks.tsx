@@ -37,7 +37,8 @@ import {
   getTasksInDueWindow,
   countActiveFilters,
   scopeTasksByProject,
-  applyFiltersAndSort
+  applyFiltersAndSort,
+  addDays // used by handleBulkChangeDueDate
 } from '@/lib/task-utils'
 import { getTaskTabCounts } from '@memry/domain-tasks/parsing'
 import {
@@ -52,7 +53,6 @@ import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { hasLocationFilter } from '@/lib/task-note-index'
 import { SHOW_TASKS_LOCATION_KEY, parseShowTasksLocation } from '@/lib/tasks-location-tab'
 import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
-import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
 import {
   useFilterState,
   useSavedFilters,
@@ -264,7 +264,8 @@ export const TasksPage = ({
   const isTaskDataReady = tasks.length > 0 || projects.length > 0
 
   const storedDetailTask = useMemo(
-    () => (storedDetailTaskId ? (tasks.find((t) => t.id === storedDetailTaskId) ?? null) : null),
+    () =>
+      storedDetailTaskId ? (tasks.find((task) => task.id === storedDetailTaskId) ?? null) : null,
     [storedDetailTaskId, tasks]
   )
   const clearDetailTaskId = useCallback(() => setDetailTaskId(null), [setDetailTaskId])
@@ -459,7 +460,7 @@ export const TasksPage = ({
   // Kanban needs completed tasks for the Done column — filteredTasks excludes them
   const kanbanTasks = useMemo(() => {
     if (effectiveView !== 'kanban') return filteredTasks
-    const nonArchived = tasks.filter((t) => !t.archivedAt)
+    const nonArchived = tasks.filter((task) => !task.archivedAt)
     const scoped = scopeTasksByProject(nonArchived, selectedProjectId)
     return applyFiltersAndSort(
       scoped,
@@ -487,7 +488,10 @@ export const TasksPage = ({
 
   const selectionScopeTasks = windowFilteredTasks ?? filteredTasks
 
-  const visibleTaskIds = useMemo(() => selectionScopeTasks.map((t) => t.id), [selectionScopeTasks])
+  const visibleTaskIds = useMemo(
+    () => selectionScopeTasks.map((task) => task.id),
+    [selectionScopeTasks]
+  )
 
   // Task selection hook
   const {
@@ -560,7 +564,9 @@ export const TasksPage = ({
   })
   const zoomedTask = useMemo(
     () =>
-      zoomedTaskId ? (tasks.find((t) => t.id === zoomedTaskId && !t.archivedAt) ?? null) : null,
+      zoomedTaskId
+        ? (tasks.find((task) => task.id === zoomedTaskId && !task.archivedAt) ?? null)
+        : null,
     [tasks, zoomedTaskId]
   )
   const zoomedProject = zoomedTask
@@ -720,6 +726,7 @@ export const TasksPage = ({
       return (
         activeElement instanceof HTMLInputElement ||
         activeElement instanceof HTMLTextAreaElement ||
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- activeElement is an Element; isContentEditable is read defensively via optional chaining
         (activeElement as HTMLElement)?.isContentEditable === true
       )
     }
@@ -944,7 +951,7 @@ export const TasksPage = ({
 
   const handleToggleComplete = useCallback(
     (taskId: string): void => {
-      const task = tasks.find((t) => t.id === taskId)
+      const task = tasks.find((candidate) => candidate.id === taskId)
       if (!task) return
 
       const project = projects.find((p) => p.id === task.projectId)
@@ -967,7 +974,7 @@ export const TasksPage = ({
   // A plain leaf keeps the "all subtasks done" behaviour of the subtask hook.
   const handleToggleSubtaskComplete = useCallback(
     (taskId: string): void => {
-      const task = tasks.find((t) => t.id === taskId)
+      const task = tasks.find((candidate) => candidate.id === taskId)
       if (!task) return
       if (task.completedAt !== null) {
         undoable.uncompleteTask(taskId)
@@ -999,7 +1006,7 @@ export const TasksPage = ({
   // A task with subtasks asks once what happens to them (E2).
   const [pendingDeleteParentId, setPendingDeleteParentId] = useState<string | null>(null)
   const pendingDeleteParent = pendingDeleteParentId
-    ? (tasks.find((t) => t.id === pendingDeleteParentId) ?? null)
+    ? (tasks.find((task) => task.id === pendingDeleteParentId) ?? null)
     : null
   const pendingDeleteBranch = useMemo(
     () => describeBranch(pendingDeleteParentId, tasks),
@@ -1033,13 +1040,13 @@ export const TasksPage = ({
     onZoom: setZoomedTaskId,
     openTask: handleTaskClick,
     toggleComplete: (taskId) => {
-      const task = tasks.find((t) => t.id === taskId)
+      const task = tasks.find((candidate) => candidate.id === taskId)
       if (task?.parentId) handleToggleSubtaskComplete(taskId)
       else handleToggleComplete(taskId)
     },
     // A task with subtasks asks first (E2); a plain one deletes with Undo.
     deleteTask: (taskId) => {
-      const task = tasks.find((t) => t.id === taskId)
+      const task = tasks.find((candidate) => candidate.id === taskId)
       if (task && task.subtaskIds.length > 0) setPendingDeleteParentId(taskId)
       else handleDeleteTaskFromDrawer(taskId)
     }
@@ -1426,7 +1433,7 @@ export const TasksPage = ({
           {zoomedTask && zoomedProject && (
             <ZoomedBranchView
               task={zoomedTask}
-              tasks={tasks.filter((t) => !t.archivedAt)}
+              tasks={tasks.filter((task) => !task.archivedAt)}
               project={zoomedProject}
               onZoom={setZoomedTaskId}
               onToggleComplete={handleToggleComplete}
@@ -1682,7 +1689,7 @@ export const TasksPage = ({
       <MoveUnderDialog
         task={
           subtaskTree.moveUnderTaskId
-            ? (tasks.find((t) => t.id === subtaskTree.moveUnderTaskId) ?? null)
+            ? (tasks.find((task) => task.id === subtaskTree.moveUnderTaskId) ?? null)
             : null
         }
         tasks={tasks}

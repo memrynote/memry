@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
       fontSizePx: 16,
       fontFamily: 'system',
       customFontFamily: '',
-      zoomFactor: 1 as number | undefined
+      zoomFactor: 1
     },
     isLoading: false,
     updateSettings: vi.fn()

@@ -66,6 +66,7 @@ export function definitionOptionValues(
   }
   if (type === 'status') {
     const categories =
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
       (parsed as { categories?: StatusCategories } | null)?.categories ?? DEFAULT_STATUS_CATEGORIES
     return STATUS_CATEGORY_KEYS.flatMap((key) =>
       (categories[key]?.options ?? []).map((option) => option.value)
@@ -118,8 +119,10 @@ function nonEmptyString(value: unknown): value is string {
  */
 export function readFrameBinding(customData: unknown): FrameBinding | null {
   if (typeof customData !== 'object' || customData === null) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
   const raw = (customData as Record<string, unknown>)[FRAME_BINDING_KEY]
   if (typeof raw !== 'object' || raw === null) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
   const binding = raw as Record<string, unknown>
   if (binding.kind === 'tag' && nonEmptyString(binding.tag)) {
     return { kind: 'tag', tag: binding.tag }
@@ -152,7 +155,8 @@ export function withFrameBinding(
 ): Record<string, unknown> | undefined {
   const base =
     typeof customData === 'object' && customData !== null
-      ? { ...(customData as Record<string, unknown>) }
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
+        { ...(customData as Record<string, unknown>) }
       : {}
   if (binding) {
     base[FRAME_BINDING_KEY] = { ...binding }
@@ -521,6 +525,7 @@ export function placeInFrame<T extends FrameSceneElement>(
   for (const element of elements) {
     if (childIds.has(element.id)) {
       children.push(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a frameId patch is valid for any FrameSceneElement subtype T, which TS cannot prove for a generic
         element.frameId === frameId ? element : bumpElement(element, { frameId } as Partial<T>)
       )
     } else rest.push(element)

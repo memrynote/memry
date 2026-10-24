@@ -151,7 +151,7 @@ function TemplateEditorSurface({
   })
 
   useEffect(() => {
-    if (!tabId || isBuiltIn) return
+    if (!tabId || isBuiltIn) return undefined
     return registerCloseGuard(tabId, {
       // A nameless draft cannot be persisted; say so rather than let the prompt
       // offer a Save that would silently do nothing.

@@ -56,6 +56,7 @@ export function TasksSettings() {
 
   const handleSortOrderChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const sortOrder = value as 'manual' | 'dueDate' | 'priority' | 'createdAt'
       const success = await updateSettings({ defaultSortOrder: sortOrder })
       if (!success) toast.error(t('tasks.sortOrder.error'))
@@ -65,6 +66,7 @@ export function TasksSettings() {
 
   const handleDefaultViewChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
       const defaultView = value as (typeof DEFAULT_VIEW_OPTIONS)[number]['value']
       const success = await updateSettings({ defaultView })
       if (!success) toast.error(t('tasks.defaultView.error'))

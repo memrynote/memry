@@ -54,7 +54,7 @@ function sortWithinGroup(group: ImportGroupId, items: ImporterItem[]): ImporterI
     const index = order.indexOf(id)
     return index === -1 ? order.length : index
   }
-  return [...items].sort((a, b) => rank(a.id) - rank(b.id))
+  return items.toSorted((a, b) => rank(a.id) - rank(b.id))
 }
 
 interface ImportSettingsProps {
@@ -72,6 +72,7 @@ export function ImportSettings({ focusTarget, focusRequestId }: ImportSettingsPr
   const readwise = useReadwiseStatus(hasReadwise)
 
   // Where other rows show a file format, Readwise shows its connection state (D1).
+  // oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default; adding one would drop the compile-time exhaustiveness check
   const readwiseState = (): string => {
     const state = deriveReadwiseState(readwise.status)
     switch (state.kind) {

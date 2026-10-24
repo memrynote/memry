@@ -58,13 +58,14 @@ const mocks = vi.hoisted(() => ({
   api: {
     elements: [] as unknown[],
     isLoading: true,
-    selectedElementIds: {} as Record<string, boolean>,
+    selectedElementIds: {},
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the widening is needed: tsc infers `false`, so the tests' later assignments of 'info'/'editor' fail to typecheck
     showHyperlinkPopup: false as false | 'info' | 'editor',
     /** The camera onChange reports. `null` = pre-init, no camera in appState. */
     viewport: null as { scrollX: number; scrollY: number; zoom: { value: number } } | null
   },
   dispatch: vi.fn(),
-  getTab: vi.fn(() => ({ viewState: {} }) as { viewState: Record<string, unknown> }),
+  getTab: vi.fn(() => ({ viewState: {} })),
   identity: { tabId: 't1', groupId: 'g1', entityId: 'c1' } as {
     tabId: string
     groupId: string
@@ -370,7 +371,7 @@ describe('CanvasEditor persistence safety', () => {
 
     // Full-scene serializes only — the appState fingerprint probe passes [].
     const sceneSerializes = (): number =>
-      mocks.serializeAsJSON.mock.calls.filter((call) => (call[0] as unknown[]).length > 0).length
+      mocks.serializeAsJSON.mock.calls.filter((call) => call[0].length > 0).length
     const before = sceneSerializes()
     expect(before).toBeGreaterThan(0)
 
@@ -663,7 +664,7 @@ describe('CanvasEditor link opening', () => {
     mocks.windowOpen.mockReset()
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.isLoading = false
-    window.open = mocks.windowOpen as unknown as typeof window.open
+    window.open = mocks.windowOpen
     installWindowApi()
     Object.defineProperty(window, 'location', {
       configurable: true,

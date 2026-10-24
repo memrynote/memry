@@ -178,7 +178,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
       }
       newTask.tags = parsedData?.tags ?? []
       newTask.linkedNoteIds = parsedData?.linkedNoteIds ?? []
-      undoable.createTask(newTask)
+      void undoable.createTask(newTask)
     },
     [project, undoable]
   )

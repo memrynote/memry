@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
       theme: 'system',
       accentColor: '#6366f1',
       fontSize: 'medium',
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- widens the mock field; tests assign other values later
       fontSizePx: 16 as number | undefined,
       fontFamily: 'system',
       customFontFamily: ''

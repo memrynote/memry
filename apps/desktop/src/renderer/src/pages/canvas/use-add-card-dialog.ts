@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
-import { getCardRefs, type CardElement } from './canvas-cards'
+import { getCardRefs } from './canvas-cards'
 import { onCanvasKeys } from './canvas-add-card'
 
 /**
@@ -24,12 +24,12 @@ export function useAddCardDialog(
   // `open` would read the scene on every render and trip exhaustive-deps
   // (open is not referenced in the computation).
   const openDialog = useCallback(() => {
-    setKeys(onCanvasKeys(getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[])))
+    setKeys(onCanvasKeys(getCardRefs(excalidrawAPI.getSceneElements())))
     setOpen(true)
   }, [excalidrawAPI])
 
   useEffect(() => {
-    if (!openRef) return
+    if (!openRef) return undefined
     openRef.current = openDialog
     return () => {
       openRef.current = null
