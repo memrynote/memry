@@ -191,7 +191,7 @@ function build() {
           new Date(FILTER_NOWS[c.now]),
           c.weekStartsOn
         )
-        return { taskIds: ids(result.tasks), contextIds: [...result.contextIds].sort() }
+        return { taskIds: ids(result.tasks), contextIds: [...result.contextIds].toSorted() }
       })(),
       hasActiveFilters: hasActiveFilters(toFilters(c.filters)),
       countActiveFilters: countActiveFilters(toFilters(c.filters))

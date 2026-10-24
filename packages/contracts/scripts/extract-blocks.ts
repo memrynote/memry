@@ -72,7 +72,7 @@ function attribute(element: Y.XmlElement, name: string): string | null {
 function propsOf(element: Y.XmlElement): BlockProp[] {
   return Object.entries(element.getAttributes() as Record<string, unknown>)
     .map(([name, value]) => ({ name, value: anyDisplay(value) }))
-    .sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
+    .toSorted((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
 }
 
 /** One `XmlText`'s deltas, as runs. */
@@ -85,7 +85,7 @@ function runsOfText(text: Y.XmlText): InlineRun[] {
     if (typeof chunk.insert !== 'string') continue
     const marks: string[] = []
     const markAttrs: Record<string, string> = {}
-    const entries = Object.entries(chunk.attributes ?? {}).sort(([left], [right]) =>
+    const entries = Object.entries(chunk.attributes ?? {}).toSorted(([left], [right]) =>
       left < right ? -1 : left > right ? 1 : 0
     )
     for (const [key, value] of entries) {

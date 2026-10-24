@@ -330,7 +330,7 @@ function productionKdfMap(relativePath: string): Array<{ name: string; ctx: stri
     const name = COMPUTED_KEYS[m[1]]
     if (name) rows.push({ name, ctx: m[2], id: Number(m[3]) })
   }
-  return rows.sort((a, b) => a.id - b.id)
+  return rows.toSorted((a, b) => a.id - b.id)
 }
 
 describe('KDF context table parity (T054)', () => {
@@ -349,7 +349,7 @@ describe('KDF context table parity (T054)', () => {
       const vectors = loadVectors()
       const fromVectors = vectors.kdfDeriveFromKey
         .map((v) => ({ name: v.contextName, ctx: v.ctx, id: v.subkeyId }))
-        .sort((a, b) => a.id - b.id)
+        .toSorted((a, b) => a.id - b.id)
 
       expect(fromVectors).toEqual(production)
     })

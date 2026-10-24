@@ -108,7 +108,7 @@ export function canonicalValue(value: unknown): string {
   if (typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, inner]) => inner !== undefined)
-      .sort(([left], [right]) => compareNames(left, right))
+      .toSorted(([left], [right]) => compareNames(left, right))
       .map(([key, inner]) => `${canonicalString(key)}:${canonicalValue(inner)}`)
     return `{${entries.join(',')}}`
   }
@@ -167,7 +167,7 @@ function compareNames(left: string, right: string): number {
 function renderPairs(pairs: Array<[string, unknown]>): string {
   return pairs
     .filter(([, value]) => value !== undefined && value !== null)
-    .sort(([left], [right]) => compareNames(left, right))
+    .toSorted(([left], [right]) => compareNames(left, right))
     .map(([name, value]) => ` ${name}=${canonicalValue(value)}`)
     .join('')
 }

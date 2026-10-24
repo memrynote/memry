@@ -178,7 +178,7 @@ function buildViews(): Row {
     staleDays: 7,
     rows: VIEW_ROWS,
     expected: {
-      listIds: [...pending].sort(newestFirst).map((r) => r.id),
+      listIds: [...pending].toSorted(newestFirst).map((r) => r.id),
       snoozedIds: rows
         .filter((r) => r.snoozedUntil !== null && r.filedAt === null)
         .map((r) => r.id),

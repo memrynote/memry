@@ -530,7 +530,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
           !t.completedAt &&
           !t.archivedAt
       )
-      .sort(
+      .toSorted(
         (a, b) =>
           String(a.dueDate).localeCompare(String(b.dueDate)) ||
           String(a.dueTime ?? '').localeCompare(String(b.dueTime ?? '')) ||
@@ -754,7 +754,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       })
     }
   }
-  return items.sort((a, b) =>
+  return items.toSorted((a, b) =>
     a.startAt !== b.startAt
       ? a.startAt.localeCompare(b.startAt)
       : a.projectionId.localeCompare(b.projectionId)
@@ -774,7 +774,7 @@ function search(items: Item[], query: string, nowMs: number): Item[] {
           .toLowerCase()
           .includes(q)
     )
-    .sort(
+    .toSorted(
       (a, b) =>
         Math.abs(new Date(a.startAt).getTime() - nowMs) -
         Math.abs(new Date(b.startAt).getTime() - nowMs)
