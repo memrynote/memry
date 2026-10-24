@@ -348,7 +348,7 @@ describe('runPackBootstrap', () => {
       expect(result.packsApplied).toBe(2)
       // Newest cursor range first, so recent notes land before old ones.
       expect(harness.downloaded).toEqual(['p-new', 'p-old'])
-      expect([...harness.docs.keys()].sort()).toEqual(['note-1', 'note-2', 'note-3', 'note-4'])
+      expect([...harness.docs.keys()].toSorted()).toEqual(['note-1', 'note-2', 'note-3', 'note-4'])
       expect(harness.docs.get('note-3')).toEqual([snapshotBytes('note-3')])
 
       // Watermark: the highest cursor covered by an unbroken run from the
@@ -610,7 +610,7 @@ describe('runPackBootstrap', () => {
       expect(second.entriesSkipped).toBe(2)
       expect([...resumed.docs.keys()]).toEqual(['note-3', 'note-4'])
       // No gap and no double-apply across the two runs.
-      const allNotes = [...harness.docs.keys(), ...resumed.docs.keys()].sort()
+      const allNotes = [...harness.docs.keys(), ...resumed.docs.keys()].toSorted()
       expect(allNotes).toEqual(['note-1', 'note-2', 'note-3', 'note-4'])
       expect(resumed.state.get(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR)).toBe('100')
     })
@@ -749,7 +749,7 @@ describe('runPackBootstrap', () => {
 
       // Both packs land: the second one's URL was re-minted, not abandoned.
       expect(result.entriesApplied).toBe(2)
-      expect([...harness.docs.keys()].sort()).toEqual(['note-new', 'note-old'])
+      expect([...harness.docs.keys()].toSorted()).toEqual(['note-new', 'note-old'])
       expect(pages.length).toBe(2)
     })
   })

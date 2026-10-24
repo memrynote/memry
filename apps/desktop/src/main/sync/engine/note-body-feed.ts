@@ -27,6 +27,16 @@ const log = createLogger('NoteBodyFeed')
 /** Ref and snapshot GETs in flight at once for one page. */
 const NOTE_BODY_FETCH_CONCURRENCY = 4
 
+const lowestInto = (
+  cursors: Map<string, number | null>,
+  noteId: string,
+  cursor: number | null
+): void => {
+  const held = cursors.get(noteId)
+  const lowest = held === null || cursor === null ? null : Math.min(held ?? cursor, cursor)
+  cursors.set(noteId, lowest)
+}
+
 /**
  * Ref and snapshot GETs one page may spend of the `crdt_pull` budget it
  * shares with the record pages' CRDT batch. Entries past it are owed to the
@@ -166,19 +176,11 @@ export class NoteBodyFeed {
       return false
     }
     const parsed: NoteBodyChange[] = []
-    const lowestInto = (
-      cursors: Map<string, number | null>,
-      noteId: string,
-      cursor: number | null
-    ): void => {
-      const held = cursors.get(noteId)
-      const lowest = held === null || cursor === null ? null : Math.min(held ?? cursor, cursor)
-      cursors.set(noteId, lowest)
-    }
     const noteCursor = (noteId: string, cursor: number | null): void =>
       lowestInto(page.cursors!, noteId, cursor)
     for (const raw of changes.noteBodies) {
       const result = NoteBodyChangeSchema.safeParse(raw)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untrusted wire value probed via typeof checks on each field
       const skippedId = result.success ? result.data.noteId : (raw as { noteId?: unknown })?.noteId
       if (
         typeof skippedId === 'string' &&
@@ -194,6 +196,7 @@ export class NoteBodyFeed {
         }
         continue
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untrusted wire value probed via typeof checks on each field
       const noteId = (raw as { noteId?: unknown } | null)?.noteId
       if (typeof noteId !== 'string' || noteId.length === 0) {
         log.error('Dropped a change-feed note body with no noteId')

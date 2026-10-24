@@ -1,7 +1,11 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  ready as sodiumReady,
+  to_base64 as sodiumToBase64,
+  base64_variants as sodiumBase64Variants
+} from 'libsodium-wrappers-sumo'
 import * as Y from 'yjs'
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -98,7 +102,7 @@ vi.mock('../crdt-provider', () => ({
 // The body under test is plain text; the BlockNote schema is not what this
 // file is about.
 vi.mock('../blocknote-converter', () => ({
-  yDocToMarkdown: async (doc: Y.Doc) => doc.getText('body').toString(),
+  yDocToMarkdown: async (doc: Y.Doc) => doc.getText('body').toJSON(),
   findUnrepresentableNodes: () => []
 }))
 
@@ -292,7 +296,7 @@ function makeDevice(
       platform: 'macos',
       appVersion: '1',
       linkedAt: new Date(),
-      signingPublicKey: sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL)
+      signingPublicKey: sodiumToBase64(peer.publicKey, sodiumBase64Variants.ORIGINAL)
     })
     .run()
   const docs = new Map<string, Y.Doc>()
@@ -464,15 +468,15 @@ async function runFreshDeviceSync(scenario: Scenario): Promise<Outcome> {
   return {
     files: readVault(mocks.vaultRoot),
     rows: Object.fromEntries([...mocks.rows.values()].map((row) => [row.id, row.path])),
-    reminders: [...mocks.reminders.keys()].sort(),
-    docs: [...device.docs.keys()].sort(),
+    reminders: [...mocks.reminders.keys()].toSorted(),
+    docs: [...device.docs.keys()].toSorted(),
     createdEvents: mocks.sent.filter((channel) => channel.endsWith('created'))
   }
 }
 
 describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await sodiumReady
     vaultKey = new Uint8Array(32)
     peer = sodium.crypto_sign_keypair('uint8array')
   })
@@ -623,7 +627,7 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
         'livenote0001.md': 'Live note body',
         'livenote0002.md': 'Second body'
       })
-      expect([...device.docs.keys()].sort()).toEqual([live.id, second.id])
+      expect([...device.docs.keys()].toSorted()).toEqual([live.id, second.id])
     })
 
     it('keeps the packed docs through a pull that does not deliver', async () => {
@@ -683,7 +687,7 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
         .all()
         .map((row) => row.key)
         .filter((key) => key.startsWith('packSeed'))
-        .sort()
+        .toSorted()
 
     const packThenDie = async (device: Device, packed: Array<typeof live>): Promise<void> => {
       await runSync(device, {

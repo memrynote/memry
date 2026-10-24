@@ -61,7 +61,7 @@ describe('downloadPackToFile', () => {
     const failure = await downloadPackToFile({
       url,
       destPath: dest,
-      fetchFn: fetchFn as unknown as typeof globalThis.fetch,
+      fetchFn,
       maxAttempts: 1,
       sleep: async () => {}
     }).catch((err: unknown) => err)
@@ -125,7 +125,7 @@ describe('downloadPackToFile', () => {
     const result = await downloadPackToFile({
       url: 'https://r2.example/p.pack',
       destPath: dest,
-      fetchFn: fetchFn as unknown as typeof globalThis.fetch
+      fetchFn
     })
 
     expect(result).toEqual({ bytes: 4, resumed: false })
@@ -140,7 +140,7 @@ describe('downloadPackToFile', () => {
       downloadPackToFile({
         url: 'https://r2.example/p.pack',
         destPath: dest,
-        fetchFn: fetchFn as unknown as typeof globalThis.fetch
+        fetchFn
       })
     ).resolves.toEqual({ bytes: 3, resumed: true })
   })
@@ -151,7 +151,7 @@ describe('downloadPackToFile', () => {
       downloadPackToFile({
         url: 'https://r2.example/p.pack',
         destPath: dest,
-        fetchFn: fetchFn as unknown as typeof globalThis.fetch
+        fetchFn
       })
     ).rejects.toBeInstanceOf(RateLimitError)
   })
@@ -162,7 +162,7 @@ describe('downloadPackToFile', () => {
       downloadPackToFile({
         url: 'https://r2.example/p.pack',
         destPath: dest,
-        fetchFn: fetchFn as unknown as typeof globalThis.fetch
+        fetchFn
       })
     ).rejects.toBeInstanceOf(SyncServerError)
   })
@@ -173,7 +173,7 @@ describe('downloadPackToFile', () => {
     await downloadPackToFile({
       url: 'https://r2.example/p.pack',
       destPath: dest,
-      fetchFn: fetchFn as unknown as typeof globalThis.fetch,
+      fetchFn,
       pace
     })
     expect(pace).toHaveBeenCalledTimes(1)

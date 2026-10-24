@@ -67,6 +67,7 @@ export interface PullEnvelope {
 export type ParsedPullBody = { kind: 'not_envelope' } | PullEnvelope
 
 const siblingEntries = (body: unknown, key: 'purgedTombstones' | 'blobMissing'): unknown[] => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- body is an untrusted parsed response; an unknown key reads undefined and yields []
   const raw = (body as Record<string, unknown>)[key]
   return Array.isArray(raw) ? raw : []
 }
@@ -77,6 +78,7 @@ function admitTombstone(
 ): PurgedTombstone | RefusedTombstone {
   const parsed = RecordPullPurgedTombstoneSchema.safeParse(raw)
   if (!parsed.success) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untrusted wire value probed via typeof checks on each field
     const ref = raw as { id?: unknown; type?: unknown } | null
     return {
       ...(typeof ref?.id === 'string' ? { id: ref.id } : {}),
@@ -90,6 +92,7 @@ function admitTombstone(
   if (!clock || Object.keys(clock).length === 0) return { id, type, reason: 'clockless' }
   return {
     id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
     type: type as RecordClockRequiredItemType,
     deletedAt,
     clock,
@@ -117,6 +120,7 @@ export function parsePullItems(
   inline: readonly unknown[] = [],
   requestedIds: readonly string[] = []
 ): ParsedPullBody {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untrusted wire value probed via typeof checks on each field
   const rawItems = (body as { items?: unknown } | null)?.items
   if (!Array.isArray(rawItems)) return { kind: 'not_envelope' }
 
@@ -129,6 +133,7 @@ export function parsePullItems(
       items.push(parsed.data)
       continue
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- raw is an untrusted array element; each field is probed with typeof right after
     const ref = raw as { id?: unknown; type?: unknown } | null
     if (typeof ref?.id === 'string' && typeof ref.type === 'string') {
       invalid.push({ id: ref.id, type: ref.type })
@@ -273,6 +278,7 @@ export function carriesCrdtBody(
 ): boolean {
   if ((item.type !== 'note' && item.type !== 'journal') || operation === 'delete') return false
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the parsed shape is probed field by field right after
     const { fileType } = JSON.parse(item.content) as { fileType?: string }
     return !(fileType && isBinaryFileType(fileType))
   } catch {

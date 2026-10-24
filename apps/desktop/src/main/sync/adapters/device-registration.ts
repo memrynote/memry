@@ -35,6 +35,7 @@ export function fileSigningKeyStore(dir: string): SigningKeyStore {
   return {
     async load(vaultId) {
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the parsed shape is probed field by field right after
         const raw = JSON.parse(await fsp.readFile(fileFor(vaultId), 'utf8')) as {
           publicKey: string
           privateKey: string
@@ -78,6 +79,7 @@ export class DesktopDeviceRegistration implements DeviceRegistrationAdapter {
   }
 
   async signingKeypair(vaultId: string): Promise<DeviceSigner> {
+    // oxlint-disable-next-line import/no-named-as-default-member -- sibling tests vi.mock this module with only a `default` export
     await sodium.ready
     let keypair = await this.deps.keyStore.load(vaultId)
     if (!keypair) {

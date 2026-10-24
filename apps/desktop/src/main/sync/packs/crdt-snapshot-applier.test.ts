@@ -1,4 +1,8 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  ready as sodiumReady,
+  to_base64 as sodiumToBase64,
+  base64_variants as sodiumBase64Variants
+} from 'libsodium-wrappers-sumo'
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -26,7 +30,7 @@ describe('crdt snapshot pack applier', () => {
   let store: SnapshotSeedStore
 
   beforeAll(async () => {
-    await sodium.ready
+    await sodiumReady
     vaultKey = sodium.randombytes_buf(32, 'uint8array')
     deviceA = sodium.crypto_sign_keypair('uint8array')
     deviceB = sodium.crypto_sign_keypair('uint8array')
@@ -299,7 +303,7 @@ describe('crdt snapshot pack applier', () => {
 
   describe('decodeSignerPublicKeys', () => {
     it('decodes what the device cache stores and drops what it cannot', () => {
-      const encoded = sodium.to_base64(deviceA.publicKey, sodium.base64_variants.ORIGINAL)
+      const encoded = sodiumToBase64(deviceA.publicKey, sodiumBase64Variants.ORIGINAL)
       expect(decodeSignerPublicKeys([encoded, '!!! not base64 !!!'])).toEqual([deviceA.publicKey])
     })
 

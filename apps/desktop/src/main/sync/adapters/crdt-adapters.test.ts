@@ -10,7 +10,6 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import type { CrdtTransport } from '@memry/sync-client/adapters'
-import type { CrdtPersistence } from '../crdt-persistence'
 import { DesktopCrdtPersistenceAdapter } from './crdt-persistence-adapter'
 import { DesktopCrdtProviderHost } from './crdt-provider-host'
 
@@ -23,7 +22,7 @@ function docWithText(text: string): Y.Doc {
 function textOf(state: { updates: Uint8Array[] }): string {
   const doc = new Y.Doc()
   for (const update of state.updates) Y.applyUpdate(doc, update)
-  const text = doc.getText('content').toString()
+  const text = doc.getText('content').toJSON()
   doc.destroy()
   return text
 }
@@ -36,7 +35,7 @@ describe('DesktopCrdtPersistenceAdapter (real y-leveldb)', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'crdt-adapter-'))
     store = new LeveldbPersistence(dir)
-    adapter = new DesktopCrdtPersistenceAdapter(store as unknown as CrdtPersistence)
+    adapter = new DesktopCrdtPersistenceAdapter(store)
   })
 
   afterEach(async () => {
@@ -113,7 +112,7 @@ function receivedText(transport: FakeTransport): string {
   for (const frames of transport.received) {
     for (const frame of frames) Y.applyUpdate(doc, frame)
   }
-  const text = doc.getText('content').toString()
+  const text = doc.getText('content').toJSON()
   doc.destroy()
   return text
 }
@@ -148,7 +147,7 @@ describe('DesktopCrdtProviderHost', () => {
     editor.pushFromUi([Y.encodeStateAsUpdate(uiDoc)])
     uiDoc.destroy()
 
-    expect(doc.getText('content').toString()).toBe('typed on ui')
+    expect(doc.getText('content').toJSON()).toBe('typed on ui')
     // The editor's own frame must not come back to it…
     expect(editor.received.length).toBe(editorFramesAfterAttach)
     // …but the other attachment sees it.
@@ -177,13 +176,13 @@ describe('DesktopCrdtProviderHost', () => {
     const uiDoc = docWithText('before open')
     transport.pushFromUi([Y.encodeStateAsUpdate(uiDoc)])
     uiDoc.destroy()
-    expect(doc.getText('content').toString()).toBe('')
+    expect(doc.getText('content').toJSON()).toBe('')
 
     release!()
     await gate
     await Promise.resolve()
 
-    expect(doc.getText('content').toString()).toBe('before open')
+    expect(doc.getText('content').toJSON()).toBe('before open')
     detach()
     doc.destroy()
   })
@@ -201,7 +200,7 @@ describe('DesktopCrdtProviderHost', () => {
     const uiDoc = docWithText('after detach')
     transport.pushFromUi([Y.encodeStateAsUpdate(uiDoc)])
     uiDoc.destroy()
-    expect(doc.getText('content').toString()).toBe('')
+    expect(doc.getText('content').toJSON()).toBe('')
 
     doc.getText('content').insert(0, 'engine edit')
     expect(transport.received.length).toBe(framesAtDetach)

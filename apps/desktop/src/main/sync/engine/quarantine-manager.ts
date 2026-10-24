@@ -84,6 +84,7 @@ export class QuarantineManager {
         .all()
       const val = rows[0]?.value
       if (!val) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the parsed shape is probed field by field right after
       const parsed = JSON.parse(val) as
         | QuarantineEntry[]
         | { v: number; entries: QuarantineEntry[] }

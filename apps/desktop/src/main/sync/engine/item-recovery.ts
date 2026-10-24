@@ -49,9 +49,11 @@ export function applyRecoveredItems(
   const waiting: ItemRef[] = []
   for (const dec of sortByApplyOrder(recovered)) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire operation is a plain string; a runtime guard would change behavior for unexpected values
       const operation = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
       const result = deps.ctx.applier.apply({
         itemId: dec.id,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
         type: dec.type as Parameters<typeof deps.ctx.applier.apply>[0]['type'],
         operation,
         content: new TextEncoder().encode(dec.content),
