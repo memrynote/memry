@@ -247,6 +247,14 @@ Two instances at once need macOS 14 or later, because each instance needs its ow
 
 Limits of the adapter: the macOS WebView driver sends synthetic mouse events, so `pw-compat` adds the pointer events, focus change, `dblclick` and `contextmenu` a real click produces; drag and drop and text selection by mouse need a driver with native input. Native dialogs, the color picker and native menus cannot be clicked, so a spec never opens one; `HOOKS.md` describes the dialog result queue that Step 08 (#3525) builds.
 
+### Running the harness on a Windows or Linux VM
+
+Install Node 24 and `npm install` the `devDependencies` of `apps/desktop-tauri/package.json` that start with `@wdio` or `webdriverio`, plus `tsx`, next to a copy of `apps/desktop-tauri/e2e`, set `MEMRY_E2E_BINARY` to the e2e build from CI, and run `wdio run e2e/wdio.conf.ts`. Checked on 2026-10-24:
+
+- Windows 11 ARM64 (VMware Fusion, WebView2 154): start the run from a scheduled task with `/it` so it has the console session. Every spec passes. WebView2 helper processes keep the profile open for a moment after the app exits, so the harness retries removing a profile directory for 10 seconds.
+- Ubuntu 24.04 ARM64 (tart, x64 build under Rosetta, XFCE): install `libwebkit2gtk-4.1-0`, `libsoup-3.0-0`, `libayatana-appindicator3-1` and `libxdo3` for `amd64`. No `WEBKIT_*` variable is needed. Startup, restart, window and two-device pass. The 300 ms `click` budget in `pw-compat` fails there (about 470 ms) because the VM runs the build under Rosetta without a GPU; native CI runners decide that budget.
+- A window larger than the display is maximized by the window manager and ignores `set_size`, so `e2e_set_window_rect` restores the window first and CI starts Xvfb with a 1920x1080 screen.
+
 ### Keychain
 
 Specs that sign in leave keychain items under `e2e-` device ids. The harness removes them when the run ends. `node apps/desktop-tauri/e2e/scripts/purge-e2e-keychain.mjs` lists leaked items and deletes nothing; `--apply` deletes only accounts that match `e2e-`.
