@@ -40,7 +40,7 @@ export function computeJournalStreak(dates: Iterable<string>, today: string): Jo
     return { currentStreak: 0, longestStreak: 0, lastEntryDate: null }
   }
 
-  const sortedDates = Array.from(set).sort()
+  const sortedDates = Array.from(set).toSorted()
   const lastEntryDate = sortedDates[sortedDates.length - 1]
 
   let currentStreak = 0

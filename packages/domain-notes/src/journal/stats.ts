@@ -139,7 +139,7 @@ export function yearMonthStats(days: ReadonlyArray<JournalDayCounts>): JournalYe
     else byMonth.set(month, [day])
   }
   return Array.from(byMonth.keys())
-    .sort((a, b) => a - b)
+    .toSorted((a, b) => a - b)
     .map((month) => {
       const rows = byMonth.get(month) ?? []
       return {
