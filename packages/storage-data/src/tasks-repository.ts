@@ -166,8 +166,11 @@ function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskR
   const subtaskCounts = taskQueries.countSubtasks(db, task.id)
   return {
     ...task,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- priority is an integer column; rows written by older builds are not range-checked, so the union is the contract not a proof
     priority: task.priority as Task['priority'],
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- repeatConfig is a JSON column typed loosely by the schema; its shape is RepeatConfig by writer contract
     repeatConfig: task.repeatConfig as Task['repeatConfig'],
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- repeatFrom is a text column; its values are the 'due' | 'completion' union by writer contract
     repeatFrom: task.repeatFrom as Task['repeatFrom'],
     isRepeating: !!task.repeatConfig,
     fields: plainVersionedMap(task.fields),
@@ -204,6 +207,7 @@ function stripSyncBookkeeping(task: Task): TaskListItem {
     ...rest
   } = task as Task & { clock?: unknown; fieldClocks?: unknown; syncedAt?: unknown }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- rest is Task minus the three bookkeeping keys, which is TaskListItem; rest-spread loses the omit relation
   return rest as TaskListItem
 }
 

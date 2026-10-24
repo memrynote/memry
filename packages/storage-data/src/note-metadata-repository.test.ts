@@ -34,7 +34,7 @@ describe('note-metadata-repository', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    db = testDb.db as unknown as NoteMetadataDb
+    db = testDb.db
   })
 
   afterEach(() => {
@@ -245,7 +245,7 @@ describe('note-metadata-repository', () => {
       const rows = listNoteMetadata(db)
 
       // #then
-      expect(rows.map((r) => r.id).sort()).toEqual(['n-a', 'n-b'])
+      expect(rows.map((r) => r.id).toSorted()).toEqual(['n-a', 'n-b'])
     })
 
     it('filters to journal when journalOnly=true', () => {
