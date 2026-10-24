@@ -23,11 +23,11 @@ const list = (dir, prefix = '') =>
 describe('stageWindowsPayload', () => {
   it('lays out Memrynote.exe plus the externalBin and resources the config lists', () => {
     const exeDir = fixture({
-      'memry-tauri.exe': 'main',
+      'Memrynote.exe': 'main',
       'memry-ml-worker.exe': 'worker',
       'resources/pdfium.dll': 'pdf',
       'other.dll': 'not listed',
-      'memry-tauri.pdb': 'symbols'
+      'Memrynote.pdb': 'symbols'
     })
     const outDir = path.join(fixture({}), 'pack')
     const config = {
@@ -46,13 +46,13 @@ describe('stageWindowsPayload', () => {
   })
 
   it('stages only the executable for a config with no companions', () => {
-    const exeDir = fixture({ 'memry-tauri.exe': 'main' })
+    const exeDir = fixture({ 'Memrynote.exe': 'main' })
     const outDir = path.join(fixture({}), 'pack')
     assert.deepEqual(stageWindowsPayload({ exeDir, config: {}, outDir }), ['Memrynote.exe'])
   })
 
   it('fails when a listed file is missing beside the executable', () => {
-    const exeDir = fixture({ 'memry-tauri.exe': 'main' })
+    const exeDir = fixture({ 'Memrynote.exe': 'main' })
     assert.throws(
       () =>
         stageWindowsPayload({
@@ -67,7 +67,7 @@ describe('stageWindowsPayload', () => {
   it('fails when the build produced no executable', () => {
     assert.throws(
       () => stageWindowsPayload({ exeDir: fixture({}), config: {}, outDir: fixture({}) }),
-      /memry-tauri\.exe/
+      /Memrynote\.exe/
     )
   })
 

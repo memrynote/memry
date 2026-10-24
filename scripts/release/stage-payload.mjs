@@ -33,7 +33,7 @@ export function listCompanionPaths(config) {
   return paths
 }
 
-export function stageWindowsPayload({ exeDir, exeName = 'memry-tauri.exe', config, outDir }) {
+export function stageWindowsPayload({ exeDir, exeName = WINDOWS_MAIN_EXE, config, outDir }) {
   const mainExe = path.join(exeDir, exeName)
   if (!existsSync(mainExe)) {
     throw new Error(`The build produced no ${exeName} in ${exeDir}`)
