@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Kunne ikke kopiere portalen",
+    "hiddenCount": "{count} skjulte",
+    "windowFailed": "Denne portal kunne ikke åbnes. Åbn kildenoten i stedet.",
+    "noTarget": "Denne portal har endnu intet mål. Føj en note til definitionen, eller fjern blokken.",
+    "invalidJson": "Denne portals definition er ikke gyldig JSON. Ret den nedenfor, eller fjern blokken.",
+    "invalidShape": "Denne portals definition har hverken note eller søgning. Ret den nedenfor, eller fjern blokken.",
+    "search": {
+      "editQuery": "Redigér forespørgsel",
+      "count": "{count, plural, one {# blok} other {# blokke}}",
+      "loading": "Søger…",
+      "empty": "Ingen blokke matcher denne forespørgsel.",
+      "failed": "Søgningen kunne ikke køre.",
+      "retry": "Prøv igen",
+      "truncated": "Viser de første {count} resultater."
+    },
+    "copiedContents": "Indhold kopieret",
+    "copiedLink": "Link kopieret",
+    "actionFailed": "Kunne ikke ændre denne portal",
+    "keepsOneBlock": "En portal beholder mindst én blok. Fjern portalen i stedet.",
+    "expandChildren": "Vis underelementer",
+    "collapseChildren": "Skjul underelementer",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Medtag »{block}«",
+      "locked": "{note} er låst · skrivebeskyttet",
+      "more": "Mere",
+      "openBeside": "Åbn {note} ved siden af",
+      "click": "Klik",
+      "copyContents": "Kopiér indhold",
+      "copyLink": "Kopiér link",
+      "remove": "Fjern portal",
+      "removeHint": "{note} beholder alle blokke"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Kildenoten blev slettet. Henvisningen bevares.",
+        "action": "Fjern"
+      },
+      "missingBlock": {
+        "text": "Blokken blev slettet i {source}.",
+        "action": "Vælg en anden"
+      },
+      "notSynced": {
+        "text": "Venter på, at kildenoten synkroniseres.",
+        "action": "Prøv igen"
+      },
+      "cycle": {
+        "text": "Denne portal fører tilbage til sig selv.",
+        "action": "Åbn kilde"
+      },
+      "tooDeep": {
+        "text": "Portaler kan indlejres {max} niveauer. Denne åbnes som et link.",
+        "action": "Åbn kilde"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Fokusér på indfangningsfeltet",
@@ -43,6 +100,50 @@
     "showInFileManager": "Vis i filhåndtering",
     "openInDefaultApp": "Åbn i standardapp",
     "revealFailed": "Kunne ikke vise filen i mappen"
+  },
+  "commands": {
+    "runFailed": "Kommandoen kunne ikke køre. Prøv igen."
+  },
+  "commandsPalette": {
+    "title": "Kommandoer",
+    "placeholder": "Skriv en kommando…",
+    "groups": {
+      "navigation": "Navigation",
+      "create": "Opret",
+      "tabs": "Faner",
+      "editor": "Editor",
+      "view": "Visning",
+      "app": "App",
+      "note": "Note",
+      "settings": "Indstillinger",
+      "sync": "Synkronisering",
+      "help": "Hjælp",
+      "project": "Projekt",
+      "tasks": "Opgaver",
+      "canvas": "Lærred",
+      "folder": "Mappe",
+      "file": "Fil"
+    },
+    "contexts": {
+      "note": "Denne note",
+      "journal": "Denne dagbog",
+      "project": "Dette projekt",
+      "tasks": "Disse opgaver",
+      "canvas": "Dette lærred",
+      "folder": "Denne mappe",
+      "tag": "Dette tag",
+      "file": "Denne fil"
+    },
+    "recent": "Seneste",
+    "empty": "Ingen kommandoer matcher »{query}«",
+    "searchHint": "Søg i noter: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# kommando} other {# kommandoer}}"
+    },
+    "actions": {
+      "run": "Kør",
+      "searchNotes": "Søg i noter"
+    }
   },
   "tabs": {
     "pin": "Fastgør fane",
@@ -131,6 +232,20 @@
     "openInTab": "Åbn samtale i fane",
     "stop": "Stop",
     "thinking": "Agenten tænker",
+    "toolsUnavailable": "Boksværktøjer er slået fra for denne model. Den bestod ikke værktøjstjekket og kan kun chatte.",
+    "toolsUnavailableWithDetail": "Boksværktøjer er slået fra for denne model. Den bestod ikke værktøjstjekket og kan kun chatte. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Boksværktøjer er slået fra for denne model. Udbyderen afviste en testforespørgsel med værktøjer, så modellen kan kun chatte.",
+      "noToolCall": "Boksværktøjer er slået fra for denne model. Den besvarede en testforespørgsel uden at kalde værktøjet, så den kan kun chatte.",
+      "toolResultRejected": "Boksværktøjer er slået fra for denne model. Den kaldte et testværktøj, men fejlede efter at have fået resultatet tilbage, så den kan kun chatte.",
+      "streamingUnsupported": "Boksværktøjer er slået fra for denne model. Udbyderen streamede ikke et testsvar, så modellen kan kun chatte.",
+      "providerSaid": "Udbyderen sagde: {detail}",
+      "wroteToolCall": "Modellen skrev et værktøjskald som tekst, og intet blev kørt."
+    },
+    "stepLimit": {
+      "notice": "Stoppet ved tringrænsen.",
+      "continue": "Fortsæt"
+    },
     "enable": {
       "title": "Aktivér memrynote Agent",
       "description": "memrynote Agent bruger den lokale agent-CLI, du har valgt, til at chatte om din boks. Claude sender samtalen til Anthropic; Codex sender den til OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Tilføj kontekst",
       "addContextWithPermissions": "Tilføj kontekst ({permissions})",
       "mentionContext": "Nævn en note, opgave eller begivenhed",
+      "files": {
+        "attach": "Vedhæft en tekstfil",
+        "refused": {
+          "unsupportedType": "{name} er ikke en understøttet tekstfil. Vedhæft en .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- eller .yml-fil.",
+          "notText": "{name} er ikke en UTF-8-tekstfil. Vedhæft en tekstfil i stedet.",
+          "tooLarge": "{name} ville bringe beskeden over grænsen på 100 KB. Fjern en fil, eller vedhæft en mindre.",
+          "readFailed": "{name} kunne ikke læses. Tjek, at filen stadig findes, og at du kan åbne den, og vedhæft den igen."
+        }
+      },
       "voice": {
         "start": "Start diktering",
         "stop": "Stop diktering",
@@ -340,6 +464,14 @@
           "extraHigh": "Ekstra høj"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Standard",
+          "default": "Standarddybde",
+          "high": "Høj",
+          "max": "Maks."
+        }
+      },
       "permissionsLabel": "Agenttilladelser: {access}, websøgning {webSearch}",
       "permissions": {
         "label": "Tilladelser",
@@ -347,6 +479,17 @@
         "tools": "Værktøjer"
       },
       "modelSettingsLabel": "Agentens modelindstillinger: {model}, {settings}",
+      "queue": {
+        "label": "Beskeder i kø",
+        "queueMessage": "Sæt besked i kø",
+        "edit": "Redigér besked i kø",
+        "editLabel": "Tekst til besked i kø",
+        "remove": "Fjern besked i kø",
+        "save": "Gem",
+        "cancel": "Annullér",
+        "sending": "Sender…",
+        "notSent": "Ikke sendt. Redigér for at sende igen, eller fjern den."
+      },
       "unavailable": {
         "vaultToolsOnly": "Kun boksværktøjer med denne model"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Kunne ikke gemme, at du har accepteret oplysningerne",
       "resolveWindow": "Kunne ikke bestemme agentens kildevindue",
       "detectCli": "Kunne ikke finde agent-backends",
-      "loadDisclosure": "Kunne ikke indlæse, om du har accepteret oplysningerne"
+      "loadDisclosure": "Kunne ikke indlæse, om du har accepteret oplysningerne",
+      "turnFailed": "Svaret stoppede med en fejl. Din besked er bevaret, så du kan sende den igen."
     },
     "actions": {
       "copy": "Kopiér",
@@ -576,6 +720,7 @@
       "newFolder2": "Ny mappe",
       "newProject": "Nyt projekt",
       "bookmarks": "Bogmærker",
+      "chart": "Diagram",
       "tags": "Tags",
       "reorderSection": "Skift rækkefølge for {section}",
       "dropFilesToImport": "Slip filer for at importere",
@@ -863,6 +1008,11 @@
       "cancel": "Annullér",
       "remove2": "Fjern",
       "inYourAccount": "På din konto",
+      "trySandbox": "Prøv sandkasseboksen",
+      "sandboxVault": "Sandkasseboks",
+      "sandboxPreparing": "Forbereder sandkassen…",
+      "sandboxFailed": "Kunne ikke forberede sandkasseboksen",
+      "resetSandbox": "Nulstil sandkasseboksen",
       "itemsCount": "{count} elementer",
       "untitledVault": "Boks",
       "downloadVaultTitle": "Hent »{name}«",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Noter, du åbner, vises her",
       "bookmarks": "Bogmærker",
       "tasks": "Opgaver",
+      "chart": "Diagram",
       "calendar": "Kalender",
       "calendarToday": "I dag",
       "openCalendar": "Åbn kalender",
@@ -978,6 +1129,9 @@
     "edit": "Redigér",
     "done": "Færdig",
     "addWidget": "Tilføj widget",
+    "cover": {
+      "add": "Tilføj omslag"
+    },
     "empty": {
       "title": "Din tavle er tom",
       "body": "Widgets samler dine noter, opgaver og bogmærker ét roligt sted.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Skift ikon…",
     "resetIcon": "Nulstil ikon",
     "iconButton": "Skift ikonet for {name}",
+    "leaveSandbox": "Tilbage til {name}",
     "iconFailed": "Kunne ikke ændre boksens ikon"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Type",
     "filterModified": "Ændret",
     "matches": "Match",
+    "matchesMore": "{count, plural, one {# match mere} other {# matches mere}}",
+    "matchesHide": "Skjul matches",
+    "matchOf": "Match {index} af {total}",
     "showMore": "Vis {count} mere",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Næste sektion",
       "open": "Åbn",
       "openNote": "Åbn note",
+      "openAtMatch": "Åbn ved match",
       "openFile": "Åbn fil",
       "openJournal": "Åbn dagbog",
       "openTask": "Åbn opgave",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Vælg tag",
       "addTag": "Tilføj tag",
       "showAll": "Vis alle",
+      "hideMatches": "Skjul matches",
       "searchEverywhere": "Søg overalt",
       "clearFilters": "Ryd filtre"
     },
