@@ -126,6 +126,13 @@ jobs:
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
 
+      # check.mjs exits 0 on warnings; these tests fail on incomplete locales,
+      # placeholder drift and orphan English keys.
+      - name: Test i18n
+        run: |
+          pnpm --filter @memry/i18n test
+          pnpm --filter @memry/desktop test:i18n-tools
+
       - name: Check formatting
         run: pnpm format:check
 
