@@ -79,6 +79,6 @@ test('all non-English locale resources are complete', () => {
 test('all locale namespace files parse', () => {
   const resources = loadLocaleResources(defaultWorkspaceRoot())
 
-  assert.equal(resources.resources.tr.notes.page.empty.title, 'Not seçilmedi')
+  assert.equal(resources.resources.tr.notes.page.empty.title, 'Seçili not yok')
   assert.equal(resources.errors.length, 0)
 })
