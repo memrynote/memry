@@ -8,6 +8,8 @@ read by another must be byte-identical where this chapter says it is.
 
 ## 12.1 Who converts markdown — Q12.2
 
+> **Ownership change.** From the Tauri desktop build, the core owns markdown conversion in both directions, in `crates/memry-core/src/markdown/`, per `docs/adr/0001-desktop-on-tauri-v2.md`. The rules and citations below describe the TypeScript converter, which is frozen and stays the oracle for the conversion vectors. Step 05 (#3522) of the Tauri epic rewrites this section with citations to the Rust implementation.
+
 **Normative. Desktop converts markdown in both directions, in its main process.
 The core never serialises a document to markdown, and it parses markdown in one
 module, `markdown_seed`, for the three writes of §12.1.0. Every other path carries

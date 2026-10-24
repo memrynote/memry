@@ -7,7 +7,7 @@ Kaan owns this repo. MemryNote is a local-first, end-to-end encrypted notes app,
 - **Zero knowledge.** The server stores ciphertext and the metadata it needs to route it. It never sees plaintext or keys. Crypto is libsodium: XChaCha20-Poly1305, Ed25519 signatures, Argon2id. A feature that needs the server to read content is a redesign, not a server change.
 - **Local first.** Each device's SQLite databases and vault files hold the user's data, and the app reads and writes them offline. Sync catches up later. Sync merges note and journal bodies as Yjs CRDTs, and tasks and projects with field-level vector clocks. Item metadata lives in D1 and encrypted payloads in R2, which keeps payloads clear of D1's 1 MB row limit.
 - **Shipped formats are contracts.** Devices on different app versions share one vault and one server. Anything persisted or exchanged between builds accepts data from older and newer versions. See [Compatibility](#compatibility).
-- **One core, native shells.** Desktop (Electron, TypeScript) is the reference implementation. When two apps disagree on product behavior, desktop is right until Kaan says otherwise. iOS is a SwiftUI shell over the Rust core in `crates/memry-core`, which owns sync, crypto, CRDT, storage, and domain rules. The TypeScript and Rust implementations agree through `docs/protocol/` and the vectors in `packages/contracts/test-vectors/`, never by reading each other's code.
+- **One core, native shells.** The Rust core in `crates/memry-core` owns sync, crypto, CRDT, storage, markdown conversion and domain rules. The desktop app is a Tauri v2 shell over it (`apps/desktop-tauri`, `crates/memry-desktop`, `crates/memry-ml`); iOS is a SwiftUI shell over the same core. Until the cutover step of the Tauri epic deletes it, the Electron app in `apps/desktop` is frozen: only critical bug fixes land there. When two apps disagree on product behavior, desktop is right until Kaan says otherwise. The TypeScript and Rust implementations agree through `docs/protocol/` and the vectors in `packages/contracts/test-vectors/`, never by reading each other's code. [docs/adr/0001-desktop-on-tauri-v2.md](docs/adr/0001-desktop-on-tauri-v2.md) records the decision.
 - **One owner per responsibility.** Each decision and each piece of authoritative state has one owner. Callers use the owner's operations. Indexes and caches derive from the owner and can be rebuilt from it. Fix bad state where it is produced, not in every reader.
 
 ## Working agreement
@@ -90,6 +90,15 @@ pnpm format:check   # oxfmt
 git diff --check
 ```
 
+From `crates/` when Rust changed (the line-ceiling check runs from the repo root):
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test -p <touched crates>
+node scripts/check-line-ceilings.mjs
+```
+
 - `pnpm typecheck` skips landing, extension, marketing-emails, iOS, and Rust, and `pnpm lint` skips iOS and Rust. Their scoped guides name their gates.
 - Lint config lives in `oxlint.config.mts`. A rule with a backlog is a warning held at the per-file counts in `scripts/lint-baseline.json`; `pnpm lint` fails on any error or on any count above the baseline. Fix a violation, then run `pnpm lint --update` to lower the baseline. Raising it (`--allow-increase`) needs Kaan's approval. When a rule's backlog reaches zero it becomes an error with no config edit.
 - `scripts/typecheck.mjs` checks exactly the files each tsconfig includes. Code that needs the TypeScript compiler API imports the `typescript-6` alias, because TypeScript 7 has no JS API.
@@ -126,6 +135,7 @@ Read the matching guide in full before starting. Commands and details live there
 - iOS app: [apps/ios/AGENTS.md](apps/ios/AGENTS.md).
 - Rust core, UniFFI bindings, and conformance vectors: [crates/AGENTS.md](crates/AGENTS.md).
 - Sync server, D1, and R2: [apps/sync-server/AGENTS.md](apps/sync-server/AGENTS.md).
+- Why desktop moved to Tauri, and what was rejected: [docs/adr/](docs/adr/) (start with 0001).
 - Sync wire format: `docs/protocol/`. Every normative sentence cites `path:line`, and `packages/contracts` wins a disagreement until the chapter is amended.
 - CLI: [apps/cli/AGENTS.md](apps/cli/AGENTS.md).
 - Browser extension: [apps/extension/AGENTS.md](apps/extension/AGENTS.md).
