@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Ikke funnet – klikk for å opprette «{title}»"
   },
+  "wikiLinkMenu": {
+    "aria": "Lenkehandlinger",
+    "open": "Åpne",
+    "openInNewTab": "Åpne i ny fane",
+    "openToTheSide": "Åpne ved siden av",
+    "edit": "Rediger lenke",
+    "copy": "Kopier lenke",
+    "unlink": "Fjern lenke",
+    "displayRow": "Visning …",
+    "sizeNone": "Ingen",
+    "sizeSmall": "Liten",
+    "sizeMedium": "Middels",
+    "showCover": "Vis omslag",
+    "showPreview": "Vis forhåndsvisning",
+    "copyFailed": "Kunne ikke kopiere lenken"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Importer på nytt fra Readwise",
+    "refreshAction": "Oppdater bokinfo",
+    "syncsOn": "Readwise synkroniseres på {device}.",
+    "syncsOnAnotherDevice": "Readwise synkroniseres på en annen enhet.",
+    "takeOverHint": "Synkroniser på den enheten, eller ta over i Innstillinger → Import.",
+    "reimport": {
+      "title": "Importere «{title}» på nytt fra Readwise?",
+      "body": "Readwise-seksjonen skrives på nytt fra bunnen av. Alt du har skrevet i den, går tapt.",
+      "note": "Tekst utenfor seksjonen og egenskapene til notatet forblir som de er.",
+      "cancel": "Avbryt",
+      "confirm": "Importer på nytt"
+    },
+    "commands": {
+      "reimported": "Importert på nytt fra Readwise",
+      "refreshed": "Bokinfo er oppdatert",
+      "failed": "Kunne ikke fullføre Readwise-kommandoen"
+    }
+  },
   "page": {
     "empty": {
       "title": "Ingen notat er valgt",
@@ -25,6 +61,7 @@
       "willSync": "Notatet blir synkronisert til skyen",
       "renameFailed": "Kunne ikke gi notatet nytt navn",
       "titleRequired": "Et notat må ha en tittel",
+      "duplicateTitle": "Et annet notat i {folder} heter også «{title}». Lenker til disse notatene vil inkludere mappen.",
       "toggleLocalOnlyFailed": "Kunne ikke slå «Bare lokalt» av/på",
       "toggleFullWidthFailed": "Kunne ikke slå full bredde av/på",
       "pathCopied": "Banen er kopiert",
@@ -85,6 +122,10 @@
       "body": "Opprett et notat for å komme i gang",
       "newNote": "Nytt notat"
     },
+    "readwiseSync": {
+      "tooltip": "Readwise-synkronisering",
+      "failed": "Readwise-synkroniseringen mislyktes"
+    },
     "syncing": {
       "body": "Synkroniserer notatene dine – de vises her etter hvert som de kommer"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Åpne ved siden av",
       "newNote": "Nytt notat",
       "newFolder": "Ny mappe",
+      "showTasks": "Vis oppgaver",
       "expandSubfolders": "Utvid alle undermapper",
       "collapseSubfolders": "Skjul alle undermapper",
       "rename": "Gi nytt navn",
@@ -138,7 +180,15 @@
       "folderSuffix": "mappe",
       "moreItems": "… og {count} til",
       "deleting": "Sletter …",
-      "deleteCount": "Slett {count}"
+      "deleteCount": "Slett {count}",
+      "journalFolderWarning": "Dette inkluderer journalmappen din. Alle journalinnlegg i den slettes, på alle enhetene dine."
+    },
+    "journalChange": {
+      "leaveTitle": "Gjøre journalinnlegg om til notater?",
+      "leaveBody": "Hvis journalinnlegg flyttes ut av journalmappen eller får nytt navn utenfor datoformatet, blir de vanlige notater og forlater Journal. På de andre enhetene dine fjernes disse dagene fra Journal, og notatene vises i stedet.",
+      "joinTitle": "Gjøre notater om til journalinnlegg?",
+      "joinBody": "Filer som er navngitt etter journalens datoformat i journalmappen, blir journalinnlegg. På de andre enhetene dine erstattes disse notatene av journalinnlegg.",
+      "confirm": "Fortsett"
     },
     "toast": {
       "selectionBookmarked": "{count} elementer bokmerket",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Overskrift",
       "listPlaceholder": "Listeelement",
       "todoPlaceholder": "Gjøremål",
-      "htmlComment": "Skjult HTML-kommentar"
+      "htmlComment": "Skjult HTML-kommentar",
+      "percentComment": "Skjult kommentar",
+      "readwise": {
+        "noteStart": "Readwise · synkroniseres automatisk",
+        "noteEnd": "Slutt på Readwise-seksjonen",
+        "dayStart": "Readwise · dagens høydepunkter",
+        "dayEnd": "Slutt på Readwise",
+        "hint": "Redigerer du inne i denne seksjonen, slutter Readwise å oppdatere den."
+      }
     },
     "table": {
       "keyboardMenuAria": "Tabellhandlinger for rad {row}, kolonne {column}",
-      "keyboardMenuTitle": "Rad {row} · Kolonne {column}"
+      "keyboardMenuTitle": "Rad {row} · Kolonne {column}",
+      "sizePicker": {
+        "aria": "Tabellstørrelse. Bruk piltastene for å velge rader og kolonner, og trykk deretter Enter.",
+        "size": "{rows, plural, one {# rad} other {# rader}} × {columns, plural, one {# kolonne} other {# kolonner}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Slett rad} other {Slett # rader}}",
+        "addRowsAbove": "{count, plural, one {Legg til rad over} other {Legg til # rader over}}",
+        "addRowsBelow": "{count, plural, one {Legg til rad under} other {Legg til # rader under}}",
+        "deleteColumns": "{count, plural, one {Slett kolonne} other {Slett # kolonner}}",
+        "addColumnsLeft": "{count, plural, one {Legg til kolonne til venstre} other {Legg til # kolonner til venstre}}",
+        "addColumnsRight": "{count, plural, one {Legg til kolonne til høyre} other {Legg til # kolonner til høyre}}"
+      }
     },
     "list": {
       "bulleted": "Punktliste",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Skjul lokal graf",
       "showLocalGraph": "Vis lokal graf",
       "moreActions": "Flere handlinger",
+      "searchActions": "Søk i handlinger …",
+      "noMatchingActions": "Ingen samsvarende handlinger",
       "find": "Finn …",
       "versionHistory": "Versjonslogg",
       "export": "Eksporter",
@@ -215,6 +287,8 @@
       "notSynced": "Ikke synkronisert til denne enheten ennå",
       "revealFailed": "Kunne ikke vise filen",
       "openFailed": "Kunne ikke åpne filen",
+      "showAsLink": "Vis som lenke",
+      "showAsEmbed": "Vis innebygd",
       "missingTitle": "Vedleggsfilen mangler",
       "missingExpected": "Forventet fil: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Gi nytt navn",
       "renamed": "Nytt navn: {name}",
       "failed": "Kunne ikke gi vedlegget nytt navn"
+    },
+    "imageLightbox": {
+      "menuItem": "Vis større",
+      "title": "Bildeviser",
+      "zoomIn": "Zoom inn",
+      "zoomOut": "Zoom ut",
+      "reset": "Tilbakestill zoom"
+    },
+    "imageCrop": {
+      "menuItem": "Beskjær …",
+      "title": "Beskjær bilde",
+      "description": "Dra over bildet for å velge hva notatet viser. Originalfilen beholdes som den er.",
+      "reset": "Vis hele bildet",
+      "cancel": "Avbryt",
+      "apply": "Beskjær",
+      "unavailable": "Bildet er ikke lastet inn ennå, så det kan ikke beskjæres"
     },
     "attachmentsDialog": {
       "title": "Vedlegg",
@@ -248,12 +338,24 @@
       "title": "Infoboks",
       "group": "Grunnblokker",
       "subtext": "Uthev viktig informasjon",
+      "customSubtext": "Din egen callout-type",
       "changeType": "Endre type infoboks",
+      "expand": "Utvid callout",
+      "collapse": "Skjul callout",
       "menuLabel": "Type infoboks",
       "info": "Info",
       "warning": "Advarsel",
       "error": "Feil",
-      "success": "Suksess"
+      "success": "Suksess",
+      "note": "Notat",
+      "abstract": "Sammendrag",
+      "todo": "Gjøremål",
+      "tip": "Tips",
+      "important": "Viktig",
+      "question": "Spørsmål",
+      "example": "Eksempel",
+      "quote": "Sitat",
+      "bug": "Feil"
     },
     "columns": {
       "group": "Grunnblokker",
@@ -332,6 +434,83 @@
       "invalidShape": "Definisjonen av denne visningen mangler kilde. Velg en ovenfor, eller rett den nedenfor.",
       "definition": "Definisjon"
     },
+    "chart": {
+      "title": "Diagram",
+      "subtext": "Plott en egenskap over tid: en linje, stolper eller et kalenderkart",
+      "layout": "Diagram",
+      "settings": "Diagraminnstillinger",
+      "chooseProperty": "Velg hva som skal plottes",
+      "source": "Kilde",
+      "headerMeta": "{range} · {type}",
+      "property": "Egenskap",
+      "noProperties": "Ingenting å plotte ennå. Legg først til en egenskap i et journalinnlegg eller et notat.",
+      "chartType": "Diagram",
+      "suggested": "Foreslått",
+      "types": {
+        "line": "Linje",
+        "bar": "Stolpe",
+        "heatmap": "Varmekart"
+      },
+      "range": "Periode",
+      "lastDays": "{count, plural, one {Siste dag} other {Siste # dager}}",
+      "sameDay": "Innlegg samme dag",
+      "aggregates": {
+        "average": "Gjennomsnitt",
+        "sum": "Sum",
+        "min": "Lavest",
+        "max": "Høyest",
+        "count": "Antall"
+      },
+      "missingDays": "Manglende dager",
+      "missing": {
+        "gap": "La det stå et hull",
+        "zero": "Tell som null"
+      },
+      "dateFrom": {
+        "label": "Dato fra",
+        "created": "Opprettet",
+        "modified": "Endret"
+      },
+      "propertyTypes": {
+        "text": "Tekst",
+        "number": "Tall",
+        "checkbox": "Avkrysningsboks",
+        "date": "Dato",
+        "url": "URL",
+        "status": "Status",
+        "select": "Valg",
+        "multiselect": "Flervalg",
+        "relation": "Relasjon",
+        "project": "Prosjekt",
+        "rating": "Vurdering"
+      },
+      "noEntry": "Ingen innlegg",
+      "done": "Ferdig",
+      "notDone": "Ikke ferdig",
+      "logged": "Registrert",
+      "valueCount": "{count, plural, one {# verdi} other {# verdier}}",
+      "average": "Gjennomsnitt",
+      "vsPrevious": "mot forrige periode",
+      "lowest": "Lavest",
+      "currentStreak": "Nåværende rekke",
+      "longestStreak": "Lengste rekke",
+      "dayCount": "{count, plural, one {# dag} other {# dager}}",
+      "doneDays": "Ferdig",
+      "loggedDays": "Registrert",
+      "mostCommon": "Vanligst",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} de siste {days} dagene",
+      "noData": "Ingenting er registrert i denne perioden ennå.",
+      "loadFailed": "Kunne ikke laste inn dette diagrammet. Selve innleggene er urørt.",
+      "sourceJournal": "Journal",
+      "history": {
+        "show": "Vis historikk",
+        "title": "Historikk for {property}",
+        "range": "Siste 13 uker",
+        "insert": "Kopier som diagramblokk",
+        "copied": "Diagramblokken er kopiert. Lim den inn i et hvilket som helst notat."
+      }
+    },
     "slashMenu": {
       "aria": "Blokker og handlinger",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Sett inn",
         "open": "Åpne"
       },
+      "close": "Lukk menyen",
       "matchesAlias": "samsvarer med",
       "noMatch": "Ingen blokker samsvarer med «{query}»",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Vis som",
+        "embed": "Innebygd",
+        "link": "Lenke"
+      },
       "title": {
         "image": "Legg til et bilde",
         "media": "Legg til medier",
@@ -525,6 +710,11 @@
       "empty": "Skriv for å opprette en ny tagg",
       "create": "Opprett #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Vis PDF som",
+      "embed": "Innebygd viser",
+      "link": "Filnavn"
+    },
     "pasteLink": {
       "title": "Lim inn som",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} min lesetid",
     "words": "{count} ord",
     "created": "Opprettet",
-    "modified": "Endret"
+    "modified": "Endret",
+    "sync": {
+      "label": "Synkronisering",
+      "confirmed": "På serveren {time}",
+      "pending": "Venter siden {time}",
+      "sent": "Sender",
+      "rejected": "Serveren avviste den siste endringen",
+      "notRecorded": "Ingenting venter på å sendes",
+      "localOnly": "Bare lokalt",
+      "notSyncing": "Synkroniseres ikke",
+      "waiting": "Venter på å sendes"
+    }
   },
   "backlinks": {
     "sortRecent": "Nylig",
@@ -587,7 +788,18 @@
     "expandSection": "Utvid delen med tilbakelenker",
     "showMore": "Vis {count} flere tilbakelenker",
     "more": "{count} til",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Vist i en portal"
+  },
+  "unlinkedMentions": {
+    "title": "Ulenkede omtaler",
+    "summary": "{count, plural, one {# ulenket omtale} other {# ulenkede omtaler}}",
+    "sectionAria": "Ulenkede omtaler",
+    "fromAria": "Ulenkede omtaler i {title}",
+    "link": "Lenk",
+    "linkAria": "Lenk {text}",
+    "gone": "Omtalen er endret siden listen ble lest",
+    "linkFailed": "Kunne ikke lenke omtalen"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# utgående lenke} other {# utgående lenker}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "Kunne ikke legge til notatet på lerretet"
   },
   "suggestedTags": {
-    "label": "Foreslåtte tagger:",
-    "hint": "Tagger som brukes i notatene som ligner mest på dette. Ingenting legges til før du velger en.",
-    "acceptAria": "Legg til taggen {tag}",
-    "support": "{count, plural, one {Brukt i # lignende notat} other {Brukt i # lignende notater}}",
-    "dismiss": "Skjul foreslåtte tagger"
+    "support": "{count, plural, one {Brukt i # lignende notat} other {Brukt i # lignende notater}}"
   },
   "comments": {
     "railAria": "Kommentarer",
@@ -663,6 +871,7 @@
     "removeAria": "Fjern taggen {tag}",
     "inputPlaceholder": "Skriv inn taggnavn …",
     "recent": "Nylig brukt",
+    "suggested": "Foreslått",
     "matching": "Samsvarende",
     "all": "Alle tagger",
     "none": "Ingen tagger funnet",
@@ -755,6 +964,9 @@
     "repositionHint": "Dra for å flytte",
     "repositionSave": "lagre",
     "repositionCancel": "avbryt",
+    "zoomIn": "Zoom inn",
+    "zoomOut": "Zoom ut",
+    "resize": "Dra for å endre størrelsen på omslaget",
     "credit": "Foto av {name} på Unsplash",
     "focusFailed": "Kunne ikke lagre omslagsplasseringen",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# notat} other {# notater}}"
+    },
+    "noteTasks": {
+      "expand": "Vis oppgavene til {title}",
+      "collapse": "Skjul oppgavene til {title}",
+      "list": "Oppgaver i {title}",
+      "progressOpen": "{open}/{total} åpne",
+      "progressDone": "{total}/{total} ferdig",
+      "nextDue": "Neste frist",
+      "reminder": "Påminnelse er angitt"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "Lagre",
     "addToFilterHint": "Ctrl/Cmd-klikk på en tagg for å legge den til i filteret"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternativer",
+      "overflow": "Overflyt",
+      "menu": "Skriveverktøy",
+      "close": "Lukk skriveverktøy"
+    },
+    "menu": {
+      "aria": "Redigeringshandlinger",
+      "cut": "Klipp ut",
+      "copy": "Kopier",
+      "paste": "Lim inn",
+      "selectAll": "Velg alt",
+      "undo": "Angre",
+      "redo": "Gjør om",
+      "comment": "Kommenter",
+      "addAlternative": "Legg til alternativ",
+      "suggestAlternatives": "Foreslå alternativer",
+      "ghost": "Spøkelse",
+      "revive": "Gjenopplive",
+      "stash": "Legg i overflyt",
+      "noSpellingSuggestions": "Ingen forslag",
+      "addToDictionary": "Legg til i ordboken",
+      "clipboardFailed": "Kunne ikke bruke utklippstavlen"
+    },
+    "alternatives": {
+      "railAria": "Alternativer",
+      "hint": "{position} av {total} ↑ ↓",
+      "original": "Original",
+      "byYou": "Skrevet av deg",
+      "byAI": "Foreslått av AI",
+      "showing": "Vises",
+      "addPlaceholder": "Legg til alternativ …",
+      "removeSuggestions": "Fjern forslag",
+      "removeVariant": "Fjern alternativ",
+      "empty": "Marker tekst og velg Legg til alternativ for å beholde andre måter å si det på.",
+      "suggesting": "Foreslår alternativer …",
+      "suggestFailed": "Kunne ikke foreslå alternativer",
+      "noSuggestions": "Ingen nye alternativer ble foreslått"
+    },
+    "overflow": {
+      "railAria": "Overflyt",
+      "addPlaceholder": "Skriv noe å beholde …",
+      "empty": "Linjer du legger bort eller skriver her, blir hos dette notatet, utenfor teksten.",
+      "dragHint": "Dra inn i notatet",
+      "copy": "Kopier",
+      "copied": "Kopiert",
+      "delete": "Slett"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Lås notat",
+    "unlockNote": "Lås opp notat",
+    "lockFolder": "Lås mappe",
+    "unlockFolder": "Lås opp mappe",
+    "toggleFailed": "Kunne ikke endre låsen",
+    "readOnlyIndicator": "Låst. Skrivebeskyttet for deg og for agenter.",
+    "externalEditRestored": "«{title}» er låst, så redigeringen utenfra ble angret",
+    "externalEditRestoredHint": "Den redigerte teksten er lagret i notatets versjonslogg."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Person",
+        "plural": "Personer",
+        "fields": {
+          "company": "Firma",
+          "role": "Rolle",
+          "email": "E-post",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Personer"
+        },
+        "template": {
+          "name": "Person",
+          "context": "Kontekst",
+          "contextHint": "Hvordan vi møttes, hva vedkommende bryr seg om",
+          "notes": "Notater"
+        }
+      },
+      "company": {
+        "name": "Firma",
+        "plural": "Firmaer",
+        "fields": {
+          "website": "Nettsted",
+          "industry": "Bransje",
+          "location": "Sted"
+        },
+        "template": {
+          "name": "Firma",
+          "overview": "Oversikt",
+          "overviewHint": "Hva de gjør, hvem vi kjenner der",
+          "notes": "Notater"
+        }
+      },
+      "meeting": {
+        "name": "Møte",
+        "plural": "Møter",
+        "fields": {
+          "date": "Dato",
+          "attendees": "Deltakere",
+          "company": "Firma"
+        },
+        "inverse": {
+          "attendees": "Møter",
+          "company": "Møter"
+        },
+        "template": {
+          "name": "Møte",
+          "agenda": "Agenda",
+          "notes": "Notater",
+          "actionItems": "Handlingspunkter"
+        }
+      },
+      "book": {
+        "name": "Bok",
+        "plural": "Bøker",
+        "fields": {
+          "author": "Forfatter",
+          "shelf": "Hylle",
+          "rating": "Vurdering",
+          "finished": "Utlest"
+        },
+        "shelf": {
+          "toRead": "Skal leses",
+          "reading": "Leser nå",
+          "read": "Lest"
+        },
+        "template": {
+          "name": "Bok",
+          "highlights": "Høydepunkter",
+          "thoughts": "Tanker"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} er nå en {tag}. Malen er lagt til.",
+      "templateChanged": "Notatet ble endret etter at malen ble lagt til, så den beholdes.",
+      "undoFailed": "Kunne ikke angre",
+      "addFailed": "Kunne ikke legge til taggen",
+      "removeFailed": "Kunne ikke fjerne taggen",
+      "removedKept": "Fjernet #{tag}. {count} verdier beholdt.",
+      "removedKeptOne": "Fjernet #{tag}. 1 verdi beholdt."
+    },
+    "picker": {
+      "create": "Opprett #{tag}",
+      "fillsTemplate": "Fyller dette tomme notatet med {tag}-malen"
+    },
+    "hub": {
+      "strip": {
+        "title": "Ferdige tagger",
+        "subtitle": "Tagger som kommer med felt. Notater forblir som de er til du tagger dem.",
+        "notNow": "Ikke nå",
+        "add": "Legg til",
+        "addFields": "Legg til felt",
+        "added": "Lagt til",
+        "alreadyOn": "Allerede på {count} notater",
+        "alreadyOnOne": "Allerede på 1 notat"
+      },
+      "dialog": {
+        "title": "Legge til {preset}-felt i #{tag}?",
+        "body": "#{tag} er allerede på {count} notater. De beholder alt de har og får disse feltene, tomme til noen fyller dem ut.",
+        "bodyOne": "#{tag} er allerede på 1 notat. Det beholder alt det har og får disse feltene, tomme til noen fyller dem ut.",
+        "template": "Malen ({sections}) fyller bare notater som er tomme.",
+        "alsoAddsPrefix": "Legger også til",
+        "alsoAddsSuffix": "for feltet {field}.",
+        "useAnotherName": "Bruk et annet navn",
+        "nameLabel": "Nytt taggnavn",
+        "namePlaceholder": "kontakt",
+        "cancel": "Avbryt",
+        "addFields": "Legg til felt"
+      },
+      "toast": {
+        "added": "La til #{tag}",
+        "addedFields": "La til {preset}-felt i #{tag}"
+      },
+      "hasFields": "Har felt"
+    },
+    "tasks": {
+      "thisTask": "Denne oppgaven",
+      "viaTag": "{name} via #{via}",
+      "clearValue": "Tøm {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "via #{tag}",
+      "groupMenu": "Alternativer for {tag}",
+      "openTag": "Åpne #{tag}",
+      "thisNote": "Dette notatet"
+    },
+    "offer": {
+      "text": "Legg til {tag}-malen under teksten din",
+      "add": "Legg til",
+      "dismiss": "Lukk",
+      "addFailed": "Kunne ikke legge til malen"
+    },
+    "settings": {
+      "title": "Innstillinger for #{tag}",
+      "close": "Lukk",
+      "cancel": "Avbryt",
+      "save": "Lagre",
+      "onCounts": "På {notes, plural, one {# notat} other {# notater}} og {tasks, plural, one {# oppgave} other {# oppgaver}}",
+      "onNotes": "På {count, plural, one {# notat} other {# notater}}",
+      "headerFields": "{count, plural, one {# felt} other {# felt}}",
+      "editTag": "Rediger tagg",
+      "syncNote": "Endringer synkroniseres til de andre enhetene dine",
+      "newerVersion": "En nyere versjon av Memry har endret denne taggen. Oppdater Memry for å redigere den her.",
+      "sections": {
+        "appearance": "Utseende",
+        "extends": "Utvider",
+        "fields": "Felt · {count}",
+        "template": "Mal"
+      },
+      "appearance": {
+        "icon": "Ikon",
+        "color": "Farge",
+        "customColor": "Egendefinert",
+        "category": "Kategori",
+        "noCategory": "Ingen kategori"
+      },
+      "extends": {
+        "nothing": "Ingenting",
+        "hint": "Ta en annen tagg sine felt og vis deg i tabellen dens.",
+        "hintSet": "{tag}-notater får feltene til {parent} og vises i {parent}-tabellen."
+      },
+      "types": {
+        "text": "Tekst",
+        "number": "Tall",
+        "date": "Dato",
+        "url": "URL",
+        "status": "Status",
+        "select": "Valg",
+        "multiselect": "Flervalg",
+        "checkbox": "Avkrysningsboks",
+        "relation": "Relasjon"
+      },
+      "fields": {
+        "empty": "Ingen felt ennå. Legg til ett for å gi hvert #tagg-notat de samme egenskapene.",
+        "fromParent": "Fra #{tag} · rediger der",
+        "inverseSub": "Vises på {target} som {inverse}",
+        "anyNoteSub": "Lenker til et hvilket som helst notat",
+        "actions": "Handlinger for {field}",
+        "rename": "Gi nytt navn …",
+        "relationSettings": "Relasjonsinnstillinger",
+        "remove": "Fjern …"
+      },
+      "addField": {
+        "button": "Legg til felt",
+        "namePlaceholder": "Feltnavn",
+        "existing": "Eksisterende egenskaper",
+        "existingSub": "{type} · på {count, plural, one {# notat} other {# notater}} · gjenbruk",
+        "newType": "Ny felttype",
+        "relationSub": "Lenk til notater med en tagg",
+        "submit": "Legg til felt",
+        "reserved": "{name} er reservert og kan ikke være et felt.",
+        "taken": "#{tag} har allerede {name}."
+      },
+      "relation": {
+        "target": "Peker til notater tagget",
+        "pickTag": "Velg en tagg",
+        "howMany": "Hvor mange",
+        "one": "Én",
+        "many": "Flere",
+        "inverseLabel": "På {target}-siden, list dem som",
+        "inverseLabelAny": "På den lenkede siden, list dem som",
+        "inverseHint": "En skrivebeskyttet liste på hver {target}. Ingenting skrives til {target}-notater.",
+        "inverseHintAny": "En skrivebeskyttet liste på hvert lenkede notat. Ingenting skrives til disse notatene."
+      },
+      "shared": {
+        "title": "Nytt felt på #{tag}",
+        "existsWith": "{name} finnes allerede i denne vaulten med {options}.",
+        "existsAs": "{name} finnes allerede i denne vaulten som en {type}-egenskap.",
+        "shareWith": "#{tag} deler det med dine {others} notater.",
+        "shareAny": "#{tag} deler det med de andre notatene dine.",
+        "useInstead": "Bruk {name} i stedet",
+        "share": "Del {name}"
+      },
+      "template": {
+        "edit": "Rediger mal",
+        "none": "Ingen mal ennå. En mal fyller tomme notater når de får taggen.",
+        "create": "Opprett mal",
+        "defaultHeading": "Notater",
+        "inherited": "Fra #{tag}",
+        "autofill": "Fyll tomme notater når de får #{tag}"
+      },
+      "remove": {
+        "title": "Fjerne {field} fra #{tag}?",
+        "body": "{field} er fylt ut på {filled, plural, one {# notat} other {# notater}}. Disse verdiene blir på notatene som en vanlig egenskap; {empty, plural, one {# tom plass forsvinner} other {# tomme plasser forsvinner}}.",
+        "confirm": "Fjern felt"
+      },
+      "rename": {
+        "title": "Gi {from} nytt navn til {to}",
+        "titleEmpty": "Gi {from} nytt navn",
+        "label": "Nytt navn",
+        "body": "{count, plural, one {# notat har} other {# notater har}} en {field}-verdi. Memry endrer nøkkelen i hver fil og i egenskapene deres; Obsidian ser det nye navnet også.",
+        "progress": "Endrer navn i notater",
+        "confirm": "Gi nytt navn",
+        "taken": "Denne taggen har allerede {name}.",
+        "done": "Endret {from} til {to} i {count, plural, one {# element} other {# elementer}}.",
+        "skipped": "Endret {from} til {to} i {count, plural, one {# element} other {# elementer}}. {locked, plural, =0 {} one {# låst notat fullføres når det låses opp.} other {# låste notater fullføres når de låses opp.}} {existing, plural, =0 {} one {# notat hadde allerede {to} og beholder begge.} other {# notater hadde allerede {to} og beholder begge.}}"
+      },
+      "delete": {
+        "button": "Slett tagg",
+        "title": "Slette #{tag}?",
+        "body": "#{tag} fjernes fra {notes, plural, one {# notat} other {# notater}}, og taggen forsvinner sammen med {fields, plural, one {# felt} other {# felt}} og malen.",
+        "bodyNoTemplate": "#{tag} fjernes fra {notes, plural, one {# notat} other {# notater}}, og taggen forsvinner sammen med {fields, plural, one {# felt} other {# felt}}.",
+        "bodyPlain": "#{tag} fjernes fra hvert notat som har den i taggene sine.",
+        "statNotes": "notater beholder teksten sin",
+        "statValues": "verdier blir værende som egenskaper",
+        "plainText": "Notater som nevner #{tag} i teksten, beholder den som ren tekst.",
+        "confirm": "Slett tagg",
+        "done": "Slettet #{tag}."
+      },
+      "errors": {
+        "addField": "Kunne ikke legge til feltet.",
+        "removeField": "Kunne ikke fjerne feltet.",
+        "renameField": "Kunne ikke gi feltet nytt navn.",
+        "moveField": "Kunne ikke flytte feltet.",
+        "relation": "Kunne ikke lagre relasjonen.",
+        "extends": "Kunne ikke endre hva denne taggen utvider.",
+        "template": "Kunne ikke oppdatere malen.",
+        "deleteTag": "Kunne ikke slette taggen.",
+        "icon": "Kunne ikke endre ikonet.",
+        "color": "Kunne ikke endre fargen.",
+        "category": "Kunne ikke endre kategorien."
+      }
+    },
+    "fill": {
+      "action": "Fyll ut fra notatet",
+      "reading": "Leser notatet …",
+      "disclosure": "Agentmodellen din ({model}) leser dette notatet for å foreslå verdier. Bare dette notatet sendes. Ingenting lagres før du godtar.",
+      "disclosureLocal": "Den lokale modellen din ({model}) leser dette notatet på denne enheten for å foreslå verdier. Ingenting forlater enheten, og ingenting lagres før du godtar.",
+      "disclosureMany": "Agentmodellen din ({model}) leser disse notatene ett om gangen for å foreslå verdier. Bare disse notatene sendes. Ingenting lagres før du godtar.",
+      "disclosureLocalMany": "Den lokale modellen din ({model}) leser disse notatene på denne enheten for å foreslå verdier. Ingenting forlater enheten, og ingenting lagres før du godtar.",
+      "suggest": "Foreslå verdier",
+      "notNow": "Ikke nå",
+      "countOne": "· {count} forslag",
+      "count": "· {count} forslag",
+      "dismiss": "Lukk",
+      "acceptAll": "Godta alle",
+      "accept": "Godta {field}",
+      "reject": "Avvis {field}",
+      "notInNote": "Ikke i notatet",
+      "createHint": "Oppretter en ny #{tag} når du godtar",
+      "nothingFound": "Ingenting i dette notatet fyller de tomme feltene",
+      "failed": "Kunne ikke foreslå verdier. {message}",
+      "saveFailed": "Kunne ikke lagre de godtatte verdiene",
+      "bulkAction": "Fyll ut tomme felt",
+      "bulkTitle": "Fyll ut tomme felt",
+      "bulkReading": "{done} av {total} notater · leser notater …",
+      "bulkRead": "{done} av {total} notater lest",
+      "stop": "Stopp",
+      "name": "Navn",
+      "nothingInRow": "Fant ingenting",
+      "found": "{count} funnet",
+      "reviewOneByOne": "Gå gjennom én etter én",
+      "acceptRow": "Godta verdier for {title}",
+      "rejectRow": "Hopp over {title}",
+      "bulkSavedOne": "Fylte ut {count} felt på {notes} notater",
+      "bulkSaved": "Fylte ut {count} felt på {notes} notater"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Opprett {title} som",
+      "asPrefix": "Opprett",
+      "asSuffix": "som",
+      "failed": "Kunne ikke opprette notatet",
+      "lastUsed": "Sist brukt",
+      "noteWord": "notat",
+      "plainNote": "Vanlig notat",
+      "readyMade": "Ferdig tagg",
+      "row": "Opprett «{title}»",
+      "rowHint": "Som {types}"
+    },
+    "hover": {
+      "at": "hos",
+      "lastMet": "Sist møtt · {title}",
+      "lastMetOn": "Sist møtt {date} · {title}",
+      "mentionedIn": "{count, plural, one {Nevnt i # notat} other {Nevnt i # notater}}",
+      "open": "Åpne",
+      "tasks": "{count, plural, one {# oppgave · {field}} other {# oppgaver · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} i teksten",
+      "explain": "I teksten er en tagg en etikett. Dette notatet er oppført under Nevnt i på #{tag}.",
+      "made": "La #{tag} til i taggene til dette notatet",
+      "make": "Gjør dette notatet til en {tag}",
+      "makeFailed": "Kunne ikke legge til taggen",
+      "makeHint": "Legger #{tag} til i toppen og viser feltene",
+      "meta": "{count, plural, one {# objekt} other {# objekter}} · {fields, plural, one {# felt} other {# felt}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# felt} other {# felt}}",
+      "open": "Åpne #{tag}",
+      "remove": "Fjern taggen fra teksten"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "som {field}",
+      "due": "Frist {date}",
+      "inTheText": "i teksten",
+      "mentionedIn": "Nevnt i",
+      "tasks": "Oppgaver",
+      "title": "Lenket hit"
+    },
+    "mention": {
+      "notes": "Notater"
+    },
+    "picker": {
+      "create": "Ny {tag}",
+      "createNamed": "Ny {tag} «{title}»",
+      "empty": "Ingen treff",
+      "search": "Søk i {tag}",
+      "untitled": "Ny {tag}"
+    },
+    "quickFields": {
+      "add": "Legg til {field}",
+      "aria": "Første felt for {title}",
+      "done": "Ferdig",
+      "later": "Senere",
+      "newObject": "Ny {tag}",
+      "saveFailed": "Kunne ikke lagre feltene"
+    },
+    "table": {
+      "untitled": "Ny {tag}",
+      "newInGroup": "Ny {tag} i {group}",
+      "newInGroupHint": "⌘↵ åpner den i en ny fane",
+      "new": "Ny {tag}",
+      "includes": "{field} inneholder",
+      "removeFilter": "Fjern filter",
+      "shown": "{shown} av {total}",
+      "saveView": "Lagre visning",
+      "mentionedMeta": "{count, plural, one {# notat med '#'{tag} i teksten} other {# notater med '#'{tag} i teksten}}",
+      "saveFailed": "Kunne ikke lagre feltet",
+      "created": "Opprettet {title}"
+    },
+    "relationDrop": {
+      "title": "Legge #{tag} til «{title}»?",
+      "body": "Dette feltet lenker bare notater med taggen #{tag}. Memry legger #{tag} til toppen av «{title}» og lenker det deretter hit.",
+      "confirm": "Legg til #{tag} og lenk",
+      "cancel": "Avbryt",
+      "added": "«{title}» er nå en #{tag} og lenket",
+      "notANote": "Bare notater kan lenkes hit som #{tag}",
+      "failed": "Kunne ikke lenke dette notatet"
+    }
+  },
   "names": {
     "also": "også",
     "add": "Legg til et annet navn",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Søk i notater",
     "pickerEmpty": "Ingen notater samsvarer",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Legg til detaljer"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Vis et notat eller en blokk live fra et annet sted"
+      },
+      "searchPortal": {
+        "title": "Søkeportal",
+        "subtext": "Live liste over blokker som samsvarer med et søk"
+      }
+    },
+    "picker": {
+      "aria": "Velg et notat eller en blokk å lage portal til",
+      "notes": "Notater",
+      "blocks": "Blokker",
+      "loading": "Søker …",
+      "empty": "Ingen notater eller blokker samsvarer",
+      "hintInsert": "Sett inn portal",
+      "hintClose": "Lukk",
+      "keyEsc": "Esc",
+      "create": "Opprett notatet «{query}»",
+      "createFailed": "Kunne ikke opprette det notatet",
+      "stampFailed": "Kunne ikke gjøre den blokken klar for en portal",
+      "retargetFailed": "Kunne ikke peke portalen til den blokken"
+    },
+    "insert": {
+      "cycle": "En portal kan ikke vise et notat inni seg selv."
+    },
+    "copy": {
+      "done": "Portalen er kopiert. Lim den inn i et hvilket som helst notat.",
+      "failed": "Kunne ikke kopiere en portal til denne blokken"
+    },
+    "menu": {
+      "copyAsPortal": "Kopier som portal",
+      "hideInPortal": "Skjul i denne portalen"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Brukes # annet sted} other {Brukes # andre steder}}"
+    },
+    "whereUsed": {
+      "aria": "Hvor denne blokken brukes",
+      "portals": "Portaler",
+      "links": "Lenker",
+      "openBeside": "Åpne ved siden av",
+      "loadFailed": "Kunne ikke laste inn hvor denne blokken vises"
+    },
+    "hiddenBlocks": {
+      "title": "Skjulte blokker",
+      "showAll": "Vis alle",
+      "search": "Søk i skjulte blokker",
+      "showFailed": "Kunne ikke vise denne blokken"
+    },
+    "searchQuery": {
+      "titleNew": "Søkeportal",
+      "titleEdit": "Rediger søket",
+      "text": "Inneholder ordene",
+      "textPlaceholder": "Ord i blokken",
+      "tag": "Tagg",
+      "tagPlaceholder": "eksamen",
+      "limit": "Grense",
+      "footer": "Begrens til {limit} resultater.",
+      "create": "Opprett",
+      "apply": "Bruk"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Slette denne blokken overalt?",
+        "note": "Slette dette notatet overalt?"
+      },
+      "description": {
+        "block": "«{title}» vises også i {count, plural, one {# annet notat} other {# andre notater}}.",
+        "note": "«{title}» vises eller lenkes i {count, plural, one {# annet notat} other {# andre notater}}."
+      },
+      "manyNotes": "{count} notater",
+      "source": "{title} (kilde)",
+      "removeHere": "Skjul her i stedet",
+      "cancel": "Avbryt",
+      "everywhere": "Slett overalt",
+      "undoToast": "{count, plural, one {Den slettede blokken ble vist i # annet notat.} other {Den slettede blokken ble vist i # andre notater.}}",
+      "undo": "Angre"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Full",
+      "brief": "Kort",
+      "key": "Nøkkel",
+      "takeaway": "Hovedpoeng",
+      "topic": "Tema"
+    },
+    "chrome": {
+      "fold": "Fold sammen notatet",
+      "unfold": "Foldet til {level}. Vis full tekst",
+      "words": "{count, plural, one {# ord} other {# ord}}",
+      "writing": "Skriver …",
+      "writtenBy": "Skrevet av {agent}",
+      "retry": "Siste kjøring mislyktes · Prøv på nytt",
+      "retryAction": "Prøv på nytt",
+      "captionOff": "Slå på Oppsummer lange notater i Innstillinger → AI",
+      "captionNoAgent": "Ingen agent tilkoblet · Innstillinger → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Langt notat? Skum gjennom det.",
+      "body": "Fold det sammen til nøkkelsetningene, og åpne bare avsnittet du trenger.",
+      "dismiss": "Greit"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# avsnitt åpent} other {# avsnitt åpne}}",
+      "escape": "esc",
+      "copy": "Kopier som tekst",
+      "copied": "Kopiert",
+      "aria": "Foldet visning",
+      "hintMac": "Knip, ⌘-rull eller rull på denne linjen for å zoome · klikk på et avsnitt for å åpne det",
+      "hint": "Knip, Ctrl-rull eller rull på denne linjen for å zoome · klikk på et avsnitt for å åpne det"
+    },
+    "view": {
+      "aria": "Foldet {level}-visning",
+      "paragraphOpen": "Åpnet til Full · klikk igjen for å folde",
+      "paragraphFold": "Fold dette avsnittet",
+      "paragraphOpenAction": "Åpne dette avsnittet i sin helhet",
+      "unfoldSection": "Brett ut seksjonen {heading}",
+      "jumpToParagraph": "Vis dette avsnittet i sin helhet: {topic}",
+      "untitledSection": "Uten tittel",
+      "skipped": {
+        "code": "… {count, plural, one {# kodeblokk} other {# kodeblokker}}",
+        "table": "… {count, plural, one {# tabell} other {# tabeller}}",
+        "image": "… {count, plural, one {# bilde} other {# bilder}}",
+        "callout": "… {count, plural, one {# callout} other {# callouts}}",
+        "embed": "… {count, plural, one {# innbygging} other {# innbygginger}}",
+        "other": "… {count, plural, one {# blokk til} other {# blokker til}}"
+      }
+    }
   }
 }

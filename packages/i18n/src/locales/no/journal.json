@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Slett dagbokinnlegg",
     "description": "Er du sikker på at du vil slette «{title}»? Denne handlingen kan ikke angres."
+  },
+  "dayTimeline": {
+    "label": "Dagsplan",
+    "allDay": "Heldagselementer",
+    "unscheduled": "Uplanlagt",
+    "unscheduledEmpty": "Ingen uplanlagte oppgaver. Dra en blokk hit for å fjerne tidspunktet.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Fullfør {title}"
   }
 }

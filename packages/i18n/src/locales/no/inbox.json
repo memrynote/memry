@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# slumret element} other {# slumrede elementer}}",
     "notificationBody": "{count, plural, one {Det slumrede elementet ditt er klart til gjennomgang} other {De slumrede elementene dine er klare}}",
     "toast": "{count, plural, =1 {«{itemTitle}» er tilbake fra slumring} one {# slumret element er tilbake} other {# slumrede elementer er tilbake}}"
+  },
+  "sticky": {
+    "kindLabel": "Send som",
+    "kinds": {
+      "note": "Notat",
+      "task": "Oppgave",
+      "journal": "Journal"
+    },
+    "placeholders": {
+      "note": "Skriv det ned …",
+      "task": "Ring Ana @i morgen #hjem !høy",
+      "journal": "Legg til i dagens journal …"
+    },
+    "saving": "Lagrer …",
+    "saved": "Lagret",
+    "saveFailed": "Ikke lagret",
+    "tuck": "Legg bort",
+    "send": "Send",
+    "hints": "Esc legg bort · {mod}⌫ slett",
+    "sendAndCloseHint": "⌥{mod}↵ sender og lukker",
+    "deleted": "Utkastet ble slettet",
+    "open": "Åpne",
+    "undo": "Angre",
+    "sent": {
+      "note": "Lagret i Sticky-mappen",
+      "task": "Oppgave lagt til",
+      "journal": "Lagt til i dagens journal"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky-utkast} other {# sticky-utkast}}",
+      "newSticky": "Ny sticky"
+    },
+    "errors": {
+      "empty": "Skriv noe først.",
+      "taskFailed": "Kunne ikke opprette oppgaven.",
+      "tasksOff": "Oppgaver er slått av i Innstillinger.",
+      "journalOff": "Journal er slått av i Innstillinger.",
+      "sendFailed": "Kunne ikke sende stickyen.",
+      "undoExpired": "Det er for sent å angre dette.",
+      "undoFailed": "Kunne ikke angre sendingen."
+    },
+    "inputLabel": "Sticky-tekst",
+    "dismissError": "Lukk"
   }
 }
