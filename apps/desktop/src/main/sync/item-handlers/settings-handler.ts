@@ -122,6 +122,7 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     try {
       const db = getDatabase()
       const raw = getSetting(db, 'inbox')
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is any; the settings row is written as a JSON object and a parse guard would change behavior on legacy rows
       const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
       const scheduleChanged =
         ('reviewReminderTime' in merged.inbox &&
@@ -146,6 +147,7 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     try {
       const db = getDatabase()
       const raw = getSetting(db, 'features')
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is any; the settings row is written as a JSON object and a parse guard would change behavior on legacy rows
       const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
       setSetting(db, 'features', JSON.stringify({ ...current, ...merged.features }))
     } catch (err) {
@@ -209,6 +211,7 @@ function propagateMergedSettings(merged: SyncedSettings, emit: EmitToWindows): v
     try {
       const db = getDatabase()
       const raw = getSetting(db, SIDEBAR_SORT_SETTINGS_KEY)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is any; the settings row is written as a JSON object and a parse guard would change behavior on legacy rows
       const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
       const next = { ...current, ...merged.sidebar.sortModes }
       setSetting(db, SIDEBAR_SORT_SETTINGS_KEY, JSON.stringify(next))

@@ -14,10 +14,10 @@ const vaultPath = path.join(root, 'vault')
 const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
-const { syncNoteToCacheMock, currentDb } = vi.hoisted(() => ({
-  syncNoteToCacheMock: vi.fn(),
-  currentDb: { value: null as unknown }
-}))
+const { syncNoteToCacheMock, currentDb } = vi.hoisted(() => {
+  const slot: { value: unknown } = { value: null }
+  return { syncNoteToCacheMock: vi.fn(), currentDb: slot }
+})
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn(() => userDataDir) } }))
 vi.mock('../../lib/logger', () => {

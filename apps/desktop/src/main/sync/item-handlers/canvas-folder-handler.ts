@@ -134,7 +134,7 @@ class CanvasFolderHandler extends BaseItemHandler<CanvasFolderSyncPayload> {
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(canvasFolders).where(eq(canvasFolders.id, itemId)).get()
-    if (!existing || existing.deletedAt !== null) return 'skipped'
+    if (existing?.deletedAt !== null) return 'skipped'
 
     let nextClock: VectorClock = existing.clock ?? {}
     if (clock && existing.clock) {
@@ -179,7 +179,7 @@ class CanvasFolderHandler extends BaseItemHandler<CanvasFolderSyncPayload> {
       .select()
       .from(canvasFolders)
       .where(and(eq(canvasFolders.id, itemId), isNull(canvasFolders.deletedAt)))
-      .get() as Record<string, unknown> | undefined
+      .get()
   }
 
   buildPushPayload(

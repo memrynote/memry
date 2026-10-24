@@ -532,7 +532,7 @@ describe('settingsHandler.applyUpsert — synced locale', () => {
   const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve))
 
   const upsert = (settings: Record<string, unknown>): string => {
-    mockGetSettings.mockReturnValue(settings as never)
+    mockGetSettings.mockReturnValue(settings)
     const data = {
       settings,
       fieldClocks: { 'general.language': { 'device-B': 7 } }

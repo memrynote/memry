@@ -195,9 +195,9 @@ describe('reminderHandler', () => {
 
       const raw = reminderHandler.buildPushPayload(ctx.db, 'rem_1', 'device-a', 'update')
       expect(raw).not.toBeNull()
-      const payload = JSON.parse(raw as string)
-      expect(payload.status).toBe('pending')
-      expect(payload).not.toHaveProperty('triggeredAt')
+      const pushed = JSON.parse(raw as string)
+      expect(pushed.status).toBe('pending')
+      expect(pushed).not.toHaveProperty('triggeredAt')
     })
 
     it('leaves a real status (dismissed) untouched', () => {
@@ -214,8 +214,8 @@ describe('reminderHandler', () => {
         .run()
 
       const raw = reminderHandler.buildPushPayload(ctx.db, 'rem_2', 'device-a', 'update')
-      const payload = JSON.parse(raw as string)
-      expect(payload.status).toBe('dismissed')
+      const pushed = JSON.parse(raw as string)
+      expect(pushed.status).toBe('dismissed')
     })
 
     it('returns null for an unknown reminder', () => {
@@ -240,7 +240,7 @@ describe('reminderHandler', () => {
         })
         .run()
 
-      const payload = JSON.parse(
+      const pushed = JSON.parse(
         reminderHandler.buildPushPayload(
           ctx.db,
           'rem_nd_note_1_dm_1',
@@ -248,10 +248,10 @@ describe('reminderHandler', () => {
           'update'
         ) as string
       )
-      expect(payload).not.toHaveProperty('remindAt')
+      expect(pushed).not.toHaveProperty('remindAt')
       // The user's intent still syncs.
-      expect(payload.status).toBe('dismissed')
-      expect(payload.dismissedAt).toBe('2026-08-03T08:00:00.000Z')
+      expect(pushed.status).toBe('dismissed')
+      expect(pushed.dismissedAt).toBe('2026-08-03T08:00:00.000Z')
     })
 
     it('still sends remindAt for a non-derived (note) reminder', () => {
@@ -266,10 +266,10 @@ describe('reminderHandler', () => {
         })
         .run()
 
-      const payload = JSON.parse(
+      const pushed = JSON.parse(
         reminderHandler.buildPushPayload(ctx.db, 'rem_3', 'device-a', 'update') as string
       )
-      expect(payload.remindAt).toBe('2026-08-03T09:00:00.000Z')
+      expect(pushed.remindAt).toBe('2026-08-03T09:00:00.000Z')
     })
 
     // Only ANCHORED note_date rows are derived. An unanchored one is ordinary
@@ -289,10 +289,10 @@ describe('reminderHandler', () => {
         })
         .run()
 
-      const payload = JSON.parse(
+      const pushed = JSON.parse(
         reminderHandler.buildPushPayload(ctx.db, 'rem_cli_1', 'device-a', 'update') as string
       )
-      expect(payload.remindAt).toBe('2026-08-03T09:00:00.000Z')
+      expect(pushed.remindAt).toBe('2026-08-03T09:00:00.000Z')
     })
   })
 
@@ -495,8 +495,8 @@ describe('reminderHandler', () => {
     reminderHandler.seedUnclocked(ctx.db, 'device-a', queue)
 
     const [queued] = queue.dequeue(1)
-    const payload = JSON.parse(queued.payload)
-    expect(payload.status).toBe('pending')
-    expect(payload).not.toHaveProperty('triggeredAt')
+    const pushed = JSON.parse(queued.payload)
+    expect(pushed.status).toBe('pending')
+    expect(pushed).not.toHaveProperty('triggeredAt')
   })
 })

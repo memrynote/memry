@@ -42,7 +42,7 @@ const itemId = fixture.itemId
 
 function apply(step: Step): string {
   const data = InboxSyncPayloadSchema.parse(step.payload)
-  return inboxHandler.applyUpsert(ctx(), itemId, data, (data.clock ?? {}) as Record<string, number>)
+  return inboxHandler.applyUpsert(ctx(), itemId, data, data.clock ?? {})
 }
 
 beforeEach(() => {

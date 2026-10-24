@@ -7,7 +7,7 @@ import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { listNoteProjectLinkIds } from '../../database/queries/projects'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { projectHandler } from './project-handler'
-import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import type { ProjectSyncPayload } from '@memry/contracts/sync-payloads'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 
@@ -62,7 +62,7 @@ const TEST_STATUSES = [
 
 function makeCtx(db: TestDatabaseResult): ApplyContext {
   return {
-    db: db.db as unknown as DrizzleDb,
+    db: db.db,
     emit: vi.fn()
   }
 }
@@ -101,7 +101,7 @@ describe('projectHandler', () => {
 
         const insertedStatuses = testDb.db.select().from(statuses).all()
         expect(insertedStatuses).toHaveLength(2)
-        expect(insertedStatuses.map((s) => s.name).sort()).toEqual(['Done', 'Todo'])
+        expect(insertedStatuses.map((s) => s.name).toSorted()).toEqual(['Done', 'Todo'])
 
         // Bug 1 regression: emitted event must include statuses
         expect(ctx.emit).toHaveBeenCalledWith(
@@ -147,7 +147,7 @@ describe('projectHandler', () => {
         const updatedStatuses = testDb.db.select().from(statuses).all()
         expect(updatedStatuses).toHaveLength(2)
 
-        const names = updatedStatuses.map((s) => s.name).sort()
+        const names = updatedStatuses.map((s) => s.name).toSorted()
         expect(names).toEqual(['Backlog', 'In Progress'])
 
         // Bug 1 regression: emitted event must include statuses
@@ -282,7 +282,7 @@ describe('projectHandler', () => {
       testDb.db.insert(projects).values(TEST_PROJECT).run()
       testDb.db.insert(statuses).values(TEST_STATUSES).run()
 
-      const result = projectHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'proj-1')
+      const result = projectHandler.fetchLocal(testDb.db, 'proj-1')
 
       expect(result).toBeDefined()
       expect(result!.name).toBe('Test Project')
@@ -300,13 +300,13 @@ describe('projectHandler', () => {
         .values({ id: 'l1', projectId: 'proj-1', itemType: 'note', itemId: 'n1', position: 0 })
         .run()
 
-      const result = projectHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'proj-1')
+      const result = projectHandler.fetchLocal(testDb.db, 'proj-1')
 
       expect((result!.links as { itemId: string }[]).map((l) => l.itemId)).toEqual(['n1'])
     })
 
     it('#then returns undefined for nonexistent project', () => {
-      const result = projectHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'nonexistent')
+      const result = projectHandler.fetchLocal(testDb.db, 'nonexistent')
       expect(result).toBeUndefined()
     })
   })
@@ -317,11 +317,7 @@ describe('projectHandler', () => {
       testDb.db.insert(statuses).values(TEST_STATUSES).run()
 
       const queue = new SyncQueueManager(asSyncDb(testDb.db))
-      const count = projectHandler.seedUnclocked(
-        testDb.db as unknown as DrizzleDb,
-        'device-A',
-        queue
-      )
+      const count = projectHandler.seedUnclocked(testDb.db, 'device-A', queue)
 
       expect(count).toBe(1)
 
@@ -343,7 +339,7 @@ describe('projectHandler', () => {
         .run()
 
       const queue = new SyncQueueManager(asSyncDb(testDb.db))
-      projectHandler.seedUnclocked(testDb.db as unknown as DrizzleDb, 'device-A', queue)
+      projectHandler.seedUnclocked(testDb.db, 'device-A', queue)
 
       const [item] = queue.dequeue(1)
       const payload = JSON.parse(item.payload)
@@ -357,11 +353,7 @@ describe('projectHandler', () => {
         .run()
 
       const queue = new SyncQueueManager(asSyncDb(testDb.db))
-      const count = projectHandler.seedUnclocked(
-        testDb.db as unknown as DrizzleDb,
-        'device-A',
-        queue
-      )
+      const count = projectHandler.seedUnclocked(testDb.db, 'device-A', queue)
 
       expect(count).toBe(0)
     })
@@ -523,7 +515,10 @@ describe('projectHandler', () => {
         projectHandler.buildPushPayload(testDb.db as never, 'proj-1', 'device-A', 'update')!
       )
 
-      expect(payload.links.map((l: { itemId: string }) => l.itemId).sort()).toEqual(['f1', 'n1'])
+      expect(payload.links.map((l: { itemId: string }) => l.itemId).toSorted()).toEqual([
+        'f1',
+        'n1'
+      ])
     })
 
     it('does not delete a locally derived markdown-note link when a project is pulled', () => {

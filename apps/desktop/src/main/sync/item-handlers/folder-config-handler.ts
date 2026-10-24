@@ -98,6 +98,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
         const resolution = this.resolveUpsertClock(
           ctx,
           itemId,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clock column is a JSON blob typed loosely by the schema; it is always a VectorClock or null
           existing.clock as VectorClock | null,
           remoteClock,
           data
@@ -152,6 +153,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     }
 
     if (clock && existing.clock) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clock column is a JSON blob typed loosely by the schema; it is always a VectorClock or null
       const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
       if (resolution.skip) {
         log.info('Skipping remote folder config delete, local is ahead of the tombstone', {
@@ -168,9 +170,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get()
   }
 
   buildPushPayload(
@@ -183,6 +183,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     if (!row) return null
     const payload: FolderConfigSyncPayload = {
       icon: row.icon ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clock column is a JSON blob typed loosely by the schema; it is always a VectorClock or null
       clock: (row.clock as VectorClock) ?? undefined,
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt

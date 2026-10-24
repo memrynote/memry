@@ -20,7 +20,7 @@ vi.mock('../../lib/logger', () => ({
 
 function makeCtx(testDb: TestDatabaseResult): ApplyContext {
   return {
-    db: testDb.db as unknown as DrizzleDb,
+    db: testDb.db,
     emit: vi.fn()
   }
 }
@@ -101,12 +101,7 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
     expect(handler).toBeDefined()
 
     // #when device A serializes the row for push
-    const pushed = handler?.buildPushPayload?.(
-      testDb.db as unknown as DrizzleDb,
-      'external-rich',
-      'device-a',
-      'update'
-    )
+    const pushed = handler?.buildPushPayload?.(testDb.db, 'external-rich', 'device-a', 'update')
     expect(pushed).toBeTruthy()
 
     // #then the payload carries the rich fields end-to-end
@@ -380,7 +375,7 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
     // #when the stuck row is pushed — the queue row already exists, so the
     // startup-only seed never gets to repair it before this batch is built
     const pushed = handler?.buildPushPayload?.(
-      testDb.db as unknown as DrizzleDb,
+      testDb.db,
       'external-unclocked',
       'device-a',
       'create'
@@ -400,12 +395,7 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
     ).toEqual({ 'device-a': 1 })
 
     // #and a row that already has a clock keeps it untouched
-    const clocked = handler?.buildPushPayload?.(
-      testDb.db as unknown as DrizzleDb,
-      'external-clocked',
-      'device-a',
-      'update'
-    )
+    const clocked = handler?.buildPushPayload?.(testDb.db, 'external-clocked', 'device-a', 'update')
     expect(JSON.parse(clocked ?? '{}').clock).toEqual({ 'device-b': 3 })
     expect(
       testDb.db

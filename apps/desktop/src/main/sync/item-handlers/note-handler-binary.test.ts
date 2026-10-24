@@ -122,7 +122,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'pdf', title: 'report' }))
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'create')
     const parsed = JSON.parse(result!)
 
     // #then
@@ -139,7 +139,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'image', title: 'photo' }))
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'update')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'update')
     const parsed = JSON.parse(result!)
 
     // #then
@@ -153,7 +153,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'video', title: 'clip' }))
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'create')
     const parsed = JSON.parse(result!)
 
     // #then
@@ -168,7 +168,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     )
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'create')
     const parsed = JSON.parse(result!)
 
     // #then
@@ -181,7 +181,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     mockGetNoteMetadataById.mockReturnValue(makeCachedNote({ fileType: 'markdown' }))
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'create')
     const parsed = JSON.parse(result!)
 
     // #then
@@ -204,7 +204,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     )
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'create')
     const parsed = JSON.parse(result!)
 
     // #then
@@ -218,7 +218,7 @@ describe('noteHandler.buildPushPayload — binary guard', () => {
     mockGetNoteMetadataById.mockReturnValue(undefined)
 
     // #when
-    const result = noteHandler.buildPushPayload!({} as DrizzleDb, 'note-1', 'dev1', 'create')
+    const result = noteHandler.buildPushPayload({} as DrizzleDb, 'note-1', 'dev1', 'create')
 
     // #then
     expect(result).toBeNull()

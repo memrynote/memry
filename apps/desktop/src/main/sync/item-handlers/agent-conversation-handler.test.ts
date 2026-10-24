@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { ready } from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
 import { AgentChannels } from '@memry/contracts/ipc-agent'
@@ -64,7 +64,7 @@ function titleOf(id: string): string | undefined {
 }
 
 beforeAll(async () => {
-  await sodium.ready
+  await ready
   vaultKey = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
 })
 

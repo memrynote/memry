@@ -266,7 +266,7 @@ describe('task push payload', () => {
   }
 
   it.each([
-    ['a field map', { 'Waiting on': WAITING_ON } as VersionedMap],
+    ['a field map', { 'Waiting on': WAITING_ON }],
     ['a NULL column', null]
   ])('sends only keys the task schema models, with %s', (_label, fields) => {
     seedEveryColumn(fields)

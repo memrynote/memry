@@ -55,7 +55,7 @@ let emit: ReturnType<typeof vi.fn>
 let ctx: ApplyContext
 let applier: ItemApplier
 
-const asSync = (handle: TestDataDb): DrizzleDb => handle as unknown as DrizzleDb
+const asSync = (handle: TestDataDb): DrizzleDb => handle
 
 function colorOf(handle: TestDataDb, name: string): string | undefined {
   return handle.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get()?.color
