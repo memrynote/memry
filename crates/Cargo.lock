@@ -2669,6 +2669,7 @@ name = "memry-desktop"
 version = "0.0.0"
 dependencies = [
  "hex",
+ "memry-core",
  "rcgen",
  "reqwest",
  "rustls",

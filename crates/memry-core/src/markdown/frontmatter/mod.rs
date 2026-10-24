@@ -1,0 +1,21 @@
+//! Frontmatter: the byte-exact split, the edited-frontmatter YAML bytes
+//! (gray-matter 4.0.3 over js-yaml 3.15.1) and the note read and write rules of
+//! `packages/app-core/src/markdown.ts`. Specified in
+//! `docs/protocol/12-note-body-format.md` section 12.4.
+
+mod js;
+mod note;
+mod scalar;
+mod split;
+mod value;
+mod yaml_dump;
+mod yaml_load;
+
+pub use note::{
+    Eol, ParsedMarkdownNote, parse_markdown_note, serialize_parsed_markdown_note,
+    stringify_frontmatter_block, write_markdown_note,
+};
+pub use split::{FrontmatterSplit, split_frontmatter_block};
+pub use value::{YamlMap, YamlValue};
+pub use yaml_dump::safe_dump;
+pub use yaml_load::{YamlError, safe_load};

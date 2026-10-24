@@ -14,7 +14,7 @@ Run `pnpm docs:dev` or `pnpm docs:build` from the repo root. A docs change is do
 
 ## Docs gate
 
-`scripts/docs-impact.mjs` decides whether a branch needs docs. It flags changes to `apps/desktop` (`src`, `config`, `scripts`, `package.json`), `apps/sync-server` (`src`, `schema`, `package.json`, `wrangler.toml`), and `packages/contracts`, `db-schema`, `rpc`, `shared`, `sync-client`, and `sync-core`. Tests, fixtures, mocks, and shell scripts don't count. The gate passes when the branch also changes anything under `apps/docs/`.
+`scripts/docs-impact.mjs` decides whether a branch needs docs. It flags changes to `apps/desktop` (`src`, `config`, `scripts`, `package.json`), `apps/sync-server` (`src`, `schema`, `package.json`, `wrangler.toml`), and `packages/contracts`, `db-schema`, `rpc`, `shared`, `sync-client`, and `sync-core`, and `crates/memry-core/src/markdown`. Tests, fixtures, mocks, and shell scripts don't count. The gate passes when the branch also changes anything under `apps/docs/`.
 
 Before pushing, opening a PR, or merging a flagged change:
 

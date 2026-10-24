@@ -13,6 +13,7 @@ on:
       - 'apps/desktop-tauri/**'
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
+      - 'packages/contracts/test-vectors/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
   push:
@@ -23,6 +24,7 @@ on:
       - 'apps/desktop-tauri/**'
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
+      - 'packages/contracts/test-vectors/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
   workflow_dispatch:
@@ -91,6 +93,15 @@ jobs:
 
       - name: Test
         run: cargo test -p memry-core -p memry-desktop -p memry-tauri
+
+      # The markdown converter (cargo feature `markdown`) is off by default so iOS links none
+      # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
+      # the core is linted and tested with the feature explicitly.
+      - name: Clippy (memry-core, markdown feature)
+        run: cargo clippy -p memry-core --all-targets --features markdown -- -D warnings
+
+      - name: Test (memry-core, markdown feature)
+        run: cargo test -p memry-core --features markdown
 
       - name: Test memry-cli
         if: runner.os == 'Linux'

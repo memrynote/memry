@@ -18,6 +18,9 @@ default = []
 # enables it: on device the transport is a foreign trait the Swift side fills in
 # (Constitution I, no Rust networking on device).
 native-transport = []
+# The markdown converter (`src/markdown`), the Rust port of the Electron one.
+# Desktop turns it on; the iOS build keeps it off and links none of it.
+markdown = []
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets

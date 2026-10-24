@@ -13,6 +13,7 @@ const docsRelevantPatterns = [
   /^apps\/desktop-tauri\/src-tauri\/src\//,
   /^apps\/desktop-tauri\/package\.json$/,
   /^crates\/memry-desktop\/src\//,
+  /^crates\/memry-core\/src\/markdown\//,
   /^apps\/sync-server\/(?:src|schema)\//,
   /^apps\/sync-server\/(?:package\.json|wrangler\.toml)$/,
   /^packages\/(?:contracts|db-schema|rpc|shared|sync-client|sync-core)\//
