@@ -19,6 +19,7 @@ export function isAttachmentAutoDownloadEnabled(db: DataDb): boolean {
   try {
     const raw = getSetting(db, 'sync')
     if (!raw) return true
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
     const parsed = JSON.parse(raw) as { attachmentAutoDownload?: unknown }
     return parsed.attachmentAutoDownload !== false
   } catch (err) {

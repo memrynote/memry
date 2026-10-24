@@ -40,6 +40,7 @@ export function verifyTombstoneAttestation(
   if (!attestation) return 'unattested'
   if (!signerKey) return 'signer_unknown'
   try {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const signature = sodium.from_base64(attestation.signature, sodium.base64_variants.ORIGINAL)
     const valid = verifySignature(
       deleteAttestationPayload(tombstone),
@@ -52,5 +53,6 @@ export function verifyTombstoneAttestation(
     // Malformed base64, a wrong-length signature or key: not a signature.
     return 'attestation_invalid'
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   return { signerDeviceId: attestation.signerDeviceId } as VerifiedAttestation
 }

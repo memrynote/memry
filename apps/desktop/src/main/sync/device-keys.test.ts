@@ -12,6 +12,7 @@ vi.mock('./http-client', () => ({
 let testDb: TestDatabaseResult
 
 beforeEach(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   await sodium.ready
   testDb = createTestDataDb()
   vi.clearAllMocks()
@@ -23,6 +24,7 @@ afterEach(() => {
 
 function makeBase64Key(): string {
   const key = sodium.crypto_sign_keypair().publicKey
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   return sodium.to_base64(key, sodium.base64_variants.ORIGINAL)
 }
 

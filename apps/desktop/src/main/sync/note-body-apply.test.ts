@@ -61,7 +61,7 @@ function deps(
   known: string[] | ((noteId: string) => boolean) = []
 ): NoteBodyLandingDeps & { onMissingBase: Mock<(noteId: string) => void> } {
   return {
-    provider: provider as unknown as NoteBodyLandingDeps['provider'],
+    provider: provider,
     isKnownNote: typeof known === 'function' ? known : (noteId) => known.includes(noteId),
     onMissingBase: vi.fn<(noteId: string) => void>()
   }
@@ -100,6 +100,7 @@ describe('landNoteBody (#2297)', () => {
     await landNoteBody(deps(provider, ['note-1']), 'note-1', [delta])
 
     expect(provider.closeIfInactive).not.toHaveBeenCalled()
+    // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text#toString returns the text; the rule does not see the override
     expect(editorDoc.getText('t').toString()).toBe('ab')
   })
 

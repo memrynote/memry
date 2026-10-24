@@ -66,7 +66,9 @@ export async function encryptPushBatch(
     return {
       queueId: item.id,
       itemId: item.itemId,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queue item type/operation are text columns; narrowing them needs a runtime allow-list that would change behavior
       type: item.type as SyncItemType,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queue item type/operation are text columns; narrowing them needs a runtime allow-list that would change behavior
       operation: item.operation as SyncOperation,
       payload,
       clock: meta.clock,
@@ -179,6 +181,7 @@ export async function decryptPullBatch(
         continue
       }
       if (!signerKeys[item.signerDeviceId]) {
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         signerKeys[item.signerDeviceId] = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
       }
       workerItems.push({

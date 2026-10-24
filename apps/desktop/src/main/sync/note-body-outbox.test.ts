@@ -42,6 +42,7 @@ function recordEdits(texts: string[]): { updates: Uint8Array[]; doc: Y.Doc } {
 function textAfter(pushed: Uint8Array[]): string {
   const doc = new Y.Doc()
   for (const update of pushed) Y.applyUpdate(doc, update)
+  // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text#toString returns the text; the rule does not see the override
   return doc.getText('body').toString()
 }
 
@@ -211,7 +212,11 @@ describe('NoteBodyOutbox', () => {
 
     vi.advanceTimersByTime(2000)
     await flushPromises()
-    expect(push.mock.calls.map(([noteId]) => noteId).sort()).toEqual(['note-a', 'note-a', 'note-b'])
+    expect(push.mock.calls.map(([noteId]) => noteId).toSorted()).toEqual([
+      'note-a',
+      'note-a',
+      'note-b'
+    ])
     expect(queue.countNoteBodyRows()).toBe(0)
   })
 
@@ -314,7 +319,7 @@ describe('NoteBodyOutbox', () => {
     push.mockResolvedValue(undefined)
     outbox.resume()
     await flushPromises()
-    expect(push.mock.calls.map(([noteId]) => noteId).sort()).toEqual(['note-a', 'note-b'])
+    expect(push.mock.calls.map(([noteId]) => noteId).toSorted()).toEqual(['note-a', 'note-b'])
     expect(queue.countNoteBodyRows()).toBe(0)
   })
 
@@ -437,7 +442,7 @@ describe('NoteBodyOutbox', () => {
     expect(readFullState).toHaveBeenCalledTimes(2)
     release()
     await flushPromises()
-    expect(push.mock.calls.map(([noteId]) => noteId).sort()).toEqual(['note-a', 'note-b'])
+    expect(push.mock.calls.map(([noteId]) => noteId).toSorted()).toEqual(['note-a', 'note-b'])
     expect(queue.countNoteBodyRows()).toBe(0)
   })
 
@@ -478,7 +483,7 @@ describe('importLegacyPendingCrdtNotes', () => {
 
     expect(importLegacyPendingCrdtNotes(queue, dir)).toBe(2)
 
-    expect(queue.listNoteBodyNoteIds().sort()).toEqual(['note-a', 'note-b'])
+    expect(queue.listNoteBodyNoteIds().toSorted()).toEqual(['note-a', 'note-b'])
     expect(queue.takeNoteBodyRows('note-a', 10)[0].payload).toBe(NOTE_BODY_FULL_STATE_PAYLOAD)
     expect(fs.existsSync(file)).toBe(false)
   })
@@ -487,7 +492,7 @@ describe('importLegacyPendingCrdtNotes', () => {
     fs.writeFileSync(path.join(dir, 'crdt-pending-notes.json'), '["note-a","note-b","note-')
 
     expect(importLegacyPendingCrdtNotes(queue, dir)).toBe(2)
-    expect(queue.listNoteBodyNoteIds().sort()).toEqual(['note-a', 'note-b'])
+    expect(queue.listNoteBodyNoteIds().toSorted()).toEqual(['note-a', 'note-b'])
   })
 
   it('does nothing when there is no file', () => {

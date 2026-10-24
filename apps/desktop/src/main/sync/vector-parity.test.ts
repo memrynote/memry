@@ -115,6 +115,7 @@ function seedRandomness(fileKeyHex: string, dataNonceHex: string, keyNonceHex: s
 
 describe('desktop writer parity with the committed protocol vectors', () => {
   beforeAll(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
   })
 
@@ -243,6 +244,7 @@ describe('desktop writer parity with the committed protocol vectors', () => {
         vectors.meta.sessionId,
         vectors.meta.ecdh.newDevicePublicB64
       )
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       expect(sodium.to_base64(mac, sodium.base64_variants.ORIGINAL)).toBe(entry.expectedMacB64)
     })
 
@@ -257,6 +259,7 @@ describe('desktop writer parity with the committed protocol vectors', () => {
         vectors.meta.sessionId,
         block.encryptedMasterKeyB64 as string
       )
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       expect(sodium.to_base64(mac, sodium.base64_variants.ORIGINAL)).toBe(entry.expectedMacB64)
     })
 
@@ -319,6 +322,7 @@ describe('desktop writer parity with the committed protocol vectors', () => {
         fromHex(VAULT_KEY),
         VAULT_UUID
       )
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       const corrupted = sodium.from_base64(encryptedName, sodium.base64_variants.ORIGINAL)
       corrupted[0] ^= 0x01
 
@@ -326,6 +330,7 @@ describe('desktop writer parity with the committed protocol vectors', () => {
       // a throw. A client that propagates a throw here breaks the vault list.
       expect(
         decryptVaultName(
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           sodium.to_base64(corrupted, sodium.base64_variants.ORIGINAL),
           nameNonce,
           fromHex(VAULT_KEY),

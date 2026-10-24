@@ -180,70 +180,82 @@ describe('linking-service provider auth transfer', () => {
   }
 
   beforeAll(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
   })
 
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetDatabase.mockReturnValue({ tag: 'db' })
-    mockPostToServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/linking/initiate') {
+    mockPostToServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/linking/initiate') {
         return {
           sessionId: 'session-1',
           expiresAt: Math.floor(Date.now() / 1000) + 300,
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           linkingSecret: sodium.to_base64(
             new Uint8Array(32).fill(4),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           )
         }
       }
 
-      if (path === '/auth/linking/scan') {
+      if (urlPath === '/auth/linking/scan') {
         return { success: true }
       }
 
-      if (path === '/auth/linking/complete') {
+      if (urlPath === '/auth/linking/complete') {
         return {
           success: true,
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedMasterKey: sodium.to_base64(
             new Uint8Array([41, 42, 43]),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedKeyNonce: sodium.to_base64(
             new Uint8Array(24).fill(8),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           keyConfirm: sodium.to_base64(new Uint8Array(32).fill(11), sodium.base64_variants.ORIGINAL)
         }
       }
 
       return { success: true }
     })
-    mockGetFromServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/linking/session/session-1') {
+    mockGetFromServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/linking/session/session-1') {
         return {
           sessionId: 'session-1',
           status: 'scanned',
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           newDevicePublicKey: sodium.to_base64(
             new Uint8Array(32).fill(51),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           newDeviceConfirm: sodium.to_base64(
             new Uint8Array(32).fill(12),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
           expiresAt: Math.floor(Date.now() / 1000) + 300
         }
       }
 
-      if (path === '/auth/recovery-info') {
+      if (urlPath === '/auth/recovery-info') {
         return {
           kdfSalt: 'salt',
           keyVerifier: 'verifier'
         }
       }
 
-      throw new Error(`Unexpected GET path: ${path}`)
+      throw new Error(`Unexpected GET path: ${urlPath}`)
     })
     mockCollectGoogleProviderAuthTransfer.mockResolvedValue({
       version: 1,
@@ -319,7 +331,7 @@ describe('linking-service provider auth transfer', () => {
     )
 
     const approveCall = mockPostToServer.mock.calls.find(
-      ([path]) => path === '/auth/linking/approve'
+      ([urlPath]) => urlPath === '/auth/linking/approve'
     )
     expect(approveCall).toBeDefined()
     const approveBody = approveCall?.[1] as Record<string, unknown>
@@ -330,24 +342,30 @@ describe('linking-service provider auth transfer', () => {
   })
 
   it('imports transferred provider auth only after device registration succeeds', async () => {
-    mockPostToServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/linking/scan') {
+    mockPostToServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/linking/scan') {
         return { success: true }
       }
 
-      if (path === '/auth/linking/complete') {
+      if (urlPath === '/auth/linking/complete') {
         return {
           success: true,
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedMasterKey: sodium.to_base64(
             new Uint8Array([41, 42, 43]),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedKeyNonce: sodium.to_base64(
             new Uint8Array(24).fill(8),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           keyConfirm: sodium.to_base64(
             new Uint8Array(32).fill(11),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
           encryptedProviderAuth: 'encrypted-provider-auth',
@@ -364,16 +382,20 @@ describe('linking-service provider auth transfer', () => {
       return {
         sessionId: 'session-1',
         expiresAt: Math.floor(Date.now() / 1000) + 300,
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL)
       }
     })
 
     const qrData = JSON.stringify({
       sessionId: 'session-1',
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       ephemeralPublicKey: sodium.to_base64(
         new Uint8Array(32).fill(71),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.base64_variants.ORIGINAL
       ),
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
       expiresAt: Math.floor(Date.now() / 1000) + 300
     })
@@ -401,24 +423,30 @@ describe('linking-service provider auth transfer', () => {
   })
 
   it('emits a non-fatal warning when imported provider auth cannot be persisted', async () => {
-    mockPostToServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/linking/scan') {
+    mockPostToServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/linking/scan') {
         return { success: true }
       }
 
-      if (path === '/auth/linking/complete') {
+      if (urlPath === '/auth/linking/complete') {
         return {
           success: true,
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedMasterKey: sodium.to_base64(
             new Uint8Array([41, 42, 43]),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedKeyNonce: sodium.to_base64(
             new Uint8Array(24).fill(8),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           keyConfirm: sodium.to_base64(
             new Uint8Array(32).fill(11),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
           encryptedProviderAuth: 'encrypted-provider-auth',
@@ -431,6 +459,7 @@ describe('linking-service provider auth transfer', () => {
       return {
         sessionId: 'session-1',
         expiresAt: Math.floor(Date.now() / 1000) + 300,
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL)
       }
     })
@@ -441,10 +470,13 @@ describe('linking-service provider auth transfer', () => {
 
     const qrData = JSON.stringify({
       sessionId: 'session-1',
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       ephemeralPublicKey: sodium.to_base64(
         new Uint8Array(32).fill(71),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.base64_variants.ORIGINAL
       ),
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
       expiresAt: Math.floor(Date.now() / 1000) + 300
     })
@@ -476,12 +508,16 @@ describe('linking-service provider auth transfer', () => {
       await linkViaQr(
         JSON.stringify({
           sessionId: 'session-1',
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           ephemeralPublicKey: sodium.to_base64(
             new Uint8Array(32).fill(71),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           linkingSecret: sodium.to_base64(
             new Uint8Array(32).fill(4),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
           expiresAt: Math.floor(Date.now() / 1000) - 1
@@ -519,12 +555,16 @@ describe('linking-service provider auth transfer', () => {
     await linkViaQr(
       JSON.stringify({
         sessionId: 'session-1',
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         ephemeralPublicKey: sodium.to_base64(
           new Uint8Array(32).fill(71),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           sodium.base64_variants.ORIGINAL
         ),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         linkingSecret: sodium.to_base64(
           new Uint8Array(32).fill(4),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           sodium.base64_variants.ORIGINAL
         ),
         expiresAt
@@ -544,10 +584,13 @@ describe('linking-service provider auth transfer', () => {
     const { SyncServerError } = await import('./http-client')
     const qrData = JSON.stringify({
       sessionId: 'session-1',
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       ephemeralPublicKey: sodium.to_base64(
         new Uint8Array(32).fill(71),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.base64_variants.ORIGINAL
       ),
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
       expiresAt: Math.floor(Date.now() / 1000) + 300
     })
@@ -571,10 +614,13 @@ describe('linking-service provider auth transfer', () => {
     const { RateLimitError } = await import('./http-client')
     const qrData = JSON.stringify({
       sessionId: 'session-1',
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       ephemeralPublicKey: sodium.to_base64(
         new Uint8Array(32).fill(71),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.base64_variants.ORIGINAL
       ),
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
       expiresAt: Math.floor(Date.now() / 1000) + 300
     })
@@ -617,10 +663,13 @@ describe('linking-service provider auth transfer', () => {
   it('handles unscanned sessions, verification codes, and provider decrypt warnings', async () => {
     const qrData = JSON.stringify({
       sessionId: 'session-1',
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       ephemeralPublicKey: sodium.to_base64(
         new Uint8Array(32).fill(71),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.base64_variants.ORIGINAL
       ),
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
       expiresAt: Math.floor(Date.now() / 1000) + 300
     })
@@ -654,21 +703,27 @@ describe('linking-service provider auth transfer', () => {
       error: 'Session has not been scanned yet'
     })
 
-    mockPostToServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/linking/scan') return { success: true }
-      if (path === '/auth/linking/complete') {
+    mockPostToServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/linking/scan') return { success: true }
+      if (urlPath === '/auth/linking/complete') {
         return {
           success: true,
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedMasterKey: sodium.to_base64(
             new Uint8Array([41, 42, 43]),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedKeyNonce: sodium.to_base64(
             new Uint8Array(24).fill(8),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           keyConfirm: sodium.to_base64(
             new Uint8Array(32).fill(11),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
           encryptedProviderAuth: 'encrypted-provider-auth',
@@ -698,15 +753,19 @@ describe('linking-service provider auth transfer', () => {
 describe('linking-service multi-vault choice', () => {
   const qrData = JSON.stringify({
     sessionId: 'session-1',
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     ephemeralPublicKey: sodium.to_base64(
       new Uint8Array(32).fill(71),
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       sodium.base64_variants.ORIGINAL
     ),
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
     expiresAt: Math.floor(Date.now() / 1000) + 300
   })
 
   beforeAll(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
   })
 
@@ -716,21 +775,27 @@ describe('linking-service multi-vault choice', () => {
     mockIsDatabaseInitialized.mockReturnValue(true)
     mockPersistKeysAndRegisterDevice.mockResolvedValue('device-1')
     mockSelectVault.mockResolvedValue({ success: true })
-    mockPostToServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/linking/scan') return { success: true }
-      if (path === '/auth/linking/complete') {
+    mockPostToServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/linking/scan') return { success: true }
+      if (urlPath === '/auth/linking/complete') {
         return {
           success: true,
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedMasterKey: sodium.to_base64(
             new Uint8Array([41, 42, 43]),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           encryptedKeyNonce: sodium.to_base64(
             new Uint8Array(24).fill(8),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           keyConfirm: sodium.to_base64(
             new Uint8Array(32).fill(11),
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             sodium.base64_variants.ORIGINAL
           ),
           encryptedVaultTransfer: 'encrypted-vault-transfer',
@@ -741,9 +806,9 @@ describe('linking-service multi-vault choice', () => {
       }
       return { success: true }
     })
-    mockGetFromServer.mockImplementation(async (path: string) => {
-      if (path === '/auth/recovery-info') return { kdfSalt: 'salt', keyVerifier: 'verifier' }
-      throw new Error(`Unexpected GET path: ${path}`)
+    mockGetFromServer.mockImplementation(async (urlPath: string) => {
+      if (urlPath === '/auth/recovery-info') return { kdfSalt: 'salt', keyVerifier: 'verifier' }
+      throw new Error(`Unexpected GET path: ${urlPath}`)
     })
     mockDecryptVaultTransfer.mockReturnValue({
       version: 1,

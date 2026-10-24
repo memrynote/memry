@@ -68,7 +68,7 @@ function seedIndexRow(id: string): void {
 beforeEach(() => {
   dataDb = createTestDataDb()
   indexResult = createTestIndexDb()
-  indexDb = indexResult.db as unknown as IndexDb
+  indexDb = indexResult.db
   state.data = dataDb
   state.index = indexDb
   enqueueLocalSyncUpdate.mockClear()

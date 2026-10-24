@@ -142,7 +142,7 @@ describe('Corrupt item recovery', () => {
 
     const defaultApply = opts.applyBehavior ?? (() => 'applied' as const)
     applySpy = vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation((input) => {
-      return defaultApply(input as { itemId: string; content: Uint8Array })
+      return defaultApply(input)
     })
 
     return { getServerMock, postServerMock, decryptMock, applySpy }

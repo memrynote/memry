@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   return {
-    db: {} as object,
+    db: {},
     isDatabaseInitialized: vi.fn(() => true),
-    getDatabase: vi.fn(() => null as unknown),
-    vaultPath: { path: '/vault' } as unknown,
+    getDatabase: vi.fn(() => null),
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the annotation widens the literal so later assignments type-check
+    vaultPath: { path: '/vault' } as { path: string | null },
     getNoteAttachmentsDir: vi.fn((..._args: unknown[]) => '/vault/attachments/note-x'),
     toAbsolutePath: vi.fn((p: string) => `/vault/${p}`),
     getNoteMetadataById: vi.fn(),
@@ -258,11 +259,11 @@ describe('attachment download re-driver', () => {
     expect(await redriveAttachmentDownloads()).toEqual({ requested: 0, skipped: 0 })
 
     mocks.isDatabaseInitialized.mockReturnValue(true)
-    mocks.vaultPath = { path: null } as unknown
+    mocks.vaultPath = { path: null }
     expect(await redriveAttachmentDownloads()).toEqual({ requested: 0, skipped: 0 })
 
     expect(mocks.emitted).toHaveLength(0)
-    mocks.vaultPath = { path: '/vault' } as unknown
+    mocks.vaultPath = { path: '/vault' }
   })
 
   it('releases the claim and stops when no listener is registered', async () => {

@@ -113,10 +113,7 @@ export function createCrdtSnapshotPush(deps: CrdtSnapshotPushDeps): SnapshotPush
       // The feed serves this device's own snapshot back (#2297); the
       // recorded revision lets it skip the download.
       if (!viaUpdates) {
-        await deps.onPushed(
-          noteId,
-          (pushed.value ?? {}) as { sequenceNum?: number; revision?: string }
-        )
+        await deps.onPushed(noteId, pushed.value ?? {})
       }
       deps.onStored?.(noteId)
       // Distinct message per endpoint on purpose: log triage greps these

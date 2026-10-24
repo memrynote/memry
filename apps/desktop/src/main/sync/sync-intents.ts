@@ -280,10 +280,12 @@ function parseIntent(row: SyncIntentRow): ParsedIntent {
     return { ok: false, reason: 'unparseable args' }
   }
   if (!Array.isArray(args)) return { ok: false, reason: 'non-array args' }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- syncIntents rows store type/op as text; op membership is checked via OP_METHOD, type via the registry
   return { ok: true, type: row.type, op: row.op as SyncIntentOp, args }
 }
 
 function localRowExists(db: DrizzleDb, type: LocalSyncType, itemId: string): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- syncIntents rows store type/op as text; op membership is checked via OP_METHOD, type via the registry
   const table = LOCAL_ROW_TABLES[type as keyof typeof LOCAL_ROW_TABLES]
   if (!table) return false
   return db.select({ id: table.id }).from(table).where(eq(table.id, itemId)).get() !== undefined
@@ -302,6 +304,7 @@ function dropStaleDelete(db: DrizzleDb, row: SyncIntentRow): void {
   try {
     db.transaction(() => {
       db.delete(syncIntents).where(eq(syncIntents.seq, row.seq)).run()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- syncIntents rows store type/op as text; op membership is checked via OP_METHOD, type via the registry
       clearPendingDelete(db, row.type as LocalSyncType, row.itemId)
     })
   } catch (err) {

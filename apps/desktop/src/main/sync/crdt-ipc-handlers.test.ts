@@ -14,7 +14,7 @@ import { CRDT_CHANNELS } from '@memry/contracts/ipc-crdt'
 // ============================================================================
 
 const senderWindow = vi.hoisted(() => ({
-  current: { id: 1, once: vi.fn() } as { id: number; once: ReturnType<typeof vi.fn> }
+  current: { id: 1, once: vi.fn() }
 }))
 
 // A real, empty folder: the outside-vault check resolves every read against it.
@@ -119,7 +119,6 @@ vi.mock('y-leveldb', () => ({
       /* intentional no-op */
     }
     async getYDoc() {
-      const Y = await import('yjs')
       return new Y.Doc()
     }
     async storeUpdate() {
@@ -408,7 +407,7 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
 
       await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })
       await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n2' })
-      expect(provider.getOpenNoteIds().sort()).toEqual(['n1', 'n2'])
+      expect(provider.getOpenNoteIds().toSorted()).toEqual(['n1', 'n2'])
 
       // One 'closed' listener per window, not one per doc it opens.
       expect(senderWindow.current.once).toHaveBeenCalledTimes(1)

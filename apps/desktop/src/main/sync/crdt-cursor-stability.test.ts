@@ -45,7 +45,9 @@ describe('CRDT cursor stability', () => {
       Y.applyUpdate(rendererDoc, merged)
 
       // #then — both should have identical content
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
       const mainContent = mainDoc.getText('content').toString()
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
       const rendererContent = rendererDoc.getText('content').toString()
       expect(mainContent).toBe('Greetings World!')
       expect(rendererContent).toBe(mainContent)
@@ -81,6 +83,7 @@ describe('CRDT cursor stability', () => {
       Y.applyUpdate(localDoc, mergedRemote, 'remote')
 
       // #then — both edits preserved via CRDT merge
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
       const result = localText.toString()
       expect(result).toContain('Beautiful')
       expect(result).toContain('from remote')
@@ -142,6 +145,7 @@ describe('CRDT cursor stability', () => {
       // Verify the single merged broadcast contains all content
       const receiverDoc = new Y.Doc()
       Y.applyUpdate(receiverDoc, broadcasts[0])
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
       const received = receiverDoc.getText('content').toString()
       for (let i = 0; i < 10; i++) {
         expect(received).toContain(`line${i}`)

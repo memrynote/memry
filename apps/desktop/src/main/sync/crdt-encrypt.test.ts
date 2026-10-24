@@ -4,6 +4,7 @@ import { encryptCrdtUpdate, decryptCrdtUpdate } from './crdt-encrypt'
 import { SignatureVerificationError } from './decrypt'
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   await sodium.ready
 })
 

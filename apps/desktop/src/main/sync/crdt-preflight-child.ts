@@ -57,6 +57,7 @@ function describeErrorChain(err: unknown): string {
   const parts: string[] = []
   let current: unknown = err
   for (let depth = 0; current instanceof Error && depth < MAX_CAUSE_DEPTH; depth++) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     const code = (current as { code?: unknown }).code
     parts.push(typeof code === 'string' ? `[${code}] ${current.message}` : current.message)
     current = (current as { cause?: unknown }).cause
@@ -82,8 +83,10 @@ function resolveBindingInfo(yLeveldbPath: string): CrdtPreflightBindingInfo | un
   try {
     const levelRequire = createRequire(createRequire(yLeveldbPath).resolve('level'))
     const packageJsonPath = levelRequire.resolve('classic-level/package.json')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
     const { version } = levelRequire('classic-level/package.json') as { version?: unknown }
     const packageRoot = path.dirname(packageJsonPath)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
     const nodeGypBuild = createRequire(packageJsonPath)('node-gyp-build') as NodeGypBuild
     const binary =
       typeof nodeGypBuild.path === 'function'
@@ -134,6 +137,7 @@ async function main(): Promise<void> {
   // reference. Resolved THROUGH y-leveldb's own resolution: the app's module
   // graph carries a second, newer classic-level, and probing the store with a
   // different native binding than the one y-leveldb will use proves nothing.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
   const { Level } = createRequire(yLeveldbPath)('level') as {
     Level: LevelAdapter
   }

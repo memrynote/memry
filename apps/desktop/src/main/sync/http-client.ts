@@ -9,6 +9,12 @@ import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 import { getBootstrapTokenHeaders } from './bootstrap-session-state'
+import {
+  SyncServerError,
+  NetworkError,
+  RateLimitError,
+  parseRetryAfterHeader
+} from '@memry/sync-client/http-errors'
 
 // Declared to the server so it never sends this build an item type our
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page
@@ -33,12 +39,6 @@ export type FetchFn = typeof globalThis.fetch
 export {
   SyncServerError,
   AttachmentTooLargeError,
-  NetworkError,
-  RateLimitError,
-  parseRetryAfterHeader
-} from '@memry/sync-client/http-errors'
-import {
-  SyncServerError,
   NetworkError,
   RateLimitError,
   parseRetryAfterHeader
@@ -151,6 +151,7 @@ export const syncFetch = async <T>(
   }
 
   if (!response.ok) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     const errorBody = responseBody as ServerErrorResponse
     const errorCode = typeof errorBody?.error === 'object' ? errorBody.error.code : undefined
     const message =
@@ -166,6 +167,7 @@ export const syncFetch = async <T>(
     )
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   return responseBody as T
 }
 

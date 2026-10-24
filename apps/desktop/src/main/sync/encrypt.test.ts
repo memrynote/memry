@@ -13,6 +13,7 @@ import {
 } from '@memry/sync-client/note-size'
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   await sodium.ready
 })
 
@@ -61,8 +62,10 @@ describe('encryptItemForPush', () => {
     it('#then sizeBytes matches ciphertext length', () => {
       const result = encryptItemForPush(makeInput())
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const ciphertextBytes = sodium.from_base64(
         result.pushItem.encryptedData,
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         sodium.base64_variants.ORIGINAL
       )
       expect(result.sizeBytes).toBe(ciphertextBytes.length)
@@ -118,8 +121,10 @@ describe('encryptItemForPush', () => {
         deletedAt
       }
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const sigBytes = sodium.from_base64(
         result.pushItem.signature,
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         sodium.base64_variants.ORIGINAL
       )
       const valid = verifySignature(
@@ -153,6 +158,7 @@ describe('encryptItemForPush', () => {
       const valid = verifySignature(
         deleteAttestationPayload(claim),
         CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         sodium.from_base64(pushItem.deleteAttestation!, sodium.base64_variants.ORIGINAL),
         keys.signingPublicKey
       )
@@ -192,6 +198,7 @@ describe('encryptItemForPush', () => {
       )
 
       const fromB64 = (s: string): Uint8Array =>
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         sodium.from_base64(s, sodium.base64_variants.ORIGINAL)
 
       const sigBytes = fromB64(result.pushItem.signature)
@@ -235,7 +242,7 @@ describe('encryptItemForPush', () => {
       encryptItemForPush(makeInput())
 
       expect(spy).toHaveBeenCalled()
-      const zeroedBuffer = spy.mock.calls[0][0] as Uint8Array
+      const zeroedBuffer = spy.mock.calls[0][0]
       expect(zeroedBuffer.length).toBe(32)
       expect(zeroedBuffer.every((b) => b === 0)).toBe(true)
 

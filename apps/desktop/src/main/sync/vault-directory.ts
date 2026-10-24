@@ -225,6 +225,7 @@ export function listAccountVaults(): AccountVaultInfo[] {
   const localByUuid = new Map(
     getVaults()
       .filter((v) => v.vaultUuid)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the filter above removes entries without a vaultUuid, which TS cannot narrow through map
       .map((v) => [v.vaultUuid as string, v])
   )
   return (cache?.vaults ?? []).map((v) => ({

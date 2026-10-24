@@ -263,6 +263,7 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
         if (!service) continue
         service.enqueueRecoveredDelete(item.itemId, item.payload)
       } else {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted queue/registry type is a plain string column; narrowing it needs a runtime allow-list that would change behavior
         enqueueLocalSyncDelete(item.type as LocalSyncType, item.itemId, item.payload)
       }
 
@@ -864,6 +865,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
 
 /** Whether this build has a local sync adapter for `type`. */
 export function hasLocalSyncAdapter(type: string): type is LocalSyncType {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted queue/registry type is a plain string column; narrowing it needs a runtime allow-list that would change behavior
   return localSyncRegistry.getLocal(type as LocalSyncType) !== undefined
 }
 

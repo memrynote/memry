@@ -39,16 +39,14 @@ export class CalendarEventSyncService {
       type: 'calendar_event',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (id) =>
-        deps.db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load: (id) => deps.db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).get(),
       applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
         const changedFields = extra[0]
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
         const existingClock = (local.clock as VectorClock) ?? {}
         const nextClock = incrementClock(existingClock, deviceId)
 
-        let fieldClocks = (local.fieldClocks as FieldClocks | null) ?? null
+        let fieldClocks = local.fieldClocks ?? null
         if (!fieldClocks) {
           fieldClocks = initAllFieldClocks(existingClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
         }
@@ -83,7 +81,7 @@ export class CalendarEventSyncService {
           CALENDAR_EVENT_SYNCABLE_FIELDS
         )
         deps.db.update(calendarEvents).set(rebound).where(eq(calendarEvents.id, itemId)).run()
-        return { ...row, ...rebound } as Record<string, unknown>
+        return { ...row, ...rebound }
       },
       serialize: (local) => local,
       buildDeletePayload: ({ itemId, local, extra, deviceId }) => {

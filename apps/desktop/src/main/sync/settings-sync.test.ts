@@ -14,6 +14,7 @@ import { SyncQueueManager } from '@memry/sync-client/queue'
 import { SettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   await sodium.ready
 })
 

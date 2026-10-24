@@ -355,7 +355,7 @@ describe('applyOpenVaultBinding', () => {
 })
 
 describe('session and retry helpers', () => {
-  const tokenFor = (payload: object): string =>
+  const tokenFor = (payload: unknown): string =>
     ['{"alg":"none"}', JSON.stringify(payload)]
       .map((part) => Buffer.from(part).toString('base64url'))
       .join('.') + '.sig'

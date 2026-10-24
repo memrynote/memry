@@ -138,6 +138,7 @@ function isResumableDownloadError(err: unknown): boolean {
  * instead of being wiped into a from-zero loop that fails identically.
  */
 function isDiskSpaceError(err: unknown): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   const code = (err as NodeJS.ErrnoException | null)?.code
   return code === 'ENOSPC' || code === 'EDQUOT'
 }
@@ -258,6 +259,7 @@ async function readFileChunks(file: FileHandle): Promise<Buffer[]> {
 
 function sha256Hex(data: Uint8Array): string {
   const hash = sodium.crypto_hash_sha256(data)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   return sodium.to_hex(hash)
 }
 
@@ -350,7 +352,7 @@ function hashFileInto(
   return new Promise((resolve, reject) => {
     const stream = createReadStream(filePath, { highWaterMark: CHUNK_SIZE })
     stream.on('data', (data) => {
-      sodium.crypto_hash_sha256_update(hashState, data as Buffer)
+      sodium.crypto_hash_sha256_update(hashState, data)
     })
     stream.on('end', () => resolve())
     stream.on('error', reject)
@@ -362,6 +364,14 @@ function hashFileInto(
 // ============================================================================
 
 export { AttachmentTooLargeError }
+
+const toB64 = (bytes: Uint8Array): string =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
+  sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
+
+const fromB64 = (s: string): Uint8Array =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
+  sodium.from_base64(s, sodium.base64_variants.ORIGINAL)
 
 export class AttachmentSyncService {
   private deps: AttachmentSyncDeps
@@ -449,6 +459,7 @@ export class AttachmentSyncService {
         )
       }
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       const attachmentId = sodium.to_hex(sodium.randombytes_buf(16))
       const filename = path.basename(filePath)
       log.info('starting upload', { attachmentId, noteId, filename, size: fileStat.size })
@@ -466,6 +477,7 @@ export class AttachmentSyncService {
       if (candidates.length > 0) {
         const checksumState = sodium.crypto_hash_sha256_init()
         for (const chunk of chunks) sodium.crypto_hash_sha256_update(checksumState, chunk)
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         const checksum = sodium.to_hex(sodium.crypto_hash_sha256_final(checksumState))
         const uploaded = await this.findUploadedCopy(
           token,
@@ -527,6 +539,7 @@ export class AttachmentSyncService {
         })
       }
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       const wholeFileHash = sodium.to_hex(sodium.crypto_hash_sha256_final(wholeFileHashState))
 
       const manifest: AttachmentManifest = {
@@ -787,7 +800,7 @@ export class AttachmentSyncService {
         `.${sanitizeFilename(attachmentId)}.${sanitizeFilename(path.basename(destPath))}.mrypart`
       )
       const statePath = `${partialPath}.json`
-      const orderedChunks = [...manifest.chunks].sort((a, b) => a.index - b.index)
+      const orderedChunks = [...manifest.chunks].toSorted((a, b) => a.index - b.index)
 
       const resumeFrom = await this.loadResumableState(partialPath, statePath, manifest)
 
@@ -878,6 +891,7 @@ export class AttachmentSyncService {
         await handle.close()
         handle = null
 
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         const wholeHash = sodium.to_hex(sodium.crypto_hash_sha256_final(wholeFileHashState))
         if (wholeHash !== manifest.checksum) {
           throw new Error(`File integrity failure: expected ${manifest.checksum}, got ${wholeHash}`)
@@ -890,7 +904,7 @@ export class AttachmentSyncService {
           if (isDiskSpaceError(renameErr)) {
             throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })
           }
-          throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
+          throw new Error(getMainI18n().t('errors:attachment.writeFailed'), { cause: renameErr })
         }
         await unlink(statePath).catch(() => {})
       } catch (err) {
@@ -1031,6 +1045,7 @@ export class AttachmentSyncService {
 
     // chunkUrls/urlExpiresAt are optional contract fields: absent from an old
     // server or one without presign credentials → proxied upload flow.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
     return (await resp.json()) as UploadInitResponse
   }
 
@@ -1060,6 +1075,7 @@ export class AttachmentSyncService {
       }
       if (!resp.ok) return null
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
       const data = (await resp.json()) as UploadStatusResponse
       return data.uploadedChunks.length > 0 ? data.uploadedChunks : null
     } catch {
@@ -1254,6 +1270,7 @@ export class AttachmentSyncService {
         if (!resp.ok) {
           throw new SyncServerError(`Failed to fetch manifest for ${attachmentId}`, resp.status)
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
         return (await resp.json()) as EncryptedAttachmentManifest
       },
       { maxRetries: 3, baseDelayMs: 2000, ...netOpts }
@@ -1397,6 +1414,7 @@ export class AttachmentSyncService {
     const fresh = { chunksDone: 0, bytesWritten: 0 }
     let state: DownloadResumeState
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
       state = JSON.parse(await readFile(statePath, 'utf-8')) as DownloadResumeState
     } catch {
       // No sidecar (or unreadable): any partial lying around is unaccounted for.
@@ -1405,7 +1423,7 @@ export class AttachmentSyncService {
       return fresh
     }
 
-    const orderedChunks = [...manifest.chunks].sort((a, b) => a.index - b.index)
+    const orderedChunks = [...manifest.chunks].toSorted((a, b) => a.index - b.index)
     const expectedBytes = orderedChunks
       .slice(0, state.chunksDone)
       .reduce((sum, c) => sum + c.size, 0)
@@ -1447,9 +1465,6 @@ export class AttachmentSyncService {
     vaultKey: Uint8Array,
     signingKeys: { secretKey: Uint8Array; publicKey: Uint8Array; deviceId: string }
   ): EncryptedAttachmentManifest {
-    const toB64 = (bytes: Uint8Array): string =>
-      sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
-
     const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest))
     const { ciphertext: encManifest, nonce: manifestNonce } = encrypt(manifestBytes, fileKey)
     const { wrappedKey, nonce: keyNonce } = wrapFileKey(fileKey, vaultKey)
@@ -1482,9 +1497,6 @@ export class AttachmentSyncService {
     vaultKey: Uint8Array,
     signerPublicKey: Uint8Array
   ): { manifest: AttachmentManifest; fileKey: Uint8Array } {
-    const fromB64 = (s: string): Uint8Array =>
-      sodium.from_base64(s, sodium.base64_variants.ORIGINAL)
-
     const signaturePayload: Record<string, unknown> = {
       encryptedManifest: encrypted.encryptedManifest,
       manifestNonce: encrypted.manifestNonce,
@@ -1513,6 +1525,7 @@ export class AttachmentSyncService {
     const manifestNonce = fromB64(encrypted.manifestNonce)
     const manifestBytes = decrypt(encManifest, manifestNonce, fileKey)
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
     const manifest = JSON.parse(new TextDecoder().decode(manifestBytes)) as AttachmentManifest
     return { manifest, fileKey }
   }

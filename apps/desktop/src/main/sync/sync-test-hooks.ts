@@ -16,6 +16,10 @@ export interface SyncWakeProbeCounts {
 
 // Counts `changes_available` frames and engine pulls from the outside, so the
 // E2E reads the same numbers whatever engine.ts build it runs against.
+const rateLimited = async (): Promise<never> => {
+  throw new RateLimitError()
+}
+
 const wakeProbe: SyncWakeProbeCounts & { engine: SyncEngine | null; socketErrors: string[] } = {
   wakes: 0,
   pulls: 0,
@@ -113,6 +117,7 @@ export const syncStateTestHooks = {
 
   async getSyncSocketStateForTests(): Promise<SyncSocketStateForTests> {
     const ws = getSyncWebSocket()
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- test hook deliberately reaches into private fields of the socket/engine
     const fields = (ws ?? {}) as unknown as Record<string, unknown>
     return {
       connected: ws?.connected ?? false,
@@ -159,10 +164,8 @@ export const syncStateTestHooks = {
     if (!engine) {
       throw new Error('Sync runtime is not initialized')
     }
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- test hook deliberately reaches into private fields of the socket/engine
     const crdtSync = engine['crdtSync'] as unknown as Record<string, unknown>
-    const rateLimited = async (): Promise<never> => {
-      throw new RateLimitError()
-    }
     crdtSync.probeBatchChunk = rateLimited
     crdtSync.applySnapshotBaseline = rateLimited
   },
@@ -204,7 +207,7 @@ export const syncStateTestHooks = {
     const store = resolveVaultCrdtStore()
     if (!store) return []
     const root = path.dirname(store.storagePath)
-    return existsSync(root) ? readdirSync(root).sort() : []
+    return existsSync(root) ? readdirSync(root).toSorted() : []
   },
 
   /**

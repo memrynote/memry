@@ -19,6 +19,7 @@ import type { PullItemForDecrypt } from '@memry/sync-client/worker-protocol'
 // See engine/pull-coordinator.ts.
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   await sodium.ready
 })
 
@@ -337,6 +338,7 @@ describe('decryptSingleItem', () => {
       const { ciphertext, nonce: dataNonce } = encrypt(truncated, fileKey)
       const { wrappedKey, nonce: keyNonce } = wrapFileKey(fileKey, keys.vaultKey)
       const toB64 = (bytes: Uint8Array): string =>
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
 
       const signaturePayload = {

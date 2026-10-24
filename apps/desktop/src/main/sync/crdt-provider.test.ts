@@ -69,6 +69,7 @@ const mocks = vi.hoisted(() => {
     vaultRoot: '',
     // The open vault's identity — what the CRDT store is scoped to. null for
     // `dataDb` means no vault is open, which must defer the store init.
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the annotation widens the literal so later assignments type-check
     dataDb: {} as object | null,
     vaultUuid: '11111111-2222-3333-4444-555555555555',
     legacyStoreClaim: undefined as string | undefined,
@@ -77,6 +78,7 @@ const mocks = vi.hoisted(() => {
     // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
     // preflightQueue serves per-call verdicts (quarantine retry = second call);
     // when empty, preflightResult is the standing answer.
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the annotation widens the literal so later assignments type-check
     preflightResult: { ok: true } as PreflightVerdict,
     preflightQueue: [] as PreflightVerdict[],
     preflightCalls: [] as string[],
@@ -91,7 +93,7 @@ const mocks = vi.hoisted(() => {
     enqueueLocalSyncUpdate: vi.fn(),
     removePendingNoteSyncItems: vi.fn(),
     /** Overridden by the one test that needs a path a real `stat` can reach. */
-    toAbsolutePath: vi.fn((path: string) => `/vault/${path}`),
+    toAbsolutePath: vi.fn((vaultRelPath: string) => `/vault/${vaultRelPath}`),
     safeRead: vi.fn(),
     parseNote: vi.fn(),
     markdownToYFragment: vi.fn(),
@@ -229,7 +231,7 @@ vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => mocks.vaultRoot,
-  toAbsolutePath: (path: string) => mocks.toAbsolutePath(path)
+  toAbsolutePath: (vaultRelPath: string) => mocks.toAbsolutePath(vaultRelPath)
 }))
 
 // The file is opened through the real vault check, then read through the
@@ -347,6 +349,7 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
 
 /** The store holds merged state for the next doc it opens, so that doc can vouch for a claim. */
 const withPersistedDoc = (): void => {
+  // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
   mocks.persistenceInstances[0].getYDoc.mockImplementationOnce(async (noteId: string) => {
     const doc = new Y.Doc({ guid: `${noteId}:persisted` })
     doc.getMap('meta').set('merged', true)
@@ -381,7 +384,7 @@ describe('CrdtProvider', () => {
       title: 'Note',
       fileType: 'markdown'
     })
-    mocks.toAbsolutePath.mockImplementation((path: string) => `/vault/${path}`)
+    mocks.toAbsolutePath.mockImplementation((vaultRelPath: string) => `/vault/${vaultRelPath}`)
     mocks.safeRead.mockResolvedValue('# Note\n\nBody')
     mocks.parseNote.mockReturnValue({ content: 'Body' })
     mocks.markdownToYFragment.mockImplementation(
@@ -669,7 +672,7 @@ describe('CrdtProvider', () => {
       coversThrough: 50
     })
     const pushed = new Y.Doc()
-    Y.applyUpdate(pushed, pushSnapshot.mock.calls.at(-1)![1] as Uint8Array)
+    Y.applyUpdate(pushed, pushSnapshot.mock.calls.at(-1)![1])
     expect(pushed.getMap('meta').get('title')).toBe('landed before the cursor read')
 
     provider.setSnapshotCoverage(null)
@@ -695,6 +698,7 @@ describe('CrdtProvider', () => {
   it('sends the merged snapshot revision as the base of a claimed push only', async () => {
     withPersistedDoc()
     await provider.initForNote('note-1', { title: 'Snapshot' }, [])
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     mocks.persistenceInstances[0].getMeta.mockImplementation(async (doc: string) =>
       doc === 'note-1' ? { appliedSequence: 3, snapshotRevision: 'rev-merged' } : undefined
     )
@@ -927,7 +931,7 @@ describe('CrdtProvider', () => {
     await provider.open('with-editor', 1, { skipSeed: true })
     await provider.open('cached-only', undefined, { skipSeed: true })
 
-    expect(provider.getOpenNoteIds().sort()).toEqual(['cached-only', 'with-editor'])
+    expect(provider.getOpenNoteIds().toSorted()).toEqual(['cached-only', 'with-editor'])
     expect(provider.getOpenNoteIds({ active: true })).toEqual(['with-editor'])
 
     await provider.close('with-editor', 1)
@@ -1256,6 +1260,7 @@ describe('CrdtProvider', () => {
   })
 
   describe('a foreign journal folded into its day (#2939)', () => {
+    // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
     const bodyText = (doc: Y.Doc) => doc.getXmlFragment('prosemirror').toString()
     const typedBody = (text: string): Uint8Array => {
       const doc = new Y.Doc()
@@ -1336,6 +1341,7 @@ describe('CrdtProvider', () => {
       const persistence = mocks.persistenceInstances[0]
       let stored!: () => void
       persistence.storeUpdate.mockImplementation(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
         (id: string) =>
           new Promise<void>((resolve) => {
             if (id === 'wxudm2oo4rci') stored = resolve
@@ -1486,9 +1492,11 @@ describe('CrdtProvider', () => {
     // as a mock-call shape.
     const stored: Uint8Array[] = []
     const wireStore = (store: (typeof mocks.persistenceInstances)[number]): void => {
+      // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
       store.storeUpdate.mockImplementation(async (_noteId: string, update: Uint8Array) => {
         stored.push(update)
       })
+      // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
       store.getYDoc.mockImplementation(async () => {
         const doc = new Y.Doc()
         for (const update of stored) Y.applyUpdate(doc, update)
@@ -1647,7 +1655,7 @@ describe('CrdtProvider', () => {
     pushSnapshot.mockClear()
     await expect(provider.pushAllSnapshots()).resolves.toBe(1)
     const roundTrip = new Y.Doc()
-    Y.applyUpdate(roundTrip, pushSnapshot.mock.calls[0][1] as Uint8Array)
+    Y.applyUpdate(roundTrip, pushSnapshot.mock.calls[0][1])
     expect(roundTrip.getMap('meta').get('title')).toBe('typed after reopen')
   })
 
@@ -1722,8 +1730,10 @@ describe('CrdtProvider', () => {
     // on its own flush: the entry stays in the map, just marked closing.
     let closePromise: Promise<void> | undefined
     let releaseCloseFlush: (() => void) | undefined
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     mocks.persistenceInstances[0].storeUpdate.mockImplementationOnce(async () => {
       mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
         () =>
           new Promise<void>((resolve) => {
             releaseCloseFlush = resolve
@@ -1831,6 +1841,7 @@ describe('CrdtProvider', () => {
     const marker = store.setMeta.mock.calls.find(([, key]) => key === 'owedCompactions')
     expect(marker?.[2]).toEqual(['note-1'])
 
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     store.getMeta.mockImplementation(async (_doc: string, key: string) =>
       key === 'owedCompactions' ? ['note-1'] : undefined
     )
@@ -1882,9 +1893,11 @@ describe('CrdtProvider', () => {
     let marker: unknown = ['note-0']
     const later = <T>(value: T): Promise<T> =>
       new Promise((resolve) => setTimeout(() => resolve(value), 5))
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     store.getMeta.mockImplementation((_doc: string, key: string) =>
       later(key === 'owedCompactions' ? marker : undefined)
     )
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     store.setMeta.mockImplementation((_doc: string, key: string, value: unknown) => {
       if (key === 'owedCompactions') marker = value
       return later(undefined)
@@ -1906,6 +1919,7 @@ describe('CrdtProvider', () => {
 
   it('keeps the owed compactions in the store when the owe was not durable', async () => {
     const store = mocks.persistenceInstances.at(-1)!
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     store.getMeta.mockImplementation(async (_doc: string, key: string) =>
       key === 'owedCompactions' ? ['note-1'] : undefined
     )
@@ -1985,6 +1999,7 @@ describe('CrdtProvider', () => {
   it('keeps a reopened doc alive if close races with a new open', async () => {
     let releaseFlush: (() => void) | undefined
     mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
       () =>
         new Promise<void>((resolve) => {
           releaseFlush = resolve
@@ -2015,6 +2030,7 @@ describe('CrdtProvider', () => {
     createWindow(5)
     let releaseFlush: (() => void) | undefined
     mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
       () =>
         new Promise<void>((resolve) => {
           releaseFlush = resolve
@@ -2088,7 +2104,7 @@ describe('CrdtProvider', () => {
     // event it keeps that dead binding, so main applies remote updates to the
     // fresh instance and broadcasts them to a window set the editor is not in.
     const rebinds = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_RESET)
-    expect(rebinds.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+    expect(rebinds.map((sent) => sent.windowId).toSorted((a, b) => a - b)).toEqual([1, 2])
 
     // #and the reset must NOT read as "you may re-open now". At this instant the
     // old provider is destroyed and no replacement is initialized, so every
@@ -2122,7 +2138,7 @@ describe('CrdtProvider', () => {
     // #then every window hears it, not just the one holding a note — one
     // provider serves every open doc, so one announcement releases them all.
     const readies = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)
-    expect(readies.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+    expect(readies.map((sent) => sent.windowId).toSorted((a, b) => a - b)).toEqual([1, 2])
 
     // #and it is announced from the exact assignment OPEN_DOC gates on:
     // announcing any earlier sends the stranded editors straight back into the
@@ -2139,20 +2155,20 @@ describe('CrdtProvider', () => {
     mocks.sent = []
 
     // #when openVault brings the provider up for the vault it is opening
-    const provider = getCrdtProvider()
-    await provider.initPersistence('/vaults/garden')
+    const vaultProvider = getCrdtProvider()
+    await vaultProvider.initPersistence('/vaults/garden')
 
     // #then the broadcast names that vault. Sent as null, the renderer could not
     // tell which workspace's editors may rebind, and the one left behind
     // re-opened its note in this vault's store.
     const readies = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)
     expect(readies.map((sent) => sent.payload)).toEqual([{ vaultPath: '/vaults/garden' }])
-    expect(provider.servesVault('/vaults/garden')).toBe(true)
-    expect(provider.servesVault('/vaults/vocab')).toBe(false)
+    expect(vaultProvider.servesVault('/vaults/garden')).toBe(true)
+    expect(vaultProvider.servesVault('/vaults/vocab')).toBe(false)
 
     // #and a destroyed provider no longer claims the vault
-    await provider.destroy()
-    expect(provider.servesVault('/vaults/vocab')).toBe(true)
+    await vaultProvider.destroy()
+    expect(vaultProvider.servesVault('/vaults/vocab')).toBe(true)
   })
 
   it('still reports the editors it stranded after destroy has emptied the doc map', async () => {
@@ -2517,9 +2533,9 @@ describe('CrdtProvider', () => {
 
       // #then the note's full state reaches the server as an update
       await vi.waitFor(() => expect(push).toHaveBeenCalledTimes(1))
-      expect(push.mock.calls[0]![0]).toBe('note-1')
+      expect(push.mock.calls[0][0]).toBe('note-1')
       const received = new Y.Doc()
-      for (const update of push.mock.calls[0]![1]) Y.applyUpdate(received, update)
+      for (const update of push.mock.calls[0][1]) Y.applyUpdate(received, update)
       expect(received.getMap('meta').get('title')).toBe('typed while signed out')
       expect(pushSnapshot).not.toHaveBeenCalled()
 
@@ -2634,7 +2650,7 @@ describe('CrdtProvider', () => {
       createWindow(1)
       const doc = await provider.open('note-1', 1, { skipSeed: true })
       doc.getMap('meta').set('title', 'typed in a local-only note')
-      expect(provider.getDocSizeMetrics()[0]!.pendingSnapshotBytes).toBeGreaterThan(0)
+      expect(provider.getDocSizeMetrics()[0].pendingSnapshotBytes).toBeGreaterThan(0)
 
       // Shutdown flush first: close() would otherwise consume the debt.
       expect(await provider.pushAllSnapshots()).toBe(0)
@@ -2729,7 +2745,7 @@ describe('CrdtProvider', () => {
       // #then the very next keystroke goes up, without closing and reopening
       doc.getMap('meta').set('title', 'written after un-toggling')
       expect(queue.enqueue).toHaveBeenCalledTimes(1)
-      expect(queue.enqueue.mock.calls[0]![0]).toBe('note-1')
+      expect(queue.enqueue.mock.calls[0][0]).toBe('note-1')
 
       // #and the body written while it was local-only is not stranded. Nothing
       // else would push it: the push coordinator's snapshot is gated on
@@ -3503,6 +3519,7 @@ describe('CrdtProvider batched snapshot pushes', () => {
   it('keeps a doc an editor bound to while its batch was in flight', async () => {
     // #given a batch push holding its request open
     let release: () => void = () => {}
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     pushBatch.mockImplementationOnce(async (entries: Array<{ noteId: string }>) => {
       await new Promise<void>((resolve) => {
         release = resolve
@@ -3650,7 +3667,7 @@ describe('CrdtProvider batched snapshot pushes', () => {
     const results = await single.pushSnapshotsForNotes(['note-a', 'note-b'], { concurrency: 2 })
 
     // #then
-    expect(singlePush.mock.calls.map((c) => c[0]).sort()).toEqual(['note-a', 'note-b'])
+    expect(singlePush.mock.calls.map((c) => c[0]).toSorted()).toEqual(['note-a', 'note-b'])
     expect(results.get('note-a')).toBe(true)
     expect(results.get('note-b')).toBe(true)
     await single.destroy()

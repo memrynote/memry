@@ -243,6 +243,7 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
     if (!preflight.ok) {
       throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
     const persistence = new LeveldbPersistence(storagePath, {
       levelOptions: CRDT_LEVEL_OPTIONS
     }) as CrdtPersistence
@@ -389,7 +390,7 @@ async function settleStoreStageFailure(
  */
 function describeControlDir(controlPath: string): { files: string[]; logTail?: string } | null {
   try {
-    const files = readdirSync(controlPath).sort().slice(0, MAX_CONTROL_DIR_FILES)
+    const files = readdirSync(controlPath).toSorted().slice(0, MAX_CONTROL_DIR_FILES)
     let logTail: string | undefined
     if (files.includes('LOG')) {
       const levelDbLog = readFileSync(path.join(controlPath, 'LOG'), 'utf8')
@@ -452,6 +453,7 @@ async function probePersistence(persistence: CrdtPersistence): Promise<void> {
         const loaded = await persistence.getYDoc(PERSISTENCE_PROBE_KEY)
         loaded.destroy()
         await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
+        return undefined
       })
       .then(
         () => settle(resolve),

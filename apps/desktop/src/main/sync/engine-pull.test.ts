@@ -602,7 +602,7 @@ describe('SyncEngine', () => {
       expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
         100, 100, 50
       ])
-      expect((pullCalls[2]?.[1] as { itemIds: string[] }).itemIds[0]).toBe('task-200')
+      expect((pullCalls[2]?.[1] as { itemIds: string[] } | undefined)?.itemIds[0]).toBe('task-200')
 
       // Breaker reported for the page: run refused (error state), and exactly
       // the poisoned slice's items surfaced as corrupt.

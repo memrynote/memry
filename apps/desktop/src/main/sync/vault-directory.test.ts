@@ -112,6 +112,7 @@ function serverVault(
 
 describe('vault-directory', () => {
   beforeAll(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
   })
 

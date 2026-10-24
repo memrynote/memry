@@ -30,6 +30,7 @@ fs.mkdirSync(userDataDir, { recursive: true })
 const { dbs, provider, journalSync, logger } = vi.hoisted(() => {
   const docs = new Map<string, Doc>()
   return {
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the annotation widens the literal so later assignments type-check
     dbs: { data: null as unknown, index: null as unknown },
     logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
     journalSync: { enqueueRecoveredDelete: vi.fn() },
@@ -45,6 +46,7 @@ const { dbs, provider, journalSync, logger } = vi.hoisted(() => {
   }
 })
 
+// oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
 const textOf = (id: string): string => provider.docs.get(id)?.getText('t').toString() ?? ''
 
 vi.mock('electron', () => ({
@@ -245,7 +247,7 @@ describe('runJournalDayMerges', () => {
       .where(eq(taskNotes.taskId, 'task-1'))
       .all()
       .map((row) => row.noteId)
-    expect(linked.sort()).toEqual([DAY, 'note-kept'])
+    expect(linked.toSorted()).toEqual([DAY, 'note-kept'])
     const tombstone = JSON.stringify({ clock: { b: 1, me: 1 } })
     expect(listPendingDeletes(ctx.db)).toEqual([
       { type: 'journal', itemId: FOREIGN, payload: tombstone }

@@ -63,11 +63,11 @@ const { MockWebSocket, getInstances, resetInstances } = vi.hoisted(() => {
     simulateUnexpectedResponse(statusCode: number, statusMessage?: string): void {
       this.emit(
         'unexpected-response',
-        {} as unknown,
+        {},
         {
           statusCode,
           statusMessage: statusMessage ?? `HTTP ${statusCode}`
-        } as unknown
+        }
       )
     }
   }

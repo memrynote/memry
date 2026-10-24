@@ -261,6 +261,6 @@ describe('settings field clocks — no device id (#2287, #2897)', () => {
 
     expect(manager.getPayload().fieldClocks).toEqual({ 'general.theme': { 'dev-a': 1 } })
     const [row] = queue.dequeue(1)
-    expect(JSON.parse(row!.payload).fieldClocks).toEqual({ 'general.theme': { 'dev-a': 1 } })
+    expect(JSON.parse(row.payload).fieldClocks).toEqual({ 'general.theme': { 'dev-a': 1 } })
   })
 })

@@ -733,7 +733,7 @@ describe('sync runtime', () => {
 
     await runtime.startSyncRuntime()
 
-    const outbox = runtimeMocks.NoteBodyOutbox.instances[0]!
+    const outbox = runtimeMocks.NoteBodyOutbox.instances[0]
     expect(runtimeMocks.importLegacyPendingCrdtNotes).toHaveBeenCalledWith(
       runtimeMocks.SyncQueueManager.instances[0],
       '/user-data'
@@ -741,16 +741,16 @@ describe('sync runtime', () => {
     expect(outbox.start).toHaveBeenCalledTimes(1)
     // Full-state rows are merged before they are pushed, so they wait for the
     // engine's awaited first full sync.
-    expect(outbox.enableFullStateFlush.mock.invocationCallOrder[0]!).toBeGreaterThan(
-      runtimeMocks.SyncEngine.instances[0]!.start.mock.invocationCallOrder[0]!
+    expect(outbox.enableFullStateFlush.mock.invocationCallOrder[0]).toBeGreaterThan(
+      runtimeMocks.SyncEngine.instances[0].start.mock.invocationCallOrder[0]
     )
 
-    const engine = runtimeMocks.SyncEngine.instances[0]!
+    const engine = runtimeMocks.SyncEngine.instances[0]
     engine.mergeRemoteCrdtForNote.mockResolvedValue(true)
     await expect(outbox.readFullState!('note-1')).resolves.toEqual(new Uint8Array([7]))
     expect(engine.mergeRemoteCrdtForNote).toHaveBeenCalledWith('note-1')
-    expect(engine.mergeRemoteCrdtForNote.mock.invocationCallOrder[0]!).toBeLessThan(
-      runtimeMocks.crdtProvider.readSyncableState.mock.invocationCallOrder[0]!
+    expect(engine.mergeRemoteCrdtForNote.mock.invocationCallOrder[0]).toBeLessThan(
+      runtimeMocks.crdtProvider.readSyncableState.mock.invocationCallOrder[0]
     )
 
     // A merge that did not complete keeps the row: nothing is read or pushed.
@@ -942,12 +942,13 @@ describe('sync runtime', () => {
     // The engine is reachable while its start is still running: the runtime
     // slot is filled before engine.start() is awaited.
     await vi.waitFor(() => expect(runtime.getSyncEngine()).not.toBeNull())
-    const engine = runtimeMocks.SyncEngine.instances[0]!
+    const engine = runtimeMocks.SyncEngine.instances[0]
     await vi.waitFor(() => expect(engine.start).toHaveBeenCalled())
 
     let stopSettled = false
     const stopPromise = runtime.stopSyncRuntime().then(() => {
       stopSettled = true
+      return undefined
     })
 
     // Teardown must not wait out the parked start...

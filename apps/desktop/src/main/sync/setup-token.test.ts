@@ -88,6 +88,7 @@ const readSetupToken = (): string | null => {
 
 describe('setup token renewal', () => {
   beforeEach(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
     keychain.clear()
     vi.mocked(postToServer).mockReset()
@@ -127,7 +128,7 @@ describe('setup token renewal', () => {
     expect(readSetupToken()).toBe(renewed)
 
     // #and the challenge really is signed by the key committed at sign-in.
-    const [path, body] = vi.mocked(postToServer).mock.calls[0]!
+    const [path, body] = vi.mocked(postToServer).mock.calls[0]
     expect(path).toBe('/auth/setup-token/renew')
     const { challengeNonce, challengeSignature, setupToken } = body as {
       challengeNonce: string
@@ -137,8 +138,10 @@ describe('setup token renewal', () => {
     expect(setupToken).toBe(expired)
     expect(
       sodium.crypto_sign_verify_detached(
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.from_base64(challengeSignature, sodium.base64_variants.ORIGINAL),
         new TextEncoder().encode(`${challengeNonce}:jti-expired`),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.from_base64(committedPublicKey!, sodium.base64_variants.ORIGINAL)
       )
     ).toBe(true)

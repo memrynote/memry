@@ -107,7 +107,7 @@ export function decideVaultBinding(input: BindingInputs): BindingDecision {
 }
 
 function pickMergeTarget(vaults: AccountVaultSummary[]): AccountVaultSummary | undefined {
-  return [...vaults].sort((a, b) => (b.itemCount ?? 0) - (a.itemCount ?? 0))[0]
+  return [...vaults].toSorted((a, b) => (b.itemCount ?? 0) - (a.itemCount ?? 0))[0]
 }
 
 function cachedVaultName(vaultUuid: string): string | null {
@@ -238,6 +238,7 @@ export function readVaultAccountBinding(db: DataDb): VaultAccountBinding | null 
     .get()
   if (!row) return null
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted JSON; typeof checks on the next lines validate each field
     const parsed = JSON.parse(row.value) as Partial<VaultAccountBinding>
     if (typeof parsed.userId !== 'string' || !parsed.userId) return null
     if (parsed.mode !== 'sync' && parsed.mode !== 'local') return null

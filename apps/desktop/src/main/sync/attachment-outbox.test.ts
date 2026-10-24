@@ -58,7 +58,7 @@ describe('attachment outbox', () => {
 
     const pending = listPendingUploads(db)
     expect(pending).toHaveLength(2)
-    expect(pending.map((p) => p.diskPath).sort()).toEqual(['/tmp/a.pdf', '/tmp/b.png'])
+    expect(pending.map((p) => p.diskPath).toSorted()).toEqual(['/tmp/a.pdf', '/tmp/b.png'])
   })
 
   it('clearUpload removes the row; markUploadFailed upserts and counts attempts', () => {
@@ -294,6 +294,7 @@ describe('attachment outbox', () => {
 
       // gone.pdf row dropped without calling upload for it
       expect(upload).toHaveBeenCalledTimes(2)
+      return undefined
     })
   })
 

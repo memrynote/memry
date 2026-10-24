@@ -190,6 +190,7 @@ describe('a note file swapped for an outside link after the vault check (#3095)'
     }
   }
 
+  // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
   const docText = (doc: Y.Doc): string => doc.getXmlFragment('prosemirror').toString()
 
   beforeEach(async () => {

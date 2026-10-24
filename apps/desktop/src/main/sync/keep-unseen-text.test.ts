@@ -25,6 +25,7 @@ const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
 const { currentDb, syncInboxCreate } = vi.hoisted(() => ({
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the annotation widens the literal so later assignments type-check
   currentDb: { value: null as unknown },
   syncInboxCreate: vi.fn()
 }))

@@ -118,7 +118,7 @@ export async function adoptAccountVaultIfAbsent(
 
   // The server already orders by item count, but the choice is load-bearing
   // enough not to depend on that.
-  const target = [...vaults].sort((a, b) => (b.itemCount ?? 0) - (a.itemCount ?? 0))[0]
+  const target = [...vaults].toSorted((a, b) => (b.itemCount ?? 0) - (a.itemCount ?? 0))[0]
   adoptVaultLocally(db, target.vaultUuid)
   logger.info('Adopted account vault instead of registering a new one', {
     localVaultUuid,

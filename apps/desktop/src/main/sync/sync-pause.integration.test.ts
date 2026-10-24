@@ -63,9 +63,10 @@ let dbPath: string
 const savedUrl = process.env.SYNC_SERVER_URL
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   await sodium.ready
   const mod = await import('@memry/sync-harness/simulated-server')
-  server = new mod.SimulatedServer() as Harness
+  server = new mod.SimulatedServer()
   await server.start()
   process.env.SYNC_SERVER_URL = (await server.getDirectUrl()).origin
 }, 180_000)
@@ -112,6 +113,7 @@ async function seedAccount(publicKey: Uint8Array): Promise<{ deviceId: string; t
       `INSERT INTO devices (id, user_id, name, platform, app_version, auth_public_key, vault_id, created_at, updated_at)
        VALUES (?, ?, 'test-device', 'test', '99.0.0', ?, 'default', ?, ?)`
     )
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     .bind(deviceId, userId, sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL), now, now)
     .run()
   await db
@@ -185,6 +187,7 @@ describe('a paused device against a real sync server', () => {
         appVersion: '99.0.0',
         linkedAt: new Date(),
         isCurrentDevice: true,
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         signingPublicKey: sodium.to_base64(signing.publicKey)
       } as never)
       .run()

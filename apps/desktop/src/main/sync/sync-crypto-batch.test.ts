@@ -342,7 +342,7 @@ describe('sync crypto batch', () => {
       workerBridge: workerBridge as never,
       queue: { markFailed: mocks.markFailed } as never,
       extractPayloadMetadata: () => ({}),
-      resolvePushPayload: resolvePushPayload as never
+      resolvePushPayload: resolvePushPayload
     })
 
     // Re-resolving would read live DB rows again and could hand the fallback a

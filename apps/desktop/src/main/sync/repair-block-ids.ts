@@ -14,6 +14,7 @@ export function repairEmptyBlockIds(fragment: Y.XmlFragment): number {
   let repaired = 0
   const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
     for (const child of node.toArray()) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Yjs toArray() yields a union; the typeof guards on the next line check the runtime shape
       const el = child as Y.XmlElement
       if (typeof el.nodeName !== 'string' || typeof el.getAttribute !== 'function') continue
       if (BLOCK_CONTAINER_NODES.has(el.nodeName) && !el.getAttribute('id')) {

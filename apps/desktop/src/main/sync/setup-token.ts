@@ -17,6 +17,7 @@ import { extractJtiFromToken, isTokenExpired, retrieveToken, storeToken } from '
 const log = createLogger('Sync:SetupToken')
 
 const toBase64 = (bytes: Uint8Array): string =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
 
 /**
@@ -45,25 +46,27 @@ const getStableSigningSecretKey = async (): Promise<Uint8Array> => {
  * renewable.
  */
 export const getSetupDevicePublicKey = async (): Promise<string | undefined> => {
-  let secretKey: Uint8Array | undefined
+  let signingKey: Uint8Array | undefined
   try {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
-    secretKey = await getStableSigningSecretKey()
-    return toBase64(getDevicePublicKey(secretKey))
+    signingKey = await getStableSigningSecretKey()
+    return toBase64(getDevicePublicKey(signingKey))
   } catch (err) {
     log.warn('Could not commit a device key at sign-in — setup token will not be renewable', err)
     return undefined
   } finally {
-    if (secretKey) secureCleanup(secretKey)
+    if (signingKey) secureCleanup(signingKey)
   }
 }
 
 const renewSetupToken = async (expiredToken: string): Promise<string | null> => {
-  let secretKey: Uint8Array | undefined
+  let signingKey: Uint8Array | undefined
   try {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
-    secretKey = (await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)) ?? undefined
-    if (!secretKey) {
+    signingKey = (await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)) ?? undefined
+    if (!signingKey) {
       log.warn('No committed device key on this install — setup token cannot be renewed')
       return null
     }
@@ -72,7 +75,7 @@ const renewSetupToken = async (expiredToken: string): Promise<string | null> => 
     const jti = extractJtiFromToken(expiredToken)
     const signature = sodium.crypto_sign_detached(
       new TextEncoder().encode(`${challengeNonce}:${jti}`),
-      secretKey
+      signingKey
     )
 
     const raw = await postToServer<unknown>('/auth/setup-token/renew', {
@@ -89,7 +92,7 @@ const renewSetupToken = async (expiredToken: string): Promise<string | null> => 
     log.warn('Setup token renewal failed', err)
     return null
   } finally {
-    if (secretKey) secureCleanup(secretKey)
+    if (signingKey) secureCleanup(signingKey)
   }
 }
 

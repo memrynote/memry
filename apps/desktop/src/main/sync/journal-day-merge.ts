@@ -113,6 +113,7 @@ export function listOwedJournalDayMerges(db: DrizzleDb): OwedJournalDayMerge[] {
     .all()
     .flatMap((row) => {
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
         return [JSON.parse(row.value) as OwedJournalDayMerge]
       } catch (error) {
         log.warn('Dropping an unreadable owed journal merge', { error })

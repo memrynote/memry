@@ -541,6 +541,7 @@ function resolveFromCanonicalMetadata(
     if (!canonical) return undefined
 
     log.debug('Write-back: index row not projected yet, using canonical metadata', { noteId })
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- the intermediate unknown bridges two types that do not overlap; the target type is the contract of this value; loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     return {
       ...canonical,
       date: canonical.journalDate ?? null

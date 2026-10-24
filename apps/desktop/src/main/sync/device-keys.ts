@@ -22,6 +22,7 @@ export async function getDeviceSigningKey(
 
   if (row?.signingPublicKey) {
     log.debug('Device key resolved from local cache', { deviceId })
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     return sodium.from_base64(row.signingPublicKey, sodium.base64_variants.ORIGINAL)
   }
 
@@ -40,6 +41,7 @@ export async function getDeviceSigningKey(
 
   if (refreshed?.signingPublicKey) {
     log.debug('Device key resolved after server fetch', { deviceId })
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     return sodium.from_base64(refreshed.signingPublicKey, sodium.base64_variants.ORIGINAL)
   }
 
